@@ -1,4 +1,5 @@
 {
+  "showInlineTitle": true,
   "attachmentFolderPath": "_Anexos",
   "newFileLocation": "folder",
   "newFileFolderPath": "00-Inbox",
@@ -11,7 +12,9 @@
   "defaultViewMode": "source",
   "livePreview": true,
   "spellcheck": true,
-  "spellcheckLanguages": ["pt-BR"],
+  "spellcheckLanguages": [
+    "pt-BR"
+  ],
   "readableLineLength": true,
   "strictLineBreaks": false
 }

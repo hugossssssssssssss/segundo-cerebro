@@ -25,5 +25,9 @@
   "zk-prefixer": false,
   "markdown-importer": false,
   "sync": false,
-  "webviewer": true
+  "webviewer": true,
+  "footnotes": false,
+  "slash-command": false,
+  "publish": false,
+  "bases": true
 }

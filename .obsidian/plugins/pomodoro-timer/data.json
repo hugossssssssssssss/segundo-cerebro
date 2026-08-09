@@ -4,12 +4,17 @@
   "autostart": false,
   "useStatusBarTimer": true,
   "notificationSound": true,
+  "customSound": "",
   "showTaskProgress": true,
   "enableTaskTracking": true,
   "logFile": "DAILY",
   "logFocused": true,
-  "logBreaks": false,
+  "logPath": "",
   "logLevel": "ALL",
+  "logTemplate": "- 🍅 [[{begin:YYYY-MM-DD}]] {begin:HH:mm} → {end:HH:mm} ({duration}min) {task}\n",
   "logFormat": "CUSTOM",
-  "logTemplate": "- 🍅 [[{begin:YYYY-MM-DD}]] {begin:HH:mm} → {end:HH:mm} ({duration}min) {task}\n"
+  "useSystemNotification": false,
+  "taskFormat": "TASKS",
+  "lowFps": false,
+  "logBreaks": false
 }
