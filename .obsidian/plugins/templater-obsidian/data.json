@@ -1,0 +1,20 @@
+{
+  "templates_folder": "90-Templates",
+  "trigger_on_file_creation": true,
+  "auto_jump_to_cursor": true,
+  "enable_folder_templates": true,
+  "folder_templates": [
+    { "folder": "01-Trabalho/Entregas", "template": "90-Templates/Entrega.md" },
+    { "folder": "01-Trabalho/PDI/Metas", "template": "90-Templates/Meta.md" },
+    { "folder": "01-Trabalho/PDI/Ciclos", "template": "90-Templates/Ciclo PDI.md" },
+    { "folder": "01-Trabalho/Reunioes", "template": "90-Templates/Reuniao.md" },
+    { "folder": "01-Trabalho/Empresa", "template": "90-Templates/Pessoa.md" },
+    { "folder": "01-Trabalho/Projetos", "template": "90-Templates/Projeto.md" },
+    { "folder": "02-Pessoal/Projetos", "template": "90-Templates/Projeto.md" },
+    { "folder": "02-Pessoal/Referencias/Visual", "template": "90-Templates/Referencia Visual.md" },
+    { "folder": "02-Pessoal/Referencias/Ferramentas", "template": "90-Templates/Ferramenta.md" },
+    { "folder": "03-Conhecimento", "template": "90-Templates/Conhecimento.md" }
+  ],
+  "syntax_highlighting": true,
+  "enabled_templates_hotkeys": [""]
+}

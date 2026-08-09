@@ -1,0 +1,15 @@
+{
+  "workLen": 25,
+  "breakLen": 5,
+  "autostart": false,
+  "useStatusBarTimer": true,
+  "notificationSound": true,
+  "showTaskProgress": true,
+  "enableTaskTracking": true,
+  "logFile": "DAILY",
+  "logFocused": true,
+  "logBreaks": false,
+  "logLevel": "ALL",
+  "logFormat": "CUSTOM",
+  "logTemplate": "- 🍅 [[{begin:YYYY-MM-DD}]] {begin:HH:mm} → {end:HH:mm} ({duration}min) {task}\n"
+}

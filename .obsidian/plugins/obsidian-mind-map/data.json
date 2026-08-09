@@ -1,0 +1,17 @@
+{
+  "splitDirection": "vertical",
+  "nodeMinHeight": 16,
+  "lineHeight": "1.5em",
+  "spacingVertical": 6,
+  "spacingHorizontal": 90,
+  "initialExpandLevel": -1,
+  "color1": "#7c5cff",
+  "color2": "#2ea043",
+  "color3": "#e0864a",
+  "defaultColor": "#888",
+  "colorFreezeLevel": 0,
+  "animationDuration": 300,
+  "maxWidth": 0,
+  "screenshotBgColor": "#ffffff",
+  "screenshotTextColor": "#000000"
+}

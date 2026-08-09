@@ -1,0 +1,20 @@
+{
+  "showGettingStartedBanner": false,
+  "hasMigratedDailyNoteSettings": true,
+  "hasMigratedWeeklyNoteSettings": true,
+  "daily": {
+    "enabled": true,
+    "format": "YYYY-MM-DD",
+    "folder": "04-Diario",
+    "template": "90-Templates/Diaria.md"
+  },
+  "weekly": {
+    "enabled": true,
+    "format": "gggg-[S]ww",
+    "folder": "04-Diario/Semanas",
+    "template": "90-Templates/Revisao Semanal.md"
+  },
+  "monthly": { "enabled": false },
+  "quarterly": { "enabled": false },
+  "yearly": { "enabled": false }
+}
