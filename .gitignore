@@ -1,0 +1,19 @@
+# Arquivos voláteis do Obsidian — mudam a cada clique e poluiriam o histórico
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache
+.obsidian/plugins/*/data.json.bak
+
+# Cache do Dataview e afins
+.obsidian/plugins/dataview/**/cache
+.trash/
+
+# IMPORTANTE: _Anexos/ NÃO entra aqui de propósito.
+# As imagens precisam de backup no git — é o único backup delas.
+# Ver 99-Sistema/Manutencao.md, seção "Quando o vault crescer demais".
+
+# Sistema operacional
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
