@@ -11,7 +11,7 @@ kanban-plugin: board
 
 ## 📋 A fazer
 
-- [ ] Vincule projetos existentes com [[colchetes duplos]]
+- [ ] Vincule projetos existentes com `[[colchetes duplos]]`
 
 ## 🔨 Em andamento
 

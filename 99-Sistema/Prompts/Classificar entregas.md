@@ -1,3 +1,10 @@
+---
+copilot-command-context-menu-enabled: true
+copilot-command-slash-enabled: true
+copilot-command-context-menu-order: 10
+copilot-command-model-key: ""
+copilot-command-last-used: 0
+---
 Sua tarefa é ligar as entregas recentes do Hugo às metas do PDI dele.
 
 **Passo 1** — Leia todas as metas em `01-Trabalho/PDI/Metas`. Para cada uma, entenda o campo `indicador`: é ele que define o que a meta realmente mede, não só o título.

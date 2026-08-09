@@ -1,3 +1,10 @@
+---
+copilot-command-context-menu-enabled: true
+copilot-command-slash-enabled: true
+copilot-command-context-menu-order: 10
+copilot-command-model-key: ""
+copilot-command-last-used: 0
+---
 Leia tudo que está em `00-Inbox` e proponha um destino para cada item.
 
 Consulte `99-Sistema/Taxonomia.md` antes de decidir — os valores de `tipo`, `area` e as pastas válidas estão lá.

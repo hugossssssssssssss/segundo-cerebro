@@ -1,3 +1,10 @@
+---
+copilot-command-context-menu-enabled: true
+copilot-command-slash-enabled: true
+copilot-command-context-menu-order: 10
+copilot-command-model-key: ""
+copilot-command-last-used: 0
+---
 Você recebeu a nota de uma reunião que contém uma transcrição bruta na seção "Transcrição bruta".
 
 Leia a transcrição e preencha as seções acima dela, nesta ordem e apenas com o que realmente estiver na transcrição:

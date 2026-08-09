@@ -1,3 +1,10 @@
+---
+copilot-command-context-menu-enabled: true
+copilot-command-slash-enabled: true
+copilot-command-context-menu-order: 10
+copilot-command-model-key: ""
+copilot-command-last-used: 0
+---
 Faça o balanço da última semana do Hugo com base no vault.
 
 Leia:
