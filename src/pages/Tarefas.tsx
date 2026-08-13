@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Timer, Trash2, Check } from "lucide-react";
+import { Plus, Timer, Trash2, Check, List, CalendarDays } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { listar, ler, gravar, apagar } from "@/lib/github";
 import {
@@ -23,6 +23,7 @@ import {
   type Status,
 } from "@/lib/tarefas";
 import { Pomodoro } from "@/components/Pomodoro";
+import { Calendario } from "@/components/Calendario";
 import {
   Botao,
   Campo,
@@ -58,6 +59,7 @@ export default function Tarefas() {
   const [editando, setEditando] = useState<Tarefa | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [cronometrando, setCronometrando] = useState<Tarefa | null>(null);
+  const [visao, setVisao] = useState<"lista" | "calendario">("lista");
 
   /* ----------------------------------------------------------- carregar */
 
@@ -222,8 +224,29 @@ export default function Tarefas() {
         </Botao>
       </div>
 
+      {/* alterna lista / calendário */}
+      <div className="flex gap-2">
+        {([["lista", "Lista", List], ["calendario", "Calendário", CalendarDays]] as const).map(
+          ([v, rotulo, Icone]) => (
+            <button
+              key={v}
+              onClick={() => setVisao(v)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                visao === v
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:bg-accent",
+              )}
+            >
+              <Icone size={15} />
+              {rotulo}
+            </button>
+          ),
+        )}
+      </div>
+
       {/* filtros */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className={cn("flex gap-2 overflow-x-auto pb-1", visao === "calendario" && "hidden")}>
         {(["todas", ...STATUS] as const).map((f) => (
           <button
             key={f}
@@ -244,6 +267,8 @@ export default function Tarefas() {
 
       {carregando ? (
         <Carregando texto="Buscando suas tarefas…" />
+      ) : visao === "calendario" ? (
+        <Calendario tarefas={tarefas} aoAbrir={setEditando} />
       ) : visiveis.length === 0 ? (
         <Vazio
           titulo={filtro === "todas" ? "Nenhuma tarefa ainda" : "Nada por aqui"}
