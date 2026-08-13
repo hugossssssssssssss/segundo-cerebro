@@ -1,32 +1,64 @@
-# React + TypeScript + Vite
+# Segundo Cérebro
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Notas, tarefas, referências visuais e plano de carreira — num lugar só, sobre arquivos Markdown.
 
-Currently, two official plugins are available:
+**→ https://hugossssssssssssss.github.io/segundo-cerebro/**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## O que é
 
-## React Compiler
+Um site que edita arquivos `.md` guardados num repositório privado seu no GitHub. Sem servidor, sem banco de dados, sem mensalidade.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Cada coisa que você salva vira um arquivo de texto comum, com histórico completo. Isso significa três coisas na prática:
 
-## Expanding the Oxlint configuration
+- **Você pode abrir tudo em qualquer editor de texto**, hoje ou daqui a dez anos, mesmo que este app deixe de existir
+- **Qualquer IA lê seus arquivos** — Claude Code, Gemini CLI, Cursor — sem configuração nenhuma
+- **Nada se perde**: apagou sem querer, recupera pelo histórico do git
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Como usar
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+1. Abra o link acima
+2. Vá em **Ajustes** (engrenagem no topo)
+3. Preencha sua conta do GitHub, o repositório de dados e um token
+4. Clique em **Salvar e testar conexão**
+
+Se algo der errado, o botão **Diagnóstico** testa cada etapa em ordem e mostra exatamente onde parou.
+
+### O token
+
+Em https://github.com/settings/personal-access-tokens/new:
+
+- **Repository access:** apenas o repositório de dados
+- **Permissions → Contents:** Read and write
+
+Só isso. O token fica guardado no navegador deste aparelho e nunca sai daqui — se você abrir em outro aparelho, precisa colar de novo.
+
+### No celular
+
+Abra o link no Chrome do Android e use **⋮ → Adicionar à tela inicial**. Ele instala como aplicativo, com ícone próprio e sem barra de navegador.
+
+## O que tem dentro
+
+| Aba | |
+|---|---|
+| **Tarefas** | Lista e calendário, com prazo, tags e pomodoro que registra o tempo na própria tarefa |
+| **Notas** | Editor de Markdown com pré-visualização |
+| **Refs** | Referências visuais com imagem, link e o campo "por que salvei" |
+| **Carreira** | Metas e entregas, com as entregas alimentando as metas |
+| **Conversar** | Chat com o Gemini, que lê seus arquivos e responde sobre eles |
+
+## Custo
+
+R$ 0. GitHub grátis (repositórios e Pages) e a camada gratuita do Gemini.
+
+## Para desenvolver
+
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm test
+npm run build
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Publica sozinho a cada push na `main`.
+
+Se você for uma IA mexendo neste código, leia o [AGENTS.md](AGENTS.md) primeiro.
