@@ -1,8 +1,9 @@
 import { HashRouter, Routes, Route, NavLink, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { FileText, CheckSquare, Settings, Moon, Sun } from "lucide-react";
+import { FileText, CheckSquare, Target, Settings, Moon, Sun } from "lucide-react";
 import Notas from "@/pages/Notas";
 import Tarefas from "@/pages/Tarefas";
+import PDI from "@/pages/PDI";
 import Configuracoes from "@/pages/Configuracoes";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 const abas = [
   { para: "/tarefas", rotulo: "Tarefas", Icone: CheckSquare },
   { para: "/notas", rotulo: "Notas", Icone: FileText },
+  { para: "/pdi", rotulo: "Carreira", Icone: Target },
   { para: "/config", rotulo: "Ajustes", Icone: Settings },
 ];
 
@@ -104,6 +106,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/tarefas" replace />} />
           <Route path="/tarefas" element={<Tarefas />} />
           <Route path="/notas" element={<Notas />} />
+          <Route path="/pdi" element={<PDI />} />
           <Route path="/config" element={<Configuracoes />} />
           <Route path="*" element={<Navigate to="/tarefas" replace />} />
         </Routes>
