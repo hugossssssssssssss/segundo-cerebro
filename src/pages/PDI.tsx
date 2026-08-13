@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Target, Package, Trash2, AlertTriangle, Sparkles } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { listar, ler, gravar, apagar } from "@/lib/github";
+import { gravar, apagar } from "@/lib/github";
+import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
 import {
-  lerMarkdown,
   escreverMarkdown,
   tituloProvavel,
   nomeLivre,
@@ -67,34 +67,18 @@ export default function PDI() {
     setCarregando(true);
     setErro("");
     try {
-      const [arqMetas, arqEntregas] = await Promise.all([
-        listar(cfg, PASTA_METAS),
-        listar(cfg, PASTA_ENTREGAS),
-      ]);
-
-      const [lidasMetas, lidasEntregas] = await Promise.all([
-        Promise.all(
-          arqMetas
-            .filter((a) => !a.nome.startsWith("."))
-            .map(async (a) => {
-              const { texto, sha } = await ler(cfg, a.caminho);
-              const doc = lerMarkdown(texto);
-              return comoMeta(doc, a.caminho, sha, tituloProvavel(doc, a.nome));
-            }),
+      // um carregamento só do repositório serve as duas pastas
+      const todos = await carregarRepo(cfg);
+      setMetas(
+        daPasta(todos, PASTA_METAS).map((i) =>
+          comoMeta(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)),
         ),
-        Promise.all(
-          arqEntregas
-            .filter((a) => !a.nome.startsWith("."))
-            .map(async (a) => {
-              const { texto, sha } = await ler(cfg, a.caminho);
-              const doc = lerMarkdown(texto);
-              return comoEntrega(doc, a.caminho, sha, tituloProvavel(doc, a.nome));
-            }),
+      );
+      setEntregas(
+        daPasta(todos, PASTA_ENTREGAS).map((i) =>
+          comoEntrega(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)),
         ),
-      ]);
-
-      setMetas(lidasMetas);
-      setEntregas(lidasEntregas);
+      );
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -130,6 +114,7 @@ export default function PDI() {
           metas.map((m) => m.caminho),
         ).replace(/\/\d{4}-\d{2}-\d{2}-/, "/");
       await gravar(cfg, caminho, texto, editandoMeta.sha || undefined);
+      invalidarCache();
       setEditandoMeta(null);
       await carregar();
     } catch (e) {
@@ -157,6 +142,7 @@ export default function PDI() {
         limpa.caminho ||
         nomeLivre(PASTA_ENTREGAS, limpa.titulo, entregas.map((x) => x.caminho));
       await gravar(cfg, caminho, texto, limpa.sha || undefined);
+      invalidarCache();
       setEditandoEntrega(null);
       await carregar();
     } catch (e) {
@@ -175,6 +161,7 @@ export default function PDI() {
       return;
     try {
       await apagar(cfg, m.caminho, m.sha);
+      invalidarCache();
       setEditandoMeta(null);
       await carregar();
     } catch (e) {
@@ -186,6 +173,7 @@ export default function PDI() {
     if (!confirm(`Apagar "${e.titulo}"?`)) return;
     try {
       await apagar(cfg, e.caminho, e.sha);
+      invalidarCache();
       setEditandoEntrega(null);
       await carregar();
     } catch (err) {

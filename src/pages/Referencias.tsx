@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Trash2, ImagePlus, ExternalLink } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { listar, ler, gravar, gravarBinario, apagar } from "@/lib/github";
+import { gravar, gravarBinario, apagar } from "@/lib/github";
+import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
 import {
-  lerMarkdown,
   escreverMarkdown,
   tituloProvavel,
   nomeLivre,
@@ -61,17 +61,12 @@ export default function Referencias() {
     setCarregando(true);
     setErro("");
     try {
-      const arquivos = await listar(cfg, PASTA_REFS);
-      const lidas = await Promise.all(
-        arquivos
-          .filter((a) => !a.nome.startsWith("."))
-          .map(async (a) => {
-            const { texto, sha } = await ler(cfg, a.caminho);
-            const doc = lerMarkdown(texto);
-            return comoReferencia(doc, a.caminho, sha, tituloProvavel(doc, a.nome));
-          }),
+      const itens = daPasta(await carregarRepo(cfg), PASTA_REFS);
+      setRefs(
+        itens.map((i) =>
+          comoReferencia(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)),
+        ),
       );
-      setRefs(lidas);
       // As imagens NÃO são baixadas aqui. Antes, entrar nesta aba baixava
       // todas de uma vez — 40 referências podiam ser 60 MB no 4G, a cada
       // visita. Agora cada cartão pede a sua quando chega perto da tela.
@@ -106,6 +101,7 @@ export default function Referencias() {
       const nome = nomeDeImagem(arquivo.name);
       const base64 = await arquivoParaBase64(arquivo);
       await gravarBinario(cfg, `${PASTA_IMAGENS}/${nome}`, base64);
+      invalidarCache();
 
       const relativo = `imagens/${nome}`;
       setEditando({
@@ -145,6 +141,7 @@ export default function Referencias() {
         editando.caminho ||
         nomeLivre(PASTA_REFS, editando.titulo, refs.map((x) => x.caminho));
       await gravar(cfg, caminho, texto, editando.sha || undefined);
+      invalidarCache();
       fecharModal();
       await carregar();
     } catch (e) {
@@ -159,6 +156,7 @@ export default function Referencias() {
       return;
     try {
       await apagar(cfg, r.caminho, r.sha);
+      invalidarCache();
       fecharModal();
       await carregar();
     } catch (e) {

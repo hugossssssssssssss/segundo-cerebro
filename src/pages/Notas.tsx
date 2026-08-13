@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 import MDEditor from "@uiw/react-md-editor";
 import { Plus, Trash2, Search, ArrowLeft, Save } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { listar, ler, gravar, apagar, type Arquivo } from "@/lib/github";
+import { gravar, apagar } from "@/lib/github";
+import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
 import {
-  lerMarkdown,
   escreverMarkdown,
   tituloProvavel,
   nomeLivre,
@@ -39,7 +39,7 @@ export default function Notas() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
 
-  const [arquivos, setArquivos] = useState<Arquivo[]>([]);
+  const [arquivos, setArquivos] = useState<ItemRepo[]>([]);
   const [titulos, setTitulos] = useState<Record<string, string>>({});
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -57,24 +57,15 @@ export default function Notas() {
     setCarregando(true);
     setErro("");
     try {
-      const lista = (await listar(cfg, PASTA)).filter(
-        (a) => !a.nome.startsWith("."),
-      );
+      // o conteúdo já vem junto, então o título sai daqui mesmo — antes eram
+      // N requisições extras só para descobrir o título de cada nota
+      const lista = daPasta(await carregarRepo(cfg), PASTA);
       setArquivos(lista);
-
-      // Busca o título real de cada nota (o nome do arquivo é só um slug).
-      // Em paralelo, e sem travar a tela se alguma falhar.
-      const pares = await Promise.all(
-        lista.map(async (a) => {
-          try {
-            const { texto } = await ler(cfg, a.caminho);
-            return [a.caminho, tituloProvavel(lerMarkdown(texto), a.nome)] as const;
-          } catch {
-            return [a.caminho, a.nome.replace(/\.md$/, "")] as const;
-          }
-        }),
+      setTitulos(
+        Object.fromEntries(
+          lista.map((i) => [i.caminho, tituloProvavel(i.doc, i.nome)]),
+        ),
       );
-      setTitulos(Object.fromEntries(pares));
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -131,23 +122,18 @@ export default function Notas() {
 
   /* ------------------------------------------------------------- ações */
 
-  async function abrir(a: Arquivo) {
+  /** Abre sem ir à rede: o conteúdo já veio no carregamento da lista. */
+  function abrir(a: ItemRepo) {
     setErro("");
-    try {
-      const { texto, sha } = await ler(cfg, a.caminho);
-      const doc = lerMarkdown(texto);
-      const titulo = tituloProvavel(doc, a.nome);
-      setAberta({
-        bruto: doc.dados,
-        caminho: a.caminho,
-        sha,
-        titulo,
-        corpo: doc.corpo,
-        original: { titulo, corpo: doc.corpo },
-      });
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    }
+    const titulo = tituloProvavel(a.doc, a.nome);
+    setAberta({
+      bruto: a.doc.dados,
+      caminho: a.caminho,
+      sha: a.sha,
+      titulo,
+      corpo: a.doc.corpo,
+      original: { titulo, corpo: a.doc.corpo },
+    });
   }
 
   function nova() {
@@ -187,6 +173,7 @@ export default function Notas() {
         texto,
         aberta.sha || undefined,
       );
+      invalidarCache();
 
       setAberta({
         ...aberta,
@@ -210,6 +197,7 @@ export default function Notas() {
 
     try {
       await apagar(cfg, aberta.caminho, aberta.sha);
+      invalidarCache();
       setAberta(null);
       await carregarLista();
     } catch (e) {

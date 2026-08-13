@@ -1,5 +1,5 @@
 import { HashRouter, Routes, Route, NavLink, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import {
   CheckSquare,
   FileText,
@@ -7,21 +7,28 @@ import {
   Target,
   MessageCircle,
   Settings,
+  Search,
   Moon,
   Sun,
 } from "lucide-react";
-import Tarefas from "@/pages/Tarefas";
-import Notas from "@/pages/Notas";
-import Referencias from "@/pages/Referencias";
-import PDI from "@/pages/PDI";
-import Chat from "@/pages/Chat";
-import Configuracoes from "@/pages/Configuracoes";
+import { Busca } from "@/components/Busca";
+import { Carregando } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 /**
  * HashRouter (URLs com #) em vez de BrowserRouter: o GitHub Pages não sabe
  * reescrever rotas para o index.html, então sem hash um F5 em /notas dá 404.
+ *
+ * As telas são carregadas sob demanda: antes, o app mandava 1,4 MB de
+ * JavaScript no primeiro acesso — incluindo o editor de Markdown, que só é
+ * usado ao abrir uma nota. No 4G isso era a diferença entre abrir e desistir.
  */
+const Tarefas = lazy(() => import("@/pages/Tarefas"));
+const Notas = lazy(() => import("@/pages/Notas"));
+const Referencias = lazy(() => import("@/pages/Referencias"));
+const PDI = lazy(() => import("@/pages/PDI"));
+const Chat = lazy(() => import("@/pages/Chat"));
+const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 
 // As cinco de uso diário ficam no rodapé do celular. Ajustes não entra:
 // é tela de configurar uma vez, não destino do dia a dia.
@@ -34,9 +41,12 @@ const abas = [
 ];
 
 function BotaoTema() {
-  const [escuro, setEscuro] = useState(
-    () => localStorage.getItem("tema") === "escuro",
-  );
+  const [escuro, setEscuro] = useState(() => {
+    const salvo = localStorage.getItem("tema");
+    if (salvo) return salvo === "escuro";
+    // sem preferência salva, segue o sistema em vez de forçar claro
+    return matchMedia("(prefers-color-scheme: dark)").matches;
+  });
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", escuro);
@@ -48,6 +58,7 @@ function BotaoTema() {
       onClick={() => setEscuro((v) => !v)}
       className="rounded-lg p-2 hover:bg-accent transition-colors"
       title={escuro ? "Modo claro" : "Modo escuro"}
+      aria-label={escuro ? "Mudar para modo claro" : "Mudar para modo escuro"}
     >
       {escuro ? <Sun size={18} /> : <Moon size={18} />}
     </button>
@@ -55,6 +66,20 @@ function BotaoTema() {
 }
 
 function Estrutura({ children }: { children: React.ReactNode }) {
+  const [buscando, setBuscando] = useState(false);
+
+  // ⌘K no Mac, Ctrl+K no resto — convenção que todo mundo já conhece
+  useEffect(() => {
+    const aoTeclar = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setBuscando(true);
+      }
+    };
+    document.addEventListener("keydown", aoTeclar);
+    return () => document.removeEventListener("keydown", aoTeclar);
+  }, []);
+
   return (
     <div className="min-h-dvh flex flex-col">
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
@@ -84,6 +109,15 @@ function Estrutura({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
 
+            <button
+              onClick={() => setBuscando(true)}
+              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title="Buscar (⌘K)"
+              aria-label="Buscar"
+            >
+              <Search size={18} />
+            </button>
+
             <NavLink
               to="/config"
               className={({ isActive }) =>
@@ -95,6 +129,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                 )
               }
               title="Ajustes"
+              aria-label="Ajustes"
             >
               <Settings size={18} />
             </NavLink>
@@ -125,6 +160,8 @@ function Estrutura({ children }: { children: React.ReactNode }) {
           </NavLink>
         ))}
       </nav>
+
+      <Busca aberta={buscando} aoFechar={() => setBuscando(false)} />
     </div>
   );
 }
@@ -133,16 +170,18 @@ export default function App() {
   return (
     <HashRouter>
       <Estrutura>
-        <Routes>
-          <Route path="/" element={<Navigate to="/tarefas" replace />} />
-          <Route path="/tarefas" element={<Tarefas />} />
-          <Route path="/notas" element={<Notas />} />
-          <Route path="/referencias" element={<Referencias />} />
-          <Route path="/pdi" element={<PDI />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/config" element={<Configuracoes />} />
-          <Route path="*" element={<Navigate to="/tarefas" replace />} />
-        </Routes>
+        <Suspense fallback={<Carregando />}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/tarefas" replace />} />
+            <Route path="/tarefas" element={<Tarefas />} />
+            <Route path="/notas" element={<Notas />} />
+            <Route path="/referencias" element={<Referencias />} />
+            <Route path="/pdi" element={<PDI />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/config" element={<Configuracoes />} />
+            <Route path="*" element={<Navigate to="/tarefas" replace />} />
+          </Routes>
+        </Suspense>
       </Estrutura>
     </HashRouter>
   );

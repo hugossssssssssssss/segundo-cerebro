@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Timer, Trash2, Check, List, CalendarDays } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { listar, ler, gravar, apagar } from "@/lib/github";
+import { ler, gravar, apagar } from "@/lib/github";
+import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
 import {
   lerMarkdown,
   escreverMarkdown,
@@ -75,17 +76,15 @@ export default function Tarefas() {
     setCarregando(true);
     setErro("");
     try {
-      const arquivos = (await listar(cfg, PASTA)).filter(
-        (a) => !a.nome.startsWith("."),
+      // duas requisições para o repositório inteiro, em vez de 1 + N
+      const itens = daPasta(await carregarRepo(cfg), PASTA);
+      setTarefas(
+        ordenar(
+          itens.map((i) =>
+            comoTarefa(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)),
+          ),
+        ),
       );
-      const lidas = await Promise.all(
-        arquivos.map(async (a) => {
-          const { texto, sha } = await ler(cfg, a.caminho);
-          const doc = lerMarkdown(texto);
-          return comoTarefa(doc, a.caminho, sha, tituloProvavel(doc, a.nome));
-        }),
-      );
-      setTarefas(ordenar(lidas));
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -108,6 +107,7 @@ export default function Tarefas() {
     const caminho =
       t.caminho || nomeLivre(PASTA, t.titulo, tarefas.map((x) => x.caminho));
     const sha = await gravar(cfg, caminho, texto, t.sha || undefined, mensagem);
+    invalidarCache();
     return { ...t, caminho, sha };
   }
 
@@ -200,6 +200,7 @@ export default function Tarefas() {
       return;
     try {
       await apagar(cfg, t.caminho, t.sha);
+      invalidarCache();
       setEditando(null);
       setOriginal(null);
       await carregar();
