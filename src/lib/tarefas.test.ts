@@ -11,6 +11,7 @@ import {
 } from "./tarefas";
 
 const base = (over: Partial<Tarefa> = {}): Tarefa => ({
+  bruto: {},
   caminho: "tarefas/x.md",
   sha: "abc",
   titulo: "Tarefa",

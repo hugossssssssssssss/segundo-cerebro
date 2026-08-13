@@ -24,6 +24,20 @@ export function diasAte(iso?: string): number | null {
   return Math.round((alvo.getTime() - hoje.getTime()) / 86_400_000);
 }
 
+/**
+ * Data de hoje no fuso LOCAL, não em UTC.
+ *
+ * `toISOString()` converte para UTC: às 22h no horário de Brasília ele já
+ * devolve o dia seguinte. Isso fazia o app e o calendário discordarem sobre
+ * que dia é hoje, toda noite depois das 21h.
+ */
 export function hojeISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return dataISO(new Date());
+}
+
+/** AAAA-MM-DD de uma data qualquer, no fuso local. */
+export function dataISO(d: Date): string {
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mes}-${dia}`;
 }

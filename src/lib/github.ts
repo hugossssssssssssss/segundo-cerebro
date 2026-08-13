@@ -80,10 +80,29 @@ async function conferir(resposta: Response): Promise<void> {
     /* resposta sem JSON */
   }
 
+  // O GitHub usa 403 tanto para "sem permissão" quanto para "excedeu o limite
+  // de requisições". Confundir os dois manda o usuário trocar um token que
+  // está perfeito — foi assim que quase perdemos uma tarde. O cabeçalho
+  // x-ratelimit-remaining é o que distingue.
+  const restante = resposta.headers.get("x-ratelimit-remaining");
+  const excedeu =
+    (resposta.status === 403 || resposta.status === 429) && restante === "0";
+
+  if (excedeu) {
+    const reset = Number(resposta.headers.get("x-ratelimit-reset") ?? 0) * 1000;
+    const minutos = reset ? Math.max(1, Math.ceil((reset - Date.now()) / 60_000)) : null;
+    throw new ErroGitHub(
+      minutos
+        ? `Você fez muitas requisições ao GitHub e bateu no limite da hora. Ele libera em ${minutos} minuto${minutos > 1 ? "s" : ""}. Seu token está certo — é só esperar.`
+        : "Você bateu no limite de requisições do GitHub por esta hora. Seu token está certo — é só esperar um pouco.",
+      resposta.status,
+    );
+  }
+
   const amigavel: Record<number, string> = {
-    401: "Token do GitHub inválido ou expirado. Confira em Configurações.",
+    401: "Token do GitHub inválido ou expirado. Confira em Ajustes.",
     403: "Sem permissão. O token precisa de acesso de Contents (leitura e escrita) neste repositório.",
-    404: "Repositório ou arquivo não encontrado. Confira o dono e o nome do repositório em Configurações.",
+    404: "Repositório ou arquivo não encontrado. Confira o dono e o nome do repositório em Ajustes.",
     409: "Conflito: o arquivo mudou no GitHub depois que você abriu. Recarregue e tente de novo.",
     422: "O GitHub recusou a gravação. Normalmente é o nome do arquivo ou o SHA desatualizado.",
   };

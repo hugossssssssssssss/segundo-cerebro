@@ -7,7 +7,7 @@ import {
   lerMarkdown,
   escreverMarkdown,
   tituloProvavel,
-  nomeDeArquivo,
+  nomeLivre,
 } from "@/lib/markdown";
 import {
   comoTarefa,
@@ -57,9 +57,13 @@ export default function Tarefas() {
   const [erro, setErro] = useState("");
   const [filtro, setFiltro] = useState<Status | "todas">("todas");
   const [editando, setEditando] = useState<Tarefa | null>(null);
+  // cópia de como a tarefa estava ao abrir, para detectar mudança não salva
+  const [original, setOriginal] = useState<Tarefa | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [cronometrando, setCronometrando] = useState<Tarefa | null>(null);
   const [visao, setVisao] = useState<"lista" | "calendario">("lista");
+  // caminho da tarefa cuja gravação está no ar — impede toque duplo
+  const [gravandoCaminho, setGravandoCaminho] = useState<string | null>(null);
 
   /* ----------------------------------------------------------- carregar */
 
@@ -71,7 +75,9 @@ export default function Tarefas() {
     setCarregando(true);
     setErro("");
     try {
-      const arquivos = await listar(cfg, PASTA);
+      const arquivos = (await listar(cfg, PASTA)).filter(
+        (a) => !a.nome.startsWith("."),
+      );
       const lidas = await Promise.all(
         arquivos.map(async (a) => {
           const { texto, sha } = await ler(cfg, a.caminho);
@@ -99,7 +105,8 @@ export default function Tarefas() {
       dados: paraFrontmatter(t),
       corpo: t.corpo,
     });
-    const caminho = t.caminho || `${PASTA}/${nomeDeArquivo(t.titulo)}`;
+    const caminho =
+      t.caminho || nomeLivre(PASTA, t.titulo, tarefas.map((x) => x.caminho));
     const sha = await gravar(cfg, caminho, texto, t.sha || undefined, mensagem);
     return { ...t, caminho, sha };
   }
@@ -115,6 +122,7 @@ export default function Tarefas() {
     try {
       await gravarTarefa(editando);
       setEditando(null);
+      setOriginal(null);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -123,21 +131,68 @@ export default function Tarefas() {
     }
   }
 
-  /** Marca feito/desfeito direto na lista, sem abrir a tarefa. */
+  /**
+   * Marca feito/desfeito direto na lista.
+   *
+   * Três coisas deliberadas aqui:
+   *
+   * 1. **Não reordena na hora.** A ordenação joga "feito" para o fim; se a
+   *    lista se reorganizasse a cada toque, a próxima tarefa saltaria para
+   *    baixo do dedo e o toque seguinte cairia na errada. A ordem só muda
+   *    quando você troca de filtro ou recarrega.
+   * 2. **Não recarrega tudo.** Antes, um toque custava 1 gravação + 1 listagem
+   *    + N leituras. Com 80 tarefas, 82 requisições para marcar uma caixinha.
+   *    Agora o `sha` novo vem da própria resposta da gravação.
+   * 3. **Ignora toque repetido** enquanto o anterior está no ar, senão o
+   *    segundo vai com o `sha` velho e o GitHub recusa.
+   */
   async function alternarFeito(t: Tarefa) {
+    if (gravandoCaminho === t.caminho) return;
+
     const novo: Tarefa = {
       ...t,
       status: t.status === "feito" ? "a-fazer" : "feito",
     };
-    // Atualiza a tela antes da rede responder — desmarcar e esperar 2s é ruim
-    setTarefas((lista) => ordenar(lista.map((x) => (x.caminho === t.caminho ? novo : x))));
+
+    setGravandoCaminho(t.caminho);
+    setTarefas((lista) => lista.map((x) => (x.caminho === t.caminho ? novo : x)));
+
     try {
-      await gravarTarefa(novo, `${novo.status === "feito" ? "conclui" : "reabre"} ${t.titulo}`);
-      await carregar();
+      const salva = await gravarTarefa(
+        novo,
+        `${novo.status === "feito" ? "conclui" : "reabre"} ${t.titulo}`,
+      );
+      // guarda o sha novo para a próxima gravação não bater de frente
+      setTarefas((lista) =>
+        lista.map((x) => (x.caminho === salva.caminho ? salva : x)),
+      );
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
-      await carregar(); // desfaz o otimismo se deu errado
+      // desfaz só esta linha, sem recarregar a lista inteira
+      setTarefas((lista) => lista.map((x) => (x.caminho === t.caminho ? t : x)));
+    } finally {
+      setGravandoCaminho(null);
     }
+  }
+
+  /** Abre o modal guardando como o item estava, para detectar mudança. */
+  function abrir(t: Tarefa) {
+    setEditando(t);
+    setOriginal(t);
+  }
+
+  function abrirNova() {
+    const vazia: Tarefa = {
+      bruto: {},
+      caminho: "",
+      sha: "",
+      titulo: "",
+      status: "a-fazer",
+      tags: [],
+      corpo: "",
+    };
+    setEditando(vazia);
+    setOriginal(vazia);
   }
 
   async function remover(t: Tarefa) {
@@ -146,6 +201,7 @@ export default function Tarefas() {
     try {
       await apagar(cfg, t.caminho, t.sha);
       setEditando(null);
+      setOriginal(null);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -160,9 +216,12 @@ export default function Tarefas() {
         // relê antes de gravar, para não sobrescrever edição feita nesse meio-tempo
         const { texto, sha } = await ler(cfg, cronometrando.caminho);
         const doc = lerMarkdown(texto);
+        // relê a tarefa INTEIRA do arquivo, não só o corpo: se o prazo ou o
+        // título mudaram no celular enquanto o timer rodava no Mac, gravar a
+        // versão antiga aqui reverteria essa mudança sem ninguém perceber.
+        const atual = comoTarefa(doc, cronometrando.caminho, sha, cronometrando.titulo);
         const atualizado = {
-          ...cronometrando,
-          sha,
+          ...atual,
           corpo: registrarCiclo(doc.corpo, minutos),
         };
         const salva = await gravarTarefa(atualizado, `+${minutos}min em ${cronometrando.titulo}`);
@@ -192,8 +251,11 @@ export default function Tarefas() {
     );
   }
 
-  const visiveis =
-    filtro === "todas" ? tarefas : tarefas.filter((t) => t.status === filtro);
+  // ordenar aqui (e não dentro de alternarFeito) mantém a linha parada
+  // debaixo do dedo quando você marca uma caixinha
+  const visiveis = ordenar(
+    filtro === "todas" ? tarefas : tarefas.filter((t) => t.status === filtro),
+  );
   const pendentes = tarefas.filter((t) => t.status !== "feito").length;
 
   return (
@@ -207,18 +269,7 @@ export default function Tarefas() {
             </p>
           )}
         </div>
-        <Botao
-          onClick={() =>
-            setEditando({
-              caminho: "",
-              sha: "",
-              titulo: "",
-              status: "a-fazer",
-              tags: [],
-              corpo: "",
-            })
-          }
-        >
+        <Botao onClick={abrirNova}>
           <Plus size={16} />
           Nova
         </Botao>
@@ -268,7 +319,7 @@ export default function Tarefas() {
       {carregando ? (
         <Carregando texto="Buscando suas tarefas…" />
       ) : visao === "calendario" ? (
-        <Calendario tarefas={tarefas} aoAbrir={setEditando} />
+        <Calendario tarefas={tarefas} aoAbrir={abrir} />
       ) : visiveis.length === 0 ? (
         <Vazio
           titulo={filtro === "todas" ? "Nenhuma tarefa ainda" : "Nada por aqui"}
@@ -285,21 +336,28 @@ export default function Tarefas() {
             const min = minutosRegistrados(t.corpo);
             return (
               <Cartao key={t.caminho} className="flex items-start gap-3 p-3.5">
+                {/* -m-2 p-2: aumenta a área de toque para 36px sem mexer no layout */}
                 <button
                   onClick={() => alternarFeito(t)}
-                  className={cn(
-                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors",
-                    t.status === "feito"
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border hover:border-primary",
-                  )}
+                  disabled={gravandoCaminho === t.caminho}
+                  className="-m-2 shrink-0 p-2 disabled:opacity-60"
                   title={t.status === "feito" ? "Reabrir" : "Concluir"}
+                  aria-label={t.status === "feito" ? "Reabrir tarefa" : "Concluir tarefa"}
                 >
-                  {t.status === "feito" && <Check size={13} strokeWidth={3} />}
+                  <span
+                    className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded border-2 transition-colors",
+                      t.status === "feito"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:border-primary",
+                    )}
+                  >
+                    {t.status === "feito" && <Check size={13} strokeWidth={3} />}
+                  </span>
                 </button>
 
                 <button
-                  onClick={() => setEditando(t)}
+                  onClick={() => abrir(t)}
                   className="min-w-0 flex-1 text-left"
                 >
                   <p
@@ -344,6 +402,10 @@ export default function Tarefas() {
       <Modal
         aberto={editando !== null}
         aoFechar={() => setEditando(null)}
+        temMudancas={
+          editando !== null &&
+          JSON.stringify(editando) !== JSON.stringify(original)
+        }
         titulo={editando?.caminho ? "Editar tarefa" : "Nova tarefa"}
         rodape={
           <>

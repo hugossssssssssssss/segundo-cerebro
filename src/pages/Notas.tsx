@@ -8,8 +8,11 @@ import {
   lerMarkdown,
   escreverMarkdown,
   tituloProvavel,
-  nomeDeArquivo,
+  nomeLivre,
+  mesclarFrontmatter,
+  type Frontmatter,
 } from "@/lib/markdown";
+import { hojeISO } from "@/lib/utils";
 import {
   Botao,
   Campo,
@@ -22,6 +25,8 @@ import {
 const PASTA = "notas";
 
 type NotaAberta = {
+  /** Frontmatter como veio do arquivo — preserva campos que o app não conhece */
+  bruto: Frontmatter;
   caminho: string;
   sha: string;
   titulo: string;
@@ -52,7 +57,9 @@ export default function Notas() {
     setCarregando(true);
     setErro("");
     try {
-      const lista = await listar(cfg, PASTA);
+      const lista = (await listar(cfg, PASTA)).filter(
+        (a) => !a.nome.startsWith("."),
+      );
       setArquivos(lista);
 
       // Busca o título real de cada nota (o nome do arquivo é só um slug).
@@ -81,6 +88,47 @@ export default function Notas() {
     carregarLista();
   }, [carregarLista]);
 
+  const mudou =
+    aberta !== null &&
+    (aberta.titulo !== aberta.original.titulo ||
+      aberta.corpo !== aberta.original.corpo);
+
+  /**
+   * Protege o texto do botão "voltar" do Android.
+   *
+   * O editor não é uma rota — é um estado dentro de /notas. O voltar do
+   * sistema desmonta a tela e o que estava escrito evaporava, sem aviso.
+   * Empurrar um estado no histórico dá ao voltar algo para consumir, e aqui
+   * ele é interceptado.
+   */
+  useEffect(() => {
+    if (!aberta) return;
+
+    history.pushState({ editor: true }, "");
+
+    const aoVoltar = () => {
+      if (mudou && !confirm("Você tem alterações não salvas. Descartar?")) {
+        history.pushState({ editor: true }, ""); // devolve o estado consumido
+        return;
+      }
+      setAberta(null);
+    };
+
+    addEventListener("popstate", aoVoltar);
+    return () => removeEventListener("popstate", aoVoltar);
+    // `mudou` fora das deps de propósito: reempurrar o estado a cada tecla
+    // digitada encheria o histórico do navegador.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aberta !== null]);
+
+  /** Avisa antes de fechar a aba ou recarregar com texto não salvo. */
+  useEffect(() => {
+    if (!mudou) return;
+    const aoSair = (e: BeforeUnloadEvent) => e.preventDefault();
+    addEventListener("beforeunload", aoSair);
+    return () => removeEventListener("beforeunload", aoSair);
+  }, [mudou]);
+
   /* ------------------------------------------------------------- ações */
 
   async function abrir(a: Arquivo) {
@@ -90,6 +138,7 @@ export default function Notas() {
       const doc = lerMarkdown(texto);
       const titulo = tituloProvavel(doc, a.nome);
       setAberta({
+        bruto: doc.dados,
         caminho: a.caminho,
         sha,
         titulo,
@@ -103,6 +152,7 @@ export default function Notas() {
 
   function nova() {
     setAberta({
+      bruto: {},
       caminho: "",
       sha: "",
       titulo: "",
@@ -119,11 +169,18 @@ export default function Notas() {
     setErro("");
     try {
       const texto = escreverMarkdown({
-        dados: { titulo, tipo: "nota", atualizado: new Date().toISOString().slice(0, 10) },
+        // mescla: campos que outra IA ou o github.com acrescentaram sobrevivem
+        dados: mesclarFrontmatter(aberta.bruto, {
+          titulo,
+          tipo: "nota",
+          atualizado: hojeISO(),
+        }),
         corpo: aberta.corpo,
       });
 
-      const caminho = aberta.caminho || `${PASTA}/${nomeDeArquivo(titulo)}`;
+      const caminho =
+        aberta.caminho ||
+        nomeLivre(PASTA, titulo, arquivos.map((a) => a.caminho));
       const novoSha = await gravar(
         cfg,
         caminho,
@@ -179,10 +236,6 @@ export default function Notas() {
   /* ------------------------------------------------------------- editor */
 
   if (aberta) {
-    const mudou =
-      aberta.titulo !== aberta.original.titulo ||
-      aberta.corpo !== aberta.original.corpo;
-
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">

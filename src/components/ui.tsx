@@ -6,6 +6,7 @@
  */
 
 import { cn } from "@/lib/utils";
+import { useCallback, useEffect } from "react";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -244,32 +245,78 @@ export function Modal({
   titulo,
   children,
   rodape,
+  temMudancas,
 }: {
   aberto: boolean;
   aoFechar: () => void;
   titulo: string;
   children: ReactNode;
   rodape?: ReactNode;
+  /** Quando true, fechar sem salvar pede confirmação */
+  temMudancas?: boolean;
 }) {
+  // Fechar por engano com texto digitado é perda de trabalho. Um toque
+  // desatento na área escura enquanto se rola um campo longo bastava.
+  const tentarFechar = useCallback(() => {
+    if (temMudancas && !confirm("Você tem alterações não salvas. Descartar?")) {
+      return;
+    }
+    aoFechar();
+  }, [temMudancas, aoFechar]);
+
+  // Esc fecha; e enquanto o modal está aberto o fundo não rola atrás dele
+  useEffect(() => {
+    if (!aberto) return;
+
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") tentarFechar();
+    };
+    document.addEventListener("keydown", aoTeclar);
+
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      document.body.style.overflow = overflowAnterior;
+    };
+  }, [aberto, tentarFechar]);
+
   if (!aberto) return null;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
-      onClick={aoFechar}
+      onClick={tentarFechar}
+      role="dialog"
+      aria-modal="true"
+      aria-label={titulo}
     >
+      {/*
+        max-h-[92dvh] e não 92vh: no Android, `vh` ignora o teclado virtual,
+        então o rodapé com o botão Salvar ficava empurrado para fora da tela
+        enquanto se digitava. `dvh` acompanha a área realmente visível.
+      */}
       <div
-        className="w-full sm:max-w-2xl max-h-[92vh] overflow-auto rounded-t-2xl sm:rounded-2xl border border-border bg-card shadow-xl"
+        className="flex max-h-[92dvh] w-full flex-col rounded-t-2xl border border-border bg-card shadow-xl sm:max-w-2xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
           <h2 className="text-lg font-semibold">{titulo}</h2>
-          <Botao variante="fantasma" tamanho="icone" onClick={aoFechar}>
+          <Botao
+            variante="fantasma"
+            tamanho="icone"
+            onClick={tentarFechar}
+            aria-label="Fechar"
+          >
             ✕
           </Botao>
         </div>
-        <div className="px-5 py-4">{children}</div>
+
+        <div className="min-h-0 flex-1 overflow-auto px-5 py-4">{children}</div>
+
         {rodape && (
-          <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-card px-5 py-4">
+          <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border px-5 py-4">
             {rodape}
           </div>
         )}

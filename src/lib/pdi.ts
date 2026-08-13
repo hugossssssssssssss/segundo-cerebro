@@ -11,8 +11,8 @@
  * e não o título permite renomear o título sem quebrar a ligação.
  */
 
-import type { Documento } from "./markdown";
-import { comoLista } from "./markdown";
+import type { Documento, Frontmatter } from "./markdown";
+import { comoLista, mesclarFrontmatter } from "./markdown";
 import { diasAte } from "./utils";
 
 export const PASTA_METAS = "pdi/metas";
@@ -28,6 +28,8 @@ export const ROTULO_META: Record<StatusMeta, string> = {
 };
 
 export type Meta = {
+  /** Frontmatter como veio do arquivo — preserva campos que o app não conhece */
+  bruto: Frontmatter;
   caminho: string;
   /** Nome do arquivo sem .md — é a chave usada nas ligações */
   id: string;
@@ -41,6 +43,8 @@ export type Meta = {
 };
 
 export type Entrega = {
+  /** Frontmatter como veio do arquivo — preserva campos que o app não conhece */
+  bruto: Frontmatter;
   caminho: string;
   id: string;
   sha: string;
@@ -57,6 +61,12 @@ export function idDoCaminho(caminho: string): string {
   return caminho.split("/").pop()!.replace(/\.md$/, "");
 }
 
+/** Extrai a data do PREFIXO do nome do arquivo: "2026-08-13-titulo.md". */
+export function dataDoNome(caminho: string): string {
+  const nome = caminho.split("/").pop() ?? "";
+  return nome.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? "";
+}
+
 function statusMetaValido(v: unknown): StatusMeta {
   return STATUS_META.includes(v as StatusMeta) ? (v as StatusMeta) : "a-fazer";
 }
@@ -69,6 +79,7 @@ export function comoMeta(
 ): Meta {
   const d = doc.dados;
   return {
+    bruto: doc.dados,
     caminho,
     id: idDoCaminho(caminho),
     sha,
@@ -91,6 +102,7 @@ export function comoEntrega(
 ): Entrega {
   const d = doc.dados;
   return {
+    bruto: doc.dados,
     caminho,
     id: idDoCaminho(caminho),
     sha,
@@ -98,8 +110,9 @@ export function comoEntrega(
       typeof d.titulo === "string" && d.titulo.trim()
         ? d.titulo.trim()
         : tituloFallback,
-    data:
-      typeof d.data === "string" ? d.data : caminho.slice(-13, -3), // AAAA-MM-DD do nome
+    // Sem campo `data`, tenta o prefixo do nome do arquivo (2026-08-13-titulo.md).
+    // Se nem isso houver, fica vazio — melhor do que inventar uma data errada.
+    data: typeof d.data === "string" ? d.data : dataDoNome(caminho),
     metas: comoLista(d.metas),
     iaSugeriu: d.ia_sugeriu === true,
     corpo: doc.corpo,
@@ -107,23 +120,23 @@ export function comoEntrega(
 }
 
 export function metaParaFrontmatter(m: Meta): Record<string, unknown> {
-  return {
+  return mesclarFrontmatter(m.bruto, {
     titulo: m.titulo,
     tipo: "meta",
     status: m.status,
     prazo: m.prazo,
     indicador: m.indicador || undefined,
-  };
+  });
 }
 
 export function entregaParaFrontmatter(e: Entrega): Record<string, unknown> {
-  return {
+  return mesclarFrontmatter(e.bruto, {
     titulo: e.titulo,
     tipo: "entrega",
     data: e.data,
     metas: e.metas.length ? e.metas : undefined,
     ia_sugeriu: e.iaSugeriu || undefined,
-  };
+  });
 }
 
 /* ------------------------------------------------------------- agregação */

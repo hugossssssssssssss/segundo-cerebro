@@ -16,6 +16,7 @@ const emDias = (n: number) =>
   new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
 
 const meta = (over: Partial<Meta> = {}): Meta => ({
+  bruto: {},
   caminho: "pdi/metas/dominio-tecnico.md",
   id: "dominio-tecnico",
   sha: "s",
@@ -27,6 +28,7 @@ const meta = (over: Partial<Meta> = {}): Meta => ({
 });
 
 const entrega = (over: Partial<Entrega> = {}): Entrega => ({
+  bruto: {},
   caminho: "pdi/entregas/2026-08-01-x.md",
   id: "2026-08-01-x",
   sha: "s",

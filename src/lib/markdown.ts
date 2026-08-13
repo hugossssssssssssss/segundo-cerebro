@@ -79,8 +79,32 @@ export function nomeDeArquivo(titulo: string): string {
     .slice(0, 60);
 
   const base = limpo || "sem-titulo";
-  const carimbo = new Date().toISOString().slice(0, 10);
+  const agora = new Date();
+  const carimbo = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}-${String(agora.getDate()).padStart(2, "0")}`;
   return `${carimbo}-${base}.md`;
+}
+
+/**
+ * Garante um nome livre. Duas tarefas "Reunião" no mesmo dia geravam o mesmo
+ * caminho, e a segunda falhava com um 422 incompreensível.
+ *
+ * `ocupados` são os caminhos que já existem na pasta.
+ */
+export function nomeLivre(
+  pasta: string,
+  titulo: string,
+  ocupados: Iterable<string>,
+): string {
+  const usados = new Set(ocupados);
+  const base = nomeDeArquivo(titulo).replace(/\.md$/, "");
+
+  let candidato = `${pasta}/${base}.md`;
+  let n = 2;
+  while (usados.has(candidato)) {
+    candidato = `${pasta}/${base}-${n}.md`;
+    n++;
+  }
+  return candidato;
 }
 
 /** Lê uma lista do frontmatter tolerando string única ou ausência. */
@@ -88,4 +112,29 @@ export function comoLista(valor: unknown): string[] {
   if (Array.isArray(valor)) return valor.map(String);
   if (typeof valor === "string" && valor.trim()) return [valor];
   return [];
+}
+
+/**
+ * Junta os campos que o app gerencia por cima dos que ele não conhece.
+ *
+ * O `.md` é a fonte da verdade e o app não é o único a escrever nele: o Hugo
+ * edita pelo github.com e outras IAs enriquecem os arquivos. Apagar o que não
+ * entendemos seria destruir esse trabalho silenciosamente.
+ *
+ * `gerenciados` com valor undefined REMOVE o campo — é assim que limpar uma
+ * data no formulário funciona.
+ */
+export function mesclarFrontmatter(
+  original: Frontmatter,
+  gerenciados: Record<string, unknown>,
+): Frontmatter {
+  const saida: Frontmatter = { ...original };
+  for (const [chave, valor] of Object.entries(gerenciados)) {
+    if (valor === undefined || valor === null || valor === "") {
+      delete saida[chave];
+    } else {
+      saida[chave] = valor;
+    }
+  }
+  return saida;
 }

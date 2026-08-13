@@ -6,8 +6,8 @@
  * (`![](imagens/arquivo.jpg)`), para continuar legível fora do app.
  */
 
-import type { Documento } from "./markdown";
-import { comoLista } from "./markdown";
+import type { Documento, Frontmatter } from "./markdown";
+import { comoLista, mesclarFrontmatter } from "./markdown";
 
 export const PASTA_REFS = "referencias";
 export const PASTA_IMAGENS = "referencias/imagens";
@@ -16,6 +16,8 @@ export const PASTA_IMAGENS = "referencias/imagens";
 export const LIMITE_IMAGEM = 5 * 1024 * 1024;
 
 export type Referencia = {
+  /** Frontmatter como veio do arquivo — preserva campos que o app não conhece */
+  bruto: Frontmatter;
   caminho: string;
   id: string;
   sha: string;
@@ -37,6 +39,7 @@ export function comoReferencia(
 ): Referencia {
   const d = doc.dados;
   return {
+    bruto: doc.dados,
     caminho,
     id: caminho.split("/").pop()!.replace(/\.md$/, ""),
     sha,
@@ -58,14 +61,14 @@ function extrairImagem(corpo: string): string | undefined {
 }
 
 export function refParaFrontmatter(r: Referencia): Record<string, unknown> {
-  return {
+  return mesclarFrontmatter(r.bruto, {
     titulo: r.titulo,
     tipo: "referencia",
     imagem: r.imagem,
     fonte: r.fonte,
     porque: r.porque || undefined,
     tags: r.tags.length ? r.tags : undefined,
-  };
+  });
 }
 
 /** Nome de arquivo para a imagem, preservando a extensão original. */

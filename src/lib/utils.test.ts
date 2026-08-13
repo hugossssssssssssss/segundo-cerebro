@@ -1,0 +1,88 @@
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { hojeISO, dataISO, diasAte, dataCurta } from "./utils";
+import { nomeLivre, nomeDeArquivo } from "./markdown";
+import { dataDoNome } from "./pdi";
+
+afterEach(() => vi.useRealTimers());
+
+describe("datas no fuso local", () => {
+  it("às 22h no horário de Brasília, hoje ainda é hoje", () => {
+    // toISOString() daria 2026-08-14 aqui — era o bug: o app e o calendário
+    // discordavam sobre que dia era, toda noite depois das 21h.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-13T22:30:00-03:00"));
+    expect(hojeISO()).toBe("2026-08-13");
+  });
+
+  it("dataISO e hojeISO concordam sempre", () => {
+    vi.useFakeTimers();
+    for (const h of ["00:30", "12:00", "21:30", "23:59"]) {
+      vi.setSystemTime(new Date(`2026-08-13T${h}:00-03:00`));
+      expect(hojeISO()).toBe(dataISO(new Date()));
+    }
+  });
+
+  it("nome de arquivo usa a data local, não UTC", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-13T23:00:00-03:00"));
+    expect(nomeDeArquivo("teste")).toMatch(/^2026-08-13-teste\.md$/);
+  });
+
+  it("diasAte conta em dias inteiros", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-13T15:00:00-03:00"));
+    expect(diasAte("2026-08-13")).toBe(0);
+    expect(diasAte("2026-08-14")).toBe(1);
+    expect(diasAte("2026-08-10")).toBe(-3);
+    expect(diasAte(undefined)).toBeNull();
+    expect(diasAte("data-invalida")).toBeNull();
+  });
+
+  it("dataCurta não quebra com lixo", () => {
+    expect(dataCurta("")).toBe("");
+    expect(dataCurta("ade-visual")).toBe("ade-visual"); // devolve como veio
+    expect(dataCurta("2026-08-13")).toContain("13");
+  });
+});
+
+describe("dataDoNome", () => {
+  it("lê a data do PREFIXO do nome do arquivo", () => {
+    // O bug antigo usava slice(-13,-3), que pegava o FIM do nome e devolvia
+    // pedaços do título como se fossem data.
+    expect(dataDoNome("pdi/entregas/2026-08-13-identidade-visual.md")).toBe("2026-08-13");
+    expect(dataDoNome("pdi/entregas/2026-08-13-x.md")).toBe("2026-08-13");
+  });
+
+  it("devolve vazio quando não há data, em vez de inventar", () => {
+    expect(dataDoNome("pdi/entregas/sem-data.md")).toBe("");
+  });
+});
+
+describe("nomeLivre", () => {
+  it("dois itens com o mesmo título no mesmo dia não colidem", () => {
+    const ocupados = new Set<string>();
+    const a = nomeLivre("tarefas", "Reunião", ocupados);
+    ocupados.add(a);
+    const b = nomeLivre("tarefas", "Reunião", ocupados);
+    ocupados.add(b);
+    const c = nomeLivre("tarefas", "Reunião", ocupados);
+
+    expect(a).not.toBe(b);
+    expect(b).not.toBe(c);
+    expect(b).toMatch(/-2\.md$/);
+    expect(c).toMatch(/-3\.md$/);
+  });
+
+  it("títulos só de símbolo também não colidem entre si", () => {
+    const ocupados = new Set<string>();
+    const a = nomeLivre("notas", "!!!", ocupados);
+    ocupados.add(a);
+    const b = nomeLivre("notas", "???", ocupados);
+    expect(a).toContain("sem-titulo");
+    expect(b).not.toBe(a);
+  });
+
+  it("primeiro nome não ganha sufixo à toa", () => {
+    expect(nomeLivre("notas", "Única", [])).not.toMatch(/-2\.md$/);
+  });
+});

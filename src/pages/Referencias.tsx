@@ -7,7 +7,7 @@ import {
   lerMarkdown,
   escreverMarkdown,
   tituloProvavel,
-  nomeDeArquivo,
+  nomeLivre,
 } from "@/lib/markdown";
 import {
   comoReferencia,
@@ -32,6 +32,7 @@ import {
   Rotulo,
   AreaTexto,
 } from "@/components/ui";
+import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { cn } from "@/lib/utils";
 
 export default function Referencias() {
@@ -39,12 +40,14 @@ export default function Referencias() {
   const pronto = configCompleta(cfg);
 
   const [refs, setRefs] = useState<Referencia[]>([]);
-  const [urls, setUrls] = useState<Record<string, string>>({});
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [editando, setEditando] = useState<Referencia | null>(null);
+  const [original, setOriginal] = useState<Referencia | null>(null);
+  // prévia local da imagem recém-enviada, antes de existir no repositório
+  const [previa, setPrevia] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<string | null>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
 
@@ -69,35 +72,9 @@ export default function Referencias() {
           }),
       );
       setRefs(lidas);
-
-      // As imagens estão num repo privado: buscamos com o token e viramos
-      // blob: local, porque uma <img src> comum não carrega arquivo privado.
-      const pares = await Promise.all(
-        lidas
-          .filter((r) => r.imagem)
-          .map(async (r) => {
-            try {
-              const caminho = r.imagem!.startsWith(PASTA_REFS)
-                ? r.imagem!
-                : `${PASTA_REFS}/${r.imagem!.replace(/^\.?\//, "")}`;
-              const resposta = await fetch(
-                `https://api.github.com/repos/${cfg.repoOwner}/${cfg.repoName}/contents/${caminho}?ref=${cfg.branch}`,
-                {
-                  headers: {
-                    Authorization: `Bearer ${cfg.githubToken}`,
-                    Accept: "application/vnd.github.raw",
-                  },
-                },
-              );
-              if (!resposta.ok) return null;
-              const blob = await resposta.blob();
-              return [r.id, URL.createObjectURL(blob)] as const;
-            } catch {
-              return null;
-            }
-          }),
-      );
-      setUrls(Object.fromEntries(pares.filter(Boolean) as [string, string][]));
+      // As imagens NÃO são baixadas aqui. Antes, entrar nesta aba baixava
+      // todas de uma vez — 40 referências podiam ser 60 MB no 4G, a cada
+      // visita. Agora cada cartão pede a sua quando chega perto da tela.
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -110,11 +87,6 @@ export default function Referencias() {
     carregar();
   }, [carregar]);
 
-  // Libera os blobs ao sair, senão a memória vaza a cada recarga
-  useEffect(() => {
-    return () => Object.values(urls).forEach((u) => URL.revokeObjectURL(u));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   /* -------------------------------------------------------------- ações */
 
@@ -146,8 +118,10 @@ export default function Referencias() {
           : `![](${relativo})\n\n${editando.corpo}`.trim(),
       });
 
-      const url = URL.createObjectURL(arquivo);
-      setUrls((u) => ({ ...u, [editando.id || "novo"]: url }));
+      setPrevia((antiga) => {
+        if (antiga) URL.revokeObjectURL(antiga);
+        return URL.createObjectURL(arquivo);
+      });
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -168,9 +142,10 @@ export default function Referencias() {
         corpo: editando.corpo,
       });
       const caminho =
-        editando.caminho || `${PASTA_REFS}/${nomeDeArquivo(editando.titulo)}`;
+        editando.caminho ||
+        nomeLivre(PASTA_REFS, editando.titulo, refs.map((x) => x.caminho));
       await gravar(cfg, caminho, texto, editando.sha || undefined);
-      setEditando(null);
+      fecharModal();
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -184,7 +159,7 @@ export default function Referencias() {
       return;
     try {
       await apagar(cfg, r.caminho, r.sha);
-      setEditando(null);
+      fecharModal();
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -210,8 +185,17 @@ export default function Referencias() {
   const tags = todasAsTags(refs);
   const visiveis = filtro ? refs.filter((r) => r.tags.includes(filtro)) : refs;
 
+  function fecharModal() {
+    setEditando(null);
+    setPrevia((p) => {
+      if (p) URL.revokeObjectURL(p);
+      return null;
+    });
+  }
+
   const nova = () =>
     setEditando({
+      bruto: {},
       caminho: "",
       id: "",
       sha: "",
@@ -286,20 +270,15 @@ export default function Referencias() {
             <Cartao
               key={r.id}
               className="cursor-pointer overflow-hidden transition-colors hover:bg-accent"
-              onClick={() => setEditando(r)}
+              onClick={() => { setEditando(r); setOriginal(r); }}
             >
-              {urls[r.id] ? (
-                <img
-                  src={urls[r.id]}
+              {r.imagem && (
+                <ImagemPrivada
+                  caminho={r.imagem}
                   alt={r.titulo}
                   className="aspect-[4/3] w-full object-cover"
-                  loading="lazy"
                 />
-              ) : r.imagem ? (
-                <div className="flex aspect-[4/3] w-full items-center justify-center bg-secondary text-xs text-muted-foreground">
-                  imagem indisponível
-                </div>
-              ) : null}
+              )}
 
               <div className="p-3.5">
                 <p className="font-medium">{r.titulo}</p>
@@ -324,7 +303,8 @@ export default function Referencias() {
       {/* ------------------------------------------------------- modal */}
       <Modal
         aberto={editando !== null}
-        aoFechar={() => setEditando(null)}
+        aoFechar={fecharModal}
+        temMudancas={JSON.stringify(editando) !== JSON.stringify(original)}
         titulo={editando?.caminho ? "Editar referência" : "Nova referência"}
         rodape={
           <>
@@ -337,7 +317,7 @@ export default function Referencias() {
                 Apagar
               </Botao>
             )}
-            <Botao variante="neutro" onClick={() => setEditando(null)}>
+            <Botao variante="neutro" onClick={fecharModal}>
               Cancelar
             </Botao>
             <Botao onClick={salvar} disabled={salvando || enviando}>
@@ -348,13 +328,19 @@ export default function Referencias() {
       >
         {editando && (
           <div className="space-y-4">
-            {(urls[editando.id] || urls["novo"]) && (
+            {previa ? (
               <img
-                src={urls[editando.id] || urls["novo"]}
+                src={previa}
                 alt=""
                 className="max-h-64 w-full rounded-lg object-contain bg-secondary"
               />
-            )}
+            ) : editando.imagem ? (
+              <ImagemPrivada
+                caminho={editando.imagem}
+                alt=""
+                className="max-h-64 w-full rounded-lg object-contain"
+              />
+            ) : null}
 
             <input
               ref={inputArquivo}

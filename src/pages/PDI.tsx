@@ -7,7 +7,7 @@ import {
   lerMarkdown,
   escreverMarkdown,
   tituloProvavel,
-  nomeDeArquivo,
+  nomeLivre,
 } from "@/lib/markdown";
 import {
   comoMeta,
@@ -53,6 +53,9 @@ export default function PDI() {
   const [salvando, setSalvando] = useState(false);
   const [editandoMeta, setEditandoMeta] = useState<Meta | null>(null);
   const [editandoEntrega, setEditandoEntrega] = useState<Entrega | null>(null);
+  // cópias de como estavam ao abrir, para detectar mudança não salva
+  const [origMeta, setOrigMeta] = useState<Meta | null>(null);
+  const [origEntrega, setOrigEntrega] = useState<Entrega | null>(null);
 
   /* ----------------------------------------------------------- carregar */
 
@@ -118,9 +121,14 @@ export default function PDI() {
         dados: metaParaFrontmatter(editandoMeta),
         corpo: editandoMeta.corpo,
       });
+      // metas não levam data no nome: o id delas é referenciado pelas entregas
       const caminho =
         editandoMeta.caminho ||
-        `${PASTA_METAS}/${nomeDeArquivo(editandoMeta.titulo).replace(/^\d{4}-\d{2}-\d{2}-/, "")}`;
+        nomeLivre(
+          PASTA_METAS,
+          editandoMeta.titulo,
+          metas.map((m) => m.caminho),
+        ).replace(/\/\d{4}-\d{2}-\d{2}-/, "/");
       await gravar(cfg, caminho, texto, editandoMeta.sha || undefined);
       setEditandoMeta(null);
       await carregar();
@@ -146,7 +154,8 @@ export default function PDI() {
         corpo: limpa.corpo,
       });
       const caminho =
-        limpa.caminho || `${PASTA_ENTREGAS}/${nomeDeArquivo(limpa.titulo)}`;
+        limpa.caminho ||
+        nomeLivre(PASTA_ENTREGAS, limpa.titulo, entregas.map((x) => x.caminho));
       await gravar(cfg, caminho, texto, limpa.sha || undefined);
       setEditandoEntrega(null);
       await carregar();
@@ -207,6 +216,7 @@ export default function PDI() {
 
   const novaMeta = () =>
     setEditandoMeta({
+      bruto: {},
       caminho: "",
       id: "",
       sha: "",
@@ -218,6 +228,7 @@ export default function PDI() {
 
   const novaEntrega = () =>
     setEditandoEntrega({
+      bruto: {},
       caminho: "",
       id: "",
       sha: "",
@@ -299,10 +310,11 @@ export default function PDI() {
                 <Cartao className="flex items-start gap-3 border-primary/40 bg-primary/5 p-3.5">
                   <Sparkles size={17} className="mt-0.5 shrink-0 text-primary" />
                   <p className="text-sm">
-                    <strong>{conferir.length}</strong> ligação
-                    {conferir.length > 1 ? "ões" : ""} sugerida
-                    {conferir.length > 1 ? "s" : ""} pela IA esperando sua
-                    conferência.
+                    <strong>{conferir.length}</strong>{" "}
+                    {conferir.length > 1
+                      ? "ligações sugeridas"
+                      : "ligação sugerida"}{" "}
+                    pela IA esperando sua conferência.
                   </p>
                 </Cartao>
               )}
@@ -319,7 +331,7 @@ export default function PDI() {
                 {resumos.map(({ meta: m, entregas: ligadas }) => (
                   <Cartao key={m.id} className="p-4">
                     <button
-                      onClick={() => setEditandoMeta(m)}
+                      onClick={() => { setEditandoMeta(m); setOrigMeta(m); }}
                       className="w-full text-left"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -364,7 +376,7 @@ export default function PDI() {
                         {ligadas.slice(0, 4).map((e) => (
                           <li key={e.id}>
                             <button
-                              onClick={() => setEditandoEntrega(e)}
+                              onClick={() => { setEditandoEntrega(e); setOrigEntrega(e); }}
                               className="flex w-full items-center gap-2 text-left text-sm text-muted-foreground hover:text-foreground"
                             >
                               <span className="text-xs tabular-nums">
@@ -403,7 +415,7 @@ export default function PDI() {
                     <Cartao
                       key={e.id}
                       className="cursor-pointer p-3.5 transition-colors hover:bg-accent"
-                      onClick={() => setEditandoEntrega(e)}
+                      onClick={() => { setEditandoEntrega(e); setOrigEntrega(e); }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <p className="font-medium">{e.titulo}</p>
@@ -435,6 +447,7 @@ export default function PDI() {
       <Modal
         aberto={editandoMeta !== null}
         aoFechar={() => setEditandoMeta(null)}
+        temMudancas={JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}
         titulo={editandoMeta?.caminho ? "Editar meta" : "Nova meta"}
         rodape={
           <>
@@ -542,6 +555,7 @@ export default function PDI() {
       <Modal
         aberto={editandoEntrega !== null}
         aoFechar={() => setEditandoEntrega(null)}
+        temMudancas={JSON.stringify(editandoEntrega) !== JSON.stringify(origEntrega)}
         titulo={editandoEntrega?.caminho ? "Editar entrega" : "Registrar entrega"}
         rodape={
           <>

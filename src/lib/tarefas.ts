@@ -6,8 +6,8 @@
  * para continuar legível fora do app.
  */
 
-import type { Documento } from "./markdown";
-import { comoLista } from "./markdown";
+import type { Documento, Frontmatter } from "./markdown";
+import { comoLista, mesclarFrontmatter } from "./markdown";
 import { diasAte } from "./utils";
 
 export const STATUS = ["a-fazer", "fazendo", "feito"] as const;
@@ -20,6 +20,8 @@ export const ROTULO_STATUS: Record<Status, string> = {
 };
 
 export type Tarefa = {
+  /** Frontmatter como veio do arquivo — preserva campos que o app não conhece */
+  bruto: Frontmatter;
   caminho: string;
   sha: string;
   titulo: string;
@@ -42,6 +44,7 @@ export function comoTarefa(
 ): Tarefa {
   const d = doc.dados;
   return {
+    bruto: doc.dados,
     caminho,
     sha,
     titulo:
@@ -57,13 +60,13 @@ export function comoTarefa(
 
 /** Frontmatter para gravar de volta. */
 export function paraFrontmatter(t: Tarefa): Record<string, unknown> {
-  return {
+  return mesclarFrontmatter(t.bruto, {
     titulo: t.titulo,
     tipo: "tarefa",
     status: t.status,
     prazo: t.prazo,
     tags: t.tags.length ? t.tags : undefined,
-  };
+  });
 }
 
 /* -------------------------------------------------------------- ordenação */
