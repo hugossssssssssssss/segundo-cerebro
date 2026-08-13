@@ -215,6 +215,52 @@ export async function apagar(
   await conferir(resposta);
 }
 
+/* -------------------------------------------------------------- contexto */
+
+/** Teto de caracteres enviados à IA, para não estourar o limite do modelo. */
+const TETO_CONTEXTO = 120_000;
+
+/**
+ * Junta o conteúdo de várias pastas num texto só, para mandar de contexto
+ * para a IA. Cada arquivo vem rotulado com o caminho, porque é assim que a
+ * IA consegue devolver referências úteis ("edite pdi/entregas/x.md").
+ *
+ * Se passar do teto, corta e avisa — melhor uma resposta sobre parte do
+ * material do que um erro de limite excedido.
+ */
+export async function montarContexto(
+  cfg: Settings,
+  pastas: string[],
+): Promise<{ texto: string; arquivos: number; cortou: boolean }> {
+  const partes: string[] = [];
+  let total = 0;
+  let arquivos = 0;
+  let cortou = false;
+
+  for (const pasta of pastas) {
+    const lista = await listar(cfg, pasta);
+    for (const a of lista) {
+      if (a.nome.startsWith(".")) continue;
+      if (total >= TETO_CONTEXTO) {
+        cortou = true;
+        break;
+      }
+      try {
+        const { texto } = await ler(cfg, a.caminho);
+        const bloco = `\n### ${a.caminho}\n${texto}`;
+        partes.push(bloco);
+        total += bloco.length;
+        arquivos++;
+      } catch {
+        /* arquivo ilegível não deve derrubar a montagem inteira */
+      }
+    }
+    if (cortou) break;
+  }
+
+  return { texto: partes.join("\n"), arquivos, cortou };
+}
+
 /* ----------------------------------------------------------- diagnóstico */
 
 export type Etapa = {

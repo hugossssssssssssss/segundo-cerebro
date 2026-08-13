@@ -1,0 +1,214 @@
+/**
+ * Conversa com o Gemini, direto do navegador.
+ *
+ * A API do Google responde a requisições cross-origin (verificado: ela devolve
+ * access-control-allow-origin com a origem do site), então não existe backend
+ * aqui também. A chave fica no localStorage e nunca sai para lugar nenhum
+ * além do próprio Google.
+ */
+
+import type { Settings } from "./settings";
+
+const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+
+export type Papel = "user" | "model";
+export type Mensagem = { papel: Papel; texto: string };
+
+export class ErroGemini extends Error {}
+
+/**
+ * Instruções fixas em toda conversa.
+ *
+ * As duas regras que mais importam: nunca inventar fato sobre o trabalho do
+ * Hugo, e marcar como sugestão o que ele ainda não conferiu.
+ */
+export const INSTRUCAO_BASE = `Você é o assistente do segundo cérebro do Hugo, designer gráfico brasileiro.
+
+REGRAS:
+1. Responda em português do Brasil, direto, sem introduções do tipo "claro, vou te ajudar".
+2. NUNCA invente fatos sobre o trabalho, as entregas, as metas ou as pessoas do Hugo. Se a informação não estiver no contexto que você recebeu, diga que não encontrou.
+3. Quando propuser preencher um campo, deixe claro que é sugestão e precisa de conferência.
+4. Ele é designer, não desenvolvedor: explique sem jargão técnico.
+5. Seja breve. Ele lê isto no meio do trabalho.
+
+FORMATO DOS DADOS:
+Cada item é um arquivo .md com frontmatter YAML. Datas no formato AAAA-MM-DD.
+As metas do PDI ficam em pdi/metas/ e as entregas em pdi/entregas/.
+Uma entrega aponta para as metas que alimenta pelo campo "metas", usando o NOME DO ARQUIVO da meta, sem .md.`;
+
+export async function conversar(
+  cfg: Settings,
+  historico: Mensagem[],
+  contexto?: string,
+): Promise<string> {
+  if (!cfg.geminiKey) {
+    throw new ErroGemini(
+      "Falta a chave do Gemini. Preencha na aba de Ajustes.",
+    );
+  }
+
+  const instrucao = contexto
+    ? `${INSTRUCAO_BASE}\n\n--- CONTEÚDO ATUAL DO SEGUNDO CÉREBRO ---\n${contexto}\n--- FIM DO CONTEÚDO ---`
+    : INSTRUCAO_BASE;
+
+  let resposta: Response;
+  try {
+    resposta = await fetch(
+      `${BASE}/${encodeURIComponent(cfg.geminiModel)}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": cfg.geminiKey.trim(),
+        },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: instrucao }] },
+          contents: historico.map((m) => ({
+            role: m.papel,
+            parts: [{ text: m.texto }],
+          })),
+          generationConfig: { temperature: 0.3, maxOutputTokens: 4000 },
+        }),
+      },
+    );
+  } catch (e) {
+    throw new ErroGemini(
+      navigator.onLine
+        ? `Não consegui falar com o Gemini. (${e instanceof Error ? e.message : String(e)})`
+        : "Você está sem internet.",
+    );
+  }
+
+  if (!resposta.ok) {
+    let detalhe = "";
+    try {
+      const corpo = await resposta.json();
+      detalhe = corpo?.error?.message ?? "";
+    } catch {
+      /* sem json */
+    }
+    const amigavel: Record<number, string> = {
+      400: `O Gemini recusou o pedido. ${detalhe}`,
+      403: "Chave do Gemini inválida ou sem permissão. Confira em Ajustes.",
+      429: "Você passou do limite gratuito do Gemini por agora. Tente de novo daqui a pouco.",
+      404: `Modelo "${cfg.geminiModel}" não encontrado. Escolha outro em Ajustes.`,
+    };
+    throw new ErroGemini(
+      amigavel[resposta.status] ?? `Erro do Gemini (${resposta.status}). ${detalhe}`,
+    );
+  }
+
+  const dados = await resposta.json();
+
+  const bloqueio = dados?.promptFeedback?.blockReason;
+  if (bloqueio) {
+    throw new ErroGemini(
+      `O Gemini bloqueou a resposta (${bloqueio}). Tente reformular.`,
+    );
+  }
+
+  const texto = dados?.candidates?.[0]?.content?.parts
+    ?.map((p: { text?: string }) => p.text ?? "")
+    .join("")
+    .trim();
+
+  if (!texto) {
+    const motivo = dados?.candidates?.[0]?.finishReason;
+    throw new ErroGemini(
+      motivo === "MAX_TOKENS"
+        ? "A resposta ficou longa demais e foi cortada. Peça algo mais específico."
+        : "O Gemini respondeu vazio. Tente de novo.",
+    );
+  }
+
+  return texto;
+}
+
+/* ------------------------------------------------------- prompts salvos */
+
+export type PromptSalvo = {
+  id: string;
+  nome: string;
+  descricao: string;
+  /** Que pastas o prompt precisa ler para funcionar */
+  precisa: string[];
+  texto: string;
+};
+
+export const PROMPTS: PromptSalvo[] = [
+  {
+    id: "organizar-reuniao",
+    nome: "Organizar reunião",
+    descricao: "Cole a transcrição e receba decisões, tarefas e contexto",
+    precisa: [],
+    texto: `Vou colar a transcrição de uma reunião. Organize em quatro seções, usando SÓ o que estiver na transcrição:
+
+**Decisões** — só o que foi decidido de fato. Discussão sem conclusão não é decisão; se ficou em aberto, escreva "em aberto: ...".
+
+**Minhas ações** — o que eu fiquei de fazer, como lista de caixinhas. Se houver prazo, inclua a data.
+
+**Ações de outros** — quem ficou de fazer o quê.
+
+**Contexto** — o que não cabe acima mas vale lembrar daqui a seis meses: quem defendeu o quê, tensões, prioridades implícitas.
+
+Se algum trecho estiver confuso ou cortado, escreva "[trecho pouco claro]" em vez de preencher a lacuna.
+
+Transcrição:
+`,
+  },
+  {
+    id: "classificar-entregas",
+    nome: "Ligar entregas às metas",
+    descricao: "Sugere qual meta cada entrega solta alimenta",
+    precisa: ["pdi/metas", "pdi/entregas"],
+    texto: `Olhe minhas metas e minhas entregas que ainda não têm meta atribuída.
+
+Para cada entrega sem meta, proponha a quais metas ela pertence. Responda numa tabela:
+
+| Entrega | Meta proposta | Por quê | Confiança |
+
+Na coluna "Por quê", cite o que foi feito de concreto — não repita o título. Uma frase.
+Na coluna "Confiança", use alta, média ou baixa. Prefira dizer "baixa" a forçar uma ligação fraca.
+
+Se uma entrega não se encaixar em meta nenhuma, diga isso em vez de forçar. E se você notar várias entregas sobre um mesmo assunto que nenhuma meta cobre, aponte: pode estar faltando uma meta, ou eu posso estar gastando tempo com o que não me desenvolve.
+
+Ao final, liste o campo pronto para eu colar em cada entrega, assim:
+nome-do-arquivo.md → metas: [id-da-meta]`,
+  },
+  {
+    id: "revisao-semana",
+    nome: "Como foi minha semana",
+    descricao: "Balanço dos últimos 7 dias com uma pergunta no fim",
+    precisa: ["tarefas", "pdi/entregas", "pdi/metas"],
+    texto: `Faça o balanço da minha última semana com base no que você recebeu.
+
+## O que andou
+O que efetivamente saiu, citando pelo nome.
+
+## O que travou
+Tarefas que passaram do prazo, coisas paradas. Se o mesmo obstáculo apareceu mais de uma vez, aponte — padrão repetido importa mais que evento isolado.
+
+## Ligação com minhas metas
+Quais metas receberam movimento e quais não receberam nada.
+
+## Uma pergunta
+Termine com UMA pergunta que valha eu pensar antes de planejar a próxima semana. Deve nascer do que você leu, não ser genérica.
+
+Não elogie por elogiar. Se a semana foi fraca, diga que foi fraca e mostre os dados.`,
+  },
+  {
+    id: "triagem",
+    nome: "Organizar minhas notas",
+    descricao: "Sugere o que fazer com cada nota solta",
+    precisa: ["notas"],
+    texto: `Olhe minhas notas e proponha o que fazer com cada uma:
+
+| Nota | O que fazer | Por quê |
+
+Opções: virar tarefa (proponha o texto e um prazo se houver pista), juntar com outra nota (diga qual), manter como está, ou descartar.
+
+Sobre descartar: seja disposto a sugerir. Um monte de anotação que nunca é jogada fora vira um depósito que eu passo a evitar. Se algo foi escrito há semanas e não significa mais nada, diga.
+
+Se várias notas forem sobre o mesmo assunto, sugira juntar numa só.`,
+  },
+];
