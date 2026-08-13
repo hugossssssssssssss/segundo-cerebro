@@ -256,13 +256,14 @@ export default function Notas() {
 
         {erro && <Aviso tom="erro">{erro}</Aviso>}
 
-        <div data-color-mode="inherit">
+        <div data-color-mode="inherit" className="prose prose-zinc dark:prose-invert max-w-none prose-p:leading-relaxed prose-headings:tracking-tight">
           <MDEditor
             value={aberta.corpo}
             onChange={(v) => setAberta({ ...aberta, corpo: v ?? "" })}
             height={440}
             preview="edit"
             textareaProps={{ placeholder: "Escreva o que quiser…" }}
+            className="!font-sans"
           />
         </div>
 

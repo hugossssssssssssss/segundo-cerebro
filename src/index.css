@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -124,4 +125,51 @@
 .w-md-editor-text-pre > code {
   font-size: 15px !important;
   line-height: 1.7 !important;
+}
+
+/* Forçar o preview do MDEditor a herdar a tipografia elegante (prose) */
+.wmde-markdown {
+  background-color: transparent !important;
+  color: inherit !important;
+  font-family: inherit !important;
+}
+.wmde-markdown h1,
+.wmde-markdown h2,
+.wmde-markdown h3,
+.wmde-markdown h4,
+.wmde-markdown h5,
+.wmde-markdown h6 {
+  border-bottom: none !important;
+  font-weight: 600 !important;
+  color: var(--foreground) !important;
+}
+.wmde-markdown a {
+  color: var(--primary) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 4px;
+}
+.wmde-markdown blockquote {
+  color: var(--muted-foreground) !important;
+  border-left: 4px solid var(--border) !important;
+  background-color: var(--secondary) !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 0 0.5rem 0.5rem 0 !important;
+}
+.wmde-markdown code {
+  background-color: var(--secondary) !important;
+  padding: 0.15rem 0.3rem !important;
+  border-radius: 4px !important;
+  font-size: 0.875em !important;
+  color: var(--primary) !important;
+}
+.wmde-markdown pre {
+  background-color: var(--secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  padding: 1rem !important;
+}
+.wmde-markdown pre code {
+  background-color: transparent !important;
+  color: var(--foreground) !important;
+  padding: 0 !important;
 }

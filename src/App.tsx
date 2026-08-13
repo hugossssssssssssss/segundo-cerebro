@@ -10,6 +10,7 @@ import {
   Search,
   Moon,
   Sun,
+  Home as HomeIcon,
 } from "lucide-react";
 import { Busca } from "@/components/Busca";
 import { Carregando } from "@/components/ui";
@@ -23,6 +24,7 @@ import { cn } from "@/lib/utils";
  * JavaScript no primeiro acesso — incluindo o editor de Markdown, que só é
  * usado ao abrir uma nota. No 4G isso era a diferença entre abrir e desistir.
  */
+const Home = lazy(() => import("@/pages/Home"));
 const Tarefas = lazy(() => import("@/pages/Tarefas"));
 const Notas = lazy(() => import("@/pages/Notas"));
 const Referencias = lazy(() => import("@/pages/Referencias"));
@@ -33,6 +35,7 @@ const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 // As cinco de uso diário ficam no rodapé do celular. Ajustes não entra:
 // é tela de configurar uma vez, não destino do dia a dia.
 const abas = [
+  { para: "/home", rotulo: "Início", Icone: HomeIcon },
   { para: "/tarefas", rotulo: "Tarefas", Icone: CheckSquare },
   { para: "/notas", rotulo: "Notas", Icone: FileText },
   { para: "/referencias", rotulo: "Refs", Icone: Image },
@@ -172,14 +175,15 @@ export default function App() {
       <Estrutura>
         <Suspense fallback={<Carregando />}>
           <Routes>
-            <Route path="/" element={<Navigate to="/tarefas" replace />} />
+            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route path="/home" element={<Home />} />
             <Route path="/tarefas" element={<Tarefas />} />
             <Route path="/notas" element={<Notas />} />
             <Route path="/referencias" element={<Referencias />} />
             <Route path="/pdi" element={<PDI />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/config" element={<Configuracoes />} />
-            <Route path="*" element={<Navigate to="/tarefas" replace />} />
+            <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </Suspense>
       </Estrutura>

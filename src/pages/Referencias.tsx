@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { Masonry } from "react-plock";
 import { Plus, Trash2, ImagePlus, ExternalLink } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, gravarBinario, apagar } from "@/lib/github";
@@ -31,6 +32,7 @@ import {
   Modal,
   Rotulo,
   AreaTexto,
+  TagInput,
 } from "@/components/ui";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { cn } from "@/lib/utils";
@@ -263,18 +265,24 @@ export default function Referencias() {
           acao={refs.length === 0 ? <Botao onClick={nova}>Salvar a primeira</Botao> : undefined}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visiveis.map((r) => (
+        <Masonry
+          items={visiveis}
+          config={{
+            columns: [1, 2, 3],
+            gap: [16, 16, 16],
+            media: [640, 1024, 1280],
+          }}
+          render={(r: Referencia) => (
             <Cartao
               key={r.id}
-              className="cursor-pointer overflow-hidden transition-colors hover:bg-accent"
+              className="cursor-pointer overflow-hidden transition-all hover:scale-[1.02] hover:shadow-md"
               onClick={() => { setEditando(r); setOriginal(r); }}
             >
               {r.imagem && (
                 <ImagemPrivada
                   caminho={r.imagem}
                   alt={r.titulo}
-                  className="aspect-[4/3] w-full object-cover"
+                  className="w-full object-cover"
                 />
               )}
 
@@ -294,8 +302,8 @@ export default function Referencias() {
                 )}
               </div>
             </Cartao>
-          ))}
-        </div>
+          )}
+        />
       )}
 
       {/* ------------------------------------------------------- modal */}
@@ -414,18 +422,10 @@ export default function Referencias() {
             </div>
 
             <div>
-              <Rotulo dica="Separe por vírgula.">Tags</Rotulo>
-              <Campo
-                value={editando.tags.join(", ")}
-                onChange={(e) =>
-                  setEditando({
-                    ...editando,
-                    tags: e.target.value
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  })
-                }
+              <Rotulo dica="Aperte Enter ou Vírgula para adicionar.">Tags</Rotulo>
+              <TagInput
+                tags={editando.tags}
+                onChange={(tags) => setEditando({ ...editando, tags })}
                 placeholder="tipografia, editorial"
               />
             </div>

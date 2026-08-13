@@ -37,6 +37,7 @@ import {
   Carregando,
   Modal,
   Rotulo,
+  TagInput,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -241,6 +242,8 @@ export default function Tarefas() {
     [cronometrando, cfg.repoOwner, cfg.repoName, cfg.githubToken],
   );
 
+  const indice = useMemo(() => montarIndice(acervo), [acervo]);
+
   /* --------------------------------------------------------- sem config */
 
   if (!pronto) {
@@ -256,9 +259,6 @@ export default function Tarefas() {
       />
     );
   }
-
-  const indice = useMemo(() => montarIndice(acervo), [acervo]);
-
   // ordenar aqui (e não dentro de alternarFeito) mantém a linha parada
   // debaixo do dedo quando você marca uma caixinha
   const visiveis = ordenar(
@@ -482,18 +482,10 @@ export default function Tarefas() {
             </div>
 
             <div>
-              <Rotulo dica="Separe por vírgula.">Tags</Rotulo>
-              <Campo
-                value={editando.tags.join(", ")}
-                onChange={(e) =>
-                  setEditando({
-                    ...editando,
-                    tags: e.target.value
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  })
-                }
+              <Rotulo dica="Aperte Enter ou Vírgula para adicionar.">Tags</Rotulo>
+              <TagInput
+                tags={editando.tags}
+                onChange={(tags) => setEditando({ ...editando, tags })}
                 placeholder="design, cliente"
               />
             </div>

@@ -1,68 +1,99 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Send, Sparkles, Trash2, Copy, Check } from "lucide-react";
+import { Send, Sparkles, Trash2, Copy, Check, RefreshCw } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { montarContexto } from "@/lib/github";
+import { carregarRepo, type ItemRepo } from "@/lib/repo";
 import { conversar, PROMPTS, type Mensagem, type PromptSalvo } from "@/lib/gemini";
-import { Botao, Cartao, AreaTexto, Aviso, Vazio } from "@/components/ui";
+import { extrairAcoes, executar, type Acao } from "@/lib/acoes";
+import { CartaoAcao } from "@/components/CartaoAcao";
+import { Botao, Cartao, AreaTexto, Aviso, Vazio, Selo } from "@/components/ui";
 import { cn } from "@/lib/utils";
+
+/** Uma fala da conversa, com as ações que a IA propôs junto dela. */
+type Fala = Mensagem & { acoes?: Acao[] };
 
 export default function Chat() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
 
-  const [mensagens, setMensagens] = useState<Mensagem[]>([]);
+  const [falas, setFalas] = useState<Fala[]>([]);
   const [entrada, setEntrada] = useState("");
   const [pensando, setPensando] = useState(false);
   const [erro, setErro] = useState("");
-  const [statusContexto, setStatusContexto] = useState("");
+  const [acervo, setAcervo] = useState<ItemRepo[]>([]);
+  const [carregandoAcervo, setCarregandoAcervo] = useState(false);
   const [copiado, setCopiado] = useState<number | null>(null);
+  const [descartadas, setDescartadas] = useState<Set<string>>(new Set());
 
   const fim = useRef<HTMLDivElement>(null);
   useEffect(() => {
     fim.current?.scrollIntoView({ behavior: "smooth" });
-  }, [mensagens, pensando]);
+  }, [falas, pensando]);
 
-  async function enviar(texto: string, pastas: string[] = []) {
+  /**
+   * Carrega o acervo uma vez e mantém.
+   *
+   * Antes o conteúdo só ia junto nos prompts prontos: qualquer pergunta de
+   * seguimento saía sem contexto nenhum, e a IA parecia esquecer no meio da
+   * conversa o que tinha acabado de discutir.
+   */
+  async function garantirAcervo(): Promise<ItemRepo[]> {
+    if (acervo.length > 0) return acervo;
+    setCarregandoAcervo(true);
+    try {
+      const itens = await carregarRepo(cfg);
+      setAcervo(itens);
+      return itens;
+    } finally {
+      setCarregandoAcervo(false);
+    }
+  }
+
+  function montarContextoTexto(itens: ItemRepo[]): string {
+    return itens.map((i) => `\n### ${i.caminho}\n${i.texto}`).join("\n");
+  }
+
+  async function enviar(texto: string) {
     if (!texto.trim() || pensando) return;
 
-    const novas: Mensagem[] = [...mensagens, { papel: "user", texto }];
-    setMensagens(novas);
+    const novas: Fala[] = [...falas, { papel: "user", texto }];
+    setFalas(novas);
     setEntrada("");
     setPensando(true);
     setErro("");
 
     try {
-      let contexto: string | undefined;
-      if (pastas.length) {
-        setStatusContexto("Lendo seus arquivos…");
-        const r = await montarContexto(cfg, pastas);
-        contexto = r.texto;
-        setStatusContexto(
-          r.arquivos === 0
-            ? "Nenhum arquivo encontrado nessas pastas ainda."
-            : `Li ${r.arquivos} arquivo${r.arquivos > 1 ? "s" : ""}${r.cortou ? " (parcial: muito conteúdo)" : ""}.`,
-        );
-      }
+      const itens = await garantirAcervo();
+      const resposta = await conversar(
+        cfg,
+        novas.map(({ papel, texto }) => ({ papel, texto })),
+        montarContextoTexto(itens),
+      );
 
-      const resposta = await conversar(cfg, novas, contexto);
-      setMensagens([...novas, { papel: "model", texto: resposta }]);
+      const { texto: limpo, acoes } = extrairAcoes(resposta);
+      setFalas([
+        ...novas,
+        { papel: "model", texto: limpo || "(sem texto)", acoes },
+      ]);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
-      setMensagens(novas); // mantém o que você escreveu
+      setFalas(novas); // mantém o que você escreveu
     } finally {
       setPensando(false);
-      setStatusContexto("");
     }
   }
 
   function usarPrompt(p: PromptSalvo) {
-    if (p.precisa.length === 0) {
-      // Prompt que espera você colar algo: só preenche a caixa
-      setEntrada(p.texto);
-      return;
-    }
-    enviar(p.texto, p.precisa);
+    // prompt que espera você colar algo apenas preenche a caixa
+    if (p.precisa.length === 0) setEntrada(p.texto);
+    else enviar(p.texto);
+  }
+
+  async function aplicar(acao: Acao) {
+    const itens = await garantirAcervo();
+    await executar(cfg, acao, itens);
+    // o acervo mudou: força recarga na próxima pergunta
+    setAcervo([]);
   }
 
   async function copiar(texto: string, i: number) {
@@ -70,6 +101,8 @@ export default function Chat() {
     setCopiado(i);
     setTimeout(() => setCopiado(null), 1500);
   }
+
+  /* ------------------------------------------------------- pré-requisitos */
 
   if (!pronto) {
     return (
@@ -89,7 +122,7 @@ export default function Chat() {
     return (
       <Vazio
         titulo="Falta a chave do Gemini"
-        descricao="O chat conversa com suas notas, tarefas e metas. Para isso precisa de uma chave do Google AI Studio, que tem plano gratuito."
+        descricao="O chat lê suas notas, tarefas e metas e responde sobre elas. Para isso precisa de uma chave do Google AI Studio, que tem plano gratuito."
         acao={
           <Link to="/config">
             <Botao>Configurar a chave</Botao>
@@ -101,20 +134,22 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Conversar</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Ele lê o que você escreveu e responde sobre isso.
+            Ele lê o que você escreveu — e pode criar e editar coisas, sempre
+            pedindo sua aprovação antes.
           </p>
         </div>
-        {mensagens.length > 0 && (
+        {falas.length > 0 && (
           <Botao
             variante="fantasma"
             tamanho="pequeno"
             onClick={() => {
-              setMensagens([]);
+              setFalas([]);
               setErro("");
+              setDescartadas(new Set());
             }}
           >
             <Trash2 size={15} />
@@ -123,70 +158,98 @@ export default function Chat() {
         )}
       </div>
 
-      {/* atalhos */}
-      {mensagens.length === 0 && (
-        <div className="grid gap-2 sm:grid-cols-2">
-          {PROMPTS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => usarPrompt(p)}
-              className="rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-accent"
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles size={15} className="text-primary" />
-                <span className="font-medium">{p.nome}</span>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {p.descricao}
-              </p>
-            </button>
-          ))}
-        </div>
+      {falas.length === 0 && (
+        <>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {PROMPTS.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => usarPrompt(p)}
+                className="rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-accent"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles size={15} className="text-primary" />
+                  <span className="font-medium">{p.nome}</span>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {p.descricao}
+                </p>
+              </button>
+            ))}
+          </div>
+
+          <Aviso>
+            Você também pode pedir direto: <em>“cria uma tarefa para revisar a
+            proposta até sexta”</em> ou <em>“transforma isso em três tarefas”</em>.
+            Ele monta a proposta e você aprova com um clique.
+          </Aviso>
+        </>
       )}
 
-      {/* conversa */}
-      {mensagens.length > 0 && (
+      {falas.length > 0 && (
         <div className="space-y-4">
-          {mensagens.map((m, i) => (
-            <div
-              key={i}
-              className={cn(
-                "flex",
-                m.papel === "user" ? "justify-end" : "justify-start",
-              )}
-            >
+          {falas.map((m, i) => (
+            <div key={i} className="space-y-2">
               <div
                 className={cn(
-                  "group relative max-w-[85%] rounded-2xl px-4 py-3",
-                  m.papel === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "border border-border bg-card",
+                  "flex",
+                  m.papel === "user" ? "justify-end" : "justify-start",
                 )}
               >
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                  {m.texto}
-                </p>
-                {m.papel === "model" && (
-                  <button
-                    onClick={() => copiar(m.texto, i)}
-                    className="absolute -right-1 -top-1 rounded-md border border-border bg-card p-1.5 opacity-0 transition-opacity group-hover:opacity-100"
-                    title="Copiar"
-                  >
-                    {copiado === i ? (
-                      <Check size={13} className="text-[var(--success)]" />
-                    ) : (
-                      <Copy size={13} />
-                    )}
-                  </button>
-                )}
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-2xl px-4 py-3",
+                    m.papel === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "border border-border bg-card",
+                  )}
+                >
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {m.texto}
+                  </p>
+                  {m.papel === "model" && (
+                    // botão sempre visível: no Android não existe hover, e
+                    // antes ele só aparecia ao passar o mouse — inalcançável
+                    <button
+                      onClick={() => copiar(m.texto, i)}
+                      className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      {copiado === i ? (
+                        <>
+                          <Check size={13} className="text-[var(--success)]" />
+                          Copiado
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={13} />
+                          Copiar
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* ações propostas junto desta resposta */}
+              {m.acoes
+                ?.filter((_, n) => !descartadas.has(`${i}-${n}`))
+                .map((a, n) => (
+                  <CartaoAcao
+                    key={`${i}-${n}`}
+                    acao={a}
+                    aoAprovar={() => aplicar(a)}
+                    aoDescartar={() =>
+                      setDescartadas((s) => new Set(s).add(`${i}-${n}`))
+                    }
+                  />
+                ))}
             </div>
           ))}
 
           {pensando && (
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary" />
-              {statusContexto || "Pensando…"}
+              {carregandoAcervo ? "Lendo suas coisas…" : "Pensando…"}
             </div>
           )}
           <div ref={fim} />
@@ -195,25 +258,38 @@ export default function Chat() {
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 
-      {/* caixa de envio */}
       <Cartao className="sticky bottom-20 sm:bottom-4 p-3">
         <AreaTexto
           value={entrada}
           onChange={(e) => setEntrada(e.target.value)}
           onKeyDown={(e) => {
-            // Enter envia; Shift+Enter quebra linha. No celular sempre quebra.
-            if (e.key === "Enter" && !e.shiftKey && window.innerWidth >= 640) {
+            // Enter envia no computador; no celular sempre quebra linha
+            if (
+              e.key === "Enter" &&
+              !e.shiftKey &&
+              matchMedia("(min-width: 640px)").matches
+            ) {
               e.preventDefault();
               enviar(entrada);
             }
           }}
-          placeholder="Pergunte sobre suas notas, cole uma transcrição de reunião…"
+          placeholder="Pergunte, cole uma transcrição, ou peça para criar algo…"
           className="min-h-20 resize-none border-0 bg-transparent focus-visible:ring-0"
         />
         <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="text-xs text-muted-foreground">
-            {cfg.geminiModel}
-          </span>
+          <div className="flex items-center gap-2">
+            <Selo>{cfg.geminiModel}</Selo>
+            {acervo.length > 0 && (
+              <button
+                onClick={() => setAcervo([])}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                title="Reler seus arquivos"
+              >
+                <RefreshCw size={12} />
+                {acervo.length} arquivos lidos
+              </button>
+            )}
+          </div>
           <Botao
             tamanho="pequeno"
             onClick={() => enviar(entrada)}
