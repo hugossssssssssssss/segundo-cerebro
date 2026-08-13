@@ -1,6 +1,7 @@
 {
   "baseFontSize": 17,
-  "theme": "obsidian",
+  "theme": "system",
   "showViewHeader": true,
-  "nativeMenus": false
+  "nativeMenus": false,
+  "accentColor": "#0062ff"
 }
