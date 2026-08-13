@@ -98,14 +98,37 @@ export function AreaTexto({
 export function Rotulo({
   children,
   dica,
+  obrigatorio,
+  faltando,
 }: {
   children: ReactNode;
   dica?: string;
+  obrigatorio?: boolean;
+  /** true quando o campo é obrigatório e está vazio — destaca em vermelho */
+  faltando?: boolean;
 }) {
   return (
     <div className="mb-1.5">
-      <label className="text-sm font-medium">{children}</label>
-      {dica && <p className="text-xs text-muted-foreground mt-0.5">{dica}</p>}
+      <label className="text-sm font-medium">
+        {children}
+        {obrigatorio && (
+          <span
+            className={cn(
+              "ml-1",
+              faltando ? "text-destructive" : "text-muted-foreground",
+            )}
+          >
+            *
+          </span>
+        )}
+      </label>
+      {faltando ? (
+        <p className="mt-0.5 text-xs text-destructive">
+          Este campo é obrigatório.
+        </p>
+      ) : (
+        dica && <p className="text-xs text-muted-foreground mt-0.5">{dica}</p>
+      )}
     </div>
   );
 }

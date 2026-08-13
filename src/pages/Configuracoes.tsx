@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CheckCircle2, XCircle, ExternalLink } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
-import { testarConexao } from "@/lib/github";
+import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
 import { Botao, Campo, Cartao, Rotulo, Aviso } from "@/components/ui";
 
 export default function Configuracoes() {
@@ -10,6 +10,17 @@ export default function Configuracoes() {
   const [resultado, setResultado] = useState<
     { ok: boolean; texto: string } | null
   >(null);
+  const [etapas, setEtapas] = useState<Etapa[] | null>(null);
+  const [diagnosticando, setDiagnosticando] = useState(false);
+
+  async function rodarDiagnostico() {
+    const limpa = salvarConfig(cfg);
+    setCfg(limpa);
+    setDiagnosticando(true);
+    setEtapas(null);
+    setEtapas(await diagnosticar(limpa));
+    setDiagnosticando(false);
+  }
 
   const atualizar = (campo: keyof Settings, valor: string) => {
     setCfg((c) => ({ ...c, [campo]: valor }));
@@ -47,7 +58,11 @@ export default function Configuracoes() {
         <h2 className="font-medium">Onde suas anotações ficam guardadas</h2>
 
         <div>
-          <Rotulo dica="Seu usuário do GitHub, exatamente como aparece no perfil.">
+          <Rotulo
+            obrigatorio
+            faltando={!cfg.repoOwner}
+            dica="Seu usuário do GitHub, exatamente como aparece no perfil."
+          >
             Sua conta
           </Rotulo>
           <Campo
@@ -61,7 +76,11 @@ export default function Configuracoes() {
         </div>
 
         <div>
-          <Rotulo dica="O repositório privado onde os arquivos .md ficam.">
+          <Rotulo
+            obrigatorio
+            faltando={!cfg.repoName}
+            dica="O repositório privado onde os arquivos .md ficam."
+          >
             Repositório dos dados
           </Rotulo>
           <Campo
@@ -75,7 +94,11 @@ export default function Configuracoes() {
         </div>
 
         <div>
-          <Rotulo dica="Chave de acesso. Precisa de permissão de Contents: Read and write.">
+          <Rotulo
+            obrigatorio
+            faltando={!cfg.githubToken}
+            dica="Chave de acesso. Precisa de permissão de Contents: Read and write."
+          >
             Token do GitHub
           </Rotulo>
           <Campo
@@ -148,6 +171,13 @@ export default function Configuracoes() {
         <Botao onClick={salvarETestar} disabled={testando}>
           {testando ? "Testando…" : "Salvar e testar conexão"}
         </Botao>
+        <Botao
+          variante="neutro"
+          onClick={rodarDiagnostico}
+          disabled={diagnosticando}
+        >
+          {diagnosticando ? "Verificando…" : "Diagnóstico"}
+        </Botao>
         {resultado && (
           <span
             className={`inline-flex items-center gap-2 text-sm ${
@@ -159,6 +189,47 @@ export default function Configuracoes() {
           </span>
         )}
       </div>
+
+      {etapas && (
+        <Cartao className="p-5">
+          <h2 className="font-medium">Diagnóstico</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Cada linha testa uma coisa a mais que a anterior. A primeira que
+            falhar é a causa.
+          </p>
+          <ul className="mt-4 space-y-3">
+            {etapas.map((e, i) => (
+              <li key={i} className="flex gap-3">
+                <span className="mt-0.5 shrink-0">
+                  {e.ok ? (
+                    <CheckCircle2 size={17} className="text-[var(--success)]" />
+                  ) : (
+                    <XCircle size={17} className="text-destructive" />
+                  )}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{e.nome}</p>
+                  <p className="text-xs text-muted-foreground break-words">
+                    {e.detalhe}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() =>
+              navigator.clipboard.writeText(
+                etapas
+                  .map((e) => `${e.ok ? "OK " : "FALHOU "} ${e.nome}: ${e.detalhe}`)
+                  .join("\n"),
+              )
+            }
+            className="mt-4 text-xs text-primary hover:underline"
+          >
+            Copiar resultado
+          </button>
+        </Cartao>
+      )}
 
       <Aviso>
         <strong>Por que um token?</strong> Ele é a chave que deixa este site

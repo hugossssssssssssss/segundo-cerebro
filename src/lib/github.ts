@@ -215,10 +215,195 @@ export async function apagar(
   await conferir(resposta);
 }
 
+/* ----------------------------------------------------------- diagnóstico */
+
+export type Etapa = {
+  nome: string;
+  ok: boolean;
+  detalhe: string;
+};
+
+/**
+ * Sobe a escada de complexidade até achar o degrau que quebra.
+ *
+ * "Failed to fetch" não distingue internet caída de extensão bloqueando de
+ * CORS recusado. Cada etapa aqui adiciona UMA variável em relação à anterior,
+ * então a primeira que falhar aponta a causa exata.
+ */
+export async function diagnosticar(cfg: Settings): Promise<Etapa[]> {
+  const etapas: Etapa[] = [];
+
+  // Campo vazio antes de tudo: sem isso a URL sai malformada ("/repos//nome"),
+  // o preflight volta sem cabeçalho de CORS e o navegador aborta com um
+  // "Failed to fetch" que não ajuda ninguém. Melhor dizer logo o que falta.
+  const faltando: string[] = [];
+  if (!cfg.repoOwner) faltando.push("Sua conta");
+  if (!cfg.repoName) faltando.push("Repositório dos dados");
+  if (!cfg.githubToken) faltando.push("Token do GitHub");
+  if (faltando.length) {
+    etapas.push({
+      nome: "Campos obrigatórios preenchidos",
+      ok: false,
+      detalhe: `falta preencher: ${faltando.join(", ")}`,
+    });
+    return etapas;
+  }
+
+  etapas.push({
+    nome: "Navegador acha que está online",
+    ok: navigator.onLine,
+    detalhe: navigator.onLine ? "sim" : "não — sem internet",
+  });
+
+  // 1. Requisição simples, sem cabeçalho nenhum: não dispara preflight.
+  //    Se falhar aqui, o problema é rede, DNS, VPN ou extensão bloqueando.
+  try {
+    const r = await fetch(`${BASE}/rate_limit`);
+    etapas.push({
+      nome: "Alcança api.github.com (sem cabeçalhos)",
+      ok: r.ok,
+      detalhe: `HTTP ${r.status}`,
+    });
+  } catch (e) {
+    etapas.push({
+      nome: "Alcança api.github.com (sem cabeçalhos)",
+      ok: false,
+      detalhe: `bloqueado — ${e instanceof Error ? e.message : String(e)}. Normalmente é extensão do navegador (bloqueador de anúncios/rastreadores), VPN ou firewall.`,
+    });
+    return etapas; // sem isto, nada mais faz sentido testar
+  }
+
+  // 2. Agora COM cabeçalhos, o que obriga o navegador a fazer preflight (OPTIONS).
+  //    Se a etapa 1 passou e esta falhar, o problema é CORS/preflight.
+  try {
+    const r = await fetch(`${BASE}/rate_limit`, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    });
+    etapas.push({
+      nome: "Preflight CORS aceito",
+      ok: r.ok,
+      detalhe: `HTTP ${r.status}`,
+    });
+  } catch (e) {
+    etapas.push({
+      nome: "Preflight CORS aceito",
+      ok: false,
+      detalhe: `recusado — ${e instanceof Error ? e.message : String(e)}`,
+    });
+    return etapas;
+  }
+
+  // 3. Com o token. Se falhar só aqui, é o cabeçalho Authorization.
+  if (!cfg.githubToken) {
+    etapas.push({
+      nome: "Token preenchido",
+      ok: false,
+      detalhe: "vazio — preencha o campo do token",
+    });
+    return etapas;
+  }
+
+  const invisiveis = /[\s\u200B-\u200D\uFEFF]/.test(cfg.githubToken);
+  etapas.push({
+    nome: "Token sem caracteres invisíveis",
+    ok: !invisiveis,
+    detalhe: invisiveis
+      ? "há espaço ou quebra de linha no token — apague o campo e cole de novo"
+      : `${cfg.githubToken.length} caracteres, começa com "${cfg.githubToken.slice(0, 11)}…"`,
+  });
+
+  try {
+    const r = await fetch(`${BASE}/user`, { headers: cabecalhos(cfg) });
+    const corpo = await r.json().catch(() => ({}));
+    etapas.push({
+      nome: "Token aceito pelo GitHub",
+      ok: r.ok,
+      detalhe: r.ok
+        ? `autenticado como ${corpo.login}`
+        : `HTTP ${r.status} — ${corpo.message ?? "sem detalhe"}`,
+    });
+  } catch (e) {
+    etapas.push({
+      nome: "Token aceito pelo GitHub",
+      ok: false,
+      detalhe: `falhou — ${e instanceof Error ? e.message : String(e)}`,
+    });
+    return etapas;
+  }
+
+  // 4. Mostra exatamente o que foi digitado. Caractere estranho no meio de um
+  //    destes campos é a causa mais provável de a URL virar inválida.
+  const mostrarCru = (v: string) =>
+    JSON.stringify(v) + ` (${v.length} caracteres)`;
+  etapas.push({
+    nome: "Conta e repositório, exatamente como estão salvos",
+    ok: Boolean(cfg.repoOwner && cfg.repoName),
+    detalhe: `conta = ${mostrarCru(cfg.repoOwner)} · repositório = ${mostrarCru(cfg.repoName)}`,
+  });
+
+  const url = `${BASE}/repos/${cfg.repoOwner}/${cfg.repoName}`;
+  etapas.push({
+    nome: "URL montada",
+    ok: true,
+    detalhe: url,
+  });
+
+  // 5. A MESMA URL, mas sem cabeçalho nenhum (requisição simples, sem preflight).
+  //    Se falhar aqui e a etapa 2 tiver passado, o problema é o caminho da URL
+  //    — tipicamente uma extensão do navegador bloqueando por padrão.
+  try {
+    const r = await fetch(url);
+    etapas.push({
+      nome: "Alcança essa URL sem autenticação",
+      ok: true,
+      detalhe: `HTTP ${r.status} (404 aqui é normal: o repositório é privado)`,
+    });
+  } catch (e) {
+    etapas.push({
+      nome: "Alcança essa URL sem autenticação",
+      ok: false,
+      detalhe: `bloqueado antes de sair do navegador — ${e instanceof Error ? e.message : String(e)}. Como api.github.com respondeu nas etapas anteriores, é este endereço específico que está sendo barrado: quase sempre extensão do navegador. Teste numa janela anônima.`,
+    });
+    return etapas;
+  }
+
+  // 6. Agora com o token.
+  try {
+    const r = await fetch(url, { headers: cabecalhos(cfg) });
+    const corpo = await r.json().catch(() => ({}));
+    etapas.push({
+      nome: `Enxerga ${cfg.repoOwner}/${cfg.repoName}`,
+      ok: r.ok,
+      detalhe: r.ok
+        ? `sim — pode escrever: ${corpo.permissions?.push ? "sim" : "NÃO"}`
+        : `HTTP ${r.status} — ${corpo.message ?? ""}. Se for 404, o token não tem esse repositório na lista dele.`,
+    });
+  } catch (e) {
+    etapas.push({
+      nome: "Enxerga o repositório",
+      ok: false,
+      detalhe: e instanceof Error ? e.message : String(e),
+    });
+  }
+
+  return etapas;
+}
+
 /** Testa se o token e o repositório estão certos. Usado na tela de Configurações. */
 export async function testarConexao(
   cfg: Settings,
 ): Promise<{ ok: true; repo: string } | { ok: false; erro: string }> {
+  const faltando: string[] = [];
+  if (!cfg.repoOwner) faltando.push("Sua conta");
+  if (!cfg.repoName) faltando.push("Repositório dos dados");
+  if (!cfg.githubToken) faltando.push("Token do GitHub");
+  if (faltando.length) {
+    return { ok: false, erro: `Falta preencher: ${faltando.join(", ")}.` };
+  }
+
   try {
     const resposta = await buscar(
       `${BASE}/repos/${cfg.repoOwner}/${cfg.repoName}`,
