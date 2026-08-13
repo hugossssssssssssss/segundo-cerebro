@@ -17,11 +17,14 @@ export default function Configuracoes() {
   };
 
   async function salvarETestar() {
-    salvarConfig(cfg);
+    // salvarConfig devolve a versão já limpa (sem espaço nem quebra de linha
+    // vindos do copiar e colar). Testamos essa, não a que está no formulário.
+    const limpa = salvarConfig(cfg);
+    setCfg(limpa);
     setTestando(true);
     setResultado(null);
 
-    const r = await testarConexao(cfg);
+    const r = await testarConexao(limpa);
     setResultado(
       r.ok
         ? { ok: true, texto: `Conectado em ${r.repo}. Tudo certo.` }

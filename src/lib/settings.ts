@@ -31,18 +31,42 @@ export const PADRAO: Settings = {
   geminiModel: "gemini-2.5-flash",
 };
 
+/**
+ * Limpa o que veio de copiar e colar.
+ *
+ * Colar um token costuma trazer espaço ou quebra de linha junto. Uma quebra de
+ * linha dentro do cabeçalho Authorization torna a requisição inválida e o
+ * navegador aborta com "Failed to fetch" — erro que não diz nada ao usuário.
+ * Por isso a limpeza acontece aqui, no ponto de entrada, e não em cada uso.
+ */
+function limpar(s: Settings): Settings {
+  const tirarInvisiveis = (v: string) =>
+    v.replace(/[\s\u200B-\u200D\uFEFF]/g, "");
+  return {
+    ...s,
+    githubToken: tirarInvisiveis(s.githubToken),
+    geminiKey: tirarInvisiveis(s.geminiKey),
+    repoOwner: tirarInvisiveis(s.repoOwner),
+    repoName: tirarInvisiveis(s.repoName),
+    branch: tirarInvisiveis(s.branch) || "main",
+    geminiModel: s.geminiModel.trim(),
+  };
+}
+
 export function lerConfig(): Settings {
   try {
     const bruto = localStorage.getItem(CHAVE);
     if (!bruto) return { ...PADRAO };
-    return { ...PADRAO, ...JSON.parse(bruto) };
+    return limpar({ ...PADRAO, ...JSON.parse(bruto) });
   } catch {
     return { ...PADRAO };
   }
 }
 
-export function salvarConfig(s: Settings): void {
-  localStorage.setItem(CHAVE, JSON.stringify(s));
+export function salvarConfig(s: Settings): Settings {
+  const limpo = limpar(s);
+  localStorage.setItem(CHAVE, JSON.stringify(limpo));
+  return limpo;
 }
 
 /** O app só consegue ler/escrever se estes três estiverem preenchidos. */

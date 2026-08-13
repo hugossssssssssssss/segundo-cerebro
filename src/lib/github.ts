@@ -36,10 +36,33 @@ export class ErroGitHub extends Error {
 
 function cabecalhos(cfg: Settings): HeadersInit {
   return {
-    Authorization: `Bearer ${cfg.githubToken}`,
+    // .trim() de novo por segurança: se algum dia um token entrar por outro
+    // caminho que não a tela de Ajustes, um "\n" aqui derrubaria tudo.
+    Authorization: `Bearer ${cfg.githubToken.trim()}`,
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
   };
+}
+
+/**
+ * fetch com mensagem de erro que serve para alguma coisa.
+ *
+ * Quando o fetch falha na camada de rede o navegador só diz "Failed to fetch",
+ * sem distinguir "você está sem internet" de "seu token tem uma quebra de
+ * linha". Aqui a diferença é explicada.
+ */
+async function buscar(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (e) {
+    const detalhe = e instanceof Error ? e.message : String(e);
+    throw new ErroGitHub(
+      navigator.onLine
+        ? `Não consegui falar com o GitHub. Se você acabou de colar o token, confira se não veio com espaço ou quebra de linha junto. (${detalhe})`
+        : "Você está sem internet. O app precisa de conexão para ler e gravar seus arquivos.",
+      0,
+    );
+  }
 }
 
 function raiz(cfg: Settings): string {
@@ -93,7 +116,7 @@ function deBase64(b64: string): string {
  */
 export async function listar(cfg: Settings, pasta: string): Promise<Arquivo[]> {
   const url = `${raiz(cfg)}/${pasta}?ref=${encodeURIComponent(cfg.branch)}`;
-  const resposta = await fetch(url, { headers: cabecalhos(cfg) });
+  const resposta = await buscar(url, { headers: cabecalhos(cfg) });
 
   if (resposta.status === 404) return [];
   await conferir(resposta);
@@ -118,7 +141,7 @@ export async function ler(
   caminho: string,
 ): Promise<{ texto: string; sha: string }> {
   const url = `${raiz(cfg)}/${caminho}?ref=${encodeURIComponent(cfg.branch)}`;
-  const resposta = await fetch(url, { headers: cabecalhos(cfg) });
+  const resposta = await buscar(url, { headers: cabecalhos(cfg) });
   await conferir(resposta);
 
   const dados = await resposta.json();
@@ -136,7 +159,7 @@ export async function gravar(
   sha?: string,
   mensagem?: string,
 ): Promise<string> {
-  const resposta = await fetch(`${raiz(cfg)}/${caminho}`, {
+  const resposta = await buscar(`${raiz(cfg)}/${caminho}`, {
     method: "PUT",
     headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -159,7 +182,7 @@ export async function gravarBinario(
   base64: string,
   sha?: string,
 ): Promise<string> {
-  const resposta = await fetch(`${raiz(cfg)}/${caminho}`, {
+  const resposta = await buscar(`${raiz(cfg)}/${caminho}`, {
     method: "PUT",
     headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -180,7 +203,7 @@ export async function apagar(
   caminho: string,
   sha: string,
 ): Promise<void> {
-  const resposta = await fetch(`${raiz(cfg)}/${caminho}`, {
+  const resposta = await buscar(`${raiz(cfg)}/${caminho}`, {
     method: "DELETE",
     headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -197,7 +220,7 @@ export async function testarConexao(
   cfg: Settings,
 ): Promise<{ ok: true; repo: string } | { ok: false; erro: string }> {
   try {
-    const resposta = await fetch(
+    const resposta = await buscar(
       `${BASE}/repos/${cfg.repoOwner}/${cfg.repoName}`,
       { headers: cabecalhos(cfg) },
     );
