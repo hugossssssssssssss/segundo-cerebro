@@ -1,0 +1,146 @@
+import { describe, it, expect } from "vitest";
+import { lerMarkdown } from "./markdown";
+import {
+  montarIndice,
+  extrairLinks,
+  alvosDe,
+  mencoesA,
+  sugerir,
+} from "./links";
+import type { ItemRepo } from "./repo";
+
+function item(caminho: string, texto: string): ItemRepo {
+  return {
+    caminho,
+    nome: caminho.split("/").pop()!,
+    sha: caminho,
+    tamanho: texto.length,
+    texto,
+    doc: lerMarkdown(texto),
+  };
+}
+
+const acervo: ItemRepo[] = [
+  item(
+    "notas/2026-05-01-briefing-acme.md",
+    "---\ntitulo: Briefing Acme\n---\n\nCliente quer algo sóbrio.",
+  ),
+  item(
+    "tarefas/2026-08-13-revisar-layout.md",
+    "---\ntitulo: Revisar layout\ntipo: tarefa\n---\n\nBaseado no [[Briefing Acme]], ajustar a grade.",
+  ),
+  item(
+    "pdi/entregas/2026-08-12-identidade.md",
+    "---\ntitulo: Identidade Acme\ntipo: entrega\n---\n\nSaiu do [[Briefing Acme|briefing]] e usou a [[Grade suíça]].",
+  ),
+  item(
+    "referencias/2026-07-02-grade-suica.md",
+    "---\ntitulo: Grade suíça\ntipo: referencia\n---\n\nMüller-Brockmann.",
+  ),
+];
+
+const indice = montarIndice(acervo);
+
+describe("extrairLinks", () => {
+  it("acha [[link]] e resolve o alvo pelo título", () => {
+    const r = extrairLinks(acervo[1].texto, indice);
+    expect(r).toHaveLength(1);
+    expect(r[0].bruto).toBe("Briefing Acme");
+    expect(r[0].alvo?.caminho).toBe("notas/2026-05-01-briefing-acme.md");
+    expect(r[0].alvo?.tipo).toBe("nota");
+  });
+
+  it("suporta [[alvo|texto exibido]]", () => {
+    const r = extrairLinks("veja o [[Briefing Acme|briefing]]", indice);
+    expect(r[0].exibir).toBe("briefing");
+    expect(r[0].alvo?.titulo).toBe("Briefing Acme");
+  });
+
+  it("ignora acento e caixa ao resolver", () => {
+    expect(extrairLinks("[[grade suica]]", indice)[0].alvo?.titulo).toBe(
+      "Grade suíça",
+    );
+    expect(extrairLinks("[[BRIEFING ACME]]", indice)[0].alvo).not.toBeNull();
+  });
+
+  it("link para item inexistente resolve como null, sem quebrar", () => {
+    const r = extrairLinks("[[Não existe ainda]]", indice);
+    expect(r[0].alvo).toBeNull();
+    expect(r[0].exibir).toBe("Não existe ainda");
+  });
+
+  it("não repete o mesmo alvo citado duas vezes", () => {
+    expect(extrairLinks("[[Grade suíça]] e de novo [[Grade suíça]]", indice)).toHaveLength(1);
+  });
+
+  it("texto sem link nenhum devolve lista vazia", () => {
+    expect(extrairLinks("só texto comum", indice)).toEqual([]);
+    expect(extrairLinks("[[]]", indice)).toEqual([]);
+  });
+
+  it("resolve também pelo nome do arquivo", () => {
+    // é assim que a IA às vezes escreve
+    expect(extrairLinks("[[2026-07-02-grade-suica]]", indice)[0].alvo).not.toBeNull();
+  });
+});
+
+describe("alvosDe", () => {
+  it("devolve só os caminhos que existem", () => {
+    const caminhos = alvosDe("[[Briefing Acme]] e [[Fantasma]]", indice);
+    expect(caminhos).toEqual(["notas/2026-05-01-briefing-acme.md"]);
+  });
+});
+
+describe("mencoesA", () => {
+  it("acha quem aponta para o item — a conexão aparecendo sozinha", () => {
+    const m = mencoesA("notas/2026-05-01-briefing-acme.md", acervo, indice);
+    expect(m.map((x) => x.titulo).sort()).toEqual([
+      "Identidade Acme",
+      "Revisar layout",
+    ]);
+  });
+
+  it("cruza tipos diferentes: tarefa e entrega apontando para uma nota", () => {
+    const m = mencoesA("notas/2026-05-01-briefing-acme.md", acervo, indice);
+    expect(new Set(m.map((x) => x.tipo))).toEqual(new Set(["tarefa", "entrega"]));
+  });
+
+  it("traz um trecho com contexto da menção", () => {
+    const m = mencoesA("referencias/2026-07-02-grade-suica.md", acervo, indice);
+    expect(m[0].trecho).toContain("Grade suíça");
+  });
+
+  it("item sem ninguém apontando devolve lista vazia", () => {
+    const m = mencoesA("tarefas/2026-08-13-revisar-layout.md", acervo, indice);
+    expect(m).toEqual([]);
+  });
+
+  it("um item não menciona a si mesmo", () => {
+    const proprio = item("notas/eu.md", "---\ntitulo: Eu\n---\n\nfalo de [[Eu]]");
+    const idx = montarIndice([proprio]);
+    expect(mencoesA("notas/eu.md", [proprio], idx)).toEqual([]);
+  });
+});
+
+describe("sugerir", () => {
+  it("sem termo, oferece opções para escolher", () => {
+    expect(sugerir(indice, "").length).toBeGreaterThan(0);
+  });
+
+  it("filtra pelo que foi digitado", () => {
+    const s = sugerir(indice, "grade");
+    expect(s).toHaveLength(1);
+    expect(s[0].titulo).toBe("Grade suíça");
+  });
+
+  it("quem começa com o termo vem antes de quem só contém", () => {
+    const s = sugerir(indice, "acme");
+    expect(s[0].titulo).toBe("Briefing Acme"); // não "Identidade Acme"
+  });
+
+  it("não repete o mesmo item por ter dois apelidos no índice", () => {
+    const s = sugerir(indice, "");
+    const caminhos = s.map((a) => a.caminho);
+    expect(new Set(caminhos).size).toBe(caminhos.length);
+  });
+});

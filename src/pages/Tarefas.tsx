@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Timer, Trash2, Check, List, CalendarDays } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { ler, gravar, apagar } from "@/lib/github";
-import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
+import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
+import { montarIndice, mencoesA } from "@/lib/links";
+import { AreaComLinks, MencionadoEm } from "@/components/Links";
 import {
   lerMarkdown,
   escreverMarkdown,
@@ -35,7 +37,6 @@ import {
   Carregando,
   Modal,
   Rotulo,
-  AreaTexto,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +66,8 @@ export default function Tarefas() {
   const [visao, setVisao] = useState<"lista" | "calendario">("lista");
   // caminho da tarefa cuja gravação está no ar — impede toque duplo
   const [gravandoCaminho, setGravandoCaminho] = useState<string | null>(null);
+  // acervo inteiro: serve para resolver os [[links]] e as menções
+  const [acervo, setAcervo] = useState<ItemRepo[]>([]);
 
   /* ----------------------------------------------------------- carregar */
 
@@ -77,7 +80,9 @@ export default function Tarefas() {
     setErro("");
     try {
       // duas requisições para o repositório inteiro, em vez de 1 + N
-      const itens = daPasta(await carregarRepo(cfg), PASTA);
+      const todos = await carregarRepo(cfg);
+      setAcervo(todos);
+      const itens = daPasta(todos, PASTA);
       setTarefas(
         ordenar(
           itens.map((i) =>
@@ -251,6 +256,8 @@ export default function Tarefas() {
       />
     );
   }
+
+  const indice = useMemo(() => montarIndice(acervo), [acervo]);
 
   // ordenar aqui (e não dentro de alternarFeito) mantém a linha parada
   // debaixo do dedo quando você marca uma caixinha
@@ -493,15 +500,18 @@ export default function Tarefas() {
 
             <div>
               <Rotulo>Anotações</Rotulo>
-              <AreaTexto
+              <AreaComLinks
                 value={editando.corpo}
-                onChange={(e) =>
-                  setEditando({ ...editando, corpo: e.target.value })
-                }
-                placeholder="Detalhes, links, o que for útil…"
+                onChange={(v) => setEditando({ ...editando, corpo: v })}
+                indice={indice}
+                placeholder="Detalhes, o que for útil…"
                 className="min-h-32"
               />
             </div>
+
+            {editando.caminho && (
+              <MencionadoEm mencoes={mencoesA(editando.caminho, acervo, indice)} />
+            )}
           </div>
         )}
       </Modal>

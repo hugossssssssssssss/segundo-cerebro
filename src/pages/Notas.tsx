@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import MDEditor from "@uiw/react-md-editor";
 import { Plus, Trash2, Search, ArrowLeft, Save } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
+import { montarIndice, mencoesA, extrairLinks } from "@/lib/links";
+import { MencionadoEm } from "@/components/Links";
 import {
   escreverMarkdown,
   tituloProvavel,
@@ -46,6 +48,8 @@ export default function Notas() {
   const [busca, setBusca] = useState("");
   const [aberta, setAberta] = useState<NotaAberta | null>(null);
   const [salvando, setSalvando] = useState(false);
+  // acervo inteiro: resolve os [[links]] e as menções
+  const [acervo, setAcervo] = useState<ItemRepo[]>([]);
 
   /* ------------------------------------------------------------ listagem */
 
@@ -59,7 +63,9 @@ export default function Notas() {
     try {
       // o conteúdo já vem junto, então o título sai daqui mesmo — antes eram
       // N requisições extras só para descobrir o título de cada nota
-      const lista = daPasta(await carregarRepo(cfg), PASTA);
+      const todos = await carregarRepo(cfg);
+      setAcervo(todos);
+      const lista = daPasta(todos, PASTA);
       setArquivos(lista);
       setTitulos(
         Object.fromEntries(
@@ -78,6 +84,8 @@ export default function Notas() {
   useEffect(() => {
     carregarLista();
   }, [carregarLista]);
+
+  const indice = useMemo(() => montarIndice(acervo), [acervo]);
 
   const mudou =
     aberta !== null &&
@@ -257,6 +265,39 @@ export default function Notas() {
             textareaProps={{ placeholder: "Escreva o que quiser…" }}
           />
         </div>
+
+        {(() => {
+          const links = extrairLinks(aberta.corpo, indice);
+          if (links.length === 0) return null;
+          return (
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-muted-foreground">Esta nota liga a:</span>
+              {links.map((l) => (
+                <span
+                  key={l.bruto}
+                  className={
+                    l.alvo
+                      ? "rounded-md bg-primary/15 px-2 py-0.5 text-primary"
+                      : "rounded-md bg-secondary px-2 py-0.5 text-muted-foreground"
+                  }
+                  title={l.alvo ? l.alvo.caminho : "Ainda não existe"}
+                >
+                  {l.exibir}
+                  {!l.alvo && " (não existe)"}
+                </span>
+              ))}
+            </div>
+          );
+        })()}
+
+        {aberta.caminho && (
+          <MencionadoEm mencoes={mencoesA(aberta.caminho, acervo, indice)} />
+        )}
+
+        <p className="text-xs text-muted-foreground">
+          Escreva <code className="rounded bg-secondary px-1">[[nome]]</code>{" "}
+          para ligar esta nota a uma tarefa, referência ou meta sua.
+        </p>
 
         <div className="flex items-center justify-between gap-3">
           <Botao onClick={salvar} disabled={salvando || !mudou}>

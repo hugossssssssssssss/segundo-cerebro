@@ -85,10 +85,14 @@ export function Campo({
 
 export function AreaTexto({
   className,
+  ref,
   ...props
-}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  ref?: React.Ref<HTMLTextAreaElement>;
+}) {
   return (
     <textarea
+      ref={ref}
       className={cn(
         "flex min-h-24 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm",
         "placeholder:text-muted-foreground",
