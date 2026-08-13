@@ -1,0 +1,53 @@
+name: Publicar no GitHub Pages
+
+# Publica o app a cada push na main. O repositório de dados é OUTRO
+# (segundo-cerebro-dados), então salvar uma nota não dispara build nenhum.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # permite publicar na mão pelo site do GitHub
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Se dois pushes vierem juntos, deixa o último terminar em vez de cancelar
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Testes
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  publicar:
+    needs: construir
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
