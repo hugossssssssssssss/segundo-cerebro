@@ -11,13 +11,22 @@ import {
   Copy,
   Check,
   FileCheck,
+  Cpu,
+  Sparkles,
+  Volume2,
 } from "lucide-react";
 import { Botao, Cartao, Aviso, Selo } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { lerConfig } from "@/lib/settings";
-import { transcreverAudioLocalWhisper } from "@/lib/whisperLocal";
+import {
+  transcreverAudioLocalWhisper,
+  transcreverComWebSpeechAPI,
+} from "@/lib/whisperLocal";
+import { transcreverAudioComIA } from "@/lib/gemini";
 import { gravar } from "@/lib/github";
 import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
+
+type MotorTranscricao = "whisper_base" | "native_speech" | "gemini";
 
 interface ItemTranscricao {
   id: string;
@@ -33,6 +42,8 @@ interface ItemTranscricao {
 const CHAVE_STORAGE = "sc_transcricoes_queue";
 
 export default function Transcritor() {
+  const [motorSelecionado, setMotorSelecionado] = useState<MotorTranscricao>("whisper_base");
+
   const [fila, setFila] = useState<ItemTranscricao[]>(() => {
     const salvo = localStorage.getItem(CHAVE_STORAGE);
     if (!salvo) return [];
@@ -64,7 +75,6 @@ export default function Transcritor() {
 
     const arquivoFile = arquivosCacheRef.current.get(pendente.id);
     if (!arquivoFile) {
-      // Se não temos o objeto File em memória (ex: recarregou a página), atualiza erro
       setFila((prev) =>
         prev.map((item) =>
           item.id === pendente.id
@@ -79,7 +89,6 @@ export default function Transcritor() {
       return;
     }
 
-    // Marca como processando e executa a IA
     setFila((prev) =>
       prev.map((item) =>
         item.id === pendente.id
@@ -88,16 +97,27 @@ export default function Transcritor() {
       )
     );
 
-    transcreverAudioLocalWhisper(
-      arquivoFile,
-      (msg) => {
-        setFila((prev) =>
-          prev.map((item) =>
-            item.id === pendente.id ? { ...item, progressoMsg: msg } : item
-          )
-        );
-      }
-    )
+    const callbackProgresso = (msg: string) => {
+      setFila((prev) =>
+        prev.map((item) =>
+          item.id === pendente.id ? { ...item, progressoMsg: msg } : item
+        )
+      );
+    };
+
+    let promessaTranscricao: Promise<string>;
+
+    if (motorSelecionado === "native_speech") {
+      promessaTranscricao = transcreverComWebSpeechAPI(arquivoFile, callbackProgresso);
+    } else if (motorSelecionado === "gemini") {
+      const cfg = lerConfig();
+      promessaTranscricao = transcreverAudioComIA(cfg, arquivoFile, callbackProgresso);
+    } else {
+      // whisper_base (Whisper Base 100% Local)
+      promessaTranscricao = transcreverAudioLocalWhisper(arquivoFile, "Xenova/whisper-base", callbackProgresso);
+    }
+
+    promessaTranscricao
       .then((texto) => {
         setFila((prev) =>
           prev.map((item) =>
@@ -120,13 +140,13 @@ export default function Transcritor() {
               ? {
                   ...item,
                   status: "erro",
-                  erroMsg: e?.message || "Erro desconhecido ao transcrever.",
+                  erroMsg: e?.message || "Erro ao transcrever o áudio.",
                 }
               : item
           )
         );
       });
-  }, [fila, itemSelecionadoId]);
+  }, [fila, itemSelecionadoId, motorSelecionado]);
 
   // Adicionar arquivos à fila
   function aoAdicionarArquivos(files: FileList | null) {
@@ -180,7 +200,7 @@ export default function Transcritor() {
     URL.revokeObjectURL(url);
   }
 
-  // Salvar transcrição como Nota no Segundo Cérebro do GitHub!
+  // Salvar transcrição como Nota no Segundo Cérebro do GitHub
   async function salvarComoNota(item: ItemTranscricao) {
     if (!item.transcricao) return;
     setSalvandoNota(true);
@@ -216,16 +236,81 @@ export default function Transcritor() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
               <Mic size={20} />
             </div>
-            Transcrição com Oradores
+            Transcrição de Áudio
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Envie seus áudios e o modelo OpenAI Whisper (Open-Source) transcreve 100% no seu navegador em segundo plano, sem usar sua chave Gemini e sem risco de nenhum custo.
+            Transcreva áudios do WhatsApp, reuniões e entrevistas com opções 100% locais no navegador ou via IA.
           </p>
         </div>
 
         <Selo tom="sucesso" className="self-start sm:self-center px-3 py-1 flex items-center gap-1.5">
-          🔒 100% Local / Custo R$ 0
+          🔒 Fila em Segundo Plano
         </Selo>
+      </div>
+
+      {/* Seleção do Motor de Transcrição */}
+      <div className="space-y-2 p-4 rounded-xl border border-border bg-card/60">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Escolha o Motor de Transcrição:
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => setMotorSelecionado("whisper_base")}
+            className={cn(
+              "p-3 rounded-xl border text-left transition-all space-y-1",
+              motorSelecionado === "whisper_base"
+                ? "border-primary bg-primary/10 shadow-sm"
+                : "border-border bg-card hover:bg-accent"
+            )}
+          >
+            <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+              <Cpu size={14} className="text-blue-500" />
+              <span>Whisper Base (Local)</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              100% no navegador. Modelo superior e mais inteligente em pt-BR. Custo R$ 0.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMotorSelecionado("native_speech")}
+            className={cn(
+              "p-3 rounded-xl border text-left transition-all space-y-1",
+              motorSelecionado === "native_speech"
+                ? "border-primary bg-primary/10 shadow-sm"
+                : "border-border bg-card hover:bg-accent"
+            )}
+          >
+            <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+              <Volume2 size={14} className="text-green-500" />
+              <span>Voz Nativa do Sistema</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Usa o reconhecedor nativo do Mac/Android. Leve, rápido e sem downloads.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMotorSelecionado("gemini")}
+            className={cn(
+              "p-3 rounded-xl border text-left transition-all space-y-1",
+              motorSelecionado === "gemini"
+                ? "border-primary bg-primary/10 shadow-sm"
+                : "border-border bg-card hover:bg-accent"
+            )}
+          >
+            <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+              <Sparkles size={14} className="text-purple-500" />
+              <span>Gemini AI (Com Oradores)</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Usa sua chave do Gemini para separar Orador 1 e Orador 2 perfeitamente.
+            </p>
+          </button>
+        </div>
       </div>
 
       {/* Mensagens de Sucesso ou Erro */}
@@ -396,7 +481,7 @@ export default function Transcritor() {
                     <Loader2 size={32} className="animate-spin text-purple-500" />
                     <div>
                       <p className="text-sm font-semibold text-foreground">
-                        Transcrevendo áudio e separando oradores...
+                        Transcrevendo áudio em segundo plano...
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Você pode navegar para outras abas. O resultado ficará salvo aqui esperando você baixar.

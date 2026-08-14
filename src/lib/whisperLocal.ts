@@ -5,33 +5,37 @@ env.allowLocalModels = false;
 env.useBrowserCache = true;
 
 let pipelineInstancia: any = null;
+let modeloAtual: string = "";
 
-export async function obterTranscritorWhisperLocal(aoProgresso?: (msg: string) => void) {
-  if (pipelineInstancia) return pipelineInstancia;
+export async function obterTranscritorWhisperLocal(
+  nomeModelo: "Xenova/whisper-base" | "Xenova/whisper-small" = "Xenova/whisper-base",
+  aoProgresso?: (msg: string) => void
+) {
+  if (pipelineInstancia && modeloAtual === nomeModelo) return pipelineInstancia;
 
-  aoProgresso?.("Carregando modelo aberto do Whisper...");
+  aoProgresso?.(`Carregando modelo aberto ${nomeModelo.replace("Xenova/", "")} (IA 100% no navegador)...`);
 
-  // Modelo leve e rápido rodando 100% no navegador (WASM / Custo R$ 0)
   pipelineInstancia = await pipeline(
     "automatic-speech-recognition",
-    "Xenova/whisper-tiny",
+    nomeModelo,
     {
       quantized: true,
       progress_callback: (p: any) => {
         if (p.status === "progress" && p.progress) {
-          aoProgresso?.(`Carregando modelo local: ${Math.round(p.progress)}%`);
+          aoProgresso?.(`Baixando modelo ${nomeModelo.replace("Xenova/", "")}: ${Math.round(p.progress)}%`);
         } else if (p.status === "ready") {
-          aoProgresso?.("Modelo pronto! Transcrevendo...");
+          aoProgresso?.("Modelo local pronto! Transcrevendo...");
         }
       },
     }
   );
 
+  modeloAtual = nomeModelo;
   return pipelineInstancia;
 }
 
 /**
- * Remove loops de repetição de palavras ou frases (ex: "da situação da situação...")
+ * Remove loops de repetição de palavras ou frases
  */
 export function removerRepeticoesInfinitas(texto: string): string {
   if (!texto) return "";
@@ -51,7 +55,7 @@ export function removerRepeticoesInfinitas(texto: string): string {
     const p = palavras[i];
     if (i > 0 && p.toLowerCase() === palavras[i - 1].toLowerCase()) {
       contadorRepeticao++;
-      if (contadorRepeticao >= 2) continue; // descarta a partir da 3ª palavra idêntica seguida
+      if (contadorRepeticao >= 2) continue;
     } else {
       contadorRepeticao = 0;
     }
@@ -62,7 +66,7 @@ export function removerRepeticoesInfinitas(texto: string): string {
 }
 
 /**
- * Decodifica o áudio do usuário para 16kHz Mono (padrão do Whisper)
+ * Decodifica o áudio do usuário para 16kHz Mono
  */
 export async function decodificarAudioPara16kHz(file: File): Promise<Float32Array> {
   const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({
@@ -75,18 +79,19 @@ export async function decodificarAudioPara16kHz(file: File): Promise<Float32Arra
 }
 
 /**
- * Transcreve o áudio 100% localmente no navegador via Whisper open-source com filtro anti-loop.
+ * Transcreve o áudio 100% localmente no navegador via Whisper Base ou Small (muito superior ao Tiny).
  */
 export async function transcreverAudioLocalWhisper(
   file: File,
+  modelo: "Xenova/whisper-base" | "Xenova/whisper-small" = "Xenova/whisper-base",
   aoProgresso?: (msg: string) => void
 ): Promise<string> {
-  aoProgresso?.("Preparando áudio...");
+  aoProgresso?.("Preparando decodificação de áudio...");
   const audioData = await decodificarAudioPara16kHz(file);
 
-  const transcritor = await obterTranscritorWhisperLocal(aoProgresso);
+  const transcritor = await obterTranscritorWhisperLocal(modelo, aoProgresso);
 
-  aoProgresso?.("Transcrevendo 100% local no navegador...");
+  aoProgresso?.("Transcrevendo com modelo Whisper local...");
   const saida = await transcritor(audioData, {
     language: "portuguese",
     task: "transcribe",
@@ -95,14 +100,79 @@ export async function transcreverAudioLocalWhisper(
     stride_length_s: 5,
   });
 
-  const textoFinal = saibaComoFormatador(saida, file.name);
+  const textoFinal = saibaComoFormatador(saida, file.name, modelo);
   return textoFinal;
 }
 
-function saibaComoFormatador(saida: any, nomeArquivo: string): string {
+/**
+ * Reconhecimento Nativo usando a Web Speech API do próprio sistema operacioanl / navegador
+ */
+export async function transcreverComWebSpeechAPI(
+  file: File,
+  aoProgresso?: (msg: string) => void
+): Promise<string> {
+  return new Promise(async (resolve, reject) => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      reject(new Error("Seu navegador não possui suporte ao Web Speech API nativo."));
+      return;
+    }
+
+    aoProgresso?.("Transcrevendo via motor de voz nativo do sistema em pt-BR...");
+    
+    const audioUrl = URL.createObjectURL(file);
+    const audioEl = new Audio(audioUrl);
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    let textoAcumulado = "";
+
+    recognition.onresult = (event: any) => {
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          textoAcumulado += event.results[i][0].transcript + " ";
+        }
+      }
+    };
+
+    recognition.onerror = (e: any) => {
+      URL.revokeObjectURL(audioUrl);
+      reject(new Error(`Erro no reconhecimento nativo: ${e.error || "falha ao ouvir"}`));
+    };
+
+    recognition.onend = () => {
+      URL.revokeObjectURL(audioUrl);
+      const resultado = removerRepeticoesInfinitas(textoAcumulado.trim());
+      if (!resultado) {
+        resolve("Não foi possível reconhecer a fala nativamente.");
+      } else {
+        resolve(`# Transcrição Nativa do Navegador (pt-BR)\n\n**Arquivo**: \`${file.name}\`  \n**Motor**: Nativo do Sistema (0ms Custo / 0 API)  \n\n---\n\n${resultado}`);
+      }
+    };
+
+    audioEl.onended = () => {
+      recognition.stop();
+    };
+
+    try {
+      recognition.start();
+      await audioEl.play();
+    } catch {
+      recognition.start();
+    }
+  });
+}
+
+function saibaComoFormatador(saida: any, nomeArquivo: string, modelo: string): string {
   if (!saida) return "Nenhum texto detectado no áudio.";
 
-  let md = `# Transcrição Local (Whisper Open-Source)\n\n`;
+  const modeloNome = modelo.replace("Xenova/", "");
+  let md = `# Transcrição Local (Whisper ${modeloNome.toUpperCase()})\n\n`;
   md += `**Arquivo**: \`${nomeArquivo}\`  \n`;
   md += `**Processamento**: 100% Navegador (Sem API / Custo R$ 0)  \n\n`;
   md += `---\n\n`;
