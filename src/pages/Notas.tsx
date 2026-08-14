@@ -27,6 +27,7 @@ import {
   Aviso,
   Vazio,
   Carregando,
+  ModalConfirmacao,
 } from "@/components/ui";
 
 import { HistoricoDiffModal } from "@/components/HistoricoDiffModal";
@@ -124,6 +125,9 @@ export default function Notas() {
   useEffect(() => {
     carregarLista();
   }, [carregarLista]);
+
+  const [confirmandoDescarte, setConfirmandoDescarte] = useState(false);
+  const [confirmandoApagar, setConfirmandoApagar] = useState(false);
 
   // Índice para relacionamentos e menções
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
@@ -267,9 +271,6 @@ export default function Notas() {
 
   async function remover() {
     if (!aberta?.caminho) return;
-    if (!confirm(`Apagar "${aberta.titulo}"?\n\nDá para recuperar pelo histórico do GitHub.`))
-      return;
-
     try {
       await apagar(cfg, aberta.caminho, aberta.sha);
       invalidarCache();
@@ -304,9 +305,11 @@ export default function Notas() {
             variante="fantasma"
             tamanho="icone"
             onClick={() => {
-              if (mudou && !confirm("Você tem alterações não salvas. Sair mesmo assim?"))
-                return;
-              fecharNota();
+              if (mudou) {
+                setConfirmandoDescarte(true);
+              } else {
+                fecharNota();
+              }
             }}
           >
             <ArrowLeft size={18} />
@@ -414,7 +417,7 @@ export default function Notas() {
             {salvando ? "Salvando…" : mudou ? "Salvar" : "Salvo"}
           </Botao>
           {aberta.caminho && (
-            <Botao variante="fantasma" onClick={remover}>
+            <Botao variante="fantasma" onClick={() => setConfirmandoApagar(true)}>
               <Trash2 size={16} />
               Apagar
             </Botao>
@@ -426,6 +429,34 @@ export default function Notas() {
           aoFechar={() => setHistoricoAberto(false)}
           caminho={aberta.caminho}
           conteudoAtual={aberta.corpo}
+        />
+
+        <ModalConfirmacao
+          aberto={confirmandoDescarte}
+          titulo="Descartar alterações?"
+          descricao="Você tem edições não salvas nesta nota. Se sair agora, o que digitou será perdido."
+          textoConfirmar="Sim, descartar"
+          textoCancelar="Continuar editando"
+          varianteConfirmar="perigo"
+          aoConfirmar={() => {
+            setConfirmandoDescarte(false);
+            fecharNota();
+          }}
+          aoCancelar={() => setConfirmandoDescarte(false)}
+        />
+
+        <ModalConfirmacao
+          aberto={confirmandoApagar}
+          titulo={`Apagar "${aberta.titulo || "esta nota"}"?`}
+          descricao="Tem certeza de que deseja apagar esta nota? Ela será excluída do repositório."
+          textoConfirmar="Sim, apagar"
+          textoCancelar="Cancelar"
+          varianteConfirmar="perigo"
+          aoConfirmar={() => {
+            setConfirmandoApagar(false);
+            remover();
+          }}
+          aoCancelar={() => setConfirmandoApagar(false)}
         />
       </div>
     );

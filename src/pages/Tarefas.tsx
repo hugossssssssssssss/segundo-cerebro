@@ -50,6 +50,7 @@ import {
   Aviso,
   Vazio,
   Carregando,
+  ModalConfirmacao,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -122,12 +123,16 @@ function PainelTarefaNotion({
   opcoesRelacionamento: { titulo: string; caminho: string }[];
   mencoesDaTarefa: any[];
 }) {
+  const [confirmandoDescarte, setConfirmandoDescarte] = useState(false);
+  const [confirmandoApagar, setConfirmandoApagar] = useState(false);
+
   const temMudancas =
     original !== null &&
     JSON.stringify(editando) !== JSON.stringify(original);
 
   const tentarFechar = useCallback(() => {
-    if (temMudancas && !confirm("Você tem alterações não salvas. Descartar?")) {
+    if (temMudancas) {
+      setConfirmandoDescarte(true);
       return;
     }
     aoFechar();
@@ -216,7 +221,7 @@ function PainelTarefaNotion({
     <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-4 bg-card">
       <div>
         {editando.caminho && (
-          <Botao variante="fantasma" onClick={aoRemover} className="text-destructive hover:bg-destructive/10">
+          <Botao variante="fantasma" onClick={() => setConfirmandoApagar(true)} className="text-destructive hover:bg-destructive/10">
             <Trash2 size={16} />
             <span>Apagar</span>
           </Botao>
@@ -232,6 +237,38 @@ function PainelTarefaNotion({
         </Botao>
       </div>
     </div>
+  );
+
+  const modaisConfirmacao = (
+    <>
+      <ModalConfirmacao
+        aberto={confirmandoDescarte}
+        titulo="Descartar alterações?"
+        descricao="Você tem edições não salvas nesta tarefa. Se fechar agora, as alterações serão perdidas."
+        textoConfirmar="Sim, descartar"
+        textoCancelar="Continuar editando"
+        varianteConfirmar="perigo"
+        aoConfirmar={() => {
+          setConfirmandoDescarte(false);
+          aoFechar();
+        }}
+        aoCancelar={() => setConfirmandoDescarte(false)}
+      />
+
+      <ModalConfirmacao
+        aberto={confirmandoApagar}
+        titulo={`Apagar "${editando.titulo || "esta tarefa"}"?`}
+        descricao="Tem certeza de que deseja apagar esta tarefa? Ela será excluída do repositório."
+        textoConfirmar="Sim, apagar"
+        textoCancelar="Cancelar"
+        varianteConfirmar="perigo"
+        aoConfirmar={() => {
+          setConfirmandoApagar(false);
+          aoRemover();
+        }}
+        aoCancelar={() => setConfirmandoApagar(false)}
+      />
+    </>
   );
 
   const conteudo = (
@@ -317,6 +354,7 @@ function PainelTarefaNotion({
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">{conteudo}</div>
           {rodape}
         </div>
+        {modaisConfirmacao}
       </div>
     );
   }
@@ -335,6 +373,7 @@ function PainelTarefaNotion({
           <div className="min-h-0 flex-1 overflow-y-auto px-6 sm:px-12 py-8">{conteudo}</div>
           {rodape}
         </div>
+        {modaisConfirmacao}
       </div>
     );
   }
@@ -353,6 +392,7 @@ function PainelTarefaNotion({
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">{conteudo}</div>
         {rodape}
       </div>
+      {modaisConfirmacao}
     </div>
   );
 }
@@ -532,8 +572,6 @@ export default function Tarefas() {
   }
 
   async function remover(t: Tarefa) {
-    if (!confirm(`Apagar "${t.titulo}"?\n\nDá para recuperar pelo histórico do GitHub.`))
-      return;
     try {
       await apagar(cfg, t.caminho, t.sha);
       invalidarCache();

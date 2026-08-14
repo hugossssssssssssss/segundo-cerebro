@@ -190,7 +190,14 @@ export function PropriedadesNotion({
   if (!todasAsChaves.includes("ultima_edicao")) todasAsChaves.push("ultima_edicao");
 
   function nomeExibido(chave: string): string {
-    return rotulosMap[chave] || chave;
+    if (rotulosMap[chave]) return rotulosMap[chave];
+    if (chave === "criado_por" || chave === "criado") return "Criado por";
+    if (chave === "criado_em") return "Criado em";
+    if (chave === "ultima_edicao" || chave === "atualizado") return "Última edição em";
+    if (chave === "status") return "Status";
+    if (chave === "prazo") return "Prazo";
+    if (chave === "tags") return "Tags";
+    return chave;
   }
 
   function atualizar(chave: string, valor: any) {

@@ -40,28 +40,24 @@ describe("Modal", () => {
   });
 
   it("com mudanças, o clique fora PEDE confirmação", async () => {
-    // um toque desatento na área escura, rolando um campo longo, apagava
-    // tudo que tinha sido digitado
-    vi.stubGlobal("confirm", vi.fn(() => false));
     const aoFechar = abrir({ temMudancas: true });
 
     await userEvent.click(screen.getByRole("dialog"));
 
-    expect(confirm).toHaveBeenCalled();
+    expect(screen.getByText("Descartar alterações?")).toBeDefined();
     expect(aoFechar).not.toHaveBeenCalled();
   });
 
   it("confirmando o descarte, fecha", async () => {
-    vi.stubGlobal("confirm", vi.fn(() => true));
     const aoFechar = abrir({ temMudancas: true });
 
     await userEvent.click(screen.getByRole("dialog"));
+    await userEvent.click(screen.getByText("Sim, descartar"));
 
     expect(aoFechar).toHaveBeenCalled();
   });
 
   it("Esc respeita a mesma proteção", async () => {
-    vi.stubGlobal("confirm", vi.fn(() => false));
     const aoFechar = abrir({ temMudancas: true });
 
     await userEvent.keyboard("{Escape}");

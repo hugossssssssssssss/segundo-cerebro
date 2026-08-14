@@ -264,10 +264,11 @@ export function Modal({
   /** Quando true, fechar sem salvar pede confirmação */
   temMudancas?: boolean;
 }) {
-  // Fechar por engano com texto digitado é perda de trabalho. Um toque
-  // desatento na área escura enquanto se rola um campo longo bastava.
+  const [confirmandoDescarte, setConfirmandoDescarte] = useState(false);
+
   const tentarFechar = useCallback(() => {
-    if (temMudancas && !confirm("Você tem alterações não salvas. Descartar?")) {
+    if (temMudancas) {
+      setConfirmandoDescarte(true);
       return;
     }
     aoFechar();
@@ -330,6 +331,20 @@ export function Modal({
           </div>
         )}
       </div>
+
+      <ModalConfirmacao
+        aberto={confirmandoDescarte}
+        titulo="Descartar alterações?"
+        descricao="Você tem edições não salvas nesta janela. Se fechar agora, o que digitou será perdido."
+        textoConfirmar="Sim, descartar"
+        textoCancelar="Continuar editando"
+        varianteConfirmar="perigo"
+        aoConfirmar={() => {
+          setConfirmandoDescarte(false);
+          aoFechar();
+        }}
+        aoCancelar={() => setConfirmandoDescarte(false)}
+      />
     </div>
   );
 }
@@ -396,6 +411,55 @@ export function TagInput({
         placeholder={tags.length === 0 ? placeholder : ""}
         className="flex-1 min-w-[120px] bg-transparent focus-visible:outline-none placeholder:text-muted-foreground"
       />
+    </div>
+  );
+}
+
+/* -------------------------------------------------------- ModalConfirmacao */
+
+export function ModalConfirmacao({
+  aberto,
+  titulo,
+  descricao,
+  textoConfirmar = "Confirmar",
+  textoCancelar = "Cancelar",
+  varianteConfirmar = "perigo",
+  aoConfirmar,
+  aoCancelar,
+}: {
+  aberto: boolean;
+  titulo: string;
+  descricao: string;
+  textoConfirmar?: string;
+  textoCancelar?: string;
+  varianteConfirmar?: "primario" | "perigo";
+  aoConfirmar: () => void;
+  aoCancelar: () => void;
+}) {
+  if (!aberto) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+      onClick={aoCancelar}
+    >
+      <div
+        className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="space-y-1.5">
+          <h3 className="text-base font-semibold text-foreground">{titulo}</h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">{descricao}</p>
+        </div>
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <Botao variante="neutro" tamanho="pequeno" onClick={aoCancelar}>
+            {textoCancelar}
+          </Botao>
+          <Botao variante={varianteConfirmar} tamanho="pequeno" onClick={aoConfirmar}>
+            {textoConfirmar}
+          </Botao>
+        </div>
+      </div>
     </div>
   );
 }
