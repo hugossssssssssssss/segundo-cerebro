@@ -120,7 +120,7 @@ export function EditorNotion({
               const idx = montarIndice(todos);
               const sugestoes = sugerir(idx, query);
               return sugestoes.map((s) => ({
-                title: s.titulo,
+                title: `@${s.titulo}`,
                 subtext: s.caminho,
                 onItemClick: () => {
                   editor.insertInlineContent([`@${s.titulo}`]);
@@ -140,7 +140,7 @@ export function EditorNotion({
               const idx = montarIndice(todos);
               const sugestoes = sugerir(idx, query);
               return sugestoes.map((s) => ({
-                title: s.titulo,
+                title: `@${s.titulo}`,
                 subtext: s.caminho,
                 onItemClick: () => {
                   editor.insertInlineContent([`@${s.titulo}`]);

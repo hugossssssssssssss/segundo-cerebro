@@ -395,7 +395,7 @@ export default function Notas() {
                   }
                   title={l.alvo ? l.alvo.caminho : "Ainda não existe"}
                 >
-                  @{l.exibir}
+                  @{l.exibir.replace(/^@+/, "")}
                   {!l.alvo && " (não existe)"}
                 </span>
               ))}
@@ -404,8 +404,7 @@ export default function Notas() {
         })()}
 
         <p className="text-xs text-muted-foreground">
-          Digite <code className="rounded bg-secondary px-1">@nome</code> ou{" "}
-          <code className="rounded bg-secondary px-1">[[nome]]</code> para ligar esta nota a uma tarefa, referência ou meta.
+          Digite <code className="rounded bg-secondary px-1">@nome</code> para ligar esta nota a uma tarefa, referência ou meta.
         </p>
 
         <div className="flex items-center justify-between gap-3">

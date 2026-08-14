@@ -282,11 +282,11 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
             <Button variant="ghost" size="sm" className="h-auto min-h-7 px-2 py-1 text-left justify-start font-normal flex-wrap gap-1 hover:bg-transparent">
               {relacoes.length > 0 ? (
                 relacoes.map((r: string) => {
-                  const nomePuro = r.replace(/^\[\[/, "").replace(/\]\]$/, "");
+                  const nomePuro = r.replace(/^[\[@]+/, "").replace(/\]\]$/, "");
                   return (
                     <Badge variant="secondary" key={r} className="font-normal text-[11px] px-1.5 py-0 flex items-center gap-1 bg-primary/10 text-primary hover:bg-primary/20">
                       <LinkIcon size={10} className="shrink-0" />
-                      {nomePuro}
+                      @{nomePuro}
                     </Badge>
                   );
                 })
@@ -302,14 +302,14 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
                 <CommandEmpty>Página não encontrada.</CommandEmpty>
                 <CommandGroup heading="Páginas (clique para ligar/desligar)">
                   {opcoesRelacionamento.map((opcao) => {
-                    const tagFormatada = `[[${opcao.titulo}]]`;
-                    const selecionado = relacoes.includes(tagFormatada);
+                    const tagFormatada = `@${opcao.titulo}`;
+                    const selecionado = relacoes.includes(tagFormatada) || relacoes.includes(`[[${opcao.titulo}]]`);
                     return (
                       <CommandItem 
                         key={opcao.caminho} 
                         onSelect={() => {
                           if (selecionado) {
-                            atualizar(chave, relacoes.filter((x: string) => x !== tagFormatada));
+                            atualizar(chave, relacoes.filter((x: string) => x !== tagFormatada && x !== `[[${opcao.titulo}]]`));
                           } else {
                             atualizar(chave, [...relacoes, tagFormatada]);
                           }
@@ -317,7 +317,7 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
                       >
                         <div className="flex items-center gap-2">
                           <CheckSquare className={`h-4 w-4 shrink-0 ${selecionado ? "opacity-100 text-primary" : "opacity-0"}`} />
-                          <span className="truncate">{opcao.titulo}</span>
+                          <span className="truncate">@{opcao.titulo}</span>
                         </div>
                       </CommandItem>
                     );
