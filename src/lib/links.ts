@@ -2,24 +2,20 @@
  * Ligações entre itens — a premissa que faltava.
  *
  * A primeira coisa que o Hugo descreveu foi "as ideias se conectam e formam
- * uma rede neural". Até agora nada apontava para nada: cada tela era uma
- * lista isolada.
+ * uma rede neural".
  *
- * A sintaxe é `[[nome do item]]`, escrita em qualquer campo de texto. Ela
- * fica no arquivo `.md` como texto puro, então continua legível fora do app
- * e é a mesma convenção que Obsidian, Logseq e a maioria das ferramentas de
- * notas usam — qualquer IA que leia o repositório entende sem explicação.
- *
- * O alvo é resolvido pelo TÍTULO, não pelo caminho: você escreve o que leria
- * em voz alta. Se dois itens tiverem o mesmo título, ganha o mais recente.
+ * Suporta formatos:
+ * - `[[nome do item]]`
+ * - `@nome do item`
+ * - URLs completas contendo `?abrir=tarefas%2F...` ou `?abrir=notas%2F...`
  */
 
 import type { ItemRepo } from "./repo";
 import { tituloProvavel } from "./markdown";
 import { tipoDoItem, type TipoItem } from "./busca";
 
-/** Captura `[[alvo]]` e `[[alvo|texto exibido]]`. */
-const PADRAO = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+/** Captura `[[alvo]]`, `[[alvo|texto]]`, `@alvo` e URLs como `.../segundo-cerebro/#/tarefas?abrir=tarefas%2F...` */
+const PADRAO = /(?:\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|@([a-zA-Z0-9_\-áàâãéèêíïóôõöúçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ\s]{2,100})|(?:https?:\/\/[^\s]+|#\/[^\s]+)\?abrir=([a-zA-Z0-9_%.-]+))/g;
 
 export type Alvo = {
   caminho: string;
@@ -28,9 +24,9 @@ export type Alvo = {
 };
 
 export type Referencia = {
-  /** O que estava escrito entre os colchetes */
+  /** O que estava escrito entre os colchetes ou URL */
   bruto: string;
-  /** O texto a exibir (o depois do `|`, ou o próprio alvo) */
+  /** O texto a exibir */
   exibir: string;
   /** null quando aponta para algo que ainda não existe */
   alvo: Alvo | null;
@@ -46,16 +42,11 @@ export function chave(s: string): string {
 }
 
 /**
- * Índice título → item, para resolver os links.
- * Aceita também o nome do arquivo, porque a IA às vezes escreve assim.
+ * Índice título/arquivo/caminho → item, para resolver os links.
  */
 export function montarIndice(itens: ItemRepo[]): Map<string, Alvo> {
   const indice = new Map<string, Alvo>();
 
-  // Do mais recente para o mais antigo. A árvore do git chega em ordem
-  // crescente de caminho, e como os nomes começam com AAAA-MM-DD isso fazia
-  // o item MAIS ANTIGO ganhar o nome — o contrário do que se espera ao
-  // escrever [[Reunião]] pensando na de ontem.
   const ordenados = [...itens].sort((a, b) => b.nome.localeCompare(a.nome));
 
   for (const item of ordenados) {
@@ -66,13 +57,14 @@ export function montarIndice(itens: ItemRepo[]): Map<string, Alvo> {
       tipo: tipoDoItem(item),
     };
 
-    // o item mais recente ganha em caso de título repetido — `daPasta` já
-    // ordena do mais novo para o mais velho, então só não sobrescrevemos
     const porTitulo = chave(titulo);
     if (!indice.has(porTitulo)) indice.set(porTitulo, alvo);
 
     const porArquivo = chave(item.nome.replace(/\.md$/, ""));
     if (!indice.has(porArquivo)) indice.set(porArquivo, alvo);
+
+    const porCaminho = chave(item.caminho);
+    if (!indice.has(porCaminho)) indice.set(porCaminho, alvo);
   }
 
   return indice;
@@ -87,14 +79,37 @@ export function extrairLinks(
   const vistos = new Set<string>();
 
   for (const m of texto.matchAll(PADRAO)) {
-    const bruto = m[1].trim();
+    let bruto = "";
+    let exibir = "";
+    let alvo: Alvo | null = null;
+
+    if (m[1]) {
+      // Formato [[alvo]] ou [[alvo|exibir]]
+      bruto = m[1].trim();
+      if (!bruto) continue;
+      exibir = (m[2] ?? bruto).trim();
+      alvo = indice.get(chave(bruto)) ?? null;
+    } else if (m[3]) {
+      // Formato @alvo
+      bruto = m[3].trim();
+      if (!bruto) continue;
+      exibir = bruto;
+      alvo = indice.get(chave(bruto)) ?? null;
+    } else if (m[4]) {
+      // Formato URL https://.../?abrir=tarefas%2F...
+      const caminhoDec = decodeURIComponent(m[4]);
+      alvo = indice.get(chave(caminhoDec)) ?? indice.get(chave(caminhoDec.split("/").pop()!.replace(/\.md$/, ""))) ?? null;
+      bruto = alvo ? alvo.titulo : caminhoDec.split("/").pop()!.replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/\.md$/, "");
+      exibir = bruto;
+    }
+
     if (!bruto || vistos.has(bruto)) continue;
     vistos.add(bruto);
 
     saida.push({
       bruto,
-      exibir: (m[2] ?? bruto).trim(),
-      alvo: indice.get(chave(bruto)) ?? null,
+      exibir,
+      alvo,
     });
   }
 
@@ -111,10 +126,6 @@ export type Mencao = {
 
 /**
  * Quem aponta para este item.
- *
- * É o mesmo dado dos links lido ao contrário, e é onde mora metade do valor:
- * abrir uma nota e descobrir que três entregas a mencionam é a conexão
- * aparecendo sozinha, sem você ter ido procurar.
  */
 export function mencoesA(
   caminhoAlvo: string,
@@ -124,7 +135,7 @@ export function mencoesA(
   const saida: Mencao[] = [];
 
   for (const item of itens) {
-    if (item.caminho === caminhoAlvo) continue; // não se auto-menciona
+    if (item.caminho === caminhoAlvo) continue;
 
     const links = extrairLinks(item.texto, indice);
     const acertou = links.find((l) => l.alvo?.caminho === caminhoAlvo);
@@ -159,8 +170,7 @@ function recorteEmVolta(corpo: string, alvo: string): string {
 }
 
 /**
- * Sugestões para o autocompletar depois de digitar `[[`.
- * Sem termo, devolve os mais recentes — que é quase sempre o que se quer ligar.
+ * Sugestões para o autocompletar.
  */
 export function sugerir(
   indice: Map<string, Alvo>,
@@ -179,7 +189,6 @@ export function sugerir(
     .sort((a, b) => {
       const ka = chave(a.titulo);
       const kb = chave(b.titulo);
-      // quem começa com o termo aparece antes de quem só o contém
       const pa = ka.startsWith(alvo) ? 0 : 1;
       const pb = kb.startsWith(alvo) ? 0 : 1;
       return pa - pb || ka.length - kb.length;

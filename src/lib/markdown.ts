@@ -6,7 +6,6 @@
  * Nunca jogue fora conteúdo que não entendeu.
  */
 
-// js-yaml v5 é ESM puro e não tem export default — só imports nomeados.
 import { load, dump } from "js-yaml";
 
 export type Frontmatter = Record<string, unknown>;
@@ -47,7 +46,7 @@ export function escreverMarkdown(doc: Documento): string {
   if (campos.length === 0) return doc.corpo;
 
   const yamlTexto = dump(Object.fromEntries(campos), {
-    lineWidth: -1, // não quebra linhas longas
+    lineWidth: -1,
     noRefs: true,
   });
   return `---\n${yamlTexto}---\n\n${doc.corpo.replace(/^\n+/, "")}`;
@@ -71,7 +70,7 @@ export function tituloProvavel(doc: Documento, nomeArquivo: string): string {
 export function nomeDeArquivo(titulo: string): string {
   const limpo = titulo
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // tira acentos
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9\s-]/g, "")
     .trim()
     .replace(/\s+/g, "-")
@@ -87,8 +86,6 @@ export function nomeDeArquivo(titulo: string): string {
 /**
  * Garante um nome livre. Duas tarefas "Reunião" no mesmo dia geravam o mesmo
  * caminho, e a segunda falhava com um 422 incompreensível.
- *
- * `ocupados` são os caminhos que já existem na pasta.
  */
 export function nomeLivre(
   pasta: string,
@@ -116,13 +113,6 @@ export function comoLista(valor: unknown): string[] {
 
 /**
  * Junta os campos que o app gerencia por cima dos que ele não conhece.
- *
- * O `.md` é a fonte da verdade e o app não é o único a escrever nele: o Hugo
- * edita pelo github.com e outras IAs enriquecem os arquivos. Apagar o que não
- * entendemos seria destruir esse trabalho silenciosamente.
- *
- * `gerenciados` com valor undefined REMOVE o campo — é assim que limpar uma
- * data no formulário funciona.
  */
 export function mesclarFrontmatter(
   original: Frontmatter,
@@ -140,27 +130,24 @@ export function mesclarFrontmatter(
 }
 
 /**
- * Desfaz o escape que o editor aplica nos `[[links]]`.
- *
- * O BlockNote serializa com remark-stringify, que trata `[[` como sintaxe a
- * ser escapada e grava `\[\[Briefing]]` no arquivo. Isso tinha duas
- * consequências, ambas verificadas na prática:
- *
- *   1. o `.md` no repositório ficava com barras invertidas, visíveis no
- *      GitHub, no Obsidian e para qualquer IA que lesse o repositório;
- *   2. `extrairLinks` deixava de reconhecer o link — porque `\[\[` não tem
- *      dois colchetes seguidos — e o "Mencionado em" morria junto.
- *
- * Rodar isto na saída do editor mantém o arquivo limpo e os links vivos.
+ * Desfaz o escape que o editor aplica nos `[[links]]` e converte URLs coladas
+ * contendo `?abrir=tarefas%2F...` ou `?abrir=notas%2F...` em wikilinks limpos.
  */
 export function restaurarWikilinks(markdown: string): string {
-  // Só desfaz o escape quando o resultado forma mesmo um wikilink fechado.
-  // Uma substituição cega de `\[\[` transformava em link qualquer colchete
-  // que o usuário tivesse escapado de propósito, ou colado de um trecho de
-  // código como `\[\[1,2]]`.
-  return markdown.replace(
+  let limpo = markdown.replace(
     /\\\[\\\[([^\[\]\n]{1,200}?)\\?\]\\?\]/g,
     (_todo, alvo) => `[[${alvo}]]`,
   );
-}
 
+  // Converte URLs do tipo https://.../?abrir=tarefas%2F2026-08-14-dasd.md coladas diretamente
+  limpo = limpo.replace(
+    /(?:https?:\/\/[^\s]+|#\/[^\s]+)\?abrir=([a-zA-Z0-9_%.-]+)/g,
+    (_todo, rawCaminho) => {
+      const dec = decodeURIComponent(rawCaminho);
+      const nomeOuTitulo = dec.split("/").pop()!.replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/\.md$/, "");
+      return `[[${nomeOuTitulo}]]`;
+    }
+  );
+
+  return limpo;
+}
