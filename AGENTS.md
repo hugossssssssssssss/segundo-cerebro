@@ -82,6 +82,14 @@ npm run dev       # e abrir de verdade no navegador
 
 Nunca diga que funciona sem ter rodado. E teste também numa tela estreita: metade do uso é no Android.
 
+## Dois editores sobre o mesmo texto — cuidado aqui
+
+`EditorNotion` (BlockNote) sincroniza o markdown **só na montagem** (`useEffect` com `[]`). Se outro componente alterar o mesmo `corpo` enquanto ele está aberto, o editor não vê a mudança e a sobrescreve no próximo `onChange`. Foi por isso que o componente `Subtarefas` existe e está testado mas **não** está ligado ao modal de tarefa.
+
+Duas saídas, quando alguém for resolver:
+1. Fazer o `EditorNotion` re-sincronizar quando o `markdown` mudar por fora (cuidado com laço de atualização).
+2. Ou aceitar que o editor é o único dono do corpo — BlockNote já tem caixinha de tarefa nativa.
+
 ## Pendências conscientes
 
 - Token e chave ficam em texto puro no `localStorage`. O plano discutido é criptografá-los com uma senha (WebCrypto, sem backend). O Hugo adiou por ora.
