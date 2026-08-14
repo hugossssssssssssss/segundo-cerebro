@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
-import { useCreateBlockNote } from "@blocknote/react";
+import { SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { restaurarWikilinks } from "@/lib/markdown";
+import { lerConfig } from "@/lib/settings";
+import { carregarRepo } from "@/lib/repo";
+import { montarIndice, sugerir } from "@/lib/links";
 
 /**
  * Auxiliar para converter URLs coladas do tipo ?abrir=caminho ou [[alvo]] em @ Nome do Item
@@ -100,14 +103,55 @@ export function EditorNotion({
               const blocos = editor.tryParseMarkdownToBlocks(limpo);
               editor.replaceBlocks(editor.document, blocos);
             } catch {
-              // ignora erro silenciosamente se a re-análise falhar
+              // ignora se a re-análise falhar
             }
           }
 
           ultimoMd.current = limpo;
           onChange(limpo);
         }}
-      />
+      >
+        <SuggestionMenuController
+          triggerCharacter="@"
+          getItems={async (query) => {
+            try {
+              const cfg = lerConfig();
+              const todos = await carregarRepo(cfg, { memoria: 5000 });
+              const idx = montarIndice(todos);
+              const sugestoes = sugerir(idx, query);
+              return sugestoes.map((s) => ({
+                title: s.titulo,
+                subtext: s.caminho,
+                onItemClick: () => {
+                  editor.insertInlineContent([`@${s.titulo}`]);
+                },
+              }));
+            } catch {
+              return [];
+            }
+          }}
+        />
+        <SuggestionMenuController
+          triggerCharacter="["
+          getItems={async (query) => {
+            try {
+              const cfg = lerConfig();
+              const todos = await carregarRepo(cfg, { memoria: 5000 });
+              const idx = montarIndice(todos);
+              const sugestoes = sugerir(idx, query);
+              return sugestoes.map((s) => ({
+                title: s.titulo,
+                subtext: s.caminho,
+                onItemClick: () => {
+                  editor.insertInlineContent([`@${s.titulo}`]);
+                },
+              }));
+            } catch {
+              return [];
+            }
+          }}
+        />
+      </BlockNoteView>
       <style>{`
         .notion-editor-wrapper .bn-container { font-family: inherit; }
         .notion-editor-wrapper .bn-editor { padding-left: 0; padding-right: 0; }
