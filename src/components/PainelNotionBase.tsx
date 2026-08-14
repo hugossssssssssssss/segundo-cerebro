@@ -30,6 +30,7 @@ export interface PainelNotionBaseProps {
   dadosProps: Record<string, any>;
   onChangeProps: (novosDados: Record<string, any>) => void;
   camposFixosProps?: Record<string, any>;
+  caminhoItem?: string;
   salvando: boolean;
   temMudancas: boolean;
   aoFechar: () => void;
@@ -51,6 +52,7 @@ export function PainelNotionBase({
   dadosProps,
   onChangeProps,
   camposFixosProps,
+  caminhoItem,
   salvando,
   temMudancas,
   aoFechar,
@@ -229,6 +231,8 @@ export function PainelNotionBase({
     />
   );
 
+  const eTarefa = rotuloTipo?.toLowerCase().includes("tarefa");
+
   const conteudo = (
     <div className="space-y-5 max-w-4xl mx-auto w-full">
       {erro && <Aviso tom="erro">{erro}</Aviso>}
@@ -254,20 +258,24 @@ export function PainelNotionBase({
 
       <hr className="border-border" />
 
-      <div className="space-y-3">
-        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Passos / Subtarefas
-        </label>
-        <Subtarefas
-          corpo={corpo}
-          onChange={(novoCorpo) => setCorpo(novoCorpo)}
-        />
-      </div>
-
-      <hr className="border-border" />
+      {eTarefa && (
+        <>
+          <div className="space-y-3">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Passos / Subtarefas
+            </label>
+            <Subtarefas
+              corpo={corpo}
+              onChange={(novoCorpo) => setCorpo(novoCorpo)}
+            />
+          </div>
+          <hr className="border-border" />
+        </>
+      )}
 
       <div className="min-h-[220px]">
         <EditorNotion
+          key={caminhoItem || titulo || "editor"}
           markdown={corpo}
           onChange={(v) => setCorpo(v ?? "")}
         />

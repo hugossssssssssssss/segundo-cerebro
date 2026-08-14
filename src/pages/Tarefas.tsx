@@ -102,6 +102,7 @@ export function PainelTarefaNotion({
       setTitulo={(t) => setEditando({ ...editando, titulo: t })}
       corpo={editando.corpo}
       setCorpo={(c) => setEditando({ ...editando, corpo: c })}
+      caminhoItem={editando.caminho}
       dadosProps={{
         ...editando.bruto,
         status: editando.status,
@@ -161,7 +162,7 @@ export default function Tarefas() {
 
   const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>(() => {
     const salvo = localStorage.getItem("tarefa-modo-visao");
-    return (salvo as any) || "popup";
+    return salvo === "flutuante" ? "popup" : (salvo as any) || "popup";
   });
 
   const alternarModoVisao = (novo: ModoVisaoNotion) => {

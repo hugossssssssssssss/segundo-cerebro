@@ -402,6 +402,7 @@ export default function Notas() {
           setTitulo={(t) => setAberta({ ...aberta, titulo: t })}
           corpo={aberta.corpo}
           setCorpo={(c) => setAberta({ ...aberta, corpo: c })}
+          caminhoItem={aberta.caminho}
           dadosProps={aberta.bruto}
           onChangeProps={(novosDados) => setAberta({ ...aberta, bruto: novosDados })}
           camposFixosProps={{

@@ -593,6 +593,7 @@ export default function PDI() {
           setTitulo={(t) => setEditandoMeta({ ...editandoMeta, titulo: t })}
           corpo={editandoMeta.corpo}
           setCorpo={(c) => setEditandoMeta({ ...editandoMeta, corpo: c })}
+          caminhoItem={editandoMeta.caminho}
           dadosProps={{
             status: editandoMeta.status,
             prazo: editandoMeta.prazo,
