@@ -296,21 +296,26 @@ export function sincronizarRelacionamentos(
   corpo: string,
 ): Record<string, any> {
   const mencoesTexto = extrairMencoesTexto(corpo);
-  const relExistentes = Array.isArray(dados.relacionamentos)
-    ? dados.relacionamentos
-    : Array.isArray(dados.relacao)
-    ? dados.relacao
-    : [];
 
-  const unicos = Array.from(new Set([...relExistentes, ...mencoesTexto]));
-  
-  if (unicos.length === 0 && !dados.relacionamentos && !dados.relacao) {
-    return dados;
+  // Se não há nenhuma menção no texto, limpa e oculta a propriedade relacionamentos
+  if (mencoesTexto.length === 0) {
+    if (!("relacionamentos" in dados) && !("relacao" in dados)) {
+      return dados;
+    }
+    const proximo = { ...dados };
+    delete proximo.relacionamentos;
+    delete proximo.relacao;
+    if (proximo.esquema?.relacionamentos) {
+      const nEsquema = { ...proximo.esquema };
+      delete nEsquema.relacionamentos;
+      proximo.esquema = nEsquema;
+    }
+    return proximo;
   }
 
   return {
     ...dados,
-    relacionamentos: unicos,
+    relacionamentos: mencoesTexto,
     esquema: {
       ...(dados.esquema || {}),
       relacionamentos: "relation",

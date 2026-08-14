@@ -199,7 +199,11 @@ export function PropriedadesNotion({
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
     .filter(k => !["titulo", "tipo", "atualizado", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos"].includes(k));
     
-  if (!todasAsChaves.includes("relacionamentos")) todasAsChaves.push("relacionamentos");
+  const temRelacionamentos = (Array.isArray(dados.relacionamentos) && dados.relacionamentos.length > 0) ||
+    (Array.isArray(dados.relacao) && dados.relacao.length > 0);
+  if (temRelacionamentos && !todasAsChaves.includes("relacionamentos")) {
+    todasAsChaves.push("relacionamentos");
+  }
   if (!todasAsChaves.includes("tags")) todasAsChaves.push("tags");
   if (!todasAsChaves.includes("criado_por")) todasAsChaves.push("criado_por");
   if (!todasAsChaves.includes("criado_em")) todasAsChaves.push("criado_em");
@@ -702,20 +706,31 @@ export function PropriedadesNotion({
             <Button variant="ghost" size="sm" className="h-auto min-h-7 px-2 py-1 text-left justify-start font-normal flex-wrap gap-1 hover:bg-transparent">
               {unicosMencoes.length > 0 ? (
                 unicosMencoes.map((r: string) => {
-                  const nomePuro = r.replace(/^[\[@]+/, "").replace(/\]\]$/, "");
-                  const itemAlvo = opcoesRelacionamento.find((o) => o.titulo.toLowerCase() === nomePuro.toLowerCase());
+                  const nomePuro = r.replace(/^[\[@]+/, "").replace(/\]\]$/, "").trim();
+                  const normNome = nomePuro.toLowerCase();
+                  const itemAlvo = opcoesRelacionamento.find((o) => {
+                    const normTitulo = o.titulo.toLowerCase().trim();
+                    const normCaminho = o.caminho.toLowerCase().trim();
+                    const normBase = o.caminho.split("/").pop()?.replace(/\.md$/, "").toLowerCase().trim() || "";
+                    return normTitulo === normNome || normCaminho === normNome || normBase === normNome || normTitulo.includes(normNome) || normNome.includes(normTitulo);
+                  });
                   return (
                     <Badge 
                       variant="secondary" 
                       key={r} 
                       onClick={(e) => {
+                        e.stopPropagation();
                         if (itemAlvo) {
-                          e.stopPropagation();
-                          window.location.href = `?abrir=${encodeURIComponent(itemAlvo.caminho)}`;
+                          window.location.search = `?abrir=${encodeURIComponent(itemAlvo.caminho)}`;
+                        } else {
+                          const matchPorTitulo = opcoesRelacionamento.find((o) => o.titulo.toLowerCase().includes(normNome));
+                          if (matchPorTitulo) {
+                            window.location.search = `?abrir=${encodeURIComponent(matchPorTitulo.caminho)}`;
+                          }
                         }
                       }}
                       className="font-medium text-[11px] px-2 py-0.5 flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                      title={itemAlvo ? `Abrir "${itemAlvo.titulo}"` : undefined}
+                      title={itemAlvo ? `Abrir "${itemAlvo.titulo}"` : `Abrir "${nomePuro}"`}
                     >
                       <LinkIcon size={10} className="shrink-0" />
                       @{nomePuro}
