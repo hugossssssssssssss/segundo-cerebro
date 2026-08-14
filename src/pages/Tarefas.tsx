@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -105,7 +105,7 @@ function PainelTarefaNotion({
   original,
   salvando,
   aoFechar,
-  aoSalvarAuto,
+  aoSalvar,
   aoRemover,
   setEditando,
   opcoesRelacionamento,
@@ -118,14 +118,13 @@ function PainelTarefaNotion({
   original: Tarefa | null;
   salvando: boolean;
   aoFechar: () => void;
-  aoSalvarAuto?: (t: Tarefa) => void;
+  aoSalvar: (t: Tarefa) => void;
   aoRemover: () => void;
   setEditando: React.Dispatch<React.SetStateAction<Tarefa | null>>;
   opcoesRelacionamento: { titulo: string; caminho: string }[];
   mencoesDaTarefa: any[];
   erro?: string;
 }) {
-  const [confirmandoDescarte, setConfirmandoDescarte] = useState(false);
   const [confirmandoApagar, setConfirmandoApagar] = useState(false);
 
   const temMudancas =
@@ -133,12 +132,13 @@ function PainelTarefaNotion({
     JSON.stringify(editando) !== JSON.stringify(original);
 
   const tentarFechar = useCallback(() => {
+    if (salvando) return;
     if (temMudancas) {
-      setConfirmandoDescarte(true);
+      aoSalvar(editando);
       return;
     }
     aoFechar();
-  }, [temMudancas, aoFechar]);
+  }, [salvando, temMudancas, aoSalvar, editando, aoFechar]);
 
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
@@ -161,12 +161,14 @@ function PainelTarefaNotion({
           {editando.caminho ? "Tarefa" : "Nova tarefa"}
         </span>
 
-        {/* Indicador visual de sincronização inteligente em tempo real */}
+        {/* Indicador visual de salvamento ao fechar */}
         <span className="text-[11px] font-medium ml-2 px-2.5 py-0.5 rounded-full bg-accent/60 flex items-center gap-1">
           {salvando ? (
-            <span className="text-blue-500 animate-pulse font-semibold">Sincronizando com GitHub...</span>
+            <span className="text-blue-500 animate-pulse font-semibold">Salvando no GitHub...</span>
+          ) : temMudancas ? (
+            <span className="text-amber-600 dark:text-amber-400 font-medium">Salva ao fechar</span>
           ) : (
-            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">✓ Salvo</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ Sincronizado</span>
           )}
         </span>
       </div>
@@ -234,56 +236,25 @@ function PainelTarefaNotion({
         <Trash2 size={15} />
         <span>Apagar tarefa</span>
       </Botao>
-      <span className="text-xs text-muted-foreground">Todas as alterações são salvas automaticamente</span>
+      <span className="text-xs text-muted-foreground">Salva automaticamente no GitHub ao fechar</span>
     </div>
   ) : null;
 
   const modaisConfirmacao = (
-    <>
-      <ModalConfirmacao
-        aberto={confirmandoDescarte}
-        titulo="Descartar alterações?"
-        descricao="Você tem edições não salvas nesta tarefa. Se fechar agora, as alterações serão perdidas."
-        textoConfirmar="Sim, descartar"
-        textoCancelar="Continuar editando"
-        varianteConfirmar="perigo"
-        aoConfirmar={() => {
-          setConfirmandoDescarte(false);
-          aoFechar();
-        }}
-        aoCancelar={() => setConfirmandoDescarte(false)}
-      />
-
-      <ModalConfirmacao
-        aberto={confirmandoApagar}
-        titulo={`Apagar "${editando.titulo || "esta tarefa"}"?`}
-        descricao="Tem certeza de que deseja apagar esta tarefa? Ela será excluída do repositório."
-        textoConfirmar="Sim, apagar"
-        textoCancelar="Cancelar"
-        varianteConfirmar="perigo"
-        aoConfirmar={() => {
-          setConfirmandoApagar(false);
-          aoRemover();
-        }}
-        aoCancelar={() => setConfirmandoApagar(false)}
-      />
-    </>
+    <ModalConfirmacao
+      aberto={confirmandoApagar}
+      titulo={`Apagar "${editando.titulo || "esta tarefa"}"?`}
+      descricao="Tem certeza de que deseja apagar esta tarefa? Ela será excluída do repositório."
+      textoConfirmar="Sim, apagar"
+      textoCancelar="Cancelar"
+      varianteConfirmar="perigo"
+      aoConfirmar={() => {
+        setConfirmandoApagar(false);
+        aoRemover();
+      }}
+      aoCancelar={() => setConfirmandoApagar(false)}
+    />
   );
-
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const agendarAutoSalvar = (proxima: Tarefa, imediato = false) => {
-    if (!proxima.titulo.trim()) return;
-    if (timerRef.current) clearTimeout(timerRef.current);
-
-    if (imediato) {
-      aoSalvarAuto?.(proxima);
-    } else {
-      timerRef.current = setTimeout(() => {
-        aoSalvarAuto?.(proxima);
-      }, 1200);
-    }
-  };
 
   const conteudo = (
     <div className="space-y-6 max-w-4xl mx-auto w-full">
@@ -292,11 +263,7 @@ function PainelTarefaNotion({
       <input
         type="text"
         value={editando.titulo}
-        onChange={(e) => {
-          const proxima = { ...editando, titulo: e.target.value };
-          setEditando(proxima);
-          agendarAutoSalvar(proxima, false);
-        }}
+        onChange={(e) => setEditando({ ...editando, titulo: e.target.value })}
         placeholder="Sem título"
         className="w-full text-2xl sm:text-3xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0 pt-2"
         autoFocus
@@ -312,15 +279,13 @@ function PainelTarefaNotion({
           }}
           corpoTexto={editando.corpo}
           onChange={(novosDados) => {
-            const proxima = {
+            setEditando({
               ...editando,
               bruto: novosDados,
               status: (novosDados.status as Status) || editando.status,
               prazo: novosDados.prazo,
               tags: Array.isArray(novosDados.tags) ? novosDados.tags : editando.tags,
-            };
-            setEditando(proxima);
-            agendarAutoSalvar(proxima, true);
+            });
           }}
           camposFixos={{
             status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
@@ -339,11 +304,7 @@ function PainelTarefaNotion({
         </label>
         <Subtarefas
           corpo={editando.corpo}
-          onChange={(novoCorpo) => {
-            const proxima = { ...editando, corpo: novoCorpo };
-            setEditando(proxima);
-            agendarAutoSalvar(proxima, true);
-          }}
+          onChange={(novoCorpo) => setEditando({ ...editando, corpo: novoCorpo })}
         />
       </div>
 
@@ -352,11 +313,7 @@ function PainelTarefaNotion({
       <div className="min-h-[250px]">
         <EditorNotion
           markdown={editando.corpo}
-          onChange={(v) => {
-            const proxima = { ...editando, corpo: v };
-            setEditando(proxima);
-            agendarAutoSalvar(proxima, false);
-          }}
+          onChange={(v) => setEditando({ ...editando, corpo: v })}
         />
       </div>
 
@@ -812,7 +769,7 @@ export default function Tarefas() {
           original={original}
           salvando={salvando}
           aoFechar={fechar}
-          aoSalvarAuto={(t) => salvar(t, false)}
+          aoSalvar={salvar}
           aoRemover={() => editando && remover(editando)}
           setEditando={setEditando}
           opcoesRelacionamento={opcoesRelacionamento}

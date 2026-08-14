@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Plus, Trash2, Search, ArrowLeft, Tag } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -223,21 +223,6 @@ export default function Notas() {
     });
   }
 
-  const timerRefNotas = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const agendarAutoSalvarNota = (proxima: NotaAberta, imediato = false) => {
-    if (!proxima.titulo.trim()) return;
-    if (timerRefNotas.current) clearTimeout(timerRefNotas.current);
-
-    if (imediato) {
-      salvar(proxima);
-    } else {
-      timerRefNotas.current = setTimeout(() => {
-        salvar(proxima);
-      }, 1200);
-    }
-  };
-
   async function salvar(alvo?: NotaAberta) {
     const n = alvo || aberta;
     if (!n) return;
@@ -261,23 +246,14 @@ export default function Notas() {
       const caminho =
         n.caminho ||
         nomeLivre(PASTA, titulo, arquivos.map((a) => a.caminho));
-      const novoSha = await gravar(
+      await gravar(
         cfg,
         caminho,
         texto,
         n.sha || undefined,
       );
       invalidarCache();
-
-      const salva = {
-        ...n,
-        caminho,
-        sha: novoSha,
-        titulo,
-        original: { titulo, corpo: n.corpo, bruto: n.bruto },
-      };
-      setAberta(salva);
-      navegar(`?abrir=${encodeURIComponent(caminho)}`, { replace: true });
+      fecharNota();
       await carregarLista();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -322,21 +298,24 @@ export default function Notas() {
             <Botao
               variante="fantasma"
               tamanho="icone"
-              onClick={() => {
+              onClick={async () => {
+                if (salvando) return;
                 if (mudou) {
-                  setConfirmandoDescarte(true);
-                } else {
-                  fecharNota();
+                  await salvar(aberta);
+                  return;
                 }
+                fecharNota();
               }}
             >
               <ArrowLeft size={18} />
             </Botao>
             <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-accent/60 flex items-center gap-1">
               {salvando ? (
-                <span className="text-blue-500 animate-pulse font-semibold">Sincronizando com GitHub...</span>
+                <span className="text-blue-500 animate-pulse font-semibold">Salvando no GitHub...</span>
+              ) : mudou ? (
+                <span className="text-amber-600 dark:text-amber-400 font-medium">Salva ao fechar</span>
               ) : (
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">✓ Salvo</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ Sincronizado</span>
               )}
             </span>
           </div>
@@ -375,11 +354,7 @@ export default function Notas() {
             <input
               type="text"
               value={aberta.titulo}
-              onChange={(e) => {
-                const proxima = { ...aberta, titulo: e.target.value };
-                setAberta(proxima);
-                agendarAutoSalvarNota(proxima, false);
-              }}
+              onChange={(e) => setAberta({ ...aberta, titulo: e.target.value })}
               placeholder="Sem título"
               className="w-full text-4xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0"
             />
@@ -387,11 +362,7 @@ export default function Notas() {
               <PropriedadesNotion
                 dados={aberta.bruto}
                 corpoTexto={aberta.corpo}
-                onChange={(novosDados) => {
-                  const proxima = { ...aberta, bruto: novosDados };
-                  setAberta(proxima);
-                  agendarAutoSalvarNota(proxima, true);
-                }}
+                onChange={(novosDados) => setAberta({ ...aberta, bruto: novosDados })}
                 camposFixos={{
                   tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" }
                 }}
@@ -403,11 +374,7 @@ export default function Notas() {
 
           <EditorNotion
             markdown={aberta.corpo}
-            onChange={(v) => {
-              const proxima = { ...aberta, corpo: v ?? "" };
-              setAberta(proxima);
-              agendarAutoSalvarNota(proxima, false);
-            }}
+            onChange={(v) => setAberta({ ...aberta, corpo: v ?? "" })}
           />
 
           <div className="mt-12 pt-8 border-t border-border">
