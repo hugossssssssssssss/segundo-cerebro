@@ -172,8 +172,8 @@ export default function Notas() {
         setTitulo: (t) => setAberta((cur) => cur ? { ...cur, titulo: t } : null),
         setCorpo: (c) => setAberta((cur) => cur ? { ...cur, corpo: c } : null),
         onChangeProps: (nProps) => setAberta((cur) => cur ? { ...cur, bruto: nProps } : null),
-        aoSalvar: async (item, fechar) => {
-          await salvar({ ...aberta, titulo: item.titulo, corpo: item.corpo, bruto: item.dadosProps }, fechar);
+        aoSalvar: async () => {
+          if (aberta) await salvar(aberta);
         },
         aoRemover: aberta.caminho ? async () => { await remover(); } : undefined,
       });
@@ -208,7 +208,7 @@ export default function Notas() {
   function abrir(a: ItemRepo) {
     if (focarFlutuante(a.caminho)) return;
     if (aberta && aberta.caminho !== a.caminho && mudou) {
-      salvar(aberta, false);
+      salvar(aberta);
     }
     const titulo = titulos[a.caminho] ?? tituloProvavel(a.doc, a.nome);
     setAberta({
@@ -232,7 +232,7 @@ export default function Notas() {
       original: { titulo: "", corpo: "", bruto: {} },
     });
   }
-  async function salvar(alvo?: NotaAberta, fecharAoSalvar = true) {
+  async function salvar(alvo?: NotaAberta) {
     const n = alvo || aberta;
     if (!n) return;
     const titulo = n.titulo.trim() || "Sem título";
@@ -300,10 +300,6 @@ export default function Notas() {
         }
         return atual;
       });
-
-      if (fecharAoSalvar) {
-        fecharNota();
-      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -429,7 +425,7 @@ export default function Notas() {
           salvando={salvando}
           temMudancas={mudou}
           aoFechar={fecharNota}
-          aoSalvar={async (fechar) => { await salvar(aberta, fechar); }}
+          aoSalvar={async () => { if (aberta) await salvar(aberta); }}
           aoRemover={aberta.caminho ? async () => { await remover(); } : undefined}
           erro={erro}
           mencoes={mencoesNotaAberta}

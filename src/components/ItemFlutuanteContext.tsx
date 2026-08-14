@@ -100,9 +100,8 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
           salvando={!!itemFlutuante.salvando}
           temMudancas={!!itemFlutuante.temMudancas}
           aoFechar={fecharFlutuante}
-          aoSalvar={async (fechar) => {
-            await itemFlutuante.aoSalvar(itemFlutuante, fechar);
-            if (fechar) setItemFlutuante(null);
+          aoSalvar={async () => {
+            await itemFlutuante.aoSalvar(itemFlutuante);
           }}
           aoRemover={itemFlutuante.aoRemover}
           erro={itemFlutuante.erro}

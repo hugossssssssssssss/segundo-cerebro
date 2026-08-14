@@ -870,7 +870,7 @@ export default function Home() {
           salvando={salvandoItem}
           temMudancas={origNota !== null && JSON.stringify(editandoNota) !== JSON.stringify(origNota)}
           aoFechar={() => salvarNotaHome(true)}
-          aoSalvar={async (fechar) => { await salvarNotaHome(fechar); }}
+          aoSalvar={async () => { await salvarNotaHome(false); }}
           aoRemover={async () => {
             await apagar(cfg, editandoNota.caminho, editandoNota.sha);
             invalidarCache();
@@ -913,7 +913,7 @@ export default function Home() {
           salvando={salvandoItem}
           temMudancas={origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}
           aoFechar={() => salvarMetaHome(editandoMeta, true)}
-          aoSalvar={async (fechar) => { await salvarMetaHome(editandoMeta, fechar); }}
+          aoSalvar={async () => { await salvarMetaHome(editandoMeta, false); }}
           aoRemover={async () => {
             await apagar(cfg, editandoMeta.caminho, editandoMeta.sha);
             invalidarCache();

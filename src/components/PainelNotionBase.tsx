@@ -34,7 +34,7 @@ export interface PainelNotionBaseProps {
   salvando: boolean;
   temMudancas: boolean;
   aoFechar: () => void;
-  aoSalvar: (fechar?: boolean) => Promise<void>;
+  aoSalvar: () => Promise<void>;
   aoRemover?: () => Promise<void>;
   erro?: string;
   mencoes?: any[];
@@ -73,7 +73,7 @@ export function PainelNotionBase({
 
   const tentarFechar = useCallback(() => {
     if (temMudancasRef.current) {
-      aoSalvar(true).catch(() => {});
+      aoSalvar().catch(() => {});
     }
     aoFechar();
   }, [aoSalvar, aoFechar]);

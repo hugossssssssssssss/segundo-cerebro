@@ -125,7 +125,7 @@ export function PainelTarefaNotion({
       salvando={salvando}
       temMudancas={temMudancas}
       aoFechar={aoFechar}
-      aoSalvar={async (fechar) => { await aoSalvar(editando, fechar); }}
+      aoSalvar={async () => { await aoSalvar(editando); }}
       aoRemover={editando.caminho ? async () => { aoRemover(); } : undefined}
       erro={erro}
       mencoes={mencoesDaTarefa}
@@ -282,8 +282,8 @@ export default function Tarefas() {
         setTitulo: (t) => setEditando((cur) => cur ? { ...cur, titulo: t } : null),
         setCorpo: (c) => setEditando((cur) => cur ? { ...cur, corpo: c } : null),
         onChangeProps: (nProps) => setEditando((cur) => cur ? comoTarefa({ dados: nProps, corpo: cur.corpo }, cur.caminho, cur.sha, cur.titulo) : null),
-        aoSalvar: async (item, fecharAoSalvar) => {
-          await salvar({ ...editando, titulo: item.titulo, corpo: item.corpo }, fecharAoSalvar);
+        aoSalvar: async () => {
+          if (editando) await salvar(editando);
         },
         aoRemover: editando.caminho ? async () => { await remover(editando); } : undefined,
       });
@@ -293,7 +293,7 @@ export default function Tarefas() {
     }
   }, [modoVisao, editando]);
 
-  async function salvar(alvo?: Tarefa, fecharAoSalvar = true) {
+  async function salvar(alvo?: Tarefa) {
     const t = alvo || editando;
     if (!t) return;
     if (!t.titulo.trim()) {
@@ -323,9 +323,6 @@ export default function Tarefas() {
         }
         return orig;
       });
-      if (fecharAoSalvar) {
-        fechar();
-      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -382,7 +379,7 @@ export default function Tarefas() {
     if (editando && editando.caminho !== t.caminho) {
       const mudou = original !== null && JSON.stringify(editando) !== JSON.stringify(original);
       if (mudou) {
-        salvar(editando, false);
+        salvar(editando);
       }
     }
     setEditando(t);

@@ -179,8 +179,8 @@ export default function PDI() {
         setTitulo: (t) => setEditandoMeta((cur) => cur ? { ...cur, titulo: t } : null),
         setCorpo: (c) => setEditandoMeta((cur) => cur ? { ...cur, corpo: c } : null),
         onChangeProps: (nProps) => setEditandoMeta((cur) => cur ? { ...cur, status: nProps.status || cur.status, prazo: nProps.prazo, indicador: nProps.indicador || cur.indicador } : null),
-        aoSalvar: async (item, fecharAoSalvar) => {
-          await salvarMeta({ ...editandoMeta, titulo: item.titulo, corpo: item.corpo }, fecharAoSalvar);
+        aoSalvar: async () => {
+          if (editandoMeta) await salvarMeta(editandoMeta);
         },
         aoRemover: editandoMeta.caminho ? async () => { await removerMeta(editandoMeta); } : undefined,
       });
@@ -196,16 +196,6 @@ export default function PDI() {
     navegar(location.pathname, { replace: true });
   }
 
-  // Temporizador de segurança: salva meta em 2.5s de pausa na digitação (em segundo plano, sem fechar)
-  useEffect(() => {
-    const temMudancasMeta = editandoMeta !== null && origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta);
-    if (!temMudancasMeta || salvando || !editandoMeta) return;
-    const timer = setTimeout(() => {
-      salvarMeta(editandoMeta, false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [editandoMeta, origMeta, salvando]);
-
   // Alerta ao fechar aba do navegador com edições pendentes no PDI
   useEffect(() => {
     const temMudancasMeta = editandoMeta !== null && origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta);
@@ -220,7 +210,7 @@ export default function PDI() {
 
   /* -------------------------------------------------------------- ações */
 
-  async function salvarMeta(alvo?: Meta, fecharAoSalvar = true) {
+  async function salvarMeta(alvo?: Meta) {
     const m = alvo || editandoMeta;
     if (!m) return;
     const tituloValido = m.titulo.trim() || "Sem título";
@@ -261,9 +251,6 @@ export default function PDI() {
         }
         return orig;
       });
-      if (fecharAoSalvar) {
-        fecharMeta();
-      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -631,7 +618,7 @@ export default function PDI() {
           salvando={salvando}
           temMudancas={origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}
           aoFechar={fecharMeta}
-          aoSalvar={async (fechar) => { await salvarMeta(editandoMeta, fechar); }}
+          aoSalvar={async () => { if (editandoMeta) await salvarMeta(editandoMeta); }}
           aoRemover={editandoMeta.caminho ? async () => { await removerMeta(editandoMeta); } : undefined}
           erro={erro}
         />
