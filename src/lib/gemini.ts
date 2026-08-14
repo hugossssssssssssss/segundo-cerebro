@@ -231,3 +231,74 @@ Sobre descartar: seja disposto a sugerir. Um monte de anotação que nunca é jo
 Se várias notas forem sobre o mesmo assunto, sugira juntar numa só.`,
   },
 ];
+
+/**
+ * Transcreve arquivo de áudio com identificação de oradores e marcação de tempo.
+ */
+export async function transcreverAudioComIA(
+  cfg: Settings,
+  file: File,
+  aoProgresso?: (msg: string) => void
+): Promise<string> {
+  if (!cfg.geminiKey) {
+    throw new ErroGemini("Falta a chave do Gemini. Preencha a chave na tela de Ajustes.");
+  }
+
+  aoProgresso?.("Lendo arquivo de áudio...");
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+
+  aoProgresso?.("Convertendo áudio para envio...");
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk as any);
+  }
+  const base64Data = btoa(binary);
+
+  aoProgresso?.("Processando transcrição e oradores com IA...");
+  const url = `${BASE}/gemini-1.5-flash:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
+
+  const body = {
+    contents: [
+      {
+        parts: [
+          {
+            inline_data: {
+              mime_type: file.type || "audio/mp3",
+              data: base64Data,
+            },
+          },
+          {
+            text: `Faça a transcrição completa e detalhada deste áudio em Português do Brasil.
+REGRAS OBRIGATÓRIAS:
+1. Identifique e rotule separadamente cada orador (ex: Orador 1, Orador 2, Orador 3).
+2. Adicione marcações de tempo aproximadas (ex: [00:15], [01:42]) a cada mudança de fala.
+3. Mantenha o texto limpo, pontuado e fiel às falas originais.
+4. Se houver partes inaudíveis, indique com [inaudível].`,
+          },
+        ],
+      },
+    ],
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new ErroGemini(errData.error?.message || `Erro ${res.status} ao comunicar com a IA.`);
+  }
+
+  const data = await res.json();
+  const textoResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!textoResult) {
+    throw new ErroGemini("Nenhum texto retornado na transcrição.");
+  }
+
+  return textoResult;
+}

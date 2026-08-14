@@ -41,6 +41,7 @@ const PDI = lazy(() => import("@/pages/PDI"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const FerramentasPDF = lazy(() => import("@/pages/FerramentasPDF"));
 const Conversor = lazy(() => import("@/pages/Conversor"));
+const Transcritor = lazy(() => import("@/pages/Transcritor"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 
 
@@ -289,6 +290,7 @@ export default function App() {
               <Route path="/chat" element={<Chat />} />
               <Route path="/pdf" element={<FerramentasPDF />} />
               <Route path="/conversor" element={<Conversor />} />
+              <Route path="/transcritor" element={<Transcritor />} />
               <Route path="/config" element={<Configuracoes />} />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>

@@ -15,6 +15,7 @@ import {
   Sparkles,
   FileCheck,
   RefreshCw,
+  Mic,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -53,6 +54,7 @@ export const gruposNavegacao: GrupoNavegacao[] = [
     titulo: "Evolução & IA",
     itens: [
       { para: "/pdi", rotulo: "Carreira (PDI)", Icone: Target },
+      { para: "/transcritor", rotulo: "Transcrição de Áudio", Icone: Mic },
       { para: "/chat", rotulo: "Conversar", Icone: MessageCircle, destaque: true },
     ],
   },
