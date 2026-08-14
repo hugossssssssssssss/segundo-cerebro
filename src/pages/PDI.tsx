@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Target, Calendar, Package, Trash2, AlertTriangle, Sparkles, CheckSquare } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -121,25 +121,31 @@ export default function PDI() {
     carregar();
   }, [carregar]);
 
-  // Abre item vindo por parâmetro de busca na URL
+  // Abre item vindo por parâmetro de busca na URL (processa somente 1 vez por mudanca de busca)
+  const processouUrlRef = useRef<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
-    if (abrirCaminho && (metas.length > 0 || entregas.length > 0)) {
+    if (!abrirCaminho) return;
+    if (processouUrlRef.current === location.search) return;
+
+    if (metas.length > 0 || entregas.length > 0) {
       if (focarFlutuante(abrirCaminho)) return;
       const metaAlvo = metas.find((m) => m.caminho === abrirCaminho);
-      if (metaAlvo && (!editandoMeta || editandoMeta.caminho !== abrirCaminho)) {
+      if (metaAlvo) {
+        processouUrlRef.current = location.search;
         setEditandoMeta(metaAlvo);
         setOrigMeta(metaAlvo);
         return;
       }
       const entregaAlvo = entregas.find((e) => e.caminho === abrirCaminho);
-      if (entregaAlvo && (!editandoEntrega || editandoEntrega.caminho !== abrirCaminho)) {
+      if (entregaAlvo) {
+        processouUrlRef.current = location.search;
         setEditandoEntrega(entregaAlvo);
         setOrigEntrega(entregaAlvo);
       }
     }
-  }, [location.search, metas, entregas]);
+  }, [location.search, metas.length > 0, entregas.length > 0]);
 
   function fecharMeta() {
     setEditandoMeta(null);

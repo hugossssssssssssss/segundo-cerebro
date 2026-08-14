@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -200,25 +200,28 @@ export default function Tarefas() {
     carregar();
   }, [carregar]);
 
-  // Abre item vindo por parâmetro de busca na URL
+  // Abre item vindo por parâmetro de busca na URL (processa somente 1 vez por mudanca de busca)
+  const processouUrlRef = useRef<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
     const criarNova = params.get("nova");
 
+    if (processouUrlRef.current === location.search) return;
+
     if (criarNova === "true") {
+      processouUrlRef.current = location.search;
       abrirNova();
-    } else if (abrirCaminho && tarefas.length > 0 && (!editando || editando.caminho !== abrirCaminho)) {
+    } else if (abrirCaminho && tarefas.length > 0) {
       if (focarFlutuante(abrirCaminho)) return;
       const alvo = tarefas.find((t) => t.caminho === abrirCaminho);
-      const temMudanca =
-        editando && JSON.stringify(editando) !== JSON.stringify(original);
-      if (alvo && (!temMudanca || confirm("Você tem alterações não salvas. Descartar?"))) {
+      if (alvo) {
+        processouUrlRef.current = location.search;
         setEditando(alvo);
         setOriginal(alvo);
       }
     }
-  }, [location.search, tarefas]);
+  }, [location.search, tarefas.length > 0]);
 
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
 

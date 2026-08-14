@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Plus, Search, Tag, FileText } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -107,14 +107,19 @@ export default function Notas() {
     })).sort((a, b) => a.titulo.localeCompare(b.titulo));
   }, [indice]);
 
-  // Abre item vindo por parâmetro de busca na URL
+  // Abre item vindo por parâmetro de busca na URL (processa somente 1 vez por mudanca de busca)
+  const processouUrlRef = useRef<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
-    if (abrirCaminho && acervo.length > 0 && (!aberta || aberta.caminho !== abrirCaminho)) {
+    if (!abrirCaminho) return;
+    if (processouUrlRef.current === location.search) return;
+
+    if (acervo.length > 0) {
       if (focarFlutuante(abrirCaminho)) return;
       const alvo = acervo.find((a) => a.caminho === abrirCaminho);
       if (alvo) {
+        processouUrlRef.current = location.search;
         const titulo = tituloProvavel(alvo.doc, alvo.nome);
         setAberta({
           bruto: alvo.doc.dados,
@@ -126,7 +131,7 @@ export default function Notas() {
         });
       }
     }
-  }, [location.search, acervo]);
+  }, [location.search, acervo.length > 0]);
 
   const mencoesNotaAberta = useMemo(() => {
     if (!aberta?.caminho) return [];

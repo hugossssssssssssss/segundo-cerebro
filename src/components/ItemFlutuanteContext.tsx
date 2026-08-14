@@ -44,7 +44,7 @@ export const useItemFlutuante = () => useContext(ItemFlutuanteContext);
 
 export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNode }) {
   const [itemFlutuante, setItemFlutuante] = useState<ItemFlutuanteGlobal | null>(null);
-  const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>("flutuante");
+  const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>("popup");
 
   const abrirFlutuante = (item: ItemFlutuanteGlobal) => {
     setItemFlutuante(item);
