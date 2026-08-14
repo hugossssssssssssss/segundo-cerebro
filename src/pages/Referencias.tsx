@@ -24,8 +24,6 @@ import {
 import {
   Botao,
   Campo,
-  Cartao,
-  Selo,
   Aviso,
   Vazio,
   Carregando,
@@ -34,6 +32,8 @@ import {
   AreaTexto,
   TagInput,
 } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { cn } from "@/lib/utils";
 
@@ -273,35 +273,44 @@ export default function Referencias() {
             media: [640, 1024, 1280],
           }}
           render={(r: Referencia) => (
-            <Cartao
+            <div
               key={r.id}
-              className="cursor-pointer overflow-hidden transition-all hover:scale-[1.02] hover:shadow-md"
+              className="group relative cursor-pointer flex flex-col gap-2"
               onClick={() => { setEditando(r); setOriginal(r); }}
             >
-              {r.imagem && (
-                <ImagemPrivada
-                  caminho={r.imagem}
-                  alt={r.titulo}
-                  className="w-full object-cover"
-                />
-              )}
-
-              <div className="p-3.5">
-                <p className="font-medium">{r.titulo}</p>
+              <div className="relative overflow-hidden rounded-3xl bg-muted">
+                {r.imagem && (
+                  <ImagemPrivada
+                    caminho={r.imagem}
+                    alt={r.titulo}
+                    className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  />
+                )}
+                {/* Overlay on Hover */}
+                <div className="absolute inset-0 bg-black/30 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex flex-col justify-between p-4 pointer-events-none">
+                  <div className="flex justify-end">
+                    <Button variant="secondary" size="sm" className="rounded-full h-8 font-semibold opacity-0 translate-y-[-10px] transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+                      Abrir
+                    </Button>
+                  </div>
+                  {r.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 opacity-0 translate-y-[10px] transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+                      {r.tags.slice(0, 3).map((t) => (
+                        <Badge variant="secondary" className="bg-background/90 text-foreground text-[10px] rounded-full border-none" key={t}>{t}</Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="px-1.5">
+                <p className="font-semibold text-sm leading-tight text-foreground line-clamp-2">{r.titulo}</p>
                 {r.porque && (
-                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                  <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                     {r.porque}
                   </p>
                 )}
-                {r.tags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {r.tags.map((t) => (
-                      <Selo key={t}>#{t}</Selo>
-                    ))}
-                  </div>
-                )}
               </div>
-            </Cartao>
+            </div>
           )}
         />
       )}

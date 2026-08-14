@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import MDEditor from "@uiw/react-md-editor";
+import { EditorNotion } from "@/components/EditorNotion";
 import { Plus, Trash2, Search, ArrowLeft, Save } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
@@ -246,24 +246,41 @@ export default function Notas() {
           >
             <ArrowLeft size={18} />
           </Botao>
-          <Campo
-            value={aberta.titulo}
-            onChange={(e) => setAberta({ ...aberta, titulo: e.target.value })}
-            placeholder="Título da nota"
-            className="text-base font-medium"
-          />
         </div>
 
-        {erro && <Aviso tom="erro">{erro}</Aviso>}
+        <div className="flex-1 w-full max-w-4xl mx-auto py-8">
+          <div className="mb-8">
+            <input
+              type="text"
+              value={aberta.titulo}
+              onChange={(e) => setAberta({ ...aberta, titulo: e.target.value })}
+              placeholder="Sem título"
+              className="w-full text-4xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0"
+            />
+            {/* Notion-style Properties */}
+            <div className="mt-6 flex flex-col gap-2">
+              <div className="flex items-center gap-4 text-sm group">
+                <div className="w-24 text-muted-foreground flex items-center gap-2">
+                  <span className="opacity-70 group-hover:opacity-100 transition-opacity">🏷️ Tags</span>
+                </div>
+                <div className="flex-1">
+                  <input 
+                    type="text" 
+                    placeholder="Adicionar tag..." 
+                    className="border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:ring-0 w-full"
+                    value={Array.isArray(aberta.bruto.tags) ? aberta.bruto.tags.join(", ") : ""}
+                    onChange={(e) => setAberta({ ...aberta, bruto: { ...aberta.bruto, tags: e.target.value.split(",").map(t => t.trim()).filter(Boolean) } })}
+                  />
+                </div>
+              </div>
+            </div>
+            {/* Divider */}
+            <hr className="my-6 border-border" />
+          </div>
 
-        <div data-color-mode="inherit" className="prose prose-zinc dark:prose-invert max-w-none prose-p:leading-relaxed prose-headings:tracking-tight">
-          <MDEditor
-            value={aberta.corpo}
+          <EditorNotion
+            markdown={aberta.corpo}
             onChange={(v) => setAberta({ ...aberta, corpo: v ?? "" })}
-            height={440}
-            preview="edit"
-            textareaProps={{ placeholder: "Escreva o que quiser…" }}
-            className="!font-sans"
           />
         </div>
 

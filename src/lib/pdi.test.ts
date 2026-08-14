@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { dataISO } from "./utils";
 import { lerMarkdown } from "./markdown";
 import {
   comoMeta,
@@ -12,8 +13,14 @@ import {
   type Entrega,
 } from "./pdi";
 
-const emDias = (n: number) =>
-  new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+/**
+ * Data relativa a hoje, no fuso LOCAL.
+ *
+ * Usava toISOString() (UTC) e por isso os testes passavam de manhã e
+ * falhavam depois das 21h no horário de Brasília — o mesmo bug que o
+ * código de produção tinha. Teste que depende da hora não prova nada.
+ */
+const emDias = (n: number) => dataISO(new Date(Date.now() + n * 86_400_000));
 
 const meta = (over: Partial<Meta> = {}): Meta => ({
   bruto: {},

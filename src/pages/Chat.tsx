@@ -4,7 +4,7 @@ import { Send, Sparkles, Trash2, Copy, Check, RefreshCw } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
 import { conversar, PROMPTS, type Mensagem, type PromptSalvo } from "@/lib/gemini";
-import { extrairAcoes, executar, type Acao } from "@/lib/acoes";
+import { acoesDeChamadas, executar, type Acao } from "@/lib/acoes";
 import { CartaoAcao } from "@/components/CartaoAcao";
 import { Botao, Cartao, AreaTexto, Aviso, Vazio, Selo } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -64,13 +64,13 @@ export default function Chat() {
 
     try {
       const itens = await garantirAcervo();
-      const resposta = await conversar(
+      const { texto: limpo, chamadas } = await conversar(
         cfg,
         novas.map(({ papel, texto }) => ({ papel, texto })),
         montarContextoTexto(itens),
       );
 
-      const { texto: limpo, acoes } = extrairAcoes(resposta);
+      const acoes = acoesDeChamadas(chamadas);
       setFalas([
         ...novas,
         { papel: "model", texto: limpo || "(sem texto)", acoes },

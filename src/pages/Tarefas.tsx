@@ -5,7 +5,8 @@ import { lerConfig, configCompleta } from "@/lib/settings";
 import { ler, gravar, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
 import { montarIndice, mencoesA } from "@/lib/links";
-import { AreaComLinks, MencionadoEm } from "@/components/Links";
+import { MencionadoEm } from "@/components/Links";
+import { EditorNotion } from "@/components/EditorNotion";
 import {
   lerMarkdown,
   escreverMarkdown,
@@ -29,15 +30,12 @@ import { Pomodoro } from "@/components/Pomodoro";
 import { Calendario } from "@/components/Calendario";
 import {
   Botao,
-  Campo,
   Cartao,
   Selo,
   Aviso,
   Vazio,
   Carregando,
   Modal,
-  Rotulo,
-  TagInput,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -434,70 +432,69 @@ export default function Tarefas() {
       >
         {editando && (
           <div className="space-y-4">
-            <div>
-              <Rotulo>Título</Rotulo>
-              <Campo
-                value={editando.titulo}
-                onChange={(e) =>
-                  setEditando({ ...editando, titulo: e.target.value })
-                }
-                placeholder="O que precisa ser feito?"
-                autoFocus
-              />
-            </div>
+            <input
+              type="text"
+              value={editando.titulo}
+              onChange={(e) => setEditando({ ...editando, titulo: e.target.value })}
+              placeholder="Sem título"
+              className="w-full text-3xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0 mb-4"
+              autoFocus
+            />
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Rotulo>Situação</Rotulo>
-                <select
-                  value={editando.status}
-                  onChange={(e) =>
-                    setEditando({
-                      ...editando,
-                      status: e.target.value as Status,
-                    })
-                  }
-                  className="flex h-11 w-full rounded-lg border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {STATUS.map((s) => (
-                    <option key={s} value={s}>
-                      {ROTULO_STATUS[s]}
-                    </option>
-                  ))}
-                </select>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-4 text-sm group">
+                <div className="w-24 text-muted-foreground flex items-center gap-2">
+                  <span className="opacity-70 group-hover:opacity-100 transition-opacity">📌 Status</span>
+                </div>
+                <div className="flex-1">
+                  <select
+                    value={editando.status}
+                    onChange={(e) => setEditando({ ...editando, status: e.target.value as Status })}
+                    className="border-none bg-transparent outline-none cursor-pointer focus:ring-0 text-foreground"
+                  >
+                    {STATUS.map((s) => (
+                      <option key={s} value={s}>{ROTULO_STATUS[s]}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div>
-                <Rotulo>Prazo</Rotulo>
-                <Campo
-                  type="date"
-                  value={editando.prazo ?? ""}
-                  onChange={(e) =>
-                    setEditando({
-                      ...editando,
-                      prazo: e.target.value || undefined,
-                    })
-                  }
-                />
+
+              <div className="flex items-center gap-4 text-sm group">
+                <div className="w-24 text-muted-foreground flex items-center gap-2">
+                  <span className="opacity-70 group-hover:opacity-100 transition-opacity">📅 Prazo</span>
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="date"
+                    value={editando.prazo ?? ""}
+                    onChange={(e) => setEditando({ ...editando, prazo: e.target.value || undefined })}
+                    className="border-none bg-transparent outline-none text-foreground focus:ring-0"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 text-sm group">
+                <div className="w-24 text-muted-foreground flex items-center gap-2">
+                  <span className="opacity-70 group-hover:opacity-100 transition-opacity">🏷️ Tags</span>
+                </div>
+                <div className="flex-1">
+                  <input 
+                    type="text" 
+                    placeholder="Vazio" 
+                    className="border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:ring-0 w-full"
+                    value={editando.tags.join(", ")}
+                    onChange={(e) => setEditando({ ...editando, tags: e.target.value.split(",").map(t => t.trim()).filter(Boolean) })}
+                  />
+                </div>
               </div>
             </div>
 
-            <div>
-              <Rotulo dica="Aperte Enter ou Vírgula para adicionar.">Tags</Rotulo>
-              <TagInput
-                tags={editando.tags}
-                onChange={(tags) => setEditando({ ...editando, tags })}
-                placeholder="design, cliente"
-              />
-            </div>
+            <hr className="my-4 border-border" />
 
-            <div>
-              <Rotulo>Anotações</Rotulo>
-              <AreaComLinks
-                value={editando.corpo}
+            <div className="min-h-[200px]">
+              <EditorNotion
+                markdown={editando.corpo}
                 onChange={(v) => setEditando({ ...editando, corpo: v })}
-                indice={indice}
-                placeholder="Detalhes, o que for útil…"
-                className="min-h-32"
               />
             </div>
 

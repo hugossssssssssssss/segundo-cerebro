@@ -8,6 +8,7 @@
  */
 
 import type { Settings } from "./settings";
+import { FERRAMENTAS, type ChamadaFuncao } from "./acoes";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -36,20 +37,29 @@ Cada item é um arquivo .md com frontmatter YAML. Datas no formato AAAA-MM-DD.
 As metas do PDI ficam em pdi/metas/ e as entregas em pdi/entregas/.
 Uma entrega aponta para as metas que alimenta pelo campo "metas", usando o NOME DO ARQUIVO da meta, sem .md.`;
 
+export type RespostaIA = {
+  texto: string;
+  /** O que a IA quer fazer — nada é executado sem o Hugo aprovar */
+  chamadas: ChamadaFuncao[];
+};
+
 export async function conversar(
   cfg: Settings,
   historico: Mensagem[],
   contexto?: string,
-): Promise<string> {
+): Promise<RespostaIA> {
   if (!cfg.geminiKey) {
     throw new ErroGemini(
       "Falta a chave do Gemini. Preencha na aba de Ajustes.",
     );
   }
 
+  const hoje = new Date();
+  const base = `${INSTRUCAO_BASE}\n\nHoje é ${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}.`;
+
   const instrucao = contexto
-    ? `${INSTRUCAO_BASE}\n\n--- CONTEÚDO ATUAL DO SEGUNDO CÉREBRO ---\n${contexto}\n--- FIM DO CONTEÚDO ---`
-    : INSTRUCAO_BASE;
+    ? `${base}\n\n--- CONTEÚDO ATUAL DO SEGUNDO CÉREBRO ---\n${contexto}\n--- FIM DO CONTEÚDO ---`
+    : base;
 
   let resposta: Response;
   try {
@@ -67,6 +77,7 @@ export async function conversar(
             role: m.papel,
             parts: [{ text: m.texto }],
           })),
+          tools: FERRAMENTAS,
           generationConfig: { temperature: 0.3, maxOutputTokens: 4000 },
         }),
       },
@@ -107,12 +118,20 @@ export async function conversar(
     );
   }
 
-  const texto = dados?.candidates?.[0]?.content?.parts
-    ?.map((p: { text?: string }) => p.text ?? "")
+  type Parte = { text?: string; functionCall?: ChamadaFuncao };
+  const partes: Parte[] = dados?.candidates?.[0]?.content?.parts ?? [];
+
+  const texto = partes
+    .map((p) => p.text ?? "")
     .join("")
     .trim();
 
-  if (!texto) {
+  const chamadas = partes
+    .map((p) => p.functionCall)
+    .filter((c): c is ChamadaFuncao => Boolean(c?.name));
+
+  // resposta vazia só é problema se não veio ação nenhuma junto
+  if (!texto && chamadas.length === 0) {
     const motivo = dados?.candidates?.[0]?.finishReason;
     throw new ErroGemini(
       motivo === "MAX_TOKENS"
@@ -121,7 +140,7 @@ export async function conversar(
     );
   }
 
-  return texto;
+  return { texto, chamadas };
 }
 
 /* ------------------------------------------------------- prompts salvos */

@@ -42,26 +42,127 @@ export const PASTAS_VALIDAS = [
 ] as const;
 
 /**
- * Extrai as ações de um bloco ```acoes ... ``` na resposta da IA.
- * Devolve também o texto sem esse bloco, para exibir a conversa limpa.
+ * Declaração das ferramentas para o Gemini.
+ *
+ * Usar chamada de função nativa, e não pedir um bloco JSON no texto: testei
+ * as duas e o pedido por prompt falhou — o modelo devolveu um frontmatter
+ * markdown em vez do formato pedido, e errou o tipo do item. Com ferramenta
+ * declarada ele acertou pasta, prazo e tags de primeira, e criou três itens
+ * quando pedi três.
  */
-export function extrairAcoes(resposta: string): {
-  texto: string;
-  acoes: Acao[];
-} {
-  const bloco = resposta.match(/```acoes\s*\n([\s\S]*?)```/);
-  if (!bloco) return { texto: resposta, acoes: [] };
+export const FERRAMENTAS = [
+  {
+    functionDeclarations: [
+      {
+        name: "criar_item",
+        description:
+          "Cria um item novo no segundo cérebro do Hugo. Uma chamada por item.",
+        parameters: {
+          type: "object",
+          properties: {
+            pasta: {
+              type: "string",
+              enum: [...PASTAS_VALIDAS],
+              description: "Onde o item vai morar",
+            },
+            titulo: { type: "string" },
+            corpo: {
+              type: "string",
+              description:
+                "Texto livre. Use [[Título de outro item]] para ligar a outra coisa dele.",
+            },
+            status: {
+              type: "string",
+              enum: ["a-fazer", "fazendo", "feito"],
+              description: "Só para tarefas",
+            },
+            prazo: { type: "string", description: "AAAA-MM-DD" },
+            tags: { type: "array", items: { type: "string" } },
+            motivo: {
+              type: "string",
+              description: "Uma frase dizendo por que você está propondo isto",
+            },
+          },
+          required: ["pasta", "titulo"],
+        },
+      },
+      {
+        name: "editar_item",
+        description:
+          "Muda um item que já existe. Use o caminho exato que você viu no conteúdo.",
+        parameters: {
+          type: "object",
+          properties: {
+            caminho: {
+              type: "string",
+              description: "Ex: tarefas/2026-08-13-revisar.md",
+            },
+            titulo: { type: "string" },
+            corpo: { type: "string" },
+            status: { type: "string", enum: ["a-fazer", "fazendo", "feito"] },
+            prazo: { type: "string", description: "AAAA-MM-DD" },
+            tags: { type: "array", items: { type: "string" } },
+            metas: {
+              type: "array",
+              items: { type: "string" },
+              description: "Só para entregas: nomes de arquivo das metas",
+            },
+            motivo: { type: "string" },
+          },
+          required: ["caminho"],
+        },
+      },
+      {
+        name: "apagar_item",
+        description:
+          "Apaga um item. Só chame se o Hugo pedir explicitamente para apagar aquilo.",
+        parameters: {
+          type: "object",
+          properties: {
+            caminho: { type: "string" },
+            motivo: { type: "string" },
+          },
+          required: ["caminho"],
+        },
+      },
+    ],
+  },
+];
 
-  let acoes: Acao[] = [];
-  try {
-    const cru = JSON.parse(bloco[1]);
-    acoes = (Array.isArray(cru) ? cru : [cru]).filter(valida);
-  } catch {
-    // JSON quebrado: melhor mostrar a conversa sem ações do que estourar erro
-    acoes = [];
+/** Uma chamada de função como o Gemini devolve. */
+export type ChamadaFuncao = { name: string; args: Record<string, unknown> };
+
+/** Converte as chamadas do Gemini em ações, descartando o que for inválido. */
+export function acoesDeChamadas(chamadas: ChamadaFuncao[]): Acao[] {
+  const acoes: Acao[] = [];
+
+  for (const c of chamadas) {
+    const a = c.args ?? {};
+    const campos: Record<string, unknown> = {};
+    for (const k of ["status", "prazo", "tags", "metas"]) {
+      if (a[k] !== undefined) campos[k] = a[k];
+    }
+
+    const base = {
+      titulo: typeof a.titulo === "string" ? a.titulo : undefined,
+      corpo: typeof a.corpo === "string" ? a.corpo : undefined,
+      motivo: typeof a.motivo === "string" ? a.motivo : undefined,
+      campos: Object.keys(campos).length ? campos : undefined,
+    };
+
+    const candidato: Acao =
+      c.name === "criar_item"
+        ? { tipo: "criar", pasta: String(a.pasta ?? ""), ...base }
+        : c.name === "editar_item"
+          ? { tipo: "editar", caminho: String(a.caminho ?? ""), ...base }
+          : c.name === "apagar_item"
+            ? { tipo: "apagar", caminho: String(a.caminho ?? ""), ...base }
+            : ({ tipo: "criar" } as Acao); // nome desconhecido cai na validação
+
+    if (valida(candidato)) acoes.push(candidato);
   }
 
-  return { texto: resposta.replace(bloco[0], "").trim(), acoes };
+  return acoes;
 }
 
 /** Recusa ação malformada ou que aponte para fora das pastas conhecidas. */

@@ -1,82 +1,147 @@
 import { describe, it, expect } from "vitest";
-import { extrairAcoes, descrever } from "./acoes";
+import { acoesDeChamadas, descrever, type ChamadaFuncao } from "./acoes";
 
-describe("extrairAcoes", () => {
-  it("separa a conversa do bloco de ações", () => {
-    const resposta = [
-      "Vou criar essa tarefa para sexta.",
-      "```acoes",
-      '[{"tipo":"criar","pasta":"tarefas","titulo":"Revisar proposta"}]',
-      "```",
-    ].join("\n");
+const chamada = (name: string, args: Record<string, unknown>): ChamadaFuncao => ({
+  name,
+  args,
+});
 
-    const { texto, acoes } = extrairAcoes(resposta);
-    expect(texto).toBe("Vou criar essa tarefa para sexta.");
+describe("acoesDeChamadas", () => {
+  it("converte uma criação com todos os campos", () => {
+    const acoes = acoesDeChamadas([
+      chamada("criar_item", {
+        pasta: "tarefas",
+        titulo: "Revisar proposta",
+        corpo: "Ver o [[Briefing Acme]]",
+        status: "a-fazer",
+        prazo: "2026-08-22",
+        tags: ["cliente"],
+        motivo: "você pediu para sexta",
+      }),
+    ]);
+
     expect(acoes).toHaveLength(1);
-    expect(acoes[0].titulo).toBe("Revisar proposta");
+    expect(acoes[0]).toMatchObject({
+      tipo: "criar",
+      pasta: "tarefas",
+      titulo: "Revisar proposta",
+      motivo: "você pediu para sexta",
+    });
+    expect(acoes[0].campos).toEqual({
+      status: "a-fazer",
+      prazo: "2026-08-22",
+      tags: ["cliente"],
+    });
   });
 
-  it("resposta sem bloco nenhum não gera ação", () => {
-    const { texto, acoes } = extrairAcoes("Só uma conversa normal.");
-    expect(texto).toBe("Só uma conversa normal.");
-    expect(acoes).toEqual([]);
+  it("converte várias chamadas de uma vez", () => {
+    const acoes = acoesDeChamadas([
+      chamada("criar_item", { pasta: "tarefas", titulo: "Comprar café" }),
+      chamada("criar_item", { pasta: "tarefas", titulo: "Ligar pro dentista" }),
+    ]);
+    expect(acoes.map((a) => a.titulo)).toEqual([
+      "Comprar café",
+      "Ligar pro dentista",
+    ]);
   });
 
-  it("JSON quebrado não derruba a conversa", () => {
-    const { texto, acoes } = extrairAcoes("Olha só\n```acoes\n[{quebrado\n```");
-    expect(acoes).toEqual([]);
-    expect(texto).toContain("Olha só");
+  it("converte edição e remoção", () => {
+    const acoes = acoesDeChamadas([
+      chamada("editar_item", {
+        caminho: "tarefas/2026-08-13-x.md",
+        status: "feito",
+      }),
+      chamada("apagar_item", { caminho: "notas/2026-08-13-velha.md" }),
+    ]);
+    expect(acoes[0]).toMatchObject({ tipo: "editar" });
+    expect(acoes[0].campos).toEqual({ status: "feito" });
+    expect(acoes[1]).toMatchObject({ tipo: "apagar" });
   });
 
-  it("aceita um objeto solto, não só lista", () => {
-    const { acoes } = extrairAcoes(
-      '```acoes\n{"tipo":"criar","pasta":"notas","titulo":"X"}\n```',
-    );
-    expect(acoes).toHaveLength(1);
+  it("sem chamada nenhuma devolve lista vazia", () => {
+    expect(acoesDeChamadas([])).toEqual([]);
   });
 });
 
-describe("validação — a IA não pode escrever onde quiser", () => {
-  const extrair = (json: string) => extrairAcoes("```acoes\n" + json + "\n```").acoes;
-
+describe("a IA não pode escrever onde quiser", () => {
   it("recusa pasta fora da lista conhecida", () => {
-    expect(extrair('[{"tipo":"criar","pasta":"etc","titulo":"X"}]')).toEqual([]);
-    expect(extrair('[{"tipo":"criar","pasta":".github","titulo":"X"}]')).toEqual([]);
+    expect(
+      acoesDeChamadas([chamada("criar_item", { pasta: "etc", titulo: "X" })]),
+    ).toEqual([]);
+    expect(
+      acoesDeChamadas([
+        chamada("criar_item", { pasta: ".github/workflows", titulo: "X" }),
+      ]),
+    ).toEqual([]);
   });
 
   it("recusa caminho tentando subir de diretório", () => {
     expect(
-      extrair('[{"tipo":"apagar","caminho":"tarefas/../../.git/config.md"}]'),
+      acoesDeChamadas([
+        chamada("apagar_item", { caminho: "tarefas/../../.git/config.md" }),
+      ]),
     ).toEqual([]);
   });
 
-  it("recusa caminho fora das pastas de conteúdo", () => {
-    expect(extrair('[{"tipo":"apagar","caminho":"AGENTS.md"}]')).toEqual([]);
-    expect(extrair('[{"tipo":"editar","caminho":"README.md"}]')).toEqual([]);
+  it("recusa mexer em arquivo fora das pastas de conteúdo", () => {
+    expect(
+      acoesDeChamadas([chamada("apagar_item", { caminho: "AGENTS.md" })]),
+    ).toEqual([]);
+    expect(
+      acoesDeChamadas([chamada("editar_item", { caminho: "README.md" })]),
+    ).toEqual([]);
+    expect(
+      acoesDeChamadas([
+        chamada("editar_item", { caminho: ".github/workflows/deploy.yml.md" }),
+      ]),
+    ).toEqual([]);
   });
 
   it("recusa criar sem título", () => {
-    expect(extrair('[{"tipo":"criar","pasta":"tarefas","titulo":"  "}]')).toEqual([]);
-    expect(extrair('[{"tipo":"criar","pasta":"tarefas"}]')).toEqual([]);
+    expect(
+      acoesDeChamadas([chamada("criar_item", { pasta: "tarefas", titulo: "  " })]),
+    ).toEqual([]);
+    expect(
+      acoesDeChamadas([chamada("criar_item", { pasta: "tarefas" })]),
+    ).toEqual([]);
   });
 
-  it("recusa tipo de ação inventado", () => {
-    expect(extrair('[{"tipo":"executar","caminho":"tarefas/x.md"}]')).toEqual([]);
+  it("recusa caminho que não é .md", () => {
+    expect(
+      acoesDeChamadas([
+        chamada("apagar_item", { caminho: "referencias/imagens/foto.png" }),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("recusa função inventada", () => {
+    expect(
+      acoesDeChamadas([
+        chamada("rodar_comando", { caminho: "tarefas/x.md" }),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("descarta só a chamada inválida, mantendo as boas", () => {
+    const acoes = acoesDeChamadas([
+      chamada("criar_item", { pasta: "tarefas", titulo: "Boa" }),
+      chamada("apagar_item", { caminho: "/etc/passwd" }),
+    ]);
+    expect(acoes).toHaveLength(1);
+    expect(acoes[0].titulo).toBe("Boa");
   });
 
   it("aceita as pastas válidas, inclusive as de dois níveis", () => {
-    expect(extrair('[{"tipo":"criar","pasta":"pdi/metas","titulo":"Meta"}]')).toHaveLength(1);
     expect(
-      extrair('[{"tipo":"editar","caminho":"pdi/entregas/2026-08-13-x.md"}]'),
+      acoesDeChamadas([
+        chamada("criar_item", { pasta: "pdi/metas", titulo: "Meta" }),
+      ]),
     ).toHaveLength(1);
-  });
-
-  it("descarta só a ação inválida, mantendo as boas", () => {
-    const acoes = extrair(
-      '[{"tipo":"criar","pasta":"tarefas","titulo":"Boa"},{"tipo":"apagar","caminho":"/etc/passwd"}]',
-    );
-    expect(acoes).toHaveLength(1);
-    expect(acoes[0].titulo).toBe("Boa");
+    expect(
+      acoesDeChamadas([
+        chamada("editar_item", { caminho: "pdi/entregas/2026-08-13-x.md" }),
+      ]),
+    ).toHaveLength(1);
   });
 });
 
@@ -88,15 +153,15 @@ describe("descrever", () => {
     expect(
       descrever({ tipo: "apagar", caminho: "notas/2026-08-13-velha.md" }),
     ).toBe('Apagar "2026-08-13-velha"');
-    expect(
-      descrever({ tipo: "editar", caminho: "pdi/metas/branding.md" }),
-    ).toBe('Editar "branding"');
+    expect(descrever({ tipo: "editar", caminho: "pdi/metas/branding.md" })).toBe(
+      'Editar "branding"',
+    );
   });
 
   it("cada pasta tem seu rótulo", () => {
-    expect(descrever({ tipo: "criar", pasta: "pdi/metas", titulo: "X" })).toContain(
-      "a meta",
-    );
+    expect(
+      descrever({ tipo: "criar", pasta: "pdi/metas", titulo: "X" }),
+    ).toContain("a meta");
     expect(
       descrever({ tipo: "criar", pasta: "referencias", titulo: "X" }),
     ).toContain("a referência");
