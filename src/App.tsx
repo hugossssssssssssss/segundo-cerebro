@@ -19,6 +19,7 @@ import {
   Sun,
   Home as HomeIcon,
   Plus,
+  Layout,
 } from "lucide-react";
 import { Busca } from "@/components/Busca";
 import { CapturaRapida } from "@/components/CapturaRapida";
@@ -37,6 +38,7 @@ const Home = lazy(() => import("@/pages/Home"));
 const Tarefas = lazy(() => import("@/pages/Tarefas"));
 const Notas = lazy(() => import("@/pages/Notas"));
 const Referencias = lazy(() => import("@/pages/Referencias"));
+const Lousas = lazy(() => import("@/pages/Lousas"));
 const PDI = lazy(() => import("@/pages/PDI"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
@@ -48,6 +50,7 @@ const abas = [
   { para: "/tarefas", rotulo: "Tarefas", Icone: CheckSquare },
   { para: "/notas", rotulo: "Notas", Icone: FileText },
   { para: "/referencias", rotulo: "Refs", Icone: Image },
+  { para: "/lousas", rotulo: "Lousas", Icone: Layout },
   { para: "/pdi", rotulo: "Carreira", Icone: Target },
   { para: "/chat", rotulo: "Conversar", Icone: MessageCircle },
 ];
@@ -252,6 +255,7 @@ export default function App() {
             <Route path="/tarefas" element={<Tarefas />} />
             <Route path="/notas" element={<Notas />} />
             <Route path="/referencias" element={<Referencias />} />
+            <Route path="/lousas" element={<Lousas />} />
             <Route path="/pdi" element={<PDI />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/config" element={<Configuracoes />} />

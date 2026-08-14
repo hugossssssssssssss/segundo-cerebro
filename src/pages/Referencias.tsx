@@ -90,6 +90,9 @@ export default function Referencias() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
+    // Limpa sempre, mesmo sem encontrar o alvo: senão o parâmetro fica na URL
+    // e abre o item sozinho no dia em que um arquivo com aquele caminho
+    // aparecer — a IA pode criar um.
     // Consumir uma vez só: o parâmetro ficava na URL e, como o efeito depende
     // da lista recarregada, todo Salvar reabria o item anterior por cima do
     // que você estava editando.
@@ -138,7 +141,27 @@ export default function Referencias() {
 
       setPrevia((antiga) => {
         if (antiga) URL.revokeObjectURL(antiga);
-        return URL.createObjectURL(arquivo);
+        const novaUrl = URL.createObjectURL(arquivo);
+        
+        // Tentar extrair paleta de cores da nova imagem
+        const img = new Image();
+        img.src = novaUrl;
+        import("@/lib/paleta").then(({ extrairPaletaDaImagem }) => {
+          extrairPaletaDaImagem(img).then((paleta) => {
+            if (paleta.length > 0) {
+              setEditando((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      bruto: { ...prev.bruto, paleta },
+                    }
+                  : null,
+              );
+            }
+          });
+        });
+
+        return novaUrl;
       });
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -207,14 +230,15 @@ export default function Referencias() {
 
   function fecharModal() {
     setEditando(null);
+    setOriginal(null);
     setPrevia((p) => {
       if (p) URL.revokeObjectURL(p);
       return null;
     });
   }
 
-  const nova = () =>
-    setEditando({
+  const nova = () => {
+    const vazia: Referencia = {
       bruto: {},
       caminho: "",
       id: "",
@@ -223,7 +247,10 @@ export default function Referencias() {
       tags: [],
       porque: "",
       corpo: "",
-    });
+    };
+    setEditando(vazia);
+    setOriginal(vazia); // senão o modal abre já dizendo que há mudanças
+  };
 
   return (
     <div className="space-y-5">

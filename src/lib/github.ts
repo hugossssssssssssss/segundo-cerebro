@@ -137,6 +137,24 @@ export async function ler(
   return { texto: deBase64(dados.content), sha: dados.sha };
 }
 
+/** Baixa o conteúdo de um arquivo em determinado commit ou branch, ou devolve "" se falhar. */
+export async function lerOuVazio(
+  cfg: Settings,
+  caminho: string,
+  ref?: string,
+): Promise<string> {
+  try {
+    const branch = ref || cfg.branch;
+    const url = `${raiz(cfg)}/${caminho}?ref=${encodeURIComponent(branch)}`;
+    const resposta = await buscar(url, { headers: cabecalhos(cfg) });
+    if (!resposta.ok) return "";
+    const dados = await resposta.json();
+    return deBase64(dados.content || "");
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Cria ou atualiza um arquivo. Sem `sha` cria; com `sha` atualiza.
  * Devolve o novo SHA, que precisa ser guardado para a próxima gravação.

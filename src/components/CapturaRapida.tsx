@@ -225,6 +225,23 @@ export function CapturaRapida({
 
           <Botao
             tamanho="pequeno"
+            variante="neutro"
+            onClick={() => {
+              if (!texto.trim()) return;
+              import("@/lib/clipper").then(({ converterHtmlParaMarkdown }) => {
+                const res = converterHtmlParaMarkdown(texto, /^https?:\/\//i.test(texto.trim()) ? texto.trim() : undefined);
+                setTexto(`${res.titulo}\n\n${res.markdown}`);
+                setDestino("notas");
+              });
+            }}
+            disabled={!texto.trim()}
+            title="Converte HTML ou conteúdo colado em Markdown limpo"
+          >
+            Limpar HTML/Web
+          </Botao>
+
+          <Botao
+            tamanho="pequeno"
             onClick={salvar}
             disabled={salvando || !texto.trim()}
             className="ml-auto"

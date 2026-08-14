@@ -8,6 +8,7 @@ import {
   escreverMarkdown,
   tituloProvavel,
   nomeLivre,
+  nomeDeArquivo,
 } from "@/lib/markdown";
 import {
   comoMeta,
@@ -41,6 +42,26 @@ import {
 } from "@/components/ui";
 import { hojeISO, dataCurta } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+
+/**
+ * Nome livre para metas, que não levam data no nome: o id delas é
+ * referenciado pelas entregas, então precisa ser estável e legível.
+ */
+function nomeLivreSemData(
+  pasta: string,
+  titulo: string,
+  ocupados: string[],
+): string {
+  const base = nomeDeArquivo(titulo).replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/\.md$/, "");
+  const usados = new Set(ocupados);
+  let candidato = `${pasta}/${base}.md`;
+  let n = 2;
+  while (usados.has(candidato)) {
+    candidato = `${pasta}/${base}-${n}.md`;
+    n++;
+  }
+  return candidato;
+}
 
 export default function PDI() {
   const cfg = lerConfig();
@@ -97,6 +118,9 @@ export default function PDI() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
+    // Limpa sempre, mesmo sem encontrar o alvo: senão o parâmetro fica na URL
+    // e abre o item sozinho no dia em que um arquivo com aquele caminho
+    // aparecer — a IA pode criar um.
     // Consumir uma vez só: o parâmetro ficava na URL e, como o efeito depende
     // da lista recarregada, todo Salvar reabria o item anterior por cima do
     // que você estava editando.
@@ -136,14 +160,15 @@ export default function PDI() {
       // metas não levam data no nome: o id delas é referenciado pelas entregas
       const caminho =
         editandoMeta.caminho ||
-        nomeLivre(
-          PASTA_METAS,
-          editandoMeta.titulo,
-          metas.map((m) => m.caminho),
-        ).replace(/\/\d{4}-\d{2}-\d{2}-/, "/");
+        // A data sai ANTES da checagem de colisão. Fazendo depois, nomeLivre
+        // comparava candidatos COM data contra caminhos gravados SEM data —
+        // nunca detectava conflito, e o resultado colidia de verdade,
+        // devolvendo um 422 sem sentido ao criar duas metas de mesmo título.
+        nomeLivreSemData(PASTA_METAS, editandoMeta.titulo, metas.map((m) => m.caminho));
       await gravar(cfg, caminho, texto, editandoMeta.sha || undefined);
       invalidarCache();
       setEditandoMeta(null);
+      setOrigMeta(null);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -172,6 +197,7 @@ export default function PDI() {
       await gravar(cfg, caminho, texto, limpa.sha || undefined);
       invalidarCache();
       setEditandoEntrega(null);
+      setOrigEntrega(null);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -191,6 +217,7 @@ export default function PDI() {
       await apagar(cfg, m.caminho, m.sha);
       invalidarCache();
       setEditandoMeta(null);
+      setOrigMeta(null);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -203,6 +230,7 @@ export default function PDI() {
       await apagar(cfg, e.caminho, e.sha);
       invalidarCache();
       setEditandoEntrega(null);
+      setOrigEntrega(null);
       await carregar();
     } catch (err) {
       setErro(err instanceof Error ? err.message : String(err));
@@ -230,8 +258,8 @@ export default function PDI() {
   const soltas = semMeta(entregas);
   const conferir = aConferir(entregas);
 
-  const novaMeta = () =>
-    setEditandoMeta({
+  const novaMeta = () => {
+    const vazia: Meta = {
       bruto: {},
       caminho: "",
       id: "",
@@ -240,10 +268,14 @@ export default function PDI() {
       status: "a-fazer",
       indicador: "",
       corpo: "",
-    });
+    };
+    setEditandoMeta(vazia);
+    // sem isto o modal já abria dizendo "você tem alterações não salvas"
+    setOrigMeta(vazia);
+  };
 
-  const novaEntrega = () =>
-    setEditandoEntrega({
+  const novaEntrega = () => {
+    const vazia: Entrega = {
       bruto: {},
       caminho: "",
       id: "",
@@ -253,10 +285,13 @@ export default function PDI() {
       metas: [],
       iaSugeriu: false,
       corpo: "",
-    });
+    };
+    setEditandoEntrega(vazia);
+    setOrigEntrega(vazia);
+  };
 
   return (
-    <div className="space-y-6">
+    <div id="conteudo-pdi-pdf" className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
@@ -266,6 +301,20 @@ export default function PDI() {
             Onde você quer chegar, e o que já fez nessa direção.
           </p>
         </div>
+        <Botao
+          variante="neutro"
+          tamanho="pequeno"
+          onClick={() => {
+            const elem = document.getElementById("conteudo-pdi-pdf");
+            if (elem) {
+              import("@/lib/pdf").then(({ exportarElementoParaPdf }) => {
+                exportarElementoParaPdf(elem, "meu-pdi-carreira");
+              });
+            }
+          }}
+        >
+          Exportar PDF
+        </Botao>
       </div>
 
       <div className="flex gap-2">

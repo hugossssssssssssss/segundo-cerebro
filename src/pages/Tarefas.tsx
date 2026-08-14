@@ -154,13 +154,27 @@ export default function Tarefas() {
     // que você estava editando.
     if (abrirCaminho && tarefas.length > 0 && (!editando || editando.caminho !== abrirCaminho)) {
       const alvo = tarefas.find((t) => t.caminho === abrirCaminho);
-      if (alvo) abrir(alvo);
+      const temMudanca =
+        editando && JSON.stringify(editando) !== JSON.stringify(original);
+      if (alvo && (!temMudanca || confirm("Você tem alterações não salvas. Descartar?"))) {
+        abrir(alvo);
+      }
       // limpa o parâmetro: sem isso ele reabria o item a cada recarga da lista
       navegar(location.pathname, { replace: true });
     }
   }, [location.search, tarefas]);
 
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
+
+  /**
+   * Sem memoizar, `mencoesA` varria o texto de TODO o repositório a cada
+   * tecla digitada no modal — com 250 arquivos, meio megabyte de regex por
+   * caractere num celular mediano.
+   */
+  const mencoesDaTarefa = useMemo(
+    () => (editando?.caminho ? mencoesA(editando.caminho, acervo, indice) : []),
+    [editando?.caminho, acervo, indice],
+  );
   
   const opcoesRelacionamento = useMemo(() => {
     return Array.from(indice.values()).map(a => ({
@@ -571,7 +585,7 @@ export default function Tarefas() {
             {editando.caminho && (
               <div className="mt-12 border-t border-border pt-6">
                 <MencionadoEm 
-                  mencoes={mencoesA(editando.caminho, acervo, indice)} 
+                  mencoes={mencoesDaTarefa} 
                   aoAbrir={() => {
                     // Similar ao notas, se tiver na mesma aba
                   }}

@@ -3,7 +3,13 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Plus, Trash2, Search, ArrowLeft, Save, Tag } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
-import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
+import {
+  carregarRepo,
+  daPasta,
+  invalidarCache,
+  arquivosIlegiveis,
+  type ItemRepo,
+} from "@/lib/repo";
 import { montarIndice, mencoesA, extrairLinks } from "@/lib/links";
 import { MencionadoEm } from "@/components/Links";
 import {
@@ -22,6 +28,8 @@ import {
   Vazio,
   Carregando,
 } from "@/components/ui";
+
+import { HistoricoDiffModal } from "@/components/HistoricoDiffModal";
 
 const PASTA = "notas";
 
@@ -88,9 +96,12 @@ export default function Notas() {
   const [erro, setErro] = useState("");
   const [busca, setBusca] = useState("");
   const [aberta, setAberta] = useState<NotaAberta | null>(null);
+  const [historicoAberto, setHistoricoAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   // acervo inteiro: resolve os [[links]] e as menções
   const [acervo, setAcervo] = useState<ItemRepo[]>([]);
+  // arquivos que o GitHub não entregou nesta leitura
+  const [ilegiveis, setIlegiveis] = useState<string[]>([]);
 
   /* ------------------------------------------------------------ listagem */
 
@@ -105,6 +116,7 @@ export default function Notas() {
       // o conteúdo já vem junto, então o título sai daqui mesmo — antes eram
       // N requisições extras só para descobrir o título de cada nota
       const todos = await carregarRepo(cfg, { memoria: 3000 });
+      setIlegiveis(arquivosIlegiveis());
       setAcervo(todos);
       const lista = daPasta(todos, PASTA);
       setArquivos(lista);
@@ -145,7 +157,10 @@ export default function Notas() {
     // que você estava editando.
     if (abrirCaminho && acervo.length > 0 && (!aberta || aberta.caminho !== abrirCaminho)) {
       const alvo = acervo.find((a) => a.caminho === abrirCaminho);
-      if (alvo) abrir(alvo);
+      // Vir da busca não pode atropelar o que você estava escrevendo.
+      if (alvo && (!mudou || confirm("Você tem alterações não salvas. Descartar?"))) {
+        abrir(alvo);
+      }
       // limpa o parâmetro: sem isso ele reabria o item a cada recarga da lista
       navegar(location.pathname, { replace: true });
     }
@@ -310,7 +325,7 @@ export default function Notas() {
   if (aberta) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
           <Botao
             variante="fantasma"
             tamanho="icone"
@@ -322,9 +337,35 @@ export default function Notas() {
           >
             <ArrowLeft size={18} />
           </Botao>
+
+          <div className="flex items-center gap-2">
+            {aberta.caminho && (
+              <Botao
+                variante="neutro"
+                tamanho="pequeno"
+                onClick={() => setHistoricoAberto(true)}
+              >
+                Histórico
+              </Botao>
+            )}
+            <Botao
+              variante="neutro"
+              tamanho="pequeno"
+              onClick={() => {
+                const elem = document.getElementById("conteudo-nota-pdf");
+                if (elem) {
+                  import("@/lib/pdf").then(({ exportarElementoParaPdf }) => {
+                    exportarElementoParaPdf(elem, aberta.titulo || "nota");
+                  });
+                }
+              }}
+            >
+              Exportar PDF
+            </Botao>
+          </div>
         </div>
 
-        <div className="flex-1 w-full max-w-4xl mx-auto py-8">
+        <div id="conteudo-nota-pdf" className="flex-1 w-full max-w-4xl mx-auto py-8">
           <div className="mb-8">
             <input
               type="text"
@@ -407,6 +448,13 @@ export default function Notas() {
             </Botao>
           )}
         </div>
+
+        <HistoricoDiffModal
+          aberto={historicoAberto}
+          aoFechar={() => setHistoricoAberto(false)}
+          caminho={aberta.caminho}
+          conteudoAtual={aberta.corpo}
+        />
       </div>
     );
   }
@@ -443,6 +491,14 @@ export default function Notas() {
       )}
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
+
+      {ilegiveis.length > 0 && (
+        <Aviso tom="erro">
+          {ilegiveis.length === 1 ? "1 arquivo não pôde" : `${ilegiveis.length} arquivos não puderam`}{" "}
+          ser lido e está oculto: {ilegiveis.join(", ")}. Ele continua no
+          repositório — abra pelo GitHub para conferir.
+        </Aviso>
+      )}
 
       {carregando ? (
         <Carregando texto="Buscando suas notas…" />

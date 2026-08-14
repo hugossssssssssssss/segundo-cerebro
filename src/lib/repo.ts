@@ -55,6 +55,19 @@ let cache: Cache | null = null;
  */
 const textoPorSha = new Map<string, string>();
 
+/**
+ * Arquivos que o último carregamento não conseguiu ler.
+ *
+ * Precisa chegar à tela: um `console.warn` não serve para quem usa o app no
+ * celular, e uma nota que some da lista sem explicação é quase tão ruim
+ * quanto uma que abre em branco.
+ */
+let ultimosIlegiveis: string[] = [];
+
+export function arquivosIlegiveis(): string[] {
+  return ultimosIlegiveis;
+}
+
 /** Evita que o mapa cresça sem limite numa sessão longa. */
 const TETO_MEMORIA = 2000;
 
@@ -248,12 +261,7 @@ export async function carregarRepo(
    * tela é ruim; apagar sem avisar é inaceitável.
    */
   const ilegiveis = folhas.filter((f) => !textoPorSha.has(f.sha));
-  if (ilegiveis.length) {
-    console.warn(
-      "Arquivos que o GitHub não entregou e por isso foram omitidos:",
-      ilegiveis.map((f) => f.path),
-    );
-  }
+  ultimosIlegiveis = ilegiveis.map((f) => f.path);
 
   const itens: ItemRepo[] = folhas
     .filter((f) => textoPorSha.has(f.sha))

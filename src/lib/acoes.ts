@@ -277,7 +277,10 @@ export async function executar(
         ...(acao.titulo ? { titulo: acao.titulo } : {}),
         ...marcaDaIA(acao.caminho!.split("/").slice(0, -1).join("/")),
       },
-      corpo: acao.corpo ?? doc.corpo,
+      // `""` NÃO é ausência: o modelo às vezes devolve corpo vazio e o `??`
+      // deixava passar, esvaziando a nota. Corpo em branco = não mexer no
+      // corpo. Para apagar de propósito, edite pela tela.
+      corpo: acao.corpo && acao.corpo.trim() ? acao.corpo : doc.corpo,
     });
     await gravar(cfg, acao.caminho!, conteudo, sha, `IA edita ${acao.caminho}`);
     invalidarCache();

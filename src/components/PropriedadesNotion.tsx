@@ -62,12 +62,15 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
   const [editandoChave, setEditandoChave] = useState<string | null>(null);
   const [renomearPara, setRenomearPara] = useState("");
 
-  const esquema = (dados._esquema as Record<string, TipoPropriedade>) || {};
+  const esquema = (dados.esquema as Record<string, TipoPropriedade>) || {};
 
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
-    .filter(k => !["titulo", "tipo", "atualizado", "id", "_esquema", "tags"].includes(k));
+    .filter(k => !["titulo", "tipo", "atualizado", "id", "esquema", "tags"].includes(k));
     
-  if (dados.tags) todasAsChaves.push("tags"); // garantir que tags apareça por último ou onde preferir
+  // "tags" SEMPRE aparece. Antes só era mostrada quando o item já tinha tags,
+  // então uma nota nova não tinha por onde ganhar a primeira — e não existe
+  // outro caminho na interface para marcar uma nota.
+  todasAsChaves.push("tags");
 
   function atualizar(chave: string, valor: any) {
     onChange({ ...dados, [chave]: valor });
@@ -75,15 +78,15 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
 
   function atualizarEsquema(chave: string, tipo: TipoPropriedade) {
     const novoEsquema = { ...esquema, [chave]: tipo };
-    onChange({ ...dados, _esquema: novoEsquema });
+    onChange({ ...dados, esquema: novoEsquema });
   }
 
   function remover(chave: string) {
     if (camposFixos[chave]) return;
     const novos = { ...dados };
     delete novos[chave];
-    if (novos._esquema) {
-      delete (novos._esquema as any)[chave];
+    if (novos.esquema) {
+      delete (novos.esquema as any)[chave];
     }
     onChange(novos);
   }
@@ -94,9 +97,9 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
     novos[nova] = novos[velha];
     delete novos[velha];
 
-    if (novos._esquema && (novos._esquema as any)[velha]) {
-      (novos._esquema as any)[nova] = (novos._esquema as any)[velha];
-      delete (novos._esquema as any)[velha];
+    if (novos.esquema && (novos.esquema as any)[velha]) {
+      (novos.esquema as any)[nova] = (novos.esquema as any)[velha];
+      delete (novos.esquema as any)[velha];
     }
     onChange(novos);
     setEditandoChave(null);
@@ -197,8 +200,32 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
       );
     }
 
-    if (tipo === "multiselect") {
+    if (tipo === "multiselect" || chave === "paleta") {
       const tags = Array.isArray(valor) ? valor : valor ? [valor] : [];
+      const ehPaleta = chave === "paleta" || tags.every((t: string) => /^#[0-9a-fA-F]{6}$/.test(t));
+      
+      if (ehPaleta && tags.length > 0) {
+        return (
+          <div className="flex items-center gap-1.5 flex-wrap py-1">
+            {tags.map((hex: string) => (
+              <button
+                key={hex}
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(hex);
+                  alert(`Cor ${hex} copiada para a área de transferência!`);
+                }}
+                className="group flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-mono transition-transform active:scale-95 hover:shadow-sm"
+                style={{ backgroundColor: hex, color: parseInt(hex.replace('#',''), 16) > 0xffffff/2 ? '#000' : '#fff' }}
+                title={`Clique para copiar ${hex}`}
+              >
+                <span>{hex}</span>
+              </button>
+            ))}
+          </div>
+        );
+      }
+
       return (
         <Popover>
           <PopoverTrigger asChild>

@@ -245,3 +245,78 @@ describe("erros", () => {
     await expect(carregarRepo(cfg)).rejects.toThrow(/algo ruim/);
   });
 });
+
+describe("arquivo que o GitHub não entrega", () => {
+  it("fica de fora da lista em vez de virar corpo vazio", async () => {
+    // Se virasse item com corpo "", a nota abriria em branco e o próximo
+    // Salvar gravaria o vazio por cima do arquivo real.
+    fetchFalso
+      .mockResolvedValueOnce(
+        arvore([
+          { path: "notas/a.md", sha: "s1" },
+          { path: "notas/b.md", sha: "s2" },
+          { path: "notas/c.md", sha: "s3" },
+        ]),
+      )
+      .mockResolvedValueOnce(
+        resposta({
+          data: {
+            repository: {
+              f0: { text: "conteudo de A" },
+              f1: null, // o GitHub não entregou este
+              f2: { text: "conteudo de C" },
+            },
+          },
+        }),
+      );
+
+    const itens = await carregarRepo(cfg);
+    expect(itens.map((i) => i.caminho)).toEqual(["notas/a.md", "notas/c.md"]);
+  });
+
+  it("o conteúdo NÃO troca de arquivo quando um do meio falta", async () => {
+    // O pior erro possível neste código seria o mapeamento f0/f1/f2 deslizar
+    // e dar a A o conteúdo de B. Isto trava esse alinhamento.
+    fetchFalso
+      .mockResolvedValueOnce(
+        arvore([
+          { path: "notas/a.md", sha: "s1" },
+          { path: "notas/b.md", sha: "s2" },
+          { path: "notas/c.md", sha: "s3" },
+        ]),
+      )
+      .mockResolvedValueOnce(
+        resposta({
+          data: {
+            repository: {
+              f0: { text: "sou o A" },
+              f1: null,
+              f2: { text: "sou o C" },
+            },
+          },
+        }),
+      );
+
+    const porCaminho = Object.fromEntries(
+      (await carregarRepo(cfg)).map((i) => [i.caminho, i.texto]),
+    );
+    expect(porCaminho["notas/a.md"]).toBe("sou o A");
+    expect(porCaminho["notas/c.md"]).toBe("sou o C");
+    expect(porCaminho["notas/b.md"]).toBeUndefined();
+  });
+
+  it("cada item guarda o sha da sua própria folha", async () => {
+    fetchFalso
+      .mockResolvedValueOnce(
+        arvore([
+          { path: "notas/a.md", sha: "sha-de-a" },
+          { path: "notas/b.md", sha: "sha-de-b" },
+        ]),
+      )
+      .mockResolvedValueOnce(conteudo(["A", "B"]));
+
+    const itens = await carregarRepo(cfg);
+    expect(itens.find((i) => i.caminho === "notas/a.md")?.sha).toBe("sha-de-a");
+    expect(itens.find((i) => i.caminho === "notas/b.md")?.sha).toBe("sha-de-b");
+  });
+});
