@@ -14,6 +14,7 @@ import {
   Moon,
   Sparkles,
   FileCheck,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -45,6 +46,7 @@ export const gruposNavegacao: GrupoNavegacao[] = [
       { para: "/lousas", rotulo: "Lousas", Icone: Layout },
       { para: "/referencias", rotulo: "Referências", Icone: Image },
       { para: "/pdf", rotulo: "Ferramentas PDF", Icone: FileCheck },
+      { para: "/conversor", rotulo: "Conversor Nativo", Icone: RefreshCw },
     ],
   },
   {
