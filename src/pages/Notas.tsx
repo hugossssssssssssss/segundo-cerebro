@@ -351,6 +351,7 @@ export default function Notas() {
             <div className="mt-6 flex flex-col gap-2">
               <PropriedadesNotion
                 dados={aberta.bruto}
+                corpoTexto={aberta.corpo}
                 onChange={(novosDados) => setAberta({ ...aberta, bruto: novosDados })}
                 camposFixos={{
                   tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" }

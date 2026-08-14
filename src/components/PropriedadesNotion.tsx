@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Type, 
   Hash, 
@@ -76,9 +76,47 @@ export const CORES_NOTION: Record<string, { bg: string; text: string; border: st
   laranja: { bg: "bg-orange-500/15", text: "text-orange-700 dark:text-orange-300", border: "border-orange-500/20", nome: "Laranja" },
 };
 
+export const STATUS_NOTION: Record<string, { label: string; cor: string }> = {
+  a_fazer: { label: "A fazer", cor: "cinza" },
+  em_andamento: { label: "Em andamento", cor: "azul" },
+  pausada: { label: "Pausada", cor: "amarelo" },
+  concluida: { label: "Concluída", cor: "verde" },
+  cancelada: { label: "Cancelada", cor: "vermelho" },
+};
+
+const CONFIG_KEY = "segundo-cerebro-propriedades-config";
+
+export function lerConfigPropriedadesGlobais(): { rotulos: Record<string, string>; coresTags: Record<string, string> } {
+  try {
+    const raw = localStorage.getItem(CONFIG_KEY);
+    if (!raw) return { rotulos: {}, coresTags: {} };
+    const parsed = JSON.parse(raw);
+    return {
+      rotulos: parsed?.rotulos || {},
+      coresTags: parsed?.coresTags || {},
+    };
+  } catch {
+    return { rotulos: {}, coresTags: {} };
+  }
+}
+
+export function salvarConfigPropriedadesGlobais(novosRotulos?: Record<string, string>, novasCores?: Record<string, string>) {
+  try {
+    const atual = lerConfigPropriedadesGlobais();
+    const proximo = {
+      rotulos: { ...atual.rotulos, ...novosRotulos },
+      coresTags: { ...atual.coresTags, ...novasCores },
+    };
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(proximo));
+  } catch {
+    // silencioso
+  }
+}
+
 type PropriedadesNotionProps = {
   dados: Record<string, any>;
   onChange: (novosDados: Record<string, any>) => void;
+  corpoTexto?: string;
   camposFixos?: {
     [key: string]: {
       icone: React.ReactNode;
@@ -92,6 +130,7 @@ type PropriedadesNotionProps = {
 export function PropriedadesNotion({ 
   dados, 
   onChange, 
+  corpoTexto = "",
   camposFixos = {}, 
   opcoesRelacionamento = [] 
 }: PropriedadesNotionProps) {
@@ -103,16 +142,28 @@ export function PropriedadesNotion({
   const [renomearPara, setRenomearPara] = useState("");
   const [copiado, setCopiado] = useState<string | null>(null);
   const [mostrandoOcultas, setMostrandoOcultas] = useState(false);
+  const [tagInput, setTagInput] = useState("");
+
+  const [globalConfig, setGlobalConfig] = useState(lerConfigPropriedadesGlobais());
+
+  useEffect(() => {
+    setGlobalConfig(lerConfigPropriedadesGlobais());
+  }, []);
 
   const esquema = (dados.esquema as Record<string, TipoPropriedade>) || {};
   const visibilidadeMap = (dados._visibilidade as Record<string, OpcaoVisibilidade>) || {};
-  const coresMap = (dados._coresTags as Record<string, string>) || {};
-  const rotulosMap = (dados._rotulos as Record<string, string>) || {};
+  const coresMap = { ...globalConfig.coresTags, ...((dados._coresTags as Record<string, string>) || {}) };
+  const rotulosMap = { ...globalConfig.rotulos, ...((dados._rotulos as Record<string, string>) || {}) };
 
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
     .filter(k => !["titulo", "tipo", "atualizado", "id", "esquema", "tags", "_visibilidade", "_coresTags", "_rotulos"].includes(k));
     
   todasAsChaves.push("tags");
+
+  // Garante propriedades nativas de sistema
+  if (!todasAsChaves.includes("criado_por")) todasAsChaves.push("criado_por");
+  if (!todasAsChaves.includes("criado_em")) todasAsChaves.push("criado_em");
+  if (!todasAsChaves.includes("ultima_edicao")) todasAsChaves.push("ultima_edicao");
 
   function nomeExibido(chave: string): string {
     return rotulosMap[chave] || chave;
@@ -133,13 +184,15 @@ export function PropriedadesNotion({
   }
 
   function atualizarCorTag(tag: string, cor: string) {
-    const novo = { ...coresMap, [tag]: cor };
-    onChange({ ...dados, _coresTags: novo });
+    const novasCores = { ...coresMap, [tag]: cor };
+    salvarConfigPropriedadesGlobais(undefined, { [tag]: cor });
+    setGlobalConfig(lerConfigPropriedadesGlobais());
+    onChange({ ...dados, _coresTags: novasCores });
   }
 
   function remover(chave: string) {
     if (camposFixos[chave]) return;
-    const novos = { ...dados };
+    const novos: Record<string, any> = { ...dados };
     delete novos[chave];
     if (novos.esquema) delete (novos.esquema as any)[chave];
     if (novos._visibilidade) delete (novos._visibilidade as any)[chave];
@@ -150,8 +203,10 @@ export function PropriedadesNotion({
   function renomear(velha: string, nova: string) {
     if (!nova.trim() || nomeExibido(velha) === nova) return;
     
-    // Atualiza rótulo exibido para QUALQUER propriedade (inclusive fixas)
     const novosRotulos = { ...rotulosMap, [velha]: nova.trim() };
+    salvarConfigPropriedadesGlobais({ [velha]: nova.trim() });
+    setGlobalConfig(lerConfigPropriedadesGlobais());
+    
     const novos: Record<string, any> = { ...dados, _rotulos: novosRotulos };
 
     if (!camposFixos[velha] && velha !== nova) {
@@ -177,7 +232,7 @@ export function PropriedadesNotion({
       idx++;
     }
 
-    const novos = { ...dados, [nomeFinal]: "" };
+    const novos: Record<string, any> = { ...dados, [nomeFinal]: "" };
     const novoEsquema = { ...esquema, [nomeFinal]: tipo };
     novos.esquema = novoEsquema;
 
@@ -198,7 +253,10 @@ export function PropriedadesNotion({
   const chavesOcultas: string[] = [];
 
   todasAsChaves.forEach((chave) => {
-    const vis = visibilidadeMap[chave] || "sempre";
+    // Propriedades nativas de sistema começam ocultas por padrão
+    const visDefault = ["criado_por", "criado_em", "ultima_edicao"].includes(chave) ? "esconder" : "sempre";
+    const vis = visibilidadeMap[chave] || visDefault;
+
     if (vis === "esconder") {
       chavesOcultas.push(chave);
     } else if (vis === "vazia" && ehVazia(chave)) {
@@ -251,10 +309,61 @@ export function PropriedadesNotion({
     );
   }
 
+  function renderizarBadgeStatus(val: string) {
+    const info = STATUS_NOTION[val] || { label: val || "A fazer", cor: "cinza" };
+    const estiloCor = CORES_NOTION[info.cor] || CORES_NOTION.cinza;
+
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Badge 
+            variant="secondary" 
+            className={cn(
+              "font-semibold text-xs px-2.5 py-1 border cursor-pointer transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 shadow-xs",
+              estiloCor.bg,
+              estiloCor.text,
+              estiloCor.border
+            )}
+          >
+            <span>{info.label}</span>
+          </Badge>
+        </PopoverTrigger>
+        <PopoverContent className="w-[200px] p-1.5" align="start">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">Alterar Status</p>
+          <div className="flex flex-col gap-1 mt-1">
+            {Object.entries(STATUS_NOTION).map(([stKey, stInfo]) => {
+              const est = CORES_NOTION[stInfo.cor] || CORES_NOTION.cinza;
+              return (
+                <button
+                  key={stKey}
+                  onClick={() => atualizar("status", stKey)}
+                  className={cn(
+                    "w-full px-2.5 py-1.5 rounded-md text-xs font-semibold text-left transition-colors border flex items-center justify-between",
+                    est.bg,
+                    est.text,
+                    est.border,
+                    val === stKey && "ring-2 ring-primary"
+                  )}
+                >
+                  <span>{stInfo.label}</span>
+                  {val === stKey && <span className="text-xs">✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
   function renderizarValor(chave: string) {
     const fixo = camposFixos[chave];
     const valor = dados[chave];
     const tipo = fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : "texto");
+
+    if (chave === "status") {
+      return renderizarBadgeStatus(valor || "a_fazer");
+    }
 
     if (tipo === "criado_por") {
       return (
@@ -413,7 +522,7 @@ export function PropriedadesNotion({
       );
     }
 
-    if (tipo === "multiselect" || chave === "paleta") {
+    if (tipo === "multiselect" || chave === "paleta" || chave === "tags") {
       const tags = Array.isArray(valor) ? valor : valor ? [valor] : [];
       const ehPaleta = chave === "paleta" || tags.every((t: string) => /^#[0-9a-fA-F]{6}$/.test(t));
       
@@ -443,6 +552,14 @@ export function PropriedadesNotion({
         );
       }
 
+      function adicionarTagLimpa(t: string) {
+        const limpa = t.trim().replace(/^,+|,+$/g, "");
+        if (limpa && !tags.includes(limpa)) {
+          atualizar(chave, [...tags, limpa]);
+        }
+        setTagInput("");
+      }
+
       return (
         <Popover>
           <PopoverTrigger asChild>
@@ -454,29 +571,50 @@ export function PropriedadesNotion({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[250px] p-0" align="start">
-            <Command>
-              <CommandInput placeholder="Digite e pressione Enter..." onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  const val = e.currentTarget.value.trim();
-                  if (val && !tags.includes(val)) {
-                    atualizar(chave, [...tags, val]);
-                    e.currentTarget.value = "";
+          <PopoverContent className="w-[260px] p-2 space-y-2" align="start">
+            <div className="flex items-center gap-1 bg-accent/40 border border-border rounded-md px-2 py-1">
+              <input
+                type="text"
+                autoFocus
+                placeholder="Digite a tag e aperte Enter..."
+                value={tagInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val.includes(",") || val.includes(";")) {
+                    adicionarTagLimpa(val);
+                  } else {
+                    setTagInput(val);
                   }
-                }
-              }} />
-              <CommandList>
-                <CommandEmpty>Digite para criar.</CommandEmpty>
-                <CommandGroup heading="Selecionados (clique para remover)">
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    adicionarTagLimpa(tagInput);
+                  }
+                }}
+                className="bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted-foreground w-full"
+              />
+            </div>
+
+            {tags.length > 0 && (
+              <div className="space-y-1">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                  Tags atuais (clique para remover)
+                </span>
+                <div className="flex flex-wrap gap-1">
                   {tags.map((t: string) => (
-                    <CommandItem key={t} onSelect={() => atualizar(chave, tags.filter((x: string) => x !== t))}>
+                    <button 
+                      key={t}
+                      onClick={() => atualizar(chave, tags.filter((x: string) => x !== t))}
+                      className="group"
+                      title="Clique para apagar"
+                    >
                       {renderizarBadgeTag(t)}
-                    </CommandItem>
+                    </button>
                   ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
+                </div>
+              </div>
+            )}
           </PopoverContent>
         </Popover>
       );
@@ -484,12 +622,17 @@ export function PropriedadesNotion({
 
     if (tipo === "relation") {
       const relacoes = Array.isArray(valor) ? valor : valor ? [valor] : [];
+      
+      // Extrai também automáticos do corpo do texto
+      const textoMencoes = (corpoTexto || "").match(/@[a-zA-Z0-9_\-áàâãéèêíïóôõöúçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ\s]{2,60}/g) || [];
+      const unicosMencoes = Array.from(new Set([...relacoes, ...textoMencoes.map(m => m.trim())]));
+
       return (
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-auto min-h-7 px-2 py-1 text-left justify-start font-normal flex-wrap gap-1 hover:bg-transparent">
-              {relacoes.length > 0 ? (
-                relacoes.map((r: string) => {
+              {unicosMencoes.length > 0 ? (
+                unicosMencoes.map((r: string) => {
                   const nomePuro = r.replace(/^[\[@]+/, "").replace(/\]\]$/, "");
                   return (
                     <Badge variant="secondary" key={r} className="font-medium text-[11px] px-2 py-0.5 flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:underline">
@@ -511,7 +654,7 @@ export function PropriedadesNotion({
                 <CommandGroup heading="Páginas (clique para ligar/desligar)">
                   {opcoesRelacionamento.map((opcao) => {
                     const tagFormatada = `@${opcao.titulo}`;
-                    const selecionado = relacoes.includes(tagFormatada) || relacoes.includes(`[[${opcao.titulo}]]`);
+                    const selecionado = unicosMencoes.includes(tagFormatada) || unicosMencoes.includes(`[[${opcao.titulo}]]`);
                     return (
                       <CommandItem 
                         key={opcao.caminho} 
@@ -553,7 +696,8 @@ export function PropriedadesNotion({
   function renderizarMenuPropriedade(chave: string, fixo?: any) {
     const tipoAtual = fixo?.tipo || esquema[chave] || "texto";
     const IconeAtual = fixo?.icone ? () => <>{fixo.icone}</> : ICONES_TIPO[tipoAtual as TipoPropriedade] || Type;
-    const visAtual = visibilidadeMap[chave] || "sempre";
+    const visDefault = ["criado_por", "criado_em", "ultima_edicao"].includes(chave) ? "esconder" : "sempre";
+    const visAtual = visibilidadeMap[chave] || visDefault;
     const rotuloAtual = nomeExibido(chave);
 
     return (

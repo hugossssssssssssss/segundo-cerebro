@@ -253,6 +253,7 @@ function PainelTarefaNotion({
             prazo: editando.prazo,
             tags: editando.tags,
           }}
+          corpoTexto={editando.corpo}
           onChange={(novosDados) => {
             setEditando({
               ...editando,
