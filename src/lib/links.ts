@@ -52,7 +52,13 @@ export function chave(s: string): string {
 export function montarIndice(itens: ItemRepo[]): Map<string, Alvo> {
   const indice = new Map<string, Alvo>();
 
-  for (const item of itens) {
+  // Do mais recente para o mais antigo. A árvore do git chega em ordem
+  // crescente de caminho, e como os nomes começam com AAAA-MM-DD isso fazia
+  // o item MAIS ANTIGO ganhar o nome — o contrário do que se espera ao
+  // escrever [[Reunião]] pensando na de ontem.
+  const ordenados = [...itens].sort((a, b) => b.nome.localeCompare(a.nome));
+
+  for (const item of ordenados) {
     const titulo = tituloProvavel(item.doc, item.nome);
     const alvo: Alvo = {
       caminho: item.caminho,

@@ -139,8 +139,24 @@ export function acoesDeChamadas(chamadas: ChamadaFuncao[]): Acao[] {
   for (const c of chamadas) {
     const a = c.args ?? {};
     const campos: Record<string, unknown> = {};
-    for (const k of ["status", "prazo", "tags", "metas"]) {
-      if (a[k] !== undefined) campos[k] = a[k];
+    if (
+      typeof a.status === "string" &&
+      ["a-fazer", "fazendo", "feito"].includes(a.status)
+    ) {
+      campos.status = a.status;
+    }
+    if (typeof a.prazo === "string" && /^\d{4}-\d{2}-\d{2}$/.test(a.prazo)) {
+      campos.prazo = a.prazo;
+    }
+    if (Array.isArray(a.tags)) {
+      campos.tags = a.tags.map(String);
+    } else if (typeof a.tags === "string" && a.tags.trim()) {
+      campos.tags = [a.tags.trim()];
+    }
+    if (Array.isArray(a.metas)) {
+      campos.metas = a.metas.map(String);
+    } else if (typeof a.metas === "string" && a.metas.trim()) {
+      campos.metas = [a.metas.trim()];
     }
 
     const base = {
@@ -218,6 +234,20 @@ function nomeDoCaminho(caminho: string): string {
  * Tudo que a IA grava sai marcado com `ia_sugeriu: true`, para você saber
  * depois o que foi você que escreveu e o que foi a máquina.
  */
+/**
+ * Caminhos já entregues nesta sessão, mesmo que o acervo ainda não saiba.
+ *
+ * Aprovar duas criações em sequência rápida calculava o mesmo nome contra o
+ * mesmo acervo — a segunda gravava sem `sha` sobre um arquivo que acabara de
+ * nascer e recebia um 422 sem sentido para quem está lendo a tela.
+ */
+const reservados = new Set<string>();
+
+/** Usado nos testes; no app o conjunto só cresce durante a sessão. */
+export function limparReservas(): void {
+  reservados.clear();
+}
+
 export async function executar(
   cfg: Settings,
   acao: Acao,
@@ -250,11 +280,11 @@ export async function executar(
   }
 
   // criar
-  const caminho = nomeLivre(
-    acao.pasta!,
-    acao.titulo!,
-    acervo.map((i) => i.caminho),
-  );
+  const caminho = nomeLivre(acao.pasta!, acao.titulo!, [
+    ...acervo.map((i) => i.caminho),
+    ...reservados,
+  ]);
+  reservados.add(caminho);
   const conteudo = escreverMarkdown({
     dados: {
       titulo: acao.titulo,

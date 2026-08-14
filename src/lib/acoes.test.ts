@@ -1,5 +1,13 @@
-import { describe, it, expect } from "vitest";
-import { acoesDeChamadas, descrever, type ChamadaFuncao } from "./acoes";
+import { describe, it, expect, vi } from "vitest";
+import {
+  acoesDeChamadas,
+  descrever,
+  executar,
+  limparReservas,
+  type Acao,
+  type ChamadaFuncao,
+} from "./acoes";
+import { PADRAO } from "./settings";
 
 const chamada = (name: string, args: Record<string, unknown>): ChamadaFuncao => ({
   name,
@@ -165,5 +173,36 @@ describe("descrever", () => {
     expect(
       descrever({ tipo: "criar", pasta: "referencias", titulo: "X" }),
     ).toContain("a referência");
+  });
+});
+
+describe("aprovar duas criações seguidas não colide", () => {
+  it("o segundo item ganha nome próprio, mesmo com o mesmo título", async () => {
+    limparReservas();
+
+    const gravados: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: RequestInit) => {
+        if (init?.method === "PUT") gravados.push(String(url).split("/contents/")[1]);
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({ content: { sha: "novo" } }),
+        } as unknown as Response;
+      }),
+    );
+    vi.stubGlobal("navigator", { onLine: true });
+
+    const cfg = { ...PADRAO, githubToken: "t", repoOwner: "h", repoName: "d" };
+    const acao: Acao = { tipo: "criar", pasta: "tarefas", titulo: "Reunião" };
+
+    // as duas aprovações veem o MESMO acervo, como acontece na tela
+    await Promise.all([executar(cfg, acao, []), executar(cfg, acao, [])]);
+
+    expect(gravados).toHaveLength(2);
+    expect(new Set(gravados).size).toBe(2); // caminhos diferentes
+    vi.unstubAllGlobals();
   });
 });

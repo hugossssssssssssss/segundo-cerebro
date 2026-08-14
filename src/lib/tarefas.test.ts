@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { dataISO } from "./utils";
 import { lerMarkdown } from "./markdown";
 import {
@@ -112,5 +112,27 @@ describe("pomodoro", () => {
 
   it("conta zero quando não há registro", () => {
     expect(minutosRegistrados("nenhum ciclo aqui")).toBe(0);
+  });
+});
+
+describe("a data do pomodoro", () => {
+  it("usa o dia LOCAL, não o UTC", () => {
+    // às 22h em Brasília o UTC já virou: o ciclo era registrado em amanhã,
+    // no arquivo, para sempre. O teste antigo só conferia os minutos, e foi
+    // por isso que o bug sobreviveu a duas auditorias.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-13T22:30:00-03:00"));
+
+    expect(registrarCiclo("", 25)).toContain("2026-08-13");
+    expect(registrarCiclo("", 25)).not.toContain("2026-08-14");
+
+    vi.useRealTimers();
+  });
+
+  it("registra o intervalo com a duração pedida", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-13T14:45:00-03:00"));
+    expect(registrarCiclo("", 25)).toContain("14:20 → 14:45 (25min)");
+    vi.useRealTimers();
   });
 });

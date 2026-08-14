@@ -28,6 +28,7 @@ export default function Home() {
   const [saudacao, setSaudacao] = useState("");
   const [IconeTempo, setIconeTempo] = useState<any>(Sun);
   const [totalTarefas, setTotalTarefas] = useState(0);
+  const [totalNotas, setTotalNotas] = useState(0);
 
   useEffect(() => {
     const hora = new Date().getHours();
@@ -65,6 +66,7 @@ export default function Home() {
       setTarefasPendentes(pendentes.slice(0, 4));
 
       const itensNotas = daPasta(todos, "notas");
+      setTotalNotas(itensNotas.length);
       setNotasRecentes(
         itensNotas.slice(0, 4).map(i => ({
           caminho: i.caminho,
@@ -141,13 +143,13 @@ export default function Home() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Notas Arquivadas</CardTitle>
+            <CardTitle className="text-sm font-medium">Notas Criadas</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{notasRecentes.length > 0 ? "+"+notasRecentes.length : 0}</div>
+            <div className="text-2xl font-bold">{totalNotas}</div>
             <p className="text-xs text-muted-foreground">
-              Registros recentes
+              Registros no repositório
             </p>
           </CardContent>
         </Card>
@@ -168,16 +170,18 @@ export default function Home() {
               </div>
             ) : (
               tarefasPendentes.map(t => (
-                <div key={t.caminho} className="flex items-center space-x-4 rounded-md border p-4 transition-all hover:bg-muted/50">
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium leading-none">{t.titulo}</p>
-                    {t.tags.length > 0 && (
-                      <div className="flex gap-2 pt-2">
-                        {t.tags.map(tag => <Badge variant="secondary" key={tag}>{tag}</Badge>)}
-                      </div>
-                    )}
+                <Link key={t.caminho} to={`/tarefas?abrir=${encodeURIComponent(t.caminho)}`}>
+                  <div className="flex items-center space-x-4 rounded-md border p-4 transition-all hover:bg-muted/50">
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium leading-none">{t.titulo}</p>
+                      {t.tags.length > 0 && (
+                        <div className="flex gap-2 pt-2">
+                          {t.tags.map(tag => <Badge variant="secondary" key={tag}>{tag}</Badge>)}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </Link>
               ))
             )}
           </CardContent>
@@ -202,14 +206,16 @@ export default function Home() {
               </div>
             ) : (
               notasRecentes.map(n => (
-                <div key={n.caminho} className="flex items-center space-x-4 rounded-md border p-4 transition-all hover:bg-muted/50">
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium leading-none">{n.titulo}</p>
-                    <p className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-[300px]">
-                      {n.nome}
-                    </p>
+                <Link key={n.caminho} to={`/notas?abrir=${encodeURIComponent(n.caminho)}`}>
+                  <div className="flex items-center space-x-4 rounded-md border p-4 transition-all hover:bg-muted/50">
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium leading-none">{n.titulo}</p>
+                      <p className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-[300px]">
+                        {n.nome}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </Link>
               ))
             )}
           </CardContent>

@@ -6,6 +6,7 @@ import { ler, gravar, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
 import { montarIndice, mencoesA } from "@/lib/links";
 import { MencionadoEm } from "@/components/Links";
+import { Subtarefas } from "@/components/Subtarefas";
 import { ListTodo, Calendar, Tag } from "lucide-react";
 import {
   lerMarkdown,
@@ -530,6 +531,20 @@ export default function Tarefas() {
                   tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" }
                 }}
                 opcoesRelacionamento={opcoesRelacionamento}
+              />
+            </div>
+
+            <hr className="my-4 border-border" />
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Passos / Subtarefas
+              </label>
+              <Subtarefas
+                corpo={editando.corpo}
+                onChange={(novoCorpo) =>
+                  setEditando({ ...editando, corpo: novoCorpo })
+                }
               />
             </div>
 

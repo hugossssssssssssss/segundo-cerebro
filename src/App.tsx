@@ -195,25 +195,27 @@ function Estrutura({ children }: { children: React.ReactNode }) {
             to={para}
             className={({ isActive }) =>
               cn(
-                "flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground",
+                "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors min-w-0 truncate px-0.5",
+                isActive ? "text-primary font-semibold" : "text-muted-foreground",
               )
             }
           >
-            <Icone size={19} />
-            {rotulo}
+            <Icone size={18} className="shrink-0" />
+            <span className="truncate max-w-full">{rotulo}</span>
           </NavLink>
         ))}
       </nav>
 
       {/* Botão flutuante de captura no celular, acima da barra de abas */}
-      <button
-        onClick={() => setCapturando(true)}
-        className="fixed bottom-32 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 sm:hidden"
-        aria-label="Captura rápida"
-      >
-        <Plus size={24} />
-      </button>
+      {!location.pathname.startsWith("/chat") && (
+        <button
+          onClick={() => setCapturando(true)}
+          className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 sm:hidden"
+          aria-label="Captura rápida"
+        >
+          <Plus size={24} />
+        </button>
+      )}
 
       <Busca aberta={buscando} aoFechar={() => setBuscando(false)} />
       <CapturaRapida

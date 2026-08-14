@@ -144,3 +144,35 @@ describe("sugerir", () => {
     expect(new Set(caminhos).size).toBe(caminhos.length);
   });
 });
+
+describe("título repetido", () => {
+  const comData = (data: string, titulo: string): ItemRepo => {
+    const texto = `---\ntitulo: ${titulo}\n---\n\nx`;
+    return {
+      caminho: `notas/${data}-x.md`,
+      nome: `${data}-x.md`,
+      sha: data,
+      tamanho: texto.length,
+      texto,
+      doc: lerMarkdown(texto),
+    };
+  };
+
+  it("o mais recente ganha o nome", () => {
+    // a árvore do git chega em ordem crescente de caminho, então sem
+    // ordenação explícita o mais ANTIGO vencia
+    const idx = montarIndice([
+      comData("2026-01-01", "Reunião"),
+      comData("2026-08-13", "Reunião"),
+    ]);
+    expect(idx.get("reuniao")?.caminho).toBe("notas/2026-08-13-x.md");
+  });
+
+  it("a ordem de entrada não altera o resultado", () => {
+    const antigo = comData("2026-01-01", "Reunião");
+    const novo = comData("2026-08-13", "Reunião");
+    expect(montarIndice([novo, antigo]).get("reuniao")?.caminho).toBe(
+      montarIndice([antigo, novo]).get("reuniao")?.caminho,
+    );
+  });
+});

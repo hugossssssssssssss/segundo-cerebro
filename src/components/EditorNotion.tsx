@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
 import "@blocknote/core/fonts/inter.css";
@@ -33,6 +33,7 @@ export function EditorNotion({
   );
 
   const editor = useCreateBlockNote();
+  const ultimoMd = useRef(markdown);
 
   // acompanha o botão de tema do cabeçalho
   useEffect(() => {
@@ -47,13 +48,12 @@ export function EditorNotion({
   }, []);
 
   useEffect(() => {
+    if (pronto && markdown === ultimoMd.current) return;
+    ultimoMd.current = markdown;
     const blocos = editor.tryParseMarkdownToBlocks(markdown || "");
     editor.replaceBlocks(editor.document, blocos);
     setPronto(true);
-    // Só na montagem: re-sincronizar a cada tecla digitada faria o cursor
-    // saltar. Ver AGENTS.md sobre editar o corpo por fora enquanto isto abre.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [editor, markdown, pronto]);
 
   if (!pronto) {
     return (
@@ -70,8 +70,11 @@ export function EditorNotion({
         editable={editable}
         theme={escuro ? "dark" : "light"}
         onChange={() => {
-          // síncrono nesta versão do BlockNote — sem corrida de retorno tardio
-          onChange(restaurarWikilinks(editor.blocksToMarkdownLossy(editor.document)));
+          const limpo = restaurarWikilinks(
+            editor.blocksToMarkdownLossy(editor.document),
+          );
+          ultimoMd.current = limpo;
+          onChange(limpo);
         }}
       />
       <style>{`
