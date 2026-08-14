@@ -8,7 +8,6 @@ import {
   XCircle,
   Clock,
   Trash2,
-  Users,
   Copy,
   Check,
   FileCheck,
@@ -16,7 +15,7 @@ import {
 import { Botao, Cartao, Aviso, Selo } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { lerConfig } from "@/lib/settings";
-import { transcreverAudioComIA } from "@/lib/gemini";
+import { transcreverAudioLocalWhisper } from "@/lib/whisperLocal";
 import { gravar } from "@/lib/github";
 import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
 
@@ -89,9 +88,7 @@ export default function Transcritor() {
       )
     );
 
-    const cfg = lerConfig();
-    transcreverAudioComIA(
-      cfg,
+    transcreverAudioLocalWhisper(
       arquivoFile,
       (msg) => {
         setFila((prev) =>
@@ -222,12 +219,12 @@ export default function Transcritor() {
             Transcrição com Oradores
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Envie seus áudios (WhatsApp, Reuniões, Entrevistas) e deixe a IA transcrever em segundo plano com identificação de oradores (Orador 1, Orador 2) em Português.
+            Envie seus áudios e o modelo OpenAI Whisper (Open-Source) transcreve 100% no seu navegador em segundo plano, sem usar sua chave Gemini e sem risco de nenhum custo.
           </p>
         </div>
 
         <Selo tom="sucesso" className="self-start sm:self-center px-3 py-1 flex items-center gap-1.5">
-          <Users size={13} /> Oradores em pt-BR
+          🔒 100% Local / Custo R$ 0
         </Selo>
       </div>
 
