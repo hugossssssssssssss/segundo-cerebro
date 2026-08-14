@@ -1,13 +1,26 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Plus, Timer, Trash2, Check, List, CalendarDays } from "lucide-react";
+import {
+  Plus,
+  Timer,
+  Trash2,
+  Check,
+  List,
+  CalendarDays,
+  ListTodo,
+  Calendar,
+  Tag,
+  Square,
+  PanelRight,
+  Maximize2,
+  X,
+} from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { ler, gravar, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
 import { montarIndice, mencoesA } from "@/lib/links";
 import { MencionadoEm } from "@/components/Links";
 import { Subtarefas } from "@/components/Subtarefas";
-import { ListTodo, Calendar, Tag } from "lucide-react";
 import {
   lerMarkdown,
   escreverMarkdown,
@@ -37,7 +50,6 @@ import {
   Aviso,
   Vazio,
   Carregando,
-  Modal,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -51,12 +63,6 @@ const CORES_URGENCIA = {
   nenhuma: "neutro",
 } as const;
 
-/**
- * O editor e o painel de propriedades custam ~1 MB juntos (BlockNote +
- * ProseMirror + Mantine). Importados de forma estática, esse peso vinha só
- * para mostrar a lista — e Tarefas é a aba inicial, então era cobrado toda
- * sessão. Sob demanda, só baixa quando um item é realmente aberto.
- */
 const EditorPesado = lazy(() =>
   import("@/components/EditorNotion").then((m) => ({ default: m.EditorNotion })),
 );
@@ -66,7 +72,6 @@ const PropriedadesPesadas = lazy(() =>
   })),
 );
 
-/* Embrulhos com Suspense, para os pontos de uso não mudarem. */
 function EditorNotion(props: React.ComponentProps<typeof EditorPesado>) {
   return (
     <Suspense
@@ -91,6 +96,252 @@ function PropriedadesNotion(
   );
 }
 
+/* Painel de Edição estilo Notion com suporte aos modos: Pop-up, Do Lado e Tela Cheia */
+function PainelTarefaNotion({
+  modoVisao,
+  setModoVisao,
+  editando,
+  original,
+  salvando,
+  aoFechar,
+  aoSalvar,
+  aoRemover,
+  setEditando,
+  opcoesRelacionamento,
+  mencoesDaTarefa,
+}: {
+  modoVisao: "popup" | "lado" | "telacheia";
+  setModoVisao: (m: "popup" | "lado" | "telacheia") => void;
+  editando: Tarefa;
+  original: Tarefa | null;
+  salvando: boolean;
+  aoFechar: () => void;
+  aoSalvar: () => void;
+  aoRemover: () => void;
+  setEditando: React.Dispatch<React.SetStateAction<Tarefa | null>>;
+  opcoesRelacionamento: { titulo: string; caminho: string }[];
+  mencoesDaTarefa: any[];
+}) {
+  const temMudancas =
+    original !== null &&
+    JSON.stringify(editando) !== JSON.stringify(original);
+
+  const tentarFechar = useCallback(() => {
+    if (temMudancas && !confirm("Você tem alterações não salvas. Descartar?")) {
+      return;
+    }
+    aoFechar();
+  }, [temMudancas, aoFechar]);
+
+  useEffect(() => {
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") tentarFechar();
+    };
+    document.addEventListener("keydown", aoTeclar);
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      document.body.style.overflow = overflowAnterior;
+    };
+  }, [tentarFechar]);
+
+  // Cabeçalho com o seletor de modos estilo Notion
+  const cabecalho = (
+    <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3.5 bg-card">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          {editando.caminho ? "Tarefa" : "Nova tarefa"}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {/* Alternador de Modos de Visão estilo Notion */}
+        <div className="flex items-center gap-0.5 rounded-lg border border-border/80 bg-muted/40 p-1">
+          <button
+            onClick={() => setModoVisao("popup")}
+            className={cn(
+              "p-1.5 rounded-md text-xs transition-colors flex items-center gap-1",
+              modoVisao === "popup"
+                ? "bg-background text-foreground shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            title="Abrir em Pop-up central"
+          >
+            <Square size={14} />
+            <span className="hidden sm:inline">Pop-up</span>
+          </button>
+
+          <button
+            onClick={() => setModoVisao("lado")}
+            className={cn(
+              "p-1.5 rounded-md text-xs transition-colors flex items-center gap-1",
+              modoVisao === "lado"
+                ? "bg-background text-foreground shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            title="Abrir no Painel Lateral (Do lado)"
+          >
+            <PanelRight size={14} />
+            <span className="hidden sm:inline">Do Lado</span>
+          </button>
+
+          <button
+            onClick={() => setModoVisao("telacheia")}
+            className={cn(
+              "p-1.5 rounded-md text-xs transition-colors flex items-center gap-1",
+              modoVisao === "telacheia"
+                ? "bg-background text-foreground shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            title="Abrir em Tela Cheia"
+          >
+            <Maximize2 size={14} />
+            <span className="hidden sm:inline">Tela Cheia</span>
+          </button>
+        </div>
+
+        <button
+          onClick={tentarFechar}
+          className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          title="Fechar (Esc)"
+        >
+          <X size={18} />
+        </button>
+      </div>
+    </div>
+  );
+
+  const rodape = (
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-4 bg-card">
+      <div>
+        {editando.caminho && (
+          <Botao variante="fantasma" onClick={aoRemover} className="text-destructive hover:bg-destructive/10">
+            <Trash2 size={16} />
+            <span>Apagar</span>
+          </Botao>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Botao variante="neutro" onClick={tentarFechar}>
+          Cancelar
+        </Botao>
+        <Botao onClick={aoSalvar} disabled={salvando}>
+          {salvando ? "Salvando…" : "Salvar"}
+        </Botao>
+      </div>
+    </div>
+  );
+
+  const conteudo = (
+    <div className="space-y-6 max-w-4xl mx-auto w-full">
+      <input
+        type="text"
+        value={editando.titulo}
+        onChange={(e) => setEditando({ ...editando, titulo: e.target.value })}
+        placeholder="Sem título"
+        className="w-full text-2xl sm:text-3xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0 pt-2"
+        autoFocus
+      />
+
+      <div className="flex flex-col gap-2">
+        <PropriedadesNotion
+          dados={{
+            ...editando.bruto,
+            status: editando.status,
+            prazo: editando.prazo,
+            tags: editando.tags,
+          }}
+          onChange={(novosDados) => {
+            setEditando({
+              ...editando,
+              bruto: novosDados,
+              status: (novosDados.status as Status) || editando.status,
+              prazo: novosDados.prazo,
+              tags: Array.isArray(novosDados.tags) ? novosDados.tags : editando.tags,
+            });
+          }}
+          camposFixos={{
+            status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "select", opcoes: ["a-fazer", "fazendo", "feito"] },
+            prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
+            tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" }
+          }}
+          opcoesRelacionamento={opcoesRelacionamento}
+        />
+      </div>
+
+      <hr className="border-border" />
+
+      <div className="space-y-3">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Passos / Subtarefas
+        </label>
+        <Subtarefas
+          corpo={editando.corpo}
+          onChange={(novoCorpo) =>
+            setEditando({ ...editando, corpo: novoCorpo })
+          }
+        />
+      </div>
+
+      <hr className="border-border" />
+
+      <div className="min-h-[250px]">
+        <EditorNotion
+          markdown={editando.corpo}
+          onChange={(v) => setEditando({ ...editando, corpo: v })}
+        />
+      </div>
+
+      {editando.caminho && (
+        <div className="mt-8 border-t border-border pt-6">
+          <MencionadoEm mencoes={mencoesDaTarefa} aoAbrir={() => {}} />
+        </div>
+      )}
+    </div>
+  );
+
+  if (modoVisao === "lado") {
+    return (
+      <div className="fixed inset-0 z-50 flex justify-end bg-black/15 backdrop-blur-[1px] transition-opacity">
+        <div className="flex-1" onClick={tentarFechar} />
+        <div className="flex h-full w-full sm:w-[560px] md:w-[680px] lg:w-[760px] flex-col border-l border-border bg-card shadow-2xl animate-in slide-in-from-right duration-200">
+          {cabecalho}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">{conteudo}</div>
+          {rodape}
+        </div>
+      </div>
+    );
+  }
+
+  if (modoVisao === "telacheia") {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-card animate-in fade-in duration-150">
+        {cabecalho}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 sm:px-12 py-8">{conteudo}</div>
+        {rodape}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 backdrop-blur-xs"
+      onClick={tentarFechar}
+    >
+      <div
+        className="flex max-h-[92dvh] w-full max-w-3xl flex-col rounded-t-2xl sm:rounded-2xl border border-border bg-card shadow-2xl animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {cabecalho}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">{conteudo}</div>
+        {rodape}
+      </div>
+    </div>
+  );
+}
+
 export default function Tarefas() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
@@ -102,17 +353,22 @@ export default function Tarefas() {
   const [erro, setErro] = useState("");
   const [filtro, setFiltro] = useState<Status | "todas">("todas");
   const [editando, setEditando] = useState<Tarefa | null>(null);
-  // cópia de como a tarefa estava ao abrir, para detectar mudança não salva
   const [original, setOriginal] = useState<Tarefa | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [cronometrando, setCronometrando] = useState<Tarefa | null>(null);
   const [visao, setVisao] = useState<"lista" | "calendario">("lista");
-  // caminho da tarefa cuja gravação está no ar — impede toque duplo
   const [gravandoCaminho, setGravandoCaminho] = useState<string | null>(null);
-  // acervo inteiro: serve para resolver os [[links]] e as menções
   const [acervo, setAcervo] = useState<ItemRepo[]>([]);
 
-  /* ----------------------------------------------------------- carregar */
+  const [modoVisao, setModoVisao] = useState<"popup" | "lado" | "telacheia">(() => {
+    const salvo = localStorage.getItem("tarefa-modo-visao");
+    return (salvo as any) || "popup";
+  });
+
+  const alternarModoVisao = (novo: "popup" | "lado" | "telacheia") => {
+    setModoVisao(novo);
+    localStorage.setItem("tarefa-modo-visao", novo);
+  };
 
   const carregar = useCallback(async () => {
     if (!pronto) {
@@ -122,7 +378,6 @@ export default function Tarefas() {
     setCarregando(true);
     setErro("");
     try {
-      // duas requisições para o repositório inteiro, em vez de 1 + N
       const todos = await carregarRepo(cfg, { memoria: 3000 });
       setAcervo(todos);
       const itens = daPasta(todos, PASTA);
@@ -138,7 +393,6 @@ export default function Tarefas() {
     } finally {
       setCarregando(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
   useEffect(() => {
@@ -149,28 +403,23 @@ export default function Tarefas() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
-    // Consumir uma vez só: o parâmetro ficava na URL e, como o efeito depende
-    // da lista recarregada, todo Salvar reabria o item anterior por cima do
-    // que você estava editando.
-    if (abrirCaminho && tarefas.length > 0 && (!editando || editando.caminho !== abrirCaminho)) {
+    const criarNova = params.get("nova");
+
+    if (criarNova === "true") {
+      abrirNova();
+    } else if (abrirCaminho && tarefas.length > 0 && (!editando || editando.caminho !== abrirCaminho)) {
       const alvo = tarefas.find((t) => t.caminho === abrirCaminho);
       const temMudanca =
         editando && JSON.stringify(editando) !== JSON.stringify(original);
       if (alvo && (!temMudanca || confirm("Você tem alterações não salvas. Descartar?"))) {
-        abrir(alvo);
+        setEditando(alvo);
+        setOriginal(alvo);
       }
-      // limpa o parâmetro: sem isso ele reabria o item a cada recarga da lista
-      navegar(location.pathname, { replace: true });
     }
   }, [location.search, tarefas]);
 
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
 
-  /**
-   * Sem memoizar, `mencoesA` varria o texto de TODO o repositório a cada
-   * tecla digitada no modal — com 250 arquivos, meio megabyte de regex por
-   * caractere num celular mediano.
-   */
   const mencoesDaTarefa = useMemo(
     () => (editando?.caminho ? mencoesA(editando.caminho, acervo, indice) : []),
     [editando?.caminho, acervo, indice],
@@ -182,8 +431,6 @@ export default function Tarefas() {
       caminho: a.caminho
     })).sort((a, b) => a.titulo.localeCompare(b.titulo));
   }, [indice]);
-
-  /* -------------------------------------------------------------- ações */
 
   async function gravarTarefa(t: Tarefa, mensagem?: string) {
     const texto = escreverMarkdown({
@@ -197,6 +444,12 @@ export default function Tarefas() {
     return { ...t, caminho, sha };
   }
 
+  function fechar() {
+    setEditando(null);
+    setOriginal(null);
+    navegar(location.pathname, { replace: true });
+  }
+
   async function salvar() {
     if (!editando) return;
     if (!editando.titulo.trim()) {
@@ -207,8 +460,7 @@ export default function Tarefas() {
     setErro("");
     try {
       await gravarTarefa(editando);
-      setEditando(null);
-      setOriginal(null);
+      fechar();
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -217,21 +469,6 @@ export default function Tarefas() {
     }
   }
 
-  /**
-   * Marca feito/desfeito direto na lista.
-   *
-   * Três coisas deliberadas aqui:
-   *
-   * 1. **Não reordena na hora.** A ordenação joga "feito" para o fim; se a
-   *    lista se reorganizasse a cada toque, a próxima tarefa saltaria para
-   *    baixo do dedo e o toque seguinte cairia na errada. A ordem só muda
-   *    quando você troca de filtro ou recarrega.
-   * 2. **Não recarrega tudo.** Antes, um toque custava 1 gravação + 1 listagem
-   *    + N leituras. Com 80 tarefas, 82 requisições para marcar uma caixinha.
-   *    Agora o `sha` novo vem da própria resposta da gravação.
-   * 3. **Ignora toque repetido** enquanto o anterior está no ar, senão o
-   *    segundo vai com o `sha` velho e o GitHub recusa.
-   */
   async function alternarFeito(t: Tarefa) {
     if (gravandoCaminho === t.caminho) return;
 
@@ -248,23 +485,21 @@ export default function Tarefas() {
         novo,
         `${novo.status === "feito" ? "conclui" : "reabre"} ${t.titulo}`,
       );
-      // guarda o sha novo para a próxima gravação não bater de frente
       setTarefas((lista) =>
         lista.map((x) => (x.caminho === salva.caminho ? salva : x)),
       );
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
-      // desfaz só esta linha, sem recarregar a lista inteira
       setTarefas((lista) => lista.map((x) => (x.caminho === t.caminho ? t : x)));
     } finally {
       setGravandoCaminho(null);
     }
   }
 
-  /** Abre o modal guardando como o item estava, para detectar mudança. */
   function abrir(t: Tarefa) {
     setEditando(t);
     setOriginal(t);
+    navegar(`?abrir=${encodeURIComponent(t.caminho)}`, { replace: true });
   }
 
   function abrirNova() {
@@ -287,25 +522,19 @@ export default function Tarefas() {
     try {
       await apagar(cfg, t.caminho, t.sha);
       invalidarCache();
-      setEditando(null);
-      setOriginal(null);
+      fechar();
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     }
   }
 
-  /** Um ciclo de pomodoro terminou: registra o tempo no arquivo da tarefa. */
   const registrarTempo = useCallback(
     async (minutos: number) => {
       if (!cronometrando) return;
       try {
-        // relê antes de gravar, para não sobrescrever edição feita nesse meio-tempo
         const { texto, sha } = await ler(cfg, cronometrando.caminho);
         const doc = lerMarkdown(texto);
-        // relê a tarefa INTEIRA do arquivo, não só o corpo: se o prazo ou o
-        // título mudaram no celular enquanto o timer rodava no Mac, gravar a
-        // versão antiga aqui reverteria essa mudança sem ninguém perceber.
         const atual = comoTarefa(doc, cronometrando.caminho, sha, cronometrando.titulo);
         const atualizado = {
           ...atual,
@@ -318,12 +547,8 @@ export default function Tarefas() {
         setErro(e instanceof Error ? e.message : String(e));
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [cronometrando, cfg.repoOwner, cfg.repoName, cfg.githubToken],
   );
-
-
-  /* --------------------------------------------------------- sem config */
 
   if (!pronto) {
     return (
@@ -338,8 +563,7 @@ export default function Tarefas() {
       />
     );
   }
-  // ordenar aqui (e não dentro de alternarFeito) mantém a linha parada
-  // debaixo do dedo quando você marca uma caixinha
+
   const visiveis = ordenar(
     filtro === "todas" ? tarefas : tarefas.filter((t) => t.status === filtro),
   );
@@ -422,9 +646,9 @@ export default function Tarefas() {
             const u = urgencia(t);
             const min = minutosRegistrados(t.corpo);
             const passos = progressoSubtarefas(t.corpo);
+
             return (
-              <Cartao key={t.caminho} className="flex items-start gap-3 p-3.5">
-                {/* -m-2 p-2: aumenta a área de toque para 36px sem mexer no layout */}
+              <Cartao key={t.caminho} className="flex items-start gap-3 p-3.5 group">
                 <button
                   onClick={() => alternarFeito(t)}
                   disabled={gravandoCaminho === t.caminho}
@@ -475,126 +699,40 @@ export default function Tarefas() {
                   </div>
                 </button>
 
-                {t.status !== "feito" && (
-                  <Botao
-                    variante="fantasma"
-                    tamanho="icone"
-                    onClick={() => setCronometrando(t)}
-                    title="Iniciar pomodoro"
-                  >
-                    <Timer size={17} />
-                  </Botao>
-                )}
+                <div className="flex items-center gap-1">
+                  {t.status !== "feito" && (
+                    <Botao
+                      variante="fantasma"
+                      tamanho="icone"
+                      onClick={() => setCronometrando(t)}
+                      title="Iniciar pomodoro"
+                    >
+                      <Timer size={17} />
+                    </Botao>
+                  )}
+                </div>
               </Cartao>
             );
           })}
         </div>
       )}
 
-      {/* ------------------------------------------------------ edição */}
-      <Modal
-        aberto={editando !== null}
-        aoFechar={() => setEditando(null)}
-        temMudancas={
-          editando !== null &&
-          JSON.stringify(editando) !== JSON.stringify(original)
-        }
-        titulo={editando?.caminho ? "Editar tarefa" : "Nova tarefa"}
-        rodape={
-          <>
-            {editando?.caminho && (
-              <Botao variante="fantasma" onClick={() => editando && remover(editando)}>
-                <Trash2 size={16} />
-                Apagar
-              </Botao>
-            )}
-            <Botao variante="neutro" onClick={() => setEditando(null)}>
-              Cancelar
-            </Botao>
-            <Botao onClick={salvar} disabled={salvando}>
-              {salvando ? "Salvando…" : "Salvar"}
-            </Botao>
-          </>
-        }
-      >
-        {editando && (
-          <div className="space-y-4">
-            <input
-              type="text"
-              value={editando.titulo}
-              onChange={(e) => setEditando({ ...editando, titulo: e.target.value })}
-              placeholder="Sem título"
-              className="w-full text-3xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0 mb-4"
-              autoFocus
-            />
-
-            <div className="flex flex-col gap-2">
-              <PropriedadesNotion
-                // O frontmatter bruto vem PRIMEIRO e o estado ao vivo por
-                // cima. Ao contrário, o `bruto` (que não é atualizado quando
-                // você marca a caixinha na lista) sobrescrevia o status: a
-                // tarefa aparecia como "A fazer" ao abrir e o próximo toque
-                // numa propriedade a gravava desfeita.
-                dados={{
-                  ...editando.bruto,
-                  status: editando.status,
-                  prazo: editando.prazo,
-                  tags: editando.tags,
-                }}
-                onChange={(novosDados) => {
-                  setEditando({
-                    ...editando,
-                    bruto: novosDados,
-                    status: (novosDados.status as Status) || editando.status,
-                    prazo: novosDados.prazo,
-                    tags: Array.isArray(novosDados.tags) ? novosDados.tags : editando.tags,
-                  });
-                }}
-                camposFixos={{
-                  status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "select", opcoes: ["a-fazer", "fazendo", "feito"] },
-                  prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
-                  tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" }
-                }}
-                opcoesRelacionamento={opcoesRelacionamento}
-              />
-            </div>
-
-            <hr className="my-4 border-border" />
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Passos / Subtarefas
-              </label>
-              <Subtarefas
-                corpo={editando.corpo}
-                onChange={(novoCorpo) =>
-                  setEditando({ ...editando, corpo: novoCorpo })
-                }
-              />
-            </div>
-
-            <hr className="my-4 border-border" />
-
-            <div className="min-h-[200px]">
-              <EditorNotion
-                markdown={editando.corpo}
-                onChange={(v) => setEditando({ ...editando, corpo: v })}
-              />
-            </div>
-
-            {editando.caminho && (
-              <div className="mt-12 border-t border-border pt-6">
-                <MencionadoEm 
-                  mencoes={mencoesDaTarefa} 
-                  aoAbrir={() => {
-                    // Similar ao notas, se tiver na mesma aba
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
+      {/* ------------------------------------------------------ edição estilo Notion */}
+      {editando !== null && (
+        <PainelTarefaNotion
+          modoVisao={modoVisao}
+          setModoVisao={alternarModoVisao}
+          editando={editando}
+          original={original}
+          salvando={salvando}
+          aoFechar={fechar}
+          aoSalvar={salvar}
+          aoRemover={() => editando && remover(editando)}
+          setEditando={setEditando}
+          opcoesRelacionamento={opcoesRelacionamento}
+          mencoesDaTarefa={mencoesDaTarefa}
+        />
+      )}
 
       {cronometrando && (
         <Pomodoro

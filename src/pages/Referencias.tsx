@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Masonry } from "react-plock";
-import { Plus, Trash2, ImagePlus, ExternalLink } from "lucide-react";
+import { Plus, Trash2, ImagePlus, ExternalLink, ScanText } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, gravarBinario, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
@@ -16,11 +16,12 @@ import {
   nomeDeImagem,
   arquivoParaBase64,
   todasAsTags,
-  LIMITE_IMAGEM,
+  baixarImagemPrivada,
   PASTA_REFS,
   PASTA_IMAGENS,
   type Referencia,
 } from "@/lib/referencias";
+import { prepararImagem, resumoCompressao, erroDeTamanho } from "@/lib/imagem";
 import {
   Botao,
   Campo,
@@ -48,11 +49,19 @@ export default function Referencias() {
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  // etapas separadas: encolher acontece no aparelho, enviar depende da rede
+  const [encolhendo, setEncolhendo] = useState(false);
+  // recado que não é erro: quanto a imagem encolheu, quanto texto o OCR achou
+  const [nota, setNota] = useState("");
+  const [lendoTexto, setLendoTexto] = useState(false);
+  const [progressoOcr, setProgressoOcr] = useState(0);
   const [editando, setEditando] = useState<Referencia | null>(null);
   const [original, setOriginal] = useState<Referencia | null>(null);
   // prévia local da imagem recém-enviada, antes de existir no repositório
   const [previa, setPrevia] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<string | null>(null);
+  const [paletasExtraidas, setPaletasExtraidas] = useState<Record<string, string[]>>({});
+  const [corCopiada, setCorCopiada] = useState<string | null>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
 
   /* ----------------------------------------------------------- carregar */
@@ -110,20 +119,34 @@ export default function Referencias() {
 
   /* -------------------------------------------------------------- ações */
 
-  async function enviarImagem(arquivo: File) {
+  async function enviarImagem(escolhido: File) {
     if (!editando) return;
-
-    if (arquivo.size > LIMITE_IMAGEM) {
-      setErro(
-        `A imagem tem ${(arquivo.size / 1024 / 1024).toFixed(1)} MB. O limite do GitHub por arquivo é 5 MB — exporte menor e tente de novo.`,
-      );
-      return;
-    }
 
     setEnviando(true);
     setErro("");
+    setNota("");
+
+    // Encolhe ANTES de checar o limite: uma foto de celular de 9 MB era
+    // recusada de cara, e a única saída era exportar menor num editor. Agora
+    // ela cabe sozinha e o repositório para de engordar a cada referência.
+    setEncolhendo(true);
+    let preparada;
     try {
-      const nome = nomeDeImagem(arquivo.name);
+      preparada = await prepararImagem(escolhido);
+    } finally {
+      setEncolhendo(false);
+    }
+
+    const excedeu = erroDeTamanho(preparada);
+    if (excedeu) {
+      setErro(excedeu);
+      setEnviando(false);
+      return;
+    }
+
+    const arquivo = preparada.arquivo;
+    try {
+      const nome = nomeDeImagem(escolhido.name);
       const base64 = await arquivoParaBase64(arquivo);
       await gravarBinario(cfg, `${PASTA_IMAGENS}/${nome}`, base64);
       invalidarCache();
@@ -163,10 +186,63 @@ export default function Referencias() {
 
         return novaUrl;
       });
+
+      setNota(resumoCompressao(preparada));
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
       setEnviando(false);
+    }
+  }
+
+  /**
+   * Lê o texto que está dentro da imagem e escreve nas anotações.
+   *
+   * Você salva print de site, de slide, de post — e hoje esse texto é invisível
+   * para a busca. Depois de passar por aqui ele vira texto no `.md`, então
+   * ⌘K acha a referência pelo que estava escrito NA imagem.
+   *
+   * É sob demanda de propósito: o pacote de idioma do Tesseract tem alguns
+   * megabytes e só baixa quando você aperta o botão. Ninguém paga esse download
+   * sem pedir.
+   */
+  async function lerTextoDaImagem() {
+    if (!editando?.imagem && !previa) {
+      setErro("Adicione uma imagem antes de extrair o texto.");
+      return;
+    }
+
+    setLendoTexto(true);
+    setErro("");
+    setNota("");
+
+    // quando a imagem já está salva no repositório, precisamos baixá-la com o
+    // token — e liberar o blob depois, senão fica preso na memória da aba
+    let temporaria: string | null = null;
+    try {
+      const fonte =
+        previa ?? (temporaria = await baixarImagemPrivada(cfg, editando!.imagem!));
+
+      const { extrairTexto, anexarTextoLido } = await import("@/lib/ocr");
+      const texto = await extrairTexto(fonte, setProgressoOcr);
+
+      if (!texto) {
+        setNota("Não encontrei texto legível nessa imagem.");
+        return;
+      }
+
+      setEditando((prev) =>
+        prev ? { ...prev, corpo: anexarTextoLido(prev.corpo, texto) } : null,
+      );
+      setNota(
+        `Texto extraído da imagem (${texto.length} caracteres) e colocado nas anotações. Confira antes de salvar.`,
+      );
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      if (temporaria) URL.revokeObjectURL(temporaria);
+      setLendoTexto(false);
+      setProgressoOcr(0);
     }
   }
 
@@ -231,6 +307,7 @@ export default function Referencias() {
   function fecharModal() {
     setEditando(null);
     setOriginal(null);
+    setNota("");
     setPrevia((p) => {
       if (p) URL.revokeObjectURL(p);
       return null;
@@ -319,46 +396,88 @@ export default function Referencias() {
             gap: [16, 16, 16],
             media: [640, 1024, 1280],
           }}
-          render={(r: Referencia) => (
-            <div
-              key={r.id}
-              className="group relative cursor-pointer flex flex-col gap-2"
-              onClick={() => { setEditando(r); setOriginal(r); }}
-            >
-              <div className="relative overflow-hidden rounded-3xl bg-muted">
-                {r.imagem && (
-                  <ImagemPrivada
-                    caminho={r.imagem}
-                    alt={r.titulo}
-                    className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                  />
-                )}
-                {/* Overlay on Hover */}
-                <div className="absolute inset-0 bg-black/30 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex flex-col justify-between p-4 pointer-events-none">
-                  <div className="flex justify-end">
-                    <Button variant="secondary" size="sm" className="rounded-full h-8 font-semibold opacity-0 translate-y-[-10px] transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
-                      Abrir
-                    </Button>
+          render={(r: Referencia) => {
+            const paletaItem: string[] = Array.isArray(r.bruto.paleta)
+              ? r.bruto.paleta
+              : Array.isArray(paletasExtraidas[r.id])
+                ? paletasExtraidas[r.id]
+                : [];
+            return (
+              <div
+                key={r.id}
+                className="group relative cursor-pointer flex flex-col gap-2"
+                onClick={() => { setEditando(r); setOriginal(r); }}
+              >
+                <div className="relative overflow-hidden rounded-3xl bg-muted">
+                  {r.imagem && (
+                    <ImagemPrivada
+                      caminho={r.imagem}
+                      alt={r.titulo}
+                      className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      aoCarregarBlob={(img) => {
+                        if (!r.bruto.paleta && !paletasExtraidas[r.id]) {
+                          import("@/lib/paleta").then(({ extrairPaletaDaImagem }) => {
+                            extrairPaletaDaImagem(img).then((cores) => {
+                              if (cores.length > 0) {
+                                setPaletasExtraidas((p) => ({ ...p, [r.id]: cores }));
+                              }
+                            });
+                          });
+                        }
+                      }}
+                    />
+                  )}
+                  {/* Overlay on Hover */}
+                  <div className="absolute inset-0 bg-black/30 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex flex-col justify-between p-4 pointer-events-none">
+                    <div className="flex justify-end">
+                      <Button variant="secondary" size="sm" className="rounded-full h-8 font-semibold opacity-0 translate-y-[-10px] transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+                        Abrir
+                      </Button>
+                    </div>
+                    {r.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 opacity-0 translate-y-[10px] transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+                        {r.tags.slice(0, 3).map((t) => (
+                          <Badge variant="secondary" className="bg-background/90 text-foreground text-[10px] rounded-full border-none" key={t}>{t}</Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  {r.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 opacity-0 translate-y-[10px] transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
-                      {r.tags.slice(0, 3).map((t) => (
-                        <Badge variant="secondary" className="bg-background/90 text-foreground text-[10px] rounded-full border-none" key={t}>{t}</Badge>
+                </div>
+                <div className="px-1.5">
+                  <p className="font-semibold text-sm leading-tight text-foreground line-clamp-2">{r.titulo}</p>
+                  {r.porque && (
+                    <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                      {r.porque}
+                    </p>
+                  )}
+                  {paletaItem.length > 0 && (
+                    <div className="mt-2 flex items-center gap-1 flex-wrap relative">
+                      {paletaItem.map((hex: string) => (
+                        <button
+                          key={hex}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(hex);
+                            setCorCopiada(hex);
+                            setTimeout(() => setCorCopiada(null), 1500);
+                          }}
+                          className="h-4 w-4 rounded-full border border-black/10 shadow-sm transition-transform active:scale-90 hover:scale-125 relative"
+                          style={{ backgroundColor: hex }}
+                          title={`Copiar ${hex}`}
+                        />
                       ))}
+                      {corCopiada && (
+                        <span className="ml-1 text-[10px] font-semibold text-primary animate-fade-in">
+                          Copiada!
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
-              <div className="px-1.5">
-                <p className="font-semibold text-sm leading-tight text-foreground line-clamp-2">{r.titulo}</p>
-                {r.porque && (
-                  <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                    {r.porque}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+            );
+          }}
         />
       )}
 
@@ -415,19 +534,42 @@ export default function Referencias() {
                 e.target.value = "";
               }}
             />
-            <Botao
-              variante="neutro"
-              onClick={() => inputArquivo.current?.click()}
-              disabled={enviando}
-              className="w-full"
-            >
-              <ImagePlus size={16} />
-              {enviando
-                ? "Enviando…"
-                : editando.imagem
-                  ? "Trocar imagem"
-                  : "Adicionar imagem"}
-            </Botao>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Botao
+                variante="neutro"
+                onClick={() => inputArquivo.current?.click()}
+                disabled={enviando || lendoTexto}
+                className="flex-1"
+              >
+                <ImagePlus size={16} />
+                {encolhendo
+                  ? "Encolhendo…"
+                  : enviando
+                    ? "Enviando…"
+                    : editando.imagem
+                      ? "Trocar imagem"
+                      : "Adicionar imagem"}
+              </Botao>
+
+              {(editando.imagem || previa) && (
+                <Botao
+                  variante="neutro"
+                  onClick={lerTextoDaImagem}
+                  disabled={enviando || lendoTexto}
+                  className="flex-1"
+                  title="Lê o texto escrito dentro da imagem e joga nas anotações, para a busca encontrar depois"
+                >
+                  <ScanText size={16} />
+                  {lendoTexto
+                    ? progressoOcr > 0
+                      ? `Lendo… ${Math.round(progressoOcr * 100)}%`
+                      : "Preparando…"
+                    : "Ler texto da imagem"}
+                </Botao>
+              )}
+            </div>
+
+            {nota && <Aviso tom="sucesso">{nota}</Aviso>}
 
             <div>
               <Rotulo>Título</Rotulo>

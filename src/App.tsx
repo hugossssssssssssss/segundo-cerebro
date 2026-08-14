@@ -10,8 +10,6 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import {
   CheckSquare,
   FileText,
-  Image,
-  Target,
   MessageCircle,
   Settings,
   Search,
@@ -19,20 +17,22 @@ import {
   Sun,
   Home as HomeIcon,
   Plus,
+  PanelLeft,
+  MoreHorizontal,
+  Image,
   Layout,
+  Target,
 } from "lucide-react";
 import { Busca } from "@/components/Busca";
 import { CapturaRapida } from "@/components/CapturaRapida";
+import { NavegacaoLateral } from "@/components/NavegacaoLateral";
+import { GavetaMais } from "@/components/GavetaMais";
 import { Carregando } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 /**
  * HashRouter (URLs com #) em vez de BrowserRouter: o GitHub Pages não sabe
  * reescrever rotas para o index.html, então sem hash um F5 em /notas dá 404.
- *
- * As telas são carregadas sob demanda: antes, o app mandava 1,4 MB de
- * JavaScript no primeiro acesso — incluindo o editor de Markdown, que só é
- * usado ao abrir uma nota. No 4G isso era a diferença entre abrir e desistir.
  */
 const Home = lazy(() => import("@/pages/Home"));
 const Tarefas = lazy(() => import("@/pages/Tarefas"));
@@ -43,15 +43,21 @@ const PDI = lazy(() => import("@/pages/PDI"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 
-// As cinco de uso diário ficam no rodapé do celular. Ajustes não entra:
-// é tela de configurar uma vez, não destino do dia a dia.
-const abas = [
+// Todas as abas como ícones no topo
+const abasTopo = [
   { para: "/home", rotulo: "Início", Icone: HomeIcon },
   { para: "/tarefas", rotulo: "Tarefas", Icone: CheckSquare },
   { para: "/notas", rotulo: "Notas", Icone: FileText },
-  { para: "/referencias", rotulo: "Refs", Icone: Image },
   { para: "/lousas", rotulo: "Lousas", Icone: Layout },
-  { para: "/pdi", rotulo: "Carreira", Icone: Target },
+  { para: "/referencias", rotulo: "Referências", Icone: Image },
+  { para: "/pdi", rotulo: "Carreira (PDI)", Icone: Target },
+  { para: "/chat", rotulo: "Conversar com IA", Icone: MessageCircle },
+];
+
+const abasMobile = [
+  { para: "/home", rotulo: "Início", Icone: HomeIcon },
+  { para: "/tarefas", rotulo: "Tarefas", Icone: CheckSquare },
+  { para: "/notas", rotulo: "Notas", Icone: FileText },
   { para: "/chat", rotulo: "Conversar", Icone: MessageCircle },
 ];
 
@@ -59,7 +65,6 @@ function BotaoTema() {
   const [escuro, setEscuro] = useState(() => {
     const salvo = localStorage.getItem("tema");
     if (salvo) return salvo === "escuro";
-    // sem preferência salva, segue o sistema em vez de forçar claro
     return matchMedia("(prefers-color-scheme: dark)").matches;
   });
 
@@ -71,7 +76,7 @@ function BotaoTema() {
   return (
     <button
       onClick={() => setEscuro((v) => !v)}
-      className="rounded-lg p-2 hover:bg-accent transition-colors"
+      className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
       title={escuro ? "Modo claro" : "Modo escuro"}
       aria-label={escuro ? "Mudar para modo claro" : "Mudar para modo escuro"}
     >
@@ -81,15 +86,22 @@ function BotaoTema() {
 }
 
 function Estrutura({ children }: { children: React.ReactNode }) {
-  // useLocation e não o `location` global: sob HashRouter com base
-  // "/segundo-cerebro/", o pathname global nunca muda, então o guard do
-  // botão flutuante nunca disparava e ele cobria o Enviar do chat.
   const { pathname } = useLocation();
   const [buscando, setBuscando] = useState(false);
   const [capturando, setCapturando] = useState(false);
+  const [gavetaAberta, setGavetaAberta] = useState(false);
   const [textoCompartilhado, setTextoCompartilhado] = useState("");
 
-  // ⌘K busca, ⌘J captura — convenções que todo mundo já conhece
+  const [colapsada, setColapsada] = useState(() => {
+    const salvo = localStorage.getItem("sidebar-colapsada");
+    return salvo ? salvo === "true" : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("sidebar-colapsada", String(colapsada));
+  }, [colapsada]);
+
+  // ⌘K busca, ⌘J captura, ⌘B toggle da barra lateral
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
@@ -100,6 +112,9 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       } else if (tecla === "j") {
         e.preventDefault();
         setCapturando(true);
+      } else if (tecla === "b") {
+        e.preventDefault();
+        setColapsada((v) => !v);
       }
     };
     document.addEventListener("keydown", aoTeclar);
@@ -108,14 +123,8 @@ function Estrutura({ children }: { children: React.ReactNode }) {
 
   /**
    * Compartilhar de outro app do Android cai aqui.
-   *
-   * O manifest declara share_target apontando para #/?compartilhado=...,
-   * então o texto chega pela URL e abre a captura já preenchida.
    */
   useEffect(() => {
-    // O manifest usa action "./" com method GET, entao o Android entrega os
-    // dados na QUERY STRING, nao no hash. Lia so o hash, e por isso o
-    // compartilhamento nunca disparou. Agora aceita os dois.
     const params = new URLSearchParams(
       location.search.slice(1) || location.hash.split("?")[1] || "",
     );
@@ -125,85 +134,119 @@ function Estrutura({ children }: { children: React.ReactNode }) {
     if (vindo) {
       setTextoCompartilhado(vindo);
       setCapturando(true);
-      // limpa a URL sem brigar com o HashRouter
       history.replaceState(null, "", location.pathname + "#/tarefas");
     }
   }, []);
 
   return (
-    <div className="min-h-dvh flex flex-col">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 h-14">
-          <NavLink to="/tarefas" className="font-semibold tracking-tight">
-            Segundo Cérebro
-          </NavLink>
+    <div className="min-h-dvh flex bg-background text-foreground">
+      {/* Navegação Lateral (Desktop) */}
+      <NavegacaoLateral
+        colapsada={colapsada}
+        setColapsada={setColapsada}
+        className="hidden sm:flex sticky top-0 h-dvh"
+      />
 
-          <div className="flex items-center gap-1">
-            <nav className="hidden sm:flex items-center gap-1 mr-1">
-              {abas.map(({ para, rotulo, Icone }) => (
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Cabeçalho Principal (Topbar Limpa) */}
+        <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 h-14">
+            {/* Lado Esquerdo: Toggle e Logo */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (window.innerWidth < 640) {
+                    setGavetaAberta(true);
+                  } else {
+                    setColapsada((v) => !v);
+                  }
+                }}
+                className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                title="Alternar navegação (⌘B)"
+                aria-label="Alternar barra lateral"
+              >
+                <PanelLeft size={18} />
+              </button>
+
+              <NavLink to="/home" className="font-semibold tracking-tight text-sm sm:text-base">
+                Segundo Cérebro
+              </NavLink>
+            </div>
+
+            {/* Centro: Apenas Ícones de Navegação no Topo (Desktop) */}
+            <nav className="hidden sm:flex items-center gap-1 bg-accent/30 p-1 rounded-xl border border-border/50">
+              {abasTopo.map(({ para, rotulo, Icone }) => (
                 <NavLink
                   key={para}
                   to={para}
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      "rounded-lg p-2 transition-all duration-200",
                       isActive
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-muted-foreground hover:bg-accent hover:text-foreground",
                     )
                   }
+                  title={rotulo}
+                  aria-label={rotulo}
                 >
-                  <Icone size={16} />
-                  {rotulo}
+                  <Icone size={18} />
                 </NavLink>
               ))}
             </nav>
 
-            <button
-              onClick={() => setCapturando(true)}
-              className="hidden rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:block"
-              title="Captura rápida (⌘J)"
-              aria-label="Captura rápida"
-            >
-              <Plus size={18} />
-            </button>
+            {/* Lado Direito: Ações Rápida e Configurações */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCapturando(true)}
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                title="Captura rápida (⌘J)"
+                aria-label="Captura rápida"
+              >
+                <Plus size={18} />
+              </button>
 
-            <button
-              onClick={() => setBuscando(true)}
-              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title="Buscar (⌘K)"
-              aria-label="Buscar"
-            >
-              <Search size={18} />
-            </button>
+              <button
+                onClick={() => setBuscando(true)}
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                title="Buscar (⌘K)"
+                aria-label="Buscar"
+              >
+                <Search size={18} />
+              </button>
 
-            <NavLink
-              to="/config"
-              className={({ isActive }) =>
-                cn(
-                  "rounded-lg p-2 transition-colors",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                )
-              }
-              title="Ajustes"
-              aria-label="Ajustes"
-            >
-              <Settings size={18} />
-            </NavLink>
-            <BotaoTema />
+              <NavLink
+                to="/config"
+                className={({ isActive }) =>
+                  cn(
+                    "rounded-lg p-2 transition-colors hidden sm:block",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                  )
+                }
+                title="Ajustes"
+                aria-label="Ajustes"
+              >
+                <Settings size={18} />
+              </NavLink>
+
+              <div className="hidden sm:block">
+                <BotaoTema />
+              </div>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 pb-24 sm:pb-6">
-        {children}
-      </main>
+        {/* Conteúdo da Tela */}
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 sm:px-6 py-8 pb-28 sm:pb-8">
+          {children}
+        </main>
+      </div>
 
-      {/* Navegação inferior no celular — onde o polegar alcança */}
+      {/* Navegação inferior no celular */}
       <nav className="fixed bottom-0 inset-x-0 z-40 flex border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden">
-        {abas.map(({ para, rotulo, Icone }) => (
+        {abasMobile.map(({ para, rotulo, Icone }) => (
           <NavLink
             key={para}
             to={para}
@@ -218,9 +261,19 @@ function Estrutura({ children }: { children: React.ReactNode }) {
             <span className="truncate max-w-full">{rotulo}</span>
           </NavLink>
         ))}
+
+        {/* Botão Mais no celular */}
+        <button
+          onClick={() => setGavetaAberta(true)}
+          className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium text-muted-foreground transition-colors min-w-0 truncate px-0.5"
+          aria-label="Mais opções"
+        >
+          <MoreHorizontal size={18} className="shrink-0" />
+          <span className="truncate max-w-full">Mais</span>
+        </button>
       </nav>
 
-      {/* Botão flutuante de captura no celular, acima da barra de abas */}
+      {/* Botão flutuante de captura no celular */}
       {!pathname.startsWith("/chat") && (
         <button
           onClick={() => setCapturando(true)}
@@ -231,6 +284,8 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         </button>
       )}
 
+      {/* Modais e Gavetas */}
+      <GavetaMais aberta={gavetaAberta} aoFechar={() => setGavetaAberta(false)} />
       <Busca aberta={buscando} aoFechar={() => setBuscando(false)} />
       <CapturaRapida
         aberta={capturando}
@@ -266,3 +321,4 @@ export default function App() {
     </HashRouter>
   );
 }
+

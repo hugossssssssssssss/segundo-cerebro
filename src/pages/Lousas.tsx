@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Layout, ArrowLeft, Save, Trash2 } from "lucide-react";
+import "@excalidraw/excalidraw/index.css";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar, lerOuVazio } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
@@ -13,12 +14,17 @@ const ExcalidrawComp = lazy(() =>
   import("@excalidraw/excalidraw").then((m) => ({ default: m.Excalidraw })),
 );
 
+type DadosLousa = {
+  elements?: any[];
+  appState?: any;
+  files?: any;
+};
+
 type LousaAberta = {
   caminho: string;
   sha: string;
   titulo: string;
-  elementos: any[];
-  originalJson: string;
+  dados: DadosLousa;
 };
 
 export default function Lousas() {
@@ -59,19 +65,23 @@ export default function Lousas() {
     setErro("");
     try {
       const conteudo = await lerOuVazio(cfg, item.caminho, item.sha);
-      let parsed = [];
+      let dados: DadosLousa = { elements: [] };
       try {
-        parsed = JSON.parse(conteudo);
+        const parsed = JSON.parse(conteudo);
+        if (Array.isArray(parsed)) {
+          dados = { elements: parsed };
+        } else if (parsed && typeof parsed === "object") {
+          dados = parsed;
+        }
       } catch {
-        parsed = [];
+        dados = { elements: [] };
       }
 
       setAberta({
         caminho: item.caminho,
         sha: item.sha,
         titulo: tituloProvavel(item.doc, item.nome),
-        elementos: parsed,
-        originalJson: conteudo,
+        dados,
       });
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -85,8 +95,7 @@ export default function Lousas() {
       caminho: "",
       sha: "",
       titulo: "Nova Lousa",
-      elementos: [],
-      originalJson: "[]",
+      dados: { elements: [] },
     });
   }
 
@@ -95,8 +104,20 @@ export default function Lousas() {
     setSalvando(true);
     setErro("");
     try {
-      const elementosAtuais = excalidrawAPI.getSceneElements();
-      const json = JSON.stringify(elementosAtuais, null, 2);
+      const elements = excalidrawAPI.getSceneElements();
+      const appState = excalidrawAPI.getAppState();
+      const files = excalidrawAPI.getFiles();
+
+      const dadosParaSalvar = {
+        elements,
+        appState: {
+          viewBackgroundColor: appState.viewBackgroundColor,
+          gridSize: appState.gridSize,
+        },
+        files,
+      };
+
+      const json = JSON.stringify(dadosParaSalvar, null, 2);
       const caminho =
         aberta.caminho ||
         nomeLivre(
@@ -143,9 +164,11 @@ export default function Lousas() {
     );
   }
 
+  const ehModoEscuro = document.documentElement.classList.contains("dark");
+
   if (aberta) {
     return (
-      <div className="flex flex-col gap-4 h-[calc(100vh-140px)]">
+      <div className="flex flex-col gap-4 h-[calc(100vh-120px)] w-full">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-1 max-w-md">
             <Botao variante="fantasma" tamanho="icone" onClick={() => setAberta(null)}>
@@ -171,11 +194,25 @@ export default function Lousas() {
           </div>
         </div>
 
-        <div className="flex-1 w-full rounded-2xl overflow-hidden border border-border shadow-inner bg-background">
+        <div className="flex-1 w-full min-h-[500px] rounded-2xl overflow-hidden border border-border shadow-md bg-background relative">
           <Suspense fallback={<Carregando texto="Carregando editor visual Excalidraw…" />}>
             <ExcalidrawComp
               excalidrawAPI={(api) => setExcalidrawAPI(api)}
-              initialData={{ elements: aberta.elementos }}
+              theme={ehModoEscuro ? "dark" : "light"}
+              initialData={{
+                elements: aberta.dados.elements || [],
+                appState: aberta.dados.appState || {},
+                files: aberta.dados.files || {},
+              }}
+              UIOptions={{
+                canvasActions: {
+                  changeViewBackgroundColor: true,
+                  clearCanvas: true,
+                  loadScene: true,
+                  saveToActiveFile: true,
+                  toggleTheme: true,
+                },
+              }}
             />
           </Suspense>
         </div>
@@ -223,7 +260,7 @@ export default function Lousas() {
                 <p className="font-semibold text-sm truncate">
                   {tituloProvavel(item.doc, item.nome)}
                 </p>
-                <p className="text-xs text-muted-foreground">Lousa visual .json</p>
+                <p className="text-xs text-muted-foreground">Lousa visual Excalidraw</p>
               </div>
             </Cartao>
           ))}

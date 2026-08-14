@@ -61,6 +61,7 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
 
   const [editandoChave, setEditandoChave] = useState<string | null>(null);
   const [renomearPara, setRenomearPara] = useState("");
+  const [copiado, setCopiado] = useState<string | null>(null);
 
   const esquema = (dados.esquema as Record<string, TipoPropriedade>) || {};
 
@@ -207,21 +208,25 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
       if (ehPaleta && tags.length > 0) {
         return (
           <div className="flex items-center gap-1.5 flex-wrap py-1">
-            {tags.map((hex: string) => (
-              <button
-                key={hex}
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(hex);
-                  alert(`Cor ${hex} copiada para a área de transferência!`);
-                }}
-                className="group flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-mono transition-transform active:scale-95 hover:shadow-sm"
-                style={{ backgroundColor: hex, color: parseInt(hex.replace('#',''), 16) > 0xffffff/2 ? '#000' : '#fff' }}
-                title={`Clique para copiar ${hex}`}
-              >
-                <span>{hex}</span>
-              </button>
-            ))}
+            {tags.map((hex: string) => {
+              const ehCopiado = copiado === hex;
+              return (
+                <button
+                  key={hex}
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(hex);
+                    setCopiado(hex);
+                    setTimeout(() => setCopiado(null), 1500);
+                  }}
+                  className="group flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-mono transition-all active:scale-95 hover:shadow-sm"
+                  style={{ backgroundColor: hex, color: parseInt(hex.replace('#',''), 16) > 0xffffff/2 ? '#000' : '#fff' }}
+                  title={`Clique para copiar ${hex}`}
+                >
+                  <span>{ehCopiado ? "Copiado!" : hex}</span>
+                </button>
+              );
+            })}
           </div>
         );
       }

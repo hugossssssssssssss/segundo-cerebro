@@ -118,30 +118,32 @@ export default function PDI() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
-    // Limpa sempre, mesmo sem encontrar o alvo: senão o parâmetro fica na URL
-    // e abre o item sozinho no dia em que um arquivo com aquele caminho
-    // aparecer — a IA pode criar um.
-    // Consumir uma vez só: o parâmetro ficava na URL e, como o efeito depende
-    // da lista recarregada, todo Salvar reabria o item anterior por cima do
-    // que você estava editando.
     if (abrirCaminho && (metas.length > 0 || entregas.length > 0)) {
       const metaAlvo = metas.find((m) => m.caminho === abrirCaminho);
       if (metaAlvo && (!editandoMeta || editandoMeta.caminho !== abrirCaminho)) {
         setEditandoMeta(metaAlvo);
         setOrigMeta(metaAlvo);
-        // limpa o parâmetro: sem isso ele reabria o item a cada recarga
-        navegar(location.pathname, { replace: true });
         return;
       }
       const entregaAlvo = entregas.find((e) => e.caminho === abrirCaminho);
       if (entregaAlvo && (!editandoEntrega || editandoEntrega.caminho !== abrirCaminho)) {
         setEditandoEntrega(entregaAlvo);
         setOrigEntrega(entregaAlvo);
-        // limpa o parâmetro: sem isso ele reabria o item a cada recarga
-        navegar(location.pathname, { replace: true });
       }
     }
   }, [location.search, metas, entregas]);
+
+  function fecharMeta() {
+    setEditandoMeta(null);
+    setOrigMeta(null);
+    navegar(location.pathname, { replace: true });
+  }
+
+  function fecharEntrega() {
+    setEditandoEntrega(null);
+    setOrigEntrega(null);
+    navegar(location.pathname, { replace: true });
+  }
 
   /* -------------------------------------------------------------- ações */
 
@@ -167,8 +169,7 @@ export default function PDI() {
         nomeLivreSemData(PASTA_METAS, editandoMeta.titulo, metas.map((m) => m.caminho));
       await gravar(cfg, caminho, texto, editandoMeta.sha || undefined);
       invalidarCache();
-      setEditandoMeta(null);
-      setOrigMeta(null);
+      fecharMeta();
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -185,7 +186,6 @@ export default function PDI() {
     setSalvando(true);
     setErro("");
     try {
-      // Editar à mão confirma a ligação: a marca da IA sai.
       const limpa = { ...editandoEntrega, iaSugeriu: false };
       const texto = escreverMarkdown({
         dados: entregaParaFrontmatter(limpa),
@@ -196,8 +196,7 @@ export default function PDI() {
         nomeLivre(PASTA_ENTREGAS, limpa.titulo, entregas.map((x) => x.caminho));
       await gravar(cfg, caminho, texto, limpa.sha || undefined);
       invalidarCache();
-      setEditandoEntrega(null);
-      setOrigEntrega(null);
+      fecharEntrega();
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -216,8 +215,7 @@ export default function PDI() {
     try {
       await apagar(cfg, m.caminho, m.sha);
       invalidarCache();
-      setEditandoMeta(null);
-      setOrigMeta(null);
+      fecharMeta();
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -229,8 +227,7 @@ export default function PDI() {
     try {
       await apagar(cfg, e.caminho, e.sha);
       invalidarCache();
-      setEditandoEntrega(null);
-      setOrigEntrega(null);
+      fecharEntrega();
       await carregar();
     } catch (err) {
       setErro(err instanceof Error ? err.message : String(err));
@@ -396,7 +393,7 @@ export default function PDI() {
                 {resumos.map(({ meta: m, entregas: ligadas }) => (
                   <Cartao key={m.id} className="p-4">
                     <button
-                      onClick={() => { setEditandoMeta(m); setOrigMeta(m); }}
+                      onClick={() => { setEditandoMeta(m); setOrigMeta(m); navegar(`?abrir=${encodeURIComponent(m.caminho)}`, { replace: true }); }}
                       className="w-full text-left"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -441,7 +438,7 @@ export default function PDI() {
                         {ligadas.slice(0, 4).map((e) => (
                           <li key={e.id}>
                             <button
-                              onClick={() => { setEditandoEntrega(e); setOrigEntrega(e); }}
+                              onClick={() => { setEditandoEntrega(e); setOrigEntrega(e); navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true }); }}
                               className="flex w-full items-center gap-2 text-left text-sm text-muted-foreground hover:text-foreground"
                             >
                               <span className="text-xs tabular-nums">
@@ -480,7 +477,7 @@ export default function PDI() {
                     <Cartao
                       key={e.id}
                       className="cursor-pointer p-3.5 transition-colors hover:bg-accent"
-                      onClick={() => { setEditandoEntrega(e); setOrigEntrega(e); }}
+                      onClick={() => { setEditandoEntrega(e); setOrigEntrega(e); navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true }); }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <p className="font-medium">{e.titulo}</p>
@@ -511,7 +508,7 @@ export default function PDI() {
       {/* ------------------------------------------------- modal da meta */}
       <Modal
         aberto={editandoMeta !== null}
-        aoFechar={() => setEditandoMeta(null)}
+        aoFechar={fecharMeta}
         temMudancas={JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}
         titulo={editandoMeta?.caminho ? "Editar meta" : "Nova meta"}
         rodape={
@@ -525,7 +522,7 @@ export default function PDI() {
                 Apagar
               </Botao>
             )}
-            <Botao variante="neutro" onClick={() => setEditandoMeta(null)}>
+            <Botao variante="neutro" onClick={fecharMeta}>
               Cancelar
             </Botao>
             <Botao onClick={salvarMeta} disabled={salvando}>

@@ -8,6 +8,7 @@
 
 import type { Documento, Frontmatter } from "./markdown";
 import { comoLista, mesclarFrontmatter } from "./markdown";
+import type { Settings } from "./settings";
 
 export const PASTA_REFS = "referencias";
 export const PASTA_IMAGENS = "referencias/imagens";
@@ -91,6 +92,44 @@ export function arquivoParaBase64(arquivo: File): Promise<string> {
     leitor.onerror = () => reject(new Error("Não consegui ler o arquivo."));
     leitor.readAsDataURL(arquivo);
   });
+}
+
+/**
+ * Caminho completo no repositório, a partir do que está gravado no `.md`.
+ * O arquivo guarda `imagens/foto.jpg` (relativo, para continuar legível fora
+ * do app), mas a API do GitHub quer `referencias/imagens/foto.jpg`.
+ */
+export function caminhoCompletoDaImagem(caminho: string): string {
+  return caminho.startsWith(PASTA_REFS)
+    ? caminho
+    : `${PASTA_REFS}/${caminho.replace(/^\.?\//, "")}`;
+}
+
+/**
+ * Baixa uma imagem do repositório PRIVADO e devolve um `blob:` utilizável.
+ *
+ * Uma `<img src>` comum não dá conta: o arquivo exige o cabeçalho de
+ * autenticação. Quem chamar é responsável por `URL.revokeObjectURL` depois.
+ */
+export async function baixarImagemPrivada(
+  cfg: Settings,
+  caminho: string,
+): Promise<string> {
+  const completo = caminhoCompletoDaImagem(caminho);
+  const url =
+    `https://api.github.com/repos/${encodeURIComponent(cfg.repoOwner)}/${encodeURIComponent(cfg.repoName)}` +
+    `/contents/${completo.split("/").map(encodeURIComponent).join("/")}` +
+    `?ref=${encodeURIComponent(cfg.branch)}`;
+
+  const resposta = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${cfg.githubToken.trim()}`,
+      Accept: "application/vnd.github.raw",
+    },
+  });
+  if (!resposta.ok) throw new Error(`Não consegui baixar a imagem (${resposta.status}).`);
+
+  return URL.createObjectURL(await resposta.blob());
 }
 
 /** Junta todas as tags usadas, para montar o filtro. */

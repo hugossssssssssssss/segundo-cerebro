@@ -33,28 +33,34 @@ export function HistoricoDiffModal({
   const cfg = lerConfig();
 
   useEffect(() => {
-    if (!aberto || !caminho) return;
+    if (!aberto || !caminho || !cfg.githubToken) return;
     setCarregando(true);
     setErro("");
     setCommits([]);
     setCommitSelecionado(null);
     setConteudoAntigo("");
 
-    // Buscar lista de commits do arquivo na API do GitHub
+    // Buscar histórico de commits do arquivo usando os cabeçalhos corretos do GitHub API v3
     fetch(
       `https://api.github.com/repos/${cfg.repoOwner}/${cfg.repoName}/commits?path=${encodeURIComponent(caminho)}`,
       {
         headers: {
-          Authorization: `token ${cfg.githubToken}`,
-          Accept: "application/vnd.github.v3+json",
+          Authorization: `Bearer ${cfg.githubToken.trim()}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
         },
       },
     )
       .then((res) => {
-        if (!res.ok) throw new Error("Não foi possível carregar o histórico de versões");
+        if (!res.ok) {
+          throw new Error(`Erro do GitHub (${res.status}). Verifique seu token em Ajustes.`);
+        }
         return res.json();
       })
       .then((data: CommitItem[]) => {
+        if (!Array.isArray(data)) {
+          throw new Error("Histórico não retornado no formato esperado.");
+        }
         setCommits(data);
         if (data.length > 0) {
           setCommitSelecionado(data[0].sha);
@@ -73,11 +79,9 @@ export function HistoricoDiffModal({
       .then((txt: string) => setConteudoAntigo(txt))
       .catch(() => setConteudoAntigo(""))
       .finally(() => setCarregandoDiff(false));
-    // As dependências são STRINGS, não o objeto `cfg`: `lerConfig()` devolve
-    // um objeto novo a cada render, então incluí-lo aqui fazia o efeito
-    // disparar em loop e queimar a cota horária do GitHub em segundos.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [commitSelecionado, caminho, cfg.repoOwner, cfg.repoName, cfg.githubToken]);
+  }, [commitSelecionado, caminho, cfg]);
+
+  const ehModoEscuro = document.documentElement.classList.contains("dark");
 
   return (
     <Modal
@@ -96,7 +100,7 @@ export function HistoricoDiffModal({
         ) : erro ? (
           <p className="text-sm text-destructive">{erro}</p>
         ) : commits.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhuma versão anterior encontrada.</p>
+          <p className="text-sm text-muted-foreground">Nenhuma versão anterior encontrada para este arquivo no GitHub.</p>
         ) : (
           <>
             <div>
@@ -106,11 +110,11 @@ export function HistoricoDiffModal({
               <select
                 value={commitSelecionado || ""}
                 onChange={(e) => setCommitSelecionado(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background p-2 text-sm"
+                className="w-full rounded-lg border border-border bg-background p-2 text-sm text-foreground"
               >
                 {commits.map((c) => (
                   <option key={c.sha} value={c.sha}>
-                    {new Date(c.commit.author.date).toLocaleString()} — {c.commit.message} ({c.sha.slice(0, 7)})
+                    {new Date(c.commit.author.date).toLocaleString("pt-BR")} — {c.commit.message} ({c.sha.slice(0, 7)})
                   </option>
                 ))}
               </select>
@@ -119,14 +123,14 @@ export function HistoricoDiffModal({
             {carregandoDiff ? (
               <Carregando texto="Comparando versões…" />
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border text-xs max-h-96">
+              <div className="overflow-x-auto rounded-lg border border-border text-xs max-h-96 bg-background">
                 <ReactDiffViewer
                   oldValue={conteudoAntigo}
                   newValue={conteudoAtual}
                   splitView={false}
-                  useDarkTheme={document.documentElement.classList.contains("dark")}
-                  leftTitle="Versão do Histórico"
-                  rightTitle="Versão Atual"
+                  useDarkTheme={ehModoEscuro}
+                  leftTitle="Versão Selecionada (Anterior)"
+                  rightTitle="Versão Atual no Editor"
                 />
               </div>
             )}

@@ -44,12 +44,6 @@ type NotaAberta = {
   original: { titulo: string; corpo: string; bruto?: Frontmatter };
 };
 
-/**
- * O editor e o painel de propriedades custam ~1 MB juntos (BlockNote +
- * ProseMirror + Mantine). Importados de forma estática, esse peso vinha só
- * para mostrar a lista — e Tarefas é a aba inicial, então era cobrado toda
- * sessão. Sob demanda, só baixa quando um item é realmente aberto.
- */
 const EditorPesado = lazy(() =>
   import("@/components/EditorNotion").then((m) => ({ default: m.EditorNotion })),
 );
@@ -59,7 +53,6 @@ const PropriedadesPesadas = lazy(() =>
   })),
 );
 
-/* Embrulhos com Suspense, para os pontos de uso não mudarem. */
 function EditorNotion(props: React.ComponentProps<typeof EditorPesado>) {
   return (
     <Suspense
@@ -98,9 +91,7 @@ export default function Notas() {
   const [aberta, setAberta] = useState<NotaAberta | null>(null);
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
-  // acervo inteiro: resolve os [[links]] e as menções
   const [acervo, setAcervo] = useState<ItemRepo[]>([]);
-  // arquivos que o GitHub não entregou nesta leitura
   const [ilegiveis, setIlegiveis] = useState<string[]>([]);
 
   /* ------------------------------------------------------------ listagem */
@@ -113,8 +104,6 @@ export default function Notas() {
     setCarregando(true);
     setErro("");
     try {
-      // o conteúdo já vem junto, então o título sai daqui mesmo — antes eram
-      // N requisições extras só para descobrir o título de cada nota
       const todos = await carregarRepo(cfg, { memoria: 3000 });
       setIlegiveis(arquivosIlegiveis());
       setAcervo(todos);
@@ -130,8 +119,6 @@ export default function Notas() {
     } finally {
       setCarregando(false);
     }
-    // cfg vem do localStorage a cada render; comparar por valor evita loop
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
   useEffect(() => {
@@ -152,17 +139,19 @@ export default function Notas() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
-    // Consumir uma vez só: o parâmetro ficava na URL e, como o efeito depende
-    // da lista recarregada, todo Salvar reabria o item anterior por cima do
-    // que você estava editando.
     if (abrirCaminho && acervo.length > 0 && (!aberta || aberta.caminho !== abrirCaminho)) {
       const alvo = acervo.find((a) => a.caminho === abrirCaminho);
-      // Vir da busca não pode atropelar o que você estava escrevendo.
       if (alvo && (!mudou || confirm("Você tem alterações não salvas. Descartar?"))) {
-        abrir(alvo);
+        const titulo = tituloProvavel(alvo.doc, alvo.nome);
+        setAberta({
+          bruto: alvo.doc.dados,
+          caminho: alvo.caminho,
+          sha: alvo.sha,
+          titulo,
+          corpo: alvo.doc.corpo,
+          original: { titulo, corpo: alvo.doc.corpo, bruto: alvo.doc.dados },
+        });
       }
-      // limpa o parâmetro: sem isso ele reabria o item a cada recarga da lista
-      navegar(location.pathname, { replace: true });
     }
   }, [location.search, acervo]);
 
@@ -177,35 +166,25 @@ export default function Notas() {
       JSON.stringify(aberta.bruto) !== JSON.stringify(aberta.original.bruto) 
     : false;
 
-  /**
-   * Protege o texto do botão "voltar" do Android.
-   *
-   * O editor não é uma rota — é um estado dentro de /notas. O voltar do
-   * sistema desmonta a tela e o que estava escrito evaporava, sem aviso.
-   * Empurrar um estado no histórico dá ao voltar algo para consumir, e aqui
-   * ele é interceptado.
-   */
+  function fecharNota() {
+    setAberta(null);
+    navegar(location.pathname, { replace: true });
+  }
+
   useEffect(() => {
     if (!aberta) return;
-
     history.pushState({ editor: true }, "");
-
     const aoVoltar = () => {
       if (mudou && !confirm("Você tem alterações não salvas. Descartar?")) {
-        history.pushState({ editor: true }, ""); // devolve o estado consumido
+        history.pushState({ editor: true }, "");
         return;
       }
-      setAberta(null);
+      fecharNota();
     };
-
     addEventListener("popstate", aoVoltar);
     return () => removeEventListener("popstate", aoVoltar);
-    // `mudou` fora das deps de propósito: reempurrar o estado a cada tecla
-    // digitada encheria o histórico do navegador.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberta !== null]);
 
-  /** Avisa antes de fechar a aba ou recarregar com texto não salvo. */
   useEffect(() => {
     if (!mudou) return;
     const aoSair = (e: BeforeUnloadEvent) => e.preventDefault();
@@ -215,7 +194,6 @@ export default function Notas() {
 
   /* ------------------------------------------------------------- ações */
 
-  /** Abre sem ir à rede: o conteúdo já veio no carregamento da lista. */
   function abrir(a: ItemRepo) {
     setErro("");
     const titulo = tituloProvavel(a.doc, a.nome);
@@ -227,6 +205,7 @@ export default function Notas() {
       corpo: a.doc.corpo,
       original: { titulo, corpo: a.doc.corpo, bruto: a.doc.dados },
     });
+    navegar(`?abrir=${encodeURIComponent(a.caminho)}`, { replace: true });
   }
 
   function nova() {
@@ -248,12 +227,8 @@ export default function Notas() {
     setErro("");
     try {
       const texto = escreverMarkdown({
-        // mescla: campos que outra IA ou o github.com acrescentaram sobrevivem
         dados: mesclarFrontmatter(aberta.bruto, {
           titulo,
-          // Só define o tipo quando o arquivo ainda não tem um. A busca leva
-          // itens de `reunioes/` para esta tela, e forçar "nota" reescrevia o
-          // tipo de um arquivo que não é nota.
           tipo:
             typeof aberta.bruto.tipo === "string" && aberta.bruto.tipo
               ? aberta.bruto.tipo
@@ -281,6 +256,7 @@ export default function Notas() {
         titulo,
         original: { titulo, corpo: aberta.corpo, bruto: aberta.bruto },
       });
+      navegar(`?abrir=${encodeURIComponent(caminho)}`, { replace: true });
       await carregarLista();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -297,14 +273,12 @@ export default function Notas() {
     try {
       await apagar(cfg, aberta.caminho, aberta.sha);
       invalidarCache();
-      setAberta(null);
+      fecharNota();
       await carregarLista();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     }
   }
-
-  /* --------------------------------------------------------- sem config */
 
   if (!pronto) {
     return (
@@ -332,7 +306,7 @@ export default function Notas() {
             onClick={() => {
               if (mudou && !confirm("Você tem alterações não salvas. Sair mesmo assim?"))
                 return;
-              setAberta(null);
+              fecharNota();
             }}
           >
             <ArrowLeft size={18} />
@@ -374,7 +348,6 @@ export default function Notas() {
               placeholder="Sem título"
               className="w-full text-4xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0"
             />
-            {/* Notion-style Properties */}
             <div className="mt-6 flex flex-col gap-2">
               <PropriedadesNotion
                 dados={aberta.bruto}
@@ -385,7 +358,6 @@ export default function Notas() {
                 opcoesRelacionamento={opcoesRelacionamento}
               />
             </div>
-            {/* Divider */}
             <hr className="my-6 border-border" />
           </div>
 
@@ -418,12 +390,12 @@ export default function Notas() {
                   key={l.bruto}
                   className={
                     l.alvo
-                      ? "rounded-md bg-primary/15 px-2 py-0.5 text-primary"
+                      ? "rounded-md bg-primary/15 px-2 py-0.5 text-primary font-medium"
                       : "rounded-md bg-secondary px-2 py-0.5 text-muted-foreground"
                   }
                   title={l.alvo ? l.alvo.caminho : "Ainda não existe"}
                 >
-                  {l.exibir}
+                  @{l.exibir}
                   {!l.alvo && " (não existe)"}
                 </span>
               ))}
@@ -432,8 +404,8 @@ export default function Notas() {
         })()}
 
         <p className="text-xs text-muted-foreground">
-          Escreva <code className="rounded bg-secondary px-1">[[nome]]</code>{" "}
-          para ligar esta nota a uma tarefa, referência ou meta sua.
+          Digite <code className="rounded bg-secondary px-1">@nome</code> ou{" "}
+          <code className="rounded bg-secondary px-1">[[nome]]</code> para ligar esta nota a uma tarefa, referência ou meta.
         </p>
 
         <div className="flex items-center justify-between gap-3">
@@ -512,16 +484,21 @@ export default function Notas() {
         <Vazio titulo="Nada encontrado" descricao={`Nenhuma nota com "${busca}".`} />
       ) : (
         <div className="grid gap-3">
-          {visiveis.map((a) => (
-            <Cartao
-              key={a.caminho}
-              className="cursor-pointer p-4 transition-colors hover:bg-accent"
-              onClick={() => abrir(a)}
-            >
-              <p className="font-medium">{titulos[a.caminho] ?? a.nome}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{a.nome}</p>
-            </Cartao>
-          ))}
+          {visiveis.map((a) => {
+            const tituloNota = titulos[a.caminho] ?? a.nome;
+            return (
+              <Cartao
+                key={a.caminho}
+                className="cursor-pointer p-4 transition-colors hover:bg-accent flex items-center justify-between group"
+                onClick={() => abrir(a)}
+              >
+                <div className="min-w-0 flex-1 pr-3">
+                  <p className="font-medium">{tituloNota}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{a.nome}</p>
+                </div>
+              </Cartao>
+            );
+          })}
         </div>
       )}
     </div>

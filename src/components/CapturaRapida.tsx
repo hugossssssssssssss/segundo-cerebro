@@ -226,18 +226,31 @@ export function CapturaRapida({
           <Botao
             tamanho="pequeno"
             variante="neutro"
-            onClick={() => {
-              if (!texto.trim()) return;
-              import("@/lib/clipper").then(({ converterHtmlParaMarkdown }) => {
-                const res = converterHtmlParaMarkdown(texto, /^https?:\/\//i.test(texto.trim()) ? texto.trim() : undefined);
+            onClick={async () => {
+              const entrada = texto.trim();
+              if (!entrada || salvando) return;
+              setSalvando(true);
+              setErro("");
+              try {
+                const { capturarUrlWeb, converterHtmlParaMarkdown } = await import("@/lib/clipper");
+                let res;
+                if (/^https?:\/\//i.test(entrada)) {
+                  res = await capturarUrlWeb(entrada);
+                } else {
+                  res = converterHtmlParaMarkdown(entrada);
+                }
                 setTexto(`${res.titulo}\n\n${res.markdown}`);
                 setDestino("notas");
-              });
+              } catch (e) {
+                setErro(e instanceof Error ? e.message : String(e));
+              } finally {
+                setSalvando(false);
+              }
             }}
-            disabled={!texto.trim()}
-            title="Converte HTML ou conteúdo colado em Markdown limpo"
+            disabled={salvando || !texto.trim()}
+            title="Baixa a página web ou converte o HTML colado em Markdown limpo"
           >
-            Limpar HTML/Web
+            {salvando ? "Buscando site…" : "Capturar Web"}
           </Botao>
 
           <Botao

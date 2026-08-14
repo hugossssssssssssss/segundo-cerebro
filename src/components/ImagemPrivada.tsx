@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { lerConfig } from "@/lib/settings";
-import { PASTA_REFS } from "@/lib/referencias";
+import { baixarImagemPrivada } from "@/lib/referencias";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,11 +21,13 @@ export function ImagemPrivada({
   caminho,
   alt,
   className,
+  aoCarregarBlob,
 }: {
   /** Caminho relativo a `referencias/` ou completo no repositório */
   caminho: string;
   alt: string;
   className?: string;
+  aoCarregarBlob?: (imgElem: HTMLImageElement) => void;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [estado, setEstado] = useState<"esperando" | "baixando" | "erro">(
@@ -42,30 +44,14 @@ export function ImagemPrivada({
 
     const baixar = async () => {
       setEstado("baixando");
-      const cfg = lerConfig();
-      const completo = caminho.startsWith(PASTA_REFS)
-        ? caminho
-        : `${PASTA_REFS}/${caminho.replace(/^\.?\//, "")}`;
-
       try {
-        const resposta = await fetch(
-          `https://api.github.com/repos/${encodeURIComponent(cfg.repoOwner)}/${encodeURIComponent(cfg.repoName)}/contents/${completo
-            .split("/")
-            .map(encodeURIComponent)
-            .join("/")}?ref=${encodeURIComponent(cfg.branch)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${cfg.githubToken.trim()}`,
-              Accept: "application/vnd.github.raw",
-            },
-          },
-        );
-        if (!resposta.ok) throw new Error(String(resposta.status));
+        const blobUrl = await baixarImagemPrivada(lerConfig(), caminho);
+        if (cancelado) {
+          URL.revokeObjectURL(blobUrl);
+          return;
+        }
 
-        const blob = await resposta.blob();
-        if (cancelado) return;
-
-        criada = URL.createObjectURL(blob);
+        criada = blobUrl;
         setUrl(criada);
       } catch {
         if (!cancelado) setEstado("erro");
@@ -92,7 +78,14 @@ export function ImagemPrivada({
   }, [caminho]);
 
   if (url) {
-    return <img src={url} alt={alt} className={className} />;
+    return (
+      <img
+        src={url}
+        alt={alt}
+        className={className}
+        onLoad={(e) => aoCarregarBlob?.(e.currentTarget)}
+      />
+    );
   }
 
   return (
