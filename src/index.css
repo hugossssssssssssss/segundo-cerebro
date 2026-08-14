@@ -25,6 +25,10 @@
   --accent-foreground: 240 5.9% 10%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
+  /* Usados pelos selos de estado (Selo, Aviso, CartaoAcao). Sumiram na
+     troca de paleta e deixaram 10 lugares sem cor. */
+  --success: hsl(142 71% 35%);
+  --warning: hsl(38 92% 45%);
   --border: 240 5.9% 90%;
   --input: 240 5.9% 90%;
   --ring: 240 10% 3.9%;
@@ -48,6 +52,8 @@
   --accent-foreground: 0 0% 98%;
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
+  --success: hsl(142 65% 48%);
+  --warning: hsl(38 92% 58%);
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
   --ring: 240 4.9% 83.9%;

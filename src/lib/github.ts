@@ -69,7 +69,12 @@ function raiz(cfg: Settings): string {
   return `${BASE}/repos/${cfg.repoOwner}/${cfg.repoName}/contents`;
 }
 
-async function conferir(resposta: Response): Promise<void> {
+/**
+ * Traduz o erro do GitHub para português, distinguindo limite de API de
+ * falta de permissão (os dois chegam como 403). Exportada porque `repo.ts`
+ * precisa exatamente do mesmo tratamento — ela é a porta de todas as telas.
+ */
+export async function conferir(resposta: Response): Promise<void> {
   if (resposta.ok) return;
 
   let detalhe = "";

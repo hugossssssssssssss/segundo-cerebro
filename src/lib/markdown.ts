@@ -42,7 +42,7 @@ export function lerMarkdown(texto: string): Documento {
 /** Monta o arquivo .md de volta. Frontmatter vazio não gera bloco `---`. */
 export function escreverMarkdown(doc: Documento): string {
   const campos = Object.entries(doc.dados).filter(
-    ([, v]) => v !== undefined && v !== null && v !== "",
+    ([k, v]) => !k.startsWith("_") && v !== undefined && v !== null && v !== "",
   );
   if (campos.length === 0) return doc.corpo;
 
@@ -137,4 +137,26 @@ export function mesclarFrontmatter(
     }
   }
   return saida;
+}
+
+/**
+ * Desfaz o escape que o editor aplica nos `[[links]]`.
+ *
+ * O BlockNote serializa com remark-stringify, que trata `[[` como sintaxe a
+ * ser escapada e grava `\[\[Briefing]]` no arquivo. Isso tinha duas
+ * consequências, ambas verificadas na prática:
+ *
+ *   1. o `.md` no repositório ficava com barras invertidas, visíveis no
+ *      GitHub, no Obsidian e para qualquer IA que lesse o repositório;
+ *   2. `extrairLinks` deixava de reconhecer o link — porque `\[\[` não tem
+ *      dois colchetes seguidos — e o "Mencionado em" morria junto.
+ *
+ * Rodar isto na saída do editor mantém o arquivo limpo e os links vivos.
+ */
+export function restaurarWikilinks(markdown: string): string {
+  return markdown
+    .replace(/\\\[\\\[/g, "[[")
+    .replace(/\\\]\\\]/g, "]]")
+    // remark escapa só a abertura; a fechadura costuma vir sem barra
+    .replace(/\\\[\\\[([^\]]*?)\]\]/g, "[[$1]]");
 }

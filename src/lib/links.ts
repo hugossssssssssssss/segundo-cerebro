@@ -37,7 +37,7 @@ export type Referencia = {
 };
 
 /** Normaliza para comparar títulos sem tropeçar em acento ou caixa. */
-function chave(s: string): string {
+export function chave(s: string): string {
   return s
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -144,11 +144,16 @@ export function mencoesA(
 
 function recorteEmVolta(corpo: string, alvo: string): string {
   const limpo = corpo.replace(/\s+/g, " ").trim();
-  const pos = limpo.indexOf(`[[${alvo}`);
+  let pos = limpo.indexOf(`[[${alvo}`);
+  let tam = alvo.length + 4;
+  if (pos < 0) {
+    pos = limpo.toLowerCase().indexOf(alvo.toLowerCase());
+    tam = alvo.length;
+  }
   if (pos < 0) return limpo.slice(0, 100);
 
   const inicio = Math.max(0, pos - 50);
-  const fim = Math.min(limpo.length, pos + alvo.length + 70);
+  const fim = Math.min(limpo.length, pos + tam + 70);
   return (
     (inicio > 0 ? "…" : "") + limpo.slice(inicio, fim).trim() + (fim < limpo.length ? "…" : "")
   );

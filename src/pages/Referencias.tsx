@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Masonry } from "react-plock";
 import { Plus, Trash2, ImagePlus, ExternalLink } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 export default function Referencias() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
+  const location = useLocation();
 
   const [refs, setRefs] = useState<Referencia[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -83,6 +84,19 @@ export default function Referencias() {
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  // Abre item vindo por parâmetro de busca na URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const abrirCaminho = params.get("abrir");
+    if (abrirCaminho && refs.length > 0 && (!editando || editando.caminho !== abrirCaminho)) {
+      const alvo = refs.find((r) => r.caminho === abrirCaminho);
+      if (alvo) {
+        setEditando(alvo);
+        setOriginal(alvo);
+      }
+    }
+  }, [location.search, refs]);
 
 
   /* -------------------------------------------------------------- ações */

@@ -1,13 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Plus, Timer, Trash2, Check, List, CalendarDays } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { ler, gravar, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
 import { montarIndice, mencoesA } from "@/lib/links";
 import { MencionadoEm } from "@/components/Links";
-import { EditorNotion } from "@/components/EditorNotion";
-import { PropriedadesNotion } from "@/components/PropriedadesNotion";
 import { ListTodo, Calendar, Tag } from "lucide-react";
 import {
   lerMarkdown,
@@ -52,9 +50,50 @@ const CORES_URGENCIA = {
   nenhuma: "neutro",
 } as const;
 
+/**
+ * O editor e o painel de propriedades custam ~1 MB juntos (BlockNote +
+ * ProseMirror + Mantine). Importados de forma estática, esse peso vinha só
+ * para mostrar a lista — e Tarefas é a aba inicial, então era cobrado toda
+ * sessão. Sob demanda, só baixa quando um item é realmente aberto.
+ */
+const EditorPesado = lazy(() =>
+  import("@/components/EditorNotion").then((m) => ({ default: m.EditorNotion })),
+);
+const PropriedadesPesadas = lazy(() =>
+  import("@/components/PropriedadesNotion").then((m) => ({
+    default: m.PropriedadesNotion,
+  })),
+);
+
+/* Embrulhos com Suspense, para os pontos de uso não mudarem. */
+function EditorNotion(props: React.ComponentProps<typeof EditorPesado>) {
+  return (
+    <Suspense
+      fallback={
+        <div className="animate-pulse p-4 text-sm text-muted-foreground">
+          Carregando editor…
+        </div>
+      }
+    >
+      <EditorPesado {...props} />
+    </Suspense>
+  );
+}
+
+function PropriedadesNotion(
+  props: React.ComponentProps<typeof PropriedadesPesadas>,
+) {
+  return (
+    <Suspense fallback={<div className="h-16" />}>
+      <PropriedadesPesadas {...props} />
+    </Suspense>
+  );
+}
+
 export default function Tarefas() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
+  const location = useLocation();
 
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -103,6 +142,25 @@ export default function Tarefas() {
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  // Abre item vindo por parâmetro de busca na URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const abrirCaminho = params.get("abrir");
+    if (abrirCaminho && tarefas.length > 0 && (!editando || editando.caminho !== abrirCaminho)) {
+      const alvo = tarefas.find((t) => t.caminho === abrirCaminho);
+      if (alvo) abrir(alvo);
+    }
+  }, [location.search, tarefas]);
+
+  const indice = useMemo(() => montarIndice(acervo), [acervo]);
+  
+  const opcoesRelacionamento = useMemo(() => {
+    return Array.from(indice.values()).map(a => ({
+      titulo: a.titulo,
+      caminho: a.caminho
+    })).sort((a, b) => a.titulo.localeCompare(b.titulo));
+  }, [indice]);
 
   /* -------------------------------------------------------------- ações */
 
@@ -243,7 +301,6 @@ export default function Tarefas() {
     [cronometrando, cfg.repoOwner, cfg.repoName, cfg.githubToken],
   );
 
-  const indice = useMemo(() => montarIndice(acervo), [acervo]);
 
   /* --------------------------------------------------------- sem config */
 
@@ -468,10 +525,11 @@ export default function Tarefas() {
                   });
                 }}
                 camposFixos={{
-                  status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status", opcoes: ["a-fazer", "fazendo", "feito"] },
+                  status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "select", opcoes: ["a-fazer", "fazendo", "feito"] },
                   prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
-                  tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "tags" }
+                  tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" }
                 }}
+                opcoesRelacionamento={opcoesRelacionamento}
               />
             </div>
 
@@ -485,7 +543,14 @@ export default function Tarefas() {
             </div>
 
             {editando.caminho && (
-              <MencionadoEm mencoes={mencoesA(editando.caminho, acervo, indice)} />
+              <div className="mt-12 border-t border-border pt-6">
+                <MencionadoEm 
+                  mencoes={mencoesA(editando.caminho, acervo, indice)} 
+                  aoAbrir={() => {
+                    // Similar ao notas, se tiver na mesma aba
+                  }}
+                />
+              </div>
             )}
           </div>
         )}

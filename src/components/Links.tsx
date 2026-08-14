@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Link2, CornerUpLeft } from "lucide-react";
-import { extrairLinks, sugerir, type Alvo, type Mencao } from "@/lib/links";
+import { sugerir, chave, type Alvo, type Mencao } from "@/lib/links";
 import { ROTULO_TIPO, ROTA_TIPO } from "@/lib/busca";
 import { AreaTexto, Selo } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -28,25 +28,31 @@ export function TextoComLinks({
 }) {
   const navegar = useNavigate();
   const partes = useMemo(() => {
-    const links = extrairLinks(texto, indice);
-    if (links.length === 0) return null;
+    const PADRAO = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+    const matches = Array.from(texto.matchAll(PADRAO));
+    if (matches.length === 0) return null;
 
-    // recorta o texto em volta de cada [[...]]
-    const pedacos: (string | { bruto: string; exibir: string; alvo: Alvo | null })[] = [];
-    let resto = texto;
+    const pedacos: (
+      | string
+      | { bruto: string; exibir: string; alvo: Alvo | null }
+    )[] = [];
+    let ultIndex = 0;
 
-    for (const l of links) {
-      const marca = new RegExp(
-        `\\[\\[${l.bruto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\|[^\\]]+)?\\]\\]`,
-      );
-      const achou = resto.match(marca);
-      if (!achou || achou.index === undefined) continue;
-
-      if (achou.index > 0) pedacos.push(resto.slice(0, achou.index));
-      pedacos.push(l);
-      resto = resto.slice(achou.index + achou[0].length);
+    for (const m of matches) {
+      const start = m.index;
+      if (start > ultIndex) {
+        pedacos.push(texto.slice(ultIndex, start));
+      }
+      const bruto = m[1].trim();
+      const exibir = (m[2] ?? bruto).trim();
+      const alvo = indice.get(chave(bruto)) ?? null;
+      pedacos.push({ bruto, exibir, alvo });
+      ultIndex = start + m[0].length;
     }
-    if (resto) pedacos.push(resto);
+
+    if (ultIndex < texto.length) {
+      pedacos.push(texto.slice(ultIndex));
+    }
     return pedacos;
   }, [texto, indice]);
 

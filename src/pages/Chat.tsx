@@ -50,7 +50,21 @@ export default function Chat() {
   }
 
   function montarContextoTexto(itens: ItemRepo[]): string {
-    return itens.map((i) => `\n### ${i.caminho}\n${i.texto}`).join("\n");
+    const TETO = 120_000;
+    let total = 0;
+    const partes: string[] = [];
+    for (const i of itens) {
+      const bloco = `\n### ${i.caminho}\n${i.texto}`;
+      if (total + bloco.length > TETO) {
+        partes.push(
+          `\n... (contexto cortado em ${TETO} caracteres para não exceder o limite do modelo)`,
+        );
+        break;
+      }
+      partes.push(bloco);
+      total += bloco.length;
+    }
+    return partes.join("\n");
   }
 
   async function enviar(texto: string) {

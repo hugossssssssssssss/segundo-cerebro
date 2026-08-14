@@ -122,7 +122,9 @@ export function Busca({
                   <button
                     key={r.caminho}
                     onClick={() => {
-                      navegar(ROTA_TIPO[r.tipo]);
+                      navegar(
+                        `${ROTA_TIPO[r.tipo]}?abrir=${encodeURIComponent(r.caminho)}`,
+                      );
                       aoFechar();
                     }}
                     className={cn(

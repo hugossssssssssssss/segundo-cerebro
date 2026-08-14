@@ -17,7 +17,7 @@
  */
 
 import type { Settings } from "./settings";
-import { ErroGitHub } from "./github";
+import { ErroGitHub, conferir } from "./github";
 import { lerMarkdown, type Documento } from "./markdown";
 
 const BASE = "https://api.github.com";
@@ -42,6 +42,22 @@ type Cache = {
 
 let cache: Cache | null = null;
 
+/**
+ * Texto de cada arquivo, indexado pelo sha do blob.
+ *
+ * Vive FORA do cache e sobrevive à invalidação — essa é a diferença que
+ * importa. O sha do git é o hash do conteúdo: sha igual significa bytes
+ * iguais, sempre. Então depois de gravar uma nota, as outras 99 podem ser
+ * reaproveitadas em vez de baixadas de novo.
+ *
+ * Antes isto estava dentro do cache, e como invalidar apagava o mapa junto,
+ * salvar uma tarefa re-baixava o repositório inteiro.
+ */
+const textoPorSha = new Map<string, string>();
+
+/** Evita que o mapa cresça sem limite numa sessão longa. */
+const TETO_MEMORIA = 2000;
+
 /** Identifica a origem: trocar de repositório invalida o cache. */
 function chaveDe(cfg: Settings): string {
   return `${cfg.repoOwner}/${cfg.repoName}@${cfg.branch}`;
@@ -50,6 +66,17 @@ function chaveDe(cfg: Settings): string {
 /** Chamar depois de gravar ou apagar, para a próxima leitura buscar de novo. */
 export function invalidarCache(): void {
   cache = null;
+}
+
+/**
+ * Esquece também o texto guardado por sha.
+ *
+ * Só faz sentido ao trocar de conta/repositório e nos testes — no uso normal
+ * o mapa por sha DEVE sobreviver, é ele que evita re-baixar tudo a cada save.
+ */
+export function esquecerTudo(): void {
+  cache = null;
+  textoPorSha.clear();
 }
 
 function cabecalhos(cfg: Settings): HeadersInit {
@@ -82,17 +109,17 @@ async function arvore(cfg: Settings): Promise<Folha[]> {
   const resposta = await buscar(url, { headers: cabecalhos(cfg) });
 
   if (resposta.status === 404) return []; // repositório novo, sem commits
-  if (!resposta.ok) {
-    const corpo = await resposta.json().catch(() => ({}));
-    throw new ErroGitHub(
-      resposta.status === 401
-        ? "Token do GitHub inválido ou expirado. Confira em Ajustes."
-        : `Não consegui ler o repositório (${resposta.status}). ${corpo?.message ?? ""}`,
-      resposta.status,
-    );
-  }
+  // mesma tradução de erro do resto do app: limite de API não pode aparecer
+  // como "token sem permissão", que foi o erro que custou uma tarde
+  await conferir(resposta);
 
   const dados = await resposta.json();
+  if (dados.truncated) {
+    throw new ErroGitHub(
+      "Seu repositório passou do tamanho que a API do GitHub entrega de uma vez. Fale comigo para paginar a listagem.",
+      200,
+    );
+  }
   return (dados.tree ?? [])
     .filter(
       (n: { type: string; path: string }) =>
@@ -138,26 +165,23 @@ async function conteudoEmLote(
       body: JSON.stringify({ query }),
     });
 
-    if (!resposta.ok) {
-      throw new ErroGitHub(
-        `O GitHub recusou a leitura em lote (${resposta.status}).`,
-        resposta.status,
-      );
-    }
+    await conferir(resposta);
 
     const dados = await resposta.json();
-    if (dados.errors?.length) {
+    const repo = dados.data?.repository;
+    if (!repo && dados.errors?.length) {
       throw new ErroGitHub(
         `Erro ao ler os arquivos: ${dados.errors[0].message}`,
         200,
       );
     }
 
-    const repo = dados.data?.repository ?? {};
-    fatia.forEach((caminho, n) => {
-      const texto = repo[`f${n}`]?.text;
-      if (typeof texto === "string") saida.set(caminho, texto);
-    });
+    if (repo) {
+      fatia.forEach((caminho, n) => {
+        const texto = repo[`f${n}`]?.text;
+        if (typeof texto === "string") saida.set(caminho, texto);
+      });
+    }
   }
 
   return saida;
@@ -171,29 +195,52 @@ async function conteudoEmLote(
  */
 export async function carregarRepo(
   cfg: Settings,
-  { forcar = false } = {},
+  { memoria = 0 }: { memoria?: number } = {},
 ): Promise<ItemRepo[]> {
   const chave = chaveDe(cfg);
 
-  if (!forcar && cache?.chave === chave) return cache.itens;
+  // Janela curta em que vale servir da memória sem ir à rede: só para evitar
+  // que quatro componentes montando juntos disparem quatro carregamentos.
+  // Passado isso, SEMPRE conferimos a árvore — senão você edita um arquivo
+  // pelo github.com e o app mostra o dado velho a sessão inteira.
+  if (
+    memoria > 0 &&
+    cache?.chave === chave &&
+    Date.now() - cache.quando < memoria
+  ) {
+    return cache.itens;
+  }
 
+  // 1 requisição barata que diz o sha de cada arquivo. É ela que detecta
+  // qualquer alteração feita fora do app.
   const folhas = await arvore(cfg);
   if (folhas.length === 0) {
     cache = { chave, itens: [], quando: Date.now() };
     return [];
   }
 
-  // Reaproveita o texto dos arquivos cujo sha não mudou — depois de gravar
-  // uma nota, as outras 99 não precisam vir de novo.
-  const conhecidos = new Map(
-    (cache?.chave === chave ? cache.itens : []).map((i) => [i.sha, i.texto]),
-  );
+  // Só baixa o conteúdo de quem mudou de sha.
+  const faltando = folhas
+    .filter((f) => !textoPorSha.has(f.sha))
+    .map((f) => f.path);
 
-  const faltando = folhas.filter((f) => !conhecidos.has(f.sha)).map((f) => f.path);
-  const baixados = faltando.length ? await conteudoEmLote(cfg, faltando) : new Map();
+  if (faltando.length) {
+    const baixados = await conteudoEmLote(cfg, faltando);
+    for (const f of folhas) {
+      const texto = baixados.get(f.path);
+      if (typeof texto === "string") textoPorSha.set(f.sha, texto);
+    }
+  }
+
+  if (textoPorSha.size > TETO_MEMORIA) {
+    const vivos = new Set(folhas.map((f) => f.sha));
+    for (const sha of textoPorSha.keys()) {
+      if (!vivos.has(sha)) textoPorSha.delete(sha);
+    }
+  }
 
   const itens: ItemRepo[] = folhas.map((f) => {
-    const texto = baixados.get(f.path) ?? conhecidos.get(f.sha) ?? "";
+    const texto = textoPorSha.get(f.sha) ?? "";
     return {
       caminho: f.path,
       nome: f.path.split("/").pop()!,

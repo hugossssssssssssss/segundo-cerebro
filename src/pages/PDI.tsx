@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Target, Package, Trash2, AlertTriangle, Sparkles } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
@@ -45,6 +45,7 @@ import { cn } from "@/lib/utils";
 export default function PDI() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
+  const location = useLocation();
 
   const [metas, setMetas] = useState<Meta[]>([]);
   const [entregas, setEntregas] = useState<Entrega[]>([]);
@@ -90,6 +91,25 @@ export default function PDI() {
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  // Abre item vindo por parâmetro de busca na URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const abrirCaminho = params.get("abrir");
+    if (abrirCaminho && (metas.length > 0 || entregas.length > 0)) {
+      const metaAlvo = metas.find((m) => m.caminho === abrirCaminho);
+      if (metaAlvo && (!editandoMeta || editandoMeta.caminho !== abrirCaminho)) {
+        setEditandoMeta(metaAlvo);
+        setOrigMeta(metaAlvo);
+        return;
+      }
+      const entregaAlvo = entregas.find((e) => e.caminho === abrirCaminho);
+      if (entregaAlvo && (!editandoEntrega || editandoEntrega.caminho !== abrirCaminho)) {
+        setEditandoEntrega(entregaAlvo);
+        setOrigEntrega(entregaAlvo);
+      }
+    }
+  }, [location.search, metas, entregas]);
 
   /* -------------------------------------------------------------- ações */
 

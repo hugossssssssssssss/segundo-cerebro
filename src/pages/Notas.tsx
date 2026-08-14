@@ -1,13 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { EditorNotion } from "@/components/EditorNotion";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Plus, Trash2, Search, ArrowLeft, Save, Tag } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
 import { montarIndice, mencoesA, extrairLinks } from "@/lib/links";
 import { MencionadoEm } from "@/components/Links";
-import { PropriedadesNotion } from "@/components/PropriedadesNotion";
 import {
   escreverMarkdown,
   tituloProvavel,
@@ -35,12 +33,53 @@ type NotaAberta = {
   titulo: string;
   corpo: string;
   /** Título e corpo como estavam ao abrir — para saber se há mudança pendente */
-  original: { titulo: string; corpo: string };
+  original: { titulo: string; corpo: string; bruto?: Frontmatter };
 };
+
+/**
+ * O editor e o painel de propriedades custam ~1 MB juntos (BlockNote +
+ * ProseMirror + Mantine). Importados de forma estática, esse peso vinha só
+ * para mostrar a lista — e Tarefas é a aba inicial, então era cobrado toda
+ * sessão. Sob demanda, só baixa quando um item é realmente aberto.
+ */
+const EditorPesado = lazy(() =>
+  import("@/components/EditorNotion").then((m) => ({ default: m.EditorNotion })),
+);
+const PropriedadesPesadas = lazy(() =>
+  import("@/components/PropriedadesNotion").then((m) => ({
+    default: m.PropriedadesNotion,
+  })),
+);
+
+/* Embrulhos com Suspense, para os pontos de uso não mudarem. */
+function EditorNotion(props: React.ComponentProps<typeof EditorPesado>) {
+  return (
+    <Suspense
+      fallback={
+        <div className="animate-pulse p-4 text-sm text-muted-foreground">
+          Carregando editor…
+        </div>
+      }
+    >
+      <EditorPesado {...props} />
+    </Suspense>
+  );
+}
+
+function PropriedadesNotion(
+  props: React.ComponentProps<typeof PropriedadesPesadas>,
+) {
+  return (
+    <Suspense fallback={<div className="h-16" />}>
+      <PropriedadesPesadas {...props} />
+    </Suspense>
+  );
+}
 
 export default function Notas() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
+  const location = useLocation();
 
   const [arquivos, setArquivos] = useState<ItemRepo[]>([]);
   const [titulos, setTitulos] = useState<Record<string, string>>({});
@@ -86,12 +125,36 @@ export default function Notas() {
     carregarLista();
   }, [carregarLista]);
 
+  // Índice para relacionamentos e menções
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
+  
+  const opcoesRelacionamento = useMemo(() => {
+    return Array.from(indice.values()).map(a => ({
+      titulo: a.titulo,
+      caminho: a.caminho
+    })).sort((a, b) => a.titulo.localeCompare(b.titulo));
+  }, [indice]);
 
-  const mudou =
-    aberta !== null &&
-    (aberta.titulo !== aberta.original.titulo ||
-      aberta.corpo !== aberta.original.corpo);
+  // Abre item vindo por parâmetro de busca na URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const abrirCaminho = params.get("abrir");
+    if (abrirCaminho && acervo.length > 0 && (!aberta || aberta.caminho !== abrirCaminho)) {
+      const alvo = acervo.find((a) => a.caminho === abrirCaminho);
+      if (alvo) abrir(alvo);
+    }
+  }, [location.search, acervo]);
+
+  const mencoesNotaAberta = useMemo(() => {
+    if (!aberta?.caminho) return [];
+    return mencoesA(aberta.caminho, acervo, indice);
+  }, [aberta?.caminho, acervo, indice]);
+
+  const mudou = aberta
+    ? aberta.titulo !== aberta.original.titulo ||
+      aberta.corpo !== aberta.original.corpo ||
+      JSON.stringify(aberta.bruto) !== JSON.stringify(aberta.original.bruto) 
+    : false;
 
   /**
    * Protege o texto do botão "voltar" do Android.
@@ -141,7 +204,7 @@ export default function Notas() {
       sha: a.sha,
       titulo,
       corpo: a.doc.corpo,
-      original: { titulo, corpo: a.doc.corpo },
+      original: { titulo, corpo: a.doc.corpo, bruto: a.doc.dados },
     });
   }
 
@@ -152,7 +215,7 @@ export default function Notas() {
       sha: "",
       titulo: "",
       corpo: "",
-      original: { titulo: "", corpo: "" },
+      original: { titulo: "", corpo: "", bruto: {} },
     });
   }
 
@@ -189,7 +252,7 @@ export default function Notas() {
         caminho,
         sha: novoSha,
         titulo,
-        original: { titulo, corpo: aberta.corpo },
+        original: { titulo, corpo: aberta.corpo, bruto: aberta.bruto },
       });
       await carregarLista();
     } catch (e) {
@@ -264,8 +327,9 @@ export default function Notas() {
                 dados={aberta.bruto}
                 onChange={(novosDados) => setAberta({ ...aberta, bruto: novosDados })}
                 camposFixos={{
-                  tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "tags" }
+                  tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" }
                 }}
+                opcoesRelacionamento={opcoesRelacionamento}
               />
             </div>
             {/* Divider */}
@@ -276,6 +340,18 @@ export default function Notas() {
             markdown={aberta.corpo}
             onChange={(v) => setAberta({ ...aberta, corpo: v ?? "" })}
           />
+
+          <div className="mt-12 pt-8 border-t border-border">
+            <MencionadoEm
+              mencoes={mencoesNotaAberta}
+              aoAbrir={(caminho) => {
+                const alvo = acervo.find((a) => a.caminho === caminho);
+                if (alvo) {
+                  abrir(alvo);
+                }
+              }}
+            />
+          </div>
         </div>
 
         {(() => {
@@ -301,10 +377,6 @@ export default function Notas() {
             </div>
           );
         })()}
-
-        {aberta.caminho && (
-          <MencionadoEm mencoes={mencoesA(aberta.caminho, acervo, indice)} />
-        )}
 
         <p className="text-xs text-muted-foreground">
           Escreva <code className="rounded bg-secondary px-1">[[nome]]</code>{" "}

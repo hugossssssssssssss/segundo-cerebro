@@ -8,7 +8,7 @@
 
 import type { Documento, Frontmatter } from "./markdown";
 import { comoLista, mesclarFrontmatter } from "./markdown";
-import { diasAte } from "./utils";
+import { diasAte, dataISO } from "./utils";
 
 export const STATUS = ["a-fazer", "fazendo", "feito"] as const;
 export type Status = (typeof STATUS)[number];
@@ -128,7 +128,9 @@ export function registrarCiclo(corpo: string, minutos: number): string {
   const inicio = new Date(agora.getTime() - minutos * 60_000)
     .toTimeString()
     .slice(0, 5);
-  const dia = agora.toISOString().slice(0, 10);
+  // dataISO e nao toISOString: depois das 21h no horario de Brasilia,
+  // o UTC ja virou o dia e o ciclo era registrado em amanha.
+  const dia = dataISO(agora);
   const linha = `- ${dia} ${inicio} → ${fim} (${minutos}min)`;
 
   const CABECALHO = "## Tempo";

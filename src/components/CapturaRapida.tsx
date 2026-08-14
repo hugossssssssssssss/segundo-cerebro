@@ -131,17 +131,26 @@ export function CapturaRapida({
         referencias: "referencia",
       };
 
+      const ehUrl = /^https?:\/\//i.test(texto.trim());
+      const fonteUrl = ehUrl ? texto.trim().split("\n")[0] : undefined;
+      const ehImagemUrl = fonteUrl ? /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(fonteUrl) : false;
+
+      const corpoFinal =
+        destino === "referencias" && (ehImagemUrl || (ehUrl && !corpo))
+          ? (corpo ? `![](${fonteUrl})\n\n${corpo}` : `![](${fonteUrl})`)
+          : corpo;
+
       const conteudo = escreverMarkdown({
         dados: {
           titulo,
           tipo: tipos[destino],
           ...(destino === "tarefas" ? { status: "a-fazer" } : {}),
           ...(destino === "notas" ? { atualizado: hojeISO() } : {}),
-          ...(destino === "referencias" && /^https?:\/\//.test(texto.trim())
-            ? { fonte: texto.trim().split("\n")[0] }
+          ...(destino === "referencias" && fonteUrl
+            ? { fonte: fonteUrl, ...(ehImagemUrl ? { imagem: fonteUrl } : {}) }
             : {}),
         },
-        corpo,
+        corpo: corpoFinal,
       });
 
       await gravar(cfg, caminho, conteudo, undefined, `captura: ${titulo}`);

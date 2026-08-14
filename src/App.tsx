@@ -99,14 +99,20 @@ function Estrutura({ children }: { children: React.ReactNode }) {
    * então o texto chega pela URL e abre a captura já preenchida.
    */
   useEffect(() => {
-    const params = new URLSearchParams(location.hash.split("?")[1] ?? "");
+    // O manifest usa action "./" com method GET, entao o Android entrega os
+    // dados na QUERY STRING, nao no hash. Lia so o hash, e por isso o
+    // compartilhamento nunca disparou. Agora aceita os dois.
+    const params = new URLSearchParams(
+      location.search.slice(1) || location.hash.split("?")[1] || "",
+    );
     const vindo = [params.get("titulo"), params.get("texto"), params.get("url")]
       .filter(Boolean)
       .join("\n");
     if (vindo) {
       setTextoCompartilhado(vindo);
       setCapturando(true);
-      history.replaceState(null, "", location.pathname + location.search + "#/home");
+      // limpa a URL sem brigar com o HashRouter
+      history.replaceState(null, "", location.pathname + "#/tarefas");
     }
   }, []);
 
@@ -203,7 +209,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       {/* Botão flutuante de captura no celular, acima da barra de abas */}
       <button
         onClick={() => setCapturando(true)}
-        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 sm:hidden"
+        className="fixed bottom-32 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 sm:hidden"
         aria-label="Captura rápida"
       >
         <Plus size={24} />
