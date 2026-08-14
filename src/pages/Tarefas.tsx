@@ -46,7 +46,7 @@ import {
   Vazio,
   Carregando,
 } from "@/components/ui";
-import { cn } from "@/lib/utils";
+import { cn, lerParametroAbrir } from "@/lib/utils";
 
 const PASTA = "tarefas";
 
@@ -203,25 +203,26 @@ export default function Tarefas() {
   // Abre item vindo por parâmetro de busca na URL (processa somente 1 vez por mudanca de busca)
   const processouUrlRef = useRef<string | null>(null);
   useEffect(() => {
+    const urlAtual = `${location.pathname}${location.search}${location.hash}`;
+    const abrirCaminho = lerParametroAbrir(location);
     const params = new URLSearchParams(location.search);
-    const abrirCaminho = params.get("abrir");
     const criarNova = params.get("nova");
 
-    if (processouUrlRef.current === location.search) return;
+    if (processouUrlRef.current === urlAtual) return;
 
     if (criarNova === "true") {
-      processouUrlRef.current = location.search;
+      processouUrlRef.current = urlAtual;
       abrirNova();
     } else if (abrirCaminho && tarefas.length > 0) {
       if (focarFlutuante(abrirCaminho)) return;
       const alvo = tarefas.find((t) => t.caminho === abrirCaminho);
       if (alvo) {
-        processouUrlRef.current = location.search;
+        processouUrlRef.current = urlAtual;
         setEditando(alvo);
         setOriginal(alvo);
       }
     }
-  }, [location.search, tarefas.length > 0]);
+  }, [location.pathname, location.search, location.hash, tarefas.length > 0]);
 
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
 

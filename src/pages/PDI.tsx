@@ -42,7 +42,7 @@ import {
   Rotulo,
   AreaTexto,
 } from "@/components/ui";
-import { hojeISO, dataCurta } from "@/lib/utils";
+import { hojeISO, dataCurta, lerParametroAbrir } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 /**
@@ -124,28 +124,28 @@ export default function PDI() {
   // Abre item vindo por parâmetro de busca na URL (processa somente 1 vez por mudanca de busca)
   const processouUrlRef = useRef<string | null>(null);
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const abrirCaminho = params.get("abrir");
+    const urlAtual = `${location.pathname}${location.search}${location.hash}`;
+    const abrirCaminho = lerParametroAbrir(location);
     if (!abrirCaminho) return;
-    if (processouUrlRef.current === location.search) return;
+    if (processouUrlRef.current === urlAtual) return;
 
     if (metas.length > 0 || entregas.length > 0) {
       if (focarFlutuante(abrirCaminho)) return;
       const metaAlvo = metas.find((m) => m.caminho === abrirCaminho);
       if (metaAlvo) {
-        processouUrlRef.current = location.search;
+        processouUrlRef.current = urlAtual;
         setEditandoMeta(metaAlvo);
         setOrigMeta(metaAlvo);
         return;
       }
       const entregaAlvo = entregas.find((e) => e.caminho === abrirCaminho);
       if (entregaAlvo) {
-        processouUrlRef.current = location.search;
+        processouUrlRef.current = urlAtual;
         setEditandoEntrega(entregaAlvo);
         setOrigEntrega(entregaAlvo);
       }
     }
-  }, [location.search, metas.length > 0, entregas.length > 0]);
+  }, [location.pathname, location.search, location.hash, metas.length > 0, entregas.length > 0]);
 
   function fecharMeta() {
     setEditandoMeta(null);

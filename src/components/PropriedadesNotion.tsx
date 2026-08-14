@@ -26,6 +26,18 @@ import { ptBR } from "date-fns/locale";
 import { Link as LinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export function abrirItemSpa(caminho: string) {
+  if (!caminho) return;
+  const pasta = caminho.split("/")[0]?.toLowerCase() || "";
+  let rota = "/notas";
+  if (pasta === "tarefas") rota = "/tarefas";
+  else if (pasta === "referencias") rota = "/referencias";
+  else if (pasta === "pdi" || pasta === "metas") rota = "/pdi";
+  else if (pasta === "notas" || pasta === "reunioes") rota = "/notas";
+
+  window.location.hash = `#${rota}?abrir=${encodeURIComponent(caminho)}`;
+}
+
 export type TipoPropriedade = 
   | "texto" 
   | "numero" 
@@ -720,13 +732,11 @@ export function PropriedadesNotion({
                       key={r} 
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (itemAlvo) {
-                          window.location.search = `?abrir=${encodeURIComponent(itemAlvo.caminho)}`;
-                        } else {
-                          const matchPorTitulo = opcoesRelacionamento.find((o) => o.titulo.toLowerCase().includes(normNome));
-                          if (matchPorTitulo) {
-                            window.location.search = `?abrir=${encodeURIComponent(matchPorTitulo.caminho)}`;
-                          }
+                        const alvo = itemAlvo || opcoesRelacionamento.find((o) => o.titulo.toLowerCase().includes(normNome));
+                        if (alvo) {
+                          abrirItemSpa(alvo.caminho);
+                        } else if (r.includes("/")) {
+                          abrirItemSpa(r);
                         }
                       }}
                       className="font-medium text-[11px] px-2 py-0.5 flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"

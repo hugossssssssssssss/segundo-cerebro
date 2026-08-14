@@ -20,7 +20,7 @@ import {
   mesclarFrontmatter,
   type Frontmatter,
 } from "@/lib/markdown";
-import { hojeISO } from "@/lib/utils";
+import { hojeISO, lerParametroAbrir } from "@/lib/utils";
 import {
   Botao,
   Campo,
@@ -110,16 +110,16 @@ export default function Notas() {
   // Abre item vindo por parâmetro de busca na URL (processa somente 1 vez por mudanca de busca)
   const processouUrlRef = useRef<string | null>(null);
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const abrirCaminho = params.get("abrir");
+    const urlAtual = `${location.pathname}${location.search}${location.hash}`;
+    const abrirCaminho = lerParametroAbrir(location);
     if (!abrirCaminho) return;
-    if (processouUrlRef.current === location.search) return;
+    if (processouUrlRef.current === urlAtual) return;
 
     if (acervo.length > 0) {
       if (focarFlutuante(abrirCaminho)) return;
       const alvo = acervo.find((a) => a.caminho === abrirCaminho);
       if (alvo) {
-        processouUrlRef.current = location.search;
+        processouUrlRef.current = urlAtual;
         const titulo = tituloProvavel(alvo.doc, alvo.nome);
         setAberta({
           bruto: alvo.doc.dados,
@@ -131,7 +131,7 @@ export default function Notas() {
         });
       }
     }
-  }, [location.search, acervo.length > 0]);
+  }, [location.pathname, location.search, location.hash, acervo.length > 0]);
 
   const mencoesNotaAberta = useMemo(() => {
     if (!aberta?.caminho) return [];

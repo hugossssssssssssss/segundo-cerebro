@@ -41,3 +41,26 @@ export function dataISO(d: Date): string {
   const dia = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${mes}-${dia}`;
 }
+
+/** AAAA-MM-DD de uma data qualquer, no fuso local. */
+export function dataHojeISO(): string {
+  const agora = new Date();
+  const ano = agora.getFullYear();
+  const mes = String(agora.getMonth() + 1).padStart(2, "0");
+  const dia = String(agora.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+/** Lê parâmetro "abrir" tanto da query string quanto do hash da URL em HashRouter SPA. */
+export function lerParametroAbrir(loc: { search: string; hash: string }): string | null {
+  const paramsSearch = new URLSearchParams(loc.search);
+  const abrirSearch = paramsSearch.get("abrir");
+  if (abrirSearch) return abrirSearch;
+
+  const matchHash = loc.hash.match(/[?&]abrir=([^&]+)/) || window.location.href.match(/[?&]abrir=([^&]+)/);
+  if (matchHash) {
+    return decodeURIComponent(matchHash[1]);
+  }
+
+  return null;
+}

@@ -37,7 +37,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
-import { cn } from "@/lib/utils";
+import { cn, lerParametroAbrir } from "@/lib/utils";
 
 export default function Referencias() {
   const cfg = lerConfig();
@@ -98,24 +98,16 @@ export default function Referencias() {
 
   // Abre item vindo por parâmetro de busca na URL
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const abrirCaminho = params.get("abrir");
-    // Limpa sempre, mesmo sem encontrar o alvo: senão o parâmetro fica na URL
-    // e abre o item sozinho no dia em que um arquivo com aquele caminho
-    // aparecer — a IA pode criar um.
-    // Consumir uma vez só: o parâmetro ficava na URL e, como o efeito depende
-    // da lista recarregada, todo Salvar reabria o item anterior por cima do
-    // que você estava editando.
+    const abrirCaminho = lerParametroAbrir(location);
     if (abrirCaminho && refs.length > 0 && (!editando || editando.caminho !== abrirCaminho)) {
       const alvo = refs.find((r) => r.caminho === abrirCaminho);
       if (alvo) {
         setEditando(alvo);
         setOriginal(alvo);
-        // limpa o parâmetro: sem isso ele reabria o item a cada recarga
         navegar(location.pathname, { replace: true });
       }
     }
-  }, [location.search, refs]);
+  }, [location.pathname, location.search, location.hash, refs]);
 
 
   /* -------------------------------------------------------------- ações */
