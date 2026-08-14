@@ -7,7 +7,13 @@ import {
   ListTodo, 
   Tags,
   Plus,
-  Trash2
+  Trash2,
+  EyeOff,
+  Eye,
+  ChevronDown,
+  ChevronRight,
+  User,
+  Clock
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -16,10 +22,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-
 import { Link as LinkIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export type TipoPropriedade = "texto" | "numero" | "data" | "checkbox" | "select" | "multiselect" | "relation";
+export type TipoPropriedade = 
+  | "texto" 
+  | "numero" 
+  | "data" 
+  | "checkbox" 
+  | "select" 
+  | "multiselect" 
+  | "relation"
+  | "criado_por"
+  | "criado_em"
+  | "ultima_edicao";
+
+export type OpcaoVisibilidade = "sempre" | "vazia" | "esconder";
 
 const ICONES_TIPO: Record<TipoPropriedade, React.ElementType> = {
   texto: Type,
@@ -28,7 +46,10 @@ const ICONES_TIPO: Record<TipoPropriedade, React.ElementType> = {
   checkbox: CheckSquare,
   select: ListTodo,
   multiselect: Tags,
-  relation: LinkIcon
+  relation: LinkIcon,
+  criado_por: User,
+  criado_em: Clock,
+  ultima_edicao: Clock,
 };
 
 const NOMES_TIPO: Record<TipoPropriedade, string> = {
@@ -38,7 +59,21 @@ const NOMES_TIPO: Record<TipoPropriedade, string> = {
   checkbox: "Checkbox",
   select: "Seleção",
   multiselect: "Múltipla Seleção",
-  relation: "Relacionamento"
+  relation: "Relacionamento",
+  criado_por: "Criado por",
+  criado_em: "Criado em",
+  ultima_edicao: "Última edição em",
+};
+
+export const CORES_NOTION: Record<string, { bg: string; text: string; border: string; nome: string }> = {
+  cinza: { bg: "bg-stone-500/15", text: "text-stone-700 dark:text-stone-300", border: "border-stone-500/20", nome: "Cinza" },
+  azul: { bg: "bg-blue-500/15", text: "text-blue-700 dark:text-blue-300", border: "border-blue-500/20", nome: "Azul" },
+  verde: { bg: "bg-emerald-500/15", text: "text-emerald-700 dark:text-emerald-300", border: "border-emerald-500/20", nome: "Verde" },
+  amarelo: { bg: "bg-amber-500/15", text: "text-amber-700 dark:text-amber-300", border: "border-amber-500/20", nome: "Amarelo" },
+  vermelho: { bg: "bg-rose-500/15", text: "text-rose-700 dark:text-rose-300", border: "border-rose-500/20", nome: "Vermelho" },
+  roxo: { bg: "bg-purple-500/15", text: "text-purple-700 dark:text-purple-300", border: "border-purple-500/20", nome: "Roxo" },
+  rosa: { bg: "bg-pink-500/15", text: "text-pink-700 dark:text-pink-300", border: "border-pink-500/20", nome: "Rosa" },
+  laranja: { bg: "bg-orange-500/15", text: "text-orange-700 dark:text-orange-300", border: "border-orange-500/20", nome: "Laranja" },
 };
 
 type PropriedadesNotionProps = {
@@ -54,7 +89,12 @@ type PropriedadesNotionProps = {
   opcoesRelacionamento?: { titulo: string; caminho: string }[];
 };
 
-export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRelacionamento = [] }: PropriedadesNotionProps) {
+export function PropriedadesNotion({ 
+  dados, 
+  onChange, 
+  camposFixos = {}, 
+  opcoesRelacionamento = [] 
+}: PropriedadesNotionProps) {
   const [novoCampoAberto, setNovoCampoAberto] = useState(false);
   const [nomeNovoCampo, setNomeNovoCampo] = useState("");
   const [tipoNovoCampo, setTipoNovoCampo] = useState<TipoPropriedade>("texto");
@@ -62,15 +102,15 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
   const [editandoChave, setEditandoChave] = useState<string | null>(null);
   const [renomearPara, setRenomearPara] = useState("");
   const [copiado, setCopiado] = useState<string | null>(null);
+  const [mostrandoOcultas, setMostrandoOcultas] = useState(false);
 
   const esquema = (dados.esquema as Record<string, TipoPropriedade>) || {};
+  const visibilidadeMap = (dados._visibilidade as Record<string, OpcaoVisibilidade>) || {};
+  const coresMap = (dados._coresTags as Record<string, string>) || {};
 
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
-    .filter(k => !["titulo", "tipo", "atualizado", "id", "esquema", "tags"].includes(k));
+    .filter(k => !["titulo", "tipo", "atualizado", "id", "esquema", "tags", "_visibilidade", "_coresTags"].includes(k));
     
-  // "tags" SEMPRE aparece. Antes só era mostrada quando o item já tinha tags,
-  // então uma nota nova não tinha por onde ganhar a primeira — e não existe
-  // outro caminho na interface para marcar uma nota.
   todasAsChaves.push("tags");
 
   function atualizar(chave: string, valor: any) {
@@ -82,13 +122,22 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
     onChange({ ...dados, esquema: novoEsquema });
   }
 
+  function atualizarVisibilidade(chave: string, op: OpcaoVisibilidade) {
+    const novo = { ...visibilidadeMap, [chave]: op };
+    onChange({ ...dados, _visibilidade: novo });
+  }
+
+  function atualizarCorTag(tag: string, cor: string) {
+    const novo = { ...coresMap, [tag]: cor };
+    onChange({ ...dados, _coresTags: novo });
+  }
+
   function remover(chave: string) {
     if (camposFixos[chave]) return;
     const novos = { ...dados };
     delete novos[chave];
-    if (novos.esquema) {
-      delete (novos.esquema as any)[chave];
-    }
+    if (novos.esquema) delete (novos.esquema as any)[chave];
+    if (novos._visibilidade) delete (novos._visibilidade as any)[chave];
     onChange(novos);
   }
 
@@ -106,10 +155,104 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
     setEditandoChave(null);
   }
 
+  function ehVazia(chave: string): boolean {
+    const v = dados[chave];
+    if (v === undefined || v === null || v === "") return true;
+    if (Array.isArray(v) && v.length === 0) return true;
+    return false;
+  }
+
+  // Separa propriedades visíveis das ocultas
+  const chavesVisiveis: string[] = [];
+  const chavesOcultas: string[] = [];
+
+  todasAsChaves.forEach((chave) => {
+    const vis = visibilidadeMap[chave] || "sempre";
+    if (vis === "esconder") {
+      chavesOcultas.push(chave);
+    } else if (vis === "vazia" && ehVazia(chave)) {
+      chavesOcultas.push(chave);
+    } else {
+      chavesVisiveis.push(chave);
+    }
+  });
+
+  function renderizarBadgeTag(nomeTag: string) {
+    const chaveCor = coresMap[nomeTag] || "azul";
+    const estiloCor = CORES_NOTION[chaveCor] || CORES_NOTION.azul;
+
+    return (
+      <Popover key={nomeTag}>
+        <PopoverTrigger asChild>
+          <Badge 
+            variant="secondary" 
+            className={cn(
+              "font-medium text-[11px] px-2 py-0.5 border cursor-pointer transition-all hover:opacity-85 flex items-center gap-1",
+              estiloCor.bg,
+              estiloCor.text,
+              estiloCor.border
+            )}
+          >
+            <span>{nomeTag}</span>
+          </Badge>
+        </PopoverTrigger>
+        <PopoverContent className="w-[180px] p-2" align="start">
+          <p className="text-xs font-semibold text-muted-foreground mb-2">Cor da tag "{nomeTag}"</p>
+          <div className="grid grid-cols-2 gap-1">
+            {Object.entries(CORES_NOTION).map(([k, c]) => (
+              <button
+                key={k}
+                onClick={() => atualizarCorTag(nomeTag, k)}
+                className={cn(
+                  "px-2 py-1 rounded text-xs text-left font-medium transition-colors border flex items-center justify-between",
+                  c.bg,
+                  c.text,
+                  c.border
+                )}
+              >
+                <span>{c.nome}</span>
+                {coresMap[nomeTag] === k && <span className="text-[10px]">✓</span>}
+              </button>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
   function renderizarValor(chave: string) {
     const fixo = camposFixos[chave];
     const valor = dados[chave];
     const tipo = fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : "texto");
+
+    if (tipo === "criado_por") {
+      return (
+        <span className="text-sm font-medium text-foreground/80 px-2 py-1 flex items-center gap-1.5">
+          <User size={13} className="text-muted-foreground" />
+          Hugo
+        </span>
+      );
+    }
+
+    if (tipo === "criado_em") {
+      const dataCriacao = typeof valor === "string" && valor.trim() ? valor : "Hoje";
+      return (
+        <span className="text-sm font-medium text-muted-foreground px-2 py-1 flex items-center gap-1.5">
+          <Clock size={13} />
+          {dataCriacao}
+        </span>
+      );
+    }
+
+    if (tipo === "ultima_edicao") {
+      const ultima = typeof dados.atualizado === "string" ? dados.atualizado : "Recente";
+      return (
+        <span className="text-sm font-medium text-muted-foreground px-2 py-1 flex items-center gap-1.5">
+          <Clock size={13} />
+          {ultima}
+        </span>
+      );
+    }
 
     if (tipo === "checkbox") {
       return (
@@ -145,10 +288,10 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-left justify-start font-normal text-foreground/80 hover:text-foreground">
-              {valor ? <Badge variant="secondary" className="font-normal">{valor}</Badge> : <span className="text-muted-foreground">Vazio</span>}
+              {valor ? renderizarBadgeTag(valor) : <span className="text-muted-foreground">Vazio</span>}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[200px] p-0" align="start">
+          <PopoverContent className="w-[220px] p-0" align="start">
             <Command>
               <CommandInput placeholder="Buscar ou criar opção..." onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === "Enter") {
@@ -160,7 +303,7 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
                 <CommandGroup>
                   {opcoes.map((opcao: string) => (
                     <CommandItem key={opcao} onSelect={() => atualizar(chave, opcao)}>
-                      {opcao}
+                      {renderizarBadgeTag(opcao)}
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -172,30 +315,69 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
     }
 
     if (tipo === "data") {
-      const dataObj =
-        typeof valor === "string" && valor.trim()
-          ? new Date(`${valor.trim()}T00:00:00`)
-          : valor instanceof Date
-            ? valor
-            : undefined;
+      // Suporta data única ou intervalo { inicio, fim } ou "2026-08-14 → 2026-08-20"
+      let inicioStr = typeof valor === "string" ? valor.split("→")[0]?.trim() : valor?.inicio || "";
+      let fimStr = typeof valor === "string" && valor.includes("→") ? valor.split("→")[1]?.trim() : valor?.fim || "";
+
+      const inicioObj = inicioStr ? new Date(`${inicioStr}T00:00:00`) : undefined;
+      const fimObj = fimStr ? new Date(`${fimStr}T00:00:00`) : undefined;
+
+      const textoFormatado = inicioObj && !isNaN(inicioObj.getTime())
+        ? fimObj && !isNaN(fimObj.getTime())
+          ? `${format(inicioObj, "dd 'de' MMM", { locale: ptBR })} → ${format(fimObj, "dd 'de' MMM 'de' yyyy", { locale: ptBR })}`
+          : format(inicioObj, "dd 'de' MMM 'de' yyyy", { locale: ptBR })
+        : null;
+
       return (
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-left justify-start font-normal text-foreground/80 hover:text-foreground">
-              {dataObj && !isNaN(dataObj.getTime()) ? (
-                format(dataObj, "dd 'de' MMM 'de' yyyy", { locale: ptBR })
+              {textoFormatado ? (
+                <span className="font-medium text-foreground">{textoFormatado}</span>
               ) : (
                 <span className="text-muted-foreground">Vazio</span>
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={dataObj}
-              onSelect={(d: Date | undefined) => atualizar(chave, d ? format(d, "yyyy-MM-dd") : undefined)}
-              autoFocus
-            />
+          <PopoverContent className="w-auto p-3" align="start">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                <span>Data Inicial</span>
+                {fimStr && (
+                  <button 
+                    onClick={() => atualizar(chave, inicioStr)} 
+                    className="text-destructive hover:underline text-[11px]"
+                  >
+                    Remover término
+                  </button>
+                )}
+              </div>
+
+              <Calendar
+                mode="single"
+                selected={inicioObj}
+                onSelect={(d: Date | undefined) => {
+                  const nInicio = d ? format(d, "yyyy-MM-dd") : "";
+                  atualizar(chave, fimStr ? `${nInicio} → ${fimStr}` : nInicio);
+                }}
+                autoFocus
+              />
+
+              <div className="border-t border-border pt-2">
+                <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground mb-1.5">
+                  <span>Data de Término (Intervalo)</span>
+                </div>
+                <input
+                  type="date"
+                  value={fimStr}
+                  onChange={(e) => {
+                    const nFim = e.target.value;
+                    atualizar(chave, nFim ? `${inicioStr || format(new Date(), "yyyy-MM-dd")} → ${nFim}` : inicioStr);
+                  }}
+                  className="w-full text-xs rounded border border-border bg-accent/40 p-1.5 text-foreground outline-none"
+                />
+              </div>
+            </div>
           </PopoverContent>
         </Popover>
       );
@@ -236,11 +418,7 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-auto min-h-7 px-2 py-1 text-left justify-start font-normal flex-wrap gap-1 hover:bg-transparent">
               {tags.length > 0 ? (
-                tags.map((t: string) => (
-                  <Badge variant="secondary" key={t} className="font-normal text-[11px] px-1.5 py-0">
-                    {t}
-                  </Badge>
-                ))
+                tags.map((t: string) => renderizarBadgeTag(t))
               ) : (
                 <span className="text-muted-foreground hover:bg-accent px-1.5 py-0.5 rounded transition-colors">Vazio</span>
               )}
@@ -263,7 +441,7 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
                 <CommandGroup heading="Selecionados (clique para remover)">
                   {tags.map((t: string) => (
                     <CommandItem key={t} onSelect={() => atualizar(chave, tags.filter((x: string) => x !== t))}>
-                      {t}
+                      {renderizarBadgeTag(t)}
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -284,7 +462,7 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
                 relacoes.map((r: string) => {
                   const nomePuro = r.replace(/^[\[@]+/, "").replace(/\]\]$/, "");
                   return (
-                    <Badge variant="secondary" key={r} className="font-normal text-[11px] px-1.5 py-0 flex items-center gap-1 bg-primary/10 text-primary hover:bg-primary/20">
+                    <Badge variant="secondary" key={r} className="font-medium text-[11px] px-2 py-0.5 flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:underline">
                       <LinkIcon size={10} className="shrink-0" />
                       @{nomePuro}
                     </Badge>
@@ -317,7 +495,7 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
                       >
                         <div className="flex items-center gap-2">
                           <CheckSquare className={`h-4 w-4 shrink-0 ${selecionado ? "opacity-100 text-primary" : "opacity-0"}`} />
-                          <span className="truncate">@{opcao.titulo}</span>
+                          <span className="truncate text-blue-600 font-medium">@{opcao.titulo}</span>
                         </div>
                       </CommandItem>
                     );
@@ -344,7 +522,8 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
 
   function renderizarMenuPropriedade(chave: string, fixo?: any) {
     const tipoAtual = fixo?.tipo || esquema[chave] || "texto";
-    const IconeAtual = fixo?.icone ? () => <>{fixo.icone}</> : ICONES_TIPO[tipoAtual as TipoPropriedade];
+    const IconeAtual = fixo?.icone ? () => <>{fixo.icone}</> : ICONES_TIPO[tipoAtual as TipoPropriedade] || Type;
+    const visAtual = visibilidadeMap[chave] || "sempre";
 
     return (
       <Popover open={editandoChave === chave} onOpenChange={(open) => {
@@ -356,39 +535,65 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
         }
       }}>
         <PopoverTrigger asChild>
-          <button className="w-32 flex items-center gap-2 text-muted-foreground px-2 py-1 -ml-2 rounded hover:bg-accent/50 transition-colors text-left group/prop">
-            <IconeAtual className="h-4 w-4 opacity-50 shrink-0" />
-            <span className="truncate flex-1">{chave}</span>
+          <button className="w-36 flex items-center gap-2 text-muted-foreground px-2 py-1 -ml-2 rounded hover:bg-accent/60 transition-colors text-left group/prop">
+            <IconeAtual className="h-4 w-4 opacity-60 shrink-0" />
+            <span className="truncate flex-1 font-medium text-xs">{chave}</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[240px] p-2 flex flex-col gap-2" align="start">
+        <PopoverContent className="w-[260px] p-2 flex flex-col gap-2 shadow-xl border-border" align="start">
           {!fixo ? (
-            <input 
-              value={renomearPara}
-              onChange={(e) => setRenomearPara(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") renomear(chave, renomearPara);
-              }}
-              onBlur={() => renomear(chave, renomearPara)}
-              className="bg-accent/50 border-none outline-none text-sm px-2 py-1.5 rounded focus:ring-2 focus:ring-primary w-full"
-            />
+            <div>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Nome</span>
+              <input 
+                value={renomearPara}
+                onChange={(e) => setRenomearPara(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") renomear(chave, renomearPara);
+                }}
+                onBlur={() => renomear(chave, renomearPara)}
+                className="bg-accent/50 border border-border outline-none text-sm px-2.5 py-1.5 rounded-md focus:ring-2 focus:ring-primary w-full"
+              />
+            </div>
           ) : (
-            <div className="text-sm font-medium px-2 py-1">{chave} <span className="text-muted-foreground text-xs font-normal">(Fixo)</span></div>
+            <div className="text-sm font-semibold px-2 py-1">{chave} <span className="text-muted-foreground text-xs font-normal">(Propriedade Fixa)</span></div>
           )}
 
+          {/* Visibilidade da propriedade */}
+          <div className="border-t border-border pt-2 mt-1">
+            <span className="text-[11px] font-semibold text-muted-foreground px-2 uppercase tracking-wider block mb-1">Visibilidade</span>
+            <div className="flex flex-col gap-0.5">
+              {[
+                { id: "sempre", label: "Sempre mostrar", icon: Eye },
+                { id: "vazia", label: "Esconder se vazia", icon: EyeOff },
+                { id: "esconder", label: "Sempre esconder", icon: EyeOff },
+              ].map((v) => (
+                <Button
+                  key={v.id}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => atualizarVisibilidade(chave, v.id as OpcaoVisibilidade)}
+                  className={cn("justify-start text-xs font-normal h-7 px-2", visAtual === v.id && "bg-accent font-semibold")}
+                >
+                  <v.icon className="h-3.5 w-3.5 mr-2 opacity-60" />
+                  {v.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {!fixo && (
-            <div className="border-t pt-2 mt-1">
-              <span className="text-xs font-semibold text-muted-foreground px-2 uppercase tracking-wider">Tipo</span>
-              <div className="flex flex-col gap-0.5 mt-1">
+            <div className="border-t border-border pt-2 mt-1">
+              <span className="text-[11px] font-semibold text-muted-foreground px-2 uppercase tracking-wider block mb-1">Tipo de Propriedade</span>
+              <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto pr-1">
                 {(Object.entries(ICONES_TIPO) as [TipoPropriedade, React.ElementType][]).map(([t, Icon]) => (
                   <Button 
                     key={t}
                     variant="ghost" 
                     size="sm" 
                     onClick={() => atualizarEsquema(chave, t)}
-                    className={`justify-start font-normal h-8 ${tipoAtual === t ? 'bg-accent' : ''}`}
+                    className={cn("justify-start font-normal text-xs h-7 px-2", tipoAtual === t && "bg-accent font-semibold")}
                   >
-                    <Icon className="h-4 w-4 mr-2 opacity-50" />
+                    <Icon className="h-3.5 w-3.5 mr-2 opacity-60" />
                     {NOMES_TIPO[t]}
                   </Button>
                 ))}
@@ -397,9 +602,9 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
           )}
           
           {!fixo && (
-            <div className="border-t pt-2 mt-1">
-              <Button variant="ghost" size="sm" onClick={() => remover(chave)} className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10">
-                <Trash2 className="h-4 w-4 mr-2" />
+            <div className="border-t border-border pt-2 mt-1">
+              <Button variant="ghost" size="sm" onClick={() => remover(chave)} className="w-full justify-start text-xs text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2">
+                <Trash2 className="h-3.5 w-3.5 mr-2" />
                 Excluir propriedade
               </Button>
             </div>
@@ -411,7 +616,8 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
-      {todasAsChaves.map((chave) => {
+      {/* Lista de Propriedades Visíveis */}
+      {chavesVisiveis.map((chave) => {
         const fixo = camposFixos[chave];
         return (
           <div key={chave} className="flex min-h-8 items-center gap-4 text-sm group">
@@ -423,15 +629,45 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
         );
       })}
 
+      {/* Gaveta de Propriedades Ocultas */}
+      {chavesOcultas.length > 0 && (
+        <div className="mt-1 border-t border-border/50 pt-2">
+          <button
+            onClick={() => setMostrandoOcultas(!mostrandoOcultas)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 font-medium"
+          >
+            {mostrandoOcultas ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            <span>{chavesOcultas.length} propriedade{chavesOcultas.length > 1 ? "s" : ""} oculta{chavesOcultas.length > 1 ? "s" : ""}</span>
+          </button>
+
+          {mostrandoOcultas && (
+            <div className="flex flex-col gap-1.5 mt-2 pl-2 border-l border-border/60">
+              {chavesOcultas.map((chave) => {
+                const fixo = camposFixos[chave];
+                return (
+                  <div key={chave} className="flex min-h-8 items-center gap-4 text-sm group opacity-75 hover:opacity-100">
+                    {renderizarMenuPropriedade(chave, fixo)}
+                    <div className="flex-1 flex items-center min-h-8">
+                      {renderizarValor(chave)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Botão de Adicionar Nova Propriedade */}
       <div className="flex items-center gap-4 text-sm mt-1">
-        <div className="w-32"></div>
+        <div className="w-36"></div>
         <div className="flex-1">
           {novoCampoAberto ? (
-            <div className="flex items-center gap-2 p-1 bg-accent/30 rounded-md w-full max-w-xs border">
+            <div className="flex items-center gap-2 p-1 bg-accent/30 rounded-md w-full max-w-xs border border-border">
               <select 
                 value={tipoNovoCampo} 
                 onChange={(e) => setTipoNovoCampo(e.target.value as TipoPropriedade)}
-                className="bg-transparent border-r outline-none text-xs p-1 text-muted-foreground focus:ring-0 cursor-pointer"
+                className="bg-transparent border-r border-border outline-none text-xs p-1 text-muted-foreground focus:ring-0 cursor-pointer"
               >
                 {Object.entries(NOMES_TIPO).map(([t, nome]) => (
                   <option key={t} value={t}>{nome}</option>
@@ -462,7 +698,7 @@ export function PropriedadesNotion({ dados, onChange, camposFixos = {}, opcoesRe
               variant="ghost"
               size="sm"
               onClick={() => setNovoCampoAberto(true)}
-              className="h-7 px-2 -ml-2 text-muted-foreground hover:text-foreground font-normal"
+              className="h-7 px-2 -ml-2 text-muted-foreground hover:text-foreground font-normal text-xs"
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
               Adicionar propriedade

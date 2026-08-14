@@ -35,8 +35,8 @@ export function MencionadoEm({
               }
               className="w-full text-left rounded-lg p-2 hover:bg-accent/60 transition-colors border border-transparent hover:border-border/60"
             >
-              <span className="flex items-center gap-1.5 text-sm font-semibold text-primary">
-                <Link2 size={13} className="shrink-0 text-muted-foreground" />
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+                <Link2 size={13} className="shrink-0 text-blue-500" />
                 <span>@{m.titulo}</span>
                 <Selo>{ROTULO_TIPO[m.tipo]}</Selo>
               </span>

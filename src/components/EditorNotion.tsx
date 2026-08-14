@@ -162,6 +162,12 @@ export function EditorNotion({
           --bn-colors-editor-background: transparent;
           --bn-colors-editor-text: var(--foreground);
         }
+        .notion-editor-wrapper a {
+          color: #3b82f6;
+          font-weight: 500;
+          text-decoration: underline;
+          cursor: pointer;
+        }
       `}</style>
     </div>
   );

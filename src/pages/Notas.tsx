@@ -390,7 +390,7 @@ export default function Notas() {
                   key={l.bruto}
                   className={
                     l.alvo
-                      ? "rounded-md bg-primary/15 px-2 py-0.5 text-primary font-medium"
+                      ? "rounded-md bg-blue-500/10 px-2 py-0.5 text-blue-600 dark:text-blue-400 font-medium hover:underline cursor-pointer"
                       : "rounded-md bg-secondary px-2 py-0.5 text-muted-foreground"
                   }
                   title={l.alvo ? l.alvo.caminho : "Ainda não existe"}
