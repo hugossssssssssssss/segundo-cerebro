@@ -40,11 +40,13 @@ Abra o link no Chrome do Android e use **⋮ → Adicionar à tela inicial**. El
 
 | Aba | |
 |---|---|
-| **Tarefas** | Lista e calendário, com prazo, tags e pomodoro que registra o tempo na própria tarefa |
-| **Notas** | Editor de Markdown com pré-visualização |
+| **Tarefas** | Lista e calendário, com prazo, tags, subtarefas e pomodoro que registra o tempo na própria tarefa |
+| **Notas** | Editor de texto rico que grava Markdown, com `[[links]]` entre itens |
 | **Refs** | Referências visuais com imagem, link e o campo "por que salvei" |
 | **Carreira** | Metas e entregas, com as entregas alimentando as metas |
-| **Conversar** | Chat com o Gemini, que lê seus arquivos e responde sobre eles |
+| **Conversar** | Chat com o Gemini: lê seus arquivos, responde, e cria ou edita itens com a sua aprovação |
+
+Busque em tudo com **⌘K** e capture uma ideia em segundos com **⌘J**.
 
 ## Custo
 

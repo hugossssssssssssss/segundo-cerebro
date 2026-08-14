@@ -3,7 +3,6 @@ import { lerMarkdown } from "./markdown";
 import {
   montarIndice,
   extrairLinks,
-  alvosDe,
   mencoesA,
   sugerir,
 } from "./links";
@@ -81,13 +80,6 @@ describe("extrairLinks", () => {
   it("resolve também pelo nome do arquivo", () => {
     // é assim que a IA às vezes escreve
     expect(extrairLinks("[[2026-07-02-grade-suica]]", indice)[0].alvo).not.toBeNull();
-  });
-});
-
-describe("alvosDe", () => {
-  it("devolve só os caminhos que existem", () => {
-    const caminhos = alvosDe("[[Briefing Acme]] e [[Fantasma]]", indice);
-    expect(caminhos).toEqual(["notas/2026-05-01-briefing-acme.md"]);
   });
 });
 

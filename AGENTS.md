@@ -34,14 +34,20 @@ Publicado em https://hugossssssssssssss.github.io/segundo-cerebro/ pelo workflow
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `src/lib/github.ts` | **Única** porta de entrada e saída de dados. Listar, ler, gravar, apagar, montar contexto para a IA e o diagnóstico de conexão |
-| `src/lib/markdown.ts` | Frontmatter YAML tolerante a falha, nomes de arquivo seguros |
-| `src/lib/settings.ts` | Config no localStorage; limpa espaço e caracteres invisíveis do copiar-e-colar |
-| `src/lib/tarefas.ts` | Status, prazo, urgência, ordenação, registro de pomodoro |
+| `src/lib/repo.ts` | Carrega o repositório inteiro: árvore (1 req) + GraphQL em lote. Revalida sempre; reaproveita conteúdo por sha |
+| `src/lib/github.ts` | Escrita e leitura pontual. Traduz erro do GitHub, distinguindo limite de API de falta de permissão |
+| `src/lib/markdown.ts` | Frontmatter tolerante a falha, nomes de arquivo, mesclagem, `restaurarWikilinks` |
+| `src/lib/busca.ts` | Busca em título, corpo e tags de tudo, no navegador |
+| `src/lib/links.ts` | `[[links]]`, índice por título e "mencionado em" |
+| `src/lib/acoes.ts` | O que a IA pode criar, editar e apagar — com validação e confirmação |
+| `src/lib/settings.ts` | Config no localStorage; limpa o que vem do copiar-e-colar |
+| `src/lib/tarefas.ts` | Status, prazo, urgência, pomodoro, subtarefas |
 | `src/lib/pdi.ts` | Metas, entregas e a agregação entre elas |
 | `src/lib/referencias.ts` | Referências visuais e upload de imagem |
-| `src/lib/gemini.ts` | Chamada ao Gemini e os prompts salvos |
-| `src/components/ui.tsx` | Componentes visuais base, todos num arquivo só |
+| `src/lib/gemini.ts` | Chamada ao Gemini com ferramentas, e os prompts salvos |
+| `src/components/ui.tsx` | Componentes próprios (Botao, Cartao, Selo, Modal…) |
+| `src/components/ui/*.tsx` | Componentes shadcn, do redesign. **Há duplicação com o de cima** — ao mexer, prefira um e siga nele |
+| `src/components/EditorNotion.tsx` | Editor BlockNote. Desescapa os `[[links]]` na saída e re-sincroniza quando o corpo muda por fora |
 | `src/pages/*.tsx` | Uma tela por área |
 
 ## Padrão de uma tela
@@ -53,13 +59,21 @@ const cfg = lerConfig();
 const pronto = configCompleta(cfg);        // sem token → tela pedindo Ajustes
 
 const carregar = useCallback(async () => {
-  const arquivos = await listar(cfg, PASTA);
-  // ler cada um, converter com comoX(lerMarkdown(texto), ...)
+  // carregarRepo traz o repositório INTEIRO em 2 requisições e reaproveita
+  // por sha. Nunca volte para `listar` + N × `ler`: era 101 requisições
+  // por abertura de tela.
+  const todos = await carregarRepo(cfg);
+  const itens = daPasta(todos, PASTA);
+  // converter com comoX(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
 }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
 // gravar: escreverMarkdown({ dados: xParaFrontmatter(x), corpo }) → gravar(...)
-// sempre recarregar depois de gravar
+// SEMPRE invalidarCache() depois de gravar ou apagar, e recarregar
 ```
+
+`xParaFrontmatter` precisa passar por `mesclarFrontmatter(x.bruto, {...})`, senão
+o save apaga os campos que o app não conhece — e outras IAs escrevem nesses
+arquivos.
 
 ## Armadilhas já encontradas (não repita)
 
@@ -75,23 +89,28 @@ const carregar = useCallback(async () => {
 ## Antes de entregar qualquer mudança
 
 ```
-npm test          # 41 testes; nenhum precisa de rede
+npm test          # 167 testes; nenhum precisa de rede
 npm run build     # tem que passar limpo
 npm run dev       # e abrir de verdade no navegador
 ```
 
 Nunca diga que funciona sem ter rodado. E teste também numa tela estreita: metade do uso é no Android.
 
-## Dois editores sobre o mesmo texto — cuidado aqui
+## O editor e o corpo do texto
 
-`EditorNotion` (BlockNote) sincroniza o markdown **só na montagem** (`useEffect` com `[]`). Se outro componente alterar o mesmo `corpo` enquanto ele está aberto, o editor não vê a mudança e a sobrescreve no próximo `onChange`. Foi por isso que o componente `Subtarefas` existe e está testado mas **não** está ligado ao modal de tarefa.
+`EditorNotion` re-sincroniza quando o `markdown` muda por fora (as subtarefas
+editam o mesmo corpo). O truque é o `ultimoMd`: o editor guarda o que ele
+mesmo emitiu, ignora esse eco e só re-analisa o que veio de fora — senão o
+cursor saltaria a cada tecla.
 
-Duas saídas, quando alguém for resolver:
-1. Fazer o `EditorNotion` re-sincronizar quando o `markdown` mudar por fora (cuidado com laço de atualização).
-2. Ou aceitar que o editor é o único dono do corpo — BlockNote já tem caixinha de tarefa nativa.
+**Ao mexer aqui, mantenha `restaurarWikilinks` na saída.** Sem ela o
+serializador grava os colchetes escapados, o arquivo fica sujo no GitHub e o
+app deixa de reconhecer os links.
 
 ## Pendências conscientes
 
 - Token e chave ficam em texto puro no `localStorage`. O plano discutido é criptografá-los com uma senha (WebCrypto, sem backend). O Hugo adiou por ora.
+- Não há autocompletar de `[[` desde que o corpo passou para o BlockNote; trazê-lo de volta exige uma extensão do editor.
+- `ia_sugeriu` só é exibido e limpo em entregas; em tarefas e notas a marca fica no arquivo sem interface.
 - Sem funcionamento offline: o app depende do GitHub estar acessível.
 - Imagens engordam o repositório. Acima de ~1 GB, migrar para um bucket e guardar só os links.

@@ -101,13 +101,6 @@ export function extrairLinks(
   return saida;
 }
 
-/** Só os caminhos para onde este texto aponta de verdade. */
-export function alvosDe(texto: string, indice: Map<string, Alvo>): string[] {
-  return extrairLinks(texto, indice)
-    .map((r) => r.alvo?.caminho)
-    .filter((c): c is string => Boolean(c));
-}
-
 export type Mencao = {
   caminho: string;
   titulo: string;
