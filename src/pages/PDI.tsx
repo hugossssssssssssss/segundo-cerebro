@@ -242,12 +242,28 @@ export default function PDI() {
       atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
       invalidarCache();
       const salvaMeta: Meta = { ...metaParaSalvar, caminho, sha: novaSha };
-      setEditandoMeta(salvaMeta);
-      setOrigMeta(salvaMeta);
+      setMetas((lista) => {
+        const existe = lista.some((x) => x.caminho === salvaMeta.caminho);
+        if (existe) {
+          return lista.map((x) => (x.caminho === salvaMeta.caminho ? salvaMeta : x));
+        }
+        return [salvaMeta, ...lista];
+      });
+      setEditandoMeta((atual) => {
+        if (atual && (atual.caminho === salvaMeta.caminho || !atual.caminho)) {
+          return salvaMeta;
+        }
+        return atual;
+      });
+      setOrigMeta((orig) => {
+        if (orig && (orig.caminho === salvaMeta.caminho || !orig.caminho)) {
+          return salvaMeta;
+        }
+        return orig;
+      });
       if (fecharAoSalvar) {
         fecharMeta();
       }
-      await carregar(true);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {

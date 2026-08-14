@@ -304,12 +304,28 @@ export default function Tarefas() {
     setErro("");
     try {
       const salva = await gravarTarefa(t);
-      setEditando((atual) => (atual ? { ...atual, sha: salva.sha, caminho: salva.caminho } : salva));
-      setOriginal(salva);
+      setTarefas((lista) => {
+        const existe = lista.some((x) => x.caminho === salva.caminho);
+        if (existe) {
+          return lista.map((x) => (x.caminho === salva.caminho ? salva : x));
+        }
+        return [salva, ...lista];
+      });
+      setEditando((atual) => {
+        if (atual && (atual.caminho === salva.caminho || !atual.caminho)) {
+          return salva;
+        }
+        return atual;
+      });
+      setOriginal((orig) => {
+        if (orig && (orig.caminho === salva.caminho || !orig.caminho)) {
+          return salva;
+        }
+        return orig;
+      });
       if (fecharAoSalvar) {
         fechar();
       }
-      await carregar(true);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {

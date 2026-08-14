@@ -232,16 +232,6 @@ export default function Notas() {
       original: { titulo: "", corpo: "", bruto: {} },
     });
   }
-
-  // Temporizador de segurança: salva nota em 2.5s de pausa na digitação (em segundo plano, sem fechar)
-  useEffect(() => {
-    if (!mudou || salvando || !aberta) return;
-    const timer = setTimeout(() => {
-      salvar(aberta, false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [mudou, salvando, aberta]);
-
   async function salvar(alvo?: NotaAberta, fecharAoSalvar = true) {
     const n = alvo || aberta;
     if (!n) return;
@@ -266,7 +256,6 @@ export default function Notas() {
         n.caminho ||
         nomeLivre(PASTA, titulo, arquivos.map((a) => a.caminho));
 
-      // Atualiza o cache de memória local IMEDIATAMENTE (0ms) para que reabrir a nota seja instantâneo
       const docAtualizado = lerMarkdown(texto);
       atualizarCacheLocal(caminho, texto, docAtualizado, n.sha || undefined);
 
@@ -278,17 +267,43 @@ export default function Notas() {
       );
       atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
       invalidarCache();
+
+      // Atualiza a lista e os títulos locais em memória (0ms)
+      setArquivos((lista) => {
+        const itemRepo: ItemRepo = {
+          caminho,
+          nome: caminho.split("/").pop() || "",
+          sha: novaSha,
+          doc: docAtualizado,
+          tamanho: texto.length,
+          texto,
+        };
+        const existe = lista.some((x) => x.caminho === caminho);
+        if (existe) {
+          return lista.map((x) => (x.caminho === caminho ? itemRepo : x));
+        }
+        return [itemRepo, ...lista];
+      });
+
+      setTitulos((cur) => ({ ...cur, [caminho]: titulo }));
+
       const nSalva: NotaAberta = {
         ...n,
         caminho,
         sha: novaSha,
         original: { titulo, corpo: n.corpo, bruto: n.bruto },
       };
-      setAberta(nSalva);
+
+      setAberta((atual) => {
+        if (atual && (atual.caminho === nSalva.caminho || !atual.caminho)) {
+          return nSalva;
+        }
+        return atual;
+      });
+
       if (fecharAoSalvar) {
         fecharNota();
       }
-      await carregarLista(true);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
