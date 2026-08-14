@@ -13,6 +13,7 @@ import {
   Sun,
   Moon,
   Sparkles,
+  FileCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -39,10 +40,11 @@ export const gruposNavegacao: GrupoNavegacao[] = [
     ],
   },
   {
-    titulo: "Criação & Lousas",
+    titulo: "Criação & Ferramentas",
     itens: [
       { para: "/lousas", rotulo: "Lousas", Icone: Layout },
       { para: "/referencias", rotulo: "Referências", Icone: Image },
+      { para: "/pdf", rotulo: "Ferramentas PDF", Icone: FileCheck },
     ],
   },
   {
