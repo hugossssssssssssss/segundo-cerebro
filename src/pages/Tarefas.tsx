@@ -264,7 +264,7 @@ function PainelTarefaNotion({
             });
           }}
           camposFixos={{
-            status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "select", opcoes: ["a-fazer", "fazendo", "feito"] },
+            status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
             prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
             tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" }
           }}

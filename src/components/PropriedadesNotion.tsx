@@ -13,7 +13,8 @@ import {
   ChevronDown,
   ChevronRight,
   User,
-  Clock
+  Clock,
+  X
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -33,6 +34,7 @@ export type TipoPropriedade =
   | "select" 
   | "multiselect" 
   | "relation"
+  | "status"
   | "criado_por"
   | "criado_em"
   | "ultima_edicao";
@@ -47,6 +49,7 @@ const ICONES_TIPO: Record<TipoPropriedade, React.ElementType> = {
   select: ListTodo,
   multiselect: Tags,
   relation: LinkIcon,
+  status: ListTodo,
   criado_por: User,
   criado_em: Clock,
   ultima_edicao: Clock,
@@ -60,6 +63,7 @@ const NOMES_TIPO: Record<TipoPropriedade, string> = {
   select: "Seleção",
   multiselect: "Múltipla Seleção",
   relation: "Relacionamento",
+  status: "Status",
   criado_por: "Criado por",
   criado_em: "Criado em",
   ultima_edicao: "Última edição em",
@@ -77,11 +81,11 @@ export const CORES_NOTION: Record<string, { bg: string; text: string; border: st
 };
 
 export const STATUS_NOTION: Record<string, { label: string; cor: string }> = {
-  a_fazer: { label: "A fazer", cor: "cinza" },
-  em_andamento: { label: "Em andamento", cor: "azul" },
-  pausada: { label: "Pausada", cor: "amarelo" },
-  concluida: { label: "Concluída", cor: "verde" },
-  cancelada: { label: "Cancelada", cor: "vermelho" },
+  "a-fazer": { label: "A fazer", cor: "cinza" },
+  "fazendo": { label: "Fazendo", cor: "azul" },
+  "feito": { label: "Feito", cor: "verde" },
+  "pausada": { label: "Pausada", cor: "amarelo" },
+  "cancelada": { label: "Cancelada", cor: "vermelho" },
 };
 
 const CONFIG_KEY = "segundo-cerebro-propriedades-config";
@@ -113,6 +117,13 @@ export function salvarConfigPropriedadesGlobais(novosRotulos?: Record<string, st
   }
 }
 
+export function normalizarStatus(val: string): string {
+  if (val === "a_fazer") return "a-fazer";
+  if (val === "em_andamento") return "fazendo";
+  if (val === "concluida") return "feito";
+  return val || "a-fazer";
+}
+
 type PropriedadesNotionProps = {
   dados: Record<string, any>;
   onChange: (novosDados: Record<string, any>) => void;
@@ -142,7 +153,7 @@ export function PropriedadesNotion({
   const [renomearPara, setRenomearPara] = useState("");
   const [copiado, setCopiado] = useState<string | null>(null);
   const [mostrandoOcultas, setMostrandoOcultas] = useState(false);
-  const [tagInput, setTagInput] = useState("");
+  const [tagInputs, setTagInputs] = useState<Record<string, string>>({});
 
   const [globalConfig, setGlobalConfig] = useState(lerConfigPropriedadesGlobais());
 
@@ -156,11 +167,9 @@ export function PropriedadesNotion({
   const rotulosMap = { ...globalConfig.rotulos, ...((dados._rotulos as Record<string, string>) || {}) };
 
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
-    .filter(k => !["titulo", "tipo", "atualizado", "id", "esquema", "tags", "_visibilidade", "_coresTags", "_rotulos"].includes(k));
+    .filter(k => !["titulo", "tipo", "atualizado", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos"].includes(k));
     
-  todasAsChaves.push("tags");
-
-  // Garante propriedades nativas de sistema
+  if (!todasAsChaves.includes("tags")) todasAsChaves.push("tags");
   if (!todasAsChaves.includes("criado_por")) todasAsChaves.push("criado_por");
   if (!todasAsChaves.includes("criado_em")) todasAsChaves.push("criado_em");
   if (!todasAsChaves.includes("ultima_edicao")) todasAsChaves.push("ultima_edicao");
@@ -253,7 +262,7 @@ export function PropriedadesNotion({
   const chavesOcultas: string[] = [];
 
   todasAsChaves.forEach((chave) => {
-    // Propriedades nativas de sistema começam ocultas por padrão
+    // Propriedades nativas de sistema ficam ocultas por padrão
     const visDefault = ["criado_por", "criado_em", "ultima_edicao"].includes(chave) ? "esconder" : "sempre";
     const vis = visibilidadeMap[chave] || visDefault;
 
@@ -309,7 +318,8 @@ export function PropriedadesNotion({
     );
   }
 
-  function renderizarBadgeStatus(val: string) {
+  function renderizarBadgeStatus(rawVal: string) {
+    const val = normalizarStatus(rawVal);
     const info = STATUS_NOTION[val] || { label: val || "A fazer", cor: "cinza" };
     const estiloCor = CORES_NOTION[info.cor] || CORES_NOTION.cinza;
 
@@ -342,7 +352,7 @@ export function PropriedadesNotion({
                     est.bg,
                     est.text,
                     est.border,
-                    val === stKey && "ring-2 ring-primary"
+                    val === stKey && "ring-2 ring-primary font-bold"
                   )}
                 >
                   <span>{stInfo.label}</span>
@@ -359,10 +369,10 @@ export function PropriedadesNotion({
   function renderizarValor(chave: string) {
     const fixo = camposFixos[chave];
     const valor = dados[chave];
-    const tipo = fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : "texto");
+    const tipo = chave === "status" ? "status" : fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : "texto");
 
-    if (chave === "status") {
-      return renderizarBadgeStatus(valor || "a_fazer");
+    if (tipo === "status" || chave === "status") {
+      return renderizarBadgeStatus(valor || "a-fazer");
     }
 
     if (tipo === "criado_por") {
@@ -552,71 +562,56 @@ export function PropriedadesNotion({
         );
       }
 
-      function adicionarTagLimpa(t: string) {
-        const limpa = t.trim().replace(/^,+|,+$/g, "");
-        if (limpa && !tags.includes(limpa)) {
-          atualizar(chave, [...tags, limpa]);
-        }
-        setTagInput("");
+      function processarEInserirTag(inp: string) {
+        const pedacos = inp.split(/[,;]/).map(s => s.trim().replace(/^@+/, "")).filter(Boolean);
+        if (pedacos.length === 0) return;
+        
+        const novastags = Array.from(new Set([...tags, ...pedacos]));
+        atualizar(chave, novastags);
+        setTagInputs({ ...tagInputs, [chave]: "" });
       }
 
-      return (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-auto min-h-7 px-2 py-1 text-left justify-start font-normal flex-wrap gap-1 hover:bg-transparent">
-              {tags.length > 0 ? (
-                tags.map((t: string) => renderizarBadgeTag(t))
-              ) : (
-                <span className="text-muted-foreground hover:bg-accent px-1.5 py-0.5 rounded transition-colors">Vazio</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[260px] p-2 space-y-2" align="start">
-            <div className="flex items-center gap-1 bg-accent/40 border border-border rounded-md px-2 py-1">
-              <input
-                type="text"
-                autoFocus
-                placeholder="Digite a tag e aperte Enter..."
-                value={tagInput}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val.includes(",") || val.includes(";")) {
-                    adicionarTagLimpa(val);
-                  } else {
-                    setTagInput(val);
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    adicionarTagLimpa(tagInput);
-                  }
-                }}
-                className="bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted-foreground w-full"
-              />
-            </div>
+      const inputVal = tagInputs[chave] || "";
 
-            {tags.length > 0 && (
-              <div className="space-y-1">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
-                  Tags atuais (clique para remover)
-                </span>
-                <div className="flex flex-wrap gap-1">
-                  {tags.map((t: string) => (
-                    <button 
-                      key={t}
-                      onClick={() => atualizar(chave, tags.filter((x: string) => x !== t))}
-                      className="group"
-                      title="Clique para apagar"
-                    >
-                      {renderizarBadgeTag(t)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </PopoverContent>
-        </Popover>
+      return (
+        <div className="flex items-center gap-1.5 flex-wrap py-1 min-h-7">
+          {tags.map((t: string) => (
+            <div key={t} className="group relative flex items-center">
+              {renderizarBadgeTag(t)}
+              <button
+                onClick={() => atualizar(chave, tags.filter((x: string) => x !== t))}
+                className="ml-0.5 text-muted-foreground hover:text-destructive opacity-50 hover:opacity-100 transition-all"
+                title="Remover tag"
+              >
+                <X size={11} />
+              </button>
+            </div>
+          ))}
+
+          <input
+            type="text"
+            placeholder={tags.length === 0 ? "Digitar tag (Enter ou vírgula)..." : "+ tag"}
+            value={inputVal}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val.includes(",") || val.includes(";")) {
+                processarEInserirTag(val);
+              } else {
+                setTagInputs({ ...tagInputs, [chave]: val });
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === "Tab") {
+                e.preventDefault();
+                processarEInserirTag(inputVal);
+              }
+            }}
+            onBlur={() => {
+              if (inputVal.trim()) processarEInserirTag(inputVal);
+            }}
+            className="bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted-foreground/60 px-1 py-0.5 min-w-[120px] focus:ring-0"
+          />
+        </div>
       );
     }
 
@@ -694,7 +689,7 @@ export function PropriedadesNotion({
   }
 
   function renderizarMenuPropriedade(chave: string, fixo?: any) {
-    const tipoAtual = fixo?.tipo || esquema[chave] || "texto";
+    const tipoAtual = chave === "status" ? "status" : fixo?.tipo || esquema[chave] || "texto";
     const IconeAtual = fixo?.icone ? () => <>{fixo.icone}</> : ICONES_TIPO[tipoAtual as TipoPropriedade] || Type;
     const visDefault = ["criado_por", "criado_em", "ultima_edicao"].includes(chave) ? "esconder" : "sempre";
     const visAtual = visibilidadeMap[chave] || visDefault;
