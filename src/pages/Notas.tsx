@@ -110,6 +110,7 @@ export default function Notas() {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
     if (abrirCaminho && acervo.length > 0 && (!aberta || aberta.caminho !== abrirCaminho)) {
+      if (focarFlutuante(abrirCaminho)) return;
       const alvo = acervo.find((a) => a.caminho === abrirCaminho);
       if (alvo) {
         const titulo = tituloProvavel(alvo.doc, alvo.nome);

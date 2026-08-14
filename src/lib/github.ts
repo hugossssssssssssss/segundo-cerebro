@@ -193,33 +193,45 @@ export async function gravar(
       });
     };
 
-    let resposta = await fazerPut(sha);
+    let shaAtual = sha;
+    let resposta: Response | null = null;
 
-    if (resposta.ok) {
-      const dados = await resposta.json();
-      return dados.content.sha as string;
-    }
+    for (let tentativa = 1; tentativa <= 5; tentativa++) {
+      resposta = await fazerPut(shaAtual);
 
-    // Se deu 409 (conflito) ou 422 (sha desatualizado), busca o SHA direto no GitHub e grava por cima sem erro
-    if (resposta.status === 409 || resposta.status === 422 || resposta.status === 400) {
-      try {
-        const getRes = await buscar(`${raiz(cfg)}/${caminho}?ref=${encodeURIComponent(cfg.branch)}`, {
-          headers: cabecalhos(cfg),
-        });
-        if (getRes.ok) {
-          const getDados = await getRes.json();
-          if (getDados && getDados.sha) {
-            resposta = await fazerPut(getDados.sha);
+      if (resposta.ok) {
+        const dados = await resposta.json();
+        return dados.content.sha as string;
+      }
+
+      // Em caso de 409 (conflito de SHA/lock) ou 422, aguarda a propagação e recupere o SHA mais recente
+      if (resposta.status === 409 || resposta.status === 422 || resposta.status === 400) {
+        await new Promise((r) => setTimeout(r, 150 * Math.pow(2, tentativa - 1)));
+        try {
+          const getRes = await buscar(`${raiz(cfg)}/${caminho}?ref=${encodeURIComponent(cfg.branch)}`, {
+            headers: cabecalhos(cfg),
+          });
+          if (getRes.ok) {
+            const getDados = await getRes.json();
+            if (getDados && getDados.sha) {
+              shaAtual = getDados.sha;
+              continue;
+            }
           }
+        } catch {
+          // ignora falha de GET e tenta o loop seguinte
         }
-      } catch {
-        // prossegue para erro original
+      } else {
+        break;
       }
     }
 
-    await conferir(resposta);
-    const dados = await resposta.json();
-    return dados.content.sha as string;
+    if (resposta) {
+      await conferir(resposta);
+      const dados = await resposta.json();
+      return dados.content.sha as string;
+    }
+    throw new Error("Não foi possível gravar o arquivo após múltiplas tentativas.");
   })();
 
   gravaçõesAtivas.set(caminho, promessaAtual);

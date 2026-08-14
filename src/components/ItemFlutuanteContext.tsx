@@ -66,11 +66,11 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
   }, [modoVisao, itemFlutuante]);
 
   const estaAbertoFlutuante = (caminho: string): boolean => {
-    return itemFlutuante !== null && itemFlutuante.caminho === caminho && modoVisao === "flutuante";
+    return itemFlutuante !== null && itemFlutuante.caminho === caminho;
   };
 
   const focarFlutuante = (caminho: string): boolean => {
-    if (estaAbertoFlutuante(caminho)) {
+    if (itemFlutuante !== null && itemFlutuante.caminho === caminho) {
       setModoVisao("flutuante");
       return true;
     }

@@ -113,6 +113,8 @@ export default function PDI() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
+  const { abrirFlutuante, focarFlutuante } = useItemFlutuante();
+
   useEffect(() => {
     carregar();
   }, [carregar]);
@@ -122,6 +124,7 @@ export default function PDI() {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
     if (abrirCaminho && (metas.length > 0 || entregas.length > 0)) {
+      if (focarFlutuante(abrirCaminho)) return;
       const metaAlvo = metas.find((m) => m.caminho === abrirCaminho);
       if (metaAlvo && (!editandoMeta || editandoMeta.caminho !== abrirCaminho)) {
         setEditandoMeta(metaAlvo);
@@ -135,8 +138,6 @@ export default function PDI() {
       }
     }
   }, [location.search, metas, entregas]);
-
-  const { abrirFlutuante } = useItemFlutuante();
 
   function fecharMeta() {
     setEditandoMeta(null);
@@ -461,7 +462,7 @@ export default function PDI() {
                 {resumos.map(({ meta: m, entregas: ligadas }) => (
                   <Cartao key={m.id} className="p-4">
                     <button
-                      onClick={() => { setEditandoMeta(m); setOrigMeta(m); navegar(`?abrir=${encodeURIComponent(m.caminho)}`, { replace: true }); }}
+                      onClick={() => { if (focarFlutuante(m.caminho)) return; setEditandoMeta(m); setOrigMeta(m); navegar(`?abrir=${encodeURIComponent(m.caminho)}`, { replace: true }); }}
                       className="w-full text-left"
                     >
                       <div className="flex items-start justify-between gap-3">

@@ -550,6 +550,7 @@ export default function Home() {
                         <button
                           key={t.caminho}
                           onClick={() => {
+                            if (focarFlutuante(t.caminho)) return;
                             setEditandoTarefa(t);
                             setOrigTarefa(t);
                           }}
@@ -745,6 +746,7 @@ export default function Home() {
                       <button
                         key={r.meta.caminho}
                         onClick={() => {
+                          if (focarFlutuante(r.meta.caminho)) return;
                           setEditandoMeta(r.meta);
                           setOrigMeta(r.meta);
                         }}

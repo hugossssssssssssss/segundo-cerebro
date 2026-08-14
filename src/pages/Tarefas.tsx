@@ -207,6 +207,7 @@ export default function Tarefas() {
     if (criarNova === "true") {
       abrirNova();
     } else if (abrirCaminho && tarefas.length > 0 && (!editando || editando.caminho !== abrirCaminho)) {
+      if (focarFlutuante(abrirCaminho)) return;
       const alvo = tarefas.find((t) => t.caminho === abrirCaminho);
       const temMudanca =
         editando && JSON.stringify(editando) !== JSON.stringify(original);
