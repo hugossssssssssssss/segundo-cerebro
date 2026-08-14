@@ -66,16 +66,30 @@ export function removerRepeticoesInfinitas(texto: string): string {
 }
 
 /**
- * Decodifica o áudio do usuário para 16kHz Mono
+ * Decodifica qualquer arquivo de áudio (incluindo OGG do WhatsApp 48kHz) e reamostra com precisão para 16000 Hz Mono.
  */
 export async function decodificarAudioPara16kHz(file: File): Promise<Float32Array> {
-  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({
-    sampleRate: 16000,
-  });
   const buffer = await file.arrayBuffer();
-  const audioBuffer = await audioCtx.decodeAudioData(buffer);
-  
-  return audioBuffer.getChannelData(0);
+
+  // 1. Decodifica o áudio na taxa nativa do arquivo
+  const audioCtxTemp = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const audioBufferOriginal = await audioCtxTemp.decodeAudioData(buffer);
+  await audioCtxTemp.close();
+
+  // 2. Reamostra via OfflineAudioContext exatamente para 16000 Hz Mono (padrão Whisper)
+  const offlineCtx = new OfflineAudioContext(
+    1,
+    Math.ceil(audioBufferOriginal.duration * 16000),
+    16000
+  );
+
+  const source = offlineCtx.createBufferSource();
+  source.buffer = audioBufferOriginal;
+  source.connect(offlineCtx.destination);
+  source.start(0);
+
+  const bufferReamostrado = await offlineCtx.startRendering();
+  return bufferReamostrado.getChannelData(0);
 }
 
 /**
@@ -142,7 +156,15 @@ export async function transcreverComWebSpeechAPI(
 
     recognition.onerror = (e: any) => {
       URL.revokeObjectURL(audioUrl);
-      reject(new Error(`Erro no reconhecimento nativo: ${e.error || "falha ao ouvir"}`));
+      if (e.error === "not-allowed") {
+        reject(
+          new Error(
+            "Permissão de microfone/voz negada no seu navegador. Clique no ícone de cadeado na barra de endereço do navegador para permitir o uso de voz nativa."
+          )
+        );
+      } else {
+        reject(new Error(`Erro no reconhecimento nativo: ${e.error || "falha ao ouvir"}`));
+      }
     };
 
     recognition.onend = () => {

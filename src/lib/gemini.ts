@@ -258,47 +258,55 @@ export async function transcreverAudioComIA(
   const base64Data = btoa(binary);
 
   aoProgresso?.("Processando transcrição e oradores com IA...");
-  const url = `${BASE}/gemini-1.5-flash:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
 
-  const body = {
-    contents: [
-      {
-        parts: [
-          {
-            inline_data: {
-              mime_type: file.type || "audio/mp3",
-              data: base64Data,
+  const modelos = ["gemini-1.5-flash-latest", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"];
+  let ultimoErro = "";
+
+  for (const mod of modelos) {
+    const url = `${BASE}/${mod}:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
+
+    const body = {
+      contents: [
+        {
+          parts: [
+            {
+              inline_data: {
+                mime_type: file.type || "audio/mp3",
+                data: base64Data,
+              },
             },
-          },
-          {
-            text: `Faça a transcrição completa e detalhada deste áudio em Português do Brasil.
+            {
+              text: `Faça a transcrição completa e detalhada deste áudio em Português do Brasil.
 REGRAS OBRIGATÓRIAS:
 1. Identifique e rotule separadamente cada orador (ex: Orador 1, Orador 2, Orador 3).
 2. Adicione marcações de tempo aproximadas (ex: [00:15], [01:42]) a cada mudança de fala.
 3. Mantenha o texto limpo, pontuado e fiel às falas originais.
 4. Se houver partes inaudíveis, indique com [inaudível].`,
-          },
-        ],
-      },
-    ],
-  };
+            },
+          ],
+        },
+      ],
+    };
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new ErroGemini(errData.error?.message || `Erro ${res.status} ao comunicar com a IA.`);
+      if (res.ok) {
+        const data = await res.json();
+        const textoResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (textoResult) return textoResult;
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        ultimoErro = errData.error?.message || `Erro HTTP ${res.status}`;
+      }
+    } catch (e: any) {
+      ultimoErro = e?.message || String(e);
+    }
   }
 
-  const data = await res.json();
-  const textoResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!textoResult) {
-    throw new ErroGemini("Nenhum texto retornado na transcrição.");
-  }
-
-  return textoResult;
+  throw new ErroGemini(ultimoErro || "Não foi possível conectar a nenhum modelo Gemini disponível.");
 }
