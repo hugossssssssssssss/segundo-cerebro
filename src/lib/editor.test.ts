@@ -55,28 +55,27 @@ describe("o editor escapa os wikilinks — este é o comportamento a corrigir", 
 });
 
 describe("com a correção, o texto sobrevive", () => {
-  it("o link volta intacto", () => {
-    expect(idaEVolta("Ver o [[Briefing Acme]].")).toContain(
-      "[[Briefing Acme]]",
+  it("o link volta intacto como menção @", () => {
+    expect(idaEVolta("Ver o @Briefing Acme.")).toContain(
+      "@Briefing Acme",
     );
   });
 
   it("link com apelido também", () => {
-    expect(idaEVolta("Ver o [[nota|apelido]].")).toContain("[[nota|apelido]]");
+    expect(idaEVolta("Ver o @nota|apelido.")).toContain("@nota|apelido");
   });
 
   it("vários links na mesma linha", () => {
-    const r = idaEVolta("[[a]] e [[b]] e [[c]]");
-    expect(r).toContain("[[a]]");
-    expect(r).toContain("[[b]]");
-    expect(r).toContain("[[c]]");
+    const r = idaEVolta("@a e @b e @c");
+    expect(r).toContain("@a");
+    expect(r).toContain("@b");
+    expect(r).toContain("@c");
     expect(r).not.toContain("\\[");
   });
 
   it("o app continua reconhecendo o link depois de salvar", () => {
-    // era isto que quebrava de verdade: extrairLinks achava zero
     const indice = montarIndice([alvo("Briefing Acme")]);
-    const depoisDeSalvar = idaEVolta("Ver o [[Briefing Acme]] aqui.");
+    const depoisDeSalvar = idaEVolta("Ver o @Briefing Acme aqui.");
 
     const links = extrairLinks(depoisDeSalvar, indice);
     expect(links).toHaveLength(1);
@@ -84,9 +83,9 @@ describe("com a correção, o texto sobrevive", () => {
   });
 
   it("salvar dez vezes seguidas não acumula barras", () => {
-    let texto = "Ver o [[Briefing Acme]].";
+    let texto = "Ver o @Briefing Acme.";
     for (let i = 0; i < 10; i++) texto = idaEVolta(texto);
-    expect(texto).toContain("[[Briefing Acme]]");
+    expect(texto).toContain("@Briefing Acme");
     expect(texto).not.toContain("\\");
   });
 });
@@ -119,20 +118,17 @@ describe("o resto do texto também precisa sobreviver", () => {
   });
 
   it("desfaz o escape nos dois lados quando existe", () => {
-    expect(restaurarWikilinks("\\[\\[x\\]\\]")).toBe("[[x]]");
+    expect(restaurarWikilinks("\\[\\[x\\]\\]")).toBe("@x");
   });
 
   it("dois links na mesma linha", () => {
-    expect(restaurarWikilinks("\\[\\[a]] e \\[\\[b]]")).toBe("[[a]] e [[b]]");
+    expect(restaurarWikilinks("\\[\\[a]] e \\[\\[b]]")).toBe("@a e @b");
   });
 });
 
 describe("o corpo real de uma tarefa sobrevive ao editor", () => {
-  // As subtarefas e o editor escrevem no MESMO corpo. Este teste trava o
-  // formato que o pomodoro grava: se um dia o editor deixar de preservá-lo,
-  // o tempo registrado some sem ninguém perceber.
   const corpoReal = [
-    "Ajustar a grade do material. Ver o [[Briefing Acme]].",
+    "Ajustar a grade do material. Ver o @Briefing Acme.",
     "",
     "- [ ] escolher as imagens",
     "- [x] revisar os textos",
@@ -156,7 +152,7 @@ describe("o corpo real de uma tarefa sobrevive ao editor", () => {
   });
 
   it("mantém o link e a seta do registro", () => {
-    expect(depois).toContain("[[Briefing Acme]]");
+    expect(depois).toContain("@Briefing Acme");
     expect(depois).toContain("→");
   });
 });

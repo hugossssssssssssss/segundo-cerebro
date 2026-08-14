@@ -130,22 +130,23 @@ export function mesclarFrontmatter(
 }
 
 /**
- * Desfaz o escape que o editor aplica nos `[[links]]` e converte URLs coladas
- * contendo `?abrir=tarefas%2F...` ou `?abrir=notas%2F...` em wikilinks limpos.
+ * Converte wikilinks [[alvo]], escapados `\[\[alvo\]\]` e URLs coladas contendo
+ * `?abrir=...` para o formato limpo `@alvo`.
  */
 export function restaurarWikilinks(markdown: string): string {
+  // Converte \[\[alvo\]\] e [[alvo]] para @alvo
   let limpo = markdown.replace(
-    /\\\[\\\[([^\[\]\n]{1,200}?)\\?\]\\?\]/g,
-    (_todo, alvo) => `[[${alvo}]]`,
+    /\\?\[\\?\[([^\[\]\n]{1,200}?)\\?\]\\?\]/g,
+    (_todo, alvo) => `@${alvo.trim()}`,
   );
 
-  // Converte URLs do tipo https://.../?abrir=tarefas%2F2026-08-14-dasd.md coladas diretamente
+  // Converte URLs do tipo https://.../?abrir=tarefas%2F2026-08-14-dasd.md coladas diretamente para @dasd
   limpo = limpo.replace(
-    /(?:https?:\/\/[^\s]+|#\/[^\s]+)\?abrir=([a-zA-Z0-9_%.-]+)/g,
+    /(?:https?:\/\/[^\s)]+|#\/[^\s)]+)\?abrir=([a-zA-Z0-9_%.-]+)/g,
     (_todo, rawCaminho) => {
       const dec = decodeURIComponent(rawCaminho);
       const nomeOuTitulo = dec.split("/").pop()!.replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/\.md$/, "");
-      return `[[${nomeOuTitulo}]]`;
+      return `@${nomeOuTitulo}`;
     }
   );
 

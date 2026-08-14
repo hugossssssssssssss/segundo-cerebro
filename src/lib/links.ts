@@ -1,9 +1,6 @@
 /**
  * Ligações entre itens — a premissa que faltava.
  *
- * A primeira coisa que o Hugo descreveu foi "as ideias se conectam e formam
- * uma rede neural".
- *
  * Suporta formatos:
  * - `[[nome do item]]`
  * - `@nome do item`
@@ -14,8 +11,8 @@ import type { ItemRepo } from "./repo";
 import { tituloProvavel } from "./markdown";
 import { tipoDoItem, type TipoItem } from "./busca";
 
-/** Captura `[[alvo]]`, `[[alvo|texto]]`, `@alvo` e URLs como `.../segundo-cerebro/#/tarefas?abrir=tarefas%2F...` */
-const PADRAO = /(?:\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|@([a-zA-Z0-9_\-áàâãéèêíïóôõöúçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ\s]{2,100})|(?:https?:\/\/[^\s]+|#\/[^\s]+)\?abrir=([a-zA-Z0-9_%.-]+))/g;
+/** Captura `[[alvo]]`, `[[alvo|texto]]`, `@alvo` (suporta títulos compostos) e URLs como `.../segundo-cerebro/#/tarefas?abrir=tarefas%2F...` */
+const PADRAO = /(?:\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|@([a-zA-Z0-9_\-áàâãéèêíïóôõöúçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ\s]{2,100}?)(?=[.,;:!?\)\n\r]|\s*$)|(?:https?:\/\/[^\s)]+|#\/[^\s)]+)\?abrir=([a-zA-Z0-9_%.-]+))/g;
 
 export type Alvo = {
   caminho: string;
@@ -90,8 +87,15 @@ export function extrairLinks(
       exibir = (m[2] ?? bruto).trim();
       alvo = indice.get(chave(bruto)) ?? null;
     } else if (m[3]) {
-      // Formato @alvo
-      bruto = m[3].trim();
+      // Formato @alvo (pode ser título composto com várias palavras)
+      let candidato = m[3].trim();
+      while (candidato && !indice.has(chave(candidato))) {
+        const ultEspaco = candidato.lastIndexOf(" ");
+        if (ultEspaco < 0) break;
+        candidato = candidato.slice(0, ultEspaco).trim();
+      }
+
+      bruto = candidato || m[3].trim();
       if (!bruto) continue;
       exibir = bruto;
       alvo = indice.get(chave(bruto)) ?? null;
@@ -154,8 +158,12 @@ export function mencoesA(
 
 function recorteEmVolta(corpo: string, alvo: string): string {
   const limpo = corpo.replace(/\s+/g, " ").trim();
-  let pos = limpo.indexOf(`[[${alvo}`);
-  let tam = alvo.length + 4;
+  let pos = limpo.indexOf(`@${alvo}`);
+  let tam = alvo.length + 1;
+  if (pos < 0) {
+    pos = limpo.indexOf(`[[${alvo}`);
+    tam = alvo.length + 4;
+  }
   if (pos < 0) {
     pos = limpo.toLowerCase().indexOf(alvo.toLowerCase());
     tam = alvo.length;
@@ -177,7 +185,7 @@ export function sugerir(
   termo: string,
   limite = 8,
 ): Alvo[] {
-  const alvo = chave(termo);
+  const alvo = chave(termo.replace(/^[@\[]+/, ""));
   const unicos = new Map<string, Alvo>();
   for (const a of indice.values()) unicos.set(a.caminho, a);
 
