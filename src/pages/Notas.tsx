@@ -342,6 +342,8 @@ export default function Notas() {
           </div>
         </div>
 
+        {erro && <Aviso tom="erro">{erro}</Aviso>}
+
         <div id="conteudo-nota-pdf" className="flex-1 w-full max-w-4xl mx-auto py-8">
           <div className="mb-8">
             <input

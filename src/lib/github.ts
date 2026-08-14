@@ -176,6 +176,30 @@ export async function gravar(
       ...(sha ? { sha } : {}),
     }),
   });
+
+  if (resposta.status === 409 || resposta.status === 422) {
+    try {
+      const { sha: shaAtual } = await ler(cfg, caminho);
+      if (shaAtual && shaAtual !== sha) {
+        const respostaRetry = await buscar(`${raiz(cfg)}/${caminho}`, {
+          method: "PUT",
+          headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: mensagem ?? `atualiza ${caminho}`,
+            content: paraBase64(texto),
+            branch: cfg.branch,
+            sha: shaAtual,
+          }),
+        });
+        await conferir(respostaRetry);
+        const dadosRetry = await respostaRetry.json();
+        return dadosRetry.content.sha as string;
+      }
+    } catch {
+      // Se a tentativa de auto-resolucao falhar, a chamada abaixo lanca o erro amigavel
+    }
+  }
+
   await conferir(resposta);
 
   const dados = await resposta.json();

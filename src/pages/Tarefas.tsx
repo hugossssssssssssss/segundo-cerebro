@@ -110,6 +110,7 @@ function PainelTarefaNotion({
   setEditando,
   opcoesRelacionamento,
   mencoesDaTarefa,
+  erro,
 }: {
   modoVisao: "popup" | "lado" | "telacheia";
   setModoVisao: (m: "popup" | "lado" | "telacheia") => void;
@@ -122,6 +123,7 @@ function PainelTarefaNotion({
   setEditando: React.Dispatch<React.SetStateAction<Tarefa | null>>;
   opcoesRelacionamento: { titulo: string; caminho: string }[];
   mencoesDaTarefa: any[];
+  erro?: string;
 }) {
   const [confirmandoDescarte, setConfirmandoDescarte] = useState(false);
   const [confirmandoApagar, setConfirmandoApagar] = useState(false);
@@ -157,6 +159,15 @@ function PainelTarefaNotion({
       <div className="flex items-center gap-2">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           {editando.caminho ? "Tarefa" : "Nova tarefa"}
+        </span>
+
+        {/* Indicador visual de sincronização em tempo real */}
+        <span className="text-[11px] font-medium ml-2 px-2 py-0.5 rounded-full bg-accent/60 flex items-center gap-1">
+          {salvando ? (
+            <span className="text-blue-500 animate-pulse">Sincronizando com GitHub...</span>
+          ) : (
+            <span className="text-emerald-600 dark:text-emerald-400">✓ Sincronizado</span>
+          )}
         </span>
       </div>
 
@@ -273,6 +284,8 @@ function PainelTarefaNotion({
 
   const conteudo = (
     <div className="space-y-6 max-w-4xl mx-auto w-full">
+      {erro && <Aviso tom="erro">{erro}</Aviso>}
+
       <input
         type="text"
         value={editando.titulo}
@@ -784,6 +797,7 @@ export default function Tarefas() {
           setEditando={setEditando}
           opcoesRelacionamento={opcoesRelacionamento}
           mencoesDaTarefa={mencoesDaTarefa}
+          erro={erro}
         />
       )}
 
