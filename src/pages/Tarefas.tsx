@@ -304,9 +304,14 @@ function PainelTarefaNotion({
 
   if (modoVisao === "lado") {
     return (
-      <div className="fixed inset-0 z-50 flex justify-end bg-black/15 backdrop-blur-[1px] transition-opacity">
-        <div className="flex-1" onClick={tentarFechar} />
-        <div className="flex h-full w-full sm:w-[560px] md:w-[680px] lg:w-[760px] flex-col border-l border-border bg-card shadow-2xl animate-in slide-in-from-right duration-200">
+      <div
+        className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm p-0 sm:p-3 transition-opacity"
+        onClick={tentarFechar}
+      >
+        <div
+          className="flex h-full w-full sm:w-[560px] md:w-[680px] lg:w-[760px] flex-col rounded-t-2xl sm:rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in slide-in-from-right duration-200"
+          onClick={(e) => e.stopPropagation()}
+        >
           {cabecalho}
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">{conteudo}</div>
           {rodape}
@@ -317,21 +322,30 @@ function PainelTarefaNotion({
 
   if (modoVisao === "telacheia") {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-card animate-in fade-in duration-150">
-        {cabecalho}
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 sm:px-12 py-8">{conteudo}</div>
-        {rodape}
+      <div
+        className="fixed inset-0 z-50 flex flex-col bg-black/40 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-150"
+        onClick={tentarFechar}
+      >
+        <div
+          className="flex h-full w-full flex-col rounded-2xl sm:rounded-3xl border border-border bg-card shadow-2xl overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {cabecalho}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 sm:px-12 py-8">{conteudo}</div>
+          {rodape}
+        </div>
       </div>
     );
   }
 
+  // Padrão: modo Pop-up central
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4"
       onClick={tentarFechar}
     >
       <div
-        className="flex max-h-[92dvh] w-full max-w-3xl flex-col rounded-t-2xl sm:rounded-2xl border border-border bg-card shadow-2xl animate-in zoom-in-95 duration-150"
+        className="flex max-h-[92dvh] w-full max-w-3xl flex-col rounded-t-2xl sm:rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {cabecalho}
