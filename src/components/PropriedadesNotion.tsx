@@ -199,6 +199,7 @@ export function PropriedadesNotion({
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
     .filter(k => !["titulo", "tipo", "atualizado", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos"].includes(k));
     
+  if (!todasAsChaves.includes("relacionamentos")) todasAsChaves.push("relacionamentos");
   if (!todasAsChaves.includes("tags")) todasAsChaves.push("tags");
   if (!todasAsChaves.includes("criado_por")) todasAsChaves.push("criado_por");
   if (!todasAsChaves.includes("criado_em")) todasAsChaves.push("criado_em");
@@ -206,6 +207,7 @@ export function PropriedadesNotion({
 
   function nomeExibido(chave: string): string {
     if (rotulosMap[chave]) return rotulosMap[chave];
+    if (chave === "relacionamentos" || chave === "relacao") return "Relacionamentos";
     if (chave === "criado_por" || chave === "criado") return "Criado por";
     if (chave === "criado_em") return "Criado em";
     if (chave === "ultima_edicao" || chave === "atualizado") return "Última edição em";
@@ -415,6 +417,7 @@ export function PropriedadesNotion({
     const valor = dados[chave];
     const tipo = 
       chave === "status" ? "status" :
+      chave === "relacionamentos" || chave === "relacao" ? "relation" :
       chave === "criado_por" ? "criado_por" :
       chave === "criado_em" || chave === "criado" ? "criado_em" :
       chave === "ultima_edicao" || chave === "atualizado" ? "ultima_edicao" :

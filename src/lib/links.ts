@@ -257,24 +257,31 @@ export function extrairMencoesTexto(corpo: string): string[] {
   const mencoes: string[] = [];
   const visto = new Set<string>();
 
+  const adicionar = (raw: string) => {
+    let limpo = raw.trim();
+    limpo = limpo.replace(/\\/g, "").replace(/^[@[]+/, "").replace(/\]+$/, "").trim();
+    if (limpo && limpo.length >= 2 && !visto.has(limpo.toLowerCase())) {
+      visto.add(limpo.toLowerCase());
+      mencoes.push(`@${limpo}`);
+    }
+  };
+
   // 1. Matches [[alvo]] ou [[alvo|exibir]]
   const regexWiki = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
   for (const m of corpo.matchAll(regexWiki)) {
-    const limpo = m[1]?.trim();
-    if (limpo && !visto.has(limpo.toLowerCase())) {
-      visto.add(limpo.toLowerCase());
-      mencoes.push(`@${limpo}`);
-    }
+    if (m[1]) adicionar(m[1]);
   }
 
-  // 2. Matches @alvo
-  const regexAt = new RegExp(`(?<![\\w.@-])@([${LETRA}][${LETRA}0-9_\\-\\s]{1,99}?)(?=[.,;:!?)\\n\\r]|\\s*$)`, "g");
+  // 2. Matches [@alvo](href) ou [alvo](href)
+  const regexMdLink = /\[\\?@?([^\]]+)\]\(([^)]+)\)/g;
+  for (const m of corpo.matchAll(regexMdLink)) {
+    if (m[1]) adicionar(m[1]);
+  }
+
+  // 3. Matches \@alvo ou @alvo em texto puro
+  const regexAt = new RegExp(`(?<![\\w.@-])\\\\?@([${LETRA}][${LETRA}0-9_\\-\\s]{1,99}?)(?=[.,;:!?)\\n\\r]|\\s*$)`, "g");
   for (const m of corpo.matchAll(regexAt)) {
-    const limpo = m[1]?.trim();
-    if (limpo && !visto.has(limpo.toLowerCase())) {
-      visto.add(limpo.toLowerCase());
-      mencoes.push(`@${limpo}`);
-    }
+    if (m[1]) adicionar(m[1]);
   }
 
   return mencoes;
