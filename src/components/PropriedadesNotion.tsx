@@ -391,25 +391,30 @@ export function PropriedadesNotion({
   function renderizarValor(chave: string) {
     const fixo = camposFixos[chave];
     const valor = dados[chave];
-    const tipo = chave === "status" ? "status" : fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : "texto");
+    const tipo = 
+      chave === "status" ? "status" :
+      chave === "criado_por" ? "criado_por" :
+      chave === "criado_em" || chave === "criado" ? "criado_em" :
+      chave === "ultima_edicao" || chave === "atualizado" ? "ultima_edicao" :
+      fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : "texto");
     const idPopover = `val-${chave}`;
 
     if (tipo === "status" || chave === "status") {
       return renderizarBadgeStatus(valor || "a-fazer");
     }
 
-    if (tipo === "criado_por") {
+    if (tipo === "criado_por" || chave === "criado_por") {
       return (
         <span className="text-xs font-medium text-foreground/80 px-2 py-1 flex items-center gap-1.5">
-          <User size={13} className="text-muted-foreground" />
+          <User size={13} className="text-muted-foreground shrink-0" />
           Hugo
         </span>
       );
     }
 
-    if (tipo === "criado_em") {
+    if (tipo === "criado_em" || chave === "criado_em" || chave === "criado") {
       let dataObj: Date | undefined;
-      const raw = dados.criado_em || dados.criado;
+      const raw = dados.criado_em || dados.criado || valor;
       if (typeof raw === "string" && raw.trim()) {
         const parsed = new Date(raw.includes("T") ? raw : `${raw.trim()}T00:00:00`);
         if (!isNaN(parsed.getTime())) dataObj = parsed;
@@ -420,15 +425,15 @@ export function PropriedadesNotion({
 
       return (
         <span className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1.5">
-          <Clock size={13} />
+          <Clock size={13} className="shrink-0" />
           {formatada}
         </span>
       );
     }
 
-    if (tipo === "ultima_edicao") {
+    if (tipo === "ultima_edicao" || chave === "ultima_edicao" || chave === "atualizado") {
       let dataObj: Date | undefined;
-      const raw = dados.atualizado || dados.ultima_edicao;
+      const raw = dados.atualizado || dados.ultima_edicao || valor;
       if (typeof raw === "string" && raw.trim()) {
         const parsed = new Date(raw);
         if (!isNaN(parsed.getTime())) dataObj = parsed;
@@ -439,7 +444,7 @@ export function PropriedadesNotion({
 
       return (
         <span className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1.5">
-          <Clock size={13} />
+          <Clock size={13} className="shrink-0" />
           {formatada}
         </span>
       );
@@ -734,9 +739,14 @@ export function PropriedadesNotion({
   }
 
   function renderizarMenuPropriedade(chave: string, fixo?: any) {
-    const tipoAtual = chave === "status" ? "status" : fixo?.tipo || esquema[chave] || "texto";
+    const tipoAtual = 
+      chave === "status" ? "status" :
+      chave === "criado_por" ? "criado_por" :
+      chave === "criado_em" || chave === "criado" ? "criado_em" :
+      chave === "ultima_edicao" || chave === "atualizado" ? "ultima_edicao" :
+      fixo?.tipo || esquema[chave] || "texto";
     const IconeAtual = fixo?.icone ? () => <>{fixo.icone}</> : ICONES_TIPO[tipoAtual as TipoPropriedade] || Type;
-    const visDefault = ["criado_por", "criado_em", "ultima_edicao"].includes(chave) ? "esconder" : "sempre";
+    const visDefault = ["criado_por", "criado_em", "criado", "ultima_edicao", "atualizado"].includes(chave) ? "esconder" : "sempre";
     const visAtual = visibilidadeMap[chave] || visDefault;
     const rotuloAtual = nomeExibido(chave);
     const idMenu = `prop-${chave}`;
