@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Target, Package, Trash2, AlertTriangle, Sparkles } from "lucide-react";
+import { Target, Calendar, Package, Trash2, AlertTriangle, Sparkles } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
+import { PropriedadesNotion } from "@/components/PropriedadesNotion";
+import { EditorNotion } from "@/components/EditorNotion";
+import { Subtarefas } from "@/components/Subtarefas";
 import {
   escreverMarkdown,
   tituloProvavel,
@@ -22,7 +25,6 @@ import {
   textoPrazoMeta,
   PASTA_METAS,
   PASTA_ENTREGAS,
-  STATUS_META,
   ROTULO_META,
   type Meta,
   type Entrega,
@@ -557,80 +559,56 @@ export default function PDI() {
       >
         {editandoMeta && (
           <div className="space-y-4">
-            <div>
-              <Rotulo>Meta</Rotulo>
-              <Campo
-                value={editandoMeta.titulo}
-                onChange={(ev) =>
-                  setEditandoMeta({ ...editandoMeta, titulo: ev.target.value })
-                }
-                placeholder="Conduzir projetos de identidade sozinho"
-                autoFocus
+            <input
+              type="text"
+              value={editandoMeta.titulo}
+              onChange={(ev) =>
+                setEditandoMeta({ ...editandoMeta, titulo: ev.target.value })
+              }
+              placeholder="Sem título"
+              className="w-full text-2xl sm:text-3xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0 pt-2"
+              autoFocus
+            />
+
+            <PropriedadesNotion
+              dados={{
+                status: editandoMeta.status,
+                prazo: editandoMeta.prazo,
+                indicador: editandoMeta.indicador,
+              }}
+              corpoTexto={editandoMeta.corpo}
+              onChange={(novosDados) => {
+                setEditandoMeta({
+                  ...editandoMeta,
+                  status: (novosDados.status as StatusMeta) || editandoMeta.status,
+                  prazo: novosDados.prazo,
+                  indicador: novosDados.indicador || editandoMeta.indicador,
+                });
+              }}
+              camposFixos={{
+                status: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
+                prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
+              }}
+            />
+
+            <hr className="border-border" />
+
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Passos / Subtarefas
+              </label>
+              <Subtarefas
+                corpo={editandoMeta.corpo}
+                onChange={(novoCorpo) => setEditandoMeta({ ...editandoMeta, corpo: novoCorpo })}
               />
             </div>
 
-            <div>
-              <Rotulo dica="Precisa ser algo que outra pessoa consiga verificar. 'Melhorar em branding' não serve; 'conduzir um projeto do briefing à entrega' serve.">
-                Como vou saber que cheguei lá
-              </Rotulo>
-              <AreaTexto
-                value={editandoMeta.indicador}
-                onChange={(ev) =>
-                  setEditandoMeta({
-                    ...editandoMeta,
-                    indicador: ev.target.value,
-                  })
-                }
-                placeholder="Entregar 3 projetos de identidade completos, apresentando direto para o cliente"
-                className="min-h-20"
-              />
-            </div>
+            <hr className="border-border" />
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Rotulo>Situação</Rotulo>
-                <select
-                  value={editandoMeta.status}
-                  onChange={(ev) =>
-                    setEditandoMeta({
-                      ...editandoMeta,
-                      status: ev.target.value as StatusMeta,
-                    })
-                  }
-                  className="flex h-11 w-full rounded-lg border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {STATUS_META.map((s) => (
-                    <option key={s} value={s}>
-                      {ROTULO_META[s]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Rotulo>Prazo</Rotulo>
-                <Campo
-                  type="date"
-                  value={editandoMeta.prazo ?? ""}
-                  onChange={(ev) =>
-                    setEditandoMeta({
-                      ...editandoMeta,
-                      prazo: ev.target.value || undefined,
-                    })
-                  }
-                />
-              </div>
-            </div>
-
-            <div>
-              <Rotulo dica="Por que isso importa para você — não para a empresa.">
-                Anotações
-              </Rotulo>
-              <AreaTexto
-                value={editandoMeta.corpo}
-                onChange={(ev) =>
-                  setEditandoMeta({ ...editandoMeta, corpo: ev.target.value })
-                }
-                className="min-h-28"
+            <div className="min-h-[220px]">
+              <EditorNotion
+                markdown={editandoMeta.corpo}
+                onChange={(v) => setEditandoMeta({ ...editandoMeta, corpo: v ?? "" })}
               />
             </div>
           </div>

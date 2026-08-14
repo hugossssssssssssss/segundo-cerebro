@@ -123,7 +123,13 @@ export function EditorNotion({
                 title: `@${s.titulo}`,
                 subtext: s.caminho,
                 onItemClick: () => {
-                  editor.insertInlineContent([`@${s.titulo}`]);
+                  editor.insertInlineContent([
+                    {
+                      type: "link",
+                      href: s.caminho,
+                      content: `@${s.titulo}`,
+                    },
+                  ]);
                 },
               }));
             } catch {
@@ -143,7 +149,13 @@ export function EditorNotion({
                 title: `@${s.titulo}`,
                 subtext: s.caminho,
                 onItemClick: () => {
-                  editor.insertInlineContent([`@${s.titulo}`]);
+                  editor.insertInlineContent([
+                    {
+                      type: "link",
+                      href: s.caminho,
+                      content: `@${s.titulo}`,
+                    },
+                  ]);
                 },
               }));
             } catch {
@@ -172,43 +184,59 @@ export function EditorNotion({
           transition: background-color 0.15s ease;
         }
         /* Tarefas: Azul */
-        .notion-editor-wrapper a[href*="tarefas/"] {
+        .notion-editor-wrapper a[href*="tarefa"],
+        .notion-editor-wrapper a[href*="tarefas"] {
           color: #2563eb !important;
-          background-color: rgba(37, 99, 235, 0.12) !important;
+          background-color: rgba(37, 99, 235, 0.14) !important;
+          border: 1px solid rgba(37, 99, 235, 0.2) !important;
         }
-        .dark .notion-editor-wrapper a[href*="tarefas/"] {
+        .dark .notion-editor-wrapper a[href*="tarefa"],
+        .dark .notion-editor-wrapper a[href*="tarefas"] {
           color: #60a5fa !important;
-          background-color: rgba(96, 165, 250, 0.15) !important;
+          background-color: rgba(96, 165, 250, 0.18) !important;
+          border-color: rgba(96, 165, 250, 0.25) !important;
         }
 
         /* Metas / PDI: Verde */
-        .notion-editor-wrapper a[href*="pdi/"] {
+        .notion-editor-wrapper a[href*="pdi"],
+        .notion-editor-wrapper a[href*="meta"] {
           color: #059669 !important;
-          background-color: rgba(5, 150, 105, 0.12) !important;
+          background-color: rgba(5, 150, 105, 0.14) !important;
+          border: 1px solid rgba(5, 150, 105, 0.2) !important;
         }
-        .dark .notion-editor-wrapper a[href*="pdi/"] {
+        .dark .notion-editor-wrapper a[href*="pdi"],
+        .dark .notion-editor-wrapper a[href*="meta"] {
           color: #34d399 !important;
-          background-color: rgba(52, 211, 153, 0.15) !important;
+          background-color: rgba(52, 211, 153, 0.18) !important;
+          border-color: rgba(52, 211, 153, 0.25) !important;
         }
 
         /* Notas: Laranja */
-        .notion-editor-wrapper a[href*="notas/"] {
+        .notion-editor-wrapper a[href*="nota"],
+        .notion-editor-wrapper a[href*="notas"] {
           color: #d97706 !important;
-          background-color: rgba(217, 119, 6, 0.12) !important;
+          background-color: rgba(217, 119, 6, 0.14) !important;
+          border: 1px solid rgba(217, 119, 6, 0.2) !important;
         }
-        .dark .notion-editor-wrapper a[href*="notas/"] {
+        .dark .notion-editor-wrapper a[href*="nota"],
+        .dark .notion-editor-wrapper a[href*="notas"] {
           color: #fbbf24 !important;
-          background-color: rgba(251, 191, 36, 0.15) !important;
+          background-color: rgba(251, 191, 36, 0.18) !important;
+          border-color: rgba(251, 191, 36, 0.25) !important;
         }
 
         /* Referências: Roxo */
-        .notion-editor-wrapper a[href*="referencias/"] {
+        .notion-editor-wrapper a[href*="referencia"],
+        .notion-editor-wrapper a[href*="referencias"] {
           color: #7c3aed !important;
-          background-color: rgba(124, 58, 237, 0.12) !important;
+          background-color: rgba(124, 58, 237, 0.14) !important;
+          border: 1px solid rgba(124, 58, 237, 0.2) !important;
         }
-        .dark .notion-editor-wrapper a[href*="referencias/"] {
+        .dark .notion-editor-wrapper a[href*="referencia"],
+        .dark .notion-editor-wrapper a[href*="referencias"] {
           color: #a78bfa !important;
-          background-color: rgba(167, 139, 250, 0.15) !important;
+          background-color: rgba(167, 139, 250, 0.18) !important;
+          border-color: rgba(167, 139, 250, 0.25) !important;
         }
       `}</style>
     </div>

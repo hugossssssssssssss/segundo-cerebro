@@ -45,6 +45,7 @@ import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { PainelTarefaNotion } from "@/pages/Tarefas";
 import { PropriedadesNotion } from "@/components/PropriedadesNotion";
 import { EditorNotion } from "@/components/EditorNotion";
+import { Subtarefas } from "@/components/Subtarefas";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,10 +111,13 @@ function GadgetWrapper({
       style={style}
       className={cn("relative group transition-all h-full flex flex-col", classeGrid, isDragging && "z-50")}
     >
-      {/* Controles do Gadget: Redimensionar e Drag Handle */}
-      <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 backdrop-blur rounded-xl p-1.5 border border-border shadow-sm">
+      {/* Controles do Gadget: Redimensionar e Drag Handle (apenas no hover do canto superior direito) */}
+      <div className="absolute top-3 right-3 z-30 flex items-center gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 bg-background/95 backdrop-blur-md rounded-xl p-1 border border-border/80 shadow-md">
         <button
-          onClick={() => aoMudarColunas(gadget.id, proximaColuna)}
+          onClick={(e) => {
+            e.stopPropagation();
+            aoMudarColunas(gadget.id, proximaColuna);
+          }}
           className="px-2 py-1 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground text-[11px] font-bold flex items-center gap-1 transition-colors"
           title={`Largura atual: ${gadget.colunas}x. Clique para alterar para ${proximaColuna}x.`}
         >
@@ -837,6 +841,21 @@ export default function Home() {
               corpoTexto={editandoNota.corpo}
               onChange={(novosDados) => setEditandoNota({ ...editandoNota, bruto: novosDados })}
             />
+
+            <hr className="border-border" />
+
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Passos / Subtarefas
+              </label>
+              <Subtarefas
+                corpo={editandoNota.corpo}
+                onChange={(novoCorpo) => setEditandoNota({ ...editandoNota, corpo: novoCorpo })}
+              />
+            </div>
+
+            <hr className="border-border" />
+
             <EditorNotion
               markdown={editandoNota.corpo}
               onChange={(v) => setEditandoNota({ ...editandoNota, corpo: v ?? "" })}
@@ -888,6 +907,21 @@ export default function Home() {
               corpoTexto={editandoMeta.corpo}
               onChange={(novosDados) => setEditandoMeta({ ...editandoMeta, status: novosDados.status || editandoMeta.status, prazo: novosDados.prazo, indicador: novosDados.indicador || editandoMeta.indicador })}
             />
+
+            <hr className="border-border" />
+
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Passos / Subtarefas
+              </label>
+              <Subtarefas
+                corpo={editandoMeta.corpo}
+                onChange={(novoCorpo) => setEditandoMeta({ ...editandoMeta, corpo: novoCorpo })}
+              />
+            </div>
+
+            <hr className="border-border" />
+
             <EditorNotion
               markdown={editandoMeta.corpo}
               onChange={(v) => setEditandoMeta({ ...editandoMeta, corpo: v ?? "" })}

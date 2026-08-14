@@ -118,7 +118,7 @@ export function PainelTarefaNotion({
   original: Tarefa | null;
   salvando: boolean;
   aoFechar: () => void;
-  aoSalvar: (t: Tarefa) => void;
+  aoSalvar: (t: Tarefa, fechar?: boolean) => void;
   aoRemover: () => void;
   setEditando: React.Dispatch<React.SetStateAction<Tarefa | null>>;
   opcoesRelacionamento: { titulo: string; caminho: string }[];
@@ -153,11 +153,11 @@ export function PainelTarefaNotion({
     };
   }, [tentarFechar]);
 
-  // Temporizador de segurança: se o painel ficar aberto por 20s sem edições, salva automaticamente no GitHub
+  // Temporizador de segurança: se o painel ficar aberto por 20s sem edições, salva no GitHub em segundo plano (sem fechar)
   useEffect(() => {
     if (!temMudancas || salvando) return;
     const timer = setTimeout(() => {
-      aoSalvar(editando);
+      aoSalvar(editando, false);
     }, 20_000);
     return () => clearTimeout(timer);
   }, [temMudancas, salvando, editando, aoSalvar]);
@@ -521,7 +521,7 @@ export default function Tarefas() {
     setErro("");
     try {
       const salva = await gravarTarefa(t);
-      setEditando(salva);
+      setEditando((atual) => (atual ? { ...atual, sha: salva.sha, caminho: salva.caminho } : salva));
       setOriginal(salva);
       if (fecharAoSalvar) {
         fechar();

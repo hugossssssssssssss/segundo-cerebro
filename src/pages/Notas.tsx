@@ -31,6 +31,7 @@ import {
 } from "@/components/ui";
 
 import { HistoricoDiffModal } from "@/components/HistoricoDiffModal";
+import { Subtarefas } from "@/components/Subtarefas";
 
 const PASTA = "notas";
 
@@ -223,11 +224,11 @@ export default function Notas() {
     });
   }
 
-  // Temporizador de segurança: salva nota se ficar 20s aberta com edições
+  // Temporizador de segurança: salva nota se ficar 20s aberta com edições (em segundo plano, sem fechar)
   useEffect(() => {
     if (!mudou || salvando || !aberta) return;
     const timer = setTimeout(() => {
-      salvar(aberta);
+      salvar(aberta, false);
     }, 20_000);
     return () => clearTimeout(timer);
   }, [mudou, salvando, aberta]);
@@ -243,7 +244,7 @@ export default function Notas() {
     return () => window.removeEventListener("beforeunload", aoSairDaJanela);
   }, [mudou]);
 
-  async function salvar(alvo?: NotaAberta) {
+  async function salvar(alvo?: NotaAberta, fecharAoSalvar = true) {
     const n = alvo || aberta;
     if (!n) return;
     const titulo = n.titulo.trim() || "Sem título";
@@ -266,14 +267,23 @@ export default function Notas() {
       const caminho =
         n.caminho ||
         nomeLivre(PASTA, titulo, arquivos.map((a) => a.caminho));
-      await gravar(
+      const novaSha = await gravar(
         cfg,
         caminho,
         texto,
         n.sha || undefined,
       );
       invalidarCache();
-      fecharNota();
+      const nSalva: NotaAberta = {
+        ...n,
+        caminho,
+        sha: novaSha,
+        original: { titulo, corpo: n.corpo, bruto: n.bruto },
+      };
+      setAberta(nSalva);
+      if (fecharAoSalvar) {
+        fecharNota();
+      }
       await carregarLista();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -391,6 +401,18 @@ export default function Notas() {
             </div>
             <hr className="my-6 border-border" />
           </div>
+
+          <div className="space-y-3 my-6">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Passos / Subtarefas
+            </label>
+            <Subtarefas
+              corpo={aberta.corpo}
+              onChange={(novoCorpo) => setAberta({ ...aberta, corpo: novoCorpo })}
+            />
+          </div>
+
+          <hr className="my-6 border-border" />
 
           <EditorNotion
             markdown={aberta.corpo}
