@@ -19,9 +19,6 @@ import {
   Plus,
   PanelLeft,
   MoreHorizontal,
-  Image,
-  Layout,
-  Target,
 } from "lucide-react";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { Busca } from "@/components/Busca";
@@ -44,16 +41,7 @@ const PDI = lazy(() => import("@/pages/PDI"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 
-// Todas as abas como ícones no topo
-const abasTopo = [
-  { para: "/home", rotulo: "Início", Icone: HomeIcon },
-  { para: "/tarefas", rotulo: "Tarefas", Icone: CheckSquare },
-  { para: "/notas", rotulo: "Notas", Icone: FileText },
-  { para: "/lousas", rotulo: "Lousas", Icone: Layout },
-  { para: "/referencias", rotulo: "Referências", Icone: Image },
-  { para: "/pdi", rotulo: "Carreira (PDI)", Icone: Target },
-  { para: "/chat", rotulo: "Conversar com IA", Icone: MessageCircle },
-];
+
 
 const abasMobile = [
   { para: "/home", rotulo: "Início", Icone: HomeIcon },
@@ -174,27 +162,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
               </NavLink>
             </div>
 
-            {/* Centro: Apenas Ícones de Navegação no Topo (Desktop) */}
-            <nav className="hidden sm:flex items-center gap-1 bg-accent/30 p-1 rounded-xl border border-border/50">
-              {abasTopo.map(({ para, rotulo, Icone }) => (
-                <NavLink
-                  key={para}
-                  to={para}
-                  className={({ isActive }) =>
-                    cn(
-                      "rounded-lg p-2 transition-all duration-200",
-                      isActive
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                    )
-                  }
-                  title={rotulo}
-                  aria-label={rotulo}
-                >
-                  <Icone size={18} />
-                </NavLink>
-              ))}
-            </nav>
+
 
             {/* Lado Direito: Ações Rápida e Configurações */}
             <div className="flex items-center gap-1">
