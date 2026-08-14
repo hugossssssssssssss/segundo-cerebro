@@ -16,6 +16,9 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   test: {
-    environment: "node",
+    // jsdom para os testes de componente. Três das quatro perdas de dados
+    // encontradas nas auditorias viviam em componentes e eram invisíveis
+    // para uma suíte que só testava funções puras.
+    environment: "jsdom",
   },
 });

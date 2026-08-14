@@ -9,6 +9,7 @@
 
 import type { Settings } from "./settings";
 import { FERRAMENTAS, type ChamadaFuncao } from "./acoes";
+import { hojeISO } from "./utils";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -54,8 +55,7 @@ export async function conversar(
     );
   }
 
-  const hoje = new Date();
-  const base = `${INSTRUCAO_BASE}\n\nHoje é ${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}.`;
+  const base = `${INSTRUCAO_BASE}\n\nHoje é ${hojeISO()}.`;
 
   const instrucao = contexto
     ? `${base}\n\n--- CONTEÚDO ATUAL DO SEGUNDO CÉREBRO ---\n${contexto}\n--- FIM DO CONTEÚDO ---`

@@ -162,7 +162,10 @@ export default function Configuracoes() {
             className="flex h-11 w-full rounded-lg border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
             <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
           </select>
         </div>
       </Cartao>

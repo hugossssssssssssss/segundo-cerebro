@@ -15,7 +15,7 @@ import remarkGfm from "remark-gfm";
 import remarkStringify from "remark-stringify";
 import { restaurarWikilinks, lerMarkdown } from "./markdown";
 import { montarIndice, extrairLinks } from "./links";
-import { lerSubtarefas } from "./tarefas";
+import { lerSubtarefas, minutosRegistrados } from "./tarefas";
 import type { ItemRepo } from "./repo";
 
 /** Reproduz o que o BlockNote faz ao gravar. */
@@ -124,5 +124,39 @@ describe("o resto do texto também precisa sobreviver", () => {
 
   it("dois links na mesma linha", () => {
     expect(restaurarWikilinks("\\[\\[a]] e \\[\\[b]]")).toBe("[[a]] e [[b]]");
+  });
+});
+
+describe("o corpo real de uma tarefa sobrevive ao editor", () => {
+  // As subtarefas e o editor escrevem no MESMO corpo. Este teste trava o
+  // formato que o pomodoro grava: se um dia o editor deixar de preservá-lo,
+  // o tempo registrado some sem ninguém perceber.
+  const corpoReal = [
+    "Ajustar a grade do material. Ver o [[Briefing Acme]].",
+    "",
+    "- [ ] escolher as imagens",
+    "- [x] revisar os textos",
+    "",
+    "## Tempo",
+    "- 2026-08-13 14:20 → 14:45 (25min)",
+    "- 2026-08-13 15:00 → 15:25 (25min)",
+  ].join("\n");
+
+  const depois = idaEVolta(corpoReal);
+
+  it("mantém a seção Tempo e o total de minutos", () => {
+    expect(depois).toContain("## Tempo");
+    expect(minutosRegistrados(depois)).toBe(50);
+  });
+
+  it("mantém as subtarefas e o que está marcado", () => {
+    const subs = lerSubtarefas(depois);
+    expect(subs).toHaveLength(2);
+    expect(subs.filter((s) => s.feita)).toHaveLength(1);
+  });
+
+  it("mantém o link e a seta do registro", () => {
+    expect(depois).toContain("[[Briefing Acme]]");
+    expect(depois).toContain("→");
   });
 });

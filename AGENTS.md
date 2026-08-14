@@ -89,7 +89,10 @@ arquivos.
 ## Antes de entregar qualquer mudança
 
 ```
-npm test          # 170 testes; nenhum precisa de rede
+npm test          # 186 testes; nenhum precisa de rede.
+                  # Inclui testes de componente (jsdom + Testing Library):
+                  # três das quatro perdas de dados achadas nas auditorias
+                  # viviam em componentes e eram invisíveis sem eles.
 npm run build     # tem que passar limpo
 npm run dev       # e abrir de verdade no navegador
 ```
@@ -97,6 +100,13 @@ npm run dev       # e abrir de verdade no navegador
 Nunca diga que funciona sem ter rodado. E teste também numa tela estreita: metade do uso é no Android.
 
 ## O editor e o corpo do texto
+
+**Dois componentes escrevem no mesmo corpo:** `Subtarefas` (as caixinhas) e
+`EditorNotion`. Isso é seguro — verificado: o registro do pomodoro, os
+`[[links]]` e as caixinhas sobrevivem à ida e volta pelo serializador
+(`editor.test.ts`). O custo é perder a posição do cursor no editor ao marcar
+uma caixinha, o que não acontece enquanto você digita.
+
 
 `EditorNotion` re-sincroniza quando o `markdown` muda por fora (as subtarefas
 editam o mesmo corpo). O truque é o `ultimoMd`: o editor guarda o que ele
