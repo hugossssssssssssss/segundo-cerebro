@@ -305,7 +305,7 @@ function PainelTarefaNotion({
   if (modoVisao === "lado") {
     return (
       <div
-        className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm p-0 sm:p-3 transition-opacity"
+        className="fixed inset-0 z-50 flex justify-end bg-black/15 backdrop-blur-[1px] p-0 sm:p-3 transition-opacity"
         onClick={tentarFechar}
       >
         <div
@@ -323,7 +323,7 @@ function PainelTarefaNotion({
   if (modoVisao === "telacheia") {
     return (
       <div
-        className="fixed inset-0 z-50 flex flex-col bg-black/40 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-150"
+        className="fixed inset-0 z-50 flex flex-col bg-black/15 backdrop-blur-[1px] p-2 sm:p-4 animate-in fade-in duration-150"
         onClick={tentarFechar}
       >
         <div
@@ -341,7 +341,7 @@ function PainelTarefaNotion({
   // Padrão: modo Pop-up central
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/15 backdrop-blur-[1px] p-0 sm:p-4"
       onClick={tentarFechar}
     >
       <div

@@ -6,17 +6,30 @@ import "@blocknote/mantine/style.css";
 import { restaurarWikilinks } from "@/lib/markdown";
 
 /**
+ * Auxiliar para converter URLs coladas do tipo ?abrir=caminho ou [[alvo]] em @ Nome do Item
+ */
+export function formatarTextoAoColar(texto: string): string | null {
+  if (!texto) return null;
+
+  // Se for URL com ?abrir=...
+  const matchUrl = texto.match(/(?:https?:\/\/[^\s)]+|#\/[^\s)]+)\?abrir=([a-zA-Z0-9_%.-]+)/);
+  if (matchUrl) {
+    const dec = decodeURIComponent(matchUrl[1]);
+    const nomeOuTitulo = dec.split("/").pop()!.replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/\.md$/, "");
+    return `@${nomeOuTitulo}`;
+  }
+
+  // Se for [[alvo]] ou [[alvo|exibir]]
+  const matchWiki = texto.match(/^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/);
+  if (matchWiki) {
+    return `@${(matchWiki[2] ?? matchWiki[1]).trim()}`;
+  }
+
+  return null;
+}
+
+/**
  * Editor de texto rico que lê e escreve Markdown.
- *
- * Três cuidados que não são opcionais aqui:
- *
- * 1. **Os `[[links]]` são desescapados na saída.** O serializador do BlockNote
- *    grava `\[\[Briefing]]`, o que sujava o arquivo no repositório E fazia o
- *    app parar de reconhecer o link.
- * 2. **O tema acompanha o app.** Estava fixo em "light", então escrever no
- *    modo escuro era uma placa branca no meio da tela.
- * 3. **O editor não estoura o cartão no celular.** Tinha margem negativa de
- *    80px, que transbordava o modal numa tela de 360px.
  */
 export function EditorNotion({
   markdown,
@@ -55,6 +68,15 @@ export function EditorNotion({
     setPronto(true);
   }, [editor, markdown, pronto]);
 
+  const aoColar = (e: React.ClipboardEvent) => {
+    const raw = e.clipboardData.getData("text/plain");
+    const substituicao = formatarTextoAoColar(raw);
+    if (substituicao) {
+      e.preventDefault();
+      document.execCommand("insertText", false, substituicao);
+    }
+  };
+
   if (!pronto) {
     return (
       <div className="animate-pulse p-4 text-sm text-muted-foreground">
@@ -64,15 +86,24 @@ export function EditorNotion({
   }
 
   return (
-    <div className="notion-editor-wrapper min-h-[300px]">
+    <div className="notion-editor-wrapper min-h-[300px]" onPaste={aoColar}>
       <BlockNoteView
         editor={editor}
         editable={editable}
         theme={escuro ? "dark" : "light"}
         onChange={() => {
-          const limpo = restaurarWikilinks(
-            editor.blocksToMarkdownLossy(editor.document),
-          );
+          const mdBruto = editor.blocksToMarkdownLossy(editor.document);
+          const limpo = restaurarWikilinks(mdBruto);
+          
+          if (limpo !== mdBruto) {
+            try {
+              const blocos = editor.tryParseMarkdownToBlocks(limpo);
+              editor.replaceBlocks(editor.document, blocos);
+            } catch {
+              // ignora erro silenciosamente se a re-análise falhar
+            }
+          }
+
           ultimoMd.current = limpo;
           onChange(limpo);
         }}
@@ -80,7 +111,6 @@ export function EditorNotion({
       <style>{`
         .notion-editor-wrapper .bn-container { font-family: inherit; }
         .notion-editor-wrapper .bn-editor { padding-left: 0; padding-right: 0; }
-        /* No celular o editor tinha margem negativa e estourava o cartão */
         @media (min-width: 640px) {
           .notion-editor-wrapper .bn-editor { padding-left: 24px; padding-right: 24px; }
         }
