@@ -60,12 +60,16 @@ export function comoTarefa(
 
 /** Frontmatter para gravar de volta. */
 export function paraFrontmatter(t: Tarefa): Record<string, unknown> {
+  const agora = new Date().toISOString();
+  const criado = t.bruto.criado || t.bruto.criado_em || agora.slice(0, 10);
   return mesclarFrontmatter(t.bruto, {
     titulo: t.titulo,
     tipo: "tarefa",
     status: t.status,
     prazo: t.prazo,
     tags: t.tags.length ? t.tags : undefined,
+    criado,
+    atualizado: agora,
   });
 }
 

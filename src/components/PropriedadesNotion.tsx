@@ -408,23 +408,39 @@ export function PropriedadesNotion({
     }
 
     if (tipo === "criado_em") {
-      const dataCriacao = typeof valor === "string" && valor.trim() ? valor : format(new Date(), "dd 'de' MMM 'de' yyyy", { locale: ptBR });
+      let dataObj: Date | undefined;
+      const raw = dados.criado_em || dados.criado;
+      if (typeof raw === "string" && raw.trim()) {
+        const parsed = new Date(raw.includes("T") ? raw : `${raw.trim()}T00:00:00`);
+        if (!isNaN(parsed.getTime())) dataObj = parsed;
+      }
+      if (!dataObj) dataObj = new Date();
+
+      const formatada = format(dataObj, "dd 'de' MMM 'de' yyyy", { locale: ptBR });
+
       return (
         <span className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1.5">
           <Clock size={13} />
-          {dataCriacao}
+          {formatada}
         </span>
       );
     }
 
     if (tipo === "ultima_edicao") {
-      const dataFormatada = typeof dados.atualizado === "string" && dados.atualizado.trim()
-        ? dados.atualizado
-        : format(new Date(), "dd 'de' MMM 'de' yyyy, HH:mm", { locale: ptBR });
+      let dataObj: Date | undefined;
+      const raw = dados.atualizado || dados.ultima_edicao;
+      if (typeof raw === "string" && raw.trim()) {
+        const parsed = new Date(raw);
+        if (!isNaN(parsed.getTime())) dataObj = parsed;
+      }
+      if (!dataObj) dataObj = new Date();
+
+      const formatada = format(dataObj, "dd 'de' MMM 'de' yyyy, HH:mm", { locale: ptBR });
+
       return (
         <span className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1.5">
           <Clock size={13} />
-          {dataFormatada}
+          {formatada}
         </span>
       );
     }
@@ -831,36 +847,7 @@ export function PropriedadesNotion({
         );
       })}
 
-      {/* Gaveta de Propriedades Ocultas */}
-      {chavesOcultas.length > 0 && (
-        <div className="mt-1 border-t border-border/40 pt-1">
-          <button
-            onClick={() => setMostrandoOcultas(!mostrandoOcultas)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 font-medium"
-          >
-            {mostrandoOcultas ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-            <span>{chavesOcultas.length} propriedade{chavesOcultas.length > 1 ? "s" : ""} oculta{chavesOcultas.length > 1 ? "s" : ""}</span>
-          </button>
-
-          {mostrandoOcultas && (
-            <div className="flex flex-col gap-1.5 mt-1.5 pl-2 border-l border-border/60">
-              {chavesOcultas.map((chave) => {
-                const fixo = camposFixos[chave];
-                return (
-                  <div key={chave} className="flex min-h-8 items-center gap-4 text-xs group opacity-75 hover:opacity-100">
-                    {renderizarMenuPropriedade(chave, fixo)}
-                    <div className="flex-1 flex items-center min-h-8">
-                      {renderizarValor(chave)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Botão de Adicionar Nova Propriedade perfeitamente alinhado */}
+      {/* Botão de Adicionar Nova Propriedade perfeitamente alinhado acima das ocultas */}
       <div className="flex items-center gap-4 text-xs mt-1 pt-1 border-t border-border/30">
         <div className="w-36">
           <Popover open={menuAberto === "novo_campo"} onOpenChange={(open) => setMenuAberto(open ? "novo_campo" : null)}>
@@ -922,6 +909,35 @@ export function PropriedadesNotion({
         </div>
         <div className="flex-1"></div>
       </div>
+
+      {/* Gaveta de Propriedades Ocultas na parte inferior */}
+      {chavesOcultas.length > 0 && (
+        <div className="mt-1 border-t border-border/40 pt-1">
+          <button
+            onClick={() => setMostrandoOcultas(!mostrandoOcultas)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 font-medium"
+          >
+            {mostrandoOcultas ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            <span>{chavesOcultas.length} propriedade{chavesOcultas.length > 1 ? "s" : ""} oculta{chavesOcultas.length > 1 ? "s" : ""}</span>
+          </button>
+
+          {mostrandoOcultas && (
+            <div className="flex flex-col gap-1.5 mt-1.5 pl-2 border-l border-border/60">
+              {chavesOcultas.map((chave) => {
+                const fixo = camposFixos[chave];
+                return (
+                  <div key={chave} className="flex min-h-8 items-center gap-4 text-xs group opacity-75 hover:opacity-100">
+                    {renderizarMenuPropriedade(chave, fixo)}
+                    <div className="flex-1 flex items-center min-h-8">
+                      {renderizarValor(chave)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
