@@ -248,3 +248,65 @@ export function sugerir(
 ): Alvo[] {
   return filtrarAlvos(alvosUnicos(indice), termo, limite);
 }
+
+/**
+ * Extrai menções em formato de string (@Nome) do corpo de um texto.
+ */
+export function extrairMencoesTexto(corpo: string): string[] {
+  if (!corpo) return [];
+  const mencoes: string[] = [];
+  const visto = new Set<string>();
+
+  // 1. Matches [[alvo]] ou [[alvo|exibir]]
+  const regexWiki = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+  for (const m of corpo.matchAll(regexWiki)) {
+    const limpo = m[1]?.trim();
+    if (limpo && !visto.has(limpo.toLowerCase())) {
+      visto.add(limpo.toLowerCase());
+      mencoes.push(`@${limpo}`);
+    }
+  }
+
+  // 2. Matches @alvo
+  const regexAt = new RegExp(`(?<![\\w.@-])@([${LETRA}][${LETRA}0-9_\\-\\s]{1,99}?)(?=[.,;:!?)\\n\\r]|\\s*$)`, "g");
+  for (const m of corpo.matchAll(regexAt)) {
+    const limpo = m[1]?.trim();
+    if (limpo && !visto.has(limpo.toLowerCase())) {
+      visto.add(limpo.toLowerCase());
+      mencoes.push(`@${limpo}`);
+    }
+  }
+
+  return mencoes;
+}
+
+/**
+ * Garante que dadosProps/frontmatter contenha a propriedade `relacionamentos`
+ * sincronizada com as menções contidas no corpo do texto.
+ */
+export function sincronizarRelacionamentos(
+  dados: Record<string, any>,
+  corpo: string,
+): Record<string, any> {
+  const mencoesTexto = extrairMencoesTexto(corpo);
+  const relExistentes = Array.isArray(dados.relacionamentos)
+    ? dados.relacionamentos
+    : Array.isArray(dados.relacao)
+    ? dados.relacao
+    : [];
+
+  const unicos = Array.from(new Set([...relExistentes, ...mencoesTexto]));
+  
+  if (unicos.length === 0 && !dados.relacionamentos && !dados.relacao) {
+    return dados;
+  }
+
+  return {
+    ...dados,
+    relacionamentos: unicos,
+    esquema: {
+      ...(dados.esquema || {}),
+      relacionamentos: "relation",
+    },
+  };
+}

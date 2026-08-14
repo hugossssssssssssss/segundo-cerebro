@@ -15,6 +15,7 @@ import { PropriedadesNotion } from "@/components/PropriedadesNotion";
 import { EditorNotion } from "@/components/EditorNotion";
 import { Subtarefas } from "@/components/Subtarefas";
 import { MencionadoEm } from "@/components/Links";
+import { sincronizarRelacionamentos } from "@/lib/links";
 import { cn } from "@/lib/utils";
 
 export type ModoVisaoNotion = "popup" | "lado" | "telacheia" | "flutuante";
@@ -231,6 +232,15 @@ export function PainelNotionBase({
     />
   );
 
+  // Sincroniza automaticamente menções no texto com a propriedade de relacionamentos
+  useEffect(() => {
+    if (!corpo) return;
+    const sinc = sincronizarRelacionamentos(dadosProps, corpo);
+    if (JSON.stringify(sinc) !== JSON.stringify(dadosProps)) {
+      onChangeProps(sinc);
+    }
+  }, [corpo]);
+
   const eTarefa = rotuloTipo?.toLowerCase().includes("tarefa");
 
   const conteudo = (
@@ -277,7 +287,14 @@ export function PainelNotionBase({
         <EditorNotion
           key={caminhoItem || titulo || "editor"}
           markdown={corpo}
-          onChange={(v) => setCorpo(v ?? "")}
+          onChange={(v) => {
+            const nCorpo = v ?? "";
+            setCorpo(nCorpo);
+            const sinc = sincronizarRelacionamentos(dadosProps, nCorpo);
+            if (JSON.stringify(sinc) !== JSON.stringify(dadosProps)) {
+              onChangeProps(sinc);
+            }
+          }}
         />
       </div>
 

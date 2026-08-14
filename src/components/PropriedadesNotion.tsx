@@ -700,8 +700,20 @@ export function PropriedadesNotion({
               {unicosMencoes.length > 0 ? (
                 unicosMencoes.map((r: string) => {
                   const nomePuro = r.replace(/^[\[@]+/, "").replace(/\]\]$/, "");
+                  const itemAlvo = opcoesRelacionamento.find((o) => o.titulo.toLowerCase() === nomePuro.toLowerCase());
                   return (
-                    <Badge variant="secondary" key={r} className="font-medium text-[11px] px-2 py-0.5 flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:underline">
+                    <Badge 
+                      variant="secondary" 
+                      key={r} 
+                      onClick={(e) => {
+                        if (itemAlvo) {
+                          e.stopPropagation();
+                          window.location.href = `?abrir=${encodeURIComponent(itemAlvo.caminho)}`;
+                        }
+                      }}
+                      className="font-medium text-[11px] px-2 py-0.5 flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      title={itemAlvo ? `Abrir "${itemAlvo.titulo}"` : undefined}
+                    >
                       <LinkIcon size={10} className="shrink-0" />
                       @{nomePuro}
                     </Badge>
