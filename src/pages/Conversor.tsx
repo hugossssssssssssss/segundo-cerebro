@@ -21,9 +21,10 @@ import { cn } from "@/lib/utils";
 import { lerConfig } from "@/lib/settings";
 import { gravar } from "@/lib/github";
 import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-// Configura o worker do PDF.js via CDN seguro
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+// Configura o worker do PDF.js via Vite bundle local sem dependencia de CDN externa
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 type AbaConversor = "pdf_para_img" | "img_para_img" | "texto_para_md";
 
@@ -74,7 +75,11 @@ export default function Conversor() {
 
     try {
       const buffer = await arquivoPdf.arrayBuffer();
-      const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
+      const loadingTask = pdfjsLib.getDocument({
+        data: new Uint8Array(buffer),
+        cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+        cMapPacked: true,
+      });
       const pdf = await loadingTask.promise;
       const totalPaginas = pdf.numPages;
 
@@ -82,15 +87,19 @@ export default function Conversor() {
 
       for (let i = 1; i <= totalPaginas; i++) {
         const page = await pdf.getPage(i);
-        // Renderiza com escala 2x para qualidade de design
+        // Renderiza com escala 2x para alta qualidade visual
         const viewport = page.getViewport({ scale: 2.0 });
         const canvas = document.createElement("canvas");
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
         const ctx = canvas.getContext("2d");
 
         if (ctx) {
-          await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
+          await page.render({
+            canvasContext: ctx,
+            viewport: viewport,
+          } as any).promise;
+
           const mimeType = formatoSaidaPdf === "png" ? "image/png" : "image/jpeg";
           const dataUrl = canvas.toDataURL(mimeType, 0.92);
           const ext = formatoSaidaPdf === "png" ? "png" : "jpg";
@@ -106,8 +115,9 @@ export default function Conversor() {
 
       setPaginasRenderizadas(resultados);
       setMensagemSucesso(`Todas as ${totalPaginas} páginas foram convertidas em imagem com sucesso!`);
-    } catch {
-      setErro("Erro ao processar o PDF. Verifique se o arquivo não está corrompido.");
+    } catch (err: any) {
+      console.error("Erro ao converter PDF para imagem:", err);
+      setErro(`Erro ao processar o PDF: ${err?.message || String(err)}`);
     } finally {
       setProcessando(false);
     }
