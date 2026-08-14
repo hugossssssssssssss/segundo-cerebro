@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Masonry } from "react-plock";
 import { Plus, Trash2, ImagePlus, ExternalLink } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -41,6 +41,7 @@ export default function Referencias() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
   const location = useLocation();
+  const navegar = useNavigate();
 
   const [refs, setRefs] = useState<Referencia[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -64,7 +65,7 @@ export default function Referencias() {
     setCarregando(true);
     setErro("");
     try {
-      const itens = daPasta(await carregarRepo(cfg), PASTA_REFS);
+      const itens = daPasta(await carregarRepo(cfg, { memoria: 3000 }), PASTA_REFS);
       setRefs(
         itens.map((i) =>
           comoReferencia(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)),
@@ -89,11 +90,16 @@ export default function Referencias() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
+    // Consumir uma vez só: o parâmetro ficava na URL e, como o efeito depende
+    // da lista recarregada, todo Salvar reabria o item anterior por cima do
+    // que você estava editando.
     if (abrirCaminho && refs.length > 0 && (!editando || editando.caminho !== abrirCaminho)) {
       const alvo = refs.find((r) => r.caminho === abrirCaminho);
       if (alvo) {
         setEditando(alvo);
         setOriginal(alvo);
+        // limpa o parâmetro: sem isso ele reabria o item a cada recarga
+        navegar(location.pathname, { replace: true });
       }
     }
   }, [location.search, refs]);

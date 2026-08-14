@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Target, Package, Trash2, AlertTriangle, Sparkles } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
@@ -46,6 +46,7 @@ export default function PDI() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
   const location = useLocation();
+  const navegar = useNavigate();
 
   const [metas, setMetas] = useState<Meta[]>([]);
   const [entregas, setEntregas] = useState<Entrega[]>([]);
@@ -69,7 +70,7 @@ export default function PDI() {
     setErro("");
     try {
       // um carregamento só do repositório serve as duas pastas
-      const todos = await carregarRepo(cfg);
+      const todos = await carregarRepo(cfg, { memoria: 3000 });
       setMetas(
         daPasta(todos, PASTA_METAS).map((i) =>
           comoMeta(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)),
@@ -96,17 +97,24 @@ export default function PDI() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
+    // Consumir uma vez só: o parâmetro ficava na URL e, como o efeito depende
+    // da lista recarregada, todo Salvar reabria o item anterior por cima do
+    // que você estava editando.
     if (abrirCaminho && (metas.length > 0 || entregas.length > 0)) {
       const metaAlvo = metas.find((m) => m.caminho === abrirCaminho);
       if (metaAlvo && (!editandoMeta || editandoMeta.caminho !== abrirCaminho)) {
         setEditandoMeta(metaAlvo);
         setOrigMeta(metaAlvo);
+        // limpa o parâmetro: sem isso ele reabria o item a cada recarga
+        navegar(location.pathname, { replace: true });
         return;
       }
       const entregaAlvo = entregas.find((e) => e.caminho === abrirCaminho);
       if (entregaAlvo && (!editandoEntrega || editandoEntrega.caminho !== abrirCaminho)) {
         setEditandoEntrega(entregaAlvo);
         setOrigEntrega(entregaAlvo);
+        // limpa o parâmetro: sem isso ele reabria o item a cada recarga
+        navegar(location.pathname, { replace: true });
       }
     }
   }, [location.search, metas, entregas]);

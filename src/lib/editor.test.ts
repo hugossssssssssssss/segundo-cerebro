@@ -109,9 +109,20 @@ describe("o resto do texto também precisa sobreviver", () => {
     expect(restaurarWikilinks("texto comum")).toBe("texto comum");
   });
 
-  it("não estraga colchete solto legítimo", () => {
-    // um link markdown normal não pode virar wikilink
-    const r = restaurarWikilinks("veja [o site](https://x.com)");
-    expect(r).toBe("veja [o site](https://x.com)");
+  it("não transforma em link o que o usuário escapou de propósito", () => {
+    // O teste antigo passava um texto SEM barra invertida, que a função nunca
+    // poderia tocar — provava nada. Estes têm barra e devem sobreviver.
+    expect(restaurarWikilinks("custa \\[muito]")).toBe("custa \\[muito]");
+    expect(restaurarWikilinks("veja [o site](https://x.com)")).toBe(
+      "veja [o site](https://x.com)",
+    );
+  });
+
+  it("desfaz o escape nos dois lados quando existe", () => {
+    expect(restaurarWikilinks("\\[\\[x\\]\\]")).toBe("[[x]]");
+  });
+
+  it("dois links na mesma linha", () => {
+    expect(restaurarWikilinks("\\[\\[a]] e \\[\\[b]]")).toBe("[[a]] e [[b]]");
   });
 });

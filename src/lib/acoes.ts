@@ -231,9 +231,14 @@ function nomeDoCaminho(caminho: string): string {
 /**
  * Executa uma ação aprovada.
  *
- * Tudo que a IA grava sai marcado com `ia_sugeriu: true`, para você saber
- * depois o que foi você que escreveu e o que foi a máquina.
+ * A marca `ia_sugeriu: true` só é gravada onde existe interface para conferir
+ * e limpar — hoje, as entregas do PDI. Nas outras pastas ela virava lixo
+ * permanente: nada exibia, nada removia, e `mesclarFrontmatter` a reescrevia
+ * fielmente em todo save. Marca que ninguém pode tirar não é marca, é sujeira.
  */
+function marcaDaIA(pasta: string): Record<string, unknown> {
+  return pasta === "pdi/entregas" ? { ia_sugeriu: true } : {};
+}
 /**
  * Caminhos já entregues nesta sessão, mesmo que o acervo ainda não saiba.
  *
@@ -270,7 +275,7 @@ export async function executar(
         ...doc.dados,
         ...(acao.campos ?? {}),
         ...(acao.titulo ? { titulo: acao.titulo } : {}),
-        ia_sugeriu: true,
+        ...marcaDaIA(acao.caminho!.split("/").slice(0, -1).join("/")),
       },
       corpo: acao.corpo ?? doc.corpo,
     });
@@ -293,7 +298,7 @@ export async function executar(
         ? { data: hojeISO() }
         : {}),
       ...(acao.campos ?? {}),
-      ia_sugeriu: true,
+      ...marcaDaIA(acao.pasta!),
     },
     corpo: acao.corpo ?? "",
   });
@@ -313,36 +318,3 @@ function tipoDaPasta(pasta: string): string {
   };
   return tipos[pasta] ?? "nota";
 }
-
-/** Instruções que ensinam a IA a propor ações. Vai junto do prompt. */
-export const INSTRUCAO_ACOES = `
-QUANDO O HUGO PEDIR PARA CRIAR, EDITAR OU APAGAR ALGO:
-
-Responda em duas partes. Primeiro uma frase curta em português dizendo o que
-você vai fazer. Depois um bloco assim:
-
-\`\`\`acoes
-[
-  {
-    "tipo": "criar",
-    "pasta": "tarefas",
-    "titulo": "Revisar a proposta",
-    "campos": { "status": "a-fazer", "prazo": "2026-08-20", "tags": ["cliente"] },
-    "corpo": "Detalhes aqui.",
-    "motivo": "você pediu uma tarefa para sexta"
-  }
-]
-\`\`\`
-
-REGRAS:
-- "pasta" só pode ser: tarefas, notas, referencias, reunioes, pdi/metas, pdi/entregas
-- para editar ou apagar, use "caminho" com o caminho exato do arquivo, que você
-  encontra no conteúdo que recebeu
-- datas sempre AAAA-MM-DD; status de tarefa: a-fazer, fazendo ou feito
-- para ligar um item a outro, escreva [[Título do outro item]] dentro do corpo
-- proponha só o que foi pedido. Não invente tarefas "que podem ser úteis"
-- se não tiver certeza do que ele quer, pergunte em vez de propor ação
-- NUNCA proponha apagar algo sem que ele tenha pedido explicitamente
-
-O Hugo vê cada ação num cartão e aprova uma por uma. Nada é gravado sem isso.
-`;

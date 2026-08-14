@@ -206,3 +206,64 @@ describe("aprovar duas criações seguidas não colide", () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe("a marca da IA", () => {
+  async function gravadoPor(acao: Acao): Promise<string> {
+    limparReservas();
+    let corpo = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        if (init?.method === "PUT") {
+          const enviado = JSON.parse(String(init.body)).content;
+          corpo = new TextDecoder().decode(
+            Uint8Array.from(atob(enviado), (c) => c.charCodeAt(0)),
+          );
+        }
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({ content: { sha: "s" } }),
+        } as unknown as Response;
+      }),
+    );
+    vi.stubGlobal("navigator", { onLine: true });
+    await executar(
+      { ...PADRAO, githubToken: "t", repoOwner: "h", repoName: "d" },
+      acao,
+      [],
+    );
+    vi.unstubAllGlobals();
+    return corpo;
+  }
+
+  it("marca a entrega, onde existe tela para conferir", async () => {
+    const corpo = await gravadoPor({
+      tipo: "criar",
+      pasta: "pdi/entregas",
+      titulo: "Campanha",
+    });
+    expect(corpo).toContain("ia_sugeriu: true");
+  });
+
+  it("NÃO marca tarefa: nada exibiria e nada removeria a marca", async () => {
+    // marca que ninguém pode tirar vira lixo permanente no arquivo, porque
+    // mesclarFrontmatter a reescreve fielmente em todo save
+    const corpo = await gravadoPor({
+      tipo: "criar",
+      pasta: "tarefas",
+      titulo: "Ligar",
+    });
+    expect(corpo).not.toContain("ia_sugeriu");
+  });
+
+  it("NÃO marca nota nem referência", async () => {
+    expect(
+      await gravadoPor({ tipo: "criar", pasta: "notas", titulo: "Ideia" }),
+    ).not.toContain("ia_sugeriu");
+    expect(
+      await gravadoPor({ tipo: "criar", pasta: "referencias", titulo: "Grade" }),
+    ).not.toContain("ia_sugeriu");
+  });
+});

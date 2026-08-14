@@ -239,17 +239,35 @@ export async function carregarRepo(
     }
   }
 
-  const itens: ItemRepo[] = folhas.map((f) => {
-    const texto = textoPorSha.get(f.sha) ?? "";
-    return {
-      caminho: f.path,
-      nome: f.path.split("/").pop()!,
-      sha: f.sha,
-      tamanho: f.size,
-      texto,
-      doc: lerMarkdown(texto),
-    };
-  });
+  /**
+   * Arquivo cujo conteúdo não veio fica DE FORA da lista.
+   *
+   * O GraphQL devolve `text: null` para o que ele considera binário ou grande
+   * demais. Antes isso virava um item com corpo vazio: a nota abria em branco
+   * e o próximo Salvar gravava o vazio por cima do arquivo real. Some da
+   * tela é ruim; apagar sem avisar é inaceitável.
+   */
+  const ilegiveis = folhas.filter((f) => !textoPorSha.has(f.sha));
+  if (ilegiveis.length) {
+    console.warn(
+      "Arquivos que o GitHub não entregou e por isso foram omitidos:",
+      ilegiveis.map((f) => f.path),
+    );
+  }
+
+  const itens: ItemRepo[] = folhas
+    .filter((f) => textoPorSha.has(f.sha))
+    .map((f) => {
+      const texto = textoPorSha.get(f.sha)!;
+      return {
+        caminho: f.path,
+        nome: f.path.split("/").pop()!,
+        sha: f.sha,
+        tamanho: f.size,
+        texto,
+        doc: lerMarkdown(texto),
+      };
+    });
 
   cache = { chave, itens, quando: Date.now() };
   return itens;

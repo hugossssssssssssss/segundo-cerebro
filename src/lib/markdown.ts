@@ -154,9 +154,13 @@ export function mesclarFrontmatter(
  * Rodar isto na saída do editor mantém o arquivo limpo e os links vivos.
  */
 export function restaurarWikilinks(markdown: string): string {
-  return markdown
-    .replace(/\\\[\\\[/g, "[[")
-    .replace(/\\\]\\\]/g, "]]")
-    // remark escapa só a abertura; a fechadura costuma vir sem barra
-    .replace(/\\\[\\\[([^\]]*?)\]\]/g, "[[$1]]");
+  // Só desfaz o escape quando o resultado forma mesmo um wikilink fechado.
+  // Uma substituição cega de `\[\[` transformava em link qualquer colchete
+  // que o usuário tivesse escapado de propósito, ou colado de um trecho de
+  // código como `\[\[1,2]]`.
+  return markdown.replace(
+    /\\\[\\\[([^\[\]\n]{1,200}?)\\?\]\\?\]/g,
+    (_todo, alvo) => `[[${alvo}]]`,
+  );
 }
+

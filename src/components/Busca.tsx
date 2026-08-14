@@ -43,7 +43,7 @@ export function Busca({
 
     let cancelado = false;
     setCarregando(true);
-    carregarRepo(cfg)
+    carregarRepo(cfg, { memoria: 3000 })
       .then((itens) => !cancelado && setAcervo(itens))
       .catch((e) => !cancelado && setErro(e instanceof Error ? e.message : String(e)))
       .finally(() => !cancelado && setCarregando(false));

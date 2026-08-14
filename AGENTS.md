@@ -35,7 +35,7 @@ Publicado em https://hugossssssssssssss.github.io/segundo-cerebro/ pelo workflow
 | Arquivo | Responsabilidade |
 |---|---|
 | `src/lib/repo.ts` | Carrega o repositório inteiro: árvore (1 req) + GraphQL em lote. Revalida sempre; reaproveita conteúdo por sha |
-| `src/lib/github.ts` | Escrita e leitura pontual. Traduz erro do GitHub, distinguindo limite de API de falta de permissão |
+| `src/lib/github.ts` | **Escrita** (gravar/apagar) e leitura pontual de um arquivo. Traduz erro do GitHub, distinguindo limite de API de falta de permissão |
 | `src/lib/markdown.ts` | Frontmatter tolerante a falha, nomes de arquivo, mesclagem, `restaurarWikilinks` |
 | `src/lib/busca.ts` | Busca em título, corpo e tags de tudo, no navegador |
 | `src/lib/links.ts` | `[[links]]`, índice por título e "mencionado em" |
@@ -89,7 +89,7 @@ arquivos.
 ## Antes de entregar qualquer mudança
 
 ```
-npm test          # 167 testes; nenhum precisa de rede
+npm test          # 170 testes; nenhum precisa de rede
 npm run build     # tem que passar limpo
 npm run dev       # e abrir de verdade no navegador
 ```
@@ -111,6 +111,6 @@ app deixa de reconhecer os links.
 
 - Token e chave ficam em texto puro no `localStorage`. O plano discutido é criptografá-los com uma senha (WebCrypto, sem backend). O Hugo adiou por ora.
 - Não há autocompletar de `[[` desde que o corpo passou para o BlockNote; trazê-lo de volta exige uma extensão do editor.
-- `ia_sugeriu` só é exibido e limpo em entregas; em tarefas e notas a marca fica no arquivo sem interface.
+- `ia_sugeriu` só é GRAVADO em `pdi/entregas`, que é onde existe tela para conferir e limpar. Se você criar essa interface em outra pasta, ajuste `marcaDaIA` em `acoes.ts`.
 - Sem funcionamento offline: o app depende do GitHub estar acessível.
 - Imagens engordam o repositório. Acima de ~1 GB, migrar para um bucket e guardar só os links.

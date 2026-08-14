@@ -1,4 +1,11 @@
-import { HashRouter, Routes, Route, NavLink, Navigate } from "react-router-dom";
+import {
+  HashRouter,
+  Routes,
+  Route,
+  NavLink,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { Suspense, lazy, useEffect, useState } from "react";
 import {
   CheckSquare,
@@ -71,6 +78,10 @@ function BotaoTema() {
 }
 
 function Estrutura({ children }: { children: React.ReactNode }) {
+  // useLocation e não o `location` global: sob HashRouter com base
+  // "/segundo-cerebro/", o pathname global nunca muda, então o guard do
+  // botão flutuante nunca disparava e ele cobria o Enviar do chat.
+  const { pathname } = useLocation();
   const [buscando, setBuscando] = useState(false);
   const [capturando, setCapturando] = useState(false);
   const [textoCompartilhado, setTextoCompartilhado] = useState("");
@@ -207,7 +218,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* Botão flutuante de captura no celular, acima da barra de abas */}
-      {!location.pathname.startsWith("/chat") && (
+      {!pathname.startsWith("/chat") && (
         <button
           onClick={() => setCapturando(true)}
           className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 sm:hidden"

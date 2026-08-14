@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { listar, ler, gravar, apagar, ErroGitHub } from "./github";
+import { ler, gravar, apagar, ErroGitHub } from "./github";
 import { PADRAO, type Settings } from "./settings";
 
 const cfg: Settings = {
@@ -88,25 +88,6 @@ describe("gravar", () => {
 
     await gravar(cfg, "a.md", "t", "sha-antigo");
     expect(JSON.parse(fetchFalso.mock.calls[1][1].body).sha).toBe("sha-antigo");
-  });
-});
-
-describe("listar", () => {
-  it("pasta inexistente devolve lista vazia, não erro", async () => {
-    fetchFalso.mockResolvedValue(resposta({ message: "Not Found" }, { status: 404 }));
-    expect(await listar(cfg, "notas")).toEqual([]);
-  });
-
-  it("ignora o que não é .md", async () => {
-    fetchFalso.mockResolvedValue(
-      resposta([
-        { type: "file", name: "a.md", path: "notas/a.md", sha: "1", size: 10 },
-        { type: "file", name: "foto.png", path: "notas/foto.png", sha: "2", size: 99 },
-        { type: "dir", name: "sub", path: "notas/sub", sha: "3", size: 0 },
-      ]),
-    );
-    const r = await listar(cfg, "notas");
-    expect(r.map((a) => a.nome)).toEqual(["a.md"]);
   });
 });
 

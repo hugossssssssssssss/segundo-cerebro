@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Plus, Timer, Trash2, Check, List, CalendarDays } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { ler, gravar, apagar } from "@/lib/github";
@@ -95,6 +95,7 @@ export default function Tarefas() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
   const location = useLocation();
+  const navegar = useNavigate();
 
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -122,7 +123,7 @@ export default function Tarefas() {
     setErro("");
     try {
       // duas requisições para o repositório inteiro, em vez de 1 + N
-      const todos = await carregarRepo(cfg);
+      const todos = await carregarRepo(cfg, { memoria: 3000 });
       setAcervo(todos);
       const itens = daPasta(todos, PASTA);
       setTarefas(
@@ -148,9 +149,14 @@ export default function Tarefas() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
+    // Consumir uma vez só: o parâmetro ficava na URL e, como o efeito depende
+    // da lista recarregada, todo Salvar reabria o item anterior por cima do
+    // que você estava editando.
     if (abrirCaminho && tarefas.length > 0 && (!editando || editando.caminho !== abrirCaminho)) {
       const alvo = tarefas.find((t) => t.caminho === abrirCaminho);
       if (alvo) abrir(alvo);
+      // limpa o parâmetro: sem isso ele reabria o item a cada recarga da lista
+      navegar(location.pathname, { replace: true });
     }
   }, [location.search, tarefas]);
 
@@ -510,11 +516,16 @@ export default function Tarefas() {
 
             <div className="flex flex-col gap-2">
               <PropriedadesNotion
+                // O frontmatter bruto vem PRIMEIRO e o estado ao vivo por
+                // cima. Ao contrário, o `bruto` (que não é atualizado quando
+                // você marca a caixinha na lista) sobrescrevia o status: a
+                // tarefa aparecia como "A fazer" ao abrir e o próximo toque
+                // numa propriedade a gravava desfeita.
                 dados={{
+                  ...editando.bruto,
                   status: editando.status,
                   prazo: editando.prazo,
                   tags: editando.tags,
-                  ...editando.bruto,
                 }}
                 onChange={(novosDados) => {
                   setEditando({

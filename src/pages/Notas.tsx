@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Plus, Trash2, Search, ArrowLeft, Save, Tag } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
@@ -80,6 +80,7 @@ export default function Notas() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
   const location = useLocation();
+  const navegar = useNavigate();
 
   const [arquivos, setArquivos] = useState<ItemRepo[]>([]);
   const [titulos, setTitulos] = useState<Record<string, string>>({});
@@ -103,7 +104,7 @@ export default function Notas() {
     try {
       // o conteúdo já vem junto, então o título sai daqui mesmo — antes eram
       // N requisições extras só para descobrir o título de cada nota
-      const todos = await carregarRepo(cfg);
+      const todos = await carregarRepo(cfg, { memoria: 3000 });
       setAcervo(todos);
       const lista = daPasta(todos, PASTA);
       setArquivos(lista);
@@ -139,9 +140,14 @@ export default function Notas() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const abrirCaminho = params.get("abrir");
+    // Consumir uma vez só: o parâmetro ficava na URL e, como o efeito depende
+    // da lista recarregada, todo Salvar reabria o item anterior por cima do
+    // que você estava editando.
     if (abrirCaminho && acervo.length > 0 && (!aberta || aberta.caminho !== abrirCaminho)) {
       const alvo = acervo.find((a) => a.caminho === abrirCaminho);
       if (alvo) abrir(alvo);
+      // limpa o parâmetro: sem isso ele reabria o item a cada recarga da lista
+      navegar(location.pathname, { replace: true });
     }
   }, [location.search, acervo]);
 
@@ -230,7 +236,13 @@ export default function Notas() {
         // mescla: campos que outra IA ou o github.com acrescentaram sobrevivem
         dados: mesclarFrontmatter(aberta.bruto, {
           titulo,
-          tipo: "nota",
+          // Só define o tipo quando o arquivo ainda não tem um. A busca leva
+          // itens de `reunioes/` para esta tela, e forçar "nota" reescrevia o
+          // tipo de um arquivo que não é nota.
+          tipo:
+            typeof aberta.bruto.tipo === "string" && aberta.bruto.tipo
+              ? aberta.bruto.tipo
+              : "nota",
           atualizado: hojeISO(),
         }),
         corpo: aberta.corpo,

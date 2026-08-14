@@ -55,7 +55,7 @@ export default function Home() {
     setCarregando(true);
     setErro("");
     try {
-      const todos = await carregarRepo(cfg);
+      const todos = await carregarRepo(cfg, { memoria: 3000 });
       
       const itensTarefas = daPasta(todos, "tarefas");
       const tarefas = ordenar(

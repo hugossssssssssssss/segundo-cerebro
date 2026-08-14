@@ -13,15 +13,6 @@ import type { Settings } from "./settings";
 
 const BASE = "https://api.github.com";
 
-export type Arquivo = {
-  /** Caminho completo no repo, ex: "notas/2026-08-13-ideia.md" */
-  caminho: string;
-  nome: string;
-  /** SHA do blob — obrigatório para atualizar ou apagar sem sobrescrever */
-  sha: string;
-  tamanho: number;
-};
-
 export class ErroGitHub extends Error {
   // Campo declarado fora do construtor: `erasableSyntaxOnly` do tsconfig
   // proíbe parameter properties (o atalho `readonly status` no construtor).
@@ -131,32 +122,6 @@ function deBase64(b64: string): string {
   const binario = atob(b64.replace(/\n/g, ""));
   const bytes = Uint8Array.from(binario, (c) => c.charCodeAt(0));
   return new TextDecoder().decode(bytes);
-}
-
-/**
- * Lista os arquivos .md de uma pasta.
- * Pasta que ainda não existe devolve lista vazia — é o estado normal no começo,
- * não um erro.
- */
-export async function listar(cfg: Settings, pasta: string): Promise<Arquivo[]> {
-  const url = `${raiz(cfg)}/${pasta}?ref=${encodeURIComponent(cfg.branch)}`;
-  const resposta = await buscar(url, { headers: cabecalhos(cfg) });
-
-  if (resposta.status === 404) return [];
-  await conferir(resposta);
-
-  const itens = await resposta.json();
-  if (!Array.isArray(itens)) return [];
-
-  return itens
-    .filter((i) => i.type === "file" && i.name.endsWith(".md"))
-    .map((i) => ({
-      caminho: i.path,
-      nome: i.name,
-      sha: i.sha,
-      tamanho: i.size,
-    }))
-    .sort((a, b) => b.nome.localeCompare(a.nome)); // mais recente primeiro
 }
 
 /** Baixa o conteúdo de um arquivo. */
