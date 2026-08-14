@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 
 export interface ItemFlutuanteGlobal {
@@ -58,20 +58,13 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
     setItemFlutuante(null);
   };
 
-  // Se mudar de modo dentro do painel flutuante global para pop-up/lado/telacheia, fecha do global
-  useEffect(() => {
-    if (modoVisao !== "flutuante" && itemFlutuante) {
-      setItemFlutuante(null);
-    }
-  }, [modoVisao, itemFlutuante]);
-
+  // O item flutuante continua montado e transitando suavemente entre popup, lado, telacheia e flutuante
   const estaAbertoFlutuante = (caminho: string): boolean => {
     return itemFlutuante !== null && itemFlutuante.caminho === caminho;
   };
 
   const focarFlutuante = (caminho: string): boolean => {
     if (itemFlutuante !== null && itemFlutuante.caminho === caminho) {
-      setModoVisao("flutuante");
       return true;
     }
     return false;
@@ -83,16 +76,11 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
     >
       {children}
 
-      {itemFlutuante !== null && modoVisao === "flutuante" && (
+      {itemFlutuante !== null && (
         <PainelNotionBase
           rotuloTipo={itemFlutuante.rotuloTipo}
-          modoVisao="flutuante"
-          setModoVisao={(novoModo) => {
-            setModoVisao(novoModo);
-            if (novoModo !== "flutuante") {
-              setItemFlutuante(null);
-            }
-          }}
+          modoVisao={modoVisao}
+          setModoVisao={setModoVisao}
           titulo={itemFlutuante.titulo}
           setTitulo={(t) => {
             itemFlutuante.setTitulo?.(t);

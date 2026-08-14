@@ -281,89 +281,53 @@ export function PainelNotionBase({
     </div>
   );
 
-  // MODO 4: FLUTUANTE (Nota Autoadesiva estilo Post-it do Windows)
-  if (modoVisao === "flutuante") {
-    if (minimizadoFlutuante) {
-      return (
-        <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom duration-200">
-          <div
-            onClick={() => setMinimizadoFlutuante(false)}
-            className="flex items-center gap-2.5 rounded-full border border-amber-500/40 bg-amber-500/10 dark:bg-amber-900/30 backdrop-blur-md px-4 py-2 text-xs font-bold text-foreground shadow-xl cursor-pointer hover:scale-105 transition-all"
-          >
-            <Pin size={14} className="text-amber-500 shrink-0" />
-            <span className="truncate max-w-[200px]">{titulo || "Nota Autoadesiva"}</span>
-            <span className="text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full">Flutuante</span>
-          </div>
-          {modaisConfirmacao}
-        </div>
-      );
-    }
-
+  // MODO 4: FLUTUANTE MINIMIZADO
+  if (modoVisao === "flutuante" && minimizadoFlutuante) {
     return (
-      <div className="fixed bottom-3 right-3 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-24px)] sm:w-[460px] max-h-[80vh] flex flex-col rounded-2xl border-2 border-amber-500/40 bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        {cabecalho}
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{conteudo}</div>
-        {rodape}
-        {modaisConfirmacao}
-      </div>
-    );
-  }
-
-  // MODO 2: DO LADO (Painel Lateral / Drawer)
-  if (modoVisao === "lado") {
-    return (
-      <div
-        className="fixed inset-0 z-50 flex justify-end bg-black/20 backdrop-blur-[2px] p-0 sm:p-3 transition-opacity"
-        onClick={tentarFechar}
-      >
+      <div className="fixed bottom-4 right-4 z-50 transition-all duration-300 ease-out animate-in slide-in-from-bottom">
         <div
-          className="flex h-full w-full sm:w-[560px] md:w-[680px] lg:w-[760px] flex-col rounded-t-2xl sm:rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in slide-in-from-right duration-200"
-          onClick={(e) => e.stopPropagation()}
+          onClick={() => setMinimizadoFlutuante(false)}
+          className="flex items-center gap-2.5 rounded-full border border-amber-500/40 bg-amber-500/10 dark:bg-amber-900/30 backdrop-blur-md px-4 py-2 text-xs font-bold text-foreground shadow-xl cursor-pointer hover:scale-105 transition-all"
         >
-          {cabecalho}
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 sm:px-8 py-6">{conteudo}</div>
-          {rodape}
+          <Pin size={14} className="text-amber-500 shrink-0" />
+          <span className="truncate max-w-[200px]">{titulo || "Nota Autoadesiva"}</span>
+          <span className="text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full">Flutuante</span>
         </div>
         {modaisConfirmacao}
       </div>
     );
   }
 
-  // MODO 3: TELA CHEIA
-  if (modoVisao === "telacheia") {
-    return (
-      <div
-        className="fixed inset-0 z-50 flex flex-col bg-black/20 backdrop-blur-[2px] p-2 sm:p-4 animate-in fade-in duration-150"
-        onClick={tentarFechar}
-      >
-        <div
-          className="flex h-full w-full flex-col rounded-2xl sm:rounded-3xl border border-border bg-card shadow-2xl overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {cabecalho}
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 sm:px-12 py-8">{conteudo}</div>
-          {rodape}
-        </div>
-        {modaisConfirmacao}
-      </div>
-    );
-  }
+  // Mapeia classes de layout dinâmicas para transição fluida entre os 4 modos
+  const containerClasses = {
+    flutuante: "fixed bottom-3 right-3 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-24px)] sm:w-[460px] max-h-[80vh] rounded-2xl border-2 border-amber-500/40 shadow-2xl",
+    lado: "fixed top-0 right-0 bottom-0 z-50 h-full w-full sm:w-[560px] md:w-[680px] lg:w-[760px] rounded-l-2xl border-l border-border shadow-2xl",
+    telacheia: "fixed inset-2 sm:inset-4 z-50 rounded-2xl sm:rounded-3xl border border-border shadow-2xl",
+    popup: "fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-50 max-h-[90vh] w-full max-w-3xl rounded-2xl border border-border shadow-2xl",
+  };
 
-  // MODO 1: POP-UP CENTRALIZADO (Padrão)
+  const backdropNecessario = modoVisao !== "flutuante";
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-[2px] p-3 sm:p-6 animate-in fade-in duration-150"
-      onClick={tentarFechar}
-    >
+    <>
+      {backdropNecessario && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-opacity duration-200"
+          onClick={tentarFechar}
+        />
+      )}
       <div
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+        className={cn(
+          "flex flex-col bg-card overflow-hidden transition-all duration-300 ease-out",
+          containerClasses[modoVisao] || containerClasses.popup
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         {cabecalho}
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 sm:px-8 py-6">{conteudo}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-5 sm:py-6">{conteudo}</div>
         {rodape}
+        {modaisConfirmacao}
       </div>
-      {modaisConfirmacao}
-    </div>
+    </>
   );
 }
