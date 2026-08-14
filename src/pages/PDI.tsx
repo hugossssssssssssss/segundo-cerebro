@@ -139,35 +139,63 @@ export default function PDI() {
     navegar(location.pathname, { replace: true });
   }
 
+  const tentarFecharMeta = useCallback(async () => {
+    if (salvando) return;
+    const temMudancas = editandoMeta !== null && origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta);
+    if (temMudancas && editandoMeta) {
+      await salvarMeta(editandoMeta);
+      return;
+    }
+    fecharMeta();
+  }, [salvando, editandoMeta, origMeta]);
+
   function fecharEntrega() {
     setEditandoEntrega(null);
     setOrigEntrega(null);
     navegar(location.pathname, { replace: true });
   }
 
+  // Temporizador de segurança: se a meta/entrega ficar aberta por 20s com edições, salva no GitHub
+  useEffect(() => {
+    const temMudancasMeta = editandoMeta !== null && origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta);
+    if (!temMudancasMeta || salvando || !editandoMeta) return;
+    const timer = setTimeout(() => {
+      salvarMeta(editandoMeta);
+    }, 20_000);
+    return () => clearTimeout(timer);
+  }, [editandoMeta, origMeta, salvando]);
+
+  // Alerta ao fechar aba do navegador com edições pendentes no PDI
+  useEffect(() => {
+    const temMudancasMeta = editandoMeta !== null && origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta);
+    if (!temMudancasMeta) return;
+    const aoSairDaJanela = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", aoSairDaJanela);
+    return () => window.removeEventListener("beforeunload", aoSairDaJanela);
+  }, [editandoMeta, origMeta]);
+
   /* -------------------------------------------------------------- ações */
 
-  async function salvarMeta() {
-    if (!editandoMeta?.titulo.trim()) {
-      setErro("A meta precisa de um título.");
-      return;
-    }
+  async function salvarMeta(alvo?: Meta) {
+    const m = alvo || editandoMeta;
+    if (!m) return;
+    const tituloValido = m.titulo.trim() || "Sem título";
+    const metaParaSalvar = { ...m, titulo: tituloValido };
+
     setSalvando(true);
     setErro("");
     try {
       const texto = escreverMarkdown({
-        dados: metaParaFrontmatter(editandoMeta),
-        corpo: editandoMeta.corpo,
+        dados: metaParaFrontmatter(metaParaSalvar),
+        corpo: metaParaSalvar.corpo,
       });
-      // metas não levam data no nome: o id delas é referenciado pelas entregas
       const caminho =
-        editandoMeta.caminho ||
-        // A data sai ANTES da checagem de colisão. Fazendo depois, nomeLivre
-        // comparava candidatos COM data contra caminhos gravados SEM data —
-        // nunca detectava conflito, e o resultado colidia de verdade,
-        // devolvendo um 422 sem sentido ao criar duas metas de mesmo título.
-        nomeLivreSemData(PASTA_METAS, editandoMeta.titulo, metas.map((m) => m.caminho));
-      await gravar(cfg, caminho, texto, editandoMeta.sha || undefined);
+        metaParaSalvar.caminho ||
+        nomeLivreSemData(PASTA_METAS, metaParaSalvar.titulo, metas.map((x) => x.caminho));
+      await gravar(cfg, caminho, texto, metaParaSalvar.sha || undefined);
       invalidarCache();
       fecharMeta();
       await carregar();
@@ -508,27 +536,23 @@ export default function PDI() {
       {/* ------------------------------------------------- modal da meta */}
       <Modal
         aberto={editandoMeta !== null}
-        aoFechar={fecharMeta}
+        aoFechar={tentarFecharMeta}
         temMudancas={JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}
         titulo={editandoMeta?.caminho ? "Editar meta" : "Nova meta"}
         rodape={
-          <>
-            {editandoMeta?.caminho && (
+          <div className="flex w-full items-center justify-between gap-2">
+            {editandoMeta?.caminho ? (
               <Botao
                 variante="fantasma"
                 onClick={() => editandoMeta && removerMeta(editandoMeta)}
+                className="text-destructive hover:bg-destructive/10 text-xs"
               >
-                <Trash2 size={16} />
-                Apagar
+                <Trash2 size={15} />
+                <span>Apagar meta</span>
               </Botao>
-            )}
-            <Botao variante="neutro" onClick={fecharMeta}>
-              Cancelar
-            </Botao>
-            <Botao onClick={salvarMeta} disabled={salvando}>
-              {salvando ? "Salvando…" : "Salvar"}
-            </Botao>
-          </>
+            ) : <div />}
+            <span className="text-xs text-muted-foreground">Salva automaticamente ao fechar</span>
+          </div>
         }
       >
         {editandoMeta && (

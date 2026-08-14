@@ -223,6 +223,26 @@ export default function Notas() {
     });
   }
 
+  // Temporizador de segurança: salva nota se ficar 20s aberta com edições
+  useEffect(() => {
+    if (!mudou || salvando || !aberta) return;
+    const timer = setTimeout(() => {
+      salvar(aberta);
+    }, 20_000);
+    return () => clearTimeout(timer);
+  }, [mudou, salvando, aberta]);
+
+  // Alerta ao fechar aba do navegador com edições pendentes na nota
+  useEffect(() => {
+    if (!mudou) return;
+    const aoSairDaJanela = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", aoSairDaJanela);
+    return () => window.removeEventListener("beforeunload", aoSairDaJanela);
+  }, [mudou]);
+
   async function salvar(alvo?: NotaAberta) {
     const n = alvo || aberta;
     if (!n) return;

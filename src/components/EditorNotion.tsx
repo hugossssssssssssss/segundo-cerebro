@@ -164,9 +164,51 @@ export function EditorNotion({
         }
         .notion-editor-wrapper a {
           color: #3b82f6;
-          font-weight: 500;
-          text-decoration: underline;
+          font-weight: 600;
+          text-decoration: none !important;
+          padding: 1px 6px;
+          border-radius: 6px;
           cursor: pointer;
+          transition: background-color 0.15s ease;
+        }
+        /* Tarefas: Azul */
+        .notion-editor-wrapper a[href*="tarefas/"] {
+          color: #2563eb !important;
+          background-color: rgba(37, 99, 235, 0.12) !important;
+        }
+        .dark .notion-editor-wrapper a[href*="tarefas/"] {
+          color: #60a5fa !important;
+          background-color: rgba(96, 165, 250, 0.15) !important;
+        }
+
+        /* Metas / PDI: Verde */
+        .notion-editor-wrapper a[href*="pdi/"] {
+          color: #059669 !important;
+          background-color: rgba(5, 150, 105, 0.12) !important;
+        }
+        .dark .notion-editor-wrapper a[href*="pdi/"] {
+          color: #34d399 !important;
+          background-color: rgba(52, 211, 153, 0.15) !important;
+        }
+
+        /* Notas: Laranja */
+        .notion-editor-wrapper a[href*="notas/"] {
+          color: #d97706 !important;
+          background-color: rgba(217, 119, 6, 0.12) !important;
+        }
+        .dark .notion-editor-wrapper a[href*="notas/"] {
+          color: #fbbf24 !important;
+          background-color: rgba(251, 191, 36, 0.15) !important;
+        }
+
+        /* Referências: Roxo */
+        .notion-editor-wrapper a[href*="referencias/"] {
+          color: #7c3aed !important;
+          background-color: rgba(124, 58, 237, 0.12) !important;
+        }
+        .dark .notion-editor-wrapper a[href*="referencias/"] {
+          color: #a78bfa !important;
+          background-color: rgba(167, 139, 250, 0.15) !important;
         }
       `}</style>
     </div>

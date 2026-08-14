@@ -98,7 +98,7 @@ function PropriedadesNotion(
 }
 
 /* Painel de Edição estilo Notion com suporte aos modos: Pop-up, Do Lado e Tela Cheia */
-function PainelTarefaNotion({
+export function PainelTarefaNotion({
   modoVisao,
   setModoVisao,
   editando,
@@ -152,6 +152,26 @@ function PainelTarefaNotion({
       document.body.style.overflow = overflowAnterior;
     };
   }, [tentarFechar]);
+
+  // Temporizador de segurança: se o painel ficar aberto por 20s sem edições, salva automaticamente no GitHub
+  useEffect(() => {
+    if (!temMudancas || salvando) return;
+    const timer = setTimeout(() => {
+      aoSalvar(editando);
+    }, 20_000);
+    return () => clearTimeout(timer);
+  }, [temMudancas, salvando, editando, aoSalvar]);
+
+  // Alerta de segurança se tentar fechar a aba/janela do navegador com edições não salvas
+  useEffect(() => {
+    if (!temMudancas) return;
+    const aoSairDaJanela = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", aoSairDaJanela);
+    return () => window.removeEventListener("beforeunload", aoSairDaJanela);
+  }, [temMudancas]);
 
   // Cabeçalho com o seletor de modos estilo Notion
   const cabecalho = (

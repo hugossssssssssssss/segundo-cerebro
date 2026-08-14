@@ -35,17 +35,21 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { carregarRepo, daPasta } from "@/lib/repo";
-import { comoTarefa, ordenar, textoPrazo, urgencia, type Tarefa } from "@/lib/tarefas";
-import { tituloProvavel } from "@/lib/markdown";
+import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
+import { gravar, ler, apagar } from "@/lib/github";
+import { comoTarefa, ordenar, textoPrazo, urgencia, paraFrontmatter, type Tarefa } from "@/lib/tarefas";
+import { tituloProvavel, escreverMarkdown, nomeLivre, lerMarkdown, mesclarFrontmatter } from "@/lib/markdown";
 import { comoReferencia, type Referencia } from "@/lib/referencias";
-import { comoMeta, comoEntrega, resumir, type ResumoMeta } from "@/lib/pdi";
+import { comoMeta, comoEntrega, resumir, metaParaFrontmatter, type Meta, type ResumoMeta } from "@/lib/pdi";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
+import { PainelTarefaNotion } from "@/pages/Tarefas";
+import { PropriedadesNotion } from "@/components/PropriedadesNotion";
+import { EditorNotion } from "@/components/EditorNotion";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Carregando, Vazio } from "@/components/ui";
+import { Carregando, Vazio, Modal } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 type NotaRecente = {
@@ -149,6 +153,107 @@ export default function Home() {
   const [totalTarefas, setTotalTarefas] = useState(0);
   const [totalNotas, setTotalNotas] = useState(0);
   const [totalRefs, setTotalRefs] = useState(0);
+
+  const [salvandoItem, setSalvandoItem] = useState(false);
+  const [editandoTarefa, setEditandoTarefa] = useState<Tarefa | null>(null);
+  const [origTarefa, setOrigTarefa] = useState<Tarefa | null>(null);
+  const [modoVisao, setModoVisao] = useState<"popup" | "lado" | "telacheia">("popup");
+
+  const [editandoNota, setEditandoNota] = useState<{
+    caminho: string;
+    sha: string;
+    titulo: string;
+    corpo: string;
+    bruto: Record<string, any>;
+  } | null>(null);
+  const [origNota, setOrigNota] = useState<any>(null);
+
+  const [editandoMeta, setEditandoMeta] = useState<Meta | null>(null);
+  const [origMeta, setOrigMeta] = useState<Meta | null>(null);
+
+  async function salvarTarefaHome(t: Tarefa) {
+    setSalvandoItem(true);
+    try {
+      const texto = escreverMarkdown({
+        dados: paraFrontmatter(t),
+        corpo: t.corpo,
+      });
+      const caminho = t.caminho || nomeLivre("tarefas", t.titulo, tarefasPendentes.map((x) => x.caminho));
+      await gravar(cfg, caminho, texto, t.sha || undefined);
+      invalidarCache();
+      setEditandoTarefa(null);
+      setOrigTarefa(null);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSalvandoItem(false);
+    }
+  }
+
+  async function abrirNotaHome(caminho: string) {
+    setCarregando(true);
+    try {
+      const res = await ler(cfg, caminho);
+      const doc = lerMarkdown(res.texto);
+      const docTitulo = typeof doc.dados.titulo === "string" ? doc.dados.titulo : "";
+      const tituloFinal = docTitulo || tituloProvavel(doc, caminho);
+      setEditandoNota({
+        caminho,
+        sha: res.sha,
+        titulo: tituloFinal,
+        corpo: doc.corpo,
+        bruto: doc.dados,
+      });
+      setOrigNota({ titulo: tituloFinal, corpo: doc.corpo, bruto: doc.dados });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  async function salvarNotaHome() {
+    if (!editandoNota) return;
+    setSalvandoItem(true);
+    try {
+      const texto = escreverMarkdown({
+        dados: mesclarFrontmatter(editandoNota.bruto, {
+          titulo: editandoNota.titulo || "Sem título",
+          tipo: "nota",
+        }),
+        corpo: editandoNota.corpo,
+      });
+      await gravar(cfg, editandoNota.caminho, texto, editandoNota.sha);
+      invalidarCache();
+      setEditandoNota(null);
+      setOrigNota(null);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSalvandoItem(false);
+    }
+  }
+
+  async function salvarMetaHome(m: Meta) {
+    setSalvandoItem(true);
+    try {
+      const texto = escreverMarkdown({
+        dados: metaParaFrontmatter(m),
+        corpo: m.corpo,
+      });
+      await gravar(cfg, m.caminho, texto, m.sha);
+      invalidarCache();
+      setEditandoMeta(null);
+      setOrigMeta(null);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSalvandoItem(false);
+    }
+  }
 
   const [gadgets, setGadgets] = useState<Gadget[]>(() => {
     const salvo = localStorage.getItem("home-gadgets");
@@ -390,7 +495,14 @@ export default function Home() {
                       const prazoTexto = textoPrazo(t);
                       const urgente = urgencia(t) === "atrasada" || urgencia(t) === "hoje" || urgencia(t) === "proxima";
                       return (
-                        <Link key={t.caminho} to={`/tarefas?abrir=${encodeURIComponent(t.caminho)}`} className="block group">
+                        <button
+                          key={t.caminho}
+                          onClick={() => {
+                            setEditandoTarefa(t);
+                            setOrigTarefa(t);
+                          }}
+                          className="block group w-full text-left"
+                        >
                           <div className="flex items-center justify-between rounded-xl border border-border/80 bg-card p-4 transition-all hover:bg-accent/70 hover:border-primary/40 shadow-xs">
                             <div className="space-y-1.5 min-w-0 pr-3">
                               <div className="flex items-center gap-2 flex-wrap">
@@ -421,7 +533,7 @@ export default function Home() {
 
                             <ArrowRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                           </div>
-                        </Link>
+                        </button>
                       );
                     })}
                   </div>
@@ -529,7 +641,11 @@ export default function Home() {
                 ) : (
                   <div className="flex flex-col gap-3.5 sm:gap-4">
                     {notasRecentes.map((n) => (
-                      <Link key={n.caminho} to={`/notas?abrir=${encodeURIComponent(n.caminho)}`} className="block group">
+                      <button
+                        key={n.caminho}
+                        onClick={() => abrirNotaHome(n.caminho)}
+                        className="block group w-full text-left"
+                      >
                         <div className="p-4 rounded-xl border border-border/80 bg-card hover:bg-accent/70 hover:border-blue-500/40 transition-all shadow-xs space-y-1">
                           <p className="text-xs font-semibold group-hover:text-blue-500 transition-colors truncate">
                             {n.titulo}
@@ -538,7 +654,7 @@ export default function Home() {
                             {n.nome}
                           </p>
                         </div>
-                      </Link>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -574,7 +690,14 @@ export default function Home() {
                 ) : (
                   <div className="flex flex-col gap-3.5 sm:gap-4">
                     {resumoPdi.map((r) => (
-                      <Link key={r.meta.caminho} to={`/pdi`} className="block group">
+                      <button
+                        key={r.meta.caminho}
+                        onClick={() => {
+                          setEditandoMeta(r.meta);
+                          setOrigMeta(r.meta);
+                        }}
+                        className="block group w-full text-left"
+                      >
                         <div className="p-4 rounded-xl border border-border/80 bg-card hover:bg-accent/70 hover:border-emerald-500/40 transition-all shadow-xs space-y-2">
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-xs font-semibold group-hover:text-emerald-500 transition-colors truncate">
@@ -591,7 +714,7 @@ export default function Home() {
                             {r.entregas.length} entrega{r.entregas.length !== 1 ? "s" : ""} registrada{r.entregas.length !== 1 ? "s" : ""}
                           </p>
                         </div>
-                      </Link>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -648,6 +771,130 @@ export default function Home() {
           </div>
         </SortableContext>
       </DndContext>
+      {/* Painel Notion para edição direta na Home sem pulos de tela */}
+      {editandoTarefa !== null && (
+        <PainelTarefaNotion
+          modoVisao={modoVisao}
+          setModoVisao={setModoVisao}
+          editando={editandoTarefa}
+          original={origTarefa}
+          salvando={salvandoItem}
+          aoFechar={() => {
+            setEditandoTarefa(null);
+            setOrigTarefa(null);
+          }}
+          aoSalvar={salvarTarefaHome}
+          aoRemover={async () => {
+            if (!editandoTarefa?.caminho) return;
+            await apagar(cfg, editandoTarefa.caminho, editandoTarefa.sha);
+            invalidarCache();
+            setEditandoTarefa(null);
+            setOrigTarefa(null);
+            await carregar();
+          }}
+          setEditando={setEditandoTarefa}
+          opcoesRelacionamento={[]}
+          mencoesDaTarefa={[]}
+          erro={erro}
+        />
+      )}
+      {/* Modal/Painel para Nota na Home */}
+      {editandoNota !== null && (
+        <Modal
+          aberto={true}
+          aoFechar={salvarNotaHome}
+          titulo="Anotação"
+          temMudancas={JSON.stringify(editandoNota) !== JSON.stringify(origNota)}
+          rodape={
+            <div className="flex w-full items-center justify-between gap-2">
+              <Button
+                variant="ghost"
+                onClick={async () => {
+                  await apagar(cfg, editandoNota.caminho, editandoNota.sha);
+                  invalidarCache();
+                  setEditandoNota(null);
+                  setOrigNota(null);
+                  await carregar();
+                }}
+                className="text-destructive hover:bg-destructive/10 text-xs"
+              >
+                Apagar nota
+              </Button>
+              <span className="text-xs text-muted-foreground">Salva automaticamente ao fechar</span>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <input
+              type="text"
+              value={editandoNota.titulo}
+              onChange={(e) => setEditandoNota({ ...editandoNota, titulo: e.target.value })}
+              placeholder="Sem título"
+              className="w-full text-2xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0"
+            />
+            <PropriedadesNotion
+              dados={editandoNota.bruto}
+              corpoTexto={editandoNota.corpo}
+              onChange={(novosDados) => setEditandoNota({ ...editandoNota, bruto: novosDados })}
+            />
+            <EditorNotion
+              markdown={editandoNota.corpo}
+              onChange={(v) => setEditandoNota({ ...editandoNota, corpo: v ?? "" })}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal/Painel para Meta na Home */}
+      {editandoMeta !== null && (
+        <Modal
+          aberto={true}
+          aoFechar={() => salvarMetaHome(editandoMeta)}
+          titulo="Meta da Carreira"
+          temMudancas={JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}
+          rodape={
+            <div className="flex w-full items-center justify-between gap-2">
+              <Button
+                variant="ghost"
+                onClick={async () => {
+                  await apagar(cfg, editandoMeta.caminho, editandoMeta.sha);
+                  invalidarCache();
+                  setEditandoMeta(null);
+                  setOrigMeta(null);
+                  await carregar();
+                }}
+                className="text-destructive hover:bg-destructive/10 text-xs"
+              >
+                Apagar meta
+              </Button>
+              <span className="text-xs text-muted-foreground">Salva automaticamente ao fechar</span>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <input
+              type="text"
+              value={editandoMeta.titulo}
+              onChange={(e) => setEditandoMeta({ ...editandoMeta, titulo: e.target.value })}
+              placeholder="Sem título"
+              className="w-full text-2xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0"
+            />
+            <PropriedadesNotion
+              dados={{
+                status: editandoMeta.status,
+                prazo: editandoMeta.prazo,
+                indicador: editandoMeta.indicador,
+              }}
+              corpoTexto={editandoMeta.corpo}
+              onChange={(novosDados) => setEditandoMeta({ ...editandoMeta, status: novosDados.status || editandoMeta.status, prazo: novosDados.prazo, indicador: novosDados.indicador || editandoMeta.indicador })}
+            />
+            <EditorNotion
+              markdown={editandoMeta.corpo}
+              onChange={(v) => setEditandoMeta({ ...editandoMeta, corpo: v ?? "" })}
+            />
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
