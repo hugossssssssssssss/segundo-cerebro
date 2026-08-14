@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Plus, Search, Tag } from "lucide-react";
+import { Plus, Search, Tag, FileText } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
 import {
@@ -267,34 +267,7 @@ export default function Notas() {
     );
   }
 
-  /* ------------------------------------------------------------- editor */
 
-  if (aberta) {
-    return (
-      <PainelNotionBase
-        rotuloTipo={aberta.caminho ? "Nota" : "Nova nota"}
-        modoVisao={modoVisao}
-        setModoVisao={setModoVisao}
-        titulo={aberta.titulo}
-        setTitulo={(t) => setAberta({ ...aberta, titulo: t })}
-        corpo={aberta.corpo}
-        setCorpo={(c) => setAberta({ ...aberta, corpo: c })}
-        dadosProps={aberta.bruto}
-        onChangeProps={(novosDados) => setAberta({ ...aberta, bruto: novosDados })}
-        camposFixosProps={{
-          tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" },
-        }}
-        salvando={salvando}
-        temMudancas={mudou}
-        aoFechar={fecharNota}
-        aoSalvar={async (fechar) => { await salvar(aberta, fechar); }}
-        aoRemover={aberta.caminho ? async () => { await remover(); } : undefined}
-        erro={erro}
-        mencoes={mencoesNotaAberta}
-        opcoesRelacionamento={opcoesRelacionamento}
-      />
-    );
-  }
 
   /* -------------------------------------------------------------- lista */
 
@@ -365,6 +338,32 @@ export default function Notas() {
             );
           })}
         </div>
+      )}
+
+      {aberta !== null && (
+        <PainelNotionBase
+          rotuloTipo={aberta.caminho ? "Nota" : "Nova nota"}
+          modoVisao={modoVisao}
+          setModoVisao={setModoVisao}
+          titulo={aberta.titulo}
+          setTitulo={(t) => setAberta({ ...aberta, titulo: t })}
+          corpo={aberta.corpo}
+          setCorpo={(c) => setAberta({ ...aberta, corpo: c })}
+          dadosProps={aberta.bruto}
+          onChangeProps={(novosDados) => setAberta({ ...aberta, bruto: novosDados })}
+          camposFixosProps={{
+            tipo: { icone: <FileText className="h-4 w-4 opacity-50 text-orange-500" />, tipo: "select", opcoes: ["nota", "referencia", "rascunho"] },
+            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
+          }}
+          salvando={salvando}
+          temMudancas={mudou}
+          aoFechar={fecharNota}
+          aoSalvar={async (fechar) => { await salvar(aberta, fechar); }}
+          aoRemover={aberta.caminho ? async () => { await remover(); } : undefined}
+          erro={erro}
+          mencoes={mencoesNotaAberta}
+          opcoesRelacionamento={opcoesRelacionamento}
+        />
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Target, Calendar, Package, Trash2, AlertTriangle, Sparkles } from "lucide-react";
+import { Target, Calendar, Package, Trash2, AlertTriangle, Sparkles, CheckSquare } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
@@ -555,7 +555,8 @@ export default function PDI() {
           }}
           camposFixosProps={{
             status: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
-            prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
+            prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
+            indicador: { icone: <CheckSquare className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" },
           }}
           salvando={salvando}
           temMudancas={origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}

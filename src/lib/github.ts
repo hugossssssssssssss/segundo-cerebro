@@ -166,43 +166,40 @@ export async function gravar(
   sha?: string,
   mensagem?: string,
 ): Promise<string> {
-  const resposta = await buscar(`${raiz(cfg)}/${caminho}`, {
-    method: "PUT",
-    headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: mensagem ?? `${sha ? "atualiza" : "cria"} ${caminho}`,
-      content: paraBase64(texto),
-      branch: cfg.branch,
-      ...(sha ? { sha } : {}),
-    }),
-  });
+  const fazerPut = async (shaParaEnviar?: string) => {
+    return await buscar(`${raiz(cfg)}/${caminho}`, {
+      method: "PUT",
+      headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: mensagem ?? `${shaParaEnviar ? "atualiza" : "cria"} ${caminho}`,
+        content: paraBase64(texto),
+        branch: cfg.branch,
+        ...(shaParaEnviar ? { sha: shaParaEnviar } : {}),
+      }),
+    });
+  };
+
+  let resposta = await fazerPut(sha);
 
   if (resposta.ok) {
     const dados = await resposta.json();
     return dados.content.sha as string;
   }
 
-  // Se deu 409 (conflito) ou 422 (sha ausente ou desatualizado), busca a versao mais recente no GitHub e grava por cima sem dar erro
+  // Se deu 409 (conflito) ou 422 (sha ausente ou desatualizado), busca o SHA direto no GitHub e grava por cima sem dar erro
   if (resposta.status === 409 || resposta.status === 422 || resposta.status === 400) {
     try {
-      const atual = await ler(cfg, caminho);
-      const respostaRetry = await buscar(`${raiz(cfg)}/${caminho}`, {
-        method: "PUT",
-        headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: mensagem ?? `atualiza ${caminho}`,
-          content: paraBase64(texto),
-          branch: cfg.branch,
-          sha: atual.sha,
-        }),
+      const getRes = await buscar(`${raiz(cfg)}/${caminho}?ref=${encodeURIComponent(cfg.branch)}`, {
+        headers: cabecalhos(cfg),
       });
-
-      if (respostaRetry.ok) {
-        const dadosRetry = await respostaRetry.json();
-        return dadosRetry.content.sha as string;
+      if (getRes.ok) {
+        const getDados = await getRes.json();
+        if (getDados && getDados.sha) {
+          resposta = await fazerPut(getDados.sha);
+        }
       }
     } catch {
-      // prossegue para conferir erro
+      // prossegue para erro original
     }
   }
 

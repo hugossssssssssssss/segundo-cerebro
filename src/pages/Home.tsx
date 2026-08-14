@@ -16,6 +16,8 @@ import {
   Maximize2,
   RotateCcw,
   Settings2,
+  Calendar,
+  Tag,
 } from "lucide-react";
 import {
   DndContext,
@@ -850,6 +852,10 @@ export default function Home() {
           setCorpo={(c) => setEditandoNota({ ...editandoNota, corpo: c })}
           dadosProps={editandoNota.bruto}
           onChangeProps={(novosDados) => setEditandoNota({ ...editandoNota, bruto: novosDados })}
+          camposFixosProps={{
+            tipo: { icone: <FileText className="h-4 w-4 opacity-50 text-orange-500" />, tipo: "select", opcoes: ["nota", "referencia", "rascunho"] },
+            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
+          }}
           salvando={salvandoItem}
           temMudancas={origNota !== null && JSON.stringify(editandoNota) !== JSON.stringify(origNota)}
           aoFechar={() => salvarNotaHome(true)}
@@ -888,6 +894,11 @@ export default function Home() {
               indicador: novosDados.indicador || editandoMeta.indicador,
             })
           }
+          camposFixosProps={{
+            status: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
+            prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
+            indicador: { icone: <CheckSquare className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" },
+          }}
           salvando={salvandoItem}
           temMudancas={origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}
           aoFechar={() => salvarMetaHome(editandoMeta, true)}
