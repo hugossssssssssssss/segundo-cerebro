@@ -153,12 +153,12 @@ export function PainelTarefaNotion({
     };
   }, [tentarFechar]);
 
-  // Temporizador de segurança: se o painel ficar aberto por 20s sem edições, salva no GitHub em segundo plano (sem fechar)
+  // Temporizador de segurança: salva no GitHub em 2.5s de pausa na digitação (em segundo plano, sem fechar)
   useEffect(() => {
     if (!temMudancas || salvando) return;
     const timer = setTimeout(() => {
       aoSalvar(editando, false);
-    }, 20_000);
+    }, 2500);
     return () => clearTimeout(timer);
   }, [temMudancas, salvando, editando, aoSalvar]);
 

@@ -157,13 +157,13 @@ export default function PDI() {
     navegar(location.pathname, { replace: true });
   }
 
-  // Temporizador de segurança: se a meta/entrega ficar aberta por 20s com edições, salva no GitHub
+  // Temporizador de segurança: salva meta em 2.5s de pausa na digitação (em segundo plano, sem fechar)
   useEffect(() => {
     const temMudancasMeta = editandoMeta !== null && origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta);
     if (!temMudancasMeta || salvando || !editandoMeta) return;
     const timer = setTimeout(() => {
-      salvarMeta(editandoMeta);
-    }, 20_000);
+      salvarMeta(editandoMeta, false);
+    }, 2500);
     return () => clearTimeout(timer);
   }, [editandoMeta, origMeta, salvando]);
 
@@ -181,7 +181,7 @@ export default function PDI() {
 
   /* -------------------------------------------------------------- ações */
 
-  async function salvarMeta(alvo?: Meta) {
+  async function salvarMeta(alvo?: Meta, fecharAoSalvar = true) {
     const m = alvo || editandoMeta;
     if (!m) return;
     const tituloValido = m.titulo.trim() || "Sem título";
@@ -197,9 +197,14 @@ export default function PDI() {
       const caminho =
         metaParaSalvar.caminho ||
         nomeLivreSemData(PASTA_METAS, metaParaSalvar.titulo, metas.map((x) => x.caminho));
-      await gravar(cfg, caminho, texto, metaParaSalvar.sha || undefined);
+      const novaSha = await gravar(cfg, caminho, texto, metaParaSalvar.sha || undefined);
       invalidarCache();
-      fecharMeta();
+      const salvaMeta: Meta = { ...metaParaSalvar, caminho, sha: novaSha };
+      setEditandoMeta(salvaMeta);
+      setOrigMeta(salvaMeta);
+      if (fecharAoSalvar) {
+        fecharMeta();
+      }
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));

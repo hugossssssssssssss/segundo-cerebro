@@ -224,12 +224,12 @@ export default function Notas() {
     });
   }
 
-  // Temporizador de segurança: salva nota se ficar 20s aberta com edições (em segundo plano, sem fechar)
+  // Temporizador de segurança: salva nota em 2.5s de pausa na digitação (em segundo plano, sem fechar)
   useEffect(() => {
     if (!mudou || salvando || !aberta) return;
     const timer = setTimeout(() => {
       salvar(aberta, false);
-    }, 20_000);
+    }, 2500);
     return () => clearTimeout(timer);
   }, [mudou, salvando, aberta]);
 

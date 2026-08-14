@@ -177,31 +177,36 @@ export async function gravar(
     }),
   });
 
-  if (resposta.status === 409 || resposta.status === 422) {
+  if (resposta.ok) {
+    const dados = await resposta.json();
+    return dados.content.sha as string;
+  }
+
+  // Se deu 409 (conflito) ou 422 (sha ausente ou desatualizado), busca a versao mais recente no GitHub e grava por cima sem dar erro
+  if (resposta.status === 409 || resposta.status === 422 || resposta.status === 400) {
     try {
-      const { sha: shaAtual } = await ler(cfg, caminho);
-      if (shaAtual && shaAtual !== sha) {
-        const respostaRetry = await buscar(`${raiz(cfg)}/${caminho}`, {
-          method: "PUT",
-          headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: mensagem ?? `atualiza ${caminho}`,
-            content: paraBase64(texto),
-            branch: cfg.branch,
-            sha: shaAtual,
-          }),
-        });
-        await conferir(respostaRetry);
+      const atual = await ler(cfg, caminho);
+      const respostaRetry = await buscar(`${raiz(cfg)}/${caminho}`, {
+        method: "PUT",
+        headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: mensagem ?? `atualiza ${caminho}`,
+          content: paraBase64(texto),
+          branch: cfg.branch,
+          sha: atual.sha,
+        }),
+      });
+
+      if (respostaRetry.ok) {
         const dadosRetry = await respostaRetry.json();
         return dadosRetry.content.sha as string;
       }
     } catch {
-      // Se a tentativa de auto-resolucao falhar, a chamada abaixo lanca o erro amigavel
+      // prossegue para conferir erro
     }
   }
 
   await conferir(resposta);
-
   const dados = await resposta.json();
   return dados.content.sha as string;
 }

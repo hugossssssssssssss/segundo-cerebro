@@ -15,6 +15,7 @@ import {
   GripVertical,
   Maximize2,
   RotateCcw,
+  Settings2,
 } from "lucide-react";
 import {
   DndContext,
@@ -109,31 +110,37 @@ function GadgetWrapper({
     <div
       ref={setNodeRef}
       style={style}
-      className={cn("relative group transition-all h-full flex flex-col", classeGrid, isDragging && "z-50")}
+      className={cn("relative transition-all h-full flex flex-col", classeGrid, isDragging && "z-50")}
     >
-      {/* Controles do Gadget: Redimensionar e Drag Handle (apenas no hover do canto superior direito) */}
-      <div className="absolute top-3 right-3 z-30 flex items-center gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 bg-background/95 backdrop-blur-md rounded-xl p-1 border border-border/80 shadow-md">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            aoMudarColunas(gadget.id, proximaColuna);
-          }}
-          className="px-2 py-1 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground text-[11px] font-bold flex items-center gap-1 transition-colors"
-          title={`Largura atual: ${gadget.colunas}x. Clique para alterar para ${proximaColuna}x.`}
-        >
-          <Maximize2 size={12} />
-          <span>{gadget.colunas}x</span>
-        </button>
+      {/* Controles do Gadget: aparece EXCLUSIVAMENTE ao passar o mouse sobre o ícone do canto superior direito */}
+      <div className="absolute top-2.5 right-2.5 z-30 group/canto">
+        <div className="p-1 rounded-lg text-muted-foreground/30 hover:text-foreground hover:bg-accent/80 transition-colors cursor-pointer flex items-center gap-1">
+          <Settings2 size={15} />
+        </div>
 
-        <button
-          {...attributes}
-          {...listeners}
-          className="p-1 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing transition-colors"
-          title="Arraste para reordenar este gadget"
-          aria-label="Reordenar gadget"
-        >
-          <GripVertical size={14} />
-        </button>
+        <div className="absolute top-0 right-0 hidden group-hover/canto:flex items-center gap-1 bg-background/95 backdrop-blur-md rounded-xl p-1.5 border border-border/80 shadow-md whitespace-nowrap">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              aoMudarColunas(gadget.id, proximaColuna);
+            }}
+            className="px-2 py-1 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground text-[11px] font-bold flex items-center gap-1 transition-colors"
+            title={`Largura atual: ${gadget.colunas}x. Clique para alterar para ${proximaColuna}x.`}
+          >
+            <Maximize2 size={12} />
+            <span>{gadget.colunas}x</span>
+          </button>
+
+          <button
+            {...attributes}
+            {...listeners}
+            className="p-1 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing transition-colors"
+            title="Arraste para reordenar este gadget"
+            aria-label="Reordenar gadget"
+          >
+            <GripVertical size={14} />
+          </button>
+        </div>
       </div>
 
       {children}
@@ -175,7 +182,7 @@ export default function Home() {
   const [editandoMeta, setEditandoMeta] = useState<Meta | null>(null);
   const [origMeta, setOrigMeta] = useState<Meta | null>(null);
 
-  async function salvarTarefaHome(t: Tarefa) {
+  async function salvarTarefaHome(t: Tarefa, fechar = true) {
     setSalvandoItem(true);
     try {
       const texto = escreverMarkdown({
@@ -183,10 +190,11 @@ export default function Home() {
         corpo: t.corpo,
       });
       const caminho = t.caminho || nomeLivre("tarefas", t.titulo, tarefasPendentes.map((x) => x.caminho));
-      await gravar(cfg, caminho, texto, t.sha || undefined);
+      const novaSha = await gravar(cfg, caminho, texto, t.sha || undefined);
       invalidarCache();
-      setEditandoTarefa(null);
-      setOrigTarefa(null);
+      const tSalva = { ...t, caminho, sha: novaSha };
+      setEditandoTarefa(fechar ? null : tSalva);
+      setOrigTarefa(fechar ? null : tSalva);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -217,7 +225,7 @@ export default function Home() {
     }
   }
 
-  async function salvarNotaHome() {
+  async function salvarNotaHome(fechar = true) {
     if (!editandoNota) return;
     setSalvandoItem(true);
     try {
@@ -228,10 +236,11 @@ export default function Home() {
         }),
         corpo: editandoNota.corpo,
       });
-      await gravar(cfg, editandoNota.caminho, texto, editandoNota.sha);
+      const novaSha = await gravar(cfg, editandoNota.caminho, texto, editandoNota.sha);
       invalidarCache();
-      setEditandoNota(null);
-      setOrigNota(null);
+      const nSalva = { ...editandoNota, sha: novaSha };
+      setEditandoNota(fechar ? null : nSalva);
+      setOrigNota(fechar ? null : { titulo: nSalva.titulo, corpo: nSalva.corpo, bruto: nSalva.bruto });
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -240,17 +249,18 @@ export default function Home() {
     }
   }
 
-  async function salvarMetaHome(m: Meta) {
+  async function salvarMetaHome(m: Meta, fechar = true) {
     setSalvandoItem(true);
     try {
       const texto = escreverMarkdown({
         dados: metaParaFrontmatter(m),
         corpo: m.corpo,
       });
-      await gravar(cfg, m.caminho, texto, m.sha);
+      const novaSha = await gravar(cfg, m.caminho, texto, m.sha);
       invalidarCache();
-      setEditandoMeta(null);
-      setOrigMeta(null);
+      const mSalva = { ...m, sha: novaSha };
+      setEditandoMeta(fechar ? null : mSalva);
+      setOrigMeta(fechar ? null : mSalva);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -258,6 +268,34 @@ export default function Home() {
       setSalvandoItem(false);
     }
   }
+
+  // Auto-save em 2.5s para itens abertos na Home
+  useEffect(() => {
+    const mudouTarefa = editandoTarefa !== null && origTarefa !== null && JSON.stringify(editandoTarefa) !== JSON.stringify(origTarefa);
+    if (!mudouTarefa || salvandoItem || !editandoTarefa) return;
+    const timer = setTimeout(() => {
+      salvarTarefaHome(editandoTarefa, false);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [editandoTarefa, origTarefa, salvandoItem]);
+
+  useEffect(() => {
+    const mudouNota = editandoNota !== null && origNota !== null && JSON.stringify(editandoNota) !== JSON.stringify(origNota);
+    if (!mudouNota || salvandoItem || !editandoNota) return;
+    const timer = setTimeout(() => {
+      salvarNotaHome(false);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [editandoNota, origNota, salvandoItem]);
+
+  useEffect(() => {
+    const mudouMeta = editandoMeta !== null && origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta);
+    if (!mudouMeta || salvandoItem || !editandoMeta) return;
+    const timer = setTimeout(() => {
+      salvarMetaHome(editandoMeta, false);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [editandoMeta, origMeta, salvandoItem]);
 
   const [gadgets, setGadgets] = useState<Gadget[]>(() => {
     const salvo = localStorage.getItem("home-gadgets");
