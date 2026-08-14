@@ -207,8 +207,10 @@ export default function Notas() {
 
   function abrir(a: ItemRepo) {
     if (focarFlutuante(a.caminho)) return;
-    setErro("");
-    const titulo = tituloProvavel(a.doc, a.nome);
+    if (aberta && aberta.caminho !== a.caminho && mudou) {
+      salvar(aberta, false);
+    }
+    const titulo = titulos[a.caminho] ?? tituloProvavel(a.doc, a.nome);
     setAberta({
       bruto: a.doc.dados,
       caminho: a.caminho,
@@ -217,7 +219,7 @@ export default function Notas() {
       corpo: a.doc.corpo,
       original: { titulo, corpo: a.doc.corpo, bruto: a.doc.dados },
     });
-    navegar(`?abrir=${encodeURIComponent(a.caminho)}`, { replace: true });
+    window.history.replaceState(null, "", `?abrir=${encodeURIComponent(a.caminho)}`);
   }
 
   function nova() {

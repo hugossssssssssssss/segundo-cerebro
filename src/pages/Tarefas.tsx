@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
   Timer,
-  Check,
   List,
   Columns3,
   CalendarDays,
@@ -360,15 +359,19 @@ export default function Tarefas() {
     }
   }
 
-  function alternarFeito(t: Tarefa) {
-    return mudarStatus(t, t.status === "feito" ? "a-fazer" : "feito");
-  }
+ 
 
   function abrir(t: Tarefa) {
     if (focarFlutuante(t.caminho)) return;
+    if (editando && editando.caminho !== t.caminho) {
+      const mudou = original !== null && JSON.stringify(editando) !== JSON.stringify(original);
+      if (mudou) {
+        salvar(editando, false);
+      }
+    }
     setEditando(t);
     setOriginal(t);
-    navegar(`?abrir=${encodeURIComponent(t.caminho)}`, { replace: true });
+    window.history.replaceState(null, "", `?abrir=${encodeURIComponent(t.caminho)}`);
   }
 
   function abrirNova() {
@@ -537,68 +540,51 @@ export default function Tarefas() {
             const passos = progressoSubtarefas(t.corpo);
 
             return (
-              <Cartao key={t.caminho} className="flex items-start gap-3 p-3.5 group">
-                <button
-                  onClick={() => alternarFeito(t)}
-                  disabled={gravandoCaminho === t.caminho}
-                  className="-m-2 shrink-0 p-2 disabled:opacity-60"
-                  title={t.status === "feito" ? "Reabrir" : "Concluir"}
-                  aria-label={t.status === "feito" ? "Reabrir tarefa" : "Concluir tarefa"}
-                >
-                  <span
-                    className={cn(
-                      "flex h-5 w-5 items-center justify-center rounded border-2 transition-colors",
-                      t.status === "feito"
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border hover:border-primary",
-                    )}
-                  >
-                    {t.status === "feito" && <Check size={13} strokeWidth={3} />}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => abrir(t)}
-                  className="min-w-0 flex-1 text-left"
-                >
-                  <p
-                    className={cn(
-                      "font-medium",
-                      t.status === "feito" && "text-muted-foreground line-through",
-                    )}
-                  >
-                    {t.titulo}
-                  </p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    {t.status === "fazendo" && (
-                      <Selo tom="primario">Fazendo</Selo>
-                    )}
-                    {u !== "nenhuma" && (
-                      <Selo tom={CORES_URGENCIA[u]}>{textoPrazo(t)}</Selo>
-                    )}
-                    {min > 0 && <Selo>🍅 {min}min</Selo>}
-                    {passos.total > 0 && (
-                      <Selo tom={passos.porcento === 100 ? "sucesso" : "neutro"}>
-                        {passos.feitas}/{passos.total} passos
-                      </Selo>
-                    )}
-                    {t.tags.map((tag) => (
-                      <Selo key={tag}>#{tag}</Selo>
-                    ))}
-                  </div>
-                </button>
-
-                <div className="flex items-center gap-1">
-                  {t.status !== "feito" && (
-                    <Botao
-                      variante="fantasma"
-                      tamanho="icone"
-                      onClick={() => setCronometrando(t)}
-                      title="Iniciar pomodoro"
+              <Cartao key={t.caminho} className="p-3.5 group cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => abrir(t)}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1 text-left">
+                    <p
+                      className={cn(
+                        "font-medium",
+                        t.status === "feito" && "text-muted-foreground line-through",
+                      )}
                     >
-                      <Timer size={17} />
-                    </Botao>
-                  )}
+                      {t.titulo}
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {t.status === "fazendo" && (
+                        <Selo tom="primario">Fazendo</Selo>
+                      )}
+                      {u !== "nenhuma" && (
+                        <Selo tom={CORES_URGENCIA[u]}>{textoPrazo(t)}</Selo>
+                      )}
+                      {min > 0 && <Selo>🍅 {min}min</Selo>}
+                      {passos.total > 0 && (
+                        <Selo tom={passos.porcento === 100 ? "sucesso" : "neutro"}>
+                          {passos.feitas}/{passos.total} passos
+                        </Selo>
+                      )}
+                      {t.tags.map((tag) => (
+                        <Selo key={tag}>#{tag}</Selo>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    {t.status !== "feito" && (
+                      <Botao
+                        variante="fantasma"
+                        tamanho="icone"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCronometrando(t);
+                        }}
+                        title="Iniciar pomodoro"
+                      >
+                        <Timer size={17} />
+                      </Botao>
+                    )}
+                  </div>
                 </div>
               </Cartao>
             );
