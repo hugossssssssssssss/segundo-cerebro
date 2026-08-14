@@ -69,6 +69,20 @@ const NOMES_TIPO: Record<TipoPropriedade, string> = {
   ultima_edicao: "Última edição em",
 };
 
+const NOMES_PADRAO_TIPO: Record<TipoPropriedade, string> = {
+  texto: "Texto",
+  numero: "Número",
+  data: "Data",
+  checkbox: "Checkbox",
+  select: "Seleção",
+  multiselect: "Tags",
+  relation: "Relacionamento",
+  status: "Status",
+  criado_por: "Criado por",
+  criado_em: "Criado em",
+  ultima_edicao: "Última edição em",
+};
+
 export const CORES_NOTION: Record<string, { bg: string; text: string; border: string; nome: string }> = {
   cinza: { bg: "bg-stone-500/15", text: "text-stone-700 dark:text-stone-300", border: "border-stone-500/20", nome: "Cinza" },
   azul: { bg: "bg-blue-500/15", text: "text-blue-700 dark:text-blue-300", border: "border-blue-500/20", nome: "Azul" },
@@ -84,8 +98,6 @@ export const STATUS_NOTION: Record<string, { label: string; cor: string }> = {
   "a-fazer": { label: "A fazer", cor: "cinza" },
   "fazendo": { label: "Fazendo", cor: "azul" },
   "feito": { label: "Feito", cor: "verde" },
-  "pausada": { label: "Pausada", cor: "amarelo" },
-  "cancelada": { label: "Cancelada", cor: "vermelho" },
 };
 
 const CONFIG_KEY = "segundo-cerebro-propriedades-config";
@@ -121,6 +133,8 @@ export function normalizarStatus(val: string): string {
   if (val === "a_fazer") return "a-fazer";
   if (val === "em_andamento") return "fazendo";
   if (val === "concluida") return "feito";
+  if (val === "pausada") return "a-fazer";
+  if (val === "cancelada") return "a-fazer";
   return val || "a-fazer";
 }
 
@@ -145,11 +159,12 @@ export function PropriedadesNotion({
   camposFixos = {}, 
   opcoesRelacionamento = [] 
 }: PropriedadesNotionProps) {
-  const [novoCampoPopover, setNovoCampoPopover] = useState(false);
+  // Controle estrito de um ÚNICO menu aberto por vez
+  const [menuAberto, setMenuAberto] = useState<string | null>(null);
+
   const [nomeNovoCampo, setNomeNovoCampo] = useState("");
   const [tipoNovoCampo, setTipoNovoCampo] = useState<TipoPropriedade>("texto");
 
-  const [editandoChave, setEditandoChave] = useState<string | null>(null);
   const [renomearPara, setRenomearPara] = useState("");
   const [copiado, setCopiado] = useState<string | null>(null);
   const [mostrandoOcultas, setMostrandoOcultas] = useState(false);
@@ -229,11 +244,12 @@ export function PropriedadesNotion({
     }
 
     onChange(novos);
-    setEditandoChave(null);
+    setMenuAberto(null);
   }
 
   function criarNovaPropriedade(tipo: TipoPropriedade) {
-    const nomeBase = nomeNovoCampo.trim() || `Propriedade ${todasAsChaves.length + 1}`;
+    const nomePadrao = NOMES_PADRAO_TIPO[tipo] || "Propriedade";
+    const nomeBase = nomeNovoCampo.trim() || nomePadrao;
     let nomeFinal = nomeBase;
     let idx = 2;
     while (dados[nomeFinal] !== undefined || camposFixos[nomeFinal] !== undefined) {
@@ -247,7 +263,7 @@ export function PropriedadesNotion({
 
     onChange(novos);
     setNomeNovoCampo("");
-    setNovoCampoPopover(false);
+    setMenuAberto(null);
   }
 
   function ehVazia(chave: string): boolean {
@@ -262,7 +278,6 @@ export function PropriedadesNotion({
   const chavesOcultas: string[] = [];
 
   todasAsChaves.forEach((chave) => {
-    // Propriedades nativas de sistema ficam ocultas por padrão
     const visDefault = ["criado_por", "criado_em", "ultima_edicao"].includes(chave) ? "esconder" : "sempre";
     const vis = visibilidadeMap[chave] || visDefault;
 
@@ -278,9 +293,10 @@ export function PropriedadesNotion({
   function renderizarBadgeTag(nomeTag: string) {
     const chaveCor = coresMap[nomeTag] || "azul";
     const estiloCor = CORES_NOTION[chaveCor] || CORES_NOTION.azul;
+    const idMenu = `tag-${nomeTag}`;
 
     return (
-      <Popover key={nomeTag}>
+      <Popover open={menuAberto === idMenu} onOpenChange={(open) => setMenuAberto(open ? idMenu : null)}>
         <PopoverTrigger asChild>
           <Badge 
             variant="secondary" 
@@ -294,13 +310,16 @@ export function PropriedadesNotion({
             <span>{nomeTag}</span>
           </Badge>
         </PopoverTrigger>
-        <PopoverContent className="w-[180px] p-2" align="start">
+        <PopoverContent className="w-[180px] p-2" align="start" onInteractOutside={() => setMenuAberto(null)}>
           <p className="text-xs font-semibold text-muted-foreground mb-2">Cor da tag "{nomeTag}"</p>
           <div className="grid grid-cols-2 gap-1">
             {Object.entries(CORES_NOTION).map(([k, c]) => (
               <button
                 key={k}
-                onClick={() => atualizarCorTag(nomeTag, k)}
+                onClick={() => {
+                  atualizarCorTag(nomeTag, k);
+                  setMenuAberto(null);
+                }}
                 className={cn(
                   "px-2 py-1 rounded text-xs text-left font-medium transition-colors border flex items-center justify-between",
                   c.bg,
@@ -320,11 +339,11 @@ export function PropriedadesNotion({
 
   function renderizarBadgeStatus(rawVal: string) {
     const val = normalizarStatus(rawVal);
-    const info = STATUS_NOTION[val] || { label: val || "A fazer", cor: "cinza" };
+    const info = STATUS_NOTION[val] || { label: "A fazer", cor: "cinza" };
     const estiloCor = CORES_NOTION[info.cor] || CORES_NOTION.cinza;
 
     return (
-      <Popover>
+      <Popover open={menuAberto === "status-pop"} onOpenChange={(open) => setMenuAberto(open ? "status-pop" : null)}>
         <PopoverTrigger asChild>
           <Badge 
             variant="secondary" 
@@ -338,7 +357,7 @@ export function PropriedadesNotion({
             <span>{info.label}</span>
           </Badge>
         </PopoverTrigger>
-        <PopoverContent className="w-[200px] p-1.5" align="start">
+        <PopoverContent className="w-[180px] p-1.5" align="start" onInteractOutside={() => setMenuAberto(null)}>
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">Alterar Status</p>
           <div className="flex flex-col gap-1 mt-1">
             {Object.entries(STATUS_NOTION).map(([stKey, stInfo]) => {
@@ -346,7 +365,10 @@ export function PropriedadesNotion({
               return (
                 <button
                   key={stKey}
-                  onClick={() => atualizar("status", stKey)}
+                  onClick={() => {
+                    atualizar("status", stKey);
+                    setMenuAberto(null);
+                  }}
                   className={cn(
                     "w-full px-2.5 py-1.5 rounded-md text-xs font-semibold text-left transition-colors border flex items-center justify-between",
                     est.bg,
@@ -370,6 +392,7 @@ export function PropriedadesNotion({
     const fixo = camposFixos[chave];
     const valor = dados[chave];
     const tipo = chave === "status" ? "status" : fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : "texto");
+    const idPopover = `val-${chave}`;
 
     if (tipo === "status" || chave === "status") {
       return renderizarBadgeStatus(valor || "a-fazer");
@@ -377,7 +400,7 @@ export function PropriedadesNotion({
 
     if (tipo === "criado_por") {
       return (
-        <span className="text-sm font-medium text-foreground/80 px-2 py-1 flex items-center gap-1.5">
+        <span className="text-xs font-medium text-foreground/80 px-2 py-1 flex items-center gap-1.5">
           <User size={13} className="text-muted-foreground" />
           Hugo
         </span>
@@ -385,9 +408,9 @@ export function PropriedadesNotion({
     }
 
     if (tipo === "criado_em") {
-      const dataCriacao = typeof valor === "string" && valor.trim() ? valor : "Hoje";
+      const dataCriacao = typeof valor === "string" && valor.trim() ? valor : format(new Date(), "dd 'de' MMM 'de' yyyy", { locale: ptBR });
       return (
-        <span className="text-sm font-medium text-muted-foreground px-2 py-1 flex items-center gap-1.5">
+        <span className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1.5">
           <Clock size={13} />
           {dataCriacao}
         </span>
@@ -395,11 +418,13 @@ export function PropriedadesNotion({
     }
 
     if (tipo === "ultima_edicao") {
-      const ultima = typeof dados.atualizado === "string" ? dados.atualizado : "Recente";
+      const dataFormatada = typeof dados.atualizado === "string" && dados.atualizado.trim()
+        ? dados.atualizado
+        : format(new Date(), "dd 'de' MMM 'de' yyyy, HH:mm", { locale: ptBR });
       return (
-        <span className="text-sm font-medium text-muted-foreground px-2 py-1 flex items-center gap-1.5">
+        <span className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1.5">
           <Clock size={13} />
-          {ultima}
+          {dataFormatada}
         </span>
       );
     }
@@ -427,7 +452,7 @@ export function PropriedadesNotion({
             )
           }
           placeholder="Vazio"
-          className="flex-1 bg-transparent border-none outline-none h-7 px-2 text-sm text-foreground/80 placeholder:text-muted-foreground focus:ring-0"
+          className="flex-1 bg-transparent border-none outline-none h-7 px-2 text-xs text-foreground/80 placeholder:text-muted-foreground focus:ring-0"
         />
       );
     }
@@ -435,24 +460,28 @@ export function PropriedadesNotion({
     if (tipo === "select") {
       const opcoes = fixo?.opcoes || (valor ? [valor] : []);
       return (
-        <Popover>
+        <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-left justify-start font-normal text-foreground/80 hover:text-foreground">
-              {valor ? renderizarBadgeTag(valor) : <span className="text-muted-foreground">Vazio</span>}
+              {valor ? renderizarBadgeTag(valor) : <span className="text-muted-foreground text-xs">Vazio</span>}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[220px] p-0" align="start">
+          <PopoverContent className="w-[220px] p-0" align="start" onInteractOutside={() => setMenuAberto(null)}>
             <Command>
               <CommandInput placeholder="Buscar ou criar opção..." onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === "Enter") {
                   atualizar(chave, e.currentTarget.value.trim());
+                  setMenuAberto(null);
                 }
               }} />
               <CommandList>
                 <CommandEmpty>Digite e aperte Enter para selecionar.</CommandEmpty>
                 <CommandGroup>
                   {opcoes.map((opcao: string) => (
-                    <CommandItem key={opcao} onSelect={() => atualizar(chave, opcao)}>
+                    <CommandItem key={opcao} onSelect={() => {
+                      atualizar(chave, opcao);
+                      setMenuAberto(null);
+                    }}>
                       {renderizarBadgeTag(opcao)}
                     </CommandItem>
                   ))}
@@ -478,17 +507,17 @@ export function PropriedadesNotion({
         : null;
 
       return (
-        <Popover>
+        <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-left justify-start font-normal text-foreground/80 hover:text-foreground">
               {textoFormatado ? (
-                <span className="font-medium text-foreground">{textoFormatado}</span>
+                <span className="font-medium text-foreground text-xs">{textoFormatado}</span>
               ) : (
-                <span className="text-muted-foreground">Vazio</span>
+                <span className="text-muted-foreground text-xs">Vazio</span>
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-3" align="start">
+          <PopoverContent className="w-auto p-3" align="start" onInteractOutside={() => setMenuAberto(null)}>
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
                 <span>Data Inicial</span>
@@ -618,12 +647,11 @@ export function PropriedadesNotion({
     if (tipo === "relation") {
       const relacoes = Array.isArray(valor) ? valor : valor ? [valor] : [];
       
-      // Extrai também automáticos do corpo do texto
       const textoMencoes = (corpoTexto || "").match(/@[a-zA-Z0-9_\-áàâãéèêíïóôõöúçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ\s]{2,60}/g) || [];
       const unicosMencoes = Array.from(new Set([...relacoes, ...textoMencoes.map(m => m.trim())]));
 
       return (
-        <Popover>
+        <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-auto min-h-7 px-2 py-1 text-left justify-start font-normal flex-wrap gap-1 hover:bg-transparent">
               {unicosMencoes.length > 0 ? (
@@ -637,11 +665,11 @@ export function PropriedadesNotion({
                   );
                 })
               ) : (
-                <span className="text-muted-foreground hover:bg-accent px-1.5 py-0.5 rounded transition-colors">Vazio</span>
+                <span className="text-muted-foreground text-xs hover:bg-accent px-1.5 py-0.5 rounded transition-colors">Vazio</span>
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0" align="start">
+          <PopoverContent className="w-[300px] p-0" align="start" onInteractOutside={() => setMenuAberto(null)}>
             <Command>
               <CommandInput placeholder="Buscar página para ligar..." />
               <CommandList>
@@ -659,6 +687,7 @@ export function PropriedadesNotion({
                           } else {
                             atualizar(chave, [...relacoes, tagFormatada]);
                           }
+                          setMenuAberto(null);
                         }}
                       >
                         <div className="flex items-center gap-2">
@@ -683,7 +712,7 @@ export function PropriedadesNotion({
         value={valor || ""}
         onChange={(e) => atualizar(chave, e.target.value)}
         placeholder="Vazio"
-        className="flex-1 bg-transparent border-none outline-none h-7 px-2 text-sm text-foreground/80 placeholder:text-muted-foreground focus:ring-0"
+        className="flex-1 bg-transparent border-none outline-none h-7 px-2 text-xs text-foreground/80 placeholder:text-muted-foreground focus:ring-0"
       />
     );
   }
@@ -694,14 +723,15 @@ export function PropriedadesNotion({
     const visDefault = ["criado_por", "criado_em", "ultima_edicao"].includes(chave) ? "esconder" : "sempre";
     const visAtual = visibilidadeMap[chave] || visDefault;
     const rotuloAtual = nomeExibido(chave);
+    const idMenu = `prop-${chave}`;
 
     return (
-      <Popover open={editandoChave === chave} onOpenChange={(open) => {
+      <Popover open={menuAberto === idMenu} onOpenChange={(open) => {
         if (open) {
-          setEditandoChave(chave);
+          setMenuAberto(idMenu);
           setRenomearPara(rotuloAtual);
         } else {
-          setEditandoChave(null);
+          setMenuAberto(null);
         }
       }}>
         <PopoverTrigger asChild>
@@ -710,7 +740,7 @@ export function PropriedadesNotion({
             <span className="truncate flex-1 font-medium text-xs">{rotuloAtual}</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[260px] p-3 flex flex-col gap-2 shadow-xl border-border" align="start">
+        <PopoverContent className="w-[260px] p-3 flex flex-col gap-2 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
           <div>
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Nome da Propriedade</span>
             <input 
@@ -720,7 +750,7 @@ export function PropriedadesNotion({
                 if (e.key === "Enter") renomear(chave, renomearPara);
               }}
               onBlur={() => renomear(chave, renomearPara)}
-              className="bg-accent/50 border border-border outline-none text-sm px-2.5 py-1.5 rounded-md focus:ring-2 focus:ring-primary w-full"
+              className="bg-accent/50 border border-border outline-none text-xs px-2.5 py-1.5 rounded-md focus:ring-2 focus:ring-primary w-full"
             />
           </div>
 
@@ -737,7 +767,10 @@ export function PropriedadesNotion({
                   key={v.id}
                   variant="ghost"
                   size="sm"
-                  onClick={() => atualizarVisibilidade(chave, v.id as OpcaoVisibilidade)}
+                  onClick={() => {
+                    atualizarVisibilidade(chave, v.id as OpcaoVisibilidade);
+                    setMenuAberto(null);
+                  }}
                   className={cn("justify-start text-xs font-normal h-7 px-2", visAtual === v.id && "bg-accent font-semibold")}
                 >
                   <v.icon className="h-3.5 w-3.5 mr-2 opacity-60" />
@@ -756,7 +789,10 @@ export function PropriedadesNotion({
                     key={t}
                     variant="ghost" 
                     size="sm" 
-                    onClick={() => atualizarEsquema(chave, t)}
+                    onClick={() => {
+                      atualizarEsquema(chave, t);
+                      setMenuAberto(null);
+                    }}
                     className={cn("justify-start font-normal text-xs h-7 px-2", tipoAtual === t && "bg-accent font-semibold")}
                   >
                     <Icon className="h-3.5 w-3.5 mr-2 opacity-60" />
@@ -786,7 +822,7 @@ export function PropriedadesNotion({
       {chavesVisiveis.map((chave) => {
         const fixo = camposFixos[chave];
         return (
-          <div key={chave} className="flex min-h-8 items-center gap-4 text-sm group">
+          <div key={chave} className="flex min-h-8 items-center gap-4 text-xs group">
             {renderizarMenuPropriedade(chave, fixo)}
             <div className="flex-1 flex items-center min-h-8">
               {renderizarValor(chave)}
@@ -797,21 +833,21 @@ export function PropriedadesNotion({
 
       {/* Gaveta de Propriedades Ocultas */}
       {chavesOcultas.length > 0 && (
-        <div className="mt-1 border-t border-border/50 pt-2">
+        <div className="mt-1 border-t border-border/40 pt-1">
           <button
             onClick={() => setMostrandoOcultas(!mostrandoOcultas)}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 font-medium"
           >
-            {mostrandoOcultas ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            {mostrandoOcultas ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
             <span>{chavesOcultas.length} propriedade{chavesOcultas.length > 1 ? "s" : ""} oculta{chavesOcultas.length > 1 ? "s" : ""}</span>
           </button>
 
           {mostrandoOcultas && (
-            <div className="flex flex-col gap-1.5 mt-2 pl-2 border-l border-border/60">
+            <div className="flex flex-col gap-1.5 mt-1.5 pl-2 border-l border-border/60">
               {chavesOcultas.map((chave) => {
                 const fixo = camposFixos[chave];
                 return (
-                  <div key={chave} className="flex min-h-8 items-center gap-4 text-sm group opacity-75 hover:opacity-100">
+                  <div key={chave} className="flex min-h-8 items-center gap-4 text-xs group opacity-75 hover:opacity-100">
                     {renderizarMenuPropriedade(chave, fixo)}
                     <div className="flex-1 flex items-center min-h-8">
                       {renderizarValor(chave)}
@@ -824,30 +860,29 @@ export function PropriedadesNotion({
         </div>
       )}
 
-      {/* Botão de Adicionar Nova Propriedade estilo Notion Popover Menu */}
-      <div className="flex items-center gap-4 text-sm mt-1">
-        <div className="w-36"></div>
-        <div className="flex-1">
-          <Popover open={novoCampoPopover} onOpenChange={setNovoCampoPopover}>
+      {/* Botão de Adicionar Nova Propriedade perfeitamente alinhado */}
+      <div className="flex items-center gap-4 text-xs mt-1 pt-1 border-t border-border/30">
+        <div className="w-36">
+          <Popover open={menuAberto === "novo_campo"} onOpenChange={(open) => setMenuAberto(open ? "novo_campo" : null)}>
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2.5 -ml-2 text-muted-foreground hover:text-foreground font-medium text-xs flex items-center gap-1.5 rounded-lg border border-dashed border-border/80 hover:border-border hover:bg-accent/40"
+                className="h-7 px-2 -ml-2 text-muted-foreground hover:text-foreground font-normal text-xs flex items-center gap-1.5 rounded-md hover:bg-accent/60"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Adicionar propriedade</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[280px] p-3 shadow-2xl border-border space-y-3" align="start">
+            <PopoverContent className="w-[280px] p-3 shadow-2xl border-border space-y-3" align="start" onInteractOutside={() => setMenuAberto(null)}>
               <div>
                 <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                  Nova Propriedade
+                  Nome da Propriedade (Opcional)
                 </span>
                 <input
                   type="text"
                   autoFocus
-                  placeholder="Nome (ex: Cliente, Prioridade)..."
+                  placeholder={`Padrão: "${NOMES_PADRAO_TIPO[tipoNovoCampo]}"...`}
                   value={nomeNovoCampo}
                   onChange={(e) => setNomeNovoCampo(e.target.value)}
                   onKeyDown={(e) => {
@@ -885,6 +920,7 @@ export function PropriedadesNotion({
             </PopoverContent>
           </Popover>
         </div>
+        <div className="flex-1"></div>
       </div>
     </div>
   );
