@@ -27,6 +27,8 @@ interface ContextoFlutuanteProps {
   setItemFlutuante: (item: ItemFlutuanteGlobal | null) => void;
   abrirFlutuante: (item: ItemFlutuanteGlobal) => void;
   fecharFlutuante: () => void;
+  estaAbertoFlutuante: (caminho: string) => boolean;
+  focarFlutuante: (caminho: string) => boolean;
 }
 
 const ItemFlutuanteContext = createContext<ContextoFlutuanteProps>({
@@ -34,6 +36,8 @@ const ItemFlutuanteContext = createContext<ContextoFlutuanteProps>({
   setItemFlutuante: () => {},
   abrirFlutuante: () => {},
   fecharFlutuante: () => {},
+  estaAbertoFlutuante: () => false,
+  focarFlutuante: () => false,
 });
 
 export const useItemFlutuante = () => useContext(ItemFlutuanteContext);
@@ -61,9 +65,21 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
     }
   }, [modoVisao, itemFlutuante]);
 
+  const estaAbertoFlutuante = (caminho: string): boolean => {
+    return itemFlutuante !== null && itemFlutuante.caminho === caminho && modoVisao === "flutuante";
+  };
+
+  const focarFlutuante = (caminho: string): boolean => {
+    if (estaAbertoFlutuante(caminho)) {
+      setModoVisao("flutuante");
+      return true;
+    }
+    return false;
+  };
+
   return (
     <ItemFlutuanteContext.Provider
-      value={{ itemFlutuante, setItemFlutuante, abrirFlutuante, fecharFlutuante }}
+      value={{ itemFlutuante, setItemFlutuante, abrirFlutuante, fecharFlutuante, estaAbertoFlutuante, focarFlutuante }}
     >
       {children}
 

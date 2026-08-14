@@ -3,11 +3,12 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Target, Calendar, Package, Trash2, AlertTriangle, Sparkles, CheckSquare } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
-import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
+import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal } from "@/lib/repo";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import {
   escreverMarkdown,
+  lerMarkdown,
   tituloProvavel,
   nomeLivre,
   nomeDeArquivo,
@@ -226,7 +227,10 @@ export default function PDI() {
       const caminho =
         metaParaSalvar.caminho ||
         nomeLivreSemData(PASTA_METAS, metaParaSalvar.titulo, metas.map((x) => x.caminho));
+      const docAtualizado = lerMarkdown(texto);
+      atualizarCacheLocal(caminho, texto, docAtualizado, metaParaSalvar.sha || undefined);
       const novaSha = await gravar(cfg, caminho, texto, metaParaSalvar.sha || undefined);
+      atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
       invalidarCache();
       const salvaMeta: Meta = { ...metaParaSalvar, caminho, sha: novaSha };
       setEditandoMeta(salvaMeta);

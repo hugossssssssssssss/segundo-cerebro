@@ -14,7 +14,7 @@ import {
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { ler, gravar, apagar } from "@/lib/github";
-import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
+import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal, type ItemRepo } from "@/lib/repo";
 import { montarIndice, mencoesA } from "@/lib/links";
 import {
   lerMarkdown,
@@ -141,7 +141,7 @@ export default function Tarefas() {
   const pronto = configCompleta(cfg);
   const location = useLocation();
   const navegar = useNavigate();
-  const { abrirFlutuante } = useItemFlutuante();
+  const { abrirFlutuante, focarFlutuante } = useItemFlutuante();
 
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -238,7 +238,10 @@ export default function Tarefas() {
     });
     const caminho =
       t.caminho || nomeLivre(PASTA, t.titulo, tarefas.map((x) => x.caminho));
+    const docAtualizado = lerMarkdown(texto);
+    atualizarCacheLocal(caminho, texto, docAtualizado, t.sha || undefined);
     const sha = await gravar(cfg, caminho, texto, t.sha || undefined, mensagem);
+    atualizarCacheLocal(caminho, texto, docAtualizado, sha);
     invalidarCache();
     return { ...t, caminho, sha };
   }
@@ -355,6 +358,7 @@ export default function Tarefas() {
   }
 
   function abrir(t: Tarefa) {
+    if (focarFlutuante(t.caminho)) return;
     setEditando(t);
     setOriginal(t);
     navegar(`?abrir=${encodeURIComponent(t.caminho)}`, { replace: true });

@@ -4,9 +4,10 @@ import { Masonry } from "react-plock";
 import { Plus, Trash2, ImagePlus, ExternalLink, ScanText } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, gravarBinario, apagar } from "@/lib/github";
-import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
+import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal } from "@/lib/repo";
 import {
   escreverMarkdown,
+  lerMarkdown,
   tituloProvavel,
   nomeLivre,
 } from "@/lib/markdown";
@@ -261,7 +262,10 @@ export default function Referencias() {
       const caminho =
         editando.caminho ||
         nomeLivre(PASTA_REFS, editando.titulo, refs.map((x) => x.caminho));
-      await gravar(cfg, caminho, texto, editando.sha || undefined);
+      const docAtualizado = lerMarkdown(texto);
+      atualizarCacheLocal(caminho, texto, docAtualizado, editando.sha || undefined);
+      const novaSha = await gravar(cfg, caminho, texto, editando.sha || undefined);
+      atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
       invalidarCache();
       fecharModal();
       await carregar();

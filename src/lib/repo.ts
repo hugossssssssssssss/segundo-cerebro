@@ -293,3 +293,38 @@ export function daPasta(itens: ItemRepo[], pasta: string): ItemRepo[] {
     )
     .sort((a, b) => b.nome.localeCompare(a.nome));
 }
+
+/**
+ * Atualiza instantaneamente (0ms) um item no cache de memória local.
+ * Garante que se o usuário reabrir a nota/tarefa no segundo seguinte,
+ * ela abre 100% atualizada sem depender da rede do GitHub.
+ */
+export function atualizarCacheLocal(
+  caminho: string,
+  texto: string,
+  doc: Documento,
+  sha?: string
+) {
+  const shaFinal = sha || `temp-${Date.now()}`;
+  textoPorSha.set(shaFinal, texto);
+
+  if (cache) {
+    const nome = caminho.split("/").pop()!;
+    const novoItem: ItemRepo = {
+      caminho,
+      nome,
+      sha: shaFinal,
+      tamanho: texto.length,
+      texto,
+      doc,
+    };
+
+    const idx = cache.itens.findIndex((i) => i.caminho === caminho);
+    if (idx >= 0) {
+      cache.itens[idx] = novoItem;
+    } else {
+      cache.itens.unshift(novoItem);
+    }
+    cache.quando = Date.now();
+  }
+}

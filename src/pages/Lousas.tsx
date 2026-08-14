@@ -4,7 +4,7 @@ import { Plus, Layout, ArrowLeft, Save, Trash2 } from "lucide-react";
 import "@excalidraw/excalidraw/index.css";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar, lerOuVazio } from "@/lib/github";
-import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
+import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal, type ItemRepo } from "@/lib/repo";
 import { tituloProvavel, nomeLivre } from "@/lib/markdown";
 import { Botao, Campo, Cartao, Aviso, Vazio, Carregando } from "@/components/ui";
 
@@ -126,7 +126,8 @@ export default function Lousas() {
           lousas.map((x) => x.caminho),
         );
 
-      await gravar(cfg, caminho, json, aberta.sha || undefined, `lousa: ${aberta.titulo}`);
+      const novaSha = await gravar(cfg, caminho, json, aberta.sha || undefined, `lousa: ${aberta.titulo}`);
+      atualizarCacheLocal(caminho, json, { dados: {}, corpo: json }, novaSha);
       invalidarCache();
       setAberta(null);
       await carregar();

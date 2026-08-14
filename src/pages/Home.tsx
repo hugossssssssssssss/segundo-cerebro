@@ -38,7 +38,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
+import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal } from "@/lib/repo";
 import { gravar, ler, apagar } from "@/lib/github";
 import { comoTarefa, ordenar, textoPrazo, urgencia, paraFrontmatter, type Tarefa } from "@/lib/tarefas";
 import { tituloProvavel, escreverMarkdown, nomeLivre, lerMarkdown, mesclarFrontmatter } from "@/lib/markdown";
@@ -47,6 +47,7 @@ import { comoMeta, comoEntrega, resumir, metaParaFrontmatter, type Meta, type Re
 import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { PainelTarefaNotion } from "@/pages/Tarefas";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
+import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -182,6 +183,8 @@ export default function Home() {
   const [editandoMeta, setEditandoMeta] = useState<Meta | null>(null);
   const [origMeta, setOrigMeta] = useState<Meta | null>(null);
 
+  const { focarFlutuante } = useItemFlutuante();
+
   async function salvarTarefaHome(t: Tarefa, fechar = true) {
     setSalvandoItem(true);
     try {
@@ -190,7 +193,10 @@ export default function Home() {
         corpo: t.corpo,
       });
       const caminho = t.caminho || nomeLivre("tarefas", t.titulo, tarefasPendentes.map((x) => x.caminho));
+      const docAtualizado = lerMarkdown(texto);
+      atualizarCacheLocal(caminho, texto, docAtualizado, t.sha || undefined);
       const novaSha = await gravar(cfg, caminho, texto, t.sha || undefined);
+      atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
       invalidarCache();
       const tSalva = { ...t, caminho, sha: novaSha };
       setEditandoTarefa(fechar ? null : tSalva);
@@ -204,6 +210,7 @@ export default function Home() {
   }
 
   async function abrirNotaHome(caminho: string) {
+    if (focarFlutuante(caminho)) return;
     setCarregando(true);
     try {
       const res = await ler(cfg, caminho);
@@ -236,7 +243,10 @@ export default function Home() {
         }),
         corpo: editandoNota.corpo,
       });
+      const docAtualizado = lerMarkdown(texto);
+      atualizarCacheLocal(editandoNota.caminho, texto, docAtualizado, editandoNota.sha);
       const novaSha = await gravar(cfg, editandoNota.caminho, texto, editandoNota.sha);
+      atualizarCacheLocal(editandoNota.caminho, texto, docAtualizado, novaSha);
       invalidarCache();
       const nSalva = { ...editandoNota, sha: novaSha };
       setEditandoNota(fechar ? null : nSalva);

@@ -7,12 +7,14 @@ import {
   carregarRepo,
   daPasta,
   invalidarCache,
+  atualizarCacheLocal,
   arquivosIlegiveis,
   type ItemRepo,
 } from "@/lib/repo";
 import { montarIndice, mencoesA } from "@/lib/links";
 import {
   escreverMarkdown,
+  lerMarkdown,
   tituloProvavel,
   nomeLivre,
   mesclarFrontmatter,
@@ -47,7 +49,7 @@ export default function Notas() {
   const pronto = configCompleta(cfg);
   const location = useLocation();
   const navegar = useNavigate();
-  const { abrirFlutuante } = useItemFlutuante();
+  const { abrirFlutuante, focarFlutuante } = useItemFlutuante();
 
   const [arquivos, setArquivos] = useState<ItemRepo[]>([]);
   const [titulos, setTitulos] = useState<Record<string, string>>({});
@@ -196,6 +198,7 @@ export default function Notas() {
   /* ------------------------------------------------------------- ações */
 
   function abrir(a: ItemRepo) {
+    if (focarFlutuante(a.caminho)) return;
     setErro("");
     const titulo = tituloProvavel(a.doc, a.nome);
     setAberta({
@@ -252,12 +255,18 @@ export default function Notas() {
       const caminho =
         n.caminho ||
         nomeLivre(PASTA, titulo, arquivos.map((a) => a.caminho));
+
+      // Atualiza o cache de memória local IMEDIATAMENTE (0ms) para que reabrir a nota seja instantâneo
+      const docAtualizado = lerMarkdown(texto);
+      atualizarCacheLocal(caminho, texto, docAtualizado, n.sha || undefined);
+
       const novaSha = await gravar(
         cfg,
         caminho,
         texto,
         n.sha || undefined,
       );
+      atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
       invalidarCache();
       const nSalva: NotaAberta = {
         ...n,

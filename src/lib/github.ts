@@ -159,6 +159,8 @@ export async function lerOuVazio(
  * Cria ou atualiza um arquivo. Sem `sha` cria; com `sha` atualiza.
  * Devolve o novo SHA, que precisa ser guardado para a próxima gravação.
  */
+const gravaçõesAtivas = new Map<string, Promise<string>>();
+
 export async function gravar(
   cfg: Settings,
   caminho: string,
@@ -166,46 +168,68 @@ export async function gravar(
   sha?: string,
   mensagem?: string,
 ): Promise<string> {
-  const fazerPut = async (shaParaEnviar?: string) => {
-    return await buscar(`${raiz(cfg)}/${caminho}`, {
-      method: "PUT",
-      headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: mensagem ?? `${shaParaEnviar ? "atualiza" : "cria"} ${caminho}`,
-        content: paraBase64(texto),
-        branch: cfg.branch,
-        ...(shaParaEnviar ? { sha: shaParaEnviar } : {}),
-      }),
-    });
-  };
-
-  let resposta = await fazerPut(sha);
-
-  if (resposta.ok) {
-    const dados = await resposta.json();
-    return dados.content.sha as string;
-  }
-
-  // Se deu 409 (conflito) ou 422 (sha ausente ou desatualizado), busca o SHA direto no GitHub e grava por cima sem dar erro
-  if (resposta.status === 409 || resposta.status === 422 || resposta.status === 400) {
+  // Se já houver um salvamento em andamento para este arquivo, aguarda o commit anterior concluir
+  const gravacaoAnterior = gravaçõesAtivas.get(caminho);
+  if (gravacaoAnterior) {
     try {
-      const getRes = await buscar(`${raiz(cfg)}/${caminho}?ref=${encodeURIComponent(cfg.branch)}`, {
-        headers: cabecalhos(cfg),
-      });
-      if (getRes.ok) {
-        const getDados = await getRes.json();
-        if (getDados && getDados.sha) {
-          resposta = await fazerPut(getDados.sha);
-        }
-      }
+      const shaAtualizada = await gravacaoAnterior;
+      if (shaAtualizada) sha = shaAtualizada;
     } catch {
-      // prossegue para erro original
+      // ignora falha da gravação anterior
     }
   }
 
-  await conferir(resposta);
-  const dados = await resposta.json();
-  return dados.content.sha as string;
+  const promessaAtual = (async () => {
+    const fazerPut = async (shaParaEnviar?: string) => {
+      return await buscar(`${raiz(cfg)}/${caminho}`, {
+        method: "PUT",
+        headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: mensagem ?? `${shaParaEnviar ? "atualiza" : "cria"} ${caminho}`,
+          content: paraBase64(texto),
+          branch: cfg.branch,
+          ...(shaParaEnviar ? { sha: shaParaEnviar } : {}),
+        }),
+      });
+    };
+
+    let resposta = await fazerPut(sha);
+
+    if (resposta.ok) {
+      const dados = await resposta.json();
+      return dados.content.sha as string;
+    }
+
+    // Se deu 409 (conflito) ou 422 (sha desatualizado), busca o SHA direto no GitHub e grava por cima sem erro
+    if (resposta.status === 409 || resposta.status === 422 || resposta.status === 400) {
+      try {
+        const getRes = await buscar(`${raiz(cfg)}/${caminho}?ref=${encodeURIComponent(cfg.branch)}`, {
+          headers: cabecalhos(cfg),
+        });
+        if (getRes.ok) {
+          const getDados = await getRes.json();
+          if (getDados && getDados.sha) {
+            resposta = await fazerPut(getDados.sha);
+          }
+        }
+      } catch {
+        // prossegue para erro original
+      }
+    }
+
+    await conferir(resposta);
+    const dados = await resposta.json();
+    return dados.content.sha as string;
+  })();
+
+  gravaçõesAtivas.set(caminho, promessaAtual);
+  try {
+    return await promessaAtual;
+  } finally {
+    if (gravaçõesAtivas.get(caminho) === promessaAtual) {
+      gravaçõesAtivas.delete(caminho);
+    }
+  }
 }
 
 /** Grava um arquivo binário (imagem) já em base64. */
