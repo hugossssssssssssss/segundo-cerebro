@@ -145,11 +145,14 @@ export function Rotulo({
 
 /* --------------------------------------------------------------- Cartão */
 
+// `ComponentProps<"div">` e não `HTMLAttributes`: inclui `ref` e `style`, que
+// o quadro de tarefas precisa passar para o @dnd-kit posicionar o cartão
+// enquanto ele é arrastado. No React 19 o `ref` viaja junto no spread abaixo.
 export function Cartao({
   className,
   children,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.ComponentProps<"div">) {
   return (
     <div
       className={cn(

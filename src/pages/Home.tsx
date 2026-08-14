@@ -44,14 +44,12 @@ import { comoReferencia, type Referencia } from "@/lib/referencias";
 import { comoMeta, comoEntrega, resumir, metaParaFrontmatter, type Meta, type ResumoMeta } from "@/lib/pdi";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { PainelTarefaNotion } from "@/pages/Tarefas";
-import { PropriedadesNotion } from "@/components/PropriedadesNotion";
-import { EditorNotion } from "@/components/EditorNotion";
-import { Subtarefas } from "@/components/Subtarefas";
+import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Carregando, Vazio, Modal } from "@/components/ui";
+import { Carregando, Vazio } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 type NotaRecente = {
@@ -168,7 +166,7 @@ export default function Home() {
   const [salvandoItem, setSalvandoItem] = useState(false);
   const [editandoTarefa, setEditandoTarefa] = useState<Tarefa | null>(null);
   const [origTarefa, setOrigTarefa] = useState<Tarefa | null>(null);
-  const [modoVisao, setModoVisao] = useState<"popup" | "lado" | "telacheia">("popup");
+  const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>("popup");
 
   const [editandoNota, setEditandoNota] = useState<{
     caminho: string;
@@ -840,132 +838,69 @@ export default function Home() {
           erro={erro}
         />
       )}
-      {/* Modal/Painel para Nota na Home */}
+      {/* Painel para Nota na Home */}
       {editandoNota !== null && (
-        <Modal
-          aberto={true}
-          aoFechar={salvarNotaHome}
-          titulo="Anotação"
-          temMudancas={JSON.stringify(editandoNota) !== JSON.stringify(origNota)}
-          rodape={
-            <div className="flex w-full items-center justify-between gap-2">
-              <Button
-                variant="ghost"
-                onClick={async () => {
-                  await apagar(cfg, editandoNota.caminho, editandoNota.sha);
-                  invalidarCache();
-                  setEditandoNota(null);
-                  setOrigNota(null);
-                  await carregar();
-                }}
-                className="text-destructive hover:bg-destructive/10 text-xs"
-              >
-                Apagar nota
-              </Button>
-              <span className="text-xs text-muted-foreground">Salva automaticamente ao fechar</span>
-            </div>
-          }
-        >
-          <div className="space-y-4">
-            <input
-              type="text"
-              value={editandoNota.titulo}
-              onChange={(e) => setEditandoNota({ ...editandoNota, titulo: e.target.value })}
-              placeholder="Sem título"
-              className="w-full text-2xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0"
-            />
-            <PropriedadesNotion
-              dados={editandoNota.bruto}
-              corpoTexto={editandoNota.corpo}
-              onChange={(novosDados) => setEditandoNota({ ...editandoNota, bruto: novosDados })}
-            />
-
-            <hr className="border-border" />
-
-            <div className="space-y-3">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Passos / Subtarefas
-              </label>
-              <Subtarefas
-                corpo={editandoNota.corpo}
-                onChange={(novoCorpo) => setEditandoNota({ ...editandoNota, corpo: novoCorpo })}
-              />
-            </div>
-
-            <hr className="border-border" />
-
-            <EditorNotion
-              markdown={editandoNota.corpo}
-              onChange={(v) => setEditandoNota({ ...editandoNota, corpo: v ?? "" })}
-            />
-          </div>
-        </Modal>
+        <PainelNotionBase
+          rotuloTipo="Nota"
+          modoVisao={modoVisao}
+          setModoVisao={setModoVisao}
+          titulo={editandoNota.titulo}
+          setTitulo={(t) => setEditandoNota({ ...editandoNota, titulo: t })}
+          corpo={editandoNota.corpo}
+          setCorpo={(c) => setEditandoNota({ ...editandoNota, corpo: c })}
+          dadosProps={editandoNota.bruto}
+          onChangeProps={(novosDados) => setEditandoNota({ ...editandoNota, bruto: novosDados })}
+          salvando={salvandoItem}
+          temMudancas={origNota !== null && JSON.stringify(editandoNota) !== JSON.stringify(origNota)}
+          aoFechar={() => salvarNotaHome(true)}
+          aoSalvar={async (fechar) => { await salvarNotaHome(fechar); }}
+          aoRemover={async () => {
+            await apagar(cfg, editandoNota.caminho, editandoNota.sha);
+            invalidarCache();
+            setEditandoNota(null);
+            setOrigNota(null);
+            await carregar();
+          }}
+          erro={erro}
+        />
       )}
 
-      {/* Modal/Painel para Meta na Home */}
+      {/* Painel para Meta na Home */}
       {editandoMeta !== null && (
-        <Modal
-          aberto={true}
-          aoFechar={() => salvarMetaHome(editandoMeta)}
-          titulo="Meta da Carreira"
-          temMudancas={JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}
-          rodape={
-            <div className="flex w-full items-center justify-between gap-2">
-              <Button
-                variant="ghost"
-                onClick={async () => {
-                  await apagar(cfg, editandoMeta.caminho, editandoMeta.sha);
-                  invalidarCache();
-                  setEditandoMeta(null);
-                  setOrigMeta(null);
-                  await carregar();
-                }}
-                className="text-destructive hover:bg-destructive/10 text-xs"
-              >
-                Apagar meta
-              </Button>
-              <span className="text-xs text-muted-foreground">Salva automaticamente ao fechar</span>
-            </div>
+        <PainelNotionBase
+          rotuloTipo="Meta da Carreira"
+          modoVisao={modoVisao}
+          setModoVisao={setModoVisao}
+          titulo={editandoMeta.titulo}
+          setTitulo={(t) => setEditandoMeta({ ...editandoMeta, titulo: t })}
+          corpo={editandoMeta.corpo}
+          setCorpo={(c) => setEditandoMeta({ ...editandoMeta, corpo: c })}
+          dadosProps={{
+            status: editandoMeta.status,
+            prazo: editandoMeta.prazo,
+            indicador: editandoMeta.indicador,
+          }}
+          onChangeProps={(novosDados) =>
+            setEditandoMeta({
+              ...editandoMeta,
+              status: (novosDados.status as any) || editandoMeta.status,
+              prazo: novosDados.prazo,
+              indicador: novosDados.indicador || editandoMeta.indicador,
+            })
           }
-        >
-          <div className="space-y-4">
-            <input
-              type="text"
-              value={editandoMeta.titulo}
-              onChange={(e) => setEditandoMeta({ ...editandoMeta, titulo: e.target.value })}
-              placeholder="Sem título"
-              className="w-full text-2xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0"
-            />
-            <PropriedadesNotion
-              dados={{
-                status: editandoMeta.status,
-                prazo: editandoMeta.prazo,
-                indicador: editandoMeta.indicador,
-              }}
-              corpoTexto={editandoMeta.corpo}
-              onChange={(novosDados) => setEditandoMeta({ ...editandoMeta, status: novosDados.status || editandoMeta.status, prazo: novosDados.prazo, indicador: novosDados.indicador || editandoMeta.indicador })}
-            />
-
-            <hr className="border-border" />
-
-            <div className="space-y-3">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Passos / Subtarefas
-              </label>
-              <Subtarefas
-                corpo={editandoMeta.corpo}
-                onChange={(novoCorpo) => setEditandoMeta({ ...editandoMeta, corpo: novoCorpo })}
-              />
-            </div>
-
-            <hr className="border-border" />
-
-            <EditorNotion
-              markdown={editandoMeta.corpo}
-              onChange={(v) => setEditandoMeta({ ...editandoMeta, corpo: v ?? "" })}
-            />
-          </div>
-        </Modal>
+          salvando={salvandoItem}
+          temMudancas={origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}
+          aoFechar={() => salvarMetaHome(editandoMeta, true)}
+          aoSalvar={async (fechar) => { await salvarMetaHome(editandoMeta, fechar); }}
+          aoRemover={async () => {
+            await apagar(cfg, editandoMeta.caminho, editandoMeta.sha);
+            invalidarCache();
+            setEditandoMeta(null);
+            setOrigMeta(null);
+            await carregar();
+          }}
+          erro={erro}
+        />
       )}
     </div>
   );

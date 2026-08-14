@@ -79,6 +79,9 @@ export function CapturaRapida({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [salvo, setSalvo] = useState(false);
+  // campos que a captura da web descobriu (autor, data, site) e que vão para
+  // o frontmatter na hora de salvar
+  const [dadosDaCaptura, setDadosDaCaptura] = useState<Record<string, string>>({});
   const area = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -88,6 +91,8 @@ export function CapturaRapida({
     setTocouNoDestino(false);
     setErro("");
     setSalvo(false);
+    // sem isto, o autor da captura anterior grudava na próxima nota
+    setDadosDaCaptura({});
     setTimeout(() => area.current?.focus(), 50);
   }, [aberta, textoInicial]);
 
@@ -144,6 +149,10 @@ export function CapturaRapida({
         dados: {
           titulo,
           tipo: tipos[destino],
+          // o que a captura da web descobriu (autor, publicado, site, fonte)
+          // vem primeiro, para os campos abaixo ainda poderem ter a palavra
+          // final sobre título e tipo
+          ...dadosDaCaptura,
           ...(destino === "tarefas" ? { status: "a-fazer" } : {}),
           ...(destino === "notas" ? { atualizado: hojeISO() } : {}),
           ...(destino === "referencias" && fonteUrl
@@ -240,6 +249,10 @@ export function CapturaRapida({
                   res = converterHtmlParaMarkdown(entrada);
                 }
                 setTexto(`${res.titulo}\n\n${res.markdown}`);
+                // autor, data e site vão para o frontmatter, não para o meio
+                // do texto: assim a busca e as outras telas os enxergam como
+                // campos, e não como uma linha solta que ninguém lê
+                setDadosDaCaptura(res.dados);
                 setDestino("notas");
               } catch (e) {
                 setErro(e instanceof Error ? e.message : String(e));

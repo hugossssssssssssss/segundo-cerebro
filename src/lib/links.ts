@@ -11,8 +11,34 @@ import type { ItemRepo } from "./repo";
 import { tituloProvavel } from "./markdown";
 import { tipoDoItem, type TipoItem } from "./busca";
 
-/** Captura `[[alvo]]`, `[[alvo|texto]]`, `@alvo` (suporta títulos compostos) e URLs como `.../segundo-cerebro/#/tarefas?abrir=tarefas%2F...` */
-const PADRAO = /(?:\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|@([a-zA-Z0-9_\-áàâãéèêíïóôõöúçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ\s]{2,100}?)(?=[.,;:!?\)\n\r]|\s*$)|(?:https?:\/\/[^\s)]+|#\/[^\s)]+)\?abrir=([a-zA-Z0-9_%.-]+))/g;
+/** Letras aceitas num título mencionado com `@`, incluindo as acentuadas. */
+const LETRA = "a-zA-ZáàâãéèêíïóôõöúüçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÜÇÑ";
+
+/**
+ * Captura `[[alvo]]`, `[[alvo|texto]]`, `@alvo` (com título composto) e URLs
+ * como `.../#/tarefas?abrir=tarefas%2F...`.
+ *
+ * Duas guardas no `@` que não são detalhe:
+ *
+ * 1. **`(?<![\w.@-])`** — o `@` não pode vir grudado em letra, número, ponto
+ *    ou hífen. Sem isso, escrever um e-mail numa nota criava uma menção
+ *    fantasma: `hugo@gmail.com` virava uma menção a "gmail".
+ * 2. **O primeiro caractere tem que ser LETRA.** Sem isso, "3 canetas @ 5
+ *    reais" virava uma menção a "5".
+ */
+const PADRAO = new RegExp(
+  "(?:" +
+    // [[alvo]] e [[alvo|texto exibido]]
+    "\\[\\[([^\\]|]+)(?:\\|([^\\]]+))?\\]\\]" +
+    "|" +
+    // @alvo — ver as duas guardas explicadas acima
+    `(?<![\\w.@-])@([${LETRA}][${LETRA}0-9_\\-\\s]{1,99}?)(?=[.,;:!?)\\n\\r]|\\s*$)` +
+    "|" +
+    // URL colada do próprio app
+    "(?:https?:\\/\\/[^\\s)]+|#\\/[^\\s)]+)\\?abrir=([a-zA-Z0-9_%.-]+)" +
+    ")",
+  "g",
+);
 
 export type Alvo = {
   caminho: string;
@@ -178,21 +204,31 @@ function recorteEmVolta(corpo: string, alvo: string): string {
 }
 
 /**
- * Sugestões para o autocompletar.
+ * O índice guarda cada item várias vezes (por título, por nome de arquivo e
+ * por caminho). Esta é a lista limpa, um item por caminho — o que um menu de
+ * escolha precisa mostrar.
  */
-export function sugerir(
-  indice: Map<string, Alvo>,
+export function alvosUnicos(indice: Map<string, Alvo>): Alvo[] {
+  const unicos = new Map<string, Alvo>();
+  for (const a of indice.values()) unicos.set(a.caminho, a);
+  return [...unicos.values()];
+}
+
+/**
+ * Filtra alvos já carregados por um termo digitado.
+ *
+ * Separado de `sugerir` para o editor poder filtrar o que tem em memória, sem
+ * remontar o índice do repositório inteiro a cada tecla.
+ */
+export function filtrarAlvos(
+  alvos: Alvo[],
   termo: string,
   limite = 8,
 ): Alvo[] {
-  const alvo = chave(termo.replace(/^[@\[]+/, ""));
-  const unicos = new Map<string, Alvo>();
-  for (const a of indice.values()) unicos.set(a.caminho, a);
+  const alvo = chave(termo.replace(/^[@[]+/, ""));
+  if (!alvo) return alvos.slice(0, limite);
 
-  const todos = [...unicos.values()];
-  if (!alvo) return todos.slice(0, limite);
-
-  return todos
+  return alvos
     .filter((a) => chave(a.titulo).includes(alvo))
     .sort((a, b) => {
       const ka = chave(a.titulo);
@@ -202,4 +238,13 @@ export function sugerir(
       return pa - pb || ka.length - kb.length;
     })
     .slice(0, limite);
+}
+
+/** Sugestões para o autocompletar, a partir do índice completo. */
+export function sugerir(
+  indice: Map<string, Alvo>,
+  termo: string,
+  limite = 8,
+): Alvo[] {
+  return filtrarAlvos(alvosUnicos(indice), termo, limite);
 }

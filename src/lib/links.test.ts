@@ -81,6 +81,37 @@ describe("extrairLinks", () => {
     // é assim que a IA às vezes escreve
     expect(extrairLinks("[[2026-07-02-grade-suica]]", indice)[0].alvo).not.toBeNull();
   });
+
+  /* ------------------------------------------------ menções escritas com @ */
+
+  it("acha @Título e resolve o alvo", () => {
+    const r = extrairLinks("Falar com @Briefing Acme amanhã.", indice);
+    expect(r).toHaveLength(1);
+    expect(r[0].bruto).toBe("Briefing Acme");
+    expect(r[0].alvo?.caminho).toBe("notas/2026-05-01-briefing-acme.md");
+  });
+
+  it("acha @Título no fim da linha, sem pontuação", () => {
+    expect(extrairLinks("ver @Grade suíça", indice)[0].alvo?.titulo).toBe("Grade suíça");
+  });
+
+  it("e-mail NÃO vira menção fantasma", () => {
+    // o `@` de um e-mail vem grudado numa letra; sem essa guarda,
+    // "h.hugosilvaz1@gmail.com" criava uma menção a "gmail" em toda nota
+    expect(extrairLinks("Escreva para h.hugosilvaz1@gmail.com hoje.", indice)).toEqual([]);
+    expect(extrairLinks("contato@empresa.com.br", indice)).toEqual([]);
+  });
+
+  it("arroba solta antes de número NÃO vira menção", () => {
+    // "3 canetas @ 5 reais" criava uma menção a "5"
+    expect(extrairLinks("comprei 3 canetas @ 5 reais.", indice)).toEqual([]);
+    expect(extrairLinks("@ 10h na segunda.", indice)).toEqual([]);
+  });
+
+  it("os dois formatos convivem no mesmo texto", () => {
+    const r = extrairLinks("De [[Grade suíça]] para @Briefing Acme.", indice);
+    expect(r.map((x) => x.alvo?.titulo).sort()).toEqual(["Briefing Acme", "Grade suíça"]);
+  });
 });
 
 describe("mencoesA", () => {

@@ -4,9 +4,7 @@ import { Target, Calendar, Package, Trash2, AlertTriangle, Sparkles } from "luci
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
-import { PropriedadesNotion } from "@/components/PropriedadesNotion";
-import { EditorNotion } from "@/components/EditorNotion";
-import { Subtarefas } from "@/components/Subtarefas";
+import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import {
   escreverMarkdown,
   tituloProvavel,
@@ -78,6 +76,7 @@ export default function PDI() {
   const [salvando, setSalvando] = useState(false);
   const [editandoMeta, setEditandoMeta] = useState<Meta | null>(null);
   const [editandoEntrega, setEditandoEntrega] = useState<Entrega | null>(null);
+  const [modoVisaoMeta, setModoVisaoMeta] = useState<ModoVisaoNotion>("popup");
   // cópias de como estavam ao abrir, para detectar mudança não salva
   const [origMeta, setOrigMeta] = useState<Meta | null>(null);
   const [origEntrega, setOrigEntrega] = useState<Entrega | null>(null);
@@ -140,16 +139,6 @@ export default function PDI() {
     setOrigMeta(null);
     navegar(location.pathname, { replace: true });
   }
-
-  const tentarFecharMeta = useCallback(async () => {
-    if (salvando) return;
-    const temMudancas = editandoMeta !== null && origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta);
-    if (temMudancas && editandoMeta) {
-      await salvarMeta(editandoMeta);
-      return;
-    }
-    fecharMeta();
-  }, [salvando, editandoMeta, origMeta]);
 
   function fecharEntrega() {
     setEditandoEntrega(null);
@@ -541,84 +530,41 @@ export default function PDI() {
       )}
 
       {/* ------------------------------------------------- modal da meta */}
-      <Modal
-        aberto={editandoMeta !== null}
-        aoFechar={tentarFecharMeta}
-        temMudancas={JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}
-        titulo={editandoMeta?.caminho ? "Editar meta" : "Nova meta"}
-        rodape={
-          <div className="flex w-full items-center justify-between gap-2">
-            {editandoMeta?.caminho ? (
-              <Botao
-                variante="fantasma"
-                onClick={() => editandoMeta && removerMeta(editandoMeta)}
-                className="text-destructive hover:bg-destructive/10 text-xs"
-              >
-                <Trash2 size={15} />
-                <span>Apagar meta</span>
-              </Botao>
-            ) : <div />}
-            <span className="text-xs text-muted-foreground">Salva automaticamente ao fechar</span>
-          </div>
-        }
-      >
-        {editandoMeta && (
-          <div className="space-y-4">
-            <input
-              type="text"
-              value={editandoMeta.titulo}
-              onChange={(ev) =>
-                setEditandoMeta({ ...editandoMeta, titulo: ev.target.value })
-              }
-              placeholder="Sem título"
-              className="w-full text-2xl sm:text-3xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0 pt-2"
-              autoFocus
-            />
-
-            <PropriedadesNotion
-              dados={{
-                status: editandoMeta.status,
-                prazo: editandoMeta.prazo,
-                indicador: editandoMeta.indicador,
-              }}
-              corpoTexto={editandoMeta.corpo}
-              onChange={(novosDados) => {
-                setEditandoMeta({
-                  ...editandoMeta,
-                  status: (novosDados.status as StatusMeta) || editandoMeta.status,
-                  prazo: novosDados.prazo,
-                  indicador: novosDados.indicador || editandoMeta.indicador,
-                });
-              }}
-              camposFixos={{
-                status: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
-                prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
-              }}
-            />
-
-            <hr className="border-border" />
-
-            <div className="space-y-3">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Passos / Subtarefas
-              </label>
-              <Subtarefas
-                corpo={editandoMeta.corpo}
-                onChange={(novoCorpo) => setEditandoMeta({ ...editandoMeta, corpo: novoCorpo })}
-              />
-            </div>
-
-            <hr className="border-border" />
-
-            <div className="min-h-[220px]">
-              <EditorNotion
-                markdown={editandoMeta.corpo}
-                onChange={(v) => setEditandoMeta({ ...editandoMeta, corpo: v ?? "" })}
-              />
-            </div>
-          </div>
-        )}
-      </Modal>
+      {/* ------------------------------------------------- modal da meta */}
+      {editandoMeta !== null && (
+        <PainelNotionBase
+          rotuloTipo={editandoMeta.caminho ? "Meta da Carreira" : "Nova meta"}
+          modoVisao={modoVisaoMeta}
+          setModoVisao={setModoVisaoMeta}
+          titulo={editandoMeta.titulo}
+          setTitulo={(t) => setEditandoMeta({ ...editandoMeta, titulo: t })}
+          corpo={editandoMeta.corpo}
+          setCorpo={(c) => setEditandoMeta({ ...editandoMeta, corpo: c })}
+          dadosProps={{
+            status: editandoMeta.status,
+            prazo: editandoMeta.prazo,
+            indicador: editandoMeta.indicador,
+          }}
+          onChangeProps={(novosDados) => {
+            setEditandoMeta({
+              ...editandoMeta,
+              status: (novosDados.status as StatusMeta) || editandoMeta.status,
+              prazo: novosDados.prazo,
+              indicador: novosDados.indicador || editandoMeta.indicador,
+            });
+          }}
+          camposFixosProps={{
+            status: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
+            prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
+          }}
+          salvando={salvando}
+          temMudancas={origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}
+          aoFechar={fecharMeta}
+          aoSalvar={async (fechar) => { await salvarMeta(editandoMeta, fechar); }}
+          aoRemover={editandoMeta.caminho ? async () => { await removerMeta(editandoMeta); } : undefined}
+          erro={erro}
+        />
+      )}
 
       {/* ---------------------------------------------- modal da entrega */}
       <Modal

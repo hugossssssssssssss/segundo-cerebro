@@ -3,10 +3,10 @@ import { BlockNoteView } from "@blocknote/mantine";
 import { SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
-import { restaurarWikilinks } from "@/lib/markdown";
 import { lerConfig } from "@/lib/settings";
 import { carregarRepo } from "@/lib/repo";
-import { montarIndice, sugerir } from "@/lib/links";
+import { montarIndice, alvosUnicos, filtrarAlvos, type Alvo } from "@/lib/links";
+import { restaurarWikilinks } from "@/lib/markdown";
 
 /**
  * Auxiliar para converter URLs coladas do tipo ?abrir=caminho ou [[alvo]] em @ Nome do Item
@@ -51,6 +51,45 @@ export function EditorNotion({
   const editor = useCreateBlockNote();
   const ultimoMd = useRef(markdown);
 
+  /**
+   * Itens que o menu do `@` oferece.
+   *
+   * Carregados UMA vez, quando o editor abre. A versão anterior chamava
+   * `carregarRepo` dentro do `getItems`, ou seja, a cada tecla digitada
+   * depois do `@` — com o cache de 5s vencido no meio da digitação, isso
+   * virava uma ida à rede buscando o repositório inteiro enquanto você
+   * escrevia o nome.
+   */
+  const [alvos, setAlvos] = useState<Alvo[]>([]);
+
+  useEffect(() => {
+    let cancelado = false;
+    carregarRepo(lerConfig(), { memoria: 30_000 })
+      .then((todos) => {
+        if (cancelado) return;
+        const indice = montarIndice(todos);
+        setAlvos(alvosUnicos(indice));
+      })
+      // sem conexão ou sem token, o menu simplesmente não sugere nada —
+      // não é motivo para derrubar o editor
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  /** Monta os itens do menu a partir do que já está em memória. */
+  const itensDoMenu = (query: string) =>
+    filtrarAlvos(alvos, query).map((s) => ({
+      title: `@${s.titulo}`,
+      subtext: s.caminho,
+      onItemClick: () => {
+        editor.insertInlineContent([
+          { type: "link", href: s.caminho, content: `@${s.titulo}` },
+        ]);
+      },
+    }));
+
   // acompanha o botão de tema do cabeçalho
   useEffect(() => {
     const observador = new MutationObserver(() =>
@@ -80,6 +119,61 @@ export function EditorNotion({
     }
   };
 
+  /**
+   * Destaca as menções com a cor do tipo do item.
+   *
+   * Este efeito precisa ficar ANTES do `return` de "Carregando editor…".
+   * Um hook depois de um return antecipado muda a quantidade de hooks entre
+   * um render e outro, e o React derruba o componente com "Rendered more
+   * hooks than during the previous render" — o editor abria em branco.
+   */
+  useEffect(() => {
+    if (!pronto) return;
+    const container = document.querySelector(".notion-editor-wrapper");
+    if (!container) return;
+
+    const aplicarCoresMencoes = () => {
+      const links = container.querySelectorAll("a");
+      links.forEach((a) => {
+        const href = a.getAttribute("href") || "";
+        if (href.includes("tarefa")) {
+          a.style.color = "#2563eb";
+          a.style.backgroundColor = "rgba(37, 99, 235, 0.14)";
+          a.style.border = "1px solid rgba(37, 99, 235, 0.25)";
+          a.style.borderRadius = "6px";
+          a.style.padding = "1px 6px";
+          a.style.fontWeight = "600";
+        } else if (href.includes("pdi") || href.includes("meta")) {
+          a.style.color = "#059669";
+          a.style.backgroundColor = "rgba(5, 150, 105, 0.14)";
+          a.style.border = "1px solid rgba(5, 150, 105, 0.25)";
+          a.style.borderRadius = "6px";
+          a.style.padding = "1px 6px";
+          a.style.fontWeight = "600";
+        } else if (href.includes("nota")) {
+          a.style.color = "#d97706";
+          a.style.backgroundColor = "rgba(217, 119, 6, 0.14)";
+          a.style.border = "1px solid rgba(217, 119, 6, 0.25)";
+          a.style.borderRadius = "6px";
+          a.style.padding = "1px 6px";
+          a.style.fontWeight = "600";
+        } else if (href.includes("referencia")) {
+          a.style.color = "#7c3aed";
+          a.style.backgroundColor = "rgba(124, 58, 237, 0.14)";
+          a.style.border = "1px solid rgba(124, 58, 237, 0.25)";
+          a.style.borderRadius = "6px";
+          a.style.padding = "1px 6px";
+          a.style.fontWeight = "600";
+        }
+      });
+    };
+
+    aplicarCoresMencoes();
+    const obs = new MutationObserver(aplicarCoresMencoes);
+    obs.observe(container, { childList: true, subtree: true });
+    return () => obs.disconnect();
+  }, [pronto]);
+
   if (!pronto) {
     return (
       <div className="animate-pulse p-4 text-sm text-muted-foreground">
@@ -95,73 +189,27 @@ export function EditorNotion({
         editable={editable}
         theme={escuro ? "dark" : "light"}
         onChange={() => {
-          const mdBruto = editor.blocksToMarkdownLossy(editor.document);
-          const limpo = restaurarWikilinks(mdBruto);
-          
-          if (limpo !== mdBruto) {
-            try {
-              const blocos = editor.tryParseMarkdownToBlocks(limpo);
-              editor.replaceBlocks(editor.document, blocos);
-            } catch {
-              // ignora se a re-análise falhar
-            }
-          }
-
+          // `restaurarWikilinks` NÃO é opcional aqui. O serializador do
+          // BlockNote grava `\[\[Briefing]]` com os colchetes escapados: o
+          // arquivo fica sujo no GitHub e o app deixa de reconhecer o link.
+          // Sem esta linha, toda nota antiga que você ABRISSE e salvasse
+          // perdia os `[[links]]` que já tinha.
+          const limpo = restaurarWikilinks(
+            editor.blocksToMarkdownLossy(editor.document),
+          );
           ultimoMd.current = limpo;
           onChange(limpo);
         }}
       >
+        {/* `@` é o gatilho principal. `[` continua atendido porque quem já
+            escrevia `[[` no app antigo tenta de novo por reflexo. */}
         <SuggestionMenuController
           triggerCharacter="@"
-          getItems={async (query) => {
-            try {
-              const cfg = lerConfig();
-              const todos = await carregarRepo(cfg, { memoria: 5000 });
-              const idx = montarIndice(todos);
-              const sugestoes = sugerir(idx, query);
-              return sugestoes.map((s) => ({
-                title: `@${s.titulo}`,
-                subtext: s.caminho,
-                onItemClick: () => {
-                  editor.insertInlineContent([
-                    {
-                      type: "link",
-                      href: s.caminho,
-                      content: `@${s.titulo}`,
-                    },
-                  ]);
-                },
-              }));
-            } catch {
-              return [];
-            }
-          }}
+          getItems={async (query) => itensDoMenu(query)}
         />
         <SuggestionMenuController
           triggerCharacter="["
-          getItems={async (query) => {
-            try {
-              const cfg = lerConfig();
-              const todos = await carregarRepo(cfg, { memoria: 5000 });
-              const idx = montarIndice(todos);
-              const sugestoes = sugerir(idx, query);
-              return sugestoes.map((s) => ({
-                title: `@${s.titulo}`,
-                subtext: s.caminho,
-                onItemClick: () => {
-                  editor.insertInlineContent([
-                    {
-                      type: "link",
-                      href: s.caminho,
-                      content: `@${s.titulo}`,
-                    },
-                  ]);
-                },
-              }));
-            } catch {
-              return [];
-            }
-          }}
+          getItems={async (query) => itensDoMenu(query)}
         />
       </BlockNoteView>
       <style>{`
@@ -182,61 +230,6 @@ export function EditorNotion({
           border-radius: 6px;
           cursor: pointer;
           transition: background-color 0.15s ease;
-        }
-        /* Tarefas: Azul */
-        .notion-editor-wrapper a[href*="tarefa"],
-        .notion-editor-wrapper a[href*="tarefas"] {
-          color: #2563eb !important;
-          background-color: rgba(37, 99, 235, 0.14) !important;
-          border: 1px solid rgba(37, 99, 235, 0.2) !important;
-        }
-        .dark .notion-editor-wrapper a[href*="tarefa"],
-        .dark .notion-editor-wrapper a[href*="tarefas"] {
-          color: #60a5fa !important;
-          background-color: rgba(96, 165, 250, 0.18) !important;
-          border-color: rgba(96, 165, 250, 0.25) !important;
-        }
-
-        /* Metas / PDI: Verde */
-        .notion-editor-wrapper a[href*="pdi"],
-        .notion-editor-wrapper a[href*="meta"] {
-          color: #059669 !important;
-          background-color: rgba(5, 150, 105, 0.14) !important;
-          border: 1px solid rgba(5, 150, 105, 0.2) !important;
-        }
-        .dark .notion-editor-wrapper a[href*="pdi"],
-        .dark .notion-editor-wrapper a[href*="meta"] {
-          color: #34d399 !important;
-          background-color: rgba(52, 211, 153, 0.18) !important;
-          border-color: rgba(52, 211, 153, 0.25) !important;
-        }
-
-        /* Notas: Laranja */
-        .notion-editor-wrapper a[href*="nota"],
-        .notion-editor-wrapper a[href*="notas"] {
-          color: #d97706 !important;
-          background-color: rgba(217, 119, 6, 0.14) !important;
-          border: 1px solid rgba(217, 119, 6, 0.2) !important;
-        }
-        .dark .notion-editor-wrapper a[href*="nota"],
-        .dark .notion-editor-wrapper a[href*="notas"] {
-          color: #fbbf24 !important;
-          background-color: rgba(251, 191, 36, 0.18) !important;
-          border-color: rgba(251, 191, 36, 0.25) !important;
-        }
-
-        /* Referências: Roxo */
-        .notion-editor-wrapper a[href*="referencia"],
-        .notion-editor-wrapper a[href*="referencias"] {
-          color: #7c3aed !important;
-          background-color: rgba(124, 58, 237, 0.14) !important;
-          border: 1px solid rgba(124, 58, 237, 0.2) !important;
-        }
-        .dark .notion-editor-wrapper a[href*="referencia"],
-        .dark .notion-editor-wrapper a[href*="referencias"] {
-          color: #a78bfa !important;
-          background-color: rgba(167, 139, 250, 0.18) !important;
-          border-color: rgba(167, 139, 250, 0.25) !important;
         }
       `}</style>
     </div>

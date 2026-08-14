@@ -78,6 +78,50 @@ describe("buscar", () => {
   it("sem resultado devolve lista vazia, não erro", () => {
     expect(buscar(acervo, "xilofone")).toEqual([]);
   });
+
+  /* ------------------------------------- o que a MiniSearch trouxe de novo */
+
+  it("perdoa erro de digitação", () => {
+    // era o buraco da versão com `includes`: errou uma letra, não achava nada
+    expect(buscar(acervo, "tipografa").map((x) => x.titulo)).toContain("Grade suíça");
+    expect(buscar(acervo, "brandng").map((x) => x.titulo)).toContain(
+      "Domínio em branding",
+    );
+  });
+
+  it("acha por começo de palavra", () => {
+    expect(buscar(acervo, "tipo").map((x) => x.titulo)).toContain("Grade suíça");
+    expect(buscar(acervo, "serif").map((x) => x.titulo)).toContain("Briefing Acme");
+  });
+
+  it("duas palavras exigem as duas — não devolve o mundo inteiro", () => {
+    const r = buscar(acervo, "grade acme");
+    // "grade" aparece em dois itens, "acme" em dois; só um tem os dois
+    expect(r).toHaveLength(1);
+    expect(r[0].titulo).toBe("Revisar layout");
+  });
+
+  it("erro grande demais continua não achando nada", () => {
+    // a tolerância perdoa um deslize, não uma palavra diferente
+    expect(buscar(acervo, "xilofone")).toEqual([]);
+    expect(buscar(acervo, "bicicleta")).toEqual([]);
+  });
+
+  it("reaproveita o índice entre chamadas com o mesmo acervo", () => {
+    // duas buscas seguidas têm que dar o mesmo resultado: se o índice em cache
+    // ficasse sujo, a segunda viria diferente
+    expect(buscar(acervo, "acme")).toEqual(buscar(acervo, "acme"));
+  });
+
+  it("acervo novo é reindexado em vez de servir o índice velho", () => {
+    const outro = [
+      item("notas/nova.md", "---\ntitulo: Assunto Novo\n---\n\nrecém-criada."),
+    ];
+    expect(buscar(outro, "acme")).toEqual([]);
+    expect(buscar(outro, "assunto")[0].titulo).toBe("Assunto Novo");
+    // e o acervo original continua funcionando
+    expect(buscar(acervo, "acme")[0].titulo).toBe("Briefing Acme");
+  });
 });
 
 describe("tipoDoItem", () => {

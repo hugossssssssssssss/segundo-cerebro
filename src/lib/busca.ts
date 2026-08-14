@@ -5,8 +5,18 @@
  * instantânea, funciona em repositório privado e não gasta requisição nenhuma.
  * A busca de código do GitHub não serviria: ela demora a indexar e não é
  * confiável em repositórios privados pequenos.
+ *
+ * O motor é a MiniSearch. A versão anterior comparava com `includes`, o que
+ * exigia acertar a palavra inteira: "reuinão" não achava nada, e "tipo" não
+ * achava "tipografia". Agora há tolerância a erro de digitação e busca por
+ * começo de palavra.
+ *
+ * **O índice vive só na memória.** Ele é remontado a partir dos `.md` a cada
+ * carga do acervo e nunca é gravado em lugar nenhum — os arquivos continuam
+ * sendo a única fonte da verdade, como manda a regra 1 do AGENTS.md.
  */
 
+import MiniSearch from "minisearch";
 import type { ItemRepo } from "./repo";
 import { tituloProvavel, comoLista } from "./markdown";
 
@@ -76,14 +86,33 @@ function normalizar(s: string): string {
     .toLowerCase();
 }
 
-/** Recorta ~120 caracteres em volta da primeira ocorrência. */
-function recortar(corpo: string, termoNorm: string): string {
+/**
+ * Recorta ~120 caracteres em volta do que casou.
+ *
+ * Recebe os termos que a MiniSearch de fato encontrou — que já vêm
+ * normalizados e podem ser diferentes do que foi digitado, já que a busca
+ * perdoa erro e aceita começo de palavra. Usa o primeiro que apareça mesmo no
+ * corpo; se nenhum aparecer (casou só no título ou nas tags), mostra o começo
+ * do texto, que ainda ajuda a reconhecer o item.
+ */
+function recortar(corpo: string, termos: readonly string[]): string {
   const limpo = corpo.replace(/\s+/g, " ").trim();
-  const pos = normalizar(limpo).indexOf(termoNorm);
+  const corpoNorm = normalizar(limpo);
+
+  let pos = -1;
+  let tamanho = 0;
+  for (const termo of termos) {
+    const achou = corpoNorm.indexOf(termo);
+    if (achou >= 0 && (pos < 0 || achou < pos)) {
+      pos = achou;
+      tamanho = termo.length;
+    }
+  }
+
   if (pos < 0) return limpo.slice(0, 120);
 
   const inicio = Math.max(0, pos - 40);
-  const fim = Math.min(limpo.length, pos + termoNorm.length + 80);
+  const fim = Math.min(limpo.length, pos + tamanho + 80);
   return (
     (inicio > 0 ? "…" : "") +
     limpo.slice(inicio, fim).trim() +
@@ -91,52 +120,100 @@ function recortar(corpo: string, termoNorm: string): string {
   );
 }
 
+/* ----------------------------------------------------------------- índice */
+
+type Fichado = {
+  id: string;
+  titulo: string;
+  tags: string;
+  corpo: string;
+};
+
+/**
+ * Peso de cada campo. Quem procura "cliente x" quase sempre quer a nota
+ * CHAMADA "Cliente X", não as quarenta que citam o cliente de passagem.
+ */
+const PESO_CAMPO = { titulo: 5, tags: 2, corpo: 1 };
+
+function novoIndice(itens: ItemRepo[]): MiniSearch<Fichado> {
+  const mini = new MiniSearch<Fichado>({
+    fields: ["titulo", "tags", "corpo"],
+    idField: "id",
+    // tira acento e caixa dos DOIS lados — do que está guardado e do que é
+    // digitado — para "reuniao" achar "Reunião"
+    processTerm: (termo) => normalizar(termo),
+  });
+
+  mini.addAll(
+    itens.map((item) => ({
+      id: item.caminho,
+      titulo: tituloProvavel(item.doc, item.nome),
+      tags: comoLista(item.doc.dados.tags).join(" "),
+      corpo: item.doc.corpo,
+    })),
+  );
+
+  return mini;
+}
+
+/**
+ * Reaproveita o índice enquanto o acervo for o mesmo array.
+ *
+ * Sem isto, cada tecla digitada na busca reindexaria o repositório inteiro —
+ * o `useMemo` da tela chama `buscar` a cada caractere. Com `WeakMap`, o índice
+ * é descartado sozinho quando o acervo é recarregado, sem virar cache velho
+ * que teima em existir.
+ */
+const indices = new WeakMap<ItemRepo[], MiniSearch<Fichado>>();
+
+function indiceDe(itens: ItemRepo[]): MiniSearch<Fichado> {
+  const guardado = indices.get(itens);
+  if (guardado) return guardado;
+
+  const novo = novoIndice(itens);
+  indices.set(itens, novo);
+  return novo;
+}
+
+/* ------------------------------------------------------------------ busca */
+
 /**
  * Busca o termo em título, corpo e tags de tudo.
  *
- * O peso ordena por onde casou: título vale mais que corpo, porque quem
- * procura "cliente x" quase sempre quer a nota chamada "Cliente X".
+ * `prefix` faz "tipo" achar "tipografia"; `fuzzy: 0.2` perdoa cerca de um erro
+ * de digitação a cada cinco letras. `AND` exige que TODAS as palavras
+ * apareçam — buscar "grade suíça" tem que trazer o item sobre a grade suíça,
+ * não tudo que fala de grade.
  */
 export function buscar(itens: ItemRepo[], termo: string): Resultado[] {
-  const alvo = normalizar(termo.trim());
-  if (alvo.length < 2) return [];
+  const limpo = termo.trim();
+  if (normalizar(limpo).length < 2) return [];
 
-  const achados: Resultado[] = [];
+  const porCaminho = new Map(itens.map((i) => [i.caminho, i]));
 
-  for (const item of itens) {
-    const titulo = tituloProvavel(item.doc, item.nome);
-    const tags = comoLista(item.doc.dados.tags);
+  const achados = indiceDe(itens).search(limpo, {
+    boost: PESO_CAMPO,
+    prefix: true,
+    fuzzy: 0.2,
+    combineWith: "AND",
+  });
 
-    const tituloNorm = normalizar(titulo);
-    const corpoNorm = normalizar(item.doc.corpo);
-    const tagsNorm = normalizar(tags.join(" "));
+  const saida: Resultado[] = [];
 
-    let peso = 0;
-    if (tituloNorm === alvo) peso += 100;
-    else if (tituloNorm.startsWith(alvo)) peso += 60;
-    else if (tituloNorm.includes(alvo)) peso += 40;
+  for (const achado of achados) {
+    const item = porCaminho.get(String(achado.id));
+    if (!item) continue;
 
-    if (tagsNorm.includes(alvo)) peso += 25;
-
-    if (corpoNorm.includes(alvo)) {
-      peso += 10;
-      // várias ocorrências indicam que o assunto é mesmo aquele
-      const vezes = corpoNorm.split(alvo).length - 1;
-      peso += Math.min(vezes, 5);
-    }
-
-    if (peso === 0) continue;
-
-    achados.push({
+    saida.push({
       caminho: item.caminho,
-      titulo,
+      titulo: tituloProvavel(item.doc, item.nome),
       tipo: tipoDoItem(item),
-      trecho: recortar(item.doc.corpo, alvo),
-      peso,
+      trecho: recortar(item.doc.corpo, achado.terms),
+      peso: achado.score,
     });
   }
 
-  return achados.sort((a, b) => b.peso - a.peso || a.titulo.localeCompare(b.titulo));
+  return saida.sort((a, b) => b.peso - a.peso || a.titulo.localeCompare(b.titulo));
 }
 
 /** Agrupa por tipo, preservando a ordem de relevância dentro de cada grupo. */

@@ -1,26 +1,21 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
   Timer,
-  Trash2,
   Check,
   List,
+  Columns3,
   CalendarDays,
   ListTodo,
   Calendar,
   Tag,
-  Square,
-  PanelRight,
-  Maximize2,
-  X,
 } from "lucide-react";
+import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { ler, gravar, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
 import { montarIndice, mencoesA } from "@/lib/links";
-import { MencionadoEm } from "@/components/Links";
-import { Subtarefas } from "@/components/Subtarefas";
 import {
   lerMarkdown,
   escreverMarkdown,
@@ -43,6 +38,7 @@ import {
 } from "@/lib/tarefas";
 import { Pomodoro } from "@/components/Pomodoro";
 import { Calendario } from "@/components/Calendario";
+import { Quadro } from "@/components/Quadro";
 import {
   Botao,
   Cartao,
@@ -50,7 +46,6 @@ import {
   Aviso,
   Vazio,
   Carregando,
-  ModalConfirmacao,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -64,40 +59,9 @@ const CORES_URGENCIA = {
   nenhuma: "neutro",
 } as const;
 
-const EditorPesado = lazy(() =>
-  import("@/components/EditorNotion").then((m) => ({ default: m.EditorNotion })),
-);
-const PropriedadesPesadas = lazy(() =>
-  import("@/components/PropriedadesNotion").then((m) => ({
-    default: m.PropriedadesNotion,
-  })),
-);
 
-function EditorNotion(props: React.ComponentProps<typeof EditorPesado>) {
-  return (
-    <Suspense
-      fallback={
-        <div className="animate-pulse p-4 text-sm text-muted-foreground">
-          Carregando editor…
-        </div>
-      }
-    >
-      <EditorPesado {...props} />
-    </Suspense>
-  );
-}
 
-function PropriedadesNotion(
-  props: React.ComponentProps<typeof PropriedadesPesadas>,
-) {
-  return (
-    <Suspense fallback={<div className="h-16" />}>
-      <PropriedadesPesadas {...props} />
-    </Suspense>
-  );
-}
-
-/* Painel de Edição estilo Notion com suporte aos modos: Pop-up, Do Lado e Tela Cheia */
+/* Painel de Edição estilo Notion com suporte aos 4 modos: Pop-up, Do Lado, Tela Cheia e Flutuante */
 export function PainelTarefaNotion({
   modoVisao,
   setModoVisao,
@@ -112,8 +76,8 @@ export function PainelTarefaNotion({
   mencoesDaTarefa,
   erro,
 }: {
-  modoVisao: "popup" | "lado" | "telacheia";
-  setModoVisao: (m: "popup" | "lado" | "telacheia") => void;
+  modoVisao: ModoVisaoNotion;
+  setModoVisao: (m: ModoVisaoNotion) => void;
   editando: Tarefa;
   original: Tarefa | null;
   salvando: boolean;
@@ -125,280 +89,48 @@ export function PainelTarefaNotion({
   mencoesDaTarefa: any[];
   erro?: string;
 }) {
-  const [confirmandoApagar, setConfirmandoApagar] = useState(false);
-
   const temMudancas =
     original !== null &&
     JSON.stringify(editando) !== JSON.stringify(original);
 
-  const tentarFechar = useCallback(() => {
-    if (salvando) return;
-    if (temMudancas) {
-      aoSalvar(editando);
-      return;
-    }
-    aoFechar();
-  }, [salvando, temMudancas, aoSalvar, editando, aoFechar]);
-
-  useEffect(() => {
-    const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === "Escape") tentarFechar();
-    };
-    document.addEventListener("keydown", aoTeclar);
-    const overflowAnterior = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", aoTeclar);
-      document.body.style.overflow = overflowAnterior;
-    };
-  }, [tentarFechar]);
-
-  // Temporizador de segurança: salva no GitHub em 2.5s de pausa na digitação (em segundo plano, sem fechar)
-  useEffect(() => {
-    if (!temMudancas || salvando) return;
-    const timer = setTimeout(() => {
-      aoSalvar(editando, false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [temMudancas, salvando, editando, aoSalvar]);
-
-  // Alerta de segurança se tentar fechar a aba/janela do navegador com edições não salvas
-  useEffect(() => {
-    if (!temMudancas) return;
-    const aoSairDaJanela = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", aoSairDaJanela);
-    return () => window.removeEventListener("beforeunload", aoSairDaJanela);
-  }, [temMudancas]);
-
-  // Cabeçalho com o seletor de modos estilo Notion
-  const cabecalho = (
-    <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3.5 bg-card">
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          {editando.caminho ? "Tarefa" : "Nova tarefa"}
-        </span>
-
-        {/* Indicador visual de salvamento ao fechar */}
-        <span className="text-[11px] font-medium ml-2 px-2.5 py-0.5 rounded-full bg-accent/60 flex items-center gap-1">
-          {salvando ? (
-            <span className="text-blue-500 animate-pulse font-semibold">Salvando no GitHub...</span>
-          ) : temMudancas ? (
-            <span className="text-amber-600 dark:text-amber-400 font-medium">Salva ao fechar</span>
-          ) : (
-            <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ Sincronizado</span>
-          )}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-2">
-        {/* Alternador de Modos de Visão estilo Notion */}
-        <div className="flex items-center gap-0.5 rounded-lg border border-border/80 bg-muted/40 p-1">
-          <button
-            onClick={() => setModoVisao("popup")}
-            className={cn(
-              "p-1.5 rounded-md text-xs transition-colors flex items-center gap-1",
-              modoVisao === "popup"
-                ? "bg-background text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            title="Abrir em Pop-up central"
-          >
-            <Square size={14} />
-            <span className="hidden sm:inline">Pop-up</span>
-          </button>
-
-          <button
-            onClick={() => setModoVisao("lado")}
-            className={cn(
-              "p-1.5 rounded-md text-xs transition-colors flex items-center gap-1",
-              modoVisao === "lado"
-                ? "bg-background text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            title="Abrir no Painel Lateral (Do lado)"
-          >
-            <PanelRight size={14} />
-            <span className="hidden sm:inline">Do Lado</span>
-          </button>
-
-          <button
-            onClick={() => setModoVisao("telacheia")}
-            className={cn(
-              "p-1.5 rounded-md text-xs transition-colors flex items-center gap-1",
-              modoVisao === "telacheia"
-                ? "bg-background text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            title="Abrir em Tela Cheia"
-          >
-            <Maximize2 size={14} />
-            <span className="hidden sm:inline">Tela Cheia</span>
-          </button>
-        </div>
-
-        <button
-          onClick={tentarFechar}
-          className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          title="Fechar (Esc)"
-        >
-          <X size={18} />
-        </button>
-      </div>
-    </div>
-  );
-
-  const rodape = editando.caminho ? (
-    <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-5 py-3 bg-card">
-      <Botao variante="fantasma" onClick={() => setConfirmandoApagar(true)} className="text-destructive hover:bg-destructive/10 text-xs">
-        <Trash2 size={15} />
-        <span>Apagar tarefa</span>
-      </Botao>
-      <span className="text-xs text-muted-foreground">Salva automaticamente no GitHub ao fechar</span>
-    </div>
-  ) : null;
-
-  const modaisConfirmacao = (
-    <ModalConfirmacao
-      aberto={confirmandoApagar}
-      titulo={`Apagar "${editando.titulo || "esta tarefa"}"?`}
-      descricao="Tem certeza de que deseja apagar esta tarefa? Ela será excluída do repositório."
-      textoConfirmar="Sim, apagar"
-      textoCancelar="Cancelar"
-      varianteConfirmar="perigo"
-      aoConfirmar={() => {
-        setConfirmandoApagar(false);
-        aoRemover();
-      }}
-      aoCancelar={() => setConfirmandoApagar(false)}
-    />
-  );
-
-  const conteudo = (
-    <div className="space-y-6 max-w-4xl mx-auto w-full">
-      {erro && <Aviso tom="erro">{erro}</Aviso>}
-
-      <input
-        type="text"
-        value={editando.titulo}
-        onChange={(e) => setEditando({ ...editando, titulo: e.target.value })}
-        placeholder="Sem título"
-        className="w-full text-2xl sm:text-3xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0 pt-2"
-        autoFocus
-      />
-
-      <div className="flex flex-col gap-2">
-        <PropriedadesNotion
-          dados={{
-            ...editando.bruto,
-            status: editando.status,
-            prazo: editando.prazo,
-            tags: editando.tags,
-          }}
-          corpoTexto={editando.corpo}
-          onChange={(novosDados) => {
-            setEditando({
-              ...editando,
-              bruto: novosDados,
-              status: (novosDados.status as Status) || editando.status,
-              prazo: novosDados.prazo,
-              tags: Array.isArray(novosDados.tags) ? novosDados.tags : editando.tags,
-            });
-          }}
-          camposFixos={{
-            status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
-            prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
-            tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" }
-          }}
-          opcoesRelacionamento={opcoesRelacionamento}
-        />
-      </div>
-
-      <hr className="border-border" />
-
-      <div className="space-y-3">
-        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Passos / Subtarefas
-        </label>
-        <Subtarefas
-          corpo={editando.corpo}
-          onChange={(novoCorpo) => setEditando({ ...editando, corpo: novoCorpo })}
-        />
-      </div>
-
-      <hr className="border-border" />
-
-      <div className="min-h-[250px]">
-        <EditorNotion
-          markdown={editando.corpo}
-          onChange={(v) => setEditando({ ...editando, corpo: v })}
-        />
-      </div>
-
-      {editando.caminho && (
-        <div className="mt-8 border-t border-border pt-6">
-          <MencionadoEm mencoes={mencoesDaTarefa} aoAbrir={() => {}} />
-        </div>
-      )}
-    </div>
-  );
-
-  if (modoVisao === "lado") {
-    return (
-      <div
-        className="fixed inset-0 z-50 flex justify-end bg-black/15 backdrop-blur-[1px] p-0 sm:p-3 transition-opacity"
-        onClick={tentarFechar}
-      >
-        <div
-          className="flex h-full w-full sm:w-[560px] md:w-[680px] lg:w-[760px] flex-col rounded-t-2xl sm:rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in slide-in-from-right duration-200"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {cabecalho}
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">{conteudo}</div>
-          {rodape}
-        </div>
-        {modaisConfirmacao}
-      </div>
-    );
-  }
-
-  if (modoVisao === "telacheia") {
-    return (
-      <div
-        className="fixed inset-0 z-50 flex flex-col bg-black/15 backdrop-blur-[1px] p-2 sm:p-4 animate-in fade-in duration-150"
-        onClick={tentarFechar}
-      >
-        <div
-          className="flex h-full w-full flex-col rounded-2xl sm:rounded-3xl border border-border bg-card shadow-2xl overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {cabecalho}
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 sm:px-12 py-8">{conteudo}</div>
-          {rodape}
-        </div>
-        {modaisConfirmacao}
-      </div>
-    );
-  }
-
-  // Padrão: modo Pop-up central
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/15 backdrop-blur-[1px] p-0 sm:p-4"
-      onClick={tentarFechar}
-    >
-      <div
-        className="flex max-h-[92dvh] w-full max-w-3xl flex-col rounded-t-2xl sm:rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {cabecalho}
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">{conteudo}</div>
-        {rodape}
-      </div>
-      {modaisConfirmacao}
-    </div>
+    <PainelNotionBase
+      rotuloTipo={editando.caminho ? "Tarefa" : "Nova tarefa"}
+      modoVisao={modoVisao}
+      setModoVisao={setModoVisao}
+      titulo={editando.titulo}
+      setTitulo={(t) => setEditando({ ...editando, titulo: t })}
+      corpo={editando.corpo}
+      setCorpo={(c) => setEditando({ ...editando, corpo: c })}
+      dadosProps={{
+        ...editando.bruto,
+        status: editando.status,
+        prazo: editando.prazo,
+        tags: editando.tags,
+      }}
+      onChangeProps={(novosDados) => {
+        setEditando({
+          ...editando,
+          bruto: novosDados,
+          status: (novosDados.status as Status) || editando.status,
+          prazo: novosDados.prazo,
+          tags: Array.isArray(novosDados.tags) ? novosDados.tags : editando.tags,
+        });
+      }}
+      camposFixosProps={{
+        status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
+        prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
+        tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" },
+      }}
+      salvando={salvando}
+      temMudancas={temMudancas}
+      aoFechar={aoFechar}
+      aoSalvar={async (fechar) => { await aoSalvar(editando, fechar); }}
+      aoRemover={editando.caminho ? async () => { aoRemover(); } : undefined}
+      erro={erro}
+      mencoes={mencoesDaTarefa}
+      opcoesRelacionamento={opcoesRelacionamento}
+    />
   );
 }
 
@@ -416,16 +148,20 @@ export default function Tarefas() {
   const [original, setOriginal] = useState<Tarefa | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [cronometrando, setCronometrando] = useState<Tarefa | null>(null);
-  const [visao, setVisao] = useState<"lista" | "calendario">("lista");
+  // a visão escolhida fica guardada: quem gosta de quadro quer quadro sempre
+  const [visao, setVisao] = useState<"lista" | "quadro" | "calendario">(() => {
+    const salvo = localStorage.getItem("tarefa-visao");
+    return salvo === "quadro" || salvo === "calendario" ? salvo : "lista";
+  });
   const [gravandoCaminho, setGravandoCaminho] = useState<string | null>(null);
   const [acervo, setAcervo] = useState<ItemRepo[]>([]);
 
-  const [modoVisao, setModoVisao] = useState<"popup" | "lado" | "telacheia">(() => {
+  const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>(() => {
     const salvo = localStorage.getItem("tarefa-modo-visao");
     return (salvo as any) || "popup";
   });
 
-  const alternarModoVisao = (novo: "popup" | "lado" | "telacheia") => {
+  const alternarModoVisao = (novo: ModoVisaoNotion) => {
     setModoVisao(novo);
     localStorage.setItem("tarefa-modo-visao", novo);
   };
@@ -534,31 +270,50 @@ export default function Tarefas() {
     }
   }
 
-  async function alternarFeito(t: Tarefa) {
-    if (gravandoCaminho === t.caminho) return;
+  /**
+   * Troca o status de uma tarefa e grava.
+   *
+   * É o caminho comum da caixinha da lista e do arrastar no quadro. Três
+   * coisas deliberadas, herdadas da versão que só marcava feito:
+   *
+   * 1. **A tela muda antes da gravação** e volta atrás se der erro. Esperar o
+   *    GitHub responder para o cartão sair do lugar deixava o arrasto com
+   *    cara de travado.
+   * 2. **Não recarrega tudo.** O `sha` novo vem da própria resposta.
+   * 3. **Ignora toque repetido** enquanto o anterior está no ar, senão o
+   *    segundo vai com o `sha` velho e o GitHub recusa.
+   */
+  async function mudarStatus(t: Tarefa, novoStatus: Status) {
+    if (gravandoCaminho === t.caminho || t.status === novoStatus) return;
 
-    const novo: Tarefa = {
-      ...t,
-      status: t.status === "feito" ? "a-fazer" : "feito",
-    };
+    const novo: Tarefa = { ...t, status: novoStatus };
 
     setGravandoCaminho(t.caminho);
     setTarefas((lista) => lista.map((x) => (x.caminho === t.caminho ? novo : x)));
 
+    const verbo =
+      novoStatus === "feito"
+        ? "conclui"
+        : novoStatus === "fazendo"
+          ? "comeca"
+          : "reabre";
+
     try {
-      const salva = await gravarTarefa(
-        novo,
-        `${novo.status === "feito" ? "conclui" : "reabre"} ${t.titulo}`,
-      );
+      const salva = await gravarTarefa(novo, `${verbo} ${t.titulo}`);
       setTarefas((lista) =>
         lista.map((x) => (x.caminho === salva.caminho ? salva : x)),
       );
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
+      // desfaz só esta linha, sem recarregar a lista inteira
       setTarefas((lista) => lista.map((x) => (x.caminho === t.caminho ? t : x)));
     } finally {
       setGravandoCaminho(null);
     }
+  }
+
+  function alternarFeito(t: Tarefa) {
+    return mudarStatus(t, t.status === "feito" ? "a-fazer" : "feito");
   }
 
   function abrir(t: Tarefa) {
@@ -649,13 +404,22 @@ export default function Tarefas() {
         </Botao>
       </div>
 
-      {/* alterna lista / calendário */}
+      {/* alterna lista / quadro / calendário */}
       <div className="flex gap-2">
-        {([["lista", "Lista", List], ["calendario", "Calendário", CalendarDays]] as const).map(
+        {(
+          [
+            ["lista", "Lista", List],
+            ["quadro", "Quadro", Columns3],
+            ["calendario", "Calendário", CalendarDays],
+          ] as const
+        ).map(
           ([v, rotulo, Icone]) => (
             <button
               key={v}
-              onClick={() => setVisao(v)}
+              onClick={() => {
+                setVisao(v);
+                localStorage.setItem("tarefa-visao", v);
+              }}
               className={cn(
                 "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
                 visao === v
@@ -670,8 +434,13 @@ export default function Tarefas() {
         )}
       </div>
 
-      {/* filtros */}
-      <div className={cn("flex gap-2 overflow-x-auto pb-1", visao === "calendario" && "hidden")}>
+      {/* filtros — no quadro não fazem sentido: as colunas JÁ são o filtro */}
+      <div
+        className={cn(
+          "flex gap-2 overflow-x-auto pb-1",
+          visao !== "lista" && "hidden",
+        )}
+      >
         {(["todas", ...STATUS] as const).map((f) => (
           <button
             key={f}
@@ -692,6 +461,14 @@ export default function Tarefas() {
 
       {carregando ? (
         <Carregando texto="Buscando suas tarefas…" />
+      ) : visao === "quadro" ? (
+        <Quadro
+          tarefas={tarefas}
+          aoAbrir={abrir}
+          aoCronometrar={setCronometrando}
+          aoMudarStatus={mudarStatus}
+          gravandoCaminho={gravandoCaminho}
+        />
       ) : visao === "calendario" ? (
         <Calendario tarefas={tarefas} aoAbrir={abrir} />
       ) : visiveis.length === 0 ? (
