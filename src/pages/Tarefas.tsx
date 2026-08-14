@@ -169,12 +169,14 @@ export default function Tarefas() {
     localStorage.setItem("tarefa-modo-visao", novo);
   };
 
-  const carregar = useCallback(async () => {
+  const carregar = useCallback(async (silencioso = false) => {
     if (!pronto) {
       setCarregando(false);
       return;
     }
-    setCarregando(true);
+    if (!silencioso && tarefas.length === 0) {
+      setCarregando(true);
+    }
     setErro("");
     try {
       const todos = await carregarRepo(cfg, { memoria: 3000 });
@@ -192,7 +194,7 @@ export default function Tarefas() {
     } finally {
       setCarregando(false);
     }
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
+  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch, tarefas.length]);
 
   useEffect(() => {
     carregar();
@@ -304,7 +306,7 @@ export default function Tarefas() {
       if (fecharAoSalvar) {
         fechar();
       }
-      await carregar();
+      await carregar(true);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {

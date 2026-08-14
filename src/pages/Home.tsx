@@ -201,7 +201,7 @@ export default function Home() {
       const tSalva = { ...t, caminho, sha: novaSha };
       setEditandoTarefa(fechar ? null : tSalva);
       setOrigTarefa(fechar ? null : tSalva);
-      await carregar();
+      await carregar(true);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -211,7 +211,6 @@ export default function Home() {
 
   async function abrirNotaHome(caminho: string) {
     if (focarFlutuante(caminho)) return;
-    setCarregando(true);
     try {
       const res = await ler(cfg, caminho);
       const doc = lerMarkdown(res.texto);
@@ -227,8 +226,6 @@ export default function Home() {
       setOrigNota({ titulo: tituloFinal, corpo: doc.corpo, bruto: doc.dados });
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
-    } finally {
-      setCarregando(false);
     }
   }
 
@@ -251,7 +248,7 @@ export default function Home() {
       const nSalva = { ...editandoNota, sha: novaSha };
       setEditandoNota(fechar ? null : nSalva);
       setOrigNota(fechar ? null : { titulo: nSalva.titulo, corpo: nSalva.corpo, bruto: nSalva.bruto });
-      await carregar();
+      await carregar(true);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -271,7 +268,7 @@ export default function Home() {
       const mSalva = { ...m, sha: novaSha };
       setEditandoMeta(fechar ? null : mSalva);
       setOrigMeta(fechar ? null : mSalva);
-      await carregar();
+      await carregar(true);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -366,12 +363,14 @@ export default function Home() {
     }
   }, []);
 
-  const carregar = useCallback(async () => {
+  const carregar = useCallback(async (silencioso = false) => {
     if (!pronto) {
       setCarregando(false);
       return;
     }
-    setCarregando(true);
+    if (!silencioso && tarefasPendentes.length === 0) {
+      setCarregando(true);
+    }
     setErro("");
     try {
       const todos = await carregarRepo(cfg, { memoria: 3000 });
@@ -416,7 +415,7 @@ export default function Home() {
     } finally {
       setCarregando(false);
     }
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
+  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch, tarefasPendentes.length]);
 
   useEffect(() => {
     carregar();

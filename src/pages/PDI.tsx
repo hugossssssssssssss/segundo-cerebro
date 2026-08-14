@@ -85,12 +85,14 @@ export default function PDI() {
 
   /* ----------------------------------------------------------- carregar */
 
-  const carregar = useCallback(async () => {
+  const carregar = useCallback(async (silencioso = false) => {
     if (!pronto) {
       setCarregando(false);
       return;
     }
-    setCarregando(true);
+    if (!silencioso && metas.length === 0) {
+      setCarregando(true);
+    }
     setErro("");
     try {
       // um carregamento só do repositório serve as duas pastas
@@ -111,7 +113,7 @@ export default function PDI() {
       setCarregando(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
+  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch, metas.length]);
 
   const { abrirFlutuante, focarFlutuante } = useItemFlutuante();
 
@@ -239,7 +241,7 @@ export default function PDI() {
       if (fecharAoSalvar) {
         fecharMeta();
       }
-      await carregar();
+      await carregar(true);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {

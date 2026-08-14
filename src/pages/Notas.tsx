@@ -65,12 +65,14 @@ export default function Notas() {
 
   /* ------------------------------------------------------------ listagem */
 
-  const carregarLista = useCallback(async () => {
+  const carregarLista = useCallback(async (silencioso = false) => {
     if (!pronto) {
       setCarregando(false);
       return;
     }
-    setCarregando(true);
+    if (!silencioso && arquivos.length === 0) {
+      setCarregando(true);
+    }
     setErro("");
     try {
       const todos = await carregarRepo(cfg, { memoria: 3000 });
@@ -89,7 +91,7 @@ export default function Notas() {
       setCarregando(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
+  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch, arquivos.length]);
 
   useEffect(() => {
     carregarLista();
@@ -279,7 +281,7 @@ export default function Notas() {
       if (fecharAoSalvar) {
         fecharNota();
       }
-      await carregarLista();
+      await carregarLista(true);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
