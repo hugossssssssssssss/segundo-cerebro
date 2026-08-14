@@ -106,6 +106,7 @@ function PainelTarefaNotion({
   salvando,
   aoFechar,
   aoSalvar,
+  aoSalvarAuto,
   aoRemover,
   setEditando,
   opcoesRelacionamento,
@@ -119,6 +120,7 @@ function PainelTarefaNotion({
   salvando: boolean;
   aoFechar: () => void;
   aoSalvar: () => void;
+  aoSalvarAuto?: (t: Tarefa) => void;
   aoRemover: () => void;
   setEditando: React.Dispatch<React.SetStateAction<Tarefa | null>>;
   opcoesRelacionamento: { titulo: string; caminho: string }[];
@@ -305,13 +307,17 @@ function PainelTarefaNotion({
           }}
           corpoTexto={editando.corpo}
           onChange={(novosDados) => {
-            setEditando({
+            const proxima = {
               ...editando,
               bruto: novosDados,
               status: (novosDados.status as Status) || editando.status,
               prazo: novosDados.prazo,
               tags: Array.isArray(novosDados.tags) ? novosDados.tags : editando.tags,
-            });
+            };
+            setEditando(proxima);
+            if (editando.titulo.trim()) {
+              aoSalvarAuto?.(proxima);
+            }
           }}
           camposFixos={{
             status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
@@ -330,9 +336,13 @@ function PainelTarefaNotion({
         </label>
         <Subtarefas
           corpo={editando.corpo}
-          onChange={(novoCorpo) =>
-            setEditando({ ...editando, corpo: novoCorpo })
-          }
+          onChange={(novoCorpo) => {
+            const proxima = { ...editando, corpo: novoCorpo };
+            setEditando(proxima);
+            if (editando.titulo.trim()) {
+              aoSalvarAuto?.(proxima);
+            }
+          }}
         />
       </div>
 
@@ -518,17 +528,22 @@ export default function Tarefas() {
     navegar(location.pathname, { replace: true });
   }
 
-  async function salvar() {
-    if (!editando) return;
-    if (!editando.titulo.trim()) {
+  async function salvar(alvo?: Tarefa, fecharAoSalvar = true) {
+    const t = alvo || editando;
+    if (!t) return;
+    if (!t.titulo.trim()) {
       setErro("A tarefa precisa de um título.");
       return;
     }
     setSalvando(true);
     setErro("");
     try {
-      await gravarTarefa(editando);
-      fechar();
+      const salva = await gravarTarefa(t);
+      setEditando(salva);
+      setOriginal(salva);
+      if (fecharAoSalvar) {
+        fechar();
+      }
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -793,6 +808,7 @@ export default function Tarefas() {
           salvando={salvando}
           aoFechar={fechar}
           aoSalvar={salvar}
+          aoSalvarAuto={(t) => salvar(t, false)}
           aoRemover={() => editando && remover(editando)}
           setEditando={setEditando}
           opcoesRelacionamento={opcoesRelacionamento}
