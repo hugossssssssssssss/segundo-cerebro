@@ -40,11 +40,14 @@ type NotaAberta = {
   original: { titulo: string; corpo: string; bruto?: Frontmatter };
 };
 
+import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
+
 export default function Notas() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
   const location = useLocation();
   const navegar = useNavigate();
+  const { abrirFlutuante } = useItemFlutuante();
 
   const [arquivos, setArquivos] = useState<ItemRepo[]>([]);
   const [titulos, setTitulos] = useState<Record<string, string>>({});
@@ -135,6 +138,39 @@ export default function Notas() {
     setAberta(null);
     navegar(location.pathname, { replace: true });
   }
+
+  // Quando o usuário clica no modo flutuante, transfere para o provedor global que flutua pelo app inteiro
+  useEffect(() => {
+    if (modoVisao === "flutuante" && aberta) {
+      abrirFlutuante({
+        id: aberta.caminho,
+        rotuloTipo: aberta.caminho ? "Nota" : "Nova nota",
+        titulo: aberta.titulo,
+        corpo: aberta.corpo,
+        dadosProps: aberta.bruto,
+        camposFixosProps: {
+          tipo: { icone: <FileText className="h-4 w-4 opacity-50 text-orange-500" />, tipo: "select", opcoes: ["nota", "referencia", "rascunho"] },
+          tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
+        },
+        caminho: aberta.caminho,
+        sha: aberta.sha,
+        temMudancas: mudou,
+        salvando,
+        erro,
+        mencoes: mencoesNotaAberta,
+        opcoesRelacionamento,
+        setTitulo: (t) => setAberta((cur) => cur ? { ...cur, titulo: t } : null),
+        setCorpo: (c) => setAberta((cur) => cur ? { ...cur, corpo: c } : null),
+        onChangeProps: (nProps) => setAberta((cur) => cur ? { ...cur, bruto: nProps } : null),
+        aoSalvar: async (item, fechar) => {
+          await salvar({ ...aberta, titulo: item.titulo, corpo: item.corpo, bruto: item.dadosProps }, fechar);
+        },
+        aoRemover: aberta.caminho ? async () => { await remover(); } : undefined,
+      });
+      setAberta(null);
+      setModoVisao("popup");
+    }
+  }, [modoVisao, aberta]);
 
   useEffect(() => {
     if (!aberta) return;

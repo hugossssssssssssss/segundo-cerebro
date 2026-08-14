@@ -69,11 +69,9 @@ export function PainelNotionBase({
   salvandoRef.current = salvando;
   temMudancasRef.current = temMudancas;
 
-  const tentarFechar = useCallback(async () => {
-    if (salvandoRef.current) return;
+  const tentarFechar = useCallback(() => {
     if (temMudancasRef.current) {
-      await aoSalvar(true);
-      return;
+      aoSalvar(true).catch(() => {});
     }
     aoFechar();
   }, [aoSalvar, aoFechar]);
@@ -132,57 +130,53 @@ export function PainelNotionBase({
           <button
             onClick={() => { setModoVisao("popup"); setMinimizadoFlutuante(false); }}
             className={cn(
-              "p-1 sm:p-1.5 rounded-md text-xs transition-colors flex items-center gap-1",
+              "p-1.5 rounded-md transition-colors flex items-center justify-center",
               modoVisao === "popup"
                 ? "bg-background text-foreground shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             )}
-            title="Modo Pop-up Central"
+            title="Pop-up central"
           >
-            <Square size={13} />
-            <span className="hidden md:inline">Pop-up</span>
+            <Square size={15} />
           </button>
 
           <button
             onClick={() => { setModoVisao("lado"); setMinimizadoFlutuante(false); }}
             className={cn(
-              "p-1 sm:p-1.5 rounded-md text-xs transition-colors flex items-center gap-1",
+              "p-1.5 rounded-md transition-colors flex items-center justify-center",
               modoVisao === "lado"
                 ? "bg-background text-foreground shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             )}
-            title="Modo Painel Lateral (Do lado)"
+            title="Painel lateral (Do lado)"
           >
-            <PanelRight size={13} />
-            <span className="hidden md:inline">Do Lado</span>
+            <PanelRight size={15} />
           </button>
 
           <button
             onClick={() => { setModoVisao("telacheia"); setMinimizadoFlutuante(false); }}
             className={cn(
-              "p-1 sm:p-1.5 rounded-md text-xs transition-colors flex items-center gap-1",
+              "p-1.5 rounded-md transition-colors flex items-center justify-center",
               modoVisao === "telacheia"
                 ? "bg-background text-foreground shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             )}
-            title="Modo Tela Cheia"
+            title="Tela cheia"
           >
-            <Maximize2 size={13} />
-            <span className="hidden md:inline">Tela Cheia</span>
+            <Maximize2 size={15} />
           </button>
 
           <button
             onClick={() => { setModoVisao("flutuante"); setMinimizadoFlutuante(false); }}
             className={cn(
-              "p-1 sm:p-1.5 rounded-md text-xs transition-colors flex items-center gap-1",
+              "p-1.5 rounded-md transition-colors flex items-center justify-center",
               modoVisao === "flutuante"
                 ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             )}
-            title="Modo Nota Autoadesiva Flutuante (Post-it flutuante pela tela)"
+            title="Nota Autoadesiva Flutuante (Post-it pelo app)"
           >
-            <StickyNote size={13} />
-            <span className="hidden md:inline">Flutuante</span>
+            <StickyNote size={15} />
           </button>
         </div>
 

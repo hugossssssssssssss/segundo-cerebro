@@ -23,6 +23,7 @@ import {
   Layout,
   Target,
 } from "lucide-react";
+import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { Busca } from "@/components/Busca";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { NavegacaoLateral } from "@/components/NavegacaoLateral";
@@ -299,25 +300,29 @@ function Estrutura({ children }: { children: React.ReactNode }) {
   );
 }
 
+
+
 export default function App() {
   return (
     <HashRouter>
-      <Estrutura>
-        <Suspense fallback={<Carregando />}>
-          <Routes>
-            <Route path="/" element={<Navigate to="/home" replace />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/tarefas" element={<Tarefas />} />
-            <Route path="/notas" element={<Notas />} />
-            <Route path="/referencias" element={<Referencias />} />
-            <Route path="/lousas" element={<Lousas />} />
-            <Route path="/pdi" element={<PDI />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/config" element={<Configuracoes />} />
-            <Route path="*" element={<Navigate to="/home" replace />} />
-          </Routes>
-        </Suspense>
-      </Estrutura>
+      <ProvedorFlutuanteGlobal>
+        <Estrutura>
+          <Suspense fallback={<Carregando />}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/home" replace />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/tarefas" element={<Tarefas />} />
+              <Route path="/notas" element={<Notas />} />
+              <Route path="/referencias" element={<Referencias />} />
+              <Route path="/lousas" element={<Lousas />} />
+              <Route path="/pdi" element={<PDI />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/config" element={<Configuracoes />} />
+              <Route path="*" element={<Navigate to="/home" replace />} />
+            </Routes>
+          </Suspense>
+        </Estrutura>
+      </ProvedorFlutuanteGlobal>
     </HashRouter>
   );
 }

@@ -5,6 +5,7 @@ import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
+import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import {
   escreverMarkdown,
   tituloProvavel,
@@ -134,11 +135,50 @@ export default function PDI() {
     }
   }, [location.search, metas, entregas]);
 
+  const { abrirFlutuante } = useItemFlutuante();
+
   function fecharMeta() {
     setEditandoMeta(null);
     setOrigMeta(null);
     navegar(location.pathname, { replace: true });
   }
+
+  // Quando o usuário clica no modo flutuante, transfere para o provedor global que flutua pelo app inteiro
+  useEffect(() => {
+    if (modoVisaoMeta === "flutuante" && editandoMeta) {
+      abrirFlutuante({
+        id: editandoMeta.caminho,
+        rotuloTipo: editandoMeta.caminho ? "Meta da Carreira" : "Nova meta",
+        titulo: editandoMeta.titulo,
+        corpo: editandoMeta.corpo,
+        dadosProps: {
+          status: editandoMeta.status,
+          prazo: editandoMeta.prazo,
+          indicador: editandoMeta.indicador,
+        },
+        camposFixosProps: {
+          status: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
+          prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
+          indicador: { icone: <CheckSquare className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" },
+        },
+        caminho: editandoMeta.caminho,
+        sha: editandoMeta.sha,
+        temMudancas: origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta),
+        salvando,
+        erro,
+        setTitulo: (t) => setEditandoMeta((cur) => cur ? { ...cur, titulo: t } : null),
+        setCorpo: (c) => setEditandoMeta((cur) => cur ? { ...cur, corpo: c } : null),
+        onChangeProps: (nProps) => setEditandoMeta((cur) => cur ? { ...cur, status: nProps.status || cur.status, prazo: nProps.prazo, indicador: nProps.indicador || cur.indicador } : null),
+        aoSalvar: async (item, fecharAoSalvar) => {
+          await salvarMeta({ ...editandoMeta, titulo: item.titulo, corpo: item.corpo }, fecharAoSalvar);
+        },
+        aoRemover: editandoMeta.caminho ? async () => { await removerMeta(editandoMeta); } : undefined,
+      });
+      setEditandoMeta(null);
+      setOrigMeta(null);
+      setModoVisaoMeta("popup");
+    }
+  }, [modoVisaoMeta, editandoMeta]);
 
   function fecharEntrega() {
     setEditandoEntrega(null);

@@ -134,11 +134,14 @@ export function PainelTarefaNotion({
   );
 }
 
+import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
+
 export default function Tarefas() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
   const location = useLocation();
   const navegar = useNavigate();
+  const { abrirFlutuante } = useItemFlutuante();
 
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -245,6 +248,41 @@ export default function Tarefas() {
     setOriginal(null);
     navegar(location.pathname, { replace: true });
   }
+
+  // Quando o usuário clica no modo flutuante, transfere para o provedor global que flutua pelo app inteiro
+  useEffect(() => {
+    if (modoVisao === "flutuante" && editando) {
+      abrirFlutuante({
+        id: editando.caminho,
+        rotuloTipo: editando.caminho ? "Tarefa" : "Nova tarefa",
+        titulo: editando.titulo,
+        corpo: editando.corpo,
+        dadosProps: paraFrontmatter(editando),
+        camposFixosProps: {
+          status: { icone: <ListTodo className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "status" },
+          prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
+          tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
+        },
+        caminho: editando.caminho,
+        sha: editando.sha,
+        temMudancas: JSON.stringify(editando) !== JSON.stringify(original),
+        salvando,
+        erro,
+        mencoes: mencoesDaTarefa,
+        opcoesRelacionamento,
+        setTitulo: (t) => setEditando((cur) => cur ? { ...cur, titulo: t } : null),
+        setCorpo: (c) => setEditando((cur) => cur ? { ...cur, corpo: c } : null),
+        onChangeProps: (nProps) => setEditando((cur) => cur ? comoTarefa({ dados: nProps, corpo: cur.corpo }, cur.caminho, cur.sha, cur.titulo) : null),
+        aoSalvar: async (item, fecharAoSalvar) => {
+          await salvar({ ...editando, titulo: item.titulo, corpo: item.corpo }, fecharAoSalvar);
+        },
+        aoRemover: editando.caminho ? async () => { await remover(editando); } : undefined,
+      });
+      setEditando(null);
+      setOriginal(null);
+      setModoVisao("popup");
+    }
+  }, [modoVisao, editando]);
 
   async function salvar(alvo?: Tarefa, fecharAoSalvar = true) {
     const t = alvo || editando;
