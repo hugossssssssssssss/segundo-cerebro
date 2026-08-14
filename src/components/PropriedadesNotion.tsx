@@ -176,6 +176,21 @@ export function PropriedadesNotion({
     setGlobalConfig(lerConfigPropriedadesGlobais());
   }, []);
 
+  // Garante o fechamento imediato de qualquer menu de propriedade aberto ao clicar fora em qualquer lugar da tela
+  useEffect(() => {
+    if (!menuAberto) return;
+    const aoClicarFora = (e: PointerEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (!el) return;
+      const dentroDoPopover = el.closest('[data-radix-popper-content-wrapper], [role="dialog"], [role="menu"]');
+      if (!dentroDoPopover) {
+        setMenuAberto(null);
+      }
+    };
+    window.addEventListener("pointerdown", aoClicarFora, { capture: true });
+    return () => window.removeEventListener("pointerdown", aoClicarFora, { capture: true });
+  }, [menuAberto]);
+
   const esquema = (dados.esquema as Record<string, TipoPropriedade>) || {};
   const visibilidadeMap = (dados._visibilidade as Record<string, OpcaoVisibilidade>) || {};
   const coresMap = { ...globalConfig.coresTags, ...((dados._coresTags as Record<string, string>) || {}) };
