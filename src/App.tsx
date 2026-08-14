@@ -11,8 +11,10 @@ import {
   Moon,
   Sun,
   Home as HomeIcon,
+  Plus,
 } from "lucide-react";
 import { Busca } from "@/components/Busca";
+import { CapturaRapida } from "@/components/CapturaRapida";
 import { Carregando } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -70,17 +72,42 @@ function BotaoTema() {
 
 function Estrutura({ children }: { children: React.ReactNode }) {
   const [buscando, setBuscando] = useState(false);
+  const [capturando, setCapturando] = useState(false);
+  const [textoCompartilhado, setTextoCompartilhado] = useState("");
 
-  // ⌘K no Mac, Ctrl+K no resto — convenção que todo mundo já conhece
+  // ⌘K busca, ⌘J captura — convenções que todo mundo já conhece
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const tecla = e.key.toLowerCase();
+      if (tecla === "k") {
         e.preventDefault();
         setBuscando(true);
+      } else if (tecla === "j") {
+        e.preventDefault();
+        setCapturando(true);
       }
     };
     document.addEventListener("keydown", aoTeclar);
     return () => document.removeEventListener("keydown", aoTeclar);
+  }, []);
+
+  /**
+   * Compartilhar de outro app do Android cai aqui.
+   *
+   * O manifest declara share_target apontando para #/?compartilhado=...,
+   * então o texto chega pela URL e abre a captura já preenchida.
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(location.hash.split("?")[1] ?? "");
+    const vindo = [params.get("titulo"), params.get("texto"), params.get("url")]
+      .filter(Boolean)
+      .join("\n");
+    if (vindo) {
+      setTextoCompartilhado(vindo);
+      setCapturando(true);
+      history.replaceState(null, "", location.pathname + location.search + "#/home");
+    }
   }, []);
 
   return (
@@ -111,6 +138,15 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                 </NavLink>
               ))}
             </nav>
+
+            <button
+              onClick={() => setCapturando(true)}
+              className="hidden rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:block"
+              title="Captura rápida (⌘J)"
+              aria-label="Captura rápida"
+            >
+              <Plus size={18} />
+            </button>
 
             <button
               onClick={() => setBuscando(true)}
@@ -164,7 +200,24 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
 
+      {/* Botão flutuante de captura no celular, acima da barra de abas */}
+      <button
+        onClick={() => setCapturando(true)}
+        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 sm:hidden"
+        aria-label="Captura rápida"
+      >
+        <Plus size={24} />
+      </button>
+
       <Busca aberta={buscando} aoFechar={() => setBuscando(false)} />
+      <CapturaRapida
+        aberta={capturando}
+        textoInicial={textoCompartilhado}
+        aoFechar={() => {
+          setCapturando(false);
+          setTextoCompartilhado("");
+        }}
+      />
     </div>
   );
 }

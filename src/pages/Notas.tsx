@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { EditorNotion } from "@/components/EditorNotion";
-import { Plus, Trash2, Search, ArrowLeft, Save } from "lucide-react";
+import { Plus, Trash2, Search, ArrowLeft, Save, Tag } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo";
 import { montarIndice, mencoesA, extrairLinks } from "@/lib/links";
 import { MencionadoEm } from "@/components/Links";
+import { PropriedadesNotion } from "@/components/PropriedadesNotion";
 import {
   escreverMarkdown,
   tituloProvavel,
@@ -259,20 +260,13 @@ export default function Notas() {
             />
             {/* Notion-style Properties */}
             <div className="mt-6 flex flex-col gap-2">
-              <div className="flex items-center gap-4 text-sm group">
-                <div className="w-24 text-muted-foreground flex items-center gap-2">
-                  <span className="opacity-70 group-hover:opacity-100 transition-opacity">🏷️ Tags</span>
-                </div>
-                <div className="flex-1">
-                  <input 
-                    type="text" 
-                    placeholder="Adicionar tag..." 
-                    className="border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:ring-0 w-full"
-                    value={Array.isArray(aberta.bruto.tags) ? aberta.bruto.tags.join(", ") : ""}
-                    onChange={(e) => setAberta({ ...aberta, bruto: { ...aberta.bruto, tags: e.target.value.split(",").map(t => t.trim()).filter(Boolean) } })}
-                  />
-                </div>
-              </div>
+              <PropriedadesNotion
+                dados={aberta.bruto}
+                onChange={(novosDados) => setAberta({ ...aberta, bruto: novosDados })}
+                camposFixos={{
+                  tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "tags" }
+                }}
+              />
             </div>
             {/* Divider */}
             <hr className="my-6 border-border" />

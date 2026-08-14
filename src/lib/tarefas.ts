@@ -147,3 +147,95 @@ export function minutosRegistrados(corpo: string): number {
   for (const m of encontrados) total += Number(m[1]);
   return total;
 }
+
+/* ------------------------------------------------------------ subtarefas */
+
+/**
+ * Subtarefas são caixinhas markdown no corpo da tarefa:
+ *
+ *   - [ ] escolher as imagens
+ *   - [x] revisar os textos
+ *
+ * Guardar assim, e não num campo do frontmatter, tem uma razão: continua
+ * legível e clicável em qualquer editor de Markdown, no GitHub e para
+ * qualquer IA. É a mesma sintaxe que o mundo inteiro já usa.
+ */
+
+const CAIXA = /^(\s*)[-*]\s+\[( |x|X)\]\s+(.*)$/;
+
+export type Subtarefa = {
+  /** Índice da linha no corpo — é assim que marcamos a certa */
+  linha: number;
+  feita: boolean;
+  texto: string;
+};
+
+export function lerSubtarefas(corpo: string): Subtarefa[] {
+  const saida: Subtarefa[] = [];
+  corpo.split("\n").forEach((l, i) => {
+    const m = l.match(CAIXA);
+    if (m) {
+      saida.push({ linha: i, feita: m[2].toLowerCase() === "x", texto: m[3].trim() });
+    }
+  });
+  return saida;
+}
+
+/** Marca ou desmarca uma caixinha, preservando indentação e o resto do texto. */
+export function alternarSubtarefa(corpo: string, linha: number): string {
+  const linhas = corpo.split("\n");
+  const alvo = linhas[linha];
+  if (alvo === undefined) return corpo;
+
+  const m = alvo.match(CAIXA);
+  if (!m) return corpo;
+
+  const marcada = m[2].toLowerCase() === "x";
+  linhas[linha] = alvo.replace(
+    /\[( |x|X)\]/,
+    marcada ? "[ ]" : "[x]",
+  );
+  return linhas.join("\n");
+}
+
+/** Acrescenta uma subtarefa no fim da lista existente, ou no fim do corpo. */
+export function adicionarSubtarefa(corpo: string, texto: string): string {
+  const limpo = texto.trim();
+  if (!limpo) return corpo;
+
+  const linhas = corpo.split("\n");
+  const subs = lerSubtarefas(corpo);
+
+  if (subs.length === 0) {
+    const base = corpo.trimEnd();
+    return `${base}${base ? "\n\n" : ""}- [ ] ${limpo}\n`;
+  }
+
+  // insere logo abaixo da última caixinha, herdando a indentação dela
+  const ultima = subs[subs.length - 1].linha;
+  const recuo = linhas[ultima].match(/^(\s*)/)?.[1] ?? "";
+  linhas.splice(ultima + 1, 0, `${recuo}- [ ] ${limpo}`);
+  return linhas.join("\n");
+}
+
+export function removerSubtarefa(corpo: string, linha: number): string {
+  const linhas = corpo.split("\n");
+  if (!linhas[linha]?.match(CAIXA)) return corpo;
+  linhas.splice(linha, 1);
+  return linhas.join("\n");
+}
+
+/** Quantas estão feitas, para a barrinha de progresso. */
+export function progressoSubtarefas(corpo: string): {
+  feitas: number;
+  total: number;
+  porcento: number;
+} {
+  const subs = lerSubtarefas(corpo);
+  const feitas = subs.filter((s) => s.feita).length;
+  return {
+    feitas,
+    total: subs.length,
+    porcento: subs.length ? Math.round((feitas / subs.length) * 100) : 0,
+  };
+}

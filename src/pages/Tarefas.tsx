@@ -7,6 +7,8 @@ import { carregarRepo, daPasta, invalidarCache, type ItemRepo } from "@/lib/repo
 import { montarIndice, mencoesA } from "@/lib/links";
 import { MencionadoEm } from "@/components/Links";
 import { EditorNotion } from "@/components/EditorNotion";
+import { PropriedadesNotion } from "@/components/PropriedadesNotion";
+import { ListTodo, Calendar, Tag } from "lucide-react";
 import {
   lerMarkdown,
   escreverMarkdown,
@@ -20,6 +22,7 @@ import {
   textoPrazo,
   registrarCiclo,
   minutosRegistrados,
+  progressoSubtarefas,
   paraFrontmatter,
   ROTULO_STATUS,
   STATUS,
@@ -340,6 +343,7 @@ export default function Tarefas() {
           {visiveis.map((t) => {
             const u = urgencia(t);
             const min = minutosRegistrados(t.corpo);
+            const passos = progressoSubtarefas(t.corpo);
             return (
               <Cartao key={t.caminho} className="flex items-start gap-3 p-3.5">
                 {/* -m-2 p-2: aumenta a área de toque para 36px sem mexer no layout */}
@@ -382,6 +386,11 @@ export default function Tarefas() {
                       <Selo tom={CORES_URGENCIA[u]}>{textoPrazo(t)}</Selo>
                     )}
                     {min > 0 && <Selo>🍅 {min}min</Selo>}
+                    {passos.total > 0 && (
+                      <Selo tom={passos.porcento === 100 ? "sucesso" : "neutro"}>
+                        {passos.feitas}/{passos.total} passos
+                      </Selo>
+                    )}
                     {t.tags.map((tag) => (
                       <Selo key={tag}>#{tag}</Selo>
                     ))}
@@ -442,51 +451,28 @@ export default function Tarefas() {
             />
 
             <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-4 text-sm group">
-                <div className="w-24 text-muted-foreground flex items-center gap-2">
-                  <span className="opacity-70 group-hover:opacity-100 transition-opacity">📌 Status</span>
-                </div>
-                <div className="flex-1">
-                  <select
-                    value={editando.status}
-                    onChange={(e) => setEditando({ ...editando, status: e.target.value as Status })}
-                    className="border-none bg-transparent outline-none cursor-pointer focus:ring-0 text-foreground"
-                  >
-                    {STATUS.map((s) => (
-                      <option key={s} value={s}>{ROTULO_STATUS[s]}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 text-sm group">
-                <div className="w-24 text-muted-foreground flex items-center gap-2">
-                  <span className="opacity-70 group-hover:opacity-100 transition-opacity">📅 Prazo</span>
-                </div>
-                <div className="flex-1">
-                  <input
-                    type="date"
-                    value={editando.prazo ?? ""}
-                    onChange={(e) => setEditando({ ...editando, prazo: e.target.value || undefined })}
-                    className="border-none bg-transparent outline-none text-foreground focus:ring-0"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 text-sm group">
-                <div className="w-24 text-muted-foreground flex items-center gap-2">
-                  <span className="opacity-70 group-hover:opacity-100 transition-opacity">🏷️ Tags</span>
-                </div>
-                <div className="flex-1">
-                  <input 
-                    type="text" 
-                    placeholder="Vazio" 
-                    className="border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:ring-0 w-full"
-                    value={editando.tags.join(", ")}
-                    onChange={(e) => setEditando({ ...editando, tags: e.target.value.split(",").map(t => t.trim()).filter(Boolean) })}
-                  />
-                </div>
-              </div>
+              <PropriedadesNotion
+                dados={{
+                  status: editando.status,
+                  prazo: editando.prazo,
+                  tags: editando.tags,
+                  ...editando.bruto,
+                }}
+                onChange={(novosDados) => {
+                  setEditando({
+                    ...editando,
+                    bruto: novosDados,
+                    status: (novosDados.status as Status) || editando.status,
+                    prazo: novosDados.prazo,
+                    tags: Array.isArray(novosDados.tags) ? novosDados.tags : editando.tags,
+                  });
+                }}
+                camposFixos={{
+                  status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status", opcoes: ["a-fazer", "fazendo", "feito"] },
+                  prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
+                  tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "tags" }
+                }}
+              />
             </div>
 
             <hr className="my-4 border-border" />
