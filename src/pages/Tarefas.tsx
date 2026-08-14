@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -105,7 +105,6 @@ function PainelTarefaNotion({
   original,
   salvando,
   aoFechar,
-  aoSalvar,
   aoSalvarAuto,
   aoRemover,
   setEditando,
@@ -119,7 +118,6 @@ function PainelTarefaNotion({
   original: Tarefa | null;
   salvando: boolean;
   aoFechar: () => void;
-  aoSalvar: () => void;
   aoSalvarAuto?: (t: Tarefa) => void;
   aoRemover: () => void;
   setEditando: React.Dispatch<React.SetStateAction<Tarefa | null>>;
@@ -163,12 +161,12 @@ function PainelTarefaNotion({
           {editando.caminho ? "Tarefa" : "Nova tarefa"}
         </span>
 
-        {/* Indicador visual de sincronização em tempo real */}
-        <span className="text-[11px] font-medium ml-2 px-2 py-0.5 rounded-full bg-accent/60 flex items-center gap-1">
+        {/* Indicador visual de sincronização inteligente em tempo real */}
+        <span className="text-[11px] font-medium ml-2 px-2.5 py-0.5 rounded-full bg-accent/60 flex items-center gap-1">
           {salvando ? (
-            <span className="text-blue-500 animate-pulse">Sincronizando com GitHub...</span>
+            <span className="text-blue-500 animate-pulse font-semibold">Sincronizando com GitHub...</span>
           ) : (
-            <span className="text-emerald-600 dark:text-emerald-400">✓ Sincronizado</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">✓ Salvo</span>
           )}
         </span>
       </div>
@@ -230,27 +228,15 @@ function PainelTarefaNotion({
     </div>
   );
 
-  const rodape = (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-4 bg-card">
-      <div>
-        {editando.caminho && (
-          <Botao variante="fantasma" onClick={() => setConfirmandoApagar(true)} className="text-destructive hover:bg-destructive/10">
-            <Trash2 size={16} />
-            <span>Apagar</span>
-          </Botao>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Botao variante="neutro" onClick={tentarFechar}>
-          Cancelar
-        </Botao>
-        <Botao onClick={aoSalvar} disabled={salvando}>
-          {salvando ? "Salvando…" : "Salvar"}
-        </Botao>
-      </div>
+  const rodape = editando.caminho ? (
+    <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-5 py-3 bg-card">
+      <Botao variante="fantasma" onClick={() => setConfirmandoApagar(true)} className="text-destructive hover:bg-destructive/10 text-xs">
+        <Trash2 size={15} />
+        <span>Apagar tarefa</span>
+      </Botao>
+      <span className="text-xs text-muted-foreground">Todas as alterações são salvas automaticamente</span>
     </div>
-  );
+  ) : null;
 
   const modaisConfirmacao = (
     <>
@@ -284,6 +270,21 @@ function PainelTarefaNotion({
     </>
   );
 
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const agendarAutoSalvar = (proxima: Tarefa, imediato = false) => {
+    if (!proxima.titulo.trim()) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    if (imediato) {
+      aoSalvarAuto?.(proxima);
+    } else {
+      timerRef.current = setTimeout(() => {
+        aoSalvarAuto?.(proxima);
+      }, 1200);
+    }
+  };
+
   const conteudo = (
     <div className="space-y-6 max-w-4xl mx-auto w-full">
       {erro && <Aviso tom="erro">{erro}</Aviso>}
@@ -291,7 +292,11 @@ function PainelTarefaNotion({
       <input
         type="text"
         value={editando.titulo}
-        onChange={(e) => setEditando({ ...editando, titulo: e.target.value })}
+        onChange={(e) => {
+          const proxima = { ...editando, titulo: e.target.value };
+          setEditando(proxima);
+          agendarAutoSalvar(proxima, false);
+        }}
         placeholder="Sem título"
         className="w-full text-2xl sm:text-3xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0 pt-2"
         autoFocus
@@ -315,9 +320,7 @@ function PainelTarefaNotion({
               tags: Array.isArray(novosDados.tags) ? novosDados.tags : editando.tags,
             };
             setEditando(proxima);
-            if (editando.titulo.trim()) {
-              aoSalvarAuto?.(proxima);
-            }
+            agendarAutoSalvar(proxima, true);
           }}
           camposFixos={{
             status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
@@ -339,9 +342,7 @@ function PainelTarefaNotion({
           onChange={(novoCorpo) => {
             const proxima = { ...editando, corpo: novoCorpo };
             setEditando(proxima);
-            if (editando.titulo.trim()) {
-              aoSalvarAuto?.(proxima);
-            }
+            agendarAutoSalvar(proxima, true);
           }}
         />
       </div>
@@ -351,7 +352,11 @@ function PainelTarefaNotion({
       <div className="min-h-[250px]">
         <EditorNotion
           markdown={editando.corpo}
-          onChange={(v) => setEditando({ ...editando, corpo: v })}
+          onChange={(v) => {
+            const proxima = { ...editando, corpo: v };
+            setEditando(proxima);
+            agendarAutoSalvar(proxima, false);
+          }}
         />
       </div>
 
@@ -807,7 +812,6 @@ export default function Tarefas() {
           original={original}
           salvando={salvando}
           aoFechar={fechar}
-          aoSalvar={salvar}
           aoSalvarAuto={(t) => salvar(t, false)}
           aoRemover={() => editando && remover(editando)}
           setEditando={setEditando}

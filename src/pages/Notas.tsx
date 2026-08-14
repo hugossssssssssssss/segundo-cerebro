@@ -1,6 +1,6 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Plus, Trash2, Search, ArrowLeft, Save, Tag } from "lucide-react";
+import { Plus, Trash2, Search, ArrowLeft, Tag } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { gravar, apagar } from "@/lib/github";
 import {
@@ -223,43 +223,60 @@ export default function Notas() {
     });
   }
 
-  async function salvar() {
-    if (!aberta) return;
-    const titulo = aberta.titulo.trim() || "Sem título";
+  const timerRefNotas = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const agendarAutoSalvarNota = (proxima: NotaAberta, imediato = false) => {
+    if (!proxima.titulo.trim()) return;
+    if (timerRefNotas.current) clearTimeout(timerRefNotas.current);
+
+    if (imediato) {
+      salvar(proxima);
+    } else {
+      timerRefNotas.current = setTimeout(() => {
+        salvar(proxima);
+      }, 1200);
+    }
+  };
+
+  async function salvar(alvo?: NotaAberta) {
+    const n = alvo || aberta;
+    if (!n) return;
+    const titulo = n.titulo.trim() || "Sem título";
 
     setSalvando(true);
     setErro("");
     try {
       const texto = escreverMarkdown({
-        dados: mesclarFrontmatter(aberta.bruto, {
+        dados: mesclarFrontmatter(n.bruto, {
           titulo,
           tipo:
-            typeof aberta.bruto.tipo === "string" && aberta.bruto.tipo
-              ? aberta.bruto.tipo
+            typeof n.bruto.tipo === "string" && n.bruto.tipo
+              ? n.bruto.tipo
               : "nota",
           atualizado: hojeISO(),
         }),
-        corpo: aberta.corpo,
+        corpo: n.corpo,
       });
 
       const caminho =
-        aberta.caminho ||
+        n.caminho ||
         nomeLivre(PASTA, titulo, arquivos.map((a) => a.caminho));
       const novoSha = await gravar(
         cfg,
         caminho,
         texto,
-        aberta.sha || undefined,
+        n.sha || undefined,
       );
       invalidarCache();
 
-      setAberta({
-        ...aberta,
+      const salva = {
+        ...n,
         caminho,
         sha: novoSha,
         titulo,
-        original: { titulo, corpo: aberta.corpo, bruto: aberta.bruto },
-      });
+        original: { titulo, corpo: n.corpo, bruto: n.bruto },
+      };
+      setAberta(salva);
       navegar(`?abrir=${encodeURIComponent(caminho)}`, { replace: true });
       await carregarLista();
     } catch (e) {
@@ -301,19 +318,28 @@ export default function Notas() {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <Botao
-            variante="fantasma"
-            tamanho="icone"
-            onClick={() => {
-              if (mudou) {
-                setConfirmandoDescarte(true);
-              } else {
-                fecharNota();
-              }
-            }}
-          >
-            <ArrowLeft size={18} />
-          </Botao>
+          <div className="flex items-center gap-2">
+            <Botao
+              variante="fantasma"
+              tamanho="icone"
+              onClick={() => {
+                if (mudou) {
+                  setConfirmandoDescarte(true);
+                } else {
+                  fecharNota();
+                }
+              }}
+            >
+              <ArrowLeft size={18} />
+            </Botao>
+            <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-accent/60 flex items-center gap-1">
+              {salvando ? (
+                <span className="text-blue-500 animate-pulse font-semibold">Sincronizando com GitHub...</span>
+              ) : (
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">✓ Salvo</span>
+              )}
+            </span>
+          </div>
 
           <div className="flex items-center gap-2">
             {aberta.caminho && (
@@ -349,7 +375,11 @@ export default function Notas() {
             <input
               type="text"
               value={aberta.titulo}
-              onChange={(e) => setAberta({ ...aberta, titulo: e.target.value })}
+              onChange={(e) => {
+                const proxima = { ...aberta, titulo: e.target.value };
+                setAberta(proxima);
+                agendarAutoSalvarNota(proxima, false);
+              }}
               placeholder="Sem título"
               className="w-full text-4xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0"
             />
@@ -357,7 +387,11 @@ export default function Notas() {
               <PropriedadesNotion
                 dados={aberta.bruto}
                 corpoTexto={aberta.corpo}
-                onChange={(novosDados) => setAberta({ ...aberta, bruto: novosDados })}
+                onChange={(novosDados) => {
+                  const proxima = { ...aberta, bruto: novosDados };
+                  setAberta(proxima);
+                  agendarAutoSalvarNota(proxima, true);
+                }}
                 camposFixos={{
                   tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" }
                 }}
@@ -369,7 +403,11 @@ export default function Notas() {
 
           <EditorNotion
             markdown={aberta.corpo}
-            onChange={(v) => setAberta({ ...aberta, corpo: v ?? "" })}
+            onChange={(v) => {
+              const proxima = { ...aberta, corpo: v ?? "" };
+              setAberta(proxima);
+              agendarAutoSalvarNota(proxima, false);
+            }}
           />
 
           <div className="mt-12 pt-8 border-t border-border">
@@ -413,18 +451,15 @@ export default function Notas() {
           Digite <code className="rounded bg-secondary px-1">@nome</code> para ligar esta nota a uma tarefa, referência ou meta.
         </p>
 
-        <div className="flex items-center justify-between gap-3">
-          <Botao onClick={salvar} disabled={salvando || !mudou}>
-            <Save size={16} />
-            {salvando ? "Salvando…" : mudou ? "Salvar" : "Salvo"}
-          </Botao>
-          {aberta.caminho && (
-            <Botao variante="fantasma" onClick={() => setConfirmandoApagar(true)}>
-              <Trash2 size={16} />
-              Apagar
+        {aberta.caminho && (
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+            <Botao variante="fantasma" onClick={() => setConfirmandoApagar(true)} className="text-destructive hover:bg-destructive/10 text-xs">
+              <Trash2 size={15} />
+              <span>Apagar nota</span>
             </Botao>
-          )}
-        </div>
+            <span className="text-xs text-muted-foreground">Todas as alterações são salvas automaticamente</span>
+          </div>
+        )}
 
         <HistoricoDiffModal
           aberto={historicoAberto}
