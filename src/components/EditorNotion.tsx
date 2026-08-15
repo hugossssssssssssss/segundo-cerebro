@@ -88,7 +88,7 @@ export function EditorNotion({
         setAlvos(alvosOverride);
         return;
       }
-      carregarRepo(lerConfig(), { memoria: 60000 })
+      carregarRepo(lerConfig(), { memoria: 0 })
         .then((todos) => {
           const indice = montarIndice(todos);
           setAlvos(alvosUnicos(indice));

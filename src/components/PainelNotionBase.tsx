@@ -402,28 +402,6 @@ export function PainelNotionBase({
               tamanho: 0,
               doc: { dados: { titulo: l.titulo, tipo: "lousa" }, corpo: "" },
             }}
-            onMoverParaCima={() => {
-              const termo = `@${l.titulo}`;
-              const linhas = corpo.split("\n");
-              const idx = linhas.findIndex((ln) => ln.includes(termo));
-              if (idx > 0) {
-                const temp = linhas[idx];
-                linhas[idx] = linhas[idx - 1];
-                linhas[idx - 1] = temp;
-                setCorpo(linhas.join("\n"));
-              }
-            }}
-            onMoverParaBaixo={() => {
-              const termo = `@${l.titulo}`;
-              const linhas = corpo.split("\n");
-              const idx = linhas.findIndex((ln) => ln.includes(termo));
-              if (idx >= 0 && idx < linhas.length - 1) {
-                const temp = linhas[idx];
-                linhas[idx] = linhas[idx + 1];
-                linhas[idx + 1] = temp;
-                setCorpo(linhas.join("\n"));
-              }
-            }}
           />
         ))}
       </div>

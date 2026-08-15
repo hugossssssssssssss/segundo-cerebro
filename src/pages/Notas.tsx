@@ -85,7 +85,7 @@ export default function Notas() {
     }
     setErro("");
     try {
-      const todos = await carregarRepo(cfg, { memoria: 3000 });
+      const todos = await carregarRepo(cfg);
       setIlegiveis(arquivosIlegiveis());
       setAcervo(todos);
       const lista = daPasta(todos, PASTA);
