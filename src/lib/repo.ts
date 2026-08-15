@@ -352,3 +352,13 @@ export function atualizarCacheLocal(
     cache.quando = Date.now();
   }
 }
+
+/**
+ * Remove instantaneamente um item do cache de memória local ao deletar.
+ */
+export function removerDoCacheLocal(caminho: string) {
+  if (cache) {
+    cache.itens = cache.itens.filter((i) => i.caminho !== caminho);
+    cache.quando = Date.now();
+  }
+}

@@ -20,6 +20,7 @@ import {
   daPasta,
   invalidarCache,
   atualizarCacheLocal,
+  removerDoCacheLocal,
   type ItemRepo,
 } from "@/lib/repo";
 import { tituloProvavel, nomeLivre, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
@@ -53,15 +54,14 @@ export default function Lousas() {
 
   const [lousas, setLousas] = useState<ItemRepo[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState("");
   const [aberta, setAberta] = useState<LousaAberta | null>(null);
-  const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
-  const [salvando, setSalvando] = useState(false);
-  const [telaCheia, setTelaCheia] = useState(false);
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
+  const [telaCheia, setTelaCheia] = useState(false);
 
-  // Guardam em tempo real o estado exato da lousa desenhada
+  const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
   const elementsRef = useRef<any[]>([]);
   const appStateRef = useRef<any>({});
   const filesRef = useRef<any>({});
@@ -74,7 +74,7 @@ export default function Lousas() {
     setCarregando(true);
     setErro("");
     try {
-      const todos = await carregarRepo(cfg, { memoria: 3000 });
+      const todos = await carregarRepo(cfg);
       const itens = daPasta(todos, PASTA);
       setLousas(itens);
     } catch (e) {
@@ -367,18 +367,21 @@ export default function Lousas() {
   async function remover() {
     if (!aberta || !aberta.caminho) return;
     if (!confirm(`Tem certeza que deseja apagar a lousa "${aberta.titulo}"?`)) return;
-    setSalvando(true);
-    setErro("");
+    const alvoCaminho = aberta.caminho;
+    const alvoSha = aberta.sha;
+
+    // Remocao visual instantanea em 0ms
+    setLousas((prev) => prev.filter((x) => x.caminho !== alvoCaminho));
+    removerDoCacheLocal(alvoCaminho);
+    invalidarCache();
+    window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+    setAberta(null);
+
     try {
-      await apagar(cfg, aberta.caminho, aberta.sha || "");
-      invalidarCache();
-      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
-      setAberta(null);
-      await carregar();
+      await apagar(cfg, alvoCaminho, alvoSha || "");
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSalvando(false);
+      await carregar();
     }
   }
 
@@ -578,16 +581,20 @@ export default function Lousas() {
                     onClick={async (e) => {
                       e.stopPropagation();
                       if (!confirm(`Tem certeza que deseja apagar a lousa "${titulo}"?`)) return;
+                      const alvoCaminho = item.caminho;
+                      const alvoSha = item.sha;
+
+                      // Remocao visual instantanea em 0ms
+                      setLousas((prev) => prev.filter((x) => x.caminho !== alvoCaminho));
+                      removerDoCacheLocal(alvoCaminho);
+                      invalidarCache();
+                      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+
                       try {
-                        setCarregando(true);
-                        await apagar(cfg, item.caminho, item.sha);
-                        invalidarCache();
-                        window.dispatchEvent(new CustomEvent("acervo-atualizado"));
-                        await carregar();
+                        await apagar(cfg, alvoCaminho, alvoSha || "");
                       } catch (err) {
                         setErro(err instanceof Error ? err.message : String(err));
-                      } finally {
-                        setCarregando(false);
+                        await carregar();
                       }
                     }}
                     title="Apagar lousa"

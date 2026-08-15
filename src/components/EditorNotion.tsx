@@ -88,11 +88,6 @@ export function EditorNotion({
         setAlvos(alvosOverride);
         return;
       }
-      if (acervo && acervo.length > 0) {
-        const indice = montarIndice(acervo);
-        setAlvos(alvosUnicos(indice));
-        return;
-      }
       carregarRepo(lerConfig())
         .then((todos) => {
           const indice = montarIndice(todos);
