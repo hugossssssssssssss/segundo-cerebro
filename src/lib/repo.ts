@@ -208,15 +208,12 @@ async function conteudoEmLote(
  */
 export async function carregarRepo(
   cfg: Settings,
-  { memoria = 0 }: { memoria?: number } = {},
+  { memoria = 0, forcarRede = false }: { memoria?: number; forcarRede?: boolean } = {},
 ): Promise<ItemRepo[]> {
   const chave = chaveDe(cfg);
 
-  // Janela curta em que vale servir da memória sem ir à rede: só para evitar
-  // que quatro componentes montando juntos disparem quatro carregamentos.
-  // Passado isso, SEMPRE conferimos a árvore — senão você edita um arquivo
-  // pelo github.com e o app mostra o dado velho a sessão inteira.
   if (
+    !forcarRede &&
     memoria > 0 &&
     cache?.chave === chave &&
     Date.now() - cache.quando < memoria

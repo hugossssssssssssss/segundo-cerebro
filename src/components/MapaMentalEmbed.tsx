@@ -8,6 +8,8 @@ import {
   ChevronUp,
   GripVertical,
   GripHorizontal,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { lerMarkdown } from "@/lib/markdown";
 import { lerConfig } from "@/lib/settings";
@@ -18,11 +20,15 @@ import type { ItemRepo } from "@/lib/repo";
 type Props = {
   item: ItemRepo;
   onAbrirEditor?: () => void;
+  onMoverParaCima?: () => void;
+  onMoverParaBaixo?: () => void;
 };
 
 export function MapaMentalEmbed({
   item,
   onAbrirEditor,
+  onMoverParaCima,
+  onMoverParaBaixo,
 }: Props) {
   const [conteudoTexto, setConteudoTexto] = useState(item.texto || "");
   const [svgHtml, setSvgHtml] = useState<string>("");
@@ -154,10 +160,36 @@ export function MapaMentalEmbed({
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-indigo-500/10 dark:bg-indigo-950/40 border-b border-indigo-500/20">
         <div className="flex items-center gap-1.5">
           <div
-            className="p-1.5 text-indigo-500/70 rounded"
+            draggable={true}
+            onDragStart={(e) => {
+              e.dataTransfer.setData("text/plain", `@${titulo}`);
+              e.dataTransfer.effectAllowed = "move";
+            }}
+            className="p-1.5 cursor-grab active:cursor-grabbing text-indigo-500 hover:bg-indigo-500/20 rounded transition-colors"
+            title="Arraste esta menção para posicioná-la onde desejar no texto"
           >
             <GripVertical size={16} />
           </div>
+
+          {onMoverParaCima && (
+            <button
+              onClick={onMoverParaCima}
+              className="p-1 hover:bg-indigo-500/20 rounded text-indigo-600 dark:text-indigo-400 transition-colors"
+              title="Mover mapa mental para cima no texto"
+            >
+              <ArrowUp size={14} />
+            </button>
+          )}
+
+          {onMoverParaBaixo && (
+            <button
+              onClick={onMoverParaBaixo}
+              className="p-1 hover:bg-indigo-500/20 rounded text-indigo-600 dark:text-indigo-400 transition-colors"
+              title="Mover mapa mental para baixo no texto"
+            >
+              <ArrowDown size={14} />
+            </button>
+          )}
 
           <button
             onClick={() => setExpandido(!expandido)}
@@ -176,7 +208,7 @@ export function MapaMentalEmbed({
         {expandido && (
           <div className="flex items-center gap-1 bg-indigo-500/10 dark:bg-indigo-950/60 border border-indigo-500/30 backdrop-blur-md rounded-full px-2.5 py-1 text-xs shadow-xs">
             <button
-              onClick={() => setZoomScale((z) => Math.max(0.3, z - 0.15))}
+              onClick={() => setZoomScale((z: number) => Math.max(0.3, z - 0.15))}
               className="p-1 hover:bg-indigo-500/20 rounded-full text-indigo-700 dark:text-indigo-300 transition-all active:scale-95"
               title="Diminuir Zoom (Zoom Out)"
             >
@@ -188,7 +220,7 @@ export function MapaMentalEmbed({
             </span>
 
             <button
-              onClick={() => setZoomScale((z) => Math.min(1.5, z + 0.15))}
+              onClick={() => setZoomScale((z: number) => Math.min(1.5, z + 0.15))}
               className="p-1 hover:bg-indigo-500/20 rounded-full text-indigo-700 dark:text-indigo-300 transition-all active:scale-95"
               title="Aumentar Zoom (Zoom In)"
             >
