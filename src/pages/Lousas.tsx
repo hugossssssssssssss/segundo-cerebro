@@ -60,7 +60,7 @@ export default function Lousas() {
   const [telaCheia, setTelaCheia] = useState(false);
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
 
-  // Guardam em tempo real o estado exato da lousa desenhada (elementos, zoom, posicao scrollX/scrollY e imagens/files)
+  // Guardam em tempo real o estado exato da lousa desenhada
   const elementsRef = useRef<any[]>([]);
   const appStateRef = useRef<any>({});
   const filesRef = useRef<any>({});
@@ -174,24 +174,33 @@ export default function Lousas() {
     setMensagemSucesso("");
 
     try {
-      const elements = elementsRef.current.length > 0
-        ? elementsRef.current
-        : (excalidrawAPI ? excalidrawAPI.getSceneElements() : (aberta.dados.elements || []));
+      let elements: any[] = [];
+      let currentAppState: any = {};
+      let files: any = {};
 
-      const currentAppState = excalidrawAPI
-        ? excalidrawAPI.getAppState()
-        : (appStateRef.current || aberta.dados.appState || {});
+      if (excalidrawAPI) {
+        elements = excalidrawAPI.getSceneElements() || [];
+        currentAppState = excalidrawAPI.getAppState() || {};
+        files = excalidrawAPI.getFiles() || {};
+      } else if (elementsRef.current && elementsRef.current.length > 0) {
+        elements = elementsRef.current;
+        currentAppState = appStateRef.current || {};
+        files = filesRef.current || {};
+      } else if (aberta.dados) {
+        elements = aberta.dados.elements || [];
+        currentAppState = aberta.dados.appState || {};
+        files = aberta.dados.files || {};
+      }
 
-      const files = filesRef.current && Object.keys(filesRef.current).length > 0
-        ? filesRef.current
-        : (excalidrawAPI ? excalidrawAPI.getFiles() : (aberta.dados.files || {}));
+      const elementosValidos = Array.isArray(elements)
+        ? elements.filter((el) => !el.isDeleted)
+        : [];
 
       const tituloLimpo = aberta.titulo.trim() || "Lousa Sem Título";
 
-      // Preserva 100% dos dados da cena (elementos, posicao scrollX/scrollY, zoom, arquivos)
       const dadosParaSalvar = {
         title: tituloLimpo,
-        elements,
+        elements: elementosValidos,
         appState: {
           viewBackgroundColor: currentAppState.viewBackgroundColor || "#ffffff",
           gridSize: currentAppState.gridSize || null,
@@ -214,7 +223,6 @@ export default function Lousas() {
         );
       }
 
-      // Se alterou o nome da lousa e já existia arquivo gravado, remove a lousa com nome antigo do GitHub
       if (aberta.caminho && aberta.caminho !== novoCaminho) {
         try {
           await apagar(cfg, aberta.caminho, aberta.sha);
@@ -223,13 +231,28 @@ export default function Lousas() {
         }
       }
 
-      const novaSha = await gravar(
-        cfg,
-        novoCaminho,
-        json,
-        aberta.caminho === novoCaminho ? aberta.sha || undefined : undefined,
-        `lousa: ${tituloLimpo}`
-      );
+      let novaSha = "";
+      try {
+        novaSha = await gravar(
+          cfg,
+          novoCaminho,
+          json,
+          aberta.caminho === novoCaminho ? aberta.sha || undefined : undefined,
+          `lousa: ${tituloLimpo}`
+        );
+      } catch (e: any) {
+        if (e?.status === 409 || e?.status === 422) {
+          novaSha = await gravar(
+            cfg,
+            novoCaminho,
+            json,
+            undefined,
+            `lousa: ${tituloLimpo}`
+          );
+        } else {
+          throw e;
+        }
+      }
 
       atualizarCacheLocal(
         novoCaminho,
@@ -247,7 +270,7 @@ export default function Lousas() {
         dados: dadosParaSalvar,
       });
 
-      setMensagemSucesso(`Lousa "${tituloLimpo}" salva com sucesso!`);
+      setMensagemSucesso(`Lousa "${tituloLimpo}" salva com sucesso! (${elementosValidos.length} elementos gravados)`);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -360,6 +383,7 @@ export default function Lousas() {
         <div className="flex-1 w-full min-h-[500px] rounded-2xl overflow-hidden border border-border shadow-md bg-background relative">
           <Suspense fallback={<Carregando texto="Carregando editor visual Excalidraw..." />}>
             <ExcalidrawComp
+              key={aberta.caminho || aberta.tituloOriginal || "nova"}
               excalidrawAPI={(api) => setExcalidrawAPI(api)}
               theme={ehModoEscuro ? "dark" : "light"}
               onChange={(elements, appState, files) => {
