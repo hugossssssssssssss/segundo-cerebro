@@ -24,7 +24,23 @@ const SEPARADOR = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
  */
 export function lerMarkdown(texto: string): Documento {
   const encontrado = texto.match(SEPARADOR);
-  if (!encontrado) return { dados: {}, corpo: texto };
+  if (!encontrado) {
+    const limpo = (texto || "").trim();
+    if (limpo.startsWith("{") && limpo.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(limpo);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          const t = parsed.title || parsed.titulo || parsed.dados?.titulo;
+          if (t && typeof t === "string") {
+            return { dados: { titulo: t.trim(), tipo: "lousa" }, corpo: texto };
+          }
+        }
+      } catch {
+        // ignora
+      }
+    }
+    return { dados: {}, corpo: texto };
+  }
 
   try {
     const analisado = load(encontrado[1]);

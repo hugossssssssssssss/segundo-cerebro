@@ -37,6 +37,7 @@ export function abrirItemSpa(caminho: string) {
   else if (pasta === "notas" || pasta === "reunioes") rota = "/notas";
 
   window.location.hash = `#${rota}?abrir=${encodeURIComponent(caminho)}`;
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
 }
 
 export type TipoPropriedade = 
@@ -724,7 +725,7 @@ export function PropriedadesNotion({
                   const itemAlvo = opcoesRelacionamento.find((o) => {
                     const normTitulo = o.titulo.toLowerCase().trim();
                     const normCaminho = o.caminho.toLowerCase().trim();
-                    const normBase = o.caminho.split("/").pop()?.replace(/\.md$/, "").toLowerCase().trim() || "";
+                    const normBase = o.caminho.split("/").pop()?.replace(/\.(md|json|excalidraw)$/i, "").toLowerCase().trim() || "";
                     return normTitulo === normNome || normCaminho === normNome || normBase === normNome || normTitulo.includes(normNome) || normNome.includes(normTitulo);
                   });
                   return (

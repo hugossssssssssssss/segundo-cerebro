@@ -101,7 +101,7 @@ export function montarIndice(itens: ItemRepo[]): Map<string, Alvo> {
     const porTitulo = chave(titulo);
     if (!indice.has(porTitulo)) indice.set(porTitulo, alvo);
 
-    const porArquivo = chave(item.nome.replace(/\.md$/, ""));
+    const porArquivo = chave(item.nome.replace(/\.(md|json|excalidraw)$/i, ""));
     if (!indice.has(porArquivo)) indice.set(porArquivo, alvo);
 
     const porCaminho = chave(item.caminho);
@@ -268,38 +268,59 @@ export function sugerir(
 }
 
 /**
- * Extrai menções em formato de string (@Nome) do corpo de um texto.
+ * Extrai menções em formato de string (`@Nome`) do corpo de um texto.
+ *
+ * Esta função alimenta o campo `relacionamentos` do frontmatter. Ela tinha
+ * uma CÓPIA da expressão de menção — a versão antiga, de lista fechada de
+ * terminadores — e por isso perdia menção em silêncio: de "De @Grade suíça
+ * para @Briefing Acme." sobrava só a última. Agora ela usa a MESMA `PADRAO`
+ * do resto do arquivo, que já tem teste.
  */
-export function extrairMencoesTexto(corpo: string): string[] {
+export function extrairMencoesTexto(
+  corpo: string,
+  titulosConhecidos?: Iterable<string>,
+): string[] {
   if (!corpo) return [];
+
+  const conhecidos = titulosConhecidos
+    ? new Set([...titulosConhecidos].map(chave))
+    : null;
+
   const mencoes: string[] = [];
   const visto = new Set<string>();
 
   const adicionar = (raw: string) => {
-    let limpo = raw.trim();
-    limpo = limpo.replace(/\\/g, "").replace(/^[@[]+/, "").replace(/\]+$/, "").trim();
-    if (limpo && limpo.length >= 2 && !visto.has(limpo.toLowerCase())) {
-      visto.add(limpo.toLowerCase());
+    let limpo = raw
+      .replace(/\\/g, "")
+      .replace(/^[@[]+/, "")
+      .replace(/\]+$/, "")
+      .trim();
+
+    if (conhecidos) {
+      while (limpo && !conhecidos.has(chave(limpo))) {
+        const ultimoEspaco = limpo.lastIndexOf(" ");
+        if (ultimoEspaco < 0) break;
+        limpo = limpo.slice(0, ultimoEspaco).trim();
+      }
+      if (!conhecidos.has(chave(limpo))) return;
+    } else {
+      // Sem lista de conhecidos, limpa palavras de ligação soltas no final (ex: "e", "para", "de novo")
+      limpo = limpo.replace(/\s+(para|e|de|com|do|da|dos|das|em|na|no|nas|nos|de\s+novo)\b.*$/i, "").trim();
+    }
+
+    if (limpo.length >= 2 && !visto.has(chave(limpo))) {
+      visto.add(chave(limpo));
       mencoes.push(`@${limpo}`);
     }
   };
 
-  // 1. Matches [[alvo]] ou [[alvo|exibir]]
-  const regexWiki = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
-  for (const m of corpo.matchAll(regexWiki)) {
-    if (m[1]) adicionar(m[1]);
+  for (const m of corpo.matchAll(PADRAO)) {
+    if (m[1]) adicionar(m[2] ?? m[1]);
+    else if (m[3]) adicionar(m[3]);
   }
 
-  // 2. Matches [@alvo](href) ou [alvo](href)
-  const regexMdLink = /\[\\?@?([^\]]+)\]\(([^)]+)\)/g;
-  for (const m of corpo.matchAll(regexMdLink)) {
-    if (m[1]) adicionar(m[1]);
-  }
-
-  // 3. Matches \@alvo ou @alvo em texto puro
-  const regexAt = new RegExp(`(?<![\\w.@-])\\\\?@([${LETRA}][${LETRA}0-9_\\-\\s]{1,99}?)(?=[.,;:!?)\\n\\r]|\\s*$)`, "g");
-  for (const m of corpo.matchAll(regexAt)) {
-    if (m[1]) adicionar(m[1]);
+  for (const m of corpo.matchAll(/(?<!!)\[\\?@([^\]]+)\]\(([^)]+)\)/g)) {
+    adicionar(m[1]);
   }
 
   return mencoes;
@@ -312,23 +333,19 @@ export function extrairMencoesTexto(corpo: string): string[] {
 export function sincronizarRelacionamentos(
   dados: Record<string, any>,
   corpo: string,
+  titulosConhecidos?: Iterable<string>,
 ): Record<string, any> {
-  const mencoesTexto = extrairMencoesTexto(corpo);
+  const mencoesTexto = extrairMencoesTexto(corpo, titulosConhecidos);
 
-  // Se não há nenhuma menção no texto, limpa e oculta a propriedade relacionamentos
   if (mencoesTexto.length === 0) {
-    if (!("relacionamentos" in dados) && !("relacao" in dados)) {
-      return dados;
+    const novos = { ...dados };
+    delete novos.relacionamentos;
+    if (novos.esquema && typeof novos.esquema === "object") {
+      const esquemaNovo = { ...novos.esquema };
+      delete esquemaNovo.relacionamentos;
+      novos.esquema = esquemaNovo;
     }
-    const proximo = { ...dados };
-    delete proximo.relacionamentos;
-    delete proximo.relacao;
-    if (proximo.esquema?.relacionamentos) {
-      const nEsquema = { ...proximo.esquema };
-      delete nEsquema.relacionamentos;
-      proximo.esquema = nEsquema;
-    }
-    return proximo;
+    return novos;
   }
 
   return {

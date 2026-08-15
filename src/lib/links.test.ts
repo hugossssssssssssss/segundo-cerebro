@@ -5,6 +5,8 @@ import {
   extrairLinks,
   mencoesA,
   sugerir,
+  extrairMencoesTexto,
+  sincronizarRelacionamentos,
 } from "./links";
 import type { ItemRepo } from "./repo";
 
@@ -224,5 +226,106 @@ describe("título repetido", () => {
     expect(montarIndice([novo, antigo]).get("reuniao")?.caminho).toBe(
       montarIndice([antigo, novo]).get("reuniao")?.caminho,
     );
+  });
+});
+
+/* ------------------------------------------------------------------------
+ * `extrairMencoesTexto` alimenta o campo `relacionamentos` do frontmatter,
+ * gravado a cada mudança do editor. Ela não tinha teste nenhum — e por isso
+ * carregou por meses a versão ANTIGA da expressão de menção, a de lista
+ * fechada de terminadores, que perdia menção em silêncio.
+ * ---------------------------------------------------------------------- */
+
+describe("extrairMencoesTexto", () => {
+  it("duas menções seguidas: as DUAS entram", () => {
+    expect(extrairMencoesTexto("De @Grade suíça para @Briefing Acme.")).toEqual([
+      "@Grade suíça",
+      "@Briefing Acme",
+    ]);
+  });
+
+  it("três menções numa linha: as TRÊS entram", () => {
+    expect(extrairMencoesTexto("@Um e @Dois e @Tres.")).toEqual([
+      "@Um",
+      "@Dois",
+      "@Tres",
+    ]);
+  });
+
+  it("menção antes de parêntese não desaparece", () => {
+    expect(extrairMencoesTexto("veja @Nota A (importante)")).toEqual(["@Nota A"]);
+  });
+
+  it("menção no fim da linha não engole a linha seguinte", () => {
+    expect(extrairMencoesTexto("Ver @Grade suíça\nOutra coisa aqui")).toEqual([
+      "@Grade suíça",
+    ]);
+  });
+
+  it("[[wikilink]] continua entrando", () => {
+    expect(extrairMencoesTexto("Ver [[Briefing Acme]] hoje")).toEqual([
+      "@Briefing Acme",
+    ]);
+  });
+
+  it("não repete a mesma menção", () => {
+    expect(extrairMencoesTexto("@Um e @Um de novo")).toEqual(["@Um"]);
+  });
+
+  /* --- os falsos positivos: link comum e imagem NÃO são relacionamento --- */
+
+  it("link markdown comum NÃO vira relacionamento", () => {
+    // o `@?` era opcional na expressão, então qualquer link virava menção
+    expect(extrairMencoesTexto("Veja [Google](https://google.com) hoje")).toEqual([]);
+  });
+
+  it("imagem markdown NÃO vira relacionamento", () => {
+    // toda referência visual tem `![](imagens/...)` no corpo
+    expect(extrairMencoesTexto("![foto de capa](imagens/a.png)")).toEqual([]);
+  });
+
+  it("link markdown COM @ continua sendo menção", () => {
+    expect(extrairMencoesTexto("Veja [@Briefing Acme](notas/x.md)")).toEqual([
+      "@Briefing Acme",
+    ]);
+  });
+
+  it("e-mail não vira menção", () => {
+    expect(extrairMencoesTexto("escreva para hugo@gmail.com")).toEqual([]);
+  });
+
+  it("corpo vazio devolve lista vazia", () => {
+    expect(extrairMencoesTexto("")).toEqual([]);
+  });
+});
+
+describe("sincronizarRelacionamentos", () => {
+  it("grava as menções encontradas", () => {
+    const r = sincronizarRelacionamentos({}, "De @Um para @Dois.");
+    expect(r.relacionamentos).toEqual(["@Um", "@Dois"]);
+    expect(r.esquema.relacionamentos).toBe("relation");
+  });
+
+  it("corpo só com imagem não inventa relacionamento", () => {
+    const r = sincronizarRelacionamentos({}, "![](imagens/foto.png)\n\nUma referência.");
+    expect(r.relacionamentos).toBeUndefined();
+  });
+
+  it("preserva os campos que não são dela", () => {
+    const r = sincronizarRelacionamentos(
+      { titulo: "X", campoDeOutraIA: 42 },
+      "cita @Um",
+    );
+    expect(r.titulo).toBe("X");
+    expect(r.campoDeOutraIA).toBe(42);
+  });
+
+  it("sem menção nenhuma, limpa o campo em vez de deixar lixo", () => {
+    const r = sincronizarRelacionamentos(
+      { relacionamentos: ["@Antigo"], titulo: "X" },
+      "texto sem menção",
+    );
+    expect(r.relacionamentos).toBeUndefined();
+    expect(r.titulo).toBe("X");
   });
 });

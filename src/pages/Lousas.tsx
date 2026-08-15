@@ -82,21 +82,6 @@ export default function Lousas() {
     carregar();
   }, [carregar]);
 
-  // Abertura automática via parâmetro de URL (?abrir=lousas/nome.json)
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes("abrir=") && lousas.length > 0) {
-      const params = new URLSearchParams(hash.split("?")[1] || "");
-      const caminhoAbrir = params.get("abrir");
-      if (caminhoAbrir) {
-        const itemEncontrado = lousas.find((i) => i.caminho === caminhoAbrir);
-        if (itemEncontrado && (!aberta || aberta.caminho !== caminhoAbrir)) {
-          abrir(itemEncontrado);
-        }
-      }
-    }
-  }, [lousas]);
-
   async function abrir(item: ItemRepo) {
     setCarregando(true);
     setErro("");
@@ -104,7 +89,7 @@ export default function Lousas() {
     try {
       const conteudo = await lerOuVazio(cfg, item.caminho, item.sha);
       let dados: DadosLousa = { elements: [] };
-      let titulo = tituloProvavel(item.doc, item.nome);
+      let titulo = (item.doc.dados.titulo as string) || tituloProvavel(item.doc, item.nome);
 
       try {
         const parsed = JSON.parse(conteudo);
@@ -112,7 +97,9 @@ export default function Lousas() {
           dados = { elements: parsed };
         } else if (parsed && typeof parsed === "object") {
           dados = parsed;
-          if (parsed.title) titulo = parsed.title;
+          if (parsed.title || parsed.titulo) {
+            titulo = parsed.title || parsed.titulo;
+          }
         }
       } catch {
         dados = { elements: [] };
@@ -131,6 +118,29 @@ export default function Lousas() {
       setCarregando(false);
     }
   }
+
+  // Abertura automática via parâmetro de URL (?abrir=lousas/nome.json) e reagente a hashchange
+  useEffect(() => {
+    function checarParametros() {
+      const hash = window.location.hash;
+      if (hash.includes("abrir=") && lousas.length > 0) {
+        const urlParams = new URLSearchParams(hash.split("?")[1] || "");
+        const caminhoAbrir = urlParams.get("abrir");
+        if (caminhoAbrir) {
+          const itemEncontrado = lousas.find(
+            (i) => i.caminho === caminhoAbrir || i.caminho.includes(caminhoAbrir)
+          );
+          if (itemEncontrado && (!aberta || aberta.caminho !== itemEncontrado.caminho)) {
+            abrir(itemEncontrado);
+          }
+        }
+      }
+    }
+
+    checarParametros();
+    window.addEventListener("hashchange", checarParametros);
+    return () => window.removeEventListener("hashchange", checarParametros);
+  }, [lousas, aberta]);
 
   function novaLousa() {
     setErro("");
@@ -161,8 +171,10 @@ export default function Lousas() {
         files = excalidrawAPI.getFiles() || {};
       }
 
+      const tituloLimpo = aberta.titulo.trim() || "Lousa Sem Título";
+
       const dadosParaSalvar = {
-        title: aberta.titulo,
+        title: tituloLimpo,
         elements,
         appState: {
           viewBackgroundColor: appState.viewBackgroundColor || "#ffffff",
@@ -173,10 +185,7 @@ export default function Lousas() {
 
       const json = JSON.stringify(dadosParaSalvar, null, 2);
 
-      // Se o título mudou ou é uma nova lousa, recalcula o caminho do arquivo
-      const tituloLimpo = aberta.titulo.trim() || "Lousa Sem Título";
       let novoCaminho = aberta.caminho;
-
       if (!aberta.caminho || aberta.titulo !== aberta.tituloOriginal) {
         novoCaminho = nomeLivre(
           PASTA,
@@ -185,12 +194,12 @@ export default function Lousas() {
         );
       }
 
-      // Se o caminho mudou e existia arquivo antigo, remove o arquivo antigo do GitHub
+      // Se alterou o nome da lousa e já existia arquivo gravado, remove a lousa com nome antigo do GitHub
       if (aberta.caminho && aberta.caminho !== novoCaminho) {
         try {
           await apagar(cfg, aberta.caminho, aberta.sha);
         } catch {
-          // ignora falha na remoção do antigo
+          // ignora falha de exclusão
         }
       }
 
@@ -202,7 +211,12 @@ export default function Lousas() {
         `lousa: ${tituloLimpo}`
       );
 
-      atualizarCacheLocal(novoCaminho, json, { dados: { titulo: tituloLimpo }, corpo: json }, novaSha);
+      atualizarCacheLocal(
+        novoCaminho,
+        json,
+        { dados: { titulo: tituloLimpo, tipo: "lousa" }, corpo: json },
+        novaSha
+      );
       invalidarCache();
 
       setAberta({
@@ -235,9 +249,9 @@ export default function Lousas() {
     }
   }
 
-  function copiarWikilink(caminho: string, e?: React.MouseEvent) {
+  function copiarWikilink(caminho: string, titulo: string, e?: React.MouseEvent) {
     if (e) e.stopPropagation();
-    const link = `[[${caminho}]]`;
+    const link = `[[${titulo}]]`;
     navigator.clipboard.writeText(link);
     setCopiadoId(caminho);
     setTimeout(() => setCopiadoId(null), 2000);
@@ -288,11 +302,11 @@ export default function Lousas() {
               <Botao
                 variante="neutro"
                 tamanho="pequeno"
-                onClick={(e) => copiarWikilink(aberta.caminho, e)}
+                onClick={(e) => copiarWikilink(aberta.caminho, aberta.titulo, e)}
                 className="flex items-center gap-1.5"
               >
                 {copiadoId === aberta.caminho ? <Check size={14} /> : <LinkIcon size={14} />}
-                <span>{copiadoId === aberta.caminho ? "Link Copiado!" : "Copiar Link [[...]]"}</span>
+                <span>{copiadoId === aberta.caminho ? "Link Copiado!" : `Copiar [[${aberta.titulo}]]`}</span>
               </Botao>
             )}
 
@@ -371,19 +385,20 @@ export default function Lousas() {
       </div>
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
+      {mensagemSucesso && <Aviso tom="sucesso">{mensagemSucesso}</Aviso>}
 
       {carregando ? (
         <Carregando texto="Carregando suas lousas e mapas mentais..." />
       ) : lousas.length === 0 ? (
         <Vazio
           titulo="Nenhuma lousa criada ainda"
-          descricao="Crie seu primeiro mapa mental ou diagram visual."
+          descricao="Crie seu primeiro mapa mental ou diagrama visual."
           acao={<Botao onClick={novaLousa}>Criar Primeira Lousa</Botao>}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {lousas.map((item) => {
-            const titulo = tituloProvavel(item.doc, item.nome);
+            const titulo = item.doc.dados.titulo as string || tituloProvavel(item.doc, item.nome);
             return (
               <Cartao
                 key={item.caminho}
@@ -405,8 +420,8 @@ export default function Lousas() {
                 <Botao
                   variante="neutro"
                   tamanho="icone"
-                  onClick={(e) => copiarWikilink(item.caminho, e)}
-                  title="Copiar link [[lousas/...]] para notas e metas"
+                  onClick={(e) => copiarWikilink(item.caminho, titulo, e)}
+                  title="Copiar [[nome]] para vincular em notas e metas"
                   className="shrink-0"
                 >
                   {copiadoId === item.caminho ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
