@@ -729,6 +729,7 @@ export function PropriedadesNotion({
                     const normBase = o.caminho.split("/").pop()?.replace(/\.(md|json|excalidraw)$/i, "").toLowerCase().trim() || "";
                     return normTitulo === normNome || normCaminho === normNome || normBase === normNome || normTitulo.includes(normNome) || normNome.includes(normTitulo);
                   });
+                  const ehMapaMental = itemAlvo?.caminho.startsWith("lousas/") || r.toLowerCase().includes("lousa") || r.toLowerCase().includes("mapa");
                   return (
                     <Badge 
                       variant="secondary" 
@@ -742,11 +743,25 @@ export function PropriedadesNotion({
                           abrirItemSpa(r);
                         }
                       }}
-                      className="font-medium text-[11px] px-2 py-0.5 flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      className={cn(
+                        "font-medium text-[11px] px-2 py-0.5 flex items-center gap-1.5 hover:underline cursor-pointer border transition-all shadow-xs",
+                        ehMapaMental
+                          ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/25"
+                          : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                      )}
                       title={itemAlvo ? `Abrir "${itemAlvo.titulo}"` : `Abrir "${nomePuro}"`}
                     >
-                      <LinkIcon size={10} className="shrink-0" />
-                      @{nomePuro}
+                      {ehMapaMental ? (
+                        <>
+                          <span className="text-xs">🗺️</span>
+                          <span className="font-bold">Mapa Mental:</span> @{nomePuro}
+                        </>
+                      ) : (
+                        <>
+                          <LinkIcon size={10} className="shrink-0" />
+                          @{nomePuro}
+                        </>
+                      )}
                     </Badge>
                   );
                 })

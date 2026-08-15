@@ -8,6 +8,7 @@
  */
 
 import type { ItemRepo } from "./repo";
+import { gravar } from "./github";
 import { tituloProvavel } from "./markdown";
 import { tipoDoItem, type TipoItem } from "./busca";
 
@@ -356,4 +357,46 @@ export function sincronizarRelacionamentos(
       relacionamentos: "relation",
     },
   };
+}
+
+/**
+ * Propaga a alteração de um título para todos os arquivos que mencionavam o título antigo.
+ * Atualiza @TituloAntigo -> @TituloNovo e [[TituloAntigo]] -> [[TituloNovo]].
+ */
+export async function propagarRenomeacao(
+  cfg: any,
+  todos: ItemRepo[],
+  tituloAntigo: string,
+  tituloNovo: string,
+): Promise<number> {
+  if (!tituloAntigo || !tituloNovo || tituloAntigo.trim() === tituloNovo.trim()) return 0;
+
+  const termoAntigoArroba = `@${tituloAntigo.trim()}`;
+  const termoNovoArroba = `@${tituloNovo.trim()}`;
+  const termoAntigoColchetes = `[[${tituloAntigo.trim()}]]`;
+  const termoNovoColchetes = `[[${tituloNovo.trim()}]]`;
+
+  let contagem = 0;
+
+  for (const item of todos) {
+    if (!item.texto) continue;
+    let textoNovo = item.texto;
+    if (textoNovo.includes(termoAntigoArroba)) {
+      textoNovo = textoNovo.split(termoAntigoArroba).join(termoNovoArroba);
+    }
+    if (textoNovo.includes(termoAntigoColchetes)) {
+      textoNovo = textoNovo.split(termoAntigoColchetes).join(termoNovoColchetes);
+    }
+
+    if (textoNovo !== item.texto) {
+      contagem++;
+      try {
+        await gravar(cfg, item.caminho, textoNovo, item.sha, `refatorar: renomear menção de ${tituloAntigo} para ${tituloNovo}`);
+      } catch {
+        // ignora falha individual
+      }
+    }
+  }
+
+  return contagem;
 }
