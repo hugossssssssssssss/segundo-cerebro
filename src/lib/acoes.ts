@@ -39,6 +39,8 @@ export const PASTAS_VALIDAS = [
   "reunioes",
   "pdi/metas",
   "pdi/entregas",
+  "processos",
+  "processos/cards",
 ] as const;
 
 /**

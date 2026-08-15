@@ -6,7 +6,7 @@
  * checklists e comentários.
  */
 
-import type { Frontmatter } from "./markdown";
+import { mesclarFrontmatter, type Frontmatter } from "./markdown";
 import type { Processo, CardProcesso, EtapaProcesso, RegraAutomacao, ComentarioCard } from "./tipos";
 
 export const MODELOS_PROCESSO_PADRAO: Array<{
@@ -176,15 +176,14 @@ export function comoProcesso(
 
 /** Prepara um `Processo` para ser gravado em frontmatter Markdown */
 export function processoParaFrontmatter(p: Processo): Record<string, any> {
-  return {
-    ...p.bruto,
+  return mesclarFrontmatter(p.bruto, {
     id: p.id,
     titulo: p.titulo,
     descricao: p.descricao,
     etapas: p.etapas,
     regras: p.regras,
     atualizadoEm: new Date().toISOString(),
-  };
+  });
 }
 
 /** Converte um documento lido da pasta `processos/cards/` em `CardProcesso` */
@@ -230,8 +229,7 @@ export function comoCardProcesso(
 
 /** Prepara um `CardProcesso` para ser gravado em frontmatter Markdown */
 export function cardProcessoParaFrontmatter(c: CardProcesso): Record<string, any> {
-  return {
-    ...c.bruto,
+  return mesclarFrontmatter(c.bruto, {
     id: c.id,
     processoId: c.processoId,
     etapaId: c.etapaId,
@@ -242,7 +240,7 @@ export function cardProcessoParaFrontmatter(c: CardProcesso): Record<string, any
     checklistsExtras: c.checklistsExtras,
     comentarios: c.comentarios,
     tags: c.tags,
-    urgente: c.urgente,
+    urgente: c.urgente ? true : undefined,
     atualizadoEm: new Date().toISOString(),
-  };
+  });
 }
