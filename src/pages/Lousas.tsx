@@ -277,7 +277,6 @@ export default function Lousas() {
         docFormatado,
         novaSha
       );
-      invalidarCache();
       window.dispatchEvent(new CustomEvent("acervo-atualizado"));
 
       setAberta({

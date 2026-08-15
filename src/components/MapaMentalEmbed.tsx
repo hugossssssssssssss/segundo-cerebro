@@ -18,13 +18,11 @@ import type { ItemRepo } from "@/lib/repo";
 type Props = {
   item: ItemRepo;
   onAbrirEditor?: () => void;
-  onDragStartEmbed?: (caminho: string) => void;
 };
 
 export function MapaMentalEmbed({
   item,
   onAbrirEditor,
-  onDragStartEmbed,
 }: Props) {
   const [conteudoTexto, setConteudoTexto] = useState(item.texto || "");
   const [svgHtml, setSvgHtml] = useState<string>("");
@@ -155,16 +153,8 @@ export function MapaMentalEmbed({
       {/* Cabeçalho com Alça de Arraste Estilo Notion */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-indigo-500/10 dark:bg-indigo-950/40 border-b border-indigo-500/20">
         <div className="flex items-center gap-1.5">
-          {/* Alça Arrastável Estilo Notion */}
           <div
-            draggable={true}
-            onDragStart={(e) => {
-              e.dataTransfer.setData("text/plain", item.caminho);
-              e.dataTransfer.effectAllowed = "move";
-              if (onDragStartEmbed) onDragStartEmbed(item.caminho);
-            }}
-            className="p-1.5 cursor-grab active:cursor-grabbing text-indigo-500/70 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-500/20 rounded transition-colors"
-            title="Clique, segure e arraste para mover a posição do mapa mental"
+            className="p-1.5 text-indigo-500/70 rounded"
           >
             <GripVertical size={16} />
           </div>
