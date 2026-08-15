@@ -1,5 +1,16 @@
-import { useMemo, useState, useEffect } from "react";
-import { ExternalLink, ZoomIn, ZoomOut, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import {
+  ExternalLink,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+  GripHorizontal,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import { lerMarkdown } from "@/lib/markdown";
 import { lerConfig } from "@/lib/settings";
 import { lerOuVazio } from "@/lib/github";
@@ -9,14 +20,31 @@ import type { ItemRepo } from "@/lib/repo";
 type Props = {
   item: ItemRepo;
   onAbrirEditor?: () => void;
+  onMoverSubir?: () => void;
+  onMoverDescer?: () => void;
+  podeSubir?: boolean;
+  podeDescer?: boolean;
 };
 
-export function MapaMentalEmbed({ item, onAbrirEditor }: Props) {
+export function MapaMentalEmbed({
+  item,
+  onAbrirEditor,
+  onMoverSubir,
+  onMoverDescer,
+  podeSubir,
+  podeDescer,
+}: Props) {
   const [conteudoTexto, setConteudoTexto] = useState(item.texto || "");
   const [svgHtml, setSvgHtml] = useState<string>("");
   const [carregandoSvg, setCarregandoSvg] = useState(true);
-  const [zoomScale, setZoomScale] = useState<number>(0.75); // Padrão com zoom out confortável
+  const [zoomScale, setZoomScale] = useState<number>(0.75); // Zoom confortável padrão
   const [expandido, setExpandido] = useState<boolean>(true);
+
+  // Redimensionamento do container segurando e arrastando pelo canto
+  const [altura, setAltura] = useState<number>(280);
+  const arrastandoRef = useRef(false);
+  const startYRef = useRef(0);
+  const startAlturaRef = useRef(280);
 
   useEffect(() => {
     if (!conteudoTexto && item.caminho) {
@@ -106,51 +134,109 @@ export function MapaMentalEmbed({ item, onAbrirEditor }: Props) {
     }
   };
 
+  // Arraste para redimensionar a altura do embed
+  const iniciarRedimensionamento = (e: React.MouseEvent) => {
+    e.preventDefault();
+    arrastandoRef.current = true;
+    startYRef.current = e.clientY;
+    startAlturaRef.current = altura;
+
+    const aoMoverMouse = (ev: MouseEvent) => {
+      if (!arrastandoRef.current) return;
+      const deltaY = ev.clientY - startYRef.current;
+      const novaAltura = Math.min(700, Math.max(150, startAlturaRef.current + deltaY));
+      setAltura(novaAltura);
+    };
+
+    const aoSoltarMouse = () => {
+      arrastandoRef.current = false;
+      window.removeEventListener("mousemove", aoMoverMouse);
+      window.removeEventListener("mouseup", aoSoltarMouse);
+    };
+
+    window.addEventListener("mousemove", aoMoverMouse);
+    window.addEventListener("mouseup", aoSoltarMouse);
+  };
+
   return (
-    <div className="my-4 w-full rounded-2xl border border-indigo-500/30 bg-card overflow-hidden shadow-lg transition-all hover:border-indigo-500/50">
-      {/* Cabeçalho da Lousa Incorporada */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-indigo-500/10 dark:bg-indigo-950/40 border-b border-indigo-500/20">
-        <div className="flex items-center gap-2">
+    <div className="my-4 w-full rounded-2xl border border-indigo-500/30 bg-card overflow-hidden shadow-lg transition-all hover:border-indigo-500/50 group relative">
+      {/* Cabeçalho de Controle e Arraste Harmonioso */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-indigo-500/10 dark:bg-indigo-950/40 border-b border-indigo-500/20">
+        <div className="flex items-center gap-1.5">
+          {/* Alça de Arraste / Mover Posição da Linha */}
+          <div
+            className="p-1 cursor-grab active:cursor-grabbing text-indigo-500/60 hover:text-indigo-600 dark:hover:text-indigo-300 rounded transition-colors"
+            title="Segure e arraste para mover a posição do mapa mental"
+          >
+            <GripVertical size={16} />
+          </div>
+
+          {/* Botões para Reordenar Posição (Subir / Descer Linha) */}
+          {(onMoverSubir || onMoverDescer) && (
+            <div className="flex items-center gap-0.5 border border-indigo-500/20 rounded-lg p-0.5 bg-background/60">
+              {onMoverSubir && (
+                <button
+                  onClick={onMoverSubir}
+                  disabled={!podeSubir}
+                  className="p-1 text-xs hover:bg-indigo-500/20 disabled:opacity-30 rounded text-indigo-600 dark:text-indigo-400 transition-colors"
+                  title="Mover mapa mental para a linha de cima"
+                >
+                  <ArrowUp size={12} />
+                </button>
+              )}
+              {onMoverDescer && (
+                <button
+                  onClick={onMoverDescer}
+                  disabled={!podeDescer}
+                  className="p-1 text-xs hover:bg-indigo-500/20 disabled:opacity-30 rounded text-indigo-600 dark:text-indigo-400 transition-colors"
+                  title="Mover mapa mental para a linha de baixo"
+                >
+                  <ArrowDown size={12} />
+                </button>
+              )}
+            </div>
+          )}
+
           <button
             onClick={() => setExpandido(!expandido)}
             className="p-1 hover:bg-indigo-500/20 rounded-md text-indigo-700 dark:text-indigo-300 transition-colors"
-            title={expandido ? "Minimizar visualização" : "Expandir visualização"}
+            title={expandido ? "Minimizar mapa mental" : "Expandir mapa mental"}
           >
-            {expandido ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            {expandido ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
           </button>
           <span className="text-base">🗺️</span>
-          <span className="font-bold text-sm text-indigo-700 dark:text-indigo-300 truncate max-w-[200px] sm:max-w-[320px]">
+          <span className="font-bold text-sm text-indigo-700 dark:text-indigo-300 truncate max-w-[180px] sm:max-w-[280px]">
             Mapa Mental: {titulo}
-          </span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-800 dark:text-indigo-200 font-medium hidden sm:inline-block">
-            Excalidraw Visual
           </span>
         </div>
 
-        {/* Barra de Controles de Zoom */}
+        {/* Barra de Zoom Harmoniosa Estilo Floating Pill Badge */}
         {expandido && (
-          <div className="flex items-center gap-1 bg-background/80 dark:bg-neutral-900/80 px-2 py-1 rounded-lg border border-border text-xs">
+          <div className="flex items-center gap-1 bg-indigo-500/10 dark:bg-indigo-950/60 border border-indigo-500/30 backdrop-blur-md rounded-full px-2.5 py-1 text-xs shadow-xs">
             <button
               onClick={() => setZoomScale((z) => Math.max(0.3, z - 0.15))}
-              className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground"
-              title="Reduzir Tamanho / Zoom Out"
+              className="p-1 hover:bg-indigo-500/20 rounded-full text-indigo-700 dark:text-indigo-300 transition-all active:scale-95"
+              title="Diminuir Zoom (Zoom Out)"
             >
               <ZoomOut size={13} />
             </button>
-            <span className="font-mono text-[11px] px-1 min-w-[36px] text-center">
+
+            <span className="font-mono text-[11px] font-bold text-indigo-800 dark:text-indigo-200 px-1 min-w-[34px] text-center">
               {Math.round(zoomScale * 100)}%
             </span>
+
             <button
               onClick={() => setZoomScale((z) => Math.min(1.5, z + 0.15))}
-              className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground"
-              title="Aumentar Tamanho / Zoom In"
+              className="p-1 hover:bg-indigo-500/20 rounded-full text-indigo-700 dark:text-indigo-300 transition-all active:scale-95"
+              title="Aumentar Zoom (Zoom In)"
             >
               <ZoomIn size={13} />
             </button>
+
             <button
               onClick={() => setZoomScale(0.75)}
-              className="p-1 hover:bg-accent rounded text-muted-foreground hover:text-foreground ml-1"
-              title="Resetar Zoom (75%)"
+              className="p-1 hover:bg-indigo-500/20 rounded-full text-indigo-600 dark:text-indigo-400 transition-all active:scale-95 ml-0.5"
+              title="Restaurar Zoom Padrão (75%)"
             >
               <RotateCcw size={12} />
             </button>
@@ -168,29 +254,43 @@ export function MapaMentalEmbed({ item, onAbrirEditor }: Props) {
         </Botao>
       </div>
 
-      {/* Corpo da Lousa Incorporada com Escalonamento Flexível */}
+      {/* Corpo da Lousa Incorporada com Redimensionamento por Arraste */}
       {expandido && (
         <div
-          onClick={abrirNoExcalidraw}
-          className="w-full min-h-[180px] max-h-[320px] p-4 bg-background/50 dark:bg-neutral-950/50 flex items-center justify-center cursor-pointer hover:bg-accent/30 transition-colors relative overflow-hidden group"
-          title="Clique para abrir e editar no Excalidraw em Tela Cheia"
+          style={{ height: `${altura}px` }}
+          className="w-full bg-background/50 dark:bg-neutral-950/50 flex items-center justify-center relative overflow-hidden transition-all duration-75"
         >
-          {carregandoSvg ? (
-            <Carregando texto="Gerando visualização do mapa mental..." />
-          ) : svgHtml ? (
-            <div
-              className="w-full h-full flex items-center justify-center pointer-events-none transition-transform duration-200"
-              style={{ transform: `scale(${zoomScale})`, transformOrigin: "center center" }}
-              dangerouslySetInnerHTML={{ __html: svgHtml }}
-            />
-          ) : (
-            <div className="text-center text-sm text-muted-foreground p-6">
-              <span>🗺️ Mapa Mental sem elementos desenhados ainda.</span>
-              <div className="mt-2 text-xs text-indigo-500 font-semibold underline">
-                Clique aqui para abrir e desenhar no Excalidraw
+          <div
+            onClick={abrirNoExcalidraw}
+            className="w-full h-full p-3 flex items-center justify-center cursor-pointer hover:bg-accent/20 transition-colors group/canvas"
+            title="Clique para abrir e editar em Tela Cheia no Excalidraw"
+          >
+            {carregandoSvg ? (
+              <Carregando texto="Gerando visualização do mapa mental..." />
+            ) : svgHtml ? (
+              <div
+                className="w-full h-full flex items-center justify-center pointer-events-none transition-transform duration-200"
+                style={{ transform: `scale(${zoomScale})`, transformOrigin: "center center" }}
+                dangerouslySetInnerHTML={{ __html: svgHtml }}
+              />
+            ) : (
+              <div className="text-center text-sm text-muted-foreground p-6">
+                <span>🗺️ Mapa Mental sem elementos desenhados ainda.</span>
+                <div className="mt-2 text-xs text-indigo-500 font-semibold underline">
+                  Clique aqui para abrir e desenhar no Excalidraw
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Alça de Redimensionamento pelo Canto (Drag-to-Resize Handle) */}
+          <div
+            onMouseDown={iniciarRedimensionamento}
+            className="absolute bottom-0 right-0 w-6 h-6 bg-indigo-500/20 hover:bg-indigo-500/40 dark:bg-indigo-500/30 cursor-se-resize flex items-center justify-center rounded-tl-lg transition-colors border-t border-l border-indigo-500/30"
+            title="Clique e arraste para mudar a altura do mapa mental no documento"
+          >
+            <GripHorizontal size={14} className="text-indigo-600 dark:text-indigo-300 transform -rotate-45" />
+          </div>
         </div>
       )}
     </div>

@@ -389,7 +389,7 @@ export function PainelNotionBase({
 
       {lousasMencionadas.length > 0 && (
         <div className="space-y-4 my-6">
-          {lousasMencionadas.map((l) => (
+          {lousasMencionadas.map((l, idx) => (
             <MapaMentalEmbed
               key={l.caminho}
               item={{
@@ -399,6 +399,34 @@ export function PainelNotionBase({
                 texto: "",
                 tamanho: 0,
                 doc: { dados: { titulo: l.titulo, tipo: "lousa" }, corpo: "" },
+              }}
+              podeSubir={idx > 0}
+              podeDescer={idx < lousasMencionadas.length - 1}
+              onMoverSubir={() => {
+                const termo = `@${l.titulo}`;
+                if (corpo.includes(termo)) {
+                  const partes = corpo.split("\n");
+                  const pos = partes.findIndex((p) => p.includes(termo));
+                  if (pos > 0) {
+                    const temp = partes[pos - 1];
+                    partes[pos - 1] = partes[pos];
+                    partes[pos] = temp;
+                    setCorpo(partes.join("\n"));
+                  }
+                }
+              }}
+              onMoverDescer={() => {
+                const termo = `@${l.titulo}`;
+                if (corpo.includes(termo)) {
+                  const partes = corpo.split("\n");
+                  const pos = partes.findIndex((p) => p.includes(termo));
+                  if (pos >= 0 && pos < partes.length - 1) {
+                    const temp = partes[pos + 1];
+                    partes[pos + 1] = partes[pos];
+                    partes[pos] = temp;
+                    setCorpo(partes.join("\n"));
+                  }
+                }
               }}
             />
           ))}
