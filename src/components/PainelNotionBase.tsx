@@ -72,11 +72,40 @@ export function PainelNotionBase({
   salvandoRef.current = salvando;
   temMudancasRef.current = temMudancas;
 
-  const tentarFechar = useCallback(() => {
-    if (temMudancasRef.current) {
-      aoSalvar().catch(() => {});
+  /**
+   * Fechar salva ANTES de fechar — e não fecha se a gravação falhar.
+   *
+   * Antes isto era `aoSalvar().catch(() => {})` seguido de `aoFechar()`: o
+   * painel sumia na hora e o erro ia para o lixo. Se a gravação falhasse (sem
+   * internet, token vencido, limite da API), o rodapé tinha acabado de
+   * prometer "salva automaticamente ao fechar" e o texto não estava em lugar
+   * nenhum.
+   *
+   * Ficar aberto quando dá errado é proposital: o painel é o único lugar onde
+   * o texto ainda existe.
+   */
+  const [fechandoESalvando, setFechandoESalvando] = useState(false);
+
+  const fechandoRef = useRef(false);
+
+  const tentarFechar = useCallback(async () => {
+    // clicar no fundo duas vezes não pode disparar duas gravações
+    if (fechandoRef.current) return;
+    if (!temMudancasRef.current) {
+      aoFechar();
+      return;
     }
-    aoFechar();
+    fechandoRef.current = true;
+    setFechandoESalvando(true);
+    try {
+      await aoSalvar();
+      aoFechar();
+    } catch {
+      // a mensagem já chega pela prop `erro`; o painel continua aberto
+    } finally {
+      fechandoRef.current = false;
+      setFechandoESalvando(false);
+    }
   }, [aoSalvar, aoFechar]);
 
   // Tecla Escape para fechar
@@ -117,7 +146,7 @@ export function PainelNotionBase({
 
         {/* Indicador visual de status de salvamento */}
         <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-accent/60 flex items-center gap-1 shrink-0">
-          {salvando ? (
+          {salvando || fechandoESalvando ? (
             <span className="text-blue-500 animate-pulse font-semibold">Salvando...</span>
           ) : temMudancas ? (
             <span className="text-amber-600 dark:text-amber-400 font-medium">Salva ao fechar</span>
@@ -195,8 +224,9 @@ export function PainelNotionBase({
 
         <button
           onClick={tentarFechar}
-          className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          title="Fechar e Salvar"
+          disabled={fechandoESalvando}
+          className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-wait"
+          title={fechandoESalvando ? "Salvando…" : "Fechar e Salvar"}
         >
           <X size={17} />
         </button>

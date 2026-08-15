@@ -194,7 +194,8 @@ export default function Home() {
       });
       const caminho = t.caminho || nomeLivre("tarefas", t.titulo, tarefasPendentes.map((x) => x.caminho));
       const docAtualizado = lerMarkdown(texto);
-      atualizarCacheLocal(caminho, texto, docAtualizado, t.sha || undefined);
+      // Só DEPOIS de gravar, com o sha devolvido pelo GitHub — ver a explicação
+      // em `atualizarCacheLocal` (repo.ts).
       const novaSha = await gravar(cfg, caminho, texto, t.sha || undefined);
       atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
       invalidarCache();
@@ -203,7 +204,10 @@ export default function Home() {
       setOrigTarefa(fechar ? null : tSalva);
       await carregar(true);
     } catch (e) {
+      // Repassa o erro depois de mostrá-lo: quem fecha o painel precisa
+      // saber que a gravação falhou, para não fechar em cima do texto.
       setErro(e instanceof Error ? e.message : String(e));
+      throw e;
     } finally {
       setSalvandoItem(false);
     }
@@ -241,7 +245,8 @@ export default function Home() {
         corpo: editandoNota.corpo,
       });
       const docAtualizado = lerMarkdown(texto);
-      atualizarCacheLocal(editandoNota.caminho, texto, docAtualizado, editandoNota.sha);
+      // Só DEPOIS de gravar, com o sha devolvido pelo GitHub — ver a explicação
+      // em `atualizarCacheLocal` (repo.ts).
       const novaSha = await gravar(cfg, editandoNota.caminho, texto, editandoNota.sha);
       atualizarCacheLocal(editandoNota.caminho, texto, docAtualizado, novaSha);
       invalidarCache();
@@ -250,7 +255,10 @@ export default function Home() {
       setOrigNota(fechar ? null : { titulo: nSalva.titulo, corpo: nSalva.corpo, bruto: nSalva.bruto });
       await carregar(true);
     } catch (e) {
+      // Repassa o erro depois de mostrá-lo: quem fecha o painel precisa
+      // saber que a gravação falhou, para não fechar em cima do texto.
       setErro(e instanceof Error ? e.message : String(e));
+      throw e;
     } finally {
       setSalvandoItem(false);
     }
@@ -270,7 +278,10 @@ export default function Home() {
       setOrigMeta(fechar ? null : mSalva);
       await carregar(true);
     } catch (e) {
+      // Repassa o erro depois de mostrá-lo: quem fecha o painel precisa
+      // saber que a gravação falhou, para não fechar em cima do texto.
       setErro(e instanceof Error ? e.message : String(e));
+      throw e;
     } finally {
       setSalvandoItem(false);
     }

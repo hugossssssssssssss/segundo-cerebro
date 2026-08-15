@@ -57,7 +57,7 @@ describe("invalidarCache", () => {
  * ---------------------------------------------------------------------- */
 
 import { vi, beforeEach, afterEach } from "vitest";
-import { carregarRepo, esquecerTudo } from "./repo";
+import { carregarRepo, esquecerTudo, atualizarCacheLocal } from "./repo";
 import { PADRAO, type Settings } from "./settings";
 
 const cfg: Settings = {
@@ -318,5 +318,92 @@ describe("arquivo que o GitHub não entrega", () => {
     const itens = await carregarRepo(cfg);
     expect(itens.find((i) => i.caminho === "notas/a.md")?.sha).toBe("sha-de-a");
     expect(itens.find((i) => i.caminho === "notas/b.md")?.sha).toBe("sha-de-b");
+  });
+});
+
+/* ------------------------------------------------------------------------
+ * A promessa em que este arquivo inteiro se apoia: sha igual = bytes iguais.
+ *
+ * Seis telas quebravam isso chamando `atualizarCacheLocal` ANTES de gravar,
+ * com o sha antigo. Quando a gravação falhava, a árvore continuava devolvendo
+ * o sha antigo, o mapa respondia com o texto que nunca foi gravado, e o app
+ * mostrava a nota como salva pela sessão inteira — ela só sumia no
+ * recarregamento seguinte, quando já não dava para saber o que se perdeu.
+ * ---------------------------------------------------------------------- */
+
+describe("atualizarCacheLocal não pode mentir sobre o que está gravado", () => {
+  it("gravação que falhou não deixa o texto novo no lugar do antigo", async () => {
+    fetchFalso
+      .mockResolvedValueOnce(arvore([{ path: "notas/a.md", sha: "sha-antigo" }]))
+      .mockResolvedValueOnce(conteudo(["texto original"]));
+    await carregarRepo(cfg);
+
+    // Simula exatamente a chamada errada que as seis telas faziam: anunciar o
+    // texto NOVO debaixo do sha ANTIGO, antes de o GitHub confirmar. A trava
+    // dentro de `atualizarCacheLocal` tem que recusar.
+    atualizarCacheLocal(
+      "notas/a.md",
+      "texto que nunca foi gravado",
+      lerMarkdown("texto que nunca foi gravado"),
+      "sha-antigo",
+    );
+
+    // A gravação falhou (sem internet, token vencido, limite da API): a árvore
+    // continua devolvendo o sha antigo. O texto que aparece tem que ser o que
+    // está de fato no repositório.
+    invalidarCache();
+    fetchFalso.mockResolvedValueOnce(
+      arvore([{ path: "notas/a.md", sha: "sha-antigo" }]),
+    );
+
+    const itens = await carregarRepo(cfg);
+    expect(itens[0].texto).toBe("texto original");
+  });
+
+  it("sha vazio é recusado em vez de inventar uma correspondência", async () => {
+    fetchFalso
+      .mockResolvedValueOnce(arvore([{ path: "notas/a.md", sha: "sha-antigo" }]))
+      .mockResolvedValueOnce(conteudo(["texto original"]));
+    await carregarRepo(cfg);
+
+    atualizarCacheLocal(
+      "notas/a.md",
+      "texto que nunca foi gravado",
+      lerMarkdown("texto que nunca foi gravado"),
+      "",
+    );
+
+    invalidarCache();
+    fetchFalso.mockResolvedValueOnce(
+      arvore([{ path: "notas/a.md", sha: "sha-antigo" }]),
+    );
+
+    expect((await carregarRepo(cfg))[0].texto).toBe("texto original");
+  });
+
+  it("depois de gravar, o texto novo vale sob o sha NOVO", async () => {
+    fetchFalso
+      .mockResolvedValueOnce(arvore([{ path: "notas/a.md", sha: "sha-antigo" }]))
+      .mockResolvedValueOnce(conteudo(["texto original"]));
+    await carregarRepo(cfg);
+
+    // é isto que as telas fazem agora: só depois do await gravar(), com o sha
+    // que o GitHub devolveu
+    atualizarCacheLocal(
+      "notas/a.md",
+      "texto novo",
+      lerMarkdown("texto novo"),
+      "sha-novo",
+    );
+
+    invalidarCache();
+    fetchFalso.mockResolvedValueOnce(
+      arvore([{ path: "notas/a.md", sha: "sha-novo" }]),
+    );
+
+    // nem precisou pedir o conteúdo de volta: o sha novo já está em memória
+    const itens = await carregarRepo(cfg);
+    expect(itens[0].texto).toBe("texto novo");
+    expect(fetchFalso).toHaveBeenCalledTimes(3);
   });
 });

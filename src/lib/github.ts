@@ -204,25 +204,41 @@ export async function gravar(
         return dados.content.sha as string;
       }
 
-      // Em caso de 409 (conflito de SHA/lock) ou 422, aguarda a propagação e recupere o SHA mais recente
-      if (resposta.status === 409 || resposta.status === 422 || resposta.status === 400) {
-        await new Promise((r) => setTimeout(r, 150 * Math.pow(2, tentativa - 1)));
-        try {
-          const getRes = await buscar(`${raiz(cfg)}/${caminho}?ref=${encodeURIComponent(cfg.branch)}`, {
-            headers: cabecalhos(cfg),
-          });
-          if (getRes.ok) {
-            const getDados = await getRes.json();
-            if (getDados && getDados.sha) {
-              shaAtual = getDados.sha;
-              continue;
-            }
+      /**
+       * Repetir SÓ em 422, e nunca em 409.
+       *
+       * Os dois parecem a mesma coisa e não são:
+       *
+       * - **422** é o sha que ficou para trás por culpa do próprio app — duas
+       *   gravações suas em sequência rápida, a segunda ainda segurando o sha
+       *   de antes da primeira. O conteúdo que você quer gravar continua sendo
+       *   o certo, então buscar o sha novo e repetir é exatamente o conserto.
+       *
+       * - **409** significa que o arquivo MUDOU no GitHub depois que você
+       *   abriu — quase sempre porque você editou pelo site, que é coisa que
+       *   você faz. Buscar o sha novo e regravar por cima aqui apagaria essa
+       *   edição sem avisar. Este laço fazia isso, e ainda deixava a mensagem
+       *   de conflito lá embaixo virar letra morta: ela nunca chegava na tela.
+       *   Agora o 409 sai pelo `conferir` e você decide o que fazer.
+       *
+       * O 400 saiu da lista: pedido malformado não melhora com repetição.
+       */
+      if (resposta.status !== 422) break;
+
+      await new Promise((r) => setTimeout(r, 150 * Math.pow(2, tentativa - 1)));
+      try {
+        const getRes = await buscar(`${raiz(cfg)}/${caminho}?ref=${encodeURIComponent(cfg.branch)}`, {
+          headers: cabecalhos(cfg),
+        });
+        if (getRes.ok) {
+          const getDados = await getRes.json();
+          if (getDados && getDados.sha) {
+            shaAtual = getDados.sha;
+            continue;
           }
-        } catch {
-          // ignora falha de GET e tenta o loop seguinte
         }
-      } else {
-        break;
+      } catch {
+        // ignora falha de GET e tenta o loop seguinte
       }
     }
 

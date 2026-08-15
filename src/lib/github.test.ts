@@ -91,6 +91,48 @@ describe("gravar", () => {
   });
 });
 
+/**
+ * 409 e 422 parecem a mesma coisa e não são. Confundir os dois custava o texto
+ * que você tinha acabado de escrever pelo site do GitHub: o laço de repetição
+ * buscava o sha novo e regravava a versão do app por cima, calado.
+ */
+describe("conflito de gravação", () => {
+  it("409 NÃO regrava por cima: o erro de conflito chega na tela", async () => {
+    fetchFalso.mockResolvedValue(resposta({ message: "conflito" }, { status: 409 }));
+
+    await expect(gravar(cfg, "notas/a.md", "versão do app", "sha-antigo"))
+      .rejects.toThrow(/mudou no GitHub/i);
+
+    // uma única tentativa de PUT, e nenhuma regravação depois
+    const puts = fetchFalso.mock.calls.filter(([, i]) => i?.method === "PUT");
+    expect(puts).toHaveLength(1);
+  });
+
+  it("422 (sha atrasado pelo próprio app) busca o sha novo e repete", async () => {
+    fetchFalso
+      // primeira tentativa: o sha que a tela tinha já ficou para trás
+      .mockResolvedValueOnce(resposta({ message: "sha desatualizado" }, { status: 422 }))
+      // o GET que descobre o sha atual
+      .mockResolvedValueOnce(resposta({ sha: "sha-atual", content: b64("x") }))
+      // e agora grava
+      .mockResolvedValueOnce(resposta({ content: { sha: "sha-final" } }));
+
+    expect(await gravar(cfg, "notas/a.md", "t", "sha-atrasado")).toBe("sha-final");
+
+    const puts = fetchFalso.mock.calls.filter(([, i]) => i?.method === "PUT");
+    expect(puts).toHaveLength(2);
+    expect(JSON.parse(puts[1][1].body).sha).toBe("sha-atual");
+  });
+
+  it("400 não é repetido: pedido malformado não melhora insistindo", async () => {
+    fetchFalso.mockResolvedValue(resposta({ message: "bad request" }, { status: 400 }));
+
+    await expect(gravar(cfg, "notas/a.md", "t", "s")).rejects.toThrow();
+    const puts = fetchFalso.mock.calls.filter(([, i]) => i?.method === "PUT");
+    expect(puts).toHaveLength(1);
+  });
+});
+
 describe("mensagens de erro", () => {
   it("403 por LIMITE não acusa o token de estar errado", async () => {
     const daquiA10min = Math.floor((Date.now() + 600_000) / 1000);

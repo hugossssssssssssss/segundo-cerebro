@@ -208,7 +208,9 @@ export default function Notas() {
   function abrir(a: ItemRepo) {
     if (focarFlutuante(a.caminho)) return;
     if (aberta && aberta.caminho !== a.caminho && mudou) {
-      salvar(aberta);
+      // trocar de nota grava a anterior em segundo plano; se falhar, a
+      // mensagem já aparece pelo `setErro` de dentro do `salvar`
+      salvar(aberta).catch(() => {});
     }
     const titulo = titulos[a.caminho] ?? tituloProvavel(a.doc, a.nome);
     setAberta({
@@ -307,7 +309,10 @@ export default function Notas() {
         return atual;
       });
     } catch (e) {
+      // Repassa o erro depois de mostrá-lo: quem fecha o painel precisa
+      // saber que a gravação falhou, para não fechar em cima do texto.
       setErro(e instanceof Error ? e.message : String(e));
+      throw e;
     } finally {
       setSalvando(false);
     }

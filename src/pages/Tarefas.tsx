@@ -326,7 +326,10 @@ export default function Tarefas() {
         return orig;
       });
     } catch (e) {
+      // Repassa o erro depois de mostrá-lo: quem fecha o painel precisa
+      // saber que a gravação falhou, para não fechar em cima do texto.
       setErro(e instanceof Error ? e.message : String(e));
+      throw e;
     } finally {
       setSalvando(false);
     }

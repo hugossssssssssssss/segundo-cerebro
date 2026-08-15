@@ -33,6 +33,7 @@ export function abrirItemSpa(caminho: string) {
   if (pasta === "tarefas") rota = "/tarefas";
   else if (pasta === "referencias") rota = "/referencias";
   else if (pasta === "pdi" || pasta === "metas") rota = "/pdi";
+  else if (pasta === "lousas") rota = "/lousas";
   else if (pasta === "notas" || pasta === "reunioes") rota = "/notas";
 
   window.location.hash = `#${rota}?abrir=${encodeURIComponent(caminho)}`;

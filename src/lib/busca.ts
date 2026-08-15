@@ -24,6 +24,7 @@ export type TipoItem =
   | "tarefa"
   | "nota"
   | "referencia"
+  | "lousa"
   | "meta"
   | "entrega"
   | "reuniao"
@@ -42,7 +43,8 @@ export type Resultado = {
 export const ROTULO_TIPO: Record<TipoItem, string> = {
   tarefa: "Tarefa",
   nota: "Nota",
-  referencia: "Referência",
+  referencia: "Pinterest / Referência",
+  lousa: "Excalidraw / Mapa Mental",
   meta: "Meta",
   entrega: "Entrega",
   reuniao: "Reunião",
@@ -54,6 +56,7 @@ export const ROTA_TIPO: Record<TipoItem, string> = {
   tarefa: "/tarefas",
   nota: "/notas",
   referencia: "/referencias",
+  lousa: "/lousas",
   meta: "/pdi",
   entrega: "/pdi",
   reuniao: "/notas",
@@ -72,6 +75,7 @@ export function tipoDoItem(item: ItemRepo): TipoItem {
   if (pasta === "tarefas") return "tarefa";
   if (pasta === "notas") return "nota";
   if (pasta === "referencias") return "referencia";
+  if (pasta === "lousas") return "lousa";
   if (pasta === "reunioes") return "reuniao";
   if (item.caminho.startsWith("pdi/metas")) return "meta";
   if (item.caminho.startsWith("pdi/entregas")) return "entrega";

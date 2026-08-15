@@ -298,14 +298,38 @@ export function daPasta(itens: ItemRepo[], pasta: string): ItemRepo[] {
  * Atualiza instantaneamente (0ms) um item no cache de memória local.
  * Garante que se o usuário reabrir a nota/tarefa no segundo seguinte,
  * ela abre 100% atualizada sem depender da rede do GitHub.
+ *
+ * **Chame só DEPOIS de gravar, com o sha que o GitHub devolveu.**
+ *
+ * Chamar antes, com o sha antigo, quebra a única promessa em que este arquivo
+ * se apoia: sha igual = bytes iguais. O sintoma era cruel — se a gravação
+ * falhasse (sem internet, token vencido, limite da API), a árvore continuava
+ * devolvendo o sha antigo, o mapa respondia com o texto que nunca foi gravado,
+ * e o app mostrava a nota como salva pela sessão inteira. Ela só sumia no
+ * recarregamento seguinte, quando já não dava para saber o que se perdeu.
+ *
+ * Por isso o `sha` é obrigatório: sem ele não há o que garantir.
  */
 export function atualizarCacheLocal(
   caminho: string,
   texto: string,
   doc: Documento,
-  sha?: string
+  sha: string
 ) {
-  const shaFinal = sha || `temp-${Date.now()}`;
+  // Sha inventado envenenaria o mapa: ele passaria a afirmar uma
+  // correspondência conteúdo↔sha que o git não reconhece.
+  if (!sha) return;
+
+  // Trava contra o bug que já aconteceu: se este sha JÁ está no mapa com outro
+  // texto, quem chamou está passando o sha antigo junto com o texto novo — ou
+  // seja, anunciando como gravado algo que o GitHub ainda não confirmou.
+  // Regravar aqui faria o app mostrar como salvo um texto que pode nunca ter
+  // saído do navegador. Melhor ignorar e deixar a próxima leitura buscar a
+  // verdade no repositório.
+  const jaConhecido = textoPorSha.get(sha);
+  if (jaConhecido !== undefined && jaConhecido !== texto) return;
+
+  const shaFinal = sha;
   textoPorSha.set(shaFinal, texto);
 
   if (cache) {

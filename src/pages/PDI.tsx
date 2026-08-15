@@ -227,7 +227,8 @@ export default function PDI() {
         metaParaSalvar.caminho ||
         nomeLivreSemData(PASTA_METAS, metaParaSalvar.titulo, metas.map((x) => x.caminho));
       const docAtualizado = lerMarkdown(texto);
-      atualizarCacheLocal(caminho, texto, docAtualizado, metaParaSalvar.sha || undefined);
+      // Só DEPOIS de gravar, com o sha devolvido pelo GitHub — ver a explicação
+      // em `atualizarCacheLocal` (repo.ts).
       const novaSha = await gravar(cfg, caminho, texto, metaParaSalvar.sha || undefined);
       atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
       invalidarCache();
@@ -252,7 +253,10 @@ export default function PDI() {
         return orig;
       });
     } catch (e) {
+      // Repassa o erro depois de mostrá-lo: quem fecha o painel precisa
+      // saber que a gravação falhou, para não fechar em cima do texto.
       setErro(e instanceof Error ? e.message : String(e));
+      throw e;
     } finally {
       setSalvando(false);
     }
@@ -279,7 +283,10 @@ export default function PDI() {
       fecharEntrega();
       await carregar();
     } catch (e) {
+      // Repassa o erro depois de mostrá-lo: quem fecha o painel precisa
+      // saber que a gravação falhou, para não fechar em cima do texto.
       setErro(e instanceof Error ? e.message : String(e));
+      throw e;
     } finally {
       setSalvando(false);
     }

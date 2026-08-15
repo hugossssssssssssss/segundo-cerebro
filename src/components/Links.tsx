@@ -25,6 +25,11 @@ const CORES_TIPO: Record<string, { texto: string; bg: string; borda: string }> =
     bg: "bg-purple-500/10 hover:bg-purple-500/20",
     borda: "border-purple-500/20",
   },
+  lousa: {
+    texto: "text-indigo-600 dark:text-indigo-400",
+    bg: "bg-indigo-500/10 hover:bg-indigo-500/20",
+    borda: "border-indigo-500/20",
+  },
 };
 
 /**
