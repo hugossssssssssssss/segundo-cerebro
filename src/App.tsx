@@ -21,6 +21,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
+import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 import { Busca } from "@/components/Busca";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { NavegacaoLateral } from "@/components/NavegacaoLateral";
@@ -279,25 +280,27 @@ export default function App() {
   return (
     <HashRouter>
       <ProvedorFlutuanteGlobal>
-        <Estrutura>
-          <Suspense fallback={<Carregando />}>
-            <Routes>
-              <Route path="/" element={<Navigate to="/home" replace />} />
-              <Route path="/home" element={<Home />} />
-              <Route path="/tarefas" element={<Tarefas />} />
-              <Route path="/notas" element={<Notas />} />
-              <Route path="/referencias" element={<Referencias />} />
-              <Route path="/lousas" element={<Lousas />} />
-              <Route path="/pdi" element={<PDI />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/pdf" element={<FerramentasPDF />} />
-              <Route path="/conversor" element={<Conversor />} />
-              <Route path="/transcritor" element={<Transcritor />} />
-              <Route path="/config" element={<Configuracoes />} />
-              <Route path="*" element={<Navigate to="/home" replace />} />
-            </Routes>
-          </Suspense>
-        </Estrutura>
+        <ProvedorFerramentasFlutuantes>
+          <Estrutura>
+            <Suspense fallback={<Carregando />}>
+              <Routes>
+                <Route path="/" element={<Navigate to="/home" replace />} />
+                <Route path="/home" element={<Home />} />
+                <Route path="/tarefas" element={<Tarefas />} />
+                <Route path="/notas" element={<Notas />} />
+                <Route path="/referencias" element={<Referencias />} />
+                <Route path="/lousas" element={<Lousas />} />
+                <Route path="/pdi" element={<PDI />} />
+                <Route path="/chat" element={<Chat />} />
+                <Route path="/pdf" element={<FerramentasPDF />} />
+                <Route path="/conversor" element={<Conversor />} />
+                <Route path="/transcritor" element={<Transcritor />} />
+                <Route path="/config" element={<Configuracoes />} />
+                <Route path="*" element={<Navigate to="/home" replace />} />
+              </Routes>
+            </Suspense>
+          </Estrutura>
+        </ProvedorFerramentasFlutuantes>
       </ProvedorFlutuanteGlobal>
     </HashRouter>
   );

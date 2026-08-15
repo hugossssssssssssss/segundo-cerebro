@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { lerConfig } from "@/lib/settings";
 import { gravar } from "@/lib/github";
 import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
+import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 // Configura o worker do PDF.js via Vite bundle local
@@ -108,18 +109,24 @@ export default function Conversor() {
   const [searchParams, setSearchParams] = useSearchParams();
   const ferramentaParam = searchParams.get("ferramenta") as TipoFerramentaConversor | null;
 
+  const { ferramentaAtiva: ferramentaContexto } = useFerramentasFlutuantes();
+
   const [ferramentaAtiva, setFerramentaAtiva] = useState<TipoFerramentaConversor>(
-    ferramentaParam && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaParam)
+    ferramentaContexto && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaContexto)
+      ? (ferramentaContexto as TipoFerramentaConversor)
+      : ferramentaParam && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaParam)
       ? ferramentaParam
       : "pdf_para_png"
   );
 
-  // Sincroniza estado se o parâmetro de URL mudar
+  // Sincroniza estado se o parâmetro de URL ou o contexto flutuante mudar
   useEffect(() => {
-    if (ferramentaParam && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaParam)) {
+    if (ferramentaContexto && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaContexto)) {
+      setFerramentaAtiva(ferramentaContexto as TipoFerramentaConversor);
+    } else if (ferramentaParam && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaParam)) {
       setFerramentaAtiva(ferramentaParam);
     }
-  }, [ferramentaParam]);
+  }, [ferramentaParam, ferramentaContexto]);
 
   const selecionarFerramenta = (id: TipoFerramentaConversor) => {
     setFerramentaAtiva(id);

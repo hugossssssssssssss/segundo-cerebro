@@ -15,10 +15,11 @@ import {
   ROTULO_TIPO,
   ROTA_TIPO,
 } from "@/lib/busca";
-import { LISTA_FERRAMENTAS_APP } from "@/lib/ferramentasApp";
+import { LISTA_FERRAMENTAS_APP, type FerramentaApp } from "@/lib/ferramentasApp";
 import { Campo, Selo } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { tituloProvavel } from "@/lib/markdown";
+import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 
 const OPCOES_FILTRO: Array<{ id: CategoriaFiltroBusca; rotulo: string }> = [
   { id: "tudo", rotulo: "Tudo" },
@@ -43,6 +44,7 @@ export function Busca({
   aoFechar: () => void;
 }) {
   const navegar = useNavigate();
+  const { abrirFerramentaFlutuante } = useFerramentasFlutuantes();
   const [termo, setTermo] = useState("");
   const [categoria, setCategoria] = useState<CategoriaFiltroBusca>("tudo");
   const [favoritos, setFavoritos] = useState<string[]>([]);
@@ -50,6 +52,15 @@ export function Busca({
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
   const entrada = useRef<HTMLInputElement>(null);
+
+  const aoSelecionarFerramenta = (f: FerramentaApp) => {
+    aoFechar();
+    if (f.categoria === "conversor" || f.categoria === "ferramenta") {
+      abrirFerramentaFlutuante(f.id);
+    } else {
+      navegar(f.rota);
+    }
+  };
 
   useEffect(() => {
     if (!aberta) return;
@@ -144,7 +155,7 @@ export function Busca({
           <Campo
             ref={entrada}
             value={termo}
-            onChange={(e) => setTermo(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTermo(e.target.value)}
             placeholder="Buscar notas, tarefas, ferramentas (ex: 'PDF para PNG', 'transcrição')..."
             className="border-0 bg-transparent focus-visible:ring-0 text-base"
             autoFocus
@@ -209,10 +220,7 @@ export function Busca({
                       return (
                         <div
                           key={f.id}
-                          onClick={() => {
-                            navegar(f.rota);
-                            aoFechar();
-                          }}
+                          onClick={() => aoSelecionarFerramenta(f)}
                           className="flex items-center justify-between p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer transition-colors group"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
@@ -283,10 +291,7 @@ export function Busca({
                     return (
                       <div
                         key={f.id}
-                        onClick={() => {
-                          navegar(f.rota);
-                          aoFechar();
-                        }}
+                        onClick={() => aoSelecionarFerramenta(f)}
                         className="flex items-center justify-between p-2.5 rounded-xl border border-border/80 bg-card hover:bg-accent/60 cursor-pointer transition-colors group"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -330,10 +335,7 @@ export function Busca({
                     return (
                       <div
                         key={f.id}
-                        onClick={() => {
-                          navegar(f.rota);
-                          aoFechar();
-                        }}
+                        onClick={() => aoSelecionarFerramenta(f)}
                         className="flex items-center justify-between border-b border-border px-4 py-3 text-left transition-colors hover:bg-accent cursor-pointer group"
                       >
                         <div className="flex items-start gap-3 min-w-0">
