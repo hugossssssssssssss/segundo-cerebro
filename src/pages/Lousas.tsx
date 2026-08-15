@@ -152,6 +152,8 @@ export default function Lousas() {
             return c === target || c.includes(target) || t === target || t.includes(target) || base === target;
           });
           if (itemEncontrado && (!aberta || aberta.caminho !== itemEncontrado.caminho)) {
+            // Limpa o parâmetro 'abrir' da URL para impedir que re-dispare e sobrescreva salvamentos posteriores
+            window.history.replaceState(null, "", window.location.pathname + "#/lousas");
             abrir(itemEncontrado);
           }
         }

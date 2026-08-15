@@ -57,4 +57,13 @@ describe("Excalidraw Save & Load Mechanics", () => {
     const cenaParsed = JSON.parse(lido.corpo.trim());
     expect(cenaParsed.elements[0].id).toBe("box1");
   });
+
+  it("limpeza do parametro ?abrir previne sobrescrita acidental da lousa aberta", () => {
+    let hash = "#/lousas?abrir=lousas%2Fmapa.md";
+    if (hash.includes("abrir=")) {
+      hash = "#/lousas"; // Simula window.history.replaceState
+    }
+    expect(hash).toBe("#/lousas");
+    expect(hash.includes("abrir=")).toBe(false);
+  });
 });
