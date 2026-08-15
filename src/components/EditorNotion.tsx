@@ -93,18 +93,20 @@ export function EditorNotion({
       return;
     }
 
-    let cancelado = false;
-    carregarRepo(lerConfig())
-      .then((todos) => {
-        if (cancelado) return;
-        const indice = montarIndice(todos);
-        setAlvos(alvosUnicos(indice));
-      })
-      .catch(() => {});
+    function recarregarAlvos() {
+      carregarRepo(lerConfig())
+        .then((todos) => {
+          const indice = montarIndice(todos);
+          setAlvos(alvosUnicos(indice));
+        })
+        .catch(() => {});
+    }
+
+    recarregarAlvos();
+    window.addEventListener("acervo-atualizado", recarregarAlvos);
     return () => {
-      cancelado = true;
+      window.removeEventListener("acervo-atualizado", recarregarAlvos);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acervo, alvosOverrideKey]);
 
   /** Monta os itens do menu a partir do que já está em memória. */

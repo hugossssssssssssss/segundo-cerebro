@@ -93,8 +93,11 @@ export default function Lousas() {
     setErro("");
     setMensagemSucesso("");
     try {
-      const conteudo = await lerOuVazio(cfg, item.caminho, item.sha);
-      const docParsed = lerMarkdown(conteudo);
+      let conteudo = item.texto || "";
+      if (!conteudo) {
+        conteudo = await lerOuVazio(cfg, item.caminho, item.sha);
+      }
+      const docParsed = item.doc && item.doc.corpo ? item.doc : lerMarkdown(conteudo);
       let dados: DadosLousa = { elements: [] };
       let titulo = (item.doc.dados.titulo as string) || (docParsed.dados.titulo as string) || tituloProvavel(item.doc, item.nome);
 
@@ -322,6 +325,7 @@ export default function Lousas() {
         novaSha
       );
       invalidarCache();
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
 
       setAberta({
         caminho: novoCaminho,
