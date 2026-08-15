@@ -376,7 +376,7 @@ export function PainelNotionBase({
 
       <div className="min-h-[220px]">
         <EditorNotion
-          key={caminhoItem || titulo || "editor"}
+          key={caminhoItem || "nota-editor"}
           markdown={corpo}
           alvosOverride={alvosOverride}
           onChange={(v) => {

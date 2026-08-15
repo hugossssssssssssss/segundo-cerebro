@@ -94,7 +94,7 @@ export function EditorNotion({
     }
 
     let cancelado = false;
-    carregarRepo(lerConfig(), { memoria: 30_000 })
+    carregarRepo(lerConfig())
       .then((todos) => {
         if (cancelado) return;
         const indice = montarIndice(todos);

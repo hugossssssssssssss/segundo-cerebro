@@ -188,31 +188,23 @@ export default function Lousas() {
     setMensagemSucesso("");
 
     try {
-      let elements: any[] = [];
       let currentAppState: any = {};
       let files: any = {};
 
       const apiElements = excalidrawAPI ? excalidrawAPI.getSceneElements() : null;
-      if (apiElements && apiElements.length > 0) {
-        elements = apiElements;
-        currentAppState = excalidrawAPI.getAppState() || {};
-        files = excalidrawAPI.getFiles() || {};
-      } else if (elementsRef.current && elementsRef.current.length > 0) {
-        elements = elementsRef.current;
-        currentAppState = appStateRef.current || {};
-        files = filesRef.current || {};
-      } else if (excalidrawAPI) {
-        elements = apiElements || [];
-        currentAppState = excalidrawAPI.getAppState() || {};
-        files = excalidrawAPI.getFiles() || {};
-      } else if (aberta.dados) {
-        elements = aberta.dados.elements || [];
-        currentAppState = aberta.dados.appState || {};
-        files = aberta.dados.files || {};
+      let elementsToSave = (apiElements && apiElements.length > 0) ? apiElements : [];
+      if (elementsToSave.length === 0 && elementsRef.current && elementsRef.current.length > 0) {
+        elementsToSave = elementsRef.current;
+      }
+      if (elementsToSave.length === 0 && aberta.dados?.elements) {
+        elementsToSave = aberta.dados.elements;
       }
 
-      const elementosValidos = Array.isArray(elements)
-        ? elements.filter((el) => !el.isDeleted)
+      currentAppState = excalidrawAPI ? (excalidrawAPI.getAppState() || {}) : (appStateRef.current || {});
+      files = excalidrawAPI ? (excalidrawAPI.getFiles() || {}) : (filesRef.current || {});
+
+      const elementosValidos = Array.isArray(elementsToSave)
+        ? elementsToSave.filter((el) => !el.isDeleted)
         : [];
 
       const tituloLimpo = aberta.titulo.trim() || "Lousa Sem Título";
