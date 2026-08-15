@@ -23,6 +23,7 @@ import {
   type ItemRepo,
 } from "@/lib/repo";
 import { tituloProvavel, nomeLivre, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
+import { propagarRenomeacao } from "@/lib/links";
 import { Botao, Campo, Cartao, Aviso, Vazio, Carregando } from "@/components/ui";
 
 const PASTA = "lousas";
@@ -223,7 +224,21 @@ export default function Lousas() {
         files,
       };
 
-      const jsonCena = JSON.stringify(dadosParaSalvar, null, 2);
+      const jsonCena = (function safeStringify(obj: any, indent = 2): string {
+        const seen = new WeakSet();
+        return JSON.stringify(
+          obj,
+          (_key, value) => {
+            if (typeof value === "object" && value !== null) {
+              if (seen.has(value)) return undefined;
+              seen.add(value);
+            }
+            if (typeof value === "function" || typeof value === "symbol") return undefined;
+            return value;
+          },
+          indent
+        );
+      })(dadosParaSalvar);
 
       let novoCaminho = aberta.caminho;
       if (!aberta.caminho || aberta.titulo !== aberta.tituloOriginal) {
@@ -293,6 +308,10 @@ export default function Lousas() {
         tituloOriginal: tituloLimpo,
         dados: dadosParaSalvar,
       });
+
+      if (aberta.tituloOriginal && aberta.tituloOriginal !== tituloLimpo) {
+        propagarRenomeacao(cfg, lousas, aberta.tituloOriginal, tituloLimpo).catch(() => {});
+      }
 
       setMensagemSucesso(`Lousa "${tituloLimpo}" salva com sucesso! (${elementosValidos.length} elementos gravados)`);
       setLousas((prev) => {
