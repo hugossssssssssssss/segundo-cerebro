@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Moon,
   Sun,
   Sunrise,
   Sunset,
@@ -13,12 +12,19 @@ import {
   Clock,
   AlertTriangle,
   GripVertical,
-  Maximize2,
   RotateCcw,
   Settings2,
   Calendar,
   Tag,
   ListTodo,
+  Plus,
+  Trash2,
+  RefreshCw,
+  Mic,
+  Layout,
+  MessageCircle,
+  X,
+  Layers,
 } from "lucide-react";
 import {
   DndContext,
@@ -48,6 +54,8 @@ import { comoMeta, comoEntrega, resumir, metaParaFrontmatter, type Meta, type Re
 import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
+import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
+import { LISTA_FERRAMENTAS_APP } from "@/lib/ferramentasApp";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,9 +74,84 @@ export interface Gadget {
   colunas: 1 | 2 | 3;
 }
 
+export interface InfoGadgetDisponivel {
+  id: string;
+  titulo: string;
+  descricao: string;
+  icone: any;
+  colunasPadrao: 1 | 2 | 3;
+}
+
+const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
+  {
+    id: "kpis",
+    titulo: "Resumo dos KPIs",
+    descricao: "Contadores gerais de Tarefas, Notas, Referências e PDI",
+    icone: Layout,
+    colunasPadrao: 3,
+  },
+  {
+    id: "tarefas",
+    titulo: "Próximas Tarefas",
+    descricao: "Lista de tarefas pendentes e urgentes com edição rápida",
+    icone: CheckSquare,
+    colunasPadrao: 2,
+  },
+  {
+    id: "conversores",
+    titulo: "Ferramentas de Conversão",
+    descricao: "Atalhos rápidos para converter PDF, PNG, JPG, WebP e Markdown em modal flutuante",
+    icone: RefreshCw,
+    colunasPadrao: 2,
+  },
+  {
+    id: "transcritor",
+    titulo: "Transcritor de Áudio & IA",
+    descricao: "Gravador de voz e transcrição inteligente de áudio",
+    icone: Mic,
+    colunasPadrao: 1,
+  },
+  {
+    id: "notas",
+    titulo: "Notas Recentes",
+    descricao: "Últimas notas salvas e rascunhos do seu acervo",
+    icone: FileText,
+    colunasPadrao: 1,
+  },
+  {
+    id: "referencias",
+    titulo: "Referências Visuais",
+    descricao: "Mural de inspirações visuais e galeria de fotos",
+    icone: ImageIcon,
+    colunasPadrao: 2,
+  },
+  {
+    id: "pdi",
+    titulo: "Metas de Carreira (PDI)",
+    descricao: "Acompanhamento do progresso das metas e entregas",
+    icone: Target,
+    colunasPadrao: 1,
+  },
+  {
+    id: "lousas",
+    titulo: "Lousas & Esboços",
+    descricao: "Atalho rápido para desenhar no Excalidraw",
+    icone: Layout,
+    colunasPadrao: 1,
+  },
+  {
+    id: "assistente",
+    titulo: "Assistente IA do Klaus",
+    descricao: "Perguntas e conversa rápida com o assistente inteligente",
+    icone: MessageCircle,
+    colunasPadrao: 1,
+  },
+];
+
 const GADGETS_PADRAO: Gadget[] = [
   { id: "kpis", colunas: 3 },
   { id: "tarefas", colunas: 2 },
+  { id: "conversores", colunas: 1 },
   { id: "notas", colunas: 1 },
   { id: "referencias", colunas: 2 },
   { id: "pdi", colunas: 1 },
@@ -77,10 +160,12 @@ const GADGETS_PADRAO: Gadget[] = [
 function GadgetWrapper({
   gadget,
   aoMudarColunas,
+  aoRemover,
   children,
 }: {
   gadget: Gadget;
   aoMudarColunas: (id: string, colunas: 1 | 2 | 3) => void;
+  aoRemover: (id: string) => void;
   children: React.ReactNode;
 }) {
   const {
@@ -105,41 +190,60 @@ function GadgetWrapper({
       ? "col-span-1 md:col-span-2"
       : "col-span-1";
 
-  const proximaColuna = (gadget.colunas % 3 + 1) as 1 | 2 | 3;
-
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={cn("relative transition-all h-full flex flex-col", classeGrid, isDragging && "z-50")}
+      className={cn("relative transition-all h-full flex flex-col group/gadget", classeGrid, isDragging && "z-50")}
     >
-      {/* Controles do Gadget: aparece EXCLUSIVAMENTE ao passar o mouse sobre o ícone do canto superior direito */}
+      {/* Controles do Gadget */}
       <div className="absolute top-2.5 right-2.5 z-30 group/canto">
-        <div className="p-1 rounded-lg text-muted-foreground/30 hover:text-foreground hover:bg-accent/80 transition-colors cursor-pointer flex items-center gap-1">
+        <div className="p-1.5 rounded-lg text-muted-foreground/30 group-hover/gadget:text-muted-foreground hover:text-foreground hover:bg-accent/80 transition-colors cursor-pointer flex items-center gap-1">
           <Settings2 size={15} />
         </div>
 
-        <div className="absolute top-0 right-0 hidden group-hover/canto:flex items-center gap-1 bg-background/95 backdrop-blur-md rounded-xl p-1.5 border border-border/80 shadow-md whitespace-nowrap">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              aoMudarColunas(gadget.id, proximaColuna);
-            }}
-            className="px-2 py-1 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground text-[11px] font-bold flex items-center gap-1 transition-colors"
-            title={`Largura atual: ${gadget.colunas}x. Clique para alterar para ${proximaColuna}x.`}
-          >
-            <Maximize2 size={12} />
-            <span>{gadget.colunas}x</span>
-          </button>
+        <div className="absolute top-0 right-0 hidden group-hover/canto:flex items-center gap-1 bg-card/95 backdrop-blur-md rounded-xl p-1.5 border border-border shadow-lg whitespace-nowrap">
+          {([1, 2, 3] as const).map((col) => (
+            <button
+              key={col}
+              onClick={(e) => {
+                e.stopPropagation();
+                aoMudarColunas(gadget.id, col);
+              }}
+              className={cn(
+                "px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+                gadget.colunas === col
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-accent text-muted-foreground hover:text-foreground"
+              )}
+              title={`Redimensionar para ${col} coluna(s)`}
+            >
+              {col}x
+            </button>
+          ))}
+
+          <div className="h-3 w-px bg-border my-auto mx-0.5" />
 
           <button
             {...attributes}
             {...listeners}
-            className="p-1 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing transition-colors"
+            className="p-1 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing transition-colors"
             title="Arraste para reordenar este gadget"
             aria-label="Reordenar gadget"
           >
             <GripVertical size={14} />
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              aoRemover(gadget.id);
+            }}
+            className="p-1 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors ml-0.5"
+            title="Excluir este gadget do Dashboard"
+            aria-label="Excluir gadget"
+          >
+            <Trash2 size={14} />
           </button>
         </div>
       </div>
@@ -152,6 +256,8 @@ function GadgetWrapper({
 export default function Home() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
+
+  const { abrirFerramentaFlutuante } = useFerramentasFlutuantes();
 
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -170,6 +276,7 @@ export default function Home() {
   const [editandoTarefa, setEditandoTarefa] = useState<Tarefa | null>(null);
   const [origTarefa, setOrigTarefa] = useState<Tarefa | null>(null);
   const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>("popup");
+  const [modalAdicionarAberto, setModalAdicionarAberto] = useState(false);
 
   const [editandoNota, setEditandoNota] = useState<{
     caminho: string;
@@ -194,8 +301,6 @@ export default function Home() {
       });
       const caminho = t.caminho || nomeLivre("tarefas", t.titulo, tarefasPendentes.map((x) => x.caminho));
       const docAtualizado = lerMarkdown(texto);
-      // Só DEPOIS de gravar, com o sha devolvido pelo GitHub — ver a explicação
-      // em `atualizarCacheLocal` (repo.ts).
       const novaSha = await gravar(cfg, caminho, texto, t.sha || undefined);
       atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
       invalidarCache();
@@ -204,8 +309,6 @@ export default function Home() {
       setOrigTarefa(fechar ? null : tSalva);
       await carregar(true);
     } catch (e) {
-      // Repassa o erro depois de mostrá-lo: quem fecha o painel precisa
-      // saber que a gravação falhou, para não fechar em cima do texto.
       setErro(e instanceof Error ? e.message : String(e));
       throw e;
     } finally {
@@ -245,8 +348,6 @@ export default function Home() {
         corpo: editandoNota.corpo,
       });
       const docAtualizado = lerMarkdown(texto);
-      // Só DEPOIS de gravar, com o sha devolvido pelo GitHub — ver a explicação
-      // em `atualizarCacheLocal` (repo.ts).
       const novaSha = await gravar(cfg, editandoNota.caminho, texto, editandoNota.sha);
       atualizarCacheLocal(editandoNota.caminho, texto, docAtualizado, novaSha);
       invalidarCache();
@@ -255,8 +356,6 @@ export default function Home() {
       setOrigNota(fechar ? null : { titulo: nSalva.titulo, corpo: nSalva.corpo, bruto: nSalva.bruto });
       await carregar(true);
     } catch (e) {
-      // Repassa o erro depois de mostrá-lo: quem fecha o painel precisa
-      // saber que a gravação falhou, para não fechar em cima do texto.
       setErro(e instanceof Error ? e.message : String(e));
       throw e;
     } finally {
@@ -278,8 +377,6 @@ export default function Home() {
       setOrigMeta(fechar ? null : mSalva);
       await carregar(true);
     } catch (e) {
-      // Repassa o erro depois de mostrá-lo: quem fecha o painel precisa
-      // saber que a gravação falhou, para não fechar em cima do texto.
       setErro(e instanceof Error ? e.message : String(e));
       throw e;
     } finally {
@@ -343,100 +440,107 @@ export default function Home() {
     );
   };
 
+  const removerGadget = (id: string) => {
+    salvarGadgets(gadgets.filter((g) => g.id !== id));
+  };
+
+  const adicionarGadget = (info: InfoGadgetDisponivel) => {
+    if (gadgets.some((g) => g.id === info.id)) return;
+    salvarGadgets([...gadgets, { id: info.id, colunas: info.colunasPadrao }]);
+    setModalAdicionarAberto(false);
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const aoArrastarFim = (event: DragEndEvent) => {
-    const { active, over } = event;
+  const aoArrastarFim = (e: DragEndEvent) => {
+    const { active, over } = e;
     if (over && active.id !== over.id) {
-      const idxAntigo = gadgets.findIndex((g) => g.id === active.id);
-      const idxNovo = gadgets.findIndex((g) => g.id === over.id);
-      salvarGadgets(arrayMove(gadgets, idxAntigo, idxNovo));
+      const antigoIndex = gadgets.findIndex((g) => g.id === active.id);
+      const novoIndex = gadgets.findIndex((g) => g.id === over.id);
+      salvarGadgets(arrayMove(gadgets, antigoIndex, novoIndex));
     }
   };
 
+  const carregar = useCallback(
+    async (silencioso = false) => {
+      if (!pronto) return;
+      if (!silencioso) setCarregando(true);
+      setErro("");
+
+      try {
+        const todos = await carregarRepo(cfg);
+
+        // 1. Tarefas
+        const arqTarefas = daPasta(todos, "tarefas");
+        const listaTarefas = ordenar(
+          arqTarefas.map((i) =>
+            comoTarefa(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
+          )
+        );
+        setTotalTarefas(listaTarefas.length);
+        const pendentes = listaTarefas.filter((t) => t.status !== "feito");
+        setTarefasPendentes(pendentes.slice(0, 5));
+        setTarefasUrgentesCount(
+          pendentes.filter((t) => urgencia(t) === "atrasada" || urgencia(t) === "hoje").length
+        );
+
+        // 2. Notas
+        const arqNotas = daPasta(todos, "notas");
+        setTotalNotas(arqNotas.length);
+        setNotasRecentes(
+          arqNotas.slice(0, 5).map((i) => ({
+            caminho: i.caminho,
+            titulo: tituloProvavel(i.doc, i.nome),
+            nome: i.nome,
+          }))
+        );
+
+        // 3. Referências
+        const arqRefs = daPasta(todos, "referencias").filter(
+          (i) => !i.caminho.startsWith("referencias/imagens/")
+        );
+        setTotalRefs(arqRefs.length);
+        setReferenciasRecentes(
+          arqRefs.slice(0, 6).map((i) =>
+            comoReferencia(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
+          )
+        );
+
+        // 4. PDI
+        const arqMetas = daPasta(todos, "pdi/metas");
+        const arqEntregas = daPasta(todos, "pdi/entregas");
+        const metas = arqMetas.map((i) =>
+          comoMeta(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
+        );
+        const entregas = arqEntregas.map((i) =>
+          comoEntrega(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
+        );
+        setResumoPdi(resumir(metas, entregas));
+      } catch (e) {
+        setErro(e instanceof Error ? e.message : String(e));
+      } finally {
+        setCarregando(false);
+      }
+    },
+    [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]
+  );
+
   useEffect(() => {
     const hora = new Date().getHours();
-    if (hora < 6) {
-      setSaudacao("Boa madrugada");
-      setIconeTempo(() => Moon);
-    } else if (hora < 12) {
+    if (hora >= 5 && hora < 12) {
       setSaudacao("Bom dia");
-      setIconeTempo(() => Sunrise);
-    } else if (hora < 18) {
+      setIconeTempo(Sunrise);
+    } else if (hora >= 12 && hora < 18) {
       setSaudacao("Boa tarde");
-      setIconeTempo(() => Sun);
+      setIconeTempo(Sun);
     } else {
       setSaudacao("Boa noite");
-      setIconeTempo(() => Sunset);
+      setIconeTempo(Sunset);
     }
-  }, []);
 
-  /**
-   * Já houve um carregamento nesta tela? Guardado num ref porque o tamanho da
-   * lista estava nas dependências do carregador — que é justamente quem altera
-   * a lista, disparando um carregamento extra a cada item criado.
-   */
-  const jaCarregouRef = useRef(false);
-
-  const carregar = useCallback(async (silencioso = false) => {
-    if (!pronto) {
-      setCarregando(false);
-      return;
-    }
-    if (!silencioso && !jaCarregouRef.current) {
-      setCarregando(true);
-    }
-    setErro("");
-    try {
-      const todos = await carregarRepo(cfg, { memoria: 3000 });
-
-      // Tarefas
-      const itensTarefas = daPasta(todos, "tarefas");
-      const tarefas = ordenar(
-        itensTarefas.map((i) => comoTarefa(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)))
-      );
-      const pendentes = tarefas.filter((t) => t.status !== "feito");
-      const urgentes = pendentes.filter((t) => urgencia(t) !== "nenhuma" && urgencia(t) !== "tranquila");
-      setTotalTarefas(pendentes.length);
-      setTarefasUrgentesCount(urgentes.length);
-      setTarefasPendentes(pendentes.slice(0, 5));
-
-      // Notas
-      const itensNotas = daPasta(todos, "notas");
-      setTotalNotas(itensNotas.length);
-      setNotasRecentes(
-        itensNotas.slice(0, 4).map((i) => ({
-          caminho: i.caminho,
-          titulo: tituloProvavel(i.doc, i.nome),
-          nome: i.nome,
-        }))
-      );
-
-      // Referências Visuais
-      const itensRefs = daPasta(todos, "referencias");
-      setTotalRefs(itensRefs.length);
-      setReferenciasRecentes(
-        itensRefs.slice(0, 6).map((i) => comoReferencia(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)))
-      );
-
-      // PDI / Metas
-      const itensMetas = daPasta(todos, "pdi/metas").map((i) => comoMeta(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)));
-      const itensEntregas = daPasta(todos, "pdi/entregas").map((i) => comoEntrega(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)));
-      const resumos = resumir(itensMetas, itensEntregas);
-      setResumoPdi(resumos.slice(0, 3));
-
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    } finally {
-      jaCarregouRef.current = true;
-      setCarregando(false);
-    }
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
-
-  useEffect(() => {
     carregar();
   }, [carregar]);
 
@@ -458,7 +562,7 @@ export default function Home() {
     return <Carregando texto="Sincronizando seu centro de comando..." />;
   }
 
-  // Renderização responsiva dos gadgets com base no tamanho individual
+  // Renderização responsiva dos gadgets
   const renderizarGadget = (gadget: Gadget) => {
     switch (gadget.id) {
       case "kpis": {
@@ -470,7 +574,7 @@ export default function Home() {
             : "grid gap-4 grid-cols-1 sm:grid-cols-2";
 
         return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas}>
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
             <div className={gridKpisClass}>
               <Link to="/tarefas" className="block group">
                 <Card className="hover:border-primary/50 transition-all hover:shadow-md cursor-pointer h-full">
@@ -536,7 +640,7 @@ export default function Home() {
 
       case "tarefas":
         return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas}>
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
             <Card className="shadow-sm h-full flex flex-col border border-border/80">
               <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
                 <div className="space-y-1">
@@ -601,8 +705,7 @@ export default function Home() {
                                 ))}
                               </div>
                             </div>
-
-                            <ArrowRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                            <ArrowRight size={16} className="text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
                           </div>
                         </button>
                       );
@@ -614,80 +717,85 @@ export default function Home() {
           </GadgetWrapper>
         );
 
-      case "referencias": {
-        const gridRefsClass =
-          gadget.colunas === 3
-            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 sm:gap-5"
-            : gadget.colunas === 2
-            ? "grid grid-cols-2 sm:grid-cols-4 gap-4"
-            : "grid grid-cols-2 gap-4";
-
+      case "conversores":
         return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas}>
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
             <Card className="shadow-sm h-full flex flex-col border border-border/80">
               <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
                 <div className="space-y-1">
                   <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <ImageIcon size={18} className="text-purple-500" />
-                    Inspirações Visuais Recentes
+                    <RefreshCw size={18} className="text-blue-500" />
+                    Ferramentas de Conversão
                   </CardTitle>
-                  <CardDescription className="text-xs">Sua galeria de referências salvas.</CardDescription>
+                  <CardDescription className="text-xs">Clique para abrir qualquer ferramenta em janela flutuante.</CardDescription>
                 </div>
-                <Link to="/referencias">
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-purple-600 dark:text-purple-400 hover:bg-purple-500/10">
-                    <span>Abrir Galeria</span>
+                <Link to="/conversor">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-blue-500 hover:bg-blue-500/10">
+                    <span>Ver todas</span>
                     <ArrowRight size={14} />
                   </Button>
                 </Link>
               </CardHeader>
               <CardContent className="p-5 sm:p-6 pt-0 flex-1">
-                {referenciasRecentes.length === 0 ? (
-                  <div className="flex h-40 flex-col items-center justify-center rounded-xl border border-dashed border-border/70 text-center p-4">
-                    <ImageIcon className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                    <p className="text-xs text-muted-foreground">Nenhuma referência visual salva ainda.</p>
-                  </div>
-                ) : (
-                  <div className={gridRefsClass}>
-                    {referenciasRecentes.slice(0, gadget.colunas === 3 ? 6 : 4).map((ref) => (
-                      <Link
-                        key={ref.caminho}
-                        to={`/referencias?abrir=${encodeURIComponent(ref.caminho)}`}
-                        className="group flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:border-purple-500/50 transition-all shadow-xs hover:shadow"
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {LISTA_FERRAMENTAS_APP.filter((f) => f.categoria === "conversor").map((f) => {
+                    const IconeComp = f.icone;
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => abrirFerramentaFlutuante(f.id)}
+                        className="flex items-center gap-2.5 p-3 rounded-xl border border-border/80 bg-card hover:bg-accent/80 hover:border-primary/40 transition-all text-left group"
                       >
-                        <div className="h-28 w-full bg-accent/40 relative overflow-hidden flex items-center justify-center">
-                          {ref.imagem ? (
-                            <ImagemPrivada
-                              caminho={ref.imagem}
-                              alt={ref.titulo}
-                              className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                          ) : (
-                            <ImageIcon size={24} className="text-muted-foreground/40" />
-                          )}
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500 shrink-0">
+                          <IconeComp size={16} />
                         </div>
-                        <div className="p-3 space-y-1">
-                          <p className="text-xs font-semibold truncate group-hover:text-purple-500 transition-colors">
-                            {ref.titulo}
+                        <div className="min-w-0">
+                          <p className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors truncate">
+                            {f.titulo}
                           </p>
-                          {ref.tags.length > 0 && (
-                            <span className="text-[10px] text-muted-foreground truncate block font-medium">
-                              #{ref.tags[0]}
-                            </span>
-                          )}
+                          <p className="text-[10px] text-muted-foreground truncate">{f.descricao}</p>
                         </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
+                      </button>
+                    );
+                  })}
+                </div>
               </CardContent>
             </Card>
           </GadgetWrapper>
         );
-      }
+
+      case "transcritor":
+        return (
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
+            <Card className="shadow-sm h-full flex flex-col border border-border/80">
+              <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <Mic size={18} className="text-purple-500" />
+                    Transcritor de Voz & IA
+                  </CardTitle>
+                  <CardDescription className="text-xs">Grave áudio ou transcreva arquivos instantaneamente.</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="p-5 sm:p-6 pt-0 flex-1 flex flex-col justify-between space-y-4">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Transforme gravações de voz ou reuniões em notas organizadas em Markdown com o poder do Gemini.
+                </p>
+                <Button
+                  onClick={() => abrirFerramentaFlutuante("transcritor")}
+                  className="w-full gap-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs py-5 rounded-xl shadow-xs"
+                >
+                  <Mic size={16} />
+                  <span>Abrir Transcritor Flutuante</span>
+                </Button>
+              </CardContent>
+            </Card>
+          </GadgetWrapper>
+        );
 
       case "notas":
         return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas}>
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
             <Card className="shadow-sm h-full flex flex-col border border-border/80">
               <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
                 <div className="space-y-1">
@@ -695,11 +803,11 @@ export default function Home() {
                     <FileText size={18} className="text-blue-500" />
                     Notas Recentes
                   </CardTitle>
-                  <CardDescription className="text-xs">Seus últimos conhecimentos anotados.</CardDescription>
+                  <CardDescription className="text-xs">Seus últimos rascunhos e conhecimentos.</CardDescription>
                 </div>
                 <Link to="/notas">
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-500/10">
-                    <span>Todas</span>
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-blue-500 hover:bg-blue-500/10">
+                    <span>Ver acervo</span>
                     <ArrowRight size={14} />
                   </Button>
                 </Link>
@@ -707,23 +815,21 @@ export default function Home() {
               <CardContent className="p-5 sm:p-6 pt-0 flex-1">
                 {notasRecentes.length === 0 ? (
                   <div className="flex h-36 flex-col items-center justify-center rounded-xl border border-dashed border-border/70 text-center p-3">
-                    <p className="text-xs text-muted-foreground">Nenhuma nota recente.</p>
+                    <p className="text-xs text-muted-foreground">Nenhuma nota criada ainda.</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-3.5 sm:gap-4">
+                  <div className="flex flex-col gap-2">
                     {notasRecentes.map((n) => (
                       <button
                         key={n.caminho}
                         onClick={() => abrirNotaHome(n.caminho)}
                         className="block group w-full text-left"
                       >
-                        <div className="p-4 rounded-xl border border-border/80 bg-card hover:bg-accent/70 hover:border-blue-500/40 transition-all shadow-xs space-y-1">
-                          <p className="text-xs font-semibold group-hover:text-blue-500 transition-colors truncate">
+                        <div className="flex items-center justify-between p-3 rounded-xl border border-border/80 bg-card hover:bg-accent/70 hover:border-blue-500/40 transition-all shadow-xs">
+                          <span className="text-xs font-semibold group-hover:text-blue-500 transition-colors truncate pr-2">
                             {n.titulo}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground truncate">
-                            {n.nome}
-                          </p>
+                          </span>
+                          <ArrowRight size={14} className="text-muted-foreground/40 group-hover:text-blue-500 transition-colors shrink-0" />
                         </div>
                       </button>
                     ))}
@@ -734,17 +840,74 @@ export default function Home() {
           </GadgetWrapper>
         );
 
+      case "referencias":
+        return (
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
+            <Card className="shadow-sm h-full flex flex-col border border-border/80">
+              <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <ImageIcon size={18} className="text-purple-500" />
+                    Inspirações & Referências
+                  </CardTitle>
+                  <CardDescription className="text-xs">Galeria visual do seu acervo.</CardDescription>
+                </div>
+                <Link to="/referencias">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-purple-500 hover:bg-purple-500/10">
+                    <span>Galeria</span>
+                    <ArrowRight size={14} />
+                  </Button>
+                </Link>
+              </CardHeader>
+              <CardContent className="p-5 sm:p-6 pt-0 flex-1">
+                {referenciasRecentes.length === 0 ? (
+                  <div className="flex h-36 flex-col items-center justify-center rounded-xl border border-dashed border-border/70 text-center p-3">
+                    <p className="text-xs text-muted-foreground">Nenhuma referência adicionada.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {referenciasRecentes.map((r) => (
+                      <Link
+                        key={r.caminho}
+                        to={`/referencias?abrir=${encodeURIComponent(r.caminho)}`}
+                        className="group relative overflow-hidden rounded-xl border border-border/80 bg-card hover:border-purple-500/50 transition-all aspect-video shadow-xs"
+                      >
+                        {r.imagem ? (
+                          <ImagemPrivada
+                            caminho={r.imagem}
+                            alt={r.titulo}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-secondary/50 p-2 text-center text-[11px] font-semibold text-muted-foreground">
+                            {r.titulo}
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                          <span className="text-[11px] font-semibold text-white truncate">
+                            {r.titulo}
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </GadgetWrapper>
+        );
+
       case "pdi":
         return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas}>
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
             <Card className="shadow-sm h-full flex flex-col border border-border/80">
               <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
                 <div className="space-y-1">
                   <CardTitle className="text-base font-bold flex items-center gap-2">
                     <Target size={18} className="text-emerald-500" />
-                    Metas da Carreira
+                    Carreira & PDI
                   </CardTitle>
-                  <CardDescription className="text-xs">Plano de Desenvolvimento Individual.</CardDescription>
+                  <CardDescription className="text-xs">Acompanhamento das suas metas.</CardDescription>
                 </div>
                 <Link to="/pdi">
                   <Button variant="ghost" size="sm" className="gap-1 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10">
@@ -779,7 +942,7 @@ export default function Home() {
                               variant={r.meta.status === "concluida" ? "default" : "secondary"}
                               className="text-[9px] py-0.5 px-2 shrink-0 font-medium"
                             >
-                              {r.meta.status === "em-andamento" ? "Em andamento" : r.meta.status === "concluida" ? "Concluída" : "A fazer"}
+                              {r.meta.status === "em-andamento" ? "Em andamento" : r.meta.status === "concluida" ? "Concluída" : "A começar"}
                             </Badge>
                           </div>
                           <p className="text-[11px] text-muted-foreground">
@@ -795,10 +958,71 @@ export default function Home() {
           </GadgetWrapper>
         );
 
+      case "lousas":
+        return (
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
+            <Card className="shadow-sm h-full flex flex-col border border-border/80">
+              <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <Layout size={18} className="text-indigo-500" />
+                    Lousas & Esboços
+                  </CardTitle>
+                  <CardDescription className="text-xs">Desenhe e esquematize suas ideias no Excalidraw.</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="p-5 sm:p-6 pt-0 flex-1 flex flex-col justify-between space-y-4">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Crie mapas mentais, wireframes e desenhos vetoriais salvos no seu repositório.
+                </p>
+                <Link to="/lousas">
+                  <Button className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-5 rounded-xl shadow-xs">
+                    <Layout size={16} />
+                    <span>Abrir Quadro de Lousas</span>
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </GadgetWrapper>
+        );
+
+      case "assistente":
+        return (
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
+            <Card className="shadow-sm h-full flex flex-col border border-border/80">
+              <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <MessageCircle size={18} className="text-pink-500" />
+                    Assistente IA do Klaus
+                  </CardTitle>
+                  <CardDescription className="text-xs">Conversa inteligente com contexto das suas notas.</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="p-5 sm:p-6 pt-0 flex-1 flex flex-col justify-between space-y-4">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Pergunte sobre seus projetos, peça resumos ou tire dúvidas usando a API do Gemini.
+                </p>
+                <Button
+                  onClick={() => abrirFerramentaFlutuante("chat_ia")}
+                  className="w-full gap-2 bg-pink-600 hover:bg-pink-700 text-white font-semibold text-xs py-5 rounded-xl shadow-xs"
+                >
+                  <MessageCircle size={16} />
+                  <span>Abrir Chat Flutuante</span>
+                </Button>
+              </CardContent>
+            </Card>
+          </GadgetWrapper>
+        );
+
       default:
         return null;
     }
   };
+
+  const gadgetsFaltantes = CATALOGO_GADGETS.filter(
+    (c) => !gadgets.some((g) => g.id === c.id)
+  );
 
   return (
     <div className="flex-1 space-y-8 animate-in fade-in duration-300 w-full pb-10">
@@ -812,20 +1036,32 @@ export default function Home() {
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Seu centro de comando do Klaus. Arraste e dimensione os blocos como desejar.
+            Seu centro de comando do Klaus. Personalize os gadgets, redimensione e adicione novas ferramentas.
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={restaurarLayout}
-          className="gap-2 self-start sm:self-auto text-xs text-muted-foreground hover:text-foreground bg-background shadow-xs"
-          title="Restaurar o layout padrão dos gadgets"
-        >
-          <RotateCcw size={14} />
-          <span>Restaurar Layout</span>
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setModalAdicionarAberto(true)}
+            className="gap-2 text-xs font-semibold shadow-xs"
+          >
+            <Plus size={15} />
+            <span>Adicionar Gadget</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={restaurarLayout}
+            className="gap-2 text-xs text-muted-foreground hover:text-foreground bg-background shadow-xs"
+            title="Restaurar o layout padrão dos gadgets"
+          >
+            <RotateCcw size={14} />
+            <span>Restaurar Layout</span>
+          </Button>
+        </div>
       </div>
 
       {erro && (
@@ -843,6 +1079,71 @@ export default function Home() {
           </div>
         </SortableContext>
       </DndContext>
+
+      {/* Modal de Adicionar Gadget */}
+      {modalAdicionarAberto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setModalAdicionarAberto(false)}
+        >
+          <div
+            className="flex max-h-[85vh] w-full max-w-xl flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <div className="flex items-center gap-2">
+                <Layers size={18} className="text-primary" />
+                <h2 className="font-bold text-base text-foreground">Adicionar Gadget ao Dashboard</h2>
+              </div>
+              <button
+                onClick={() => setModalAdicionarAberto(false)}
+                className="p-1 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto space-y-3 min-h-0 flex-1">
+              {gadgetsFaltantes.length === 0 ? (
+                <div className="p-8 text-center space-y-2">
+                  <p className="text-sm font-semibold text-foreground">Todos os gadgets já estão no seu Dashboard!</p>
+                  <p className="text-xs text-muted-foreground">Você pode redimensionar ou reordenar qualquer bloco na tela inicial.</p>
+                </div>
+              ) : (
+                gadgetsFaltantes.map((info) => {
+                  const IconeComp = info.icone;
+                  return (
+                    <div
+                      key={info.id}
+                      className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-card/60 hover:bg-accent/60 transition-colors"
+                    >
+                      <div className="flex items-start gap-3 min-w-0 pr-2">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0 mt-0.5">
+                          <IconeComp size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm text-foreground">{info.titulo}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{info.descricao}</p>
+                        </div>
+                      </div>
+
+                      <Button
+                        size="sm"
+                        onClick={() => adicionarGadget(info)}
+                        className="gap-1.5 text-xs font-semibold shrink-0"
+                      >
+                        <Plus size={14} />
+                        <span>Adicionar</span>
+                      </Button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Painel Notion para edição direta na Home sem pulos de tela */}
       {editandoTarefa !== null && (
         <PainelNotionBase
@@ -904,6 +1205,7 @@ export default function Home() {
           opcoesRelacionamento={[]}
         />
       )}
+
       {/* Painel para Nota na Home */}
       {editandoNota !== null && (
         <PainelNotionBase
