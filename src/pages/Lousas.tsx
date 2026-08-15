@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, lazy, Suspense } from "react";
+import { useCallback, useEffect, useState, useRef, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import {
   Plus,
@@ -60,6 +60,11 @@ export default function Lousas() {
   const [telaCheia, setTelaCheia] = useState(false);
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
 
+  // Guardam em tempo real o estado exato da lousa desenhada (elementos, zoom, posicao scrollX/scrollY e imagens/files)
+  const elementsRef = useRef<any[]>([]);
+  const appStateRef = useRef<any>({});
+  const filesRef = useRef<any>({});
+
   const carregar = useCallback(async () => {
     if (!pronto) {
       setCarregando(false);
@@ -105,6 +110,10 @@ export default function Lousas() {
         dados = { elements: [] };
       }
 
+      elementsRef.current = dados.elements || [];
+      appStateRef.current = dados.appState || {};
+      filesRef.current = dados.files || {};
+
       setAberta({
         caminho: item.caminho,
         sha: item.sha,
@@ -145,6 +154,10 @@ export default function Lousas() {
   function novaLousa() {
     setErro("");
     setMensagemSucesso("");
+    elementsRef.current = [];
+    appStateRef.current = {};
+    filesRef.current = {};
+
     setAberta({
       caminho: "",
       sha: "",
@@ -161,24 +174,31 @@ export default function Lousas() {
     setMensagemSucesso("");
 
     try {
-      let elements = aberta.dados.elements || [];
-      let appState = aberta.dados.appState || {};
-      let files = aberta.dados.files || {};
+      const elements = elementsRef.current.length > 0
+        ? elementsRef.current
+        : (excalidrawAPI ? excalidrawAPI.getSceneElements() : (aberta.dados.elements || []));
 
-      if (excalidrawAPI) {
-        elements = excalidrawAPI.getSceneElements() || [];
-        appState = excalidrawAPI.getAppState() || {};
-        files = excalidrawAPI.getFiles() || {};
-      }
+      const currentAppState = excalidrawAPI
+        ? excalidrawAPI.getAppState()
+        : (appStateRef.current || aberta.dados.appState || {});
+
+      const files = filesRef.current && Object.keys(filesRef.current).length > 0
+        ? filesRef.current
+        : (excalidrawAPI ? excalidrawAPI.getFiles() : (aberta.dados.files || {}));
 
       const tituloLimpo = aberta.titulo.trim() || "Lousa Sem Título";
 
+      // Preserva 100% dos dados da cena (elementos, posicao scrollX/scrollY, zoom, arquivos)
       const dadosParaSalvar = {
         title: tituloLimpo,
         elements,
         appState: {
-          viewBackgroundColor: appState.viewBackgroundColor || "#ffffff",
-          gridSize: appState.gridSize || null,
+          viewBackgroundColor: currentAppState.viewBackgroundColor || "#ffffff",
+          gridSize: currentAppState.gridSize || null,
+          scrollX: currentAppState.scrollX || 0,
+          scrollY: currentAppState.scrollY || 0,
+          zoom: currentAppState.zoom || { value: 1 },
+          theme: currentAppState.theme || (ehModoEscuro ? "dark" : "light"),
         },
         files,
       };
@@ -199,7 +219,7 @@ export default function Lousas() {
         try {
           await apagar(cfg, aberta.caminho, aberta.sha);
         } catch {
-          // ignora falha de exclusão
+          // ignora falha de exclusão do antigo
         }
       }
 
@@ -342,9 +362,21 @@ export default function Lousas() {
             <ExcalidrawComp
               excalidrawAPI={(api) => setExcalidrawAPI(api)}
               theme={ehModoEscuro ? "dark" : "light"}
+              onChange={(elements, appState, files) => {
+                elementsRef.current = elements as any[];
+                appStateRef.current = appState;
+                filesRef.current = files;
+              }}
               initialData={{
                 elements: aberta.dados.elements || [],
-                appState: aberta.dados.appState || {},
+                appState: {
+                  ...(aberta.dados.appState || {}),
+                  viewBackgroundColor: aberta.dados.appState?.viewBackgroundColor || (ehModoEscuro ? "#121212" : "#ffffff"),
+                  gridSize: aberta.dados.appState?.gridSize || null,
+                  scrollX: aberta.dados.appState?.scrollX || 0,
+                  scrollY: aberta.dados.appState?.scrollY || 0,
+                  zoom: aberta.dados.appState?.zoom || { value: 1 },
+                },
                 files: aberta.dados.files || {},
               }}
               UIOptions={{
@@ -398,7 +430,7 @@ export default function Lousas() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {lousas.map((item) => {
-            const titulo = item.doc.dados.titulo as string || tituloProvavel(item.doc, item.nome);
+            const titulo = (item.doc.dados.titulo as string) || tituloProvavel(item.doc, item.nome);
             return (
               <Cartao
                 key={item.caminho}
