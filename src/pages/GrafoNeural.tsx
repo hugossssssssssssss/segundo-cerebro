@@ -135,11 +135,11 @@ export default function GrafoNeural() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <Network size={22} className="text-amber-500 shrink-0" />
-            <h1 className="text-2xl font-bold tracking-tight">Navegador Neural 3D</h1>
+            <Network size={22} className="text-primary shrink-0" />
+            <h1 className="text-2xl font-bold tracking-tight">Grafo de Relacionamentos</h1>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Navegue interativamente entre todas as suas notas, tarefas, metas e referências conectadas no espaço 3D.
+            Visualização limpa e interativa de todas as conexões entre notas, tarefas, metas e ideias do seu segundo cérebro.
           </p>
         </div>
       </div>

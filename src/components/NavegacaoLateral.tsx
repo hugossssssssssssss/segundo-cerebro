@@ -51,7 +51,7 @@ export const gruposNavegacao: GrupoNavegacao[] = [
   {
     titulo: "Criação & Ferramentas",
     itens: [
-      { para: "/grafo", rotulo: "Grafo 3D", Icone: Network, destaque: true },
+      { para: "/grafo", rotulo: "Grafo de Links", Icone: Network, destaque: true },
       { para: "/lousas", rotulo: "Excalidraw", Icone: Layout },
       { para: "/referencias", rotulo: "Pinterest", Icone: Image },
       { para: "/pdf", rotulo: "iLovePDF", Icone: FileCheck },

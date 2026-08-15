@@ -1,93 +1,79 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
-  Maximize2,
-  RotateCcw,
   Play,
   Pause,
   Search,
+  ZoomIn,
+  ZoomOut,
+  Crosshair,
 } from "lucide-react";
 import {
-  construirGrafo3D,
-  simularPassoFisica3D,
-  type DadosGrafo3D,
-  type NoGrafo3D,
+  construirGrafo3D as construirGrafo,
+  simularPassoFisica3D as simularFisica,
+  type DadosGrafo3D as DadosGrafo,
+  type NoGrafo3D as NoGrafo,
   type TipoNoGrafo,
+  CORES_TIPOS_GRAFO,
 } from "@/lib/grafo";
 import type { ItemRepo } from "@/lib/repo";
 import { cn } from "@/lib/utils";
 
-interface NavegadorGrafo3DProps {
+interface NavegadorGrafoProps {
   acervo: ItemRepo[];
   aoSelecionarItem: (caminho: string) => void;
   className?: string;
 }
 
+/**
+ * Visualizador de Grafo de Conhecimento Minimalista & Funcional (Estilo Obsidian / Reflect).
+ *
+ * Apresenta uma visão limpa e interativa de todas as notas, tarefas, metas e conexões.
+ */
 export function NavegadorGrafo3D({
   acervo,
   aoSelecionarItem,
   className,
-}: NavegadorGrafo3DProps) {
+}: NavegadorGrafoProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Filtros e opções
   const [pesquisa, setPesquisa] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<TipoNoGrafo | "todos">("todos");
-  const [mostrarTags] = useState(true);
-  const [autoRotacionar, setAutoRotacionar] = useState(true);
   const [simulando, setSimulando] = useState(true);
+  const [noHover, setNoHover] = useState<NoGrafo | null>(null);
 
-  // Nó sob o cursor e nó selecionado
-  const [noHover, setNoHover] = useState<NoGrafo3D | null>(null);
-
-  // Câmera 3D (ângulos de rotação Pitch/Yaw e distância de Zoom)
+  // Posição de Pan e Zoom 2D da Câmera
   const cameraRef = useRef({
-    rotX: 0.3,
-    rotY: 0.5,
+    panX: 0,
+    panY: 0,
     zoom: 1.0,
-    alvoX: 0,
-    alvoY: 0,
   });
 
-  // Estado da física do grafo
-  const grafoRef = useRef<DadosGrafo3D>({ nos: [], arestas: [] });
+  // Estado do grafo
+  const grafoRef = useRef<DadosGrafo>({ nos: [], arestas: [] });
 
-  // Inicializa o grafo 3D a partir do acervo de itens
+  // Constrói o grafo a partir dos itens do acervo
   useEffect(() => {
     if (acervo.length === 0) return;
-    grafoRef.current = construirGrafo3D(acervo, { incluirTags: mostrarTags });
-  }, [acervo, mostrarTags]);
+    const dados = construirGrafo(acervo, { incluirTags: true });
+    // Zera Z para manter projeção 2D limpa e previsível
+    dados.nos.forEach((n) => {
+      n.z = 0;
+      n.vz = 0;
+    });
+    grafoRef.current = dados;
+  }, [acervo]);
 
-  // Projeção 3D para 2D (Perspective Projection Matrix)
-  const projetar3D = useCallback((x: number, y: number, z: number, largura: number, altura: number) => {
-    const { rotX, rotY, zoom } = cameraRef.current;
-
-    // Rotação Y (Yaw)
-    const cosY = Math.cos(rotY);
-    const sinY = Math.sin(rotY);
-    const x1 = x * cosY - z * sinY;
-    const z1 = x * sinY + z * cosY;
-
-    // Rotação X (Pitch)
-    const cosX = Math.cos(rotX);
-    const sinX = Math.sin(rotX);
-    const y2 = y * cosX - z1 * sinX;
-    const z2 = y * sinX + z1 * cosX;
-
-    const fov = 600;
-    const distancia = z2 + 800;
-    const escala = (fov / Math.max(distancia, 100)) * zoom;
-
-    const px = largura / 2 + x1 * escala;
-    const py = altura / 2 + y2 * escala;
-
-    return { px, py, zIndex: z2, escala };
+  // Centraliza a câmera no grafo
+  const reajustarCentralizacao = useCallback(() => {
+    cameraRef.current = { panX: 0, panY: 0, zoom: 1.0 };
   }, []);
 
-  // Loop de Animação e Renderização 60 FPS
+  // Loop de Renderização e Animação (60 FPS)
   useEffect(() => {
     let animId: number;
 
-    const render = (tempoAtual: number) => {
+    const render = () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
@@ -100,131 +86,130 @@ export function NavegadorGrafo3D({
         canvas.height = altura;
       }
 
-      // 1. Executa um passo da simulação de física 3D se ativo
+      // Executa passo de simulação física se ativado
       if (simulando && grafoRef.current.nos.length > 0) {
-        simularPassoFisica3D(grafoRef.current, 0.88);
+        simularFisica(grafoRef.current, 0.88);
+        // Mantém Z zerado para estabilidade 2D
+        grafoRef.current.nos.forEach((n) => {
+          n.z = 0;
+          n.vz = 0;
+        });
       }
 
-      // 2. Rotação automática suave da câmera
-      if (autoRotacionar) {
-        cameraRef.current.rotY += 0.002;
-      }
+      const { panX, panY, zoom } = cameraRef.current;
+      const centroX = largura / 2 + panX;
+      const centroY = altura / 2 + panY;
 
-      // Limpa a tela com fundo escuro tecnológico
-      ctx.fillStyle = "#090d16";
+      // Fundo limpo e escuro estilo Obsidian
+      ctx.fillStyle = "#0c1017";
       ctx.fillRect(0, 0, largura, altura);
-
-      // Desenha grade de fundo suave no espaço 3D
-      ctx.strokeStyle = "rgba(30, 41, 59, 0.25)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let i = -500; i <= 500; i += 100) {
-        const p1 = projetar3D(i, 200, -500, largura, altura);
-        const p2 = projetar3D(i, 200, 500, largura, altura);
-        ctx.moveTo(p1.px, p1.py);
-        ctx.lineTo(p2.px, p2.py);
-      }
-      ctx.stroke();
 
       const { nos, arestas } = grafoRef.current;
 
-      // 3. Projeta todos os nós para 2D e ordena por profundidade zIndex
-      const nosProjetados = nos
-        .filter((n) => {
-          if (filtroTipo !== "todos" && n.tipo !== filtroTipo) return false;
-          return true;
-        })
-        .map((n) => {
-          const proj = projetar3D(n.x, n.y, n.z, largura, altura);
-          const coincidePesquisa = pesquisa
-            ? n.titulo.toLowerCase().includes(pesquisa.toLowerCase())
-            : true;
-          return { no: n, ...proj, coincidePesquisa };
-        })
-        .sort((a, b) => b.zIndex - a.zIndex);
-
-      const mapaProjetados = new Map(nosProjetados.map((p) => [p.no.id, p]));
-
-      // 4. Renderiza Arestas de Conexão com Pulsos de Partículas
-      const tempoSegundos = tempoAtual / 1000;
-
-      for (const a of arestas) {
-        const orig = mapaProjetados.get(a.origem);
-        const dest = mapaProjetados.get(a.destino);
-        if (!orig || !dest) continue;
-
-        const ehHoverRelacionado =
-          noHover && (noHover.id === orig.no.id || noHover.id === dest.no.id);
-
-        ctx.strokeStyle = ehHoverRelacionado
-          ? "rgba(245, 158, 11, 0.8)"
-          : orig.coincidePesquisa && dest.coincidePesquisa
-          ? "rgba(59, 130, 246, 0.25)"
-          : "rgba(30, 41, 59, 0.1)";
-
-        ctx.lineWidth = ehHoverRelacionado ? 2.5 : 1;
-        ctx.beginPath();
-        ctx.moveTo(orig.px, orig.py);
-        ctx.lineTo(dest.px, dest.py);
-        ctx.stroke();
-
-        // Desenha pulso luminoso viajando ao longo da conexão
-        if (ehHoverRelacionado || Math.random() < 0.3) {
-          const t = (tempoSegundos * 0.8 + (orig.no.x % 10)) % 1;
-          const pxPulso = orig.px + (dest.px - orig.px) * t;
-          const pyPulso = orig.py + (dest.py - orig.py) * t;
-
-          ctx.fillStyle = ehHoverRelacionado ? "#f59e0b" : "#60a5fa";
-          ctx.beginPath();
-          ctx.arc(pxPulso, pyPulso, ehHoverRelacionado ? 3 : 2, 0, Math.PI * 2);
-          ctx.fill();
+      // Mapeamento de nós conectados ao nó sob hover
+      const conexoesHover = new Set<string>();
+      if (noHover) {
+        conexoesHover.add(noHover.id);
+        for (const a of arestas) {
+          if (a.origem === noHover.id) conexoesHover.add(a.destino);
+          if (a.destino === noHover.id) conexoesHover.add(a.origem);
         }
       }
 
-      // 5. Renderiza Nós como Esferas 3D Brilhantes
-      for (const p of nosProjetados) {
-        const { no, px, py, escala, coincidePesquisa } = p;
-        const ehHover = noHover && noHover.id === no.id;
-        const raioProj = Math.max(3, no.raio * escala);
+      const mapaNos = new Map(nos.map((n) => [n.id, n]));
 
-        ctx.save();
-        ctx.globalAlpha = coincidePesquisa ? 1.0 : 0.2;
+      // 1. Desenha as Arestas de Conexão (Linhas Finas e Elegantes)
+      for (const a of arestas) {
+        const n1 = mapaNos.get(a.origem);
+        const n2 = mapaNos.get(a.destino);
+        if (!n1 || !n2) continue;
 
-        // Halo de Brilho Neon Externo
-        if (ehHover || coincidePesquisa) {
-          const gradGlow = ctx.createRadialGradient(px, py, raioProj * 0.2, px, py, raioProj * 2.5);
-          gradGlow.addColorStop(0, no.cor);
-          gradGlow.addColorStop(1, "rgba(0,0,0,0)");
-          ctx.fillStyle = gradGlow;
-          ctx.beginPath();
-          ctx.arc(px, py, raioProj * 2.5, 0, Math.PI * 2);
-          ctx.fill();
+        // Filtro de tipo ativo
+        if (filtroTipo !== "todos" && n1.tipo !== filtroTipo && n2.tipo !== filtroTipo) {
+          continue;
         }
 
-        // Esfera 3D com Gradiente Radial Interno
-        const gradNo = ctx.createRadialGradient(
-          px - raioProj * 0.3,
-          py - raioProj * 0.3,
-          raioProj * 0.1,
-          px,
-          py,
-          raioProj
-        );
-        gradNo.addColorStop(0, "#ffffff");
-        gradNo.addColorStop(0.4, no.cor);
-        gradNo.addColorStop(1, "#000000");
+        const x1 = centroX + n1.x * zoom;
+        const y1 = centroY + n1.y * zoom;
+        const x2 = centroX + n2.x * zoom;
+        const y2 = centroY + n2.y * zoom;
 
-        ctx.fillStyle = gradNo;
+        const estaConectadoAoHover =
+          noHover && (a.origem === noHover.id || a.destino === noHover.id);
+
         ctx.beginPath();
-        ctx.arc(px, py, raioProj, 0, Math.PI * 2);
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+
+        if (estaConectadoAoHover) {
+          ctx.strokeStyle = "#60a5fa";
+          ctx.lineWidth = 1.8 * zoom;
+          ctx.globalAlpha = 0.9;
+        } else {
+          ctx.strokeStyle = "rgba(148, 163, 184, 0.15)";
+          ctx.lineWidth = 1 * zoom;
+          ctx.globalAlpha = noHover ? 0.08 : 0.4;
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+      }
+
+      // 2. Desenha os Nós como Círculos Limpos
+      for (const no of nos) {
+        if (filtroTipo !== "todos" && no.tipo !== filtroTipo) continue;
+
+        const x = centroX + no.x * zoom;
+        const y = centroY + no.y * zoom;
+
+        const coincidePesquisa = pesquisa
+          ? no.titulo.toLowerCase().includes(pesquisa.toLowerCase())
+          : true;
+
+        const ehHover = noHover?.id === no.id;
+        const ehConectadoAoHover = conexoesHover.has(no.id);
+
+        let alpha = 1.0;
+        if (pesquisa && !coincidePesquisa) alpha = 0.15;
+        else if (noHover && !ehConectadoAoHover) alpha = 0.2;
+
+        const raioBase = Math.max(4, Math.min(no.raio * 0.7, 16));
+        const raioFinal = (ehHover ? raioBase * 1.3 : raioBase) * zoom;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        // Anel Externo ao Passar o Mouse
+        if (ehHover) {
+          ctx.beginPath();
+          ctx.arc(x, y, raioFinal + 4, 0, Math.PI * 2);
+          ctx.strokeStyle = no.cor;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        // Círculo do Nó
+        ctx.beginPath();
+        ctx.arc(x, y, raioFinal, 0, Math.PI * 2);
+        ctx.fillStyle = no.cor;
         ctx.fill();
 
-        // Rótulo Flutuante do Título
-        if (ehHover || escala > 0.8 || (pesquisa && coincidePesquisa)) {
-          ctx.font = `${ehHover ? "bold 13px" : "11px"} sans-serif`;
+        // Borda sutil
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Rótulo do Título (aparece no hover, no zoom próximo ou na busca)
+        const deveMostrarRotulo =
+          ehHover ||
+          (noHover && ehConectadoAoHover) ||
+          zoom > 1.2 ||
+          (pesquisa && coincidePesquisa);
+
+        if (deveMostrarRotulo) {
+          ctx.font = `${ehHover ? "600 12px" : "11px"} sans-serif`;
           ctx.fillStyle = ehHover ? "#ffffff" : "rgba(226, 232, 240, 0.85)";
           ctx.textAlign = "center";
-          ctx.fillText(no.titulo, px, py + raioProj + 14);
+          ctx.fillText(no.titulo, x, y + raioFinal + 12);
         }
 
         ctx.restore();
@@ -235,9 +220,9 @@ export function NavegadorGrafo3D({
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [projetar3D, filtroTipo, pesquisa, autoRotacionar, simulando, noHover]);
+  }, [simulando, filtroTipo, pesquisa, noHover]);
 
-  // Controles de Arraste da Câmera no Canvas (Orbit Controls 3D)
+  // Controles de Pan (Arraste 2D do Canvas)
   const estaArrastandoRef = useRef(false);
   const posAnteriorRef = useRef({ x: 0, y: 0 });
 
@@ -256,26 +241,34 @@ export function NavegadorGrafo3D({
       const dx = clientX - posAnteriorRef.current.x;
       const dy = clientY - posAnteriorRef.current.y;
 
-      cameraRef.current.rotY += dx * 0.005;
-      cameraRef.current.rotX += dy * 0.005;
+      cameraRef.current.panX += dx;
+      cameraRef.current.panY += dy;
       posAnteriorRef.current = { x: clientX, y: clientY };
       return;
     }
 
-    // Detecção de Hover sobre um nó 3D
+    // Hover sobre os nós no canvas 2D
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const mx = clientX - rect.left;
     const my = clientY - rect.top;
 
+    const largura = canvas.width;
+    const altura = canvas.height;
+    const { panX, panY, zoom } = cameraRef.current;
+    const centroX = largura / 2 + panX;
+    const centroY = altura / 2 + panY;
+
     const { nos } = grafoRef.current;
-    let achado: NoGrafo3D | null = null;
+    let achado: NoGrafo | null = null;
 
     for (const no of nos) {
-      const proj = projetar3D(no.x, no.y, no.z, canvas.width, canvas.height);
-      const dist = Math.hypot(mx - proj.px, my - proj.py);
-      if (dist < Math.max(no.raio * proj.escala, 12)) {
+      if (filtroTipo !== "todos" && no.tipo !== filtroTipo) continue;
+      const nx = centroX + no.x * zoom;
+      const ny = centroY + no.y * zoom;
+      const dist = Math.hypot(mx - nx, my - ny);
+      if (dist < Math.max(no.raio * zoom, 10)) {
         achado = no;
         break;
       }
@@ -288,14 +281,14 @@ export function NavegadorGrafo3D({
     estaArrastandoRef.current = false;
   };
 
-  // Zoom da Câmera com o Wheel do Mouse
+  // Zoom no scroll do mouse
   const aoRolarWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const del = e.deltaY * -0.0015;
-    cameraRef.current.zoom = Math.min(Math.max(0.3, cameraRef.current.zoom + del), 3.0);
+    const factor = e.deltaY > 0 ? 0.9 : 1.1;
+    cameraRef.current.zoom = Math.min(Math.max(0.4, cameraRef.current.zoom * factor), 3.5);
   };
 
-  // Clique no Nó 3D para abrir o documento no Notion Modal
+  // Clique para abrir o documento no Notion Modal
   const aoClicarCanvas = () => {
     if (noHover && !noHover.caminho.startsWith("tag_")) {
       aoSelecionarItem(noHover.caminho);
@@ -303,8 +296,8 @@ export function NavegadorGrafo3D({
   };
 
   return (
-    <div className={cn("relative w-full h-[calc(100vh-80px)] rounded-2xl overflow-hidden border border-border bg-slate-950 shadow-2xl", className)}>
-      {/* Canvas Principal 3D */}
+    <div className={cn("relative w-full h-[calc(100vh-140px)] rounded-2xl overflow-hidden border border-border bg-[#0c1017] shadow-xl", className)}>
+      {/* Canvas 2D Minimalista */}
       <canvas
         ref={canvasRef}
         onMouseDown={aoIniciarArraste}
@@ -318,79 +311,107 @@ export function NavegadorGrafo3D({
         className="w-full h-full cursor-grab active:cursor-grabbing block"
       />
 
-      {/* Painel de Controle Flutuante Superior (Busca e Filtros) */}
-      <div className="absolute top-4 left-4 right-4 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
-        <div className="flex items-center gap-2 bg-card/85 backdrop-blur-md p-1.5 rounded-xl border border-border/80 shadow-lg pointer-events-auto max-w-sm w-full">
-          <Search size={16} className="text-muted-foreground ml-2 shrink-0" />
+      {/* Barra de Filtros Minimalista no Topo */}
+      <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2.5 pointer-events-none">
+        <div className="flex items-center gap-2 bg-card/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-border/80 shadow-md pointer-events-auto max-w-xs w-full">
+          <Search size={15} className="text-muted-foreground shrink-0" />
           <input
             type="text"
             value={pesquisa}
             onChange={(e) => setPesquisa(e.target.value)}
-            placeholder="Buscar no Grafo Neural 3D..."
+            placeholder="Buscar notas, tarefas, tags..."
             className="w-full bg-transparent border-0 outline-none text-xs text-foreground placeholder:text-muted-foreground focus:ring-0"
           />
         </div>
 
-        {/* Filtros por Categoria de Entidade */}
-        <div className="flex items-center gap-1 bg-card/85 backdrop-blur-md p-1.5 rounded-xl border border-border/80 shadow-lg pointer-events-auto overflow-x-auto">
+        {/* Chips de Categoria Minimalistas */}
+        <div className="flex items-center gap-1 bg-card/90 backdrop-blur-md p-1 rounded-xl border border-border/80 shadow-md pointer-events-auto overflow-x-auto">
           {(["todos", "nota", "tarefa", "meta", "referencia", "lousa"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setFiltroTipo(t)}
               className={cn(
-                "px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 capitalize shrink-0",
+                "px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all capitalize shrink-0 flex items-center gap-1.5",
                 filtroTipo === t
-                  ? "bg-primary text-primary-foreground shadow-xs"
+                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
-              {t === "todos" ? "Tudo" : t}
+              {t !== "todos" && (
+                <span
+                  className="w-2 h-2 rounded-full inline-block"
+                  style={{ backgroundColor: CORES_TIPOS_GRAFO[t] }}
+                />
+              )}
+              <span>{t === "todos" ? "Tudo" : t}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Barra de Ferramentas Flutuante Inferior (Controles de Câmera e Física) */}
-      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-2 pointer-events-none">
-        <div className="flex items-center gap-2 bg-card/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-border/60 text-xs font-medium text-muted-foreground pointer-events-auto">
-          <span>{grafoRef.current.nos.length} Nós</span>
+      {/* Cartão Informativo de Hover no Nó Sob o Cursor */}
+      {noHover && (
+        <div className="absolute top-16 left-3 pointer-events-none bg-card/95 border border-border rounded-xl p-3 shadow-xl backdrop-blur-md animate-in fade-in duration-100 max-w-xs">
+          <div className="flex items-center gap-2">
+            <span
+              className="w-2.5 h-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: noHover.cor }}
+            />
+            <span className="text-xs font-bold text-foreground truncate">{noHover.titulo}</span>
+          </div>
+          <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+            <span className="capitalize">{noHover.tipo}</span>
+            <span>{noHover.conexoesCount} conexão{noHover.conexoesCount === 1 ? "" : "ões"}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Controles de Câmera e Status no Rodapé */}
+      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none">
+        <div className="flex items-center gap-2 bg-card/85 backdrop-blur-md px-3 py-1 rounded-full border border-border/60 text-[11px] font-medium text-muted-foreground pointer-events-auto">
+          <span>{grafoRef.current.nos.length} nós</span>
           <span>•</span>
-          <span>{grafoRef.current.arestas.length} Conexões</span>
+          <span>{grafoRef.current.arestas.length} conexões</span>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-card/85 backdrop-blur-md p-1.5 rounded-xl border border-border/80 shadow-lg pointer-events-auto">
-          <button
-            onClick={() => setAutoRotacionar(!autoRotacionar)}
-            className={cn(
-              "p-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-1",
-              autoRotacionar ? "bg-amber-500/20 text-amber-500 font-semibold" : "text-muted-foreground hover:bg-accent"
-            )}
-            title="Alternar rotação automática da câmera"
-          >
-            <RotateCcw size={15} />
-            <span className="hidden sm:inline">Auto-Giro</span>
-          </button>
-
+        <div className="flex items-center gap-1 bg-card/90 backdrop-blur-md p-1 rounded-xl border border-border/80 shadow-md pointer-events-auto">
           <button
             onClick={() => setSimulando(!simulando)}
             className={cn(
-              "p-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-1",
-              simulando ? "bg-emerald-500/20 text-emerald-500 font-semibold" : "text-muted-foreground hover:bg-accent"
+              "p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1",
+              simulando ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground hover:bg-accent"
             )}
-            title="Pausar/Retomar simulação de física 3D"
+            title={simulando ? "Pausar física" : "Ativar física"}
           >
-            {simulando ? <Pause size={15} /> : <Play size={15} />}
-            <span className="hidden sm:inline">{simulando ? "Física Ativa" : "Pausada"}</span>
+            {simulando ? <Pause size={14} /> : <Play size={14} />}
           </button>
 
           <button
             onClick={() => {
-              cameraRef.current = { rotX: 0.3, rotY: 0.5, zoom: 1.0, alvoX: 0, alvoY: 0 };
+              cameraRef.current.zoom = Math.min(cameraRef.current.zoom * 1.25, 3.5);
             }}
-            className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            title="Resetar câmera 3D"
+            className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            title="Aumentar Zoom"
           >
-            <Maximize2 size={15} />
+            <ZoomIn size={14} />
+          </button>
+
+          <button
+            onClick={() => {
+              cameraRef.current.zoom = Math.max(cameraRef.current.zoom * 0.8, 0.4);
+            }}
+            className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            title="Diminuir Zoom"
+          >
+            <ZoomOut size={14} />
+          </button>
+
+          <button
+            onClick={reajustarCentralizacao}
+            className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            title="Centralizar Câmera"
+          >
+            <Crosshair size={14} />
           </button>
         </div>
       </div>
