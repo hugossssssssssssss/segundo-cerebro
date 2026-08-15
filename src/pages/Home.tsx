@@ -19,12 +19,14 @@ import {
   ListTodo,
   Plus,
   Trash2,
-  RefreshCw,
   Mic,
   Layout,
   MessageCircle,
   X,
   Layers,
+  FileImage,
+  FileType,
+  Settings,
 } from "lucide-react";
 import {
   DndContext,
@@ -78,15 +80,18 @@ export interface InfoGadgetDisponivel {
   id: string;
   titulo: string;
   descricao: string;
+  categoria: "modulo" | "conversor" | "ferramenta";
   icone: any;
   colunasPadrao: 1 | 2 | 3;
 }
 
 const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
+  // --- MÓDULOS PRINCIPAIS ---
   {
     id: "kpis",
     titulo: "Resumo dos KPIs",
     descricao: "Contadores gerais de Tarefas, Notas, Referências e PDI",
+    categoria: "modulo",
     icone: Layout,
     colunasPadrao: 3,
   },
@@ -94,27 +99,15 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
     id: "tarefas",
     titulo: "Próximas Tarefas",
     descricao: "Lista de tarefas pendentes e urgentes com edição rápida",
+    categoria: "modulo",
     icone: CheckSquare,
     colunasPadrao: 2,
-  },
-  {
-    id: "conversores",
-    titulo: "Ferramentas de Conversão",
-    descricao: "Atalhos rápidos para converter PDF, PNG, JPG, WebP e Markdown em modal flutuante",
-    icone: RefreshCw,
-    colunasPadrao: 2,
-  },
-  {
-    id: "transcritor",
-    titulo: "Transcritor de Áudio & IA",
-    descricao: "Gravador de voz e transcrição inteligente de áudio",
-    icone: Mic,
-    colunasPadrao: 1,
   },
   {
     id: "notas",
     titulo: "Notas Recentes",
     descricao: "Últimas notas salvas e rascunhos do seu acervo",
+    categoria: "modulo",
     icone: FileText,
     colunasPadrao: 1,
   },
@@ -122,6 +115,7 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
     id: "referencias",
     titulo: "Referências Visuais",
     descricao: "Mural de inspirações visuais e galeria de fotos",
+    categoria: "modulo",
     icone: ImageIcon,
     colunasPadrao: 2,
   },
@@ -129,21 +123,98 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
     id: "pdi",
     titulo: "Metas de Carreira (PDI)",
     descricao: "Acompanhamento do progresso das metas e entregas",
+    categoria: "modulo",
     icone: Target,
     colunasPadrao: 1,
   },
   {
     id: "lousas",
-    titulo: "Lousas & Esboços",
-    descricao: "Atalho rápido para desenhar no Excalidraw",
+    titulo: "Lousas & Esboços (Excalidraw)",
+    descricao: "Quadros em branco para desenhar e esquematizar",
+    categoria: "modulo",
     icone: Layout,
     colunasPadrao: 1,
   },
+
+  // --- FERRAMENTAS E CONVERSORES INDIVIDUAIS ---
   {
-    id: "assistente",
+    id: "pdf_para_png",
+    titulo: "PDF para PNG",
+    descricao: "Extrai e converte cada página de um PDF em imagens PNG",
+    categoria: "conversor",
+    icone: FileImage,
+    colunasPadrao: 1,
+  },
+  {
+    id: "pdf_para_jpg",
+    titulo: "PDF para JPG",
+    descricao: "Converte páginas de PDF em arquivos JPG compactos",
+    categoria: "conversor",
+    icone: FileImage,
+    colunasPadrao: 1,
+  },
+  {
+    id: "img_para_pdf",
+    titulo: "Imagens para PDF",
+    descricao: "Junta imagens PNG, JPG ou WebP em um único PDF",
+    categoria: "conversor",
+    icone: FileText,
+    colunasPadrao: 1,
+  },
+  {
+    id: "img_para_webp",
+    titulo: "Converter para WebP",
+    descricao: "Otimize imagens em formato WebP com alta qualidade",
+    categoria: "conversor",
+    icone: ImageIcon,
+    colunasPadrao: 1,
+  },
+  {
+    id: "img_para_png",
+    titulo: "Converter para PNG",
+    descricao: "Transforme imagens JPG, WebP ou GIF em PNG",
+    categoria: "conversor",
+    icone: ImageIcon,
+    colunasPadrao: 1,
+  },
+  {
+    id: "img_para_jpg",
+    titulo: "Converter para JPG",
+    descricao: "Transforme imagens PNG ou WebP em formato JPG",
+    categoria: "conversor",
+    icone: ImageIcon,
+    colunasPadrao: 1,
+  },
+  {
+    id: "texto_para_md",
+    titulo: "Texto/HTML/JSON para Markdown",
+    descricao: "Converte textos colados ou arquivos TXT/HTML em Markdown",
+    categoria: "conversor",
+    icone: FileType,
+    colunasPadrao: 1,
+  },
+  {
+    id: "transcritor",
+    titulo: "Transcritor de Áudio & IA",
+    descricao: "Grave voz ou envie áudio para transcrição e resumo",
+    categoria: "ferramenta",
+    icone: Mic,
+    colunasPadrao: 1,
+  },
+  {
+    id: "chat_ia",
     titulo: "Assistente IA do Klaus",
-    descricao: "Perguntas e conversa rápida com o assistente inteligente",
+    descricao: "Conversa inteligente com o assistente Gemini",
+    categoria: "ferramenta",
     icone: MessageCircle,
+    colunasPadrao: 1,
+  },
+  {
+    id: "configuracoes",
+    titulo: "Ajustes & Conexões",
+    descricao: "Configuração de tokens do GitHub e chave do Gemini",
+    categoria: "ferramenta",
+    icone: Settings,
     colunasPadrao: 1,
   },
 ];
@@ -151,7 +222,8 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
 const GADGETS_PADRAO: Gadget[] = [
   { id: "kpis", colunas: 3 },
   { id: "tarefas", colunas: 2 },
-  { id: "conversores", colunas: 1 },
+  { id: "pdf_para_png", colunas: 1 },
+  { id: "transcritor", colunas: 1 },
   { id: "notas", colunas: 1 },
   { id: "referencias", colunas: 2 },
   { id: "pdi", colunas: 1 },
@@ -277,6 +349,7 @@ export default function Home() {
   const [origTarefa, setOrigTarefa] = useState<Tarefa | null>(null);
   const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>("popup");
   const [modalAdicionarAberto, setModalAdicionarAberto] = useState(false);
+  const [filtroCategoriaModal, setFiltroCategoriaModal] = useState<"tudo" | "conversor" | "ferramenta" | "modulo">("tudo");
 
   const [editandoNota, setEditandoNota] = useState<{
     caminho: string;
@@ -562,8 +635,41 @@ export default function Home() {
     return <Carregando texto="Sincronizando seu centro de comando..." />;
   }
 
-  // Renderização responsiva dos gadgets
+  // Renderização responsiva de qualquer gadget individual do acervo
   const renderizarGadget = (gadget: Gadget) => {
+    // 1. Verificar se é uma ferramenta individual de LISTA_FERRAMENTAS_APP
+    const ferramentaApp = LISTA_FERRAMENTAS_APP.find((f) => f.id === gadget.id);
+    if (ferramentaApp) {
+      const IconeComp = ferramentaApp.icone;
+      return (
+        <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
+          <Card className="shadow-sm h-full flex flex-col border border-border/80 hover:border-primary/40 transition-all">
+            <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+                  <IconeComp size={18} />
+                </div>
+                <div className="min-w-0">
+                  <CardTitle className="text-base font-bold truncate">{ferramentaApp.titulo}</CardTitle>
+                  <CardDescription className="text-xs truncate">{ferramentaApp.descricao}</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-5 sm:p-6 pt-0 flex-1 flex flex-col justify-end">
+              <Button
+                onClick={() => abrirFerramentaFlutuante(ferramentaApp.id)}
+                className="w-full gap-2 font-semibold text-xs py-4 rounded-xl shadow-xs"
+              >
+                <IconeComp size={15} />
+                <span>Abrir {ferramentaApp.titulo}</span>
+              </Button>
+            </CardContent>
+          </Card>
+        </GadgetWrapper>
+      );
+    }
+
+    // 2. Outros gadgets gerais do sistema
     switch (gadget.id) {
       case "kpis": {
         const gridKpisClass =
@@ -712,82 +818,6 @@ export default function Home() {
                     })}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </GadgetWrapper>
-        );
-
-      case "conversores":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Card className="shadow-sm h-full flex flex-col border border-border/80">
-              <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <RefreshCw size={18} className="text-blue-500" />
-                    Ferramentas de Conversão
-                  </CardTitle>
-                  <CardDescription className="text-xs">Clique para abrir qualquer ferramenta em janela flutuante.</CardDescription>
-                </div>
-                <Link to="/conversor">
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-blue-500 hover:bg-blue-500/10">
-                    <span>Ver todas</span>
-                    <ArrowRight size={14} />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="p-5 sm:p-6 pt-0 flex-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                  {LISTA_FERRAMENTAS_APP.filter((f) => f.categoria === "conversor").map((f) => {
-                    const IconeComp = f.icone;
-                    return (
-                      <button
-                        key={f.id}
-                        onClick={() => abrirFerramentaFlutuante(f.id)}
-                        className="flex items-center gap-2.5 p-3 rounded-xl border border-border/80 bg-card hover:bg-accent/80 hover:border-primary/40 transition-all text-left group"
-                      >
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500 shrink-0">
-                          <IconeComp size={16} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors truncate">
-                            {f.titulo}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground truncate">{f.descricao}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </GadgetWrapper>
-        );
-
-      case "transcritor":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Card className="shadow-sm h-full flex flex-col border border-border/80">
-              <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <Mic size={18} className="text-purple-500" />
-                    Transcritor de Voz & IA
-                  </CardTitle>
-                  <CardDescription className="text-xs">Grave áudio ou transcreva arquivos instantaneamente.</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="p-5 sm:p-6 pt-0 flex-1 flex flex-col justify-between space-y-4">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Transforme gravações de voz ou reuniões em notas organizadas em Markdown com o poder do Gemini.
-                </p>
-                <Button
-                  onClick={() => abrirFerramentaFlutuante("transcritor")}
-                  className="w-full gap-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs py-5 rounded-xl shadow-xs"
-                >
-                  <Mic size={16} />
-                  <span>Abrir Transcritor Flutuante</span>
-                </Button>
               </CardContent>
             </Card>
           </GadgetWrapper>
@@ -986,35 +1016,6 @@ export default function Home() {
           </GadgetWrapper>
         );
 
-      case "assistente":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Card className="shadow-sm h-full flex flex-col border border-border/80">
-              <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <MessageCircle size={18} className="text-pink-500" />
-                    Assistente IA do Klaus
-                  </CardTitle>
-                  <CardDescription className="text-xs">Conversa inteligente com contexto das suas notas.</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="p-5 sm:p-6 pt-0 flex-1 flex flex-col justify-between space-y-4">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Pergunte sobre seus projetos, peça resumos ou tire dúvidas usando a API do Gemini.
-                </p>
-                <Button
-                  onClick={() => abrirFerramentaFlutuante("chat_ia")}
-                  className="w-full gap-2 bg-pink-600 hover:bg-pink-700 text-white font-semibold text-xs py-5 rounded-xl shadow-xs"
-                >
-                  <MessageCircle size={16} />
-                  <span>Abrir Chat Flutuante</span>
-                </Button>
-              </CardContent>
-            </Card>
-          </GadgetWrapper>
-        );
-
       default:
         return null;
     }
@@ -1022,7 +1023,10 @@ export default function Home() {
 
   const gadgetsFaltantes = CATALOGO_GADGETS.filter(
     (c) => !gadgets.some((g) => g.id === c.id)
-  );
+  ).filter((c) => {
+    if (filtroCategoriaModal === "tudo") return true;
+    return c.categoria === filtroCategoriaModal;
+  });
 
   return (
     <div className="flex-1 space-y-8 animate-in fade-in duration-300 w-full pb-10">
@@ -1036,7 +1040,7 @@ export default function Home() {
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Seu centro de comando do Klaus. Personalize os gadgets, redimensione e adicione novas ferramentas.
+            Seu centro de comando do Klaus. Adicione qualquer ferramenta como um bloco individual e organize do seu jeito.
           </p>
         </div>
 
@@ -1080,7 +1084,7 @@ export default function Home() {
         </SortableContext>
       </DndContext>
 
-      {/* Modal de Adicionar Gadget */}
+      {/* Modal de Adicionar Gadget Individual */}
       {modalAdicionarAberto && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
@@ -1103,11 +1107,36 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="p-4 overflow-y-auto space-y-3 min-h-0 flex-1">
+            {/* Filtros de Categoria */}
+            <div className="flex items-center gap-1.5 border-b border-border p-3 bg-muted/20 overflow-x-auto">
+              {(
+                [
+                  { id: "tudo", rotulo: "Tudo" },
+                  { id: "conversor", rotulo: "Conversores" },
+                  { id: "ferramenta", rotulo: "Ferramentas & IA" },
+                  { id: "modulo", rotulo: "Módulos" },
+                ] as const
+              ).map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setFiltroCategoriaModal(f.id)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+                    filtroCategoriaModal === f.id
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "bg-background text-muted-foreground hover:text-foreground border border-border/60"
+                  )}
+                >
+                  {f.rotulo}
+                </button>
+              ))}
+            </div>
+
+            <div className="p-4 overflow-y-auto space-y-2.5 min-h-0 flex-1">
               {gadgetsFaltantes.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
-                  <p className="text-sm font-semibold text-foreground">Todos os gadgets já estão no seu Dashboard!</p>
-                  <p className="text-xs text-muted-foreground">Você pode redimensionar ou reordenar qualquer bloco na tela inicial.</p>
+                  <p className="text-sm font-semibold text-foreground">Nenhum gadget disponível nesta categoria!</p>
+                  <p className="text-xs text-muted-foreground">Você já adicionou esses gadgets ao seu Dashboard.</p>
                 </div>
               ) : (
                 gadgetsFaltantes.map((info) => {
@@ -1115,14 +1144,19 @@ export default function Home() {
                   return (
                     <div
                       key={info.id}
-                      className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-card/60 hover:bg-accent/60 transition-colors"
+                      className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-card hover:bg-accent/60 transition-colors"
                     >
                       <div className="flex items-start gap-3 min-w-0 pr-2">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0 mt-0.5">
                           <IconeComp size={18} />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-bold text-sm text-foreground">{info.titulo}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-sm text-foreground">{info.titulo}</p>
+                            <Badge variant="outline" className="text-[10px] uppercase font-mono py-0 px-1.5">
+                              {info.categoria}
+                            </Badge>
+                          </div>
                           <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{info.descricao}</p>
                         </div>
                       </div>
