@@ -367,13 +367,18 @@ export default function Lousas() {
   async function remover() {
     if (!aberta || !aberta.caminho) return;
     if (!confirm(`Tem certeza que deseja apagar a lousa "${aberta.titulo}"?`)) return;
+    setSalvando(true);
+    setErro("");
     try {
-      await apagar(cfg, aberta.caminho, aberta.sha);
+      await apagar(cfg, aberta.caminho, aberta.sha || "");
       invalidarCache();
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
       setAberta(null);
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSalvando(false);
     }
   }
 
@@ -558,15 +563,39 @@ export default function Lousas() {
                   </div>
                 </div>
 
-                <Botao
-                  variante="neutro"
-                  tamanho="icone"
-                  onClick={(e) => copiarWikilink(item.caminho, titulo, e)}
-                  title="Copiar @nome para vincular em notas e metas"
-                  className="shrink-0"
-                >
-                  {copiadoId === item.caminho ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-                </Botao>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Botao
+                    variante="neutro"
+                    tamanho="icone"
+                    onClick={(e) => copiarWikilink(item.caminho, titulo, e)}
+                    title="Copiar @nome para vincular em notas e metas"
+                  >
+                    {copiadoId === item.caminho ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                  </Botao>
+                  <Botao
+                    variante="fantasma"
+                    tamanho="icone"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!confirm(`Tem certeza que deseja apagar a lousa "${titulo}"?`)) return;
+                      try {
+                        setCarregando(true);
+                        await apagar(cfg, item.caminho, item.sha);
+                        invalidarCache();
+                        window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+                        await carregar();
+                      } catch (err) {
+                        setErro(err instanceof Error ? err.message : String(err));
+                      } finally {
+                        setCarregando(false);
+                      }
+                    }}
+                    title="Apagar lousa"
+                    className="hover:bg-red-500/10 text-muted-foreground hover:text-red-500"
+                  >
+                    <Trash2 size={14} />
+                  </Botao>
+                </div>
               </Cartao>
             );
           })}

@@ -83,17 +83,16 @@ export function EditorNotion({
   const alvosOverrideKey = alvosOverride ? alvosOverride.map((x) => x.caminho).join(",") : "";
 
   useEffect(() => {
-    if (alvosOverride && alvosOverride.length > 0) {
-      setAlvos(alvosOverride);
-      return;
-    }
-    if (acervo && acervo.length > 0) {
-      const indice = montarIndice(acervo);
-      setAlvos(alvosUnicos(indice));
-      return;
-    }
-
-    function recarregarAlvos() {
+    function recarregar() {
+      if (alvosOverride && alvosOverride.length > 0) {
+        setAlvos(alvosOverride);
+        return;
+      }
+      if (acervo && acervo.length > 0) {
+        const indice = montarIndice(acervo);
+        setAlvos(alvosUnicos(indice));
+        return;
+      }
       carregarRepo(lerConfig())
         .then((todos) => {
           const indice = montarIndice(todos);
@@ -102,10 +101,10 @@ export function EditorNotion({
         .catch(() => {});
     }
 
-    recarregarAlvos();
-    window.addEventListener("acervo-atualizado", recarregarAlvos);
+    recarregar();
+    window.addEventListener("acervo-atualizado", recarregar);
     return () => {
-      window.removeEventListener("acervo-atualizado", recarregarAlvos);
+      window.removeEventListener("acervo-atualizado", recarregar);
     };
   }, [acervo, alvosOverrideKey]);
 
