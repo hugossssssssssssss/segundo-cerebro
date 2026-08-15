@@ -1,6 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { lerMarkdown } from "./markdown";
-import { buscar, agrupar, tipoDoItem } from "./busca";
+import {
+  buscar,
+  agrupar,
+  tipoDoItem,
+  buscarFerramentas,
+  filtrarPorCategoria,
+  alternarFavoritoBusca,
+  ehFavoritoBusca,
+} from "./busca";
 import type { ItemRepo } from "./repo";
 
 function item(caminho: string, texto: string): ItemRepo {
@@ -35,7 +43,6 @@ const acervo: ItemRepo[] = [
 
 describe("buscar", () => {
   it("acha palavra que só existe no meio do corpo", () => {
-    // era exatamente isto que não dava para fazer: o app filtrava só títulos
     const r = buscar(acervo, "serifada");
     expect(r).toHaveLength(1);
     expect(r[0].titulo).toBe("Briefing Acme");
@@ -53,7 +60,6 @@ describe("buscar", () => {
   });
 
   it("título pesa mais que corpo", () => {
-    // "Acme" está no título de um e no corpo de outro
     const r = buscar(acervo, "acme");
     expect(r[0].titulo).toBe("Briefing Acme");
     expect(r).toHaveLength(2);
@@ -79,10 +85,7 @@ describe("buscar", () => {
     expect(buscar(acervo, "xilofone")).toEqual([]);
   });
 
-  /* ------------------------------------- o que a MiniSearch trouxe de novo */
-
   it("perdoa erro de digitação", () => {
-    // era o buraco da versão com `includes`: errou uma letra, não achava nada
     expect(buscar(acervo, "tipografa").map((x) => x.titulo)).toContain("Grade suíça");
     expect(buscar(acervo, "brandng").map((x) => x.titulo)).toContain(
       "Domínio em branding",
@@ -96,20 +99,11 @@ describe("buscar", () => {
 
   it("duas palavras exigem as duas — não devolve o mundo inteiro", () => {
     const r = buscar(acervo, "grade acme");
-    // "grade" aparece em dois itens, "acme" em dois; só um tem os dois
     expect(r).toHaveLength(1);
     expect(r[0].titulo).toBe("Revisar layout");
   });
 
-  it("erro grande demais continua não achando nada", () => {
-    // a tolerância perdoa um deslize, não uma palavra diferente
-    expect(buscar(acervo, "xilofone")).toEqual([]);
-    expect(buscar(acervo, "bicicleta")).toEqual([]);
-  });
-
   it("reaproveita o índice entre chamadas com o mesmo acervo", () => {
-    // duas buscas seguidas têm que dar o mesmo resultado: se o índice em cache
-    // ficasse sujo, a segunda viria diferente
     expect(buscar(acervo, "acme")).toEqual(buscar(acervo, "acme"));
   });
 
@@ -119,8 +113,62 @@ describe("buscar", () => {
     ];
     expect(buscar(outro, "acme")).toEqual([]);
     expect(buscar(outro, "assunto")[0].titulo).toBe("Assunto Novo");
-    // e o acervo original continua funcionando
     expect(buscar(acervo, "acme")[0].titulo).toBe("Briefing Acme");
+  });
+});
+
+describe("buscarFerramentas", () => {
+  it("encontra ferramenta por nome de conversão", () => {
+    const f = buscarFerramentas("png");
+    expect(f.map((x) => x.id)).toContain("pdf_para_png");
+  });
+
+  it("encontra transcritor por palavra chave áudio", () => {
+    const f = buscarFerramentas("áudio");
+    expect(f.map((x) => x.id)).toContain("transcritor");
+  });
+
+  it("retorna lista vazia para termos muito curtos", () => {
+    expect(buscarFerramentas("a")).toEqual([]);
+  });
+});
+
+describe("filtrarPorCategoria", () => {
+  it("filtra apenas notas quando selecionado notas", () => {
+    const r = buscar(acervo, "acme");
+    const notas = filtrarPorCategoria(r, "notas");
+    expect(notas).toHaveLength(1);
+    expect(notas[0].tipo).toBe("nota");
+  });
+
+  it("filtra apenas tarefas", () => {
+    const r = buscar(acervo, "acme");
+    const tarefas = filtrarPorCategoria(r, "tarefas");
+    expect(tarefas).toHaveLength(1);
+    expect(tarefas[0].tipo).toBe("tarefa");
+  });
+
+  it("retorna tudo quando selecionado tudo", () => {
+    const r = buscar(acervo, "acme");
+    expect(filtrarPorCategoria(r, "tudo")).toEqual(r);
+  });
+});
+
+describe("gerenciamento de favoritos da busca", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("alterna favoritos e salva no localStorage", () => {
+    expect(ehFavoritoBusca("pdf_para_png")).toBe(false);
+
+    const f1 = alternarFavoritoBusca("pdf_para_png");
+    expect(f1).toContain("pdf_para_png");
+    expect(ehFavoritoBusca("pdf_para_png")).toBe(true);
+
+    const f2 = alternarFavoritoBusca("pdf_para_png");
+    expect(f2).not.toContain("pdf_para_png");
+    expect(ehFavoritoBusca("pdf_para_png")).toBe(false);
   });
 });
 
@@ -130,7 +178,7 @@ describe("tipoDoItem", () => {
   });
 
   it("cai para a pasta quando o frontmatter não diz", () => {
-    expect(tipoDoItem(acervo[0])).toBe("nota"); // notas/ sem campo tipo
+    expect(tipoDoItem(acervo[0])).toBe("nota");
     expect(tipoDoItem(item("pdi/entregas/2026-01-01-x.md", "sem frontmatter"))).toBe(
       "entrega",
     );

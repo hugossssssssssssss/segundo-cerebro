@@ -1,5 +1,5 @@
 /**
- * Busca em tudo que você escreveu.
+ * Busca em tudo que você escreveu e nas ferramentas do Klaus.
  *
  * Roda no navegador, sobre o conteúdo que o `repo.ts` já carregou — então é
  * instantânea, funciona em repositório privado e não gasta requisição nenhuma.
@@ -19,6 +19,7 @@
 import MiniSearch from "minisearch";
 import type { ItemRepo } from "./repo";
 import { tituloProvavel, comoLista } from "./markdown";
+import { LISTA_FERRAMENTAS_APP, type FerramentaApp } from "./ferramentasApp";
 
 // Re-exporta os contratos centrais de tipos.ts
 export type { TipoItem } from "./tipos";
@@ -35,6 +36,15 @@ export type Resultado = {
   /** Maior = mais relevante */
   peso: number;
 };
+
+export type CategoriaFiltroBusca =
+  | "tudo"
+  | "ferramentas"
+  | "notas"
+  | "tarefas"
+  | "pdi"
+  | "referencias"
+  | "lousas";
 
 /** Descobre o tipo pelo frontmatter e, se faltar, pela pasta. */
 export function tipoDoItem(item: ItemRepo): TipoItem {
@@ -65,12 +75,6 @@ function normalizar(s: string): string {
 
 /**
  * Recorta ~120 caracteres em volta do que casou.
- *
- * Recebe os termos que a MiniSearch de fato encontrou — que já vêm
- * normalizados e podem ser diferentes do que foi digitado, já que a busca
- * perdoa erro e aceita começo de palavra. Usa o primeiro que apareça mesmo no
- * corpo; se nenhum aparecer (casou só no título ou nas tags), mostra o começo
- * do texto, que ainda ajuda a reconhecer o item.
  */
 function recortar(corpo: string, termos: readonly string[]): string {
   const limpo = corpo.replace(/\s+/g, " ").trim();
@@ -106,18 +110,12 @@ type Fichado = {
   corpo: string;
 };
 
-/**
- * Peso de cada campo. Quem procura "cliente x" quase sempre quer a nota
- * CHAMADA "Cliente X", não as quarenta que citam o cliente de passagem.
- */
 const PESO_CAMPO = { titulo: 5, tags: 2, corpo: 1 };
 
 function novoIndice(itens: ItemRepo[]): MiniSearch<Fichado> {
   const mini = new MiniSearch<Fichado>({
     fields: ["titulo", "tags", "corpo"],
     idField: "id",
-    // tira acento e caixa dos DOIS lados — do que está guardado e do que é
-    // digitado — para "reuniao" achar "Reunião"
     processTerm: (termo) => normalizar(termo),
   });
 
@@ -133,14 +131,6 @@ function novoIndice(itens: ItemRepo[]): MiniSearch<Fichado> {
   return mini;
 }
 
-/**
- * Reaproveita o índice enquanto o acervo for o mesmo array.
- *
- * Sem isto, cada tecla digitada na busca reindexaria o repositório inteiro —
- * o `useMemo` da tela chama `buscar` a cada caractere. Com `WeakMap`, o índice
- * é descartado sozinho quando o acervo é recarregado, sem virar cache velho
- * que teima em existir.
- */
 const indices = new WeakMap<ItemRepo[], MiniSearch<Fichado>>();
 
 function indiceDe(itens: ItemRepo[]): MiniSearch<Fichado> {
@@ -154,14 +144,6 @@ function indiceDe(itens: ItemRepo[]): MiniSearch<Fichado> {
 
 /* ------------------------------------------------------------------ busca */
 
-/**
- * Busca o termo em título, corpo e tags de tudo.
- *
- * `prefix` faz "tipo" achar "tipografia"; `fuzzy: 0.2` perdoa cerca de um erro
- * de digitação a cada cinco letras. `AND` exige que TODAS as palavras
- * apareçam — buscar "grade suíça" tem que trazer o item sobre a grade suíça,
- * não tudo que fala de grade.
- */
 export function buscar(itens: ItemRepo[], termo: string): Resultado[] {
   const limpo = termo.trim();
   if (normalizar(limpo).length < 2) return [];
@@ -202,4 +184,76 @@ export function agrupar(resultados: Resultado[]): [TipoItem, Resultado[]][] {
     grupos.set(r.tipo, lista);
   }
   return [...grupos.entries()].sort((a, b) => b[1].length - a[1].length);
+}
+
+/* ------------------------------------------------ BUSCA DE FERRAMENTAS DO APP */
+
+export function buscarFerramentas(termo: string): FerramentaApp[] {
+  const tNorm = normalizar(termo.trim());
+  if (tNorm.length < 2) return [];
+
+  return LISTA_FERRAMENTAS_APP.filter((f) => {
+    const titNorm = normalizar(f.titulo);
+    const descNorm = normalizar(f.descricao);
+    const kwMatch = f.palavrasChave.some((kw) => normalizar(kw).includes(tNorm));
+    return (
+      titNorm.includes(tNorm) ||
+      descNorm.includes(tNorm) ||
+      kwMatch
+    );
+  });
+}
+
+export function filtrarPorCategoria(
+  resultados: Resultado[],
+  categoria: CategoriaFiltroBusca
+): Resultado[] {
+  if (categoria === "tudo") return resultados;
+  if (categoria === "ferramentas") return [];
+  if (categoria === "notas") return resultados.filter((r) => r.tipo === "nota");
+  if (categoria === "tarefas") return resultados.filter((r) => r.tipo === "tarefa");
+  if (categoria === "pdi") return resultados.filter((r) => r.tipo === "meta" || r.tipo === "entrega");
+  if (categoria === "referencias") return resultados.filter((r) => r.tipo === "referencia");
+  if (categoria === "lousas") return resultados.filter((r) => r.tipo === "lousa");
+  return resultados;
+}
+
+/* ---------------------------------------------------- FAVORITOS DA BUSCA */
+
+const CHAVE_FAVORITOS_BUSCA = "klaus:favoritos_busca";
+
+export function lerFavoritosBusca(): string[] {
+  try {
+    const salvo = localStorage.getItem(CHAVE_FAVORITOS_BUSCA);
+    if (!salvo) return [];
+    return JSON.parse(salvo);
+  } catch {
+    return [];
+  }
+}
+
+export function salvarFavoritosBusca(favoritos: string[]): void {
+  try {
+    localStorage.setItem(CHAVE_FAVORITOS_BUSCA, JSON.stringify(favoritos));
+  } catch {
+    // ignorar erros de localStorage
+  }
+}
+
+export function alternarFavoritoBusca(idOuCaminho: string): string[] {
+  const atuais = lerFavoritosBusca();
+  const index = atuais.indexOf(idOuCaminho);
+  let novos: string[];
+  if (index >= 0) {
+    novos = atuais.filter((id) => id !== idOuCaminho);
+  } else {
+    novos = [...atuais, idOuCaminho];
+  }
+  salvarFavoritosBusca(novos);
+  return novos;
+}
+
+export function ehFavoritoBusca(idOuCaminho: string, lista?: string[]): boolean {
+  const favs = lista ?? lerFavoritosBusca();
+  return favs.includes(idOuCaminho);
 }

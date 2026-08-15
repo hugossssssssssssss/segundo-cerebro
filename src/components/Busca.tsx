@@ -1,18 +1,39 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, X } from "lucide-react";
+import { Search, X, Star, Zap, Wrench } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
-import { buscar, agrupar, ROTULO_TIPO, ROTA_TIPO } from "@/lib/busca";
+import {
+  buscar,
+  agrupar,
+  buscarFerramentas,
+  filtrarPorCategoria,
+  lerFavoritosBusca,
+  alternarFavoritoBusca,
+  ehFavoritoBusca,
+  type CategoriaFiltroBusca,
+  ROTULO_TIPO,
+  ROTA_TIPO,
+} from "@/lib/busca";
+import { LISTA_FERRAMENTAS_APP } from "@/lib/ferramentasApp";
 import { Campo, Selo } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { tituloProvavel } from "@/lib/markdown";
+
+const OPCOES_FILTRO: Array<{ id: CategoriaFiltroBusca; rotulo: string }> = [
+  { id: "tudo", rotulo: "Tudo" },
+  { id: "ferramentas", rotulo: "Ferramentas" },
+  { id: "notas", rotulo: "Notas" },
+  { id: "tarefas", rotulo: "Tarefas" },
+  { id: "pdi", rotulo: "PDI" },
+  { id: "referencias", rotulo: "Referências" },
+  { id: "lousas", rotulo: "Lousas" },
+];
 
 /**
- * Busca global. Abre com ⌘K (ou Ctrl+K) e pelo ícone no cabeçalho.
- *
- * O acervo é carregado uma vez ao abrir e reaproveitado enquanto a janela
- * fica aberta — buscar não custa requisição nenhuma, então cada tecla
- * digitada filtra na hora.
+ * Busca global avançada do Klaus.
+ * Suporta pesquisa em conteúdos, ferramentas/conversões do app,
+ * filtros por categoria e favoritos fixados.
  */
 export function Busca({
   aberta,
@@ -23,6 +44,8 @@ export function Busca({
 }) {
   const navegar = useNavigate();
   const [termo, setTermo] = useState("");
+  const [categoria, setCategoria] = useState<CategoriaFiltroBusca>("tudo");
+  const [favoritos, setFavoritos] = useState<string[]>([]);
   const [acervo, setAcervo] = useState<ItemRepo[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
@@ -33,12 +56,13 @@ export function Busca({
 
     setTermo("");
     setErro("");
+    setCategoria("tudo");
+    setFavoritos(lerFavoritosBusca());
     entrada.current?.focus();
 
     const cfg = lerConfig();
     if (!configCompleta(cfg)) {
-      setErro("Configure sua conta do GitHub em Ajustes para poder buscar.");
-      return;
+      setErro("Configure sua conta do GitHub em Ajustes para poder buscar nas notas.");
     }
 
     let cancelado = false;
@@ -62,89 +86,324 @@ export function Busca({
     return () => document.removeEventListener("keydown", aoTeclar);
   }, [aberta, aoFechar]);
 
-  const grupos = useMemo(
-    () => agrupar(buscar(acervo, termo)),
-    [acervo, termo],
+  const toggleFavorito = (idOuCaminho: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const novos = alternarFavoritoBusca(idOuCaminho);
+    setFavoritos(novos);
+  };
+
+  // Ferramentas encontradas pela busca
+  const ferramentasResultado = useMemo(
+    () => (categoria === "tudo" || categoria === "ferramentas" ? buscarFerramentas(termo) : []),
+    [termo, categoria]
   );
-  const total = grupos.reduce((n, [, lista]) => n + lista.length, 0);
+
+  // Itens do repositório encontrados pela busca
+  const resultadosBrutos = useMemo(
+    () => (categoria === "ferramentas" ? [] : buscar(acervo, termo)),
+    [acervo, termo, categoria]
+  );
+
+  const resultadosFiltrados = useMemo(
+    () => filtrarPorCategoria(resultadosBrutos, categoria),
+    [resultadosBrutos, categoria]
+  );
+
+  const grupos = useMemo(
+    () => agrupar(resultadosFiltrados),
+    [resultadosFiltrados]
+  );
+
+  const totalResultados = ferramentasResultado.length + resultadosFiltrados.length;
+
+  // Itens e ferramentas favoritados para exibição inicial
+  const itensFavoritados = useMemo(() => {
+    if (favoritos.length === 0) return { ferramentas: [], repoItens: [] };
+
+    const favSet = new Set(favoritos);
+    const favFerramentas = LISTA_FERRAMENTAS_APP.filter((f) => favSet.has(f.id));
+    const favRepoItens = acervo.filter((item) => favSet.has(item.caminho));
+
+    return { ferramentas: favFerramentas, repoItens: favRepoItens };
+  }, [favoritos, acervo]);
 
   if (!aberta) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-0 pt-0 sm:p-4 sm:pt-24"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-0 pt-0 sm:p-4 sm:pt-20 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={aoFechar}
     >
       <div
-        className="flex max-h-[100dvh] w-full flex-col border-border bg-card shadow-xl sm:max-h-[70dvh] sm:max-w-2xl sm:rounded-2xl sm:border"
+        className="flex max-h-[100dvh] w-full flex-col border-border bg-card shadow-2xl sm:max-h-[80dvh] sm:max-w-2xl sm:rounded-2xl sm:border overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Campo de Entrada */}
         <div className="flex shrink-0 items-center gap-2 border-b border-border p-3">
-          <Search size={18} className="shrink-0 text-muted-foreground" />
+          <Search size={18} className="shrink-0 text-muted-foreground ml-1" />
           <Campo
             ref={entrada}
             value={termo}
             onChange={(e) => setTermo(e.target.value)}
-            placeholder="Buscar em tudo que você escreveu…"
-            className="border-0 bg-transparent focus-visible:ring-0"
+            placeholder="Buscar notas, tarefas, ferramentas (ex: 'PDF para PNG', 'transcrição')..."
+            className="border-0 bg-transparent focus-visible:ring-0 text-base"
             autoFocus
           />
+          {termo && (
+            <button
+              onClick={() => setTermo("")}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground"
+            >
+              <X size={16} />
+            </button>
+          )}
           <button
             onClick={aoFechar}
-            className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-accent"
+            className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
             aria-label="Fechar busca"
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto">
+        {/* Filtros por Categoria */}
+        <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/60 bg-card/50 overflow-x-auto no-scrollbar shrink-0">
+          {OPCOES_FILTRO.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setCategoria(f.id)}
+              className={cn(
+                "px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 select-none",
+                categoria === f.id
+                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                  : "bg-secondary/60 text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+            >
+              {f.rotulo}
+            </button>
+          ))}
+        </div>
+
+        {/* Lista de Resultados / Estado Inicial */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {erro ? (
             <p className="p-6 text-sm text-destructive">{erro}</p>
-          ) : carregando && acervo.length === 0 ? (
-            <p className="p-6 text-sm text-muted-foreground">Carregando…</p>
-          ) : termo.trim().length < 2 ? (
-            <p className="p-6 text-sm text-muted-foreground">
-              Digite ao menos duas letras. A busca olha títulos, tags e o texto
-              inteiro de tudo — notas, tarefas, referências, metas e entregas.
+          ) : carregando && acervo.length === 0 && termo.trim().length >= 2 ? (
+            <p className="p-6 text-sm text-muted-foreground flex items-center gap-2">
+              <span className="animate-pulse">Carregando acervo...</span>
             </p>
-          ) : total === 0 ? (
+          ) : termo.trim().length < 2 ? (
+            /* ESTADO INICIAL (Sem pesquisa ativa) */
+            <div className="p-4 space-y-6">
+              {/* Seção de Favoritos */}
+              {(itensFavoritados.ferramentas.length > 0 || itensFavoritados.repoItens.length > 0) && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-500 uppercase tracking-wider px-1">
+                    <Star size={14} className="fill-amber-500" />
+                    <span>Favoritos Fixados</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Ferramentas Favoritadas */}
+                    {itensFavoritados.ferramentas.map((f) => {
+                      const IconeComp = f.icone;
+                      return (
+                        <div
+                          key={f.id}
+                          onClick={() => {
+                            navegar(f.rota);
+                            aoFechar();
+                          }}
+                          className="flex items-center justify-between p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer transition-colors group"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                              <IconeComp size={16} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-xs text-foreground truncate">{f.titulo}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{f.descricao}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => toggleFavorito(f.id, e)}
+                            className="p-1 rounded-md text-amber-500 hover:bg-amber-500/20"
+                            title="Remover dos Favoritos"
+                          >
+                            <Star size={15} className="fill-amber-500" />
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                    {/* Itens do Repo Favoritados */}
+                    {itensFavoritados.repoItens.map((item) => (
+                      <div
+                        key={item.caminho}
+                        onClick={() => {
+                          const pasta = item.caminho.split("/")[0];
+                          let rota = `/notas?abrir=${encodeURIComponent(item.caminho)}`;
+                          if (pasta === "tarefas") rota = `/tarefas?abrir=${encodeURIComponent(item.caminho)}`;
+                          if (pasta === "referencias") rota = `/referencias?abrir=${encodeURIComponent(item.caminho)}`;
+                          if (pasta === "lousas") rota = `/lousas?abrir=${encodeURIComponent(item.caminho)}`;
+                          if (item.caminho.startsWith("pdi")) rota = `/pdi?abrir=${encodeURIComponent(item.caminho)}`;
+                          navegar(rota);
+                          aoFechar();
+                        }}
+                        className="flex items-center justify-between p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer transition-colors group"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-semibold text-xs text-foreground truncate">
+                            {tituloProvavel(item.doc, item.nome)}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground truncate">{item.caminho}</p>
+                        </div>
+                        <button
+                          onClick={(e) => toggleFavorito(item.caminho, e)}
+                          className="p-1 rounded-md text-amber-500 hover:bg-amber-500/20"
+                          title="Remover dos Favoritos"
+                        >
+                          <Star size={15} className="fill-amber-500" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Seção de Atalhos Rápidos */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">
+                  <Zap size={14} className="text-primary" />
+                  <span>Ferramentas & Conversões Rápidas</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {LISTA_FERRAMENTAS_APP.slice(0, 6).map((f) => {
+                    const IconeComp = f.icone;
+                    const ehFav = ehFavoritoBusca(f.id, favoritos);
+                    return (
+                      <div
+                        key={f.id}
+                        onClick={() => {
+                          navegar(f.rota);
+                          aoFechar();
+                        }}
+                        className="flex items-center justify-between p-2.5 rounded-xl border border-border/80 bg-card hover:bg-accent/60 cursor-pointer transition-colors group"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                            <IconeComp size={16} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-xs text-foreground truncate">{f.titulo}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">{f.descricao}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => toggleFavorito(f.id, e)}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-amber-500 hover:bg-accent opacity-60 group-hover:opacity-100 transition-opacity"
+                          title={ehFav ? "Remover dos Favoritos" : "Favoritar Ferramenta"}
+                        >
+                          <Star size={15} className={cn(ehFav && "fill-amber-500 text-amber-500")} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : totalResultados === 0 ? (
             <p className="p-6 text-sm text-muted-foreground">
               Nada encontrado para “{termo}”.
             </p>
           ) : (
-            grupos.map(([tipo, lista]) => (
-              <div key={tipo}>
-                <p className="sticky top-0 bg-secondary/80 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
-                  {ROTULO_TIPO[tipo]} · {lista.length}
-                </p>
-                {lista.map((r) => (
-                  <button
-                    key={r.caminho}
-                    onClick={() => {
-                      navegar(
-                        `${ROTA_TIPO[r.tipo]}?abrir=${encodeURIComponent(r.caminho)}`,
-                      );
-                      aoFechar();
-                    }}
-                    className={cn(
-                      "block w-full border-b border-border px-4 py-3 text-left transition-colors",
-                      "hover:bg-accent focus-visible:bg-accent focus-visible:outline-none",
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="font-medium">{r.titulo}</p>
-                      <Selo>{r.caminho.split("/")[0]}</Selo>
-                    </div>
-                    {r.trecho && (
-                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                        {r.trecho}
-                      </p>
-                    )}
-                  </button>
-                ))}
-              </div>
-            ))
+            <div className="divide-y divide-border">
+              {/* FERRAMENTAS ENCONTRADAS */}
+              {ferramentasResultado.length > 0 && (
+                <div>
+                  <p className="sticky top-0 bg-secondary/90 px-4 py-1.5 text-xs font-bold text-primary backdrop-blur flex items-center gap-1.5 uppercase tracking-wider">
+                    <Wrench size={13} />
+                    <span>Ferramentas & Conversões · {ferramentasResultado.length}</span>
+                  </p>
+                  {ferramentasResultado.map((f) => {
+                    const IconeComp = f.icone;
+                    const ehFav = ehFavoritoBusca(f.id, favoritos);
+                    return (
+                      <div
+                        key={f.id}
+                        onClick={() => {
+                          navegar(f.rota);
+                          aoFechar();
+                        }}
+                        className="flex items-center justify-between border-b border-border px-4 py-3 text-left transition-colors hover:bg-accent cursor-pointer group"
+                      >
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0 mt-0.5">
+                            <IconeComp size={18} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-sm text-foreground">{f.titulo}</p>
+                              <Selo>Ferramenta</Selo>
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                              {f.descricao}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => toggleFavorito(f.id, e)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-amber-500 hover:bg-accent shrink-0 ml-2"
+                          title={ehFav ? "Remover dos Favoritos" : "Favoritar"}
+                        >
+                          <Star size={16} className={cn(ehFav && "fill-amber-500 text-amber-500")} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* CONTEÚDOS DE NOTAS ENCONTRADOS */}
+              {grupos.map(([tipo, lista]) => (
+                <div key={tipo}>
+                  <p className="sticky top-0 bg-secondary/80 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
+                    {ROTULO_TIPO[tipo]} · {lista.length}
+                  </p>
+                  {lista.map((r) => {
+                    const ehFav = ehFavoritoBusca(r.caminho, favoritos);
+                    return (
+                      <div
+                        key={r.caminho}
+                        onClick={() => {
+                          navegar(`${ROTA_TIPO[r.tipo]}?abrir=${encodeURIComponent(r.caminho)}`);
+                          aoFechar();
+                        }}
+                        className="flex items-start justify-between border-b border-border px-4 py-3 text-left transition-colors hover:bg-accent cursor-pointer group"
+                      >
+                        <div className="min-w-0 flex-1 pr-2">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm text-foreground truncate">{r.titulo}</p>
+                            <Selo>{r.caminho.split("/")[0]}</Selo>
+                          </div>
+                          {r.trecho && (
+                            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+                              {r.trecho}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => toggleFavorito(r.caminho, e)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-amber-500 hover:bg-accent shrink-0"
+                          title={ehFav ? "Remover dos Favoritos" : "Favoritar"}
+                        >
+                          <Star size={16} className={cn(ehFav && "fill-amber-500 text-amber-500")} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
