@@ -8,8 +8,6 @@ import {
   ChevronUp,
   GripVertical,
   GripHorizontal,
-  ArrowUp,
-  ArrowDown,
 } from "lucide-react";
 import { lerMarkdown } from "@/lib/markdown";
 import { lerConfig } from "@/lib/settings";
@@ -20,19 +18,13 @@ import type { ItemRepo } from "@/lib/repo";
 type Props = {
   item: ItemRepo;
   onAbrirEditor?: () => void;
-  onMoverSubir?: () => void;
-  onMoverDescer?: () => void;
-  podeSubir?: boolean;
-  podeDescer?: boolean;
+  onDragStartEmbed?: (caminho: string) => void;
 };
 
 export function MapaMentalEmbed({
   item,
   onAbrirEditor,
-  onMoverSubir,
-  onMoverDescer,
-  podeSubir,
-  podeDescer,
+  onDragStartEmbed,
 }: Props) {
   const [conteudoTexto, setConteudoTexto] = useState(item.texto || "");
   const [svgHtml, setSvgHtml] = useState<string>("");
@@ -134,7 +126,7 @@ export function MapaMentalEmbed({
     }
   };
 
-  // Arraste para redimensionar a altura do embed
+  // Arraste para redimensionar a altura do embed pelo canto
   const iniciarRedimensionamento = (e: React.MouseEvent) => {
     e.preventDefault();
     arrastandoRef.current = true;
@@ -160,42 +152,22 @@ export function MapaMentalEmbed({
 
   return (
     <div className="my-4 w-full rounded-2xl border border-indigo-500/30 bg-card overflow-hidden shadow-lg transition-all hover:border-indigo-500/50 group relative">
-      {/* Cabeçalho de Controle e Arraste Harmonioso */}
+      {/* Cabeçalho com Alça de Arraste Estilo Notion */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-indigo-500/10 dark:bg-indigo-950/40 border-b border-indigo-500/20">
         <div className="flex items-center gap-1.5">
-          {/* Alça de Arraste / Mover Posição da Linha */}
+          {/* Alça Arrastável Estilo Notion */}
           <div
-            className="p-1 cursor-grab active:cursor-grabbing text-indigo-500/60 hover:text-indigo-600 dark:hover:text-indigo-300 rounded transition-colors"
-            title="Segure e arraste para mover a posição do mapa mental"
+            draggable={true}
+            onDragStart={(e) => {
+              e.dataTransfer.setData("text/plain", item.caminho);
+              e.dataTransfer.effectAllowed = "move";
+              if (onDragStartEmbed) onDragStartEmbed(item.caminho);
+            }}
+            className="p-1.5 cursor-grab active:cursor-grabbing text-indigo-500/70 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-500/20 rounded transition-colors"
+            title="Clique, segure e arraste para mover a posição do mapa mental"
           >
             <GripVertical size={16} />
           </div>
-
-          {/* Botões para Reordenar Posição (Subir / Descer Linha) */}
-          {(onMoverSubir || onMoverDescer) && (
-            <div className="flex items-center gap-0.5 border border-indigo-500/20 rounded-lg p-0.5 bg-background/60">
-              {onMoverSubir && (
-                <button
-                  onClick={onMoverSubir}
-                  disabled={!podeSubir}
-                  className="p-1 text-xs hover:bg-indigo-500/20 disabled:opacity-30 rounded text-indigo-600 dark:text-indigo-400 transition-colors"
-                  title="Mover mapa mental para a linha de cima"
-                >
-                  <ArrowUp size={12} />
-                </button>
-              )}
-              {onMoverDescer && (
-                <button
-                  onClick={onMoverDescer}
-                  disabled={!podeDescer}
-                  className="p-1 text-xs hover:bg-indigo-500/20 disabled:opacity-30 rounded text-indigo-600 dark:text-indigo-400 transition-colors"
-                  title="Mover mapa mental para a linha de baixo"
-                >
-                  <ArrowDown size={12} />
-                </button>
-              )}
-            </div>
-          )}
 
           <button
             onClick={() => setExpandido(!expandido)}
@@ -210,7 +182,7 @@ export function MapaMentalEmbed({
           </span>
         </div>
 
-        {/* Barra de Zoom Harmoniosa Estilo Floating Pill Badge */}
+        {/* Barra de Zoom Flutuante Estilo Pill Badge */}
         {expandido && (
           <div className="flex items-center gap-1 bg-indigo-500/10 dark:bg-indigo-950/60 border border-indigo-500/30 backdrop-blur-md rounded-full px-2.5 py-1 text-xs shadow-xs">
             <button
@@ -254,7 +226,7 @@ export function MapaMentalEmbed({
         </Botao>
       </div>
 
-      {/* Corpo da Lousa Incorporada com Redimensionamento por Arraste */}
+      {/* Corpo da Lousa Incorporada com Redimensionamento pelo Canto */}
       {expandido && (
         <div
           style={{ height: `${altura}px` }}
@@ -283,11 +255,11 @@ export function MapaMentalEmbed({
             )}
           </div>
 
-          {/* Alça de Redimensionamento pelo Canto (Drag-to-Resize Handle) */}
+          {/* Alça de Arraste no Canto Inferior Direito para Redimensionar */}
           <div
             onMouseDown={iniciarRedimensionamento}
             className="absolute bottom-0 right-0 w-6 h-6 bg-indigo-500/20 hover:bg-indigo-500/40 dark:bg-indigo-500/30 cursor-se-resize flex items-center justify-center rounded-tl-lg transition-colors border-t border-l border-indigo-500/30"
-            title="Clique e arraste para mudar a altura do mapa mental no documento"
+            title="Clique e arraste pelo canto para mudar o tamanho no documento"
           >
             <GripHorizontal size={14} className="text-indigo-600 dark:text-indigo-300 transform -rotate-45" />
           </div>

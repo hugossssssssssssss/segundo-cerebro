@@ -321,50 +321,73 @@ export function PainelNotionBase({
   }, [corpo, titulosConhecidos, sincronizarCorpo]);
 
   const lousasMencionadas = useMemo(() => {
-    if (!opcoesRelacionamento || opcoesRelacionamento.length === 0) return [];
     const rels = (dadosProps.relacionamentos as string[]) || [];
     const textoCombinado = `${corpo || ""} ${rels.join(" ")}`.toLowerCase();
-    return opcoesRelacionamento.filter((o) => {
+
+    return (opcoesRelacionamento || []).filter((o) => {
       const ehLousa = o.caminho.startsWith("lousas/") || o.caminho.includes("lousa");
       if (!ehLousa) return false;
       const norm = o.titulo.toLowerCase().trim();
-      return norm && (textoCombinado.includes(`@${norm}`) || textoCombinado.includes(`[[${norm}]]`) || textoCombinado.includes(norm));
+      const arq = o.caminho.split("/").pop()?.replace(/\.md$/, "").toLowerCase().trim() || "";
+      return (
+        norm &&
+        (textoCombinado.includes(`@${norm}`) ||
+          textoCombinado.includes(`[[${norm}]]`) ||
+          (arq && textoCombinado.includes(arq)))
+      );
     });
   }, [opcoesRelacionamento, corpo, dadosProps.relacionamentos]);
 
   const eTarefa = rotuloTipo?.toLowerCase().includes("tarefa");
 
   const [posicaoEmbeds, setPosicaoEmbeds] = useState<Record<string, "topo" | "base">>({});
+  const [dragOverZone, setDragOverZone] = useState<"topo" | "base" | null>(null);
+
+  const soltarZone = (zone: "topo" | "base", e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverZone(null);
+    const caminho = e.dataTransfer.getData("text/plain");
+    if (caminho) {
+      setPosicaoEmbeds((prev) => ({ ...prev, [caminho]: zone }));
+    }
+  };
 
   const renderizarEmbeds = (posTarget: "topo" | "base") => {
     const filtrados = lousasMencionadas.filter((l) => (posicaoEmbeds[l.caminho] || "base") === posTarget);
-    if (filtrados.length === 0) return null;
+    if (filtrados.length === 0 && dragOverZone !== posTarget) return null;
+
     return (
-      <div className="space-y-4 my-4">
-        {filtrados.map((l) => {
-          const ehTopo = (posicaoEmbeds[l.caminho] || "base") === "topo";
-          return (
-            <MapaMentalEmbed
-              key={l.caminho}
-              item={{
-                caminho: l.caminho,
-                nome: l.caminho.split("/").pop() || "",
-                sha: "",
-                texto: "",
-                tamanho: 0,
-                doc: { dados: { titulo: l.titulo, tipo: "lousa" }, corpo: "" },
-              }}
-              podeSubir={!ehTopo}
-              podeDescer={ehTopo}
-              onMoverSubir={() => {
-                setPosicaoEmbeds((prev) => ({ ...prev, [l.caminho]: "topo" }));
-              }}
-              onMoverDescer={() => {
-                setPosicaoEmbeds((prev) => ({ ...prev, [l.caminho]: "base" }));
-              }}
-            />
-          );
-        })}
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOverZone(posTarget);
+        }}
+        onDragLeave={() => setDragOverZone(null)}
+        onDrop={(e) => soltarZone(posTarget, e)}
+        className={`my-3 transition-all duration-150 rounded-2xl ${
+          dragOverZone === posTarget
+            ? "border-2 border-dashed border-indigo-500 bg-indigo-500/10 p-4 shadow-inner"
+            : "border border-transparent"
+        }`}
+      >
+        {dragOverZone === posTarget && (
+          <div className="text-center text-xs font-bold text-indigo-600 dark:text-indigo-400 py-2">
+             Solte o mapa mental aqui ({posTarget === "topo" ? "Topo do Documento" : "Base do Documento"})
+          </div>
+        )}
+        {filtrados.map((l) => (
+          <MapaMentalEmbed
+            key={l.caminho}
+            item={{
+              caminho: l.caminho,
+              nome: l.caminho.split("/").pop() || "",
+              sha: "",
+              texto: "",
+              tamanho: 0,
+              doc: { dados: { titulo: l.titulo, tipo: "lousa" }, corpo: "" },
+            }}
+          />
+        ))}
       </div>
     );
   };
