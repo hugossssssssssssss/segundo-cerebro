@@ -1,14 +1,10 @@
-import { lazy, Suspense, useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { ExternalLink } from "lucide-react";
 import { lerMarkdown } from "@/lib/markdown";
 import { lerConfig } from "@/lib/settings";
 import { lerOuVazio } from "@/lib/github";
 import { Carregando, Botao } from "@/components/ui";
 import type { ItemRepo } from "@/lib/repo";
-
-const ExcalidrawComp = lazy(() =>
-  import("@excalidraw/excalidraw").then((m) => ({ default: m.Excalidraw }))
-);
 
 type Props = {
   item: ItemRepo;
@@ -17,6 +13,8 @@ type Props = {
 
 export function MapaMentalEmbed({ item, onAbrirEditor }: Props) {
   const [conteudoTexto, setConteudoTexto] = useState(item.texto || "");
+  const [svgHtml, setSvgHtml] = useState<string>("");
+  const [carregandoSvg, setCarregandoSvg] = useState(true);
 
   useEffect(() => {
     if (!conteudoTexto && item.caminho) {
@@ -29,23 +27,74 @@ export function MapaMentalEmbed({ item, onAbrirEditor }: Props) {
     }
   }, [item.caminho, item.sha, conteudoTexto]);
 
-  const cenaParsed = useMemo(() => {
-    try {
-      const doc = item.doc && item.doc.corpo ? item.doc : lerMarkdown(conteudoTexto || "");
-      const corpoLimpo = doc.corpo ? doc.corpo.trim() : (conteudoTexto.trim().startsWith("{") ? conteudoTexto.trim() : "");
-      if (corpoLimpo.startsWith("{")) {
-        const parsed = JSON.parse(corpoLimpo);
-        if (Array.isArray(parsed)) return { elements: parsed };
-        if (parsed && typeof parsed === "object") return parsed;
-      }
-    } catch {
-      // ignora falha de parse
-    }
-    return { elements: [] };
+  const docParsed = useMemo(() => {
+    return item.doc && item.doc.corpo ? item.doc : lerMarkdown(conteudoTexto || "");
   }, [item, conteudoTexto]);
 
-  const titulo = (item.doc?.dados?.titulo as string) || item.nome.replace(/\.md$/, "");
+  const titulo = (docParsed.dados?.titulo as string) || item.nome.replace(/\.md$/, "");
   const ehModoEscuro = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
+
+  useEffect(() => {
+    let cancelado = false;
+    setCarregandoSvg(true);
+
+    async function gerarSvg() {
+      // Se o frontmatter já tem o SVG pré-renderizado, usa direto
+      if (docParsed.dados?.svg && typeof docParsed.dados.svg === "string") {
+        setSvgHtml(docParsed.dados.svg);
+        setCarregandoSvg(false);
+        return;
+      }
+
+      try {
+        const corpoLimpo = docParsed.corpo ? docParsed.corpo.trim() : (conteudoTexto.trim().startsWith("{") ? conteudoTexto.trim() : "");
+        let elements: any[] = [];
+        let appState: any = {};
+        let files: any = {};
+
+        if (corpoLimpo.startsWith("{")) {
+          const parsed = JSON.parse(corpoLimpo);
+          if (Array.isArray(parsed)) {
+            elements = parsed;
+          } else if (parsed && typeof parsed === "object") {
+            elements = parsed.elements || [];
+            appState = parsed.appState || {};
+            files = parsed.files || {};
+          }
+        }
+
+        if (elements.length > 0) {
+          const { exportToSvg } = await import("@excalidraw/excalidraw");
+          const svgEl = await exportToSvg({
+            elements: elements.filter((el) => !el.isDeleted),
+            appState: {
+              ...appState,
+              exportWithDarkMode: ehModoEscuro,
+              exportBackground: true,
+              viewBackgroundColor: appState?.viewBackgroundColor || (ehModoEscuro ? "#121212" : "#ffffff"),
+            },
+            files,
+          });
+          if (!cancelado && svgEl) {
+            svgEl.setAttribute("width", "100%");
+            svgEl.setAttribute("height", "100%");
+            svgEl.style.maxWidth = "100%";
+            svgEl.style.maxHeight = "360px";
+            setSvgHtml(svgEl.outerHTML);
+          }
+        }
+      } catch {
+        // ignora falha
+      } finally {
+        if (!cancelado) setCarregandoSvg(false);
+      }
+    }
+
+    gerarSvg();
+    return () => {
+      cancelado = true;
+    };
+  }, [docParsed, conteudoTexto, ehModoEscuro]);
 
   const abrirNoExcalidraw = () => {
     if (onAbrirEditor) {
@@ -65,7 +114,7 @@ export function MapaMentalEmbed({ item, onAbrirEditor }: Props) {
             Mapa Mental: {titulo}
           </span>
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-800 dark:text-indigo-200 font-medium">
-            Excalidraw
+            Excalidraw Visual
           </span>
         </div>
         <Botao
@@ -74,39 +123,29 @@ export function MapaMentalEmbed({ item, onAbrirEditor }: Props) {
           onClick={abrirNoExcalidraw}
           className="text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 flex items-center gap-1.5"
         >
-          <span>Editar no Excalidraw</span>
+          <span>Abrir no Editor Excalidraw</span>
           <ExternalLink size={13} />
         </Botao>
       </div>
 
-      <div className="w-full h-[380px] bg-background relative overflow-hidden">
-        <Suspense fallback={<Carregando texto="Carregando desenho do mapa mental..." />}>
-          <ExcalidrawComp
-            key={`embed-${item.caminho}`}
-            viewModeEnabled={true}
-            zenModeEnabled={true}
-            gridModeEnabled={false}
-            theme={ehModoEscuro ? "dark" : "light"}
-            initialData={{
-              elements: cenaParsed.elements || [],
-              appState: {
-                ...(cenaParsed.appState || {}),
-                viewBackgroundColor: cenaParsed.appState?.viewBackgroundColor || (ehModoEscuro ? "#121212" : "#ffffff"),
-                zoom: { value: 0.8 },
-              },
-              files: cenaParsed.files || {},
-            }}
-            UIOptions={{
-              canvasActions: {
-                changeViewBackgroundColor: false,
-                clearCanvas: false,
-                loadScene: false,
-                saveToActiveFile: false,
-                toggleTheme: false,
-              },
-            }}
+      <div
+        onClick={abrirNoExcalidraw}
+        className="w-full min-h-[220px] max-h-[380px] p-4 bg-background/50 dark:bg-neutral-950/50 flex items-center justify-center cursor-pointer hover:bg-accent/40 transition-colors relative overflow-hidden group"
+        title="Clique para abrir e editar no Excalidraw em Tela Cheia"
+      >
+        {carregandoSvg ? (
+          <Carregando texto="Gerando visualização do mapa mental..." />
+        ) : svgHtml ? (
+          <div
+            className="w-full h-full flex items-center justify-center pointer-events-none group-hover:scale-[1.01] transition-transform"
+            dangerouslySetInnerHTML={{ __html: svgHtml }}
           />
-        </Suspense>
+        ) : (
+          <div className="text-center text-sm text-muted-foreground p-6">
+            <span>🗺️ Mapa Mental sem elementos desenhados ainda.</span>
+            <div className="mt-2 text-xs text-indigo-500 font-semibold underline">Clique aqui para abrir e desenhar no Excalidraw</div>
+          </div>
+        )}
       </div>
     </div>
   );

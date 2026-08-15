@@ -257,12 +257,35 @@ export default function Lousas() {
         );
       }
 
+      let svgString = "";
+      try {
+        const { exportToSvg } = await import("@excalidraw/excalidraw");
+        const svgEl = await exportToSvg({
+          elements: elementosValidos,
+          appState: {
+            ...currentAppState,
+            exportWithDarkMode: ehModoEscuro,
+            exportBackground: true,
+            viewBackgroundColor: currentAppState.viewBackgroundColor || (ehModoEscuro ? "#121212" : "#ffffff"),
+          },
+          files,
+        });
+        if (svgEl) {
+          svgEl.setAttribute("width", "100%");
+          svgEl.setAttribute("height", "100%");
+          svgString = svgEl.outerHTML;
+        }
+      } catch {
+        // ignora se SVG falhar
+      }
+
       // Monta documento no padrão do app (Markdown com Frontmatter YAML + JSON no corpo)
       const docFormatado = {
         dados: {
           titulo: tituloLimpo,
           tipo: "lousa",
           atualizado_em: new Date().toISOString(),
+          svg: svgString || undefined,
         },
         corpo: jsonCena,
       };
