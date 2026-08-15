@@ -51,6 +51,7 @@ const Chat = lazy(() => import("@/pages/Chat"));
 const FerramentasPDF = lazy(() => import("@/pages/FerramentasPDF"));
 const Conversor = lazy(() => import("@/pages/Conversor"));
 const Transcritor = lazy(() => import("@/pages/Transcritor"));
+const GrafoNeural = lazy(() => import("@/pages/GrafoNeural"));
 const Processos = lazy(() => import("@/pages/Processos"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 
@@ -350,6 +351,7 @@ export default function App() {
                 <Route path="/notas" element={<Notas />} />
                 <Route path="/referencias" element={<Referencias />} />
                 <Route path="/lousas" element={<Lousas />} />
+                <Route path="/grafo" element={<GrafoNeural />} />
                 <Route path="/pdi" element={<PDI />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/pdf" element={<FerramentasPDF />} />
