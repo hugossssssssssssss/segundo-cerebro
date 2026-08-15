@@ -614,6 +614,10 @@ export default function Home() {
     }
 
     carregar();
+
+    const aoAtualizar = () => carregar();
+    window.addEventListener("acervo-atualizado", aoAtualizar);
+    return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
   }, [carregar]);
 
   if (!pronto) {

@@ -16,4 +16,28 @@ export default defineConfig({
     // que .pathname devolveria percent-encoded ("Segundo%20Cere%CC%81bro").
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
+  build: {
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/onnxruntime-web") || id.includes("@xenova")) {
+            return "vendor-whisper";
+          }
+          if (id.includes("node_modules/pdf-lib") || id.includes("pdfjs-dist") || id.includes("html2pdf.js")) {
+            return "vendor-pdf";
+          }
+          if (id.includes("node_modules/tesseract.js")) {
+            return "vendor-ocr";
+          }
+          if (id.includes("node_modules/@excalidraw")) {
+            return "vendor-excalidraw";
+          }
+          if (id.includes("node_modules/@blocknote")) {
+            return "vendor-blocknote";
+          }
+        },
+      },
+    },
+  },
 });

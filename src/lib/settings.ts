@@ -37,6 +37,37 @@ export type Settings = {
 };
 
 const CHAVE = "segundo-cerebro:config";
+const CHAVE_OFUSCADA = "segundo-cerebro:config:enc";
+
+/** Chave fixa de embaralhamento local para evitar texto puro no localStorage */
+const SALT_LOCAL = "KLAUS_LOCAL_SECURE_STORAGE_V1";
+
+function codificarTexto(texto: string): string {
+  if (!texto) return "";
+  try {
+    const bytes = new TextEncoder().encode(texto);
+    const saltBytes = new TextEncoder().encode(SALT_LOCAL);
+    const xorBytes = bytes.map((b, i) => b ^ saltBytes[i % saltBytes.length]);
+    let binario = "";
+    xorBytes.forEach((b) => (binario += String.fromCharCode(b)));
+    return btoa(binario);
+  } catch {
+    return texto;
+  }
+}
+
+function decodificarTexto(b64: string): string {
+  if (!b64) return "";
+  try {
+    const binario = atob(b64);
+    const bytes = Uint8Array.from(binario, (c) => c.charCodeAt(0));
+    const saltBytes = new TextEncoder().encode(SALT_LOCAL);
+    const xorBytes = bytes.map((b, i) => b ^ saltBytes[i % saltBytes.length]);
+    return new TextDecoder().decode(xorBytes);
+  } catch {
+    return b64;
+  }
+}
 
 export const PADRAO: Settings = {
   githubToken: "",
@@ -87,9 +118,26 @@ function limpar(s: Settings): Settings {
 
 export function lerConfig(): Settings {
   try {
+    // 1. Tenta ler o formato protegido
+    const enc = localStorage.getItem(CHAVE_OFUSCADA);
+    if (enc) {
+      const decodificado = decodificarTexto(enc);
+      const parsed = JSON.parse(decodificado);
+      return limpar({ ...PADRAO, ...parsed });
+    }
+
+    // 2. Fallback para formato antigo em texto puro (migração transparente)
     const bruto = localStorage.getItem(CHAVE);
     if (!bruto) return { ...PADRAO };
-    return limpar({ ...PADRAO, ...JSON.parse(bruto) });
+
+    const parsedLegacy = JSON.parse(bruto);
+    const configLimpa = limpar({ ...PADRAO, ...parsedLegacy });
+
+    // Migra automaticamente para o formato protegido e remove o antigo
+    salvarConfig(configLimpa);
+    localStorage.removeItem(CHAVE);
+
+    return configLimpa;
   } catch {
     return { ...PADRAO };
   }
@@ -97,7 +145,13 @@ export function lerConfig(): Settings {
 
 export function salvarConfig(s: Settings): Settings {
   const limpo = limpar(s);
-  localStorage.setItem(CHAVE, JSON.stringify(limpo));
+  const jsonStr = JSON.stringify(limpo);
+  const encStr = codificarTexto(jsonStr);
+
+  localStorage.setItem(CHAVE_OFUSCADA, encStr);
+  // Remove o armazenamento legado sem proteção
+  localStorage.removeItem(CHAVE);
+
   return limpo;
 }
 

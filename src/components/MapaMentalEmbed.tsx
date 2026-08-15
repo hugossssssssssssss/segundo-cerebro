@@ -15,6 +15,8 @@ import { lerOuVazio } from "@/lib/github";
 import { Carregando, Botao } from "@/components/ui";
 import type { ItemRepo } from "@/lib/repo";
 
+import { sanitizarHTML } from "@/lib/sanitizer";
+
 type Props = {
   item: ItemRepo;
   onAbrirEditor?: () => void;
@@ -233,7 +235,7 @@ export function MapaMentalEmbed({
               <div
                 className="w-full h-full flex items-center justify-center pointer-events-none transition-transform duration-200"
                 style={{ transform: `scale(${zoomScale})`, transformOrigin: "center center" }}
-                dangerouslySetInnerHTML={{ __html: svgHtml }}
+                dangerouslySetInnerHTML={{ __html: sanitizarHTML(svgHtml) }}
               />
             ) : (
               <div className="text-center text-sm text-muted-foreground p-6">

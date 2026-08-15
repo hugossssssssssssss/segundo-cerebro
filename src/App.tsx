@@ -25,6 +25,7 @@ import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 import { Busca } from "@/components/Busca";
 import { CapturaRapida } from "@/components/CapturaRapida";
+import { ToastsContainer } from "@/components/ToastsContainer";
 import { NavegacaoLateral } from "@/components/NavegacaoLateral";
 import { GavetaMais } from "@/components/GavetaMais";
 import { LogoKlaus } from "@/components/LogoKlaus";
@@ -33,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo } from "@/lib/repo";
 import { carregarEstadoInbox, compilarItensInbox } from "@/lib/inbox";
+import { sincronizarFilaOffline as syncOffline } from "@/lib/offlineQueue";
 
 /**
  * HashRouter (URLs com #) em vez de BrowserRouter: o GitHub Pages não sabe
@@ -114,11 +116,21 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         setCapturando(true);
       } else if (tecla === "b") {
         e.preventDefault();
-        setColapsada((v) => !v);
       }
     };
     document.addEventListener("keydown", aoTeclar);
     return () => document.removeEventListener("keydown", aoTeclar);
+  }, []);
+
+  // Sincronização automática de rascunhos offline ao reconectar à internet
+  useEffect(() => {
+    const aoVoltarOnline = () => {
+      const cfg = lerConfig();
+      if (configCompleta(cfg)) syncOffline(cfg);
+    };
+    window.addEventListener("online", aoVoltarOnline);
+    aoVoltarOnline();
+    return () => window.removeEventListener("online", aoVoltarOnline);
   }, []);
 
   // Badge no título da página / favicon (Ideia 9)
@@ -305,7 +317,8 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         </button>
       )}
 
-      {/* Modais e Gavetas */}
+      {/* Modais, Toasts e Gavetas */}
+      <ToastsContainer />
       <GavetaMais aberta={gavetaAberta} aoFechar={() => setGavetaAberta(false)} />
       <Busca aberta={buscando} aoFechar={() => setBuscando(false)} />
       <CapturaRapida

@@ -27,6 +27,8 @@ import { useState } from "react";
 import { gravar, apagar } from "./github";
 import { atualizarCacheLocal, invalidarCache } from "./repo";
 import { lerMarkdown } from "./markdown";
+import { notificarOutrasAbas } from "./syncChannel";
+import { toast } from "./toast";
 import type { Settings } from "./settings";
 
 export type EstadoSalvar = {
@@ -74,13 +76,18 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
       atualizarCacheLocal(caminho, texto, doc, novaSha);
       invalidarCache();
 
-      // Sinaliza para outras telas que o acervo mudou.
+      // Sinaliza para a aba atual e outras abas abertas que o acervo mudou.
       window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+      notificarOutrasAbas(caminho);
+
+      const nomeItem = caminho.split("/").pop() || "Item";
+      toast(`"${nomeItem}" salvo no GitHub!`, { tipo: "sucesso" });
 
       return novaSha;
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
       setErro(mensagem);
+      toast(mensagem, { tipo: "erro" });
       throw e; // repassa para quem chamou decidir o que fazer com a UI
     } finally {
       setSalvando(false);
@@ -94,9 +101,14 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
       await apagar(cfg, caminho, sha);
       invalidarCache();
       window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+      notificarOutrasAbas(caminho);
+
+      const nomeItem = caminho.split("/").pop() || "Item";
+      toast(`"${nomeItem}" removido.`, { tipo: "info" });
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
       setErro(mensagem);
+      toast(mensagem, { tipo: "erro" });
       throw e;
     } finally {
       setSalvando(false);

@@ -320,6 +320,9 @@ export default function Processos() {
 
   useEffect(() => {
     carregar();
+    const aoAtualizar = () => carregar();
+    window.addEventListener("acervo-atualizado", aoAtualizar);
+    return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
   }, [carregar]);
 
   const processoAtivo = processos.find((p) => p.id === processoAtivoId) || processos[0];

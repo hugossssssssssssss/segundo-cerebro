@@ -78,6 +78,9 @@ export default function Inbox() {
 
   useEffect(() => {
     carregar();
+    const aoAtualizar = () => carregar();
+    window.addEventListener("acervo-atualizado", aoAtualizar);
+    return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
   }, [carregar]);
 
   // Lista compilada de itens da Inbox

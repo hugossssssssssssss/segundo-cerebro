@@ -30,6 +30,12 @@ export default function Chat() {
     fim.current?.scrollIntoView({ behavior: "smooth" });
   }, [falas, pensando]);
 
+  useEffect(() => {
+    const aoAtualizar = () => setAcervo([]);
+    window.addEventListener("acervo-atualizado", aoAtualizar);
+    return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
+  }, []);
+
   /**
    * Carrega o acervo uma vez e mantém.
    *
