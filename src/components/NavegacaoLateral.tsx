@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { LogoKlaus } from "./LogoKlaus";
+import { VERSAO_APP } from "@/lib/versao";
 
 export interface ItemNavegacao {
   para: string;
@@ -100,10 +101,13 @@ export function NavegacaoLateral({
           <NavLink
             to="/home"
             onClick={aoNavegar}
-            className="flex items-center gap-2.5 font-semibold tracking-tight text-foreground truncate"
+            className="flex items-center gap-2 font-semibold tracking-tight text-foreground truncate min-w-0"
           >
             <LogoKlaus tamanho={28} />
             <span className="truncate text-base font-bold tracking-tight">Klaus</span>
+            <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-primary border border-primary/20">
+              v{VERSAO_APP}
+            </span>
           </NavLink>
         )}
 
@@ -112,7 +116,7 @@ export function NavegacaoLateral({
             to="/home"
             onClick={aoNavegar}
             className="mx-auto flex items-center justify-center p-1 rounded-xl hover:opacity-80 transition-opacity"
-            title="Klaus"
+            title={`Klaus v${VERSAO_APP}`}
           >
             <LogoKlaus tamanho={28} />
           </NavLink>
