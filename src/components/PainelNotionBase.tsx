@@ -76,7 +76,10 @@ export function PainelNotionBase({
   const [minimizadoFlutuante, setMinimizadoFlutuante] = useState(false);
   const [vendoHistorico, setVendoHistorico] = useState(false);
 
-  // Posicionamento e Redimensionamento da Janela Flutuante
+  const painelRef = useRef<HTMLDivElement>(null);
+  const miniRef = useRef<HTMLDivElement>(null);
+
+  // Posicionamento e Redimensionamento da Janela Flutuante (Persistido no localStorage)
   const [posicaoFlutuante, setPosicaoFlutuante] = useState(() => {
     const salvo = localStorage.getItem("klaus_flutuante_pos");
     if (salvo) {
@@ -105,17 +108,18 @@ export function PainelNotionBase({
     };
   });
 
-  // Salvar posição e tamanho
-  useEffect(() => {
-    if (modoVisao === "flutuante") {
-      localStorage.setItem("klaus_flutuante_pos", JSON.stringify(posicaoFlutuante));
-      localStorage.setItem("klaus_flutuante_tam", JSON.stringify(tamanhoFlutuante));
-    }
-  }, [modoVisao, posicaoFlutuante, tamanhoFlutuante]);
+  // Salvar posição e tamanho quando terminar o movimento
+  const salvarPosTam = (x: number, y: number, largura: number, altura: number) => {
+    setPosicaoFlutuante({ x, y });
+    setTamanhoFlutuante({ largura, altura });
+    localStorage.setItem("klaus_flutuante_pos", JSON.stringify({ x, y }));
+    localStorage.setItem("klaus_flutuante_tam", JSON.stringify({ largura, altura }));
+  };
 
-  // Arrastar posição da janela flutuante pelo cabeçalho
+  // 🚀 ALTA PERFORMANCE (60FPS): Mover janela flutuante sem re-renderizar o editor durante o arrasto
   const [arrastando, setArrastando] = useState(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const posTempRef = useRef({ x: posicaoFlutuante.x, y: posicaoFlutuante.y });
 
   const iniciarArrastoCabecalho = (e: React.MouseEvent | React.TouchEvent) => {
     if (modoVisao !== "flutuante") return;
@@ -124,10 +128,15 @@ export function PainelNotionBase({
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
 
+    const elem = minimizadoFlutuante ? miniRef.current : painelRef.current;
+    const currentLeft = elem ? elem.offsetLeft : posicaoFlutuante.x;
+    const currentTop = elem ? elem.offsetTop : posicaoFlutuante.y;
+
     dragOffsetRef.current = {
-      x: clientX - posicaoFlutuante.x,
-      y: clientY - posicaoFlutuante.y,
+      x: clientX - currentLeft,
+      y: clientY - currentTop,
     };
+    posTempRef.current = { x: currentLeft, y: currentTop };
     setArrastando(true);
   };
 
@@ -138,20 +147,37 @@ export function PainelNotionBase({
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
 
-      const maxLeft = Math.max(0, window.innerWidth - tamanhoFlutuante.largura);
-      const maxTop = Math.max(0, window.innerHeight - 60);
+      const elem = minimizadoFlutuante ? miniRef.current : painelRef.current;
+      const elemWidth = elem ? elem.offsetWidth : tamanhoFlutuante.largura;
+
+      const maxLeft = Math.max(0, window.innerWidth - elemWidth);
+      const maxTop = Math.max(0, window.innerHeight - 50);
 
       const novoX = Math.max(0, Math.min(maxLeft, clientX - dragOffsetRef.current.x));
       const novoY = Math.max(0, Math.min(maxTop, clientY - dragOffsetRef.current.y));
 
-      setPosicaoFlutuante({ x: novoX, y: novoY });
+      posTempRef.current = { x: novoX, y: novoY };
+
+      // Atualização direta de DOM para 60fps lisinho
+      if (elem) {
+        elem.style.left = `${novoX}px`;
+        elem.style.top = `${novoY}px`;
+      }
     };
 
-    const aoSoltarMouse = () => setArrastando(false);
+    const aoSoltarMouse = () => {
+      setArrastando(false);
+      salvarPosTam(
+        posTempRef.current.x,
+        posTempRef.current.y,
+        tamanhoFlutuante.largura,
+        tamanhoFlutuante.altura
+      );
+    };
 
-    window.addEventListener("mousemove", aoMoverMouse);
+    window.addEventListener("mousemove", aoMoverMouse, { passive: true });
     window.addEventListener("mouseup", aoSoltarMouse);
-    window.addEventListener("touchmove", aoMoverMouse);
+    window.addEventListener("touchmove", aoMoverMouse, { passive: true });
     window.addEventListener("touchend", aoSoltarMouse);
 
     return () => {
@@ -160,9 +186,9 @@ export function PainelNotionBase({
       window.removeEventListener("touchmove", aoMoverMouse);
       window.removeEventListener("touchend", aoSoltarMouse);
     };
-  }, [arrastando, tamanhoFlutuante.largura]);
+  }, [arrastando, minimizadoFlutuante, tamanhoFlutuante.largura, tamanhoFlutuante.altura]);
 
-  // Redimensionar janela flutuante em 8 direções
+  // 🚀 ALTA PERFORMANCE (60FPS): Redimensionamento em 8 direções via manipulador de DOM direto
   const [redimensionando, setRedimensionando] = useState<string | null>(null);
   const resizeStartRef = useRef({
     mouseX: 0,
@@ -172,6 +198,7 @@ export function PainelNotionBase({
     largura: 0,
     altura: 0,
   });
+  const tamTempRef = useRef({ largura: tamanhoFlutuante.largura, altura: tamanhoFlutuante.altura });
 
   const iniciarRedimensionamento = (
     direcao: string,
@@ -182,14 +209,22 @@ export function PainelNotionBase({
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
 
+    const elem = painelRef.current;
+    const posX = elem ? elem.offsetLeft : posicaoFlutuante.x;
+    const posY = elem ? elem.offsetTop : posicaoFlutuante.y;
+    const larg = elem ? elem.offsetWidth : tamanhoFlutuante.largura;
+    const alt = elem ? elem.offsetHeight : tamanhoFlutuante.altura;
+
     resizeStartRef.current = {
       mouseX: clientX,
       mouseY: clientY,
-      posX: posicaoFlutuante.x,
-      posY: posicaoFlutuante.y,
-      largura: tamanhoFlutuante.largura,
-      altura: tamanhoFlutuante.altura,
+      posX,
+      posY,
+      largura: larg,
+      altura: alt,
     };
+    posTempRef.current = { x: posX, y: posY };
+    tamTempRef.current = { largura: larg, altura: alt };
     setRedimensionando(direcao);
   };
 
@@ -208,8 +243,8 @@ export function PainelNotionBase({
       let novoX = resizeStartRef.current.posX;
       let novoY = resizeStartRef.current.posY;
 
-      const MIN_W = 320;
-      const MIN_H = 260;
+      const MIN_W = 300;
+      const MIN_H = 240;
 
       if (redimensionando.includes("e")) {
         novaLargura = Math.max(MIN_W, Math.min(window.innerWidth - novoX, resizeStartRef.current.largura + dx));
@@ -232,15 +267,31 @@ export function PainelNotionBase({
         }
       }
 
-      setTamanhoFlutuante({ largura: novaLargura, altura: novaAltura });
-      setPosicaoFlutuante({ x: novoX, y: novoY });
+      posTempRef.current = { x: novoX, y: novoY };
+      tamTempRef.current = { largura: novaLargura, altura: novaAltura };
+
+      // Atualização direta de DOM para renderização de 60fps sem travamento
+      if (painelRef.current) {
+        painelRef.current.style.left = `${novoX}px`;
+        painelRef.current.style.top = `${novoY}px`;
+        painelRef.current.style.width = `${novaLargura}px`;
+        painelRef.current.style.height = `${novaAltura}px`;
+      }
     };
 
-    const aoSoltarResize = () => setRedimensionando(null);
+    const aoSoltarResize = () => {
+      setRedimensionando(null);
+      salvarPosTam(
+        posTempRef.current.x,
+        posTempRef.current.y,
+        tamTempRef.current.largura,
+        tamTempRef.current.altura
+      );
+    };
 
-    window.addEventListener("mousemove", aoMoverResize);
+    window.addEventListener("mousemove", aoMoverResize, { passive: true });
     window.addEventListener("mouseup", aoSoltarResize);
-    window.addEventListener("touchmove", aoMoverResize);
+    window.addEventListener("touchmove", aoMoverResize, { passive: true });
     window.addEventListener("touchend", aoSoltarResize);
 
     return () => {
@@ -251,7 +302,7 @@ export function PainelNotionBase({
     };
   }, [redimensionando]);
 
-  // Guarda referencias atualizadas para evitar fechar sem salvar por causa de closures desatualizados
+  // Guarda referencias atualizadas para evitar fechar sem salvar
   const salvandoRef = useRef(salvando);
   const temMudancasRef = useRef(temMudancas);
   salvandoRef.current = salvando;
@@ -272,7 +323,7 @@ export function PainelNotionBase({
       await aoSalvar();
       aoFechar();
     } catch {
-      // erro mantido na tela
+      // mantem painel aberto se falhar
     } finally {
       fechandoRef.current = false;
       setFechandoESalvando(false);
@@ -325,7 +376,7 @@ export function PainelNotionBase({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opcoesRelacionamento.map((x) => x.caminho).join(",")]);
 
-  // Cabeçalho unificado com alternador dos 4 Modos de Visão
+  // Cabeçalho unificado
   const cabecalho = (
     <div
       onMouseDown={iniciarArrastoCabecalho}
@@ -343,7 +394,6 @@ export function PainelNotionBase({
           {rotuloTipo}
         </span>
 
-        {/* Indicador visual de status de salvamento */}
         <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-accent/60 flex items-center gap-1 shrink-0">
           {salvando || fechandoESalvando ? (
             <span className="text-blue-500 animate-pulse font-semibold">Salvando...</span>
@@ -356,7 +406,6 @@ export function PainelNotionBase({
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
-        {/* Seletor dos 4 Modos de Visão Notion + Flutuante */}
         <div className="flex items-center gap-0.5 rounded-lg border border-border/80 bg-muted/40 p-0.5 sm:p-1">
           <button
             onClick={() => { setModoVisao("popup"); setMinimizadoFlutuante(false); }}
@@ -603,27 +652,29 @@ export function PainelNotionBase({
     </div>
   );
 
-  // MODO 4: FLUTUANTE (Nota Autoadesiva Redimensionável e Móvel)
+  // MODO 4: FLUTUANTE (Nota Autoadesiva Redimensionável e Móvel com Z-INDEX 9999 e 60FPS)
   if (modoVisao === "flutuante") {
     if (minimizadoFlutuante) {
       return (
         <div
+          ref={miniRef}
           style={{
             position: "fixed",
             left: `${posicaoFlutuante.x}px`,
             top: `${posicaoFlutuante.y}px`,
+            zIndex: 9999,
           }}
-          className="z-50 animate-in slide-in-from-bottom duration-200"
+          className="animate-in slide-in-from-bottom duration-200"
         >
           <div
             onClick={() => setMinimizadoFlutuante(false)}
             onMouseDown={iniciarArrastoCabecalho}
             onTouchStart={iniciarArrastoCabecalho}
-            className="flex items-center gap-2.5 rounded-full border border-amber-500/40 bg-amber-500/10 dark:bg-amber-900/30 backdrop-blur-md px-4 py-2 text-xs font-bold text-foreground shadow-xl cursor-grab active:cursor-grabbing hover:scale-105 transition-all select-none"
+            className="flex items-center gap-2.5 rounded-full border border-border bg-card/95 backdrop-blur-md px-4 py-2 text-xs font-bold text-foreground shadow-xl shadow-black/20 cursor-grab active:cursor-grabbing hover:scale-105 transition-all select-none"
           >
-            <Pin size={14} className="text-amber-500 shrink-0" />
+            <Pin size={14} className="text-primary shrink-0" />
             <span className="truncate max-w-[200px]">{titulo || "Nota Autoadesiva"}</span>
-            <span className="text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full">Flutuante</span>
+            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-mono">Flutuante</span>
           </div>
           {modaisConfirmacao}
         </div>
@@ -632,14 +683,16 @@ export function PainelNotionBase({
 
     return (
       <div
+        ref={painelRef}
         style={{
           position: "fixed",
           left: `${posicaoFlutuante.x}px`,
           top: `${posicaoFlutuante.y}px`,
           width: `${tamanhoFlutuante.largura}px`,
           height: `${tamanhoFlutuante.altura}px`,
+          zIndex: 9999,
         }}
-        className="z-50 flex flex-col rounded-2xl border-2 border-amber-500/50 bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 relative"
+        className="flex flex-col rounded-2xl border border-border/80 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.35)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.7)] overflow-hidden animate-in zoom-in-95 duration-150 relative"
       >
         {/* Cabeçalho arrastável */}
         <div className="shrink-0">{cabecalho}</div>
@@ -654,29 +707,29 @@ export function PainelNotionBase({
         <div
           onMouseDown={(e) => iniciarRedimensionamento("e", e)}
           onTouchStart={(e) => iniciarRedimensionamento("e", e)}
-          className="absolute right-0 top-0 bottom-0 w-2 cursor-e-resize hover:bg-amber-500/30 transition-colors z-10"
+          className="absolute right-0 top-0 bottom-0 w-2 cursor-e-resize hover:bg-primary/20 transition-colors z-10"
         />
         <div
           onMouseDown={(e) => iniciarRedimensionamento("s", e)}
           onTouchStart={(e) => iniciarRedimensionamento("s", e)}
-          className="absolute left-0 right-0 bottom-0 h-2 cursor-s-resize hover:bg-amber-500/30 transition-colors z-10"
+          className="absolute left-0 right-0 bottom-0 h-2 cursor-s-resize hover:bg-primary/20 transition-colors z-10"
         />
         <div
           onMouseDown={(e) => iniciarRedimensionamento("w", e)}
           onTouchStart={(e) => iniciarRedimensionamento("w", e)}
-          className="absolute left-0 top-0 bottom-0 w-2 cursor-w-resize hover:bg-amber-500/30 transition-colors z-10"
+          className="absolute left-0 top-0 bottom-0 w-2 cursor-w-resize hover:bg-primary/20 transition-colors z-10"
         />
         <div
           onMouseDown={(e) => iniciarRedimensionamento("n", e)}
           onTouchStart={(e) => iniciarRedimensionamento("n", e)}
-          className="absolute left-0 right-0 top-0 h-2 cursor-n-resize hover:bg-amber-500/30 transition-colors z-10"
+          className="absolute left-0 right-0 top-0 h-2 cursor-n-resize hover:bg-primary/20 transition-colors z-10"
         />
 
         {/* Canto SE (Inferior Direito com alça visual) */}
         <div
           onMouseDown={(e) => iniciarRedimensionamento("se", e)}
           onTouchStart={(e) => iniciarRedimensionamento("se", e)}
-          className="absolute right-0 bottom-0 w-5 h-5 cursor-se-resize flex items-center justify-center text-amber-500/80 hover:text-amber-500 hover:scale-125 transition-all z-20"
+          className="absolute right-0 bottom-0 w-5 h-5 cursor-se-resize flex items-center justify-center text-muted-foreground/40 hover:text-foreground hover:scale-125 transition-all z-20"
           title="Arrastar para redimensionar"
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
