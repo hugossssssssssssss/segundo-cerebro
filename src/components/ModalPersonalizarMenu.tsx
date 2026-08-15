@@ -10,6 +10,10 @@ import {
   ChevronDown,
   Palette,
   Edit3,
+  Plus,
+  Trash2,
+  GripVertical,
+  MoveHorizontal,
 } from "lucide-react";
 import {
   carregarMenuPersonalizado,
@@ -36,6 +40,10 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
   } | null>(null);
   const [sucessoMsg, setSucessoMsg] = useState("");
 
+  // Estado para arrastar e soltar (Drag and Drop)
+  const [dragItem, setDragItem] = useState<{ idxGrupo: number; idxItem: number } | null>(null);
+  const [dragOverCategory, setDragOverCategory] = useState<number | null>(null);
+
   useEffect(() => {
     if (aberta) {
       setGrupos(carregarMenuPersonalizado());
@@ -47,6 +55,56 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
   const atualizarTituloGrupo = (idxGrupo: number, novoTitulo: string) => {
     const copia = [...grupos];
     copia[idxGrupo] = { ...copia[idxGrupo], titulo: novoTitulo };
+    setGrupos(copia);
+  };
+
+  const adicionarCategoria = () => {
+    const nova: GrupoMenuPersonalizado = {
+      id: `categoria-${Date.now()}`,
+      titulo: "Nova Categoria",
+      itens: [],
+    };
+    setGrupos([...grupos, nova]);
+  };
+
+  const removerCategoria = (idxGrupo: number) => {
+    if (grupos.length <= 1) {
+      alert("Você precisa ter pelo menos uma categoria no menu.");
+      return;
+    }
+
+    const grupoARemover = grupos[idxGrupo];
+    if (
+      grupoARemover.itens.length > 0 &&
+      !window.confirm(
+        `A categoria "${grupoARemover.titulo}" possui ${grupoARemover.itens.length} itens. Os itens serão movidos para a primeira categoria.`
+      )
+    ) {
+      return;
+    }
+
+    const copia = [...grupos];
+    const [removida] = copia.splice(idxGrupo, 1);
+
+    // Se houver itens na categoria removida, move para o primeiro grupo restante
+    if (removida.itens.length > 0 && copia.length > 0) {
+      copia[0] = {
+        ...copia[0],
+        itens: [...copia[0].itens, ...removida.itens],
+      };
+    }
+
+    setGrupos(copia);
+  };
+
+  const moverGrupo = (idxGrupo: number, direcao: "cima" | "baixo") => {
+    const novoIdx = direcao === "cima" ? idxGrupo - 1 : idxGrupo + 1;
+    if (novoIdx < 0 || novoIdx >= grupos.length) return;
+
+    const copia = [...grupos];
+    const temp = copia[idxGrupo];
+    copia[idxGrupo] = copia[novoIdx];
+    copia[novoIdx] = temp;
     setGrupos(copia);
   };
 
@@ -64,7 +122,7 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
     setGrupos(copia);
   };
 
-  const moverItem = (idxGrupo: number, idxItem: number, direcao: "cima" | "baixo") => {
+  const moverItemMesmoGrupo = (idxGrupo: number, idxItem: number, direcao: "cima" | "baixo") => {
     const copia = [...grupos];
     const grupo = { ...copia[idxGrupo] };
     const itens = [...grupo.itens];
@@ -77,6 +135,30 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
     itens[novoIdx] = temp;
     grupo.itens = itens;
     copia[idxGrupo] = grupo;
+    setGrupos(copia);
+  };
+
+  const moverItemParaGrupo = (
+    idxGrupoOrigem: number,
+    idxItemOrigem: number,
+    idxGrupoDestino: number,
+    posicaoDestino?: number
+  ) => {
+    if (idxGrupoOrigem === idxGrupoDestino && posicaoDestino === undefined) return;
+
+    const copia = grupos.map((g) => ({ ...g, itens: [...g.itens] }));
+    const item = copia[idxGrupoOrigem].itens.splice(idxItemOrigem, 1)[0];
+
+    if (!item) return;
+
+    if (posicaoDestino !== undefined && idxGrupoOrigem === idxGrupoDestino) {
+      copia[idxGrupoDestino].itens.splice(posicaoDestino, 0, item);
+    } else if (posicaoDestino !== undefined) {
+      copia[idxGrupoDestino].itens.splice(posicaoDestino, 0, item);
+    } else {
+      copia[idxGrupoDestino].itens.push(item);
+    }
+
     setGrupos(copia);
   };
 
@@ -95,7 +177,7 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
   };
 
   const resetar = () => {
-    if (window.confirm("Deseja restaurar os nomes, cores e ícones padrões do menu?")) {
+    if (window.confirm("Deseja restaurar as categorias, nomes, cores e ícones padrões do menu?")) {
       restaurarMenuPadrao();
       setGrupos(carregarMenuPersonalizado());
       setSucessoMsg("Padrões restaurados!");
@@ -103,9 +185,47 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
     }
   };
 
+  // Handlers para Drag & Drop (HTML5 Native)
+  const handleDragStart = (idxGrupo: number, idxItem: number) => {
+    setDragItem({ idxGrupo, idxItem });
+  };
+
+  const handleDragOverCategory = (e: React.DragEvent, idxGrupo: number) => {
+    e.preventDefault();
+    setDragOverCategory(idxGrupo);
+  };
+
+  const handleDropOnCategory = (e: React.DragEvent, idxGrupoDestino: number) => {
+    e.preventDefault();
+    setDragOverCategory(null);
+    if (!dragItem) return;
+
+    moverItemParaGrupo(dragItem.idxGrupo, dragItem.idxItem, idxGrupoDestino);
+    setDragItem(null);
+  };
+
+  const handleDropOnItem = (
+    e: React.DragEvent,
+    idxGrupoDestino: number,
+    idxItemDestino: number
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverCategory(null);
+    if (!dragItem) return;
+
+    moverItemParaGrupo(
+      dragItem.idxGrupo,
+      dragItem.idxItem,
+      idxGrupoDestino,
+      idxItemDestino
+    );
+    setDragItem(null);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <div className="flex flex-col w-full max-w-3xl max-h-[90vh] rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="flex flex-col w-full max-w-4xl max-h-[92vh] rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Cabeçalho */}
         <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
           <div className="flex items-center gap-3">
@@ -115,7 +235,7 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
             <div>
               <h2 className="text-base font-bold text-foreground">Personalizar Menu Lateral</h2>
               <p className="text-xs text-muted-foreground">
-                Altere nomes das categorias, nomes dos itens, cores e ícones do menu
+                Crie categorias, arraste e mova funcionalidades, escolha cores e ícones na galeria
               </p>
             </div>
           </div>
@@ -136,13 +256,36 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
           </div>
         )}
 
+        {/* Barra superior de ações */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-2.5 bg-accent/30 border-b border-border text-xs">
+          <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+            <GripVertical size={14} className="text-primary" />
+            <span>Dica: Arraste os itens pelo ícone para mover entre categorias</span>
+          </span>
+          <button
+            onClick={adicionarCategoria}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-all shadow-xs"
+          >
+            <Plus size={14} />
+            Nova Categoria
+          </button>
+        </div>
+
         {/* Conteúdo scrollável com grupos */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-background">
           {grupos.map((grupo, idxGrupo) => (
-            <div key={grupo.id} className="rounded-xl border border-border bg-card p-4 space-y-4">
-              {/* Título da Categoria */}
+            <div
+              key={grupo.id}
+              onDragOver={(e) => handleDragOverCategory(e, idxGrupo)}
+              onDrop={(e) => handleDropOnCategory(e, idxGrupo)}
+              className={cn(
+                "rounded-xl border border-border bg-card p-4 space-y-4 transition-all",
+                dragOverCategory === idxGrupo && "ring-2 ring-primary border-primary bg-primary/5"
+              )}
+            >
+              {/* Título da Categoria & Ações de Categoria */}
               <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">
-                <div className="flex items-center gap-2 flex-1">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                   <Edit3 size={14} className="text-muted-foreground shrink-0" />
                   <input
                     type="text"
@@ -152,27 +295,77 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
                     className="text-xs font-bold uppercase tracking-wider text-muted-foreground bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-hidden px-1 py-0.5 w-full max-w-xs transition-colors"
                   />
                 </div>
-                <span className="text-[10px] font-mono text-muted-foreground/70">
-                  {grupo.itens.filter((i) => !i.oculto).length} visíveis
-                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono text-muted-foreground/70 hidden sm:inline">
+                    {grupo.itens.filter((i) => !i.oculto).length} visíveis
+                  </span>
+
+                  {/* Reordenar Categoria Cima/Baixo */}
+                  <button
+                    type="button"
+                    onClick={() => moverGrupo(idxGrupo, "cima")}
+                    disabled={idxGrupo === 0}
+                    className="p-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-30 transition-colors"
+                    title="Mover categoria para cima"
+                  >
+                    <ChevronUp size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moverGrupo(idxGrupo, "baixo")}
+                    disabled={idxGrupo === grupos.length - 1}
+                    className="p-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-30 transition-colors"
+                    title="Mover categoria para baixo"
+                  >
+                    <ChevronDown size={16} />
+                  </button>
+
+                  {/* Excluir Categoria */}
+                  <button
+                    type="button"
+                    onClick={() => removerCategoria(idxGrupo)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    title="Excluir categoria"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
+
+              {/* Área para onde arrastar se a categoria estiver vazia */}
+              {grupo.itens.length === 0 && (
+                <div className="border-2 border-dashed border-border/60 rounded-xl p-6 text-center text-xs text-muted-foreground">
+                  Arraste funcionalidades para esta categoria ou use o seletor de destino abaixo.
+                </div>
+              )}
 
               {/* Lista de Itens do Grupo */}
               <div className="space-y-3">
                 {grupo.itens.map((item, idxItem) => {
                   const IconeComp = obterIconePorNome(item.iconeNome);
+                  const dragginThis =
+                    dragItem?.idxGrupo === idxGrupo && dragItem?.idxItem === idxItem;
+
                   return (
                     <div
                       key={item.id}
+                      draggable
+                      onDragStart={() => handleDragStart(idxGrupo, idxItem)}
+                      onDrop={(e) => handleDropOnItem(e, idxGrupo, idxItem)}
+                      onDragOver={(e) => e.preventDefault()}
                       className={cn(
-                        "flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border transition-all",
+                        "flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border transition-all cursor-grab active:cursor-grabbing",
                         item.oculto
                           ? "bg-muted/20 border-border/40 opacity-60"
-                          : "bg-card border-border hover:border-primary/40 shadow-xs"
+                          : "bg-card border-border hover:border-primary/40 shadow-xs",
+                        dragginThis && "opacity-40 border-dashed border-primary"
                       )}
                     >
-                      {/* Lado Esquerdo: Ícone + Input de Nome */}
+                      {/* Lado Esquerdo: Grip + Ícone + Input de Nome */}
                       <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <GripVertical size={16} className="text-muted-foreground/60 shrink-0" />
+
                         {/* Botão de escolha do Ícone */}
                         <button
                           type="button"
@@ -203,8 +396,27 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
                         </div>
                       </div>
 
-                      {/* Lado Direito: Seletor de Cores & Ações */}
+                      {/* Lado Direito: Seletor de Categoria Destino, Cores & Ações */}
                       <div className="flex items-center gap-2 justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-border/40">
+                        {/* Seletor "Mover para Categoria" */}
+                        <div className="flex items-center gap-1 bg-accent/30 p-1 rounded-lg border border-border/60">
+                          <MoveHorizontal size={12} className="text-muted-foreground ml-1" />
+                          <select
+                            value={idxGrupo}
+                            onChange={(e) =>
+                              moverItemParaGrupo(idxGrupo, idxItem, Number(e.target.value))
+                            }
+                            className="text-xs bg-transparent border-0 text-foreground font-medium focus:outline-hidden cursor-pointer max-w-[110px] sm:max-w-[130px] truncate"
+                            title="Mover para outra categoria"
+                          >
+                            {grupos.map((gDest, gIdx) => (
+                              <option key={gDest.id} value={gIdx}>
+                                {gDest.titulo}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
                         {/* Paleta de Cores */}
                         <div className="flex items-center gap-1 bg-accent/40 p-1 rounded-lg border border-border/60">
                           {/* Sem cor */}
@@ -247,11 +459,11 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
                           />
                         </div>
 
-                        {/* Reordenar Cima / Baixo */}
+                        {/* Reordenar Cima / Baixo no mesmo grupo */}
                         <div className="flex items-center gap-0.5">
                           <button
                             type="button"
-                            onClick={() => moverItem(idxGrupo, idxItem, "cima")}
+                            onClick={() => moverItemMesmoGrupo(idxGrupo, idxItem, "cima")}
                             disabled={idxItem === 0}
                             className="p-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-30 transition-colors"
                             title="Mover para cima"
@@ -260,7 +472,7 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
                           </button>
                           <button
                             type="button"
-                            onClick={() => moverItem(idxGrupo, idxItem, "baixo")}
+                            onClick={() => moverItemMesmoGrupo(idxGrupo, idxItem, "baixo")}
                             disabled={idxItem === grupo.itens.length - 1}
                             className="p-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-30 transition-colors"
                             title="Mover para baixo"
@@ -290,6 +502,16 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
               </div>
             </div>
           ))}
+
+          {/* Botão inferior para adicionar nova categoria */}
+          <button
+            type="button"
+            onClick={adicionarCategoria}
+            className="flex items-center justify-center gap-2 w-full p-3 rounded-xl border-2 border-dashed border-border hover:border-primary text-muted-foreground hover:text-primary font-semibold text-xs transition-colors"
+          >
+            <Plus size={16} />
+            <span>Adicionar Nova Categoria</span>
+          </button>
         </div>
 
         {/* Rodapé com Restauração e Salvamento */}

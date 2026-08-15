@@ -40,6 +40,26 @@ describe("menuPersonalizado", () => {
     expect(carregados[0].itens[0].cor).toBe("#f59e0b");
   });
 
+  it("deve suportar criação de novas categorias personalizadas pelo usuário", () => {
+    const gruposCustom: GrupoMenuPersonalizado[] = [
+      ...GRUPOS_MENU_PADRAO,
+      {
+        id: "categoria-customizada-1",
+        titulo: "Projetos Pessoais",
+        itens: [
+          { id: "lousas", para: "/lousas", rotulo: "Meus Esboços", iconeNome: "Palette", cor: "#ec4899" },
+        ],
+      },
+    ];
+
+    salvarMenuPersonalizado(gruposCustom);
+    const carregados = carregarMenuPersonalizado();
+
+    expect(carregados.length).toBe(4);
+    expect(carregados[3].titulo).toBe("Projetos Pessoais");
+    expect(carregados[3].itens[0].rotulo).toBe("Meus Esboços");
+  });
+
   it("deve restaurar os padrões ao chamar restaurarMenuPadrao", () => {
     const gruposCustom: GrupoMenuPersonalizado[] = [
       {
