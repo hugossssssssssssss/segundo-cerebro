@@ -27,6 +27,7 @@ import {
   FileImage,
   FileType,
   Settings,
+  GitMerge,
 } from "lucide-react";
 import {
   DndContext,
@@ -121,6 +122,13 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
     descricao: "Acompanhamento de metas e entregas do PDI",
     icone: Target,
     colunasPadrao: 1,
+  },
+  {
+    id: "processos",
+    titulo: "Processos & Pipelines (CRM)",
+    descricao: "Funis de trabalho, checklists por etapa e automações",
+    icone: GitMerge,
+    colunasPadrao: 2,
   },
   {
     id: "lousas",
@@ -977,6 +985,26 @@ export default function Home() {
                 )}
               </CardContent>
             </Card>
+          </GadgetWrapper>
+        );
+
+      case "processos":
+        return (
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
+            <Link to="/processos" className="block h-full group">
+              <Card className="shadow-sm h-full flex flex-col border border-border/80 hover:border-primary/50 transition-all">
+                <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base font-bold flex items-center gap-2 group-hover:text-primary transition-colors">
+                      <GitMerge size={18} className="text-primary" />
+                      Processos & Funis (CRM)
+                    </CardTitle>
+                    <CardDescription className="text-xs">Gerencie pipelines, automações e etapas de projetos.</CardDescription>
+                  </div>
+                  <ArrowRight size={16} className="text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
+                </CardHeader>
+              </Card>
+            </Link>
           </GadgetWrapper>
         );
 

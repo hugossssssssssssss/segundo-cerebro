@@ -30,7 +30,7 @@ import { PASTAS } from "./tipos";
 const doc = (texto: string) => lerMarkdown(texto);
 
 describe("PASTAS", () => {
-  it("mapeia as seis entidades para os caminhos do repositório", () => {
+  it("mapeia as entidades para os caminhos do repositório", () => {
     expect(PASTAS).toEqual({
       notas: "notas",
       tarefas: "tarefas",
@@ -38,6 +38,8 @@ describe("PASTAS", () => {
       entregas: "pdi/entregas",
       referencias: "referencias",
       lousas: "lousas",
+      processos: "processos",
+      cardsProcesso: "processos/cards",
     });
   });
 });

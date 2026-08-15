@@ -16,6 +16,7 @@ import {
   FileCheck,
   RefreshCw,
   Mic,
+  GitMerge,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -40,6 +41,7 @@ export const gruposNavegacao: GrupoNavegacao[] = [
     itens: [
       { para: "/home", rotulo: "Início", Icone: HomeIcon },
       { para: "/tarefas", rotulo: "Tarefas", Icone: CheckSquare },
+      { para: "/processos", rotulo: "Processos", Icone: GitMerge },
       { para: "/notas", rotulo: "Notas", Icone: FileText },
     ],
   },

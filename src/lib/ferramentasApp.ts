@@ -9,6 +9,7 @@ import {
   Layout,
   MessageCircle,
   Settings,
+  GitMerge,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -97,6 +98,15 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
     rota: "/transcritor",
     icone: Mic,
     palavrasChave: ["áudio", "gravador", "transcrição", "voz", "resumo", "ia"],
+  },
+  {
+    id: "processos",
+    titulo: "Construtor de Processos & Pipelines",
+    descricao: "Crie funis de trabalho flexíveis, CRM, checklists por etapa e automações",
+    categoria: "modulo",
+    rota: "/processos",
+    icone: GitMerge,
+    palavrasChave: ["processo", "pipeline", "crm", "funil", "automação", "pipefy", "etapas"],
   },
   {
     id: "tarefas",
