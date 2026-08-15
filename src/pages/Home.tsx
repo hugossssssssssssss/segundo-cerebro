@@ -57,7 +57,7 @@ import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
-import { LISTA_FERRAMENTAS_APP } from "@/lib/ferramentasApp";
+
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,18 +80,17 @@ export interface InfoGadgetDisponivel {
   id: string;
   titulo: string;
   descricao: string;
-  categoria: "modulo" | "conversor" | "ferramenta";
   icone: any;
   colunasPadrao: 1 | 2 | 3;
+  corIcone?: string;
 }
 
 const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
-  // --- MÓDULOS PRINCIPAIS ---
+  // --- MÓDULOS DE CONTEÚDO ---
   {
     id: "kpis",
     titulo: "Resumo dos KPIs",
-    descricao: "Contadores gerais de Tarefas, Notas, Referências e PDI",
-    categoria: "modulo",
+    descricao: "Indicadores gerais de Tarefas, Notas, Referências e PDI",
     icone: Layout,
     colunasPadrao: 3,
   },
@@ -99,131 +98,124 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
     id: "tarefas",
     titulo: "Próximas Tarefas",
     descricao: "Lista de tarefas pendentes e urgentes com edição rápida",
-    categoria: "modulo",
     icone: CheckSquare,
     colunasPadrao: 2,
   },
   {
     id: "notas",
     titulo: "Notas Recentes",
-    descricao: "Últimas notas salvas e rascunhos do seu acervo",
-    categoria: "modulo",
+    descricao: "Últimas notas criadas e rascunhos salvos",
     icone: FileText,
     colunasPadrao: 1,
   },
   {
     id: "referencias",
     titulo: "Referências Visuais",
-    descricao: "Mural de inspirações visuais e galeria de fotos",
-    categoria: "modulo",
+    descricao: "Mural de inspirações e galeria de fotos",
     icone: ImageIcon,
     colunasPadrao: 2,
   },
   {
     id: "pdi",
     titulo: "Metas de Carreira (PDI)",
-    descricao: "Acompanhamento do progresso das metas e entregas",
-    categoria: "modulo",
+    descricao: "Acompanhamento de metas e entregas do PDI",
     icone: Target,
     colunasPadrao: 1,
   },
   {
     id: "lousas",
-    titulo: "Lousas & Esboços (Excalidraw)",
-    descricao: "Quadros em branco para desenhar e esquematizar",
-    categoria: "modulo",
+    titulo: "Lousas Visuais (Excalidraw)",
+    descricao: "Quadros de desenho e mapas mentais",
     icone: Layout,
     colunasPadrao: 1,
   },
 
-  // --- FERRAMENTAS E CONVERSORES INDIVIDUAIS ---
+  // --- FERRAMENTAS INDIVIDUAIS ---
   {
     id: "pdf_para_png",
     titulo: "PDF para PNG",
-    descricao: "Extrai e converte cada página de um PDF em imagens PNG",
-    categoria: "conversor",
+    descricao: "Converte páginas de PDF em imagens PNG",
     icone: FileImage,
     colunasPadrao: 1,
+    corIcone: "text-blue-500 bg-blue-500/10",
   },
   {
     id: "pdf_para_jpg",
     titulo: "PDF para JPG",
-    descricao: "Converte páginas de PDF em arquivos JPG compactos",
-    categoria: "conversor",
+    descricao: "Converte páginas de PDF em imagens JPG",
     icone: FileImage,
     colunasPadrao: 1,
+    corIcone: "text-blue-500 bg-blue-500/10",
   },
   {
     id: "img_para_pdf",
     titulo: "Imagens para PDF",
-    descricao: "Junta imagens PNG, JPG ou WebP em um único PDF",
-    categoria: "conversor",
+    descricao: "Junta imagens em um único PDF",
     icone: FileText,
     colunasPadrao: 1,
+    corIcone: "text-indigo-500 bg-indigo-500/10",
   },
   {
     id: "img_para_webp",
     titulo: "Converter para WebP",
-    descricao: "Otimize imagens em formato WebP com alta qualidade",
-    categoria: "conversor",
+    descricao: "Otimize imagens para formato WebP",
     icone: ImageIcon,
     colunasPadrao: 1,
+    corIcone: "text-purple-500 bg-purple-500/10",
   },
   {
     id: "img_para_png",
     titulo: "Converter para PNG",
-    descricao: "Transforme imagens JPG, WebP ou GIF em PNG",
-    categoria: "conversor",
+    descricao: "Transforme imagens em formato PNG",
     icone: ImageIcon,
     colunasPadrao: 1,
+    corIcone: "text-purple-500 bg-purple-500/10",
   },
   {
     id: "img_para_jpg",
     titulo: "Converter para JPG",
-    descricao: "Transforme imagens PNG ou WebP em formato JPG",
-    categoria: "conversor",
+    descricao: "Transforme imagens em formato JPG",
     icone: ImageIcon,
     colunasPadrao: 1,
+    corIcone: "text-purple-500 bg-purple-500/10",
   },
   {
     id: "texto_para_md",
-    titulo: "Texto/HTML/JSON para Markdown",
-    descricao: "Converte textos colados ou arquivos TXT/HTML em Markdown",
-    categoria: "conversor",
+    titulo: "Texto para Markdown",
+    descricao: "Converte textos colados ou HTML para Markdown",
     icone: FileType,
     colunasPadrao: 1,
+    corIcone: "text-amber-500 bg-amber-500/10",
   },
   {
     id: "transcritor",
-    titulo: "Transcritor de Áudio & IA",
-    descricao: "Grave voz ou envie áudio para transcrição e resumo",
-    categoria: "ferramenta",
+    titulo: "Transcritor de Voz",
+    descricao: "Grave áudio ou transcreva reuniões com IA",
     icone: Mic,
     colunasPadrao: 1,
+    corIcone: "text-purple-600 bg-purple-600/10",
   },
   {
     id: "chat_ia",
-    titulo: "Assistente IA do Klaus",
-    descricao: "Conversa inteligente com o assistente Gemini",
-    categoria: "ferramenta",
+    titulo: "Assistente IA",
+    descricao: "Conversa e tira-dúvidas com o Gemini",
     icone: MessageCircle,
     colunasPadrao: 1,
+    corIcone: "text-pink-500 bg-pink-500/10",
   },
   {
     id: "configuracoes",
-    titulo: "Ajustes & Conexões",
-    descricao: "Configuração de tokens do GitHub e chave do Gemini",
-    categoria: "ferramenta",
+    titulo: "Ajustes do App",
+    descricao: "Tokens do GitHub e chave do Gemini",
     icone: Settings,
     colunasPadrao: 1,
+    corIcone: "text-slate-500 bg-slate-500/10",
   },
 ];
 
 const GADGETS_PADRAO: Gadget[] = [
   { id: "kpis", colunas: 3 },
   { id: "tarefas", colunas: 2 },
-  { id: "pdf_para_png", colunas: 1 },
-  { id: "transcritor", colunas: 1 },
   { id: "notas", colunas: 1 },
   { id: "referencias", colunas: 2 },
   { id: "pdi", colunas: 1 },
@@ -268,10 +260,10 @@ function GadgetWrapper({
       style={style}
       className={cn("relative transition-all h-full flex flex-col group/gadget", classeGrid, isDragging && "z-50")}
     >
-      {/* Controles do Gadget */}
+      {/* Controles do Gadget: Botão discreto no canto superior direito */}
       <div className="absolute top-2.5 right-2.5 z-30 group/canto">
-        <div className="p-1.5 rounded-lg text-muted-foreground/30 group-hover/gadget:text-muted-foreground hover:text-foreground hover:bg-accent/80 transition-colors cursor-pointer flex items-center gap-1">
-          <Settings2 size={15} />
+        <div className="p-1.5 rounded-lg text-muted-foreground/20 group-hover/gadget:text-muted-foreground hover:text-foreground hover:bg-accent/80 transition-colors cursor-pointer flex items-center gap-1">
+          <Settings2 size={14} />
         </div>
 
         <div className="absolute top-0 right-0 hidden group-hover/canto:flex items-center gap-1 bg-card/95 backdrop-blur-md rounded-xl p-1.5 border border-border shadow-lg whitespace-nowrap">
@@ -349,7 +341,6 @@ export default function Home() {
   const [origTarefa, setOrigTarefa] = useState<Tarefa | null>(null);
   const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>("popup");
   const [modalAdicionarAberto, setModalAdicionarAberto] = useState(false);
-  const [filtroCategoriaModal, setFiltroCategoriaModal] = useState<"tudo" | "conversor" | "ferramenta" | "modulo">("tudo");
 
   const [editandoNota, setEditandoNota] = useState<{
     caminho: string;
@@ -637,39 +628,40 @@ export default function Home() {
 
   // Renderização responsiva de qualquer gadget individual do acervo
   const renderizarGadget = (gadget: Gadget) => {
-    // 1. Verificar se é uma ferramenta individual de LISTA_FERRAMENTAS_APP
-    const ferramentaApp = LISTA_FERRAMENTAS_APP.find((f) => f.id === gadget.id);
-    if (ferramentaApp) {
-      const IconeComp = ferramentaApp.icone;
+    // 1. Ferramenta ou Conversão Individual: Cartão clicável elegante e sem botões pretos
+    const infoCat = CATALOGO_GADGETS.find((c) => c.id === gadget.id);
+
+    if (infoCat && infoCat.corIcone) {
+      const IconeComp = infoCat.icone;
       return (
         <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-          <Card className="shadow-sm h-full flex flex-col border border-border/80 hover:border-primary/40 transition-all">
-            <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
-                  <IconeComp size={18} />
-                </div>
-                <div className="min-w-0">
-                  <CardTitle className="text-base font-bold truncate">{ferramentaApp.titulo}</CardTitle>
-                  <CardDescription className="text-xs truncate">{ferramentaApp.descricao}</CardDescription>
-                </div>
+          <div
+            onClick={() => abrirFerramentaFlutuante(gadget.id)}
+            className="group relative flex flex-col justify-between h-full p-5 rounded-2xl border border-border/80 bg-card hover:bg-accent/60 hover:border-primary/40 cursor-pointer transition-all shadow-xs overflow-hidden pr-10"
+          >
+            <div className="space-y-3">
+              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-transform group-hover:scale-105", infoCat.corIcone)}>
+                <IconeComp size={20} />
               </div>
-            </CardHeader>
-            <CardContent className="p-5 sm:p-6 pt-0 flex-1 flex flex-col justify-end">
-              <Button
-                onClick={() => abrirFerramentaFlutuante(ferramentaApp.id)}
-                className="w-full gap-2 font-semibold text-xs py-4 rounded-xl shadow-xs"
-              >
-                <IconeComp size={15} />
-                <span>Abrir {ferramentaApp.titulo}</span>
-              </Button>
-            </CardContent>
-          </Card>
+              <div className="space-y-1">
+                <h3 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">
+                  {infoCat.titulo}
+                </h3>
+                <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                  {infoCat.descricao}
+                </p>
+              </div>
+            </div>
+            <div className="pt-4 flex items-center gap-1.5 text-xs font-semibold text-primary">
+              <span>Usar ferramenta</span>
+              <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+            </div>
+          </div>
         </GadgetWrapper>
       );
     }
 
-    // 2. Outros gadgets gerais do sistema
+    // 2. Módulos de Conteúdo (KPIs, Tarefas, Notas, Referências, PDI, Lousas)
     switch (gadget.id) {
       case "kpis": {
         const gridKpisClass =
@@ -991,28 +983,20 @@ export default function Home() {
       case "lousas":
         return (
           <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Card className="shadow-sm h-full flex flex-col border border-border/80">
-              <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <Layout size={18} className="text-indigo-500" />
-                    Lousas & Esboços
-                  </CardTitle>
-                  <CardDescription className="text-xs">Desenhe e esquematize suas ideias no Excalidraw.</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="p-5 sm:p-6 pt-0 flex-1 flex flex-col justify-between space-y-4">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Crie mapas mentais, wireframes e desenhos vetoriais salvos no seu repositório.
-                </p>
-                <Link to="/lousas">
-                  <Button className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-5 rounded-xl shadow-xs">
-                    <Layout size={16} />
-                    <span>Abrir Quadro de Lousas</span>
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+            <Link to="/lousas" className="block h-full group">
+              <Card className="shadow-sm h-full flex flex-col border border-border/80 hover:border-indigo-500/50 transition-all">
+                <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base font-bold flex items-center gap-2 group-hover:text-indigo-500 transition-colors">
+                      <Layout size={18} className="text-indigo-500" />
+                      Lousas & Esboços
+                    </CardTitle>
+                    <CardDescription className="text-xs">Desenhe e esquematize suas ideias no Excalidraw.</CardDescription>
+                  </div>
+                  <ArrowRight size={16} className="text-muted-foreground/40 group-hover:text-indigo-500 transition-colors shrink-0" />
+                </CardHeader>
+              </Card>
+            </Link>
           </GadgetWrapper>
         );
 
@@ -1023,10 +1007,7 @@ export default function Home() {
 
   const gadgetsFaltantes = CATALOGO_GADGETS.filter(
     (c) => !gadgets.some((g) => g.id === c.id)
-  ).filter((c) => {
-    if (filtroCategoriaModal === "tudo") return true;
-    return c.categoria === filtroCategoriaModal;
-  });
+  );
 
   return (
     <div className="flex-1 space-y-8 animate-in fade-in duration-300 w-full pb-10">
@@ -1040,7 +1021,7 @@ export default function Home() {
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Seu centro de comando do Klaus. Adicione qualquer ferramenta como um bloco individual e organize do seu jeito.
+            Seu centro de comando do Klaus. Adicione e organize os gadgets como preferir.
           </p>
         </div>
 
@@ -1084,14 +1065,14 @@ export default function Home() {
         </SortableContext>
       </DndContext>
 
-      {/* Modal de Adicionar Gadget Individual */}
+      {/* Modal de Adicionar Gadget Limpo e Intuitivo */}
       {modalAdicionarAberto && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
           onClick={() => setModalAdicionarAberto(false)}
         >
           <div
-            className="flex max-h-[85vh] w-full max-w-xl flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
+            className="flex max-h-[80vh] w-full max-w-lg flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border p-4">
@@ -1107,36 +1088,11 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Filtros de Categoria */}
-            <div className="flex items-center gap-1.5 border-b border-border p-3 bg-muted/20 overflow-x-auto">
-              {(
-                [
-                  { id: "tudo", rotulo: "Tudo" },
-                  { id: "conversor", rotulo: "Conversores" },
-                  { id: "ferramenta", rotulo: "Ferramentas & IA" },
-                  { id: "modulo", rotulo: "Módulos" },
-                ] as const
-              ).map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setFiltroCategoriaModal(f.id)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
-                    filtroCategoriaModal === f.id
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "bg-background text-muted-foreground hover:text-foreground border border-border/60"
-                  )}
-                >
-                  {f.rotulo}
-                </button>
-              ))}
-            </div>
-
-            <div className="p-4 overflow-y-auto space-y-2.5 min-h-0 flex-1">
+            <div className="p-4 overflow-y-auto space-y-2 min-h-0 flex-1">
               {gadgetsFaltantes.length === 0 ? (
-                <div className="p-8 text-center space-y-2">
-                  <p className="text-sm font-semibold text-foreground">Nenhum gadget disponível nesta categoria!</p>
-                  <p className="text-xs text-muted-foreground">Você já adicionou esses gadgets ao seu Dashboard.</p>
+                <div className="p-8 text-center space-y-1">
+                  <p className="text-sm font-semibold text-foreground">Todos os gadgets já foram adicionados!</p>
+                  <p className="text-xs text-muted-foreground">Você pode reordenar ou redimensionar os blocos na tela inicial.</p>
                 </div>
               ) : (
                 gadgetsFaltantes.map((info) => {
@@ -1144,27 +1100,23 @@ export default function Home() {
                   return (
                     <div
                       key={info.id}
-                      className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-card hover:bg-accent/60 transition-colors"
+                      onClick={() => adicionarGadget(info)}
+                      className="flex items-center justify-between p-3 rounded-xl border border-border/80 bg-card hover:bg-accent/70 cursor-pointer transition-colors group"
                     >
-                      <div className="flex items-start gap-3 min-w-0 pr-2">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0 mt-0.5">
-                          <IconeComp size={18} />
+                      <div className="flex items-center gap-3 min-w-0 pr-2">
+                        <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg text-primary shrink-0", info.corIcone || "bg-primary/10")}>
+                          <IconeComp size={16} />
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-bold text-sm text-foreground">{info.titulo}</p>
-                            <Badge variant="outline" className="text-[10px] uppercase font-mono py-0 px-1.5">
-                              {info.categoria}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{info.descricao}</p>
+                          <p className="font-bold text-xs text-foreground group-hover:text-primary transition-colors">{info.titulo}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{info.descricao}</p>
                         </div>
                       </div>
 
                       <Button
                         size="sm"
-                        onClick={() => adicionarGadget(info)}
-                        className="gap-1.5 text-xs font-semibold shrink-0"
+                        variant="ghost"
+                        className="gap-1 text-xs text-primary group-hover:bg-primary group-hover:text-primary-foreground shrink-0 transition-colors"
                       >
                         <Plus size={14} />
                         <span>Adicionar</span>
