@@ -206,6 +206,9 @@ export default function Tarefas() {
 
   useEffect(() => {
     carregar();
+    const aoAtualizar = () => carregar(true);
+    window.addEventListener("acervo-atualizado", aoAtualizar);
+    return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
   }, [carregar]);
 
   // Abre item vindo por parâmetro de busca na URL (processa somente 1 vez por mudanca de busca)

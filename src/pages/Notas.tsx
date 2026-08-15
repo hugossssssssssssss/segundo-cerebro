@@ -106,6 +106,9 @@ export default function Notas() {
 
   useEffect(() => {
     carregarLista();
+    const aoAtualizar = () => carregarLista(true);
+    window.addEventListener("acervo-atualizado", aoAtualizar);
+    return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
   }, [carregarLista]);
 
   // Índice para relacionamentos e menções
