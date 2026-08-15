@@ -112,7 +112,7 @@ export function nomeLivre(
   const usados = new Set(ocupados);
   const ext = titulo.endsWith(".json") ? ".json" : extensao;
   const tituloSemExt = titulo.replace(/\.(md|json)$/i, "");
-  const base = nomeDeArquivo(tituloSemExt);
+  const base = nomeDeArquivo(tituloSemExt).replace(/\.(md|json)$/i, "");
 
   let candidato = `${pasta}/${base}${ext}`;
   let n = 2;

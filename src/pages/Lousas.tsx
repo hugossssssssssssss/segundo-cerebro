@@ -25,7 +25,7 @@ import {
 } from "@/lib/repo";
 import { tituloProvavel, nomeLivre, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
 import { propagarRenomeacao } from "@/lib/links";
-import { Botao, Campo, Cartao, Aviso, Vazio, Carregando } from "@/components/ui";
+import { Botao, Campo, Cartao, Aviso, Vazio, Carregando, ModalConfirmacao } from "@/components/ui";
 
 const PASTA = "lousas";
 
@@ -60,6 +60,7 @@ export default function Lousas() {
   const [aberta, setAberta] = useState<LousaAberta | null>(null);
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
   const [telaCheia, setTelaCheia] = useState(false);
+  const [lousaParaDeletar, setLousaParaDeletar] = useState<{ caminho: string; sha: string; titulo: string } | null>(null);
 
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
   const elementsRef = useRef<any[]>([]);
@@ -155,7 +156,6 @@ export default function Lousas() {
             return c === target || c.includes(target) || t === target || t.includes(target) || base === target;
           });
           if (itemEncontrado && (!aberta || aberta.caminho !== itemEncontrado.caminho)) {
-            // Limpa o parâmetro 'abrir' da URL para impedir que re-dispare e sobrescreva salvamentos posteriores
             window.history.replaceState(null, "", window.location.pathname + "#/lousas");
             abrir(itemEncontrado);
           }
@@ -169,12 +169,9 @@ export default function Lousas() {
   }, [lousas, aberta]);
 
   function novaLousa() {
-    setErro("");
-    setMensagemSucesso("");
     elementsRef.current = [];
     appStateRef.current = {};
     filesRef.current = {};
-
     setAberta({
       caminho: "",
       sha: "",
@@ -212,111 +209,67 @@ export default function Lousas() {
 
       const tituloLimpo = aberta.titulo.trim() || "Lousa Sem Título";
 
+      // Gerar preview vetorial SVG para embedding nativo nítido nos documentos
+      let svgHtmlString = "";
+      try {
+        if (elementosValidos.length > 0) {
+          const { exportToSvg } = await import("@excalidraw/excalidraw");
+          const svgEl = await exportToSvg({
+            elements: elementosValidos,
+            appState: {
+              ...currentAppState,
+              exportWithDarkMode: ehModoEscuro,
+              exportBackground: true,
+              viewBackgroundColor: currentAppState?.viewBackgroundColor || (ehModoEscuro ? "#121212" : "#ffffff"),
+            },
+            files,
+          });
+          if (svgEl) {
+            svgEl.setAttribute("width", "100%");
+            svgEl.setAttribute("height", "100%");
+            svgEl.style.maxWidth = "100%";
+            svgEl.style.maxHeight = "100%";
+            svgHtmlString = svgEl.outerHTML;
+          }
+        }
+      } catch {
+        // ignora erro ao gerar SVG
+      }
+
       const dadosParaSalvar = {
         title: tituloLimpo,
         elements: elementosValidos,
         appState: {
           viewBackgroundColor: currentAppState.viewBackgroundColor || "#ffffff",
           gridSize: currentAppState.gridSize || null,
-          scrollX: currentAppState.scrollX || 0,
-          scrollY: currentAppState.scrollY || 0,
-          zoom: currentAppState.zoom || { value: 1 },
-          theme: currentAppState.theme || (ehModoEscuro ? "dark" : "light"),
         },
         files,
       };
 
-      const jsonCena = (function safeStringify(obj: any, indent = 2): string {
-        const seen = new WeakSet();
-        return JSON.stringify(
-          obj,
-          (_key, value) => {
-            if (typeof value === "object" && value !== null) {
-              if (seen.has(value)) return undefined;
-              seen.add(value);
-            }
-            if (typeof value === "function" || typeof value === "symbol") return undefined;
-            return value;
-          },
-          indent
-        );
-      })(dadosParaSalvar);
+      const textoCena = JSON.stringify(dadosParaSalvar, null, 2);
 
-      let novoCaminho = aberta.caminho;
-      if (!aberta.caminho || aberta.titulo !== aberta.tituloOriginal) {
-        novoCaminho = nomeLivre(
-          PASTA,
-          tituloLimpo,
-          lousas.map((x) => x.caminho),
-          ".md"
-        );
-      }
-
-      let svgString = "";
-      try {
-        const { exportToSvg } = await import("@excalidraw/excalidraw");
-        const svgEl = await exportToSvg({
-          elements: elementosValidos,
-          appState: {
-            ...currentAppState,
-            exportWithDarkMode: ehModoEscuro,
-            exportBackground: true,
-            viewBackgroundColor: currentAppState.viewBackgroundColor || (ehModoEscuro ? "#121212" : "#ffffff"),
-          },
-          files,
-        });
-        if (svgEl) {
-          svgEl.setAttribute("width", "100%");
-          svgEl.setAttribute("height", "100%");
-          svgString = svgEl.outerHTML;
-        }
-      } catch {
-        // ignora se SVG falhar
-      }
-
-      // Monta documento no padrão do app (Markdown com Frontmatter YAML + JSON no corpo)
-      const docFormatado = {
+      const textoParaGravar = escreverMarkdown({
         dados: {
           titulo: tituloLimpo,
           tipo: "lousa",
-          atualizado_em: new Date().toISOString(),
-          svg: svgString || undefined,
+          svg: svgHtmlString,
         },
-        corpo: jsonCena,
-      };
+        corpo: textoCena,
+      });
 
-      const textoParaGravar = escreverMarkdown(docFormatado);
+      const novoCaminho =
+        aberta.caminho ||
+        nomeLivre(PASTA, tituloLimpo, lousas.map((a) => a.caminho));
 
-      if (aberta.caminho && aberta.caminho !== novoCaminho) {
-        try {
-          await apagar(cfg, aberta.caminho, aberta.sha);
-        } catch {
-          // ignora falha de exclusão
-        }
-      }
+      const novaSha = await gravar(
+        cfg,
+        novoCaminho,
+        textoParaGravar,
+        aberta.sha || undefined,
+        `salvar lousa: ${tituloLimpo}`,
+      );
 
-      let novaSha = "";
-      try {
-        novaSha = await gravar(
-          cfg,
-          novoCaminho,
-          textoParaGravar,
-          aberta.caminho === novoCaminho ? aberta.sha || undefined : undefined,
-          `lousa: ${tituloLimpo}`
-        );
-      } catch (e: any) {
-        if (e?.status === 409 || e?.status === 422) {
-          novaSha = await gravar(
-            cfg,
-            novoCaminho,
-            textoParaGravar,
-            undefined,
-            `lousa: ${tituloLimpo}`
-          );
-        } else {
-          throw e;
-        }
-      }
+      const docFormatado = lerMarkdown(textoParaGravar);
 
       atualizarCacheLocal(
         novoCaminho,
@@ -364,18 +317,18 @@ export default function Lousas() {
     }
   }
 
-  async function remover() {
-    if (!aberta || !aberta.caminho) return;
-    if (!confirm(`Tem certeza que deseja apagar a lousa "${aberta.titulo}"?`)) return;
-    const alvoCaminho = aberta.caminho;
-    const alvoSha = aberta.sha;
+  // Exclusão no modal interno da aplicação (Sem confirmação de navegador)
+  async function executarExclusao() {
+    if (!lousaParaDeletar) return;
+    const { caminho: alvoCaminho, sha: alvoSha } = lousaParaDeletar;
+    setLousaParaDeletar(null);
 
-    // Remocao visual instantanea em 0ms
+    // Remoção visual instantânea em 0ms
     setLousas((prev) => prev.filter((x) => x.caminho !== alvoCaminho));
     removerDoCacheLocal(alvoCaminho);
     invalidarCache();
     window.dispatchEvent(new CustomEvent("acervo-atualizado"));
-    setAberta(null);
+    if (aberta && aberta.caminho === alvoCaminho) setAberta(null);
 
     try {
       await apagar(cfg, alvoCaminho, alvoSha || "");
@@ -457,7 +410,12 @@ export default function Lousas() {
             </Botao>
 
             {aberta.caminho && (
-              <Botao variante="fantasma" tamanho="icone" onClick={remover} title="Apagar lousa">
+              <Botao
+                variante="fantasma"
+                tamanho="icone"
+                onClick={() => setLousaParaDeletar({ caminho: aberta.caminho, sha: aberta.sha, titulo: aberta.titulo })}
+                title="Apagar lousa"
+              >
                 <Trash2 size={16} className="text-red-500" />
               </Botao>
             )}
@@ -508,6 +466,18 @@ export default function Lousas() {
             />
           </Suspense>
         </div>
+
+        {/* Modal interno elegante de confirmação de exclusão (Sem popups de navegador) */}
+        <ModalConfirmacao
+          aberto={Boolean(lousaParaDeletar)}
+          titulo={`Apagar "${lousaParaDeletar?.titulo || 'Lousa'}"?`}
+          descricao="Esta ação apagará permanentemente este mapa mental do seu repositório. Deseja continuar?"
+          textoConfirmar="Apagar Lousa"
+          textoCancelar="Cancelar"
+          varianteConfirmar="perigo"
+          aoConfirmar={executarExclusao}
+          aoCancelar={() => setLousaParaDeletar(null)}
+        />
       </div>
     );
   }
@@ -578,24 +548,9 @@ export default function Lousas() {
                   <Botao
                     variante="fantasma"
                     tamanho="icone"
-                    onClick={async (e) => {
+                    onClick={(e) => {
                       e.stopPropagation();
-                      if (!confirm(`Tem certeza que deseja apagar a lousa "${titulo}"?`)) return;
-                      const alvoCaminho = item.caminho;
-                      const alvoSha = item.sha;
-
-                      // Remocao visual instantanea em 0ms
-                      setLousas((prev) => prev.filter((x) => x.caminho !== alvoCaminho));
-                      removerDoCacheLocal(alvoCaminho);
-                      invalidarCache();
-                      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
-
-                      try {
-                        await apagar(cfg, alvoCaminho, alvoSha || "");
-                      } catch (err) {
-                        setErro(err instanceof Error ? err.message : String(err));
-                        await carregar();
-                      }
+                      setLousaParaDeletar({ caminho: item.caminho, sha: item.sha, titulo });
                     }}
                     title="Apagar lousa"
                     className="hover:bg-red-500/10 text-muted-foreground hover:text-red-500"
@@ -608,6 +563,18 @@ export default function Lousas() {
           })}
         </div>
       )}
+
+      {/* Modal interno elegante de confirmação de exclusão (Sem popups de navegador) */}
+      <ModalConfirmacao
+        aberto={Boolean(lousaParaDeletar)}
+        titulo={`Apagar "${lousaParaDeletar?.titulo || 'Lousa'}"?`}
+        descricao="Esta ação apagará permanentemente este mapa mental do seu repositório. Deseja continuar?"
+        textoConfirmar="Apagar Lousa"
+        textoCancelar="Cancelar"
+        varianteConfirmar="perigo"
+        aoConfirmar={executarExclusao}
+        aoCancelar={() => setLousaParaDeletar(null)}
+      />
     </div>
   );
 }
