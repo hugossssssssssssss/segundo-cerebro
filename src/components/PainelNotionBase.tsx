@@ -9,8 +9,7 @@ import {
   Minimize2,
   Maximize,
   Pin,
-  // `History` puro colidiria com o tipo History do DOM e o TypeScript tentaria
-  // usar o do navegador como componente JSX.
+  GripHorizontal,
   History as IconeHistorico,
 } from "lucide-react";
 import { Botao, Aviso, ModalConfirmacao } from "@/components/ui";
@@ -77,30 +76,191 @@ export function PainelNotionBase({
   const [minimizadoFlutuante, setMinimizadoFlutuante] = useState(false);
   const [vendoHistorico, setVendoHistorico] = useState(false);
 
-  // Guarda referencias atualizadas para evitarfechar sem salvar por causa de closures desatualizados
+  // Posicionamento e Redimensionamento da Janela Flutuante
+  const [posicaoFlutuante, setPosicaoFlutuante] = useState(() => {
+    const salvo = localStorage.getItem("klaus_flutuante_pos");
+    if (salvo) {
+      try {
+        const p = JSON.parse(salvo);
+        if (typeof p.x === "number" && typeof p.y === "number") return p;
+      } catch {}
+    }
+    return {
+      x: Math.max(16, window.innerWidth - 520),
+      y: Math.max(16, window.innerHeight - 580),
+    };
+  });
+
+  const [tamanhoFlutuante, setTamanhoFlutuante] = useState(() => {
+    const salvo = localStorage.getItem("klaus_flutuante_tam");
+    if (salvo) {
+      try {
+        const t = JSON.parse(salvo);
+        if (typeof t.largura === "number" && typeof t.altura === "number") return t;
+      } catch {}
+    }
+    return {
+      largura: Math.min(480, window.innerWidth - 32),
+      altura: Math.min(540, window.innerHeight - 32),
+    };
+  });
+
+  // Salvar posição e tamanho
+  useEffect(() => {
+    if (modoVisao === "flutuante") {
+      localStorage.setItem("klaus_flutuante_pos", JSON.stringify(posicaoFlutuante));
+      localStorage.setItem("klaus_flutuante_tam", JSON.stringify(tamanhoFlutuante));
+    }
+  }, [modoVisao, posicaoFlutuante, tamanhoFlutuante]);
+
+  // Arrastar posição da janela flutuante pelo cabeçalho
+  const [arrastando, setArrastando] = useState(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+
+  const iniciarArrastoCabecalho = (e: React.MouseEvent | React.TouchEvent) => {
+    if (modoVisao !== "flutuante") return;
+    if ((e.target as HTMLElement).closest("button, input, select, textarea")) return;
+
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+
+    dragOffsetRef.current = {
+      x: clientX - posicaoFlutuante.x,
+      y: clientY - posicaoFlutuante.y,
+    };
+    setArrastando(true);
+  };
+
+  useEffect(() => {
+    if (!arrastando) return;
+
+    const aoMoverMouse = (e: MouseEvent | TouchEvent) => {
+      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+
+      const maxLeft = Math.max(0, window.innerWidth - tamanhoFlutuante.largura);
+      const maxTop = Math.max(0, window.innerHeight - 60);
+
+      const novoX = Math.max(0, Math.min(maxLeft, clientX - dragOffsetRef.current.x));
+      const novoY = Math.max(0, Math.min(maxTop, clientY - dragOffsetRef.current.y));
+
+      setPosicaoFlutuante({ x: novoX, y: novoY });
+    };
+
+    const aoSoltarMouse = () => setArrastando(false);
+
+    window.addEventListener("mousemove", aoMoverMouse);
+    window.addEventListener("mouseup", aoSoltarMouse);
+    window.addEventListener("touchmove", aoMoverMouse);
+    window.addEventListener("touchend", aoSoltarMouse);
+
+    return () => {
+      window.removeEventListener("mousemove", aoMoverMouse);
+      window.removeEventListener("mouseup", aoSoltarMouse);
+      window.removeEventListener("touchmove", aoMoverMouse);
+      window.removeEventListener("touchend", aoSoltarMouse);
+    };
+  }, [arrastando, tamanhoFlutuante.largura]);
+
+  // Redimensionar janela flutuante em 8 direções
+  const [redimensionando, setRedimensionando] = useState<string | null>(null);
+  const resizeStartRef = useRef({
+    mouseX: 0,
+    mouseY: 0,
+    posX: 0,
+    posY: 0,
+    largura: 0,
+    altura: 0,
+  });
+
+  const iniciarRedimensionamento = (
+    direcao: string,
+    e: React.MouseEvent | React.TouchEvent
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+
+    resizeStartRef.current = {
+      mouseX: clientX,
+      mouseY: clientY,
+      posX: posicaoFlutuante.x,
+      posY: posicaoFlutuante.y,
+      largura: tamanhoFlutuante.largura,
+      altura: tamanhoFlutuante.altura,
+    };
+    setRedimensionando(direcao);
+  };
+
+  useEffect(() => {
+    if (!redimensionando) return;
+
+    const aoMoverResize = (e: MouseEvent | TouchEvent) => {
+      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+
+      const dx = clientX - resizeStartRef.current.mouseX;
+      const dy = clientY - resizeStartRef.current.mouseY;
+
+      let novaLargura = resizeStartRef.current.largura;
+      let novaAltura = resizeStartRef.current.altura;
+      let novoX = resizeStartRef.current.posX;
+      let novoY = resizeStartRef.current.posY;
+
+      const MIN_W = 320;
+      const MIN_H = 260;
+
+      if (redimensionando.includes("e")) {
+        novaLargura = Math.max(MIN_W, Math.min(window.innerWidth - novoX, resizeStartRef.current.largura + dx));
+      }
+      if (redimensionando.includes("s")) {
+        novaAltura = Math.max(MIN_H, Math.min(window.innerHeight - novoY, resizeStartRef.current.altura + dy));
+      }
+      if (redimensionando.includes("w")) {
+        const descW = resizeStartRef.current.largura - dx;
+        if (descW >= MIN_W && resizeStartRef.current.posX + dx >= 0) {
+          novaLargura = descW;
+          novoX = resizeStartRef.current.posX + dx;
+        }
+      }
+      if (redimensionando.includes("n")) {
+        const descH = resizeStartRef.current.altura - dy;
+        if (descH >= MIN_H && resizeStartRef.current.posY + dy >= 0) {
+          novaAltura = descH;
+          novoY = resizeStartRef.current.posY + dy;
+        }
+      }
+
+      setTamanhoFlutuante({ largura: novaLargura, altura: novaAltura });
+      setPosicaoFlutuante({ x: novoX, y: novoY });
+    };
+
+    const aoSoltarResize = () => setRedimensionando(null);
+
+    window.addEventListener("mousemove", aoMoverResize);
+    window.addEventListener("mouseup", aoSoltarResize);
+    window.addEventListener("touchmove", aoMoverResize);
+    window.addEventListener("touchend", aoSoltarResize);
+
+    return () => {
+      window.removeEventListener("mousemove", aoMoverResize);
+      window.removeEventListener("mouseup", aoSoltarResize);
+      window.removeEventListener("touchmove", aoMoverResize);
+      window.removeEventListener("touchend", aoSoltarResize);
+    };
+  }, [redimensionando]);
+
+  // Guarda referencias atualizadas para evitar fechar sem salvar por causa de closures desatualizados
   const salvandoRef = useRef(salvando);
   const temMudancasRef = useRef(temMudancas);
   salvandoRef.current = salvando;
   temMudancasRef.current = temMudancas;
 
-  /**
-   * Fechar salva ANTES de fechar — e não fecha se a gravação falhar.
-   *
-   * Antes isto era `aoSalvar().catch(() => {})` seguido de `aoFechar()`: o
-   * painel sumia na hora e o erro ia para o lixo. Se a gravação falhasse (sem
-   * internet, token vencido, limite da API), o rodapé tinha acabado de
-   * prometer "salva automaticamente ao fechar" e o texto não estava em lugar
-   * nenhum.
-   *
-   * Ficar aberto quando dá errado é proposital: o painel é o único lugar onde
-   * o texto ainda existe.
-   */
   const [fechandoESalvando, setFechandoESalvando] = useState(false);
-
   const fechandoRef = useRef(false);
 
   const tentarFechar = useCallback(async () => {
-    // clicar no fundo duas vezes não pode disparar duas gravações
     if (fechandoRef.current) return;
     if (!temMudancasRef.current) {
       aoFechar();
@@ -112,7 +272,7 @@ export function PainelNotionBase({
       await aoSalvar();
       aoFechar();
     } catch {
-      // a mensagem já chega pela prop `erro`; o painel continua aberto
+      // erro mantido na tela
     } finally {
       fechandoRef.current = false;
       setFechandoESalvando(false);
@@ -167,8 +327,18 @@ export function PainelNotionBase({
 
   // Cabeçalho unificado com alternador dos 4 Modos de Visão
   const cabecalho = (
-    <div className="flex shrink-0 items-center justify-between border-b border-border px-4 sm:px-5 py-3 bg-card">
+    <div
+      onMouseDown={iniciarArrastoCabecalho}
+      onTouchStart={iniciarArrastoCabecalho}
+      className={cn(
+        "flex shrink-0 items-center justify-between border-b border-border px-4 sm:px-5 py-3 bg-card",
+        modoVisao === "flutuante" && "cursor-grab active:cursor-grabbing select-none"
+      )}
+    >
       <div className="flex items-center gap-2 min-w-0 pr-2">
+        {modoVisao === "flutuante" && (
+          <GripHorizontal size={16} className="text-amber-500/70 shrink-0" />
+        )}
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
           {rotuloTipo}
         </span>
@@ -235,7 +405,7 @@ export function PainelNotionBase({
                 ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             )}
-            title="Nota Autoadesiva Flutuante (Post-it pelo app)"
+            title="Janela Flutuante (Permanece visível pelo app)"
           >
             <StickyNote size={15} />
           </button>
@@ -245,7 +415,7 @@ export function PainelNotionBase({
           <button
             onClick={() => setMinimizadoFlutuante(!minimizadoFlutuante)}
             className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            title={minimizadoFlutuante ? "Expandir nota" : "Minimizar nota"}
+            title={minimizadoFlutuante ? "Expandir janela" : "Minimizar janela"}
           >
             {minimizadoFlutuante ? <Maximize size={15} /> : <Minimize2 size={15} />}
           </button>
@@ -273,12 +443,6 @@ export function PainelNotionBase({
           </Botao>
         ) : null}
 
-        {/*
-          Cada gravação é um commit, então TODA versão anterior deste arquivo
-          existe e é recuperável. Isso é a promessa central do Klaus, e até
-          agora não havia nenhum lugar na interface para vê-la: o componente
-          que faz o trabalho estava pronto e importado por ninguém.
-        */}
         {caminhoItem && (
           <Botao
             variante="fantasma"
@@ -311,11 +475,6 @@ export function PainelNotionBase({
         aoCancelar={() => setConfirmandoApagar(false)}
       />
 
-      {/*
-        Carregado sob demanda: o visualizador de diff traz uma biblioteca
-        própria junto, e ela não tem por que pesar em quem nunca abre o
-        histórico.
-      */}
       {vendoHistorico && caminhoItem && (
         <Suspense fallback={null}>
           <HistoricoDiffModal
@@ -328,15 +487,6 @@ export function PainelNotionBase({
     </>
   );
 
-  /**
-   * Títulos que existem de fato, para resolver as menções do corpo.
-   *
-   * Enquanto a lista está vazia o acervo ainda não chegou — e aí passamos
-   * `undefined` de propósito, o que faz `sincronizarRelacionamentos` não mexer
-   * em nada. Passar uma lista VAZIA seria pior que não sincronizar: nenhuma
-   * menção seria reconhecida, e o campo `relacionamentos` do arquivo seria
-   * apagado só porque a tela abriu antes do repositório carregar.
-   */
   const titulosConhecidos = useMemo(
     () =>
       opcoesRelacionamento.length
@@ -345,13 +495,6 @@ export function PainelNotionBase({
     [opcoesRelacionamento],
   );
 
-  /**
-   * Mantém o campo `relacionamentos` em dia com as menções do corpo.
-   *
-   * Um lugar só. Antes isto vivia aqui E dentro do `onChange` do editor,
-   * fazendo o mesmo trabalho duas vezes — e a versão daqui ainda lia um
-   * `dadosProps` velho, porque só o `corpo` estava nas dependências.
-   */
   const sincronizarRef = useRef({ dadosProps, onChangeProps, titulosConhecidos });
   sincronizarRef.current = { dadosProps, onChangeProps, titulosConhecidos };
 
@@ -427,7 +570,6 @@ export function PainelNotionBase({
         </>
       )}
 
-      {/* Editor Notion com mapas mentais renderizados inline no fluxo de texto */}
       <div className="min-h-[220px] space-y-4">
         <EditorNotion
           key={caminhoItem || "nota-editor"}
@@ -461,14 +603,23 @@ export function PainelNotionBase({
     </div>
   );
 
-  // MODO 4: FLUTUANTE (Nota Autoadesiva estilo Post-it do Windows)
+  // MODO 4: FLUTUANTE (Nota Autoadesiva Redimensionável e Móvel)
   if (modoVisao === "flutuante") {
     if (minimizadoFlutuante) {
       return (
-        <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom duration-200">
+        <div
+          style={{
+            position: "fixed",
+            left: `${posicaoFlutuante.x}px`,
+            top: `${posicaoFlutuante.y}px`,
+          }}
+          className="z-50 animate-in slide-in-from-bottom duration-200"
+        >
           <div
             onClick={() => setMinimizadoFlutuante(false)}
-            className="flex items-center gap-2.5 rounded-full border border-amber-500/40 bg-amber-500/10 dark:bg-amber-900/30 backdrop-blur-md px-4 py-2 text-xs font-bold text-foreground shadow-xl cursor-pointer hover:scale-105 transition-all"
+            onMouseDown={iniciarArrastoCabecalho}
+            onTouchStart={iniciarArrastoCabecalho}
+            className="flex items-center gap-2.5 rounded-full border border-amber-500/40 bg-amber-500/10 dark:bg-amber-900/30 backdrop-blur-md px-4 py-2 text-xs font-bold text-foreground shadow-xl cursor-grab active:cursor-grabbing hover:scale-105 transition-all select-none"
           >
             <Pin size={14} className="text-amber-500 shrink-0" />
             <span className="truncate max-w-[200px]">{titulo || "Nota Autoadesiva"}</span>
@@ -480,10 +631,76 @@ export function PainelNotionBase({
     }
 
     return (
-      <div className="fixed bottom-3 right-3 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-24px)] sm:w-[460px] max-h-[80vh] flex flex-col rounded-2xl border-2 border-amber-500/40 bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
-        {cabecalho}
+      <div
+        style={{
+          position: "fixed",
+          left: `${posicaoFlutuante.x}px`,
+          top: `${posicaoFlutuante.y}px`,
+          width: `${tamanhoFlutuante.largura}px`,
+          height: `${tamanhoFlutuante.altura}px`,
+        }}
+        className="z-50 flex flex-col rounded-2xl border-2 border-amber-500/50 bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 relative"
+      >
+        {/* Cabeçalho arrastável */}
+        <div className="shrink-0">{cabecalho}</div>
+
+        {/* Conteúdo */}
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{conteudo}</div>
-        {rodape}
+
+        {/* Rodapé */}
+        <div className="shrink-0">{rodape}</div>
+
+        {/* Handles de Redimensionamento em 8 direções */}
+        <div
+          onMouseDown={(e) => iniciarRedimensionamento("e", e)}
+          onTouchStart={(e) => iniciarRedimensionamento("e", e)}
+          className="absolute right-0 top-0 bottom-0 w-2 cursor-e-resize hover:bg-amber-500/30 transition-colors z-10"
+        />
+        <div
+          onMouseDown={(e) => iniciarRedimensionamento("s", e)}
+          onTouchStart={(e) => iniciarRedimensionamento("s", e)}
+          className="absolute left-0 right-0 bottom-0 h-2 cursor-s-resize hover:bg-amber-500/30 transition-colors z-10"
+        />
+        <div
+          onMouseDown={(e) => iniciarRedimensionamento("w", e)}
+          onTouchStart={(e) => iniciarRedimensionamento("w", e)}
+          className="absolute left-0 top-0 bottom-0 w-2 cursor-w-resize hover:bg-amber-500/30 transition-colors z-10"
+        />
+        <div
+          onMouseDown={(e) => iniciarRedimensionamento("n", e)}
+          onTouchStart={(e) => iniciarRedimensionamento("n", e)}
+          className="absolute left-0 right-0 top-0 h-2 cursor-n-resize hover:bg-amber-500/30 transition-colors z-10"
+        />
+
+        {/* Canto SE (Inferior Direito com alça visual) */}
+        <div
+          onMouseDown={(e) => iniciarRedimensionamento("se", e)}
+          onTouchStart={(e) => iniciarRedimensionamento("se", e)}
+          className="absolute right-0 bottom-0 w-5 h-5 cursor-se-resize flex items-center justify-center text-amber-500/80 hover:text-amber-500 hover:scale-125 transition-all z-20"
+          title="Arrastar para redimensionar"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+            <path d="M6 0L10 4L4 10L0 6L6 0Z" opacity="0.4" />
+            <path d="M8 4L10 6L6 10L4 8L8 4Z" opacity="0.8" />
+          </svg>
+        </div>
+
+        <div
+          onMouseDown={(e) => iniciarRedimensionamento("sw", e)}
+          onTouchStart={(e) => iniciarRedimensionamento("sw", e)}
+          className="absolute left-0 bottom-0 w-4 h-4 cursor-sw-resize z-20"
+        />
+        <div
+          onMouseDown={(e) => iniciarRedimensionamento("ne", e)}
+          onTouchStart={(e) => iniciarRedimensionamento("ne", e)}
+          className="absolute right-0 top-0 w-4 h-4 cursor-ne-resize z-20"
+        />
+        <div
+          onMouseDown={(e) => iniciarRedimensionamento("nw", e)}
+          onTouchStart={(e) => iniciarRedimensionamento("nw", e)}
+          className="absolute left-0 top-0 w-4 h-4 cursor-nw-resize z-20"
+        />
+
         {modaisConfirmacao}
       </div>
     );

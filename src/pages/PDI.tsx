@@ -75,7 +75,7 @@ export default function PDI() {
   const pronto = configCompleta(cfg);
   const location = useLocation();
   const navegar = useNavigate();
-  const { abrirFlutuante, focarFlutuante } = useItemFlutuante();
+  const { abrirFlutuante, fecharFlutuante, estaAbertoFlutuante, focarFlutuante } = useItemFlutuante();
 
   // ── Carregamento — dois hooks, um repositório (cache por sha) ─────────────
   // Os dois hooks chamam carregarRepo() que tem cache interno — a segunda
@@ -138,36 +138,50 @@ export default function PDI() {
   // ── Modo flutuante de metas ────────────────────────────────────────────────
   useEffect(() => {
     if (modoVisaoMeta === "flutuante" && editandoMeta) {
+      const metaOriginal = { ...editandoMeta };
       abrirFlutuante({
-        id: editandoMeta.caminho,
-        rotuloTipo: editandoMeta.caminho ? "Meta da Carreira" : "Nova meta",
-        titulo: editandoMeta.titulo,
-        corpo: editandoMeta.corpo,
+        id: metaOriginal.caminho,
+        rotuloTipo: metaOriginal.caminho ? "Meta da Carreira" : "Nova meta",
+        titulo: metaOriginal.titulo,
+        corpo: metaOriginal.corpo,
         dadosProps: {
-          status: editandoMeta.status,
-          prazo: editandoMeta.prazo,
-          indicador: editandoMeta.indicador,
+          status: metaOriginal.status,
+          prazo: metaOriginal.prazo,
+          indicador: metaOriginal.indicador,
         },
         camposFixosProps: {
           status: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
           prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
           indicador: { icone: <CheckSquare className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" },
         },
-        caminho: editandoMeta.caminho,
-        sha: editandoMeta.sha,
+        caminho: metaOriginal.caminho,
+        sha: metaOriginal.sha,
         temMudancas: origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta),
         salvando,
         erro,
-        setTitulo: (t) => setEditandoMeta((cur) => cur ? { ...cur, titulo: t } : null),
-        setCorpo: (c) => setEditandoMeta((cur) => cur ? { ...cur, corpo: c } : null),
-        onChangeProps: (nProps) => setEditandoMeta((cur) => cur ? {
-          ...cur,
-          status: (nProps.status as StatusMeta) || cur.status,
-          prazo: nProps.prazo as string | undefined,
-          indicador: (nProps.indicador as string) || cur.indicador,
-        } : null),
-        aoSalvar: async () => { if (editandoMeta) await salvarMeta(editandoMeta); },
-        aoRemover: editandoMeta.caminho ? async () => { await removerMeta(editandoMeta); } : undefined,
+        aoSalvar: async (itemFlutuanteAtual) => {
+          const titulo = itemFlutuanteAtual.titulo.trim() || "Sem título";
+          const metaAtualizada: Meta = {
+            caminho: itemFlutuanteAtual.caminho,
+            sha: itemFlutuanteAtual.sha,
+            bruto: itemFlutuanteAtual.dadosProps || {},
+            titulo,
+            corpo: itemFlutuanteAtual.corpo,
+            id: itemFlutuanteAtual.caminho.split("/").pop()?.replace(/\.md$/, "") || "",
+            status: (itemFlutuanteAtual.dadosProps.status as StatusMeta) || "a-fazer",
+            prazo: itemFlutuanteAtual.dadosProps.prazo,
+            indicador: itemFlutuanteAtual.dadosProps.indicador || "",
+          };
+          const { dados, corpo } = metaParaArquivo(metaAtualizada);
+          const texto = escreverMarkdown({ dados, corpo });
+          const caminho = itemFlutuanteAtual.caminho || nomeLivre(PASTAS.metas, titulo, metas.map((m) => m.caminho));
+          await salvarTexto(caminho, texto, itemFlutuanteAtual.sha || undefined);
+          recarregarMetas();
+        },
+        aoRemover: metaOriginal.caminho ? async () => {
+          await apagarItem(metaOriginal.caminho, metaOriginal.sha);
+          recarregarMetas();
+        } : undefined,
       });
       setEditandoMeta(null);
       setOrigMeta(null);
@@ -427,7 +441,9 @@ export default function PDI() {
                   <Cartao key={m.id} className="p-4">
                     <button
                       onClick={() => {
-                        if (focarFlutuante(m.caminho)) return;
+                        if (estaAbertoFlutuante(m.caminho)) {
+                          fecharFlutuante();
+                        }
                         setEditandoMeta(m);
                         setOrigMeta(m);
                         navegar(`?abrir=${encodeURIComponent(m.caminho)}`, { replace: true });

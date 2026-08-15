@@ -115,28 +115,45 @@ export default function Notas() {
   // ── Modo flutuante ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (modoVisao === "flutuante" && aberta) {
+      const notaOriginal = { ...aberta };
       abrirFlutuante({
-        id: aberta.caminho,
-        rotuloTipo: aberta.caminho ? "Nota" : "Nova nota",
-        titulo: aberta.titulo,
-        corpo: aberta.corpo,
-        dadosProps: aberta.bruto,
+        id: notaOriginal.caminho,
+        rotuloTipo: notaOriginal.caminho ? "Nota" : "Nova nota",
+        titulo: notaOriginal.titulo,
+        corpo: notaOriginal.corpo,
+        dadosProps: notaOriginal.bruto,
         camposFixosProps: {
           tipo: { icone: <FileText className="h-4 w-4 opacity-50 text-orange-500" />, tipo: "select", opcoes: ["nota", "referencia", "rascunho"] },
           tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
         },
-        caminho: aberta.caminho,
-        sha: aberta.sha,
+        caminho: notaOriginal.caminho,
+        sha: notaOriginal.sha,
         temMudancas: mudou,
         salvando,
         erro,
         mencoes: mencoesNotaAberta,
         opcoesRelacionamento,
-        setTitulo: (t) => setAberta((cur) => cur ? { ...cur, titulo: t } : null),
-        setCorpo: (c) => setAberta((cur) => cur ? { ...cur, corpo: c } : null),
-        onChangeProps: (nProps) => setAberta((cur) => cur ? { ...cur, bruto: nProps } : null),
-        aoSalvar: async () => { if (aberta) await salvar(aberta); },
-        aoRemover: aberta.caminho ? async () => { await remover(); } : undefined,
+        aoSalvar: async (itemFlutuanteAtual) => {
+          const titulo = itemFlutuanteAtual.titulo.trim() || "Sem título";
+          const notaAtualizada: Nota = {
+            caminho: itemFlutuanteAtual.caminho,
+            sha: itemFlutuanteAtual.sha,
+            bruto: itemFlutuanteAtual.dadosProps || {},
+            titulo,
+            tipo: (itemFlutuanteAtual.dadosProps.tipo as any) || "nota",
+            tags: itemFlutuanteAtual.dadosProps.tags || [],
+            corpo: itemFlutuanteAtual.corpo,
+          };
+          const { dados, corpo } = notaParaArquivo(notaAtualizada);
+          const texto = escreverMarkdown({ dados, corpo });
+          const caminho = itemFlutuanteAtual.caminho || nomeLivre(PASTAS.notas, titulo, arquivos.map((a) => a.caminho));
+          await salvarTexto(caminho, texto, itemFlutuanteAtual.sha || undefined);
+          recarregar();
+        },
+        aoRemover: notaOriginal.caminho ? async () => {
+          await apagarItem(notaOriginal.caminho, notaOriginal.sha);
+          recarregar();
+        } : undefined,
       });
       setAberta(null);
       setModoVisao("popup");
@@ -151,8 +168,12 @@ export default function Notas() {
     navegar(location.pathname, { replace: true });
   }
 
+  const { fecharFlutuante, estaAbertoFlutuante } = useItemFlutuante();
+
   function abrir(nota: Nota) {
-    if (focarFlutuante(nota.caminho)) return;
+    if (estaAbertoFlutuante(nota.caminho)) {
+      fecharFlutuante();
+    }
     if (aberta && aberta.caminho !== nota.caminho && mudou) {
       salvar(aberta).catch(() => {});
     }

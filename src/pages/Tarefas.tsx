@@ -136,30 +136,45 @@ export default function Tarefas() {
   // ── Modo flutuante ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (modoVisao === "flutuante" && editando) {
-      const { dados } = tarefaParaArquivo(editando);
+      const tarefaOriginal = { ...editando };
+      const dados = { status: tarefaOriginal.status, prazo: tarefaOriginal.prazo, tags: tarefaOriginal.tags, ...tarefaOriginal.bruto };
       abrirFlutuante({
-        id: editando.caminho,
-        rotuloTipo: editando.caminho ? "Tarefa" : "Nova tarefa",
-        titulo: editando.titulo,
-        corpo: editando.corpo,
+        id: tarefaOriginal.caminho,
+        rotuloTipo: tarefaOriginal.caminho ? "Tarefa" : "Nova tarefa",
+        titulo: tarefaOriginal.titulo,
+        corpo: tarefaOriginal.corpo,
         dadosProps: dados,
         camposFixosProps: {
           status: { icone: <ListTodo className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "status" },
           prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
           tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
         },
-        caminho: editando.caminho,
-        sha: editando.sha,
+        caminho: tarefaOriginal.caminho,
+        sha: tarefaOriginal.sha,
         temMudancas: JSON.stringify(editando) !== JSON.stringify(original),
         salvando,
         erro,
         mencoes: mencoesDaTarefa,
         opcoesRelacionamento,
-        setTitulo: (t) => setEditando((cur) => cur ? { ...cur, titulo: t } : null),
-        setCorpo: (c) => setEditando((cur) => cur ? { ...cur, corpo: c } : null),
-        onChangeProps: (nProps) => setEditando((cur) => cur ? comoTarefa({ dados: nProps, corpo: cur.corpo }, cur.caminho, cur.sha, cur.titulo) : null),
-        aoSalvar: async () => { if (editando) await salvar(editando); },
-        aoRemover: editando.caminho ? async () => { await remover(editando); } : undefined,
+        aoSalvar: async (itemFlutuanteAtual) => {
+          const titulo = itemFlutuanteAtual.titulo.trim() || "Sem título";
+          const tarefaAtualizada: Tarefa = {
+            caminho: itemFlutuanteAtual.caminho,
+            sha: itemFlutuanteAtual.sha,
+            bruto: itemFlutuanteAtual.dadosProps || {},
+            titulo,
+            status: (itemFlutuanteAtual.dadosProps.status as Status) || "a-fazer",
+            prazo: itemFlutuanteAtual.dadosProps.prazo,
+            tags: itemFlutuanteAtual.dadosProps.tags || [],
+            corpo: itemFlutuanteAtual.corpo,
+          };
+          await gravarTarefa(tarefaAtualizada);
+          recarregar();
+        },
+        aoRemover: tarefaOriginal.caminho ? async () => {
+          await apagarItem(tarefaOriginal.caminho, tarefaOriginal.sha);
+          recarregar();
+        } : undefined,
       });
       setEditando(null);
       setOriginal(null);
@@ -186,8 +201,12 @@ export default function Tarefas() {
     navegar(location.pathname, { replace: true });
   }
 
+  const { fecharFlutuante, estaAbertoFlutuante } = useItemFlutuante();
+
   function abrir(t: Tarefa) {
-    if (focarFlutuante(t.caminho)) return;
+    if (estaAbertoFlutuante(t.caminho)) {
+      fecharFlutuante();
+    }
     if (editando && editando.caminho !== t.caminho) {
       const mudou = original !== null && JSON.stringify(editando) !== JSON.stringify(original);
       if (mudou) salvar(editando).catch(() => {});
