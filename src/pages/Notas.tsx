@@ -257,8 +257,14 @@ export default function Notas() {
         nomeLivre(PASTA, titulo, arquivos.map((a) => a.caminho));
 
       const docAtualizado = lerMarkdown(texto);
-      atualizarCacheLocal(caminho, texto, docAtualizado, n.sha || undefined);
 
+      // Só DEPOIS de gravar, e com o sha que o GitHub devolveu.
+      //
+      // Atualizar o cache antes da gravação parece adiantar a vida, mas grava
+      // o texto novo debaixo do sha ANTIGO — e o `repo.ts` inteiro se apoia na
+      // promessa de que sha igual significa bytes iguais. Se a gravação
+      // falhasse, o app continuava mostrando o texto como salvo pela sessão
+      // inteira, e ele sumia no recarregamento seguinte.
       const novaSha = await gravar(
         cfg,
         caminho,

@@ -44,10 +44,10 @@ export const gruposNavegacao: GrupoNavegacao[] = [
   {
     titulo: "Criação & Ferramentas",
     itens: [
-      { para: "/lousas", rotulo: "Lousas", Icone: Layout },
-      { para: "/referencias", rotulo: "Referências", Icone: Image },
-      { para: "/pdf", rotulo: "Ferramentas PDF", Icone: FileCheck },
-      { para: "/conversor", rotulo: "Conversor Nativo", Icone: RefreshCw },
+      { para: "/lousas", rotulo: "Excalidraw", Icone: Layout },
+      { para: "/referencias", rotulo: "Pinterest", Icone: Image },
+      { para: "/pdf", rotulo: "iLovePDF", Icone: FileCheck },
+      { para: "/conversor", rotulo: "Conversor", Icone: RefreshCw },
     ],
   },
   {

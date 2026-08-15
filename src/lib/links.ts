@@ -26,13 +26,31 @@ const LETRA = "a-zA-ZáàâãéèêíïóôõöúüçñÁÀÂÃÉÈÊÍÏÓÔÕ�
  * 2. **O primeiro caractere tem que ser LETRA.** Sem isso, "3 canetas @ 5
  *    reais" virava uma menção a "5".
  */
+
+/** O que pode fazer parte de um título mencionado. */
+const MIOLO = `${LETRA}0-9_\\- \\t`;
+
+/**
+ * A menção termina no primeiro caractere que NÃO cabe num título, ou no fim
+ * do texto.
+ *
+ * Antes esta parte era uma lista fechada de terminadores (`.`, `,`, `!`…), e
+ * isso **perdia menção em silêncio**: em "De @Grade suíça para @Briefing
+ * Acme.", a primeira sumia, porque entre ela e o ponto final havia um `@` —
+ * que não é terminador nem cabe num título, então a expressão nunca fechava.
+ * O mesmo acontecia com "@Grade suíça (importante)".
+ *
+ * O espaço e o tab entram no miolo (título tem mais de uma palavra), mas a
+ * QUEBRA DE LINHA não: senão uma menção no fim do parágrafo engolia a linha
+ * seguinte inteira.
+ */
 const PADRAO = new RegExp(
   "(?:" +
     // [[alvo]] e [[alvo|texto exibido]]
     "\\[\\[([^\\]|]+)(?:\\|([^\\]]+))?\\]\\]" +
     "|" +
-    // @alvo — ver as duas guardas explicadas acima
-    `(?<![\\w.@-])@([${LETRA}][${LETRA}0-9_\\-\\s]{1,99}?)(?=[.,;:!?)\\n\\r]|\\s*$)` +
+    // @alvo — ver as guardas explicadas acima
+    `(?<![\\w.@-])@([${LETRA}][${MIOLO}]{1,99}?)(?=[^${MIOLO}]|$)` +
     "|" +
     // URL colada do próprio app
     "(?:https?:\\/\\/[^\\s)]+|#\\/[^\\s)]+)\\?abrir=([a-zA-Z0-9_%.-]+)" +

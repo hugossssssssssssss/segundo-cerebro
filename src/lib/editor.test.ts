@@ -156,3 +156,53 @@ describe("o corpo real de uma tarefa sobrevive ao editor", () => {
     expect(depois).toContain("→");
   });
 });
+
+/**
+ * A menção do `@` é gravada como TEXTO PURO, não como link.
+ *
+ * A versão anterior inseria `[@Nome](notas/arquivo.md)`. O caminho era contado
+ * da raiz do repositório, mas o arquivo que contém a menção mora numa
+ * subpasta — o link resolvia errado e dava 404 no GitHub. Como texto puro
+ * não há caminho para quebrar, e o app resolve pelo próprio texto.
+ */
+describe("menção com @ como texto puro", () => {
+  const indice = montarIndice([alvo("Briefing Acme"), alvo("Grade suíça")]);
+
+  it("sobrevive à ida e volta pelo serializador, sem escape", () => {
+    const depois = idaEVolta("Falar com @Briefing Acme antes de sexta.");
+    expect(depois).toContain("@Briefing Acme");
+    expect(depois).not.toContain("\\@");
+  });
+
+  it("continua resolvendo para o item depois de passar pelo editor", () => {
+    const depois = idaEVolta("Ver @Grade suíça.");
+    const links = extrairLinks(depois, indice);
+    expect(links).toHaveLength(1);
+    expect(links[0].alvo?.titulo).toBe("Grade suíça");
+  });
+
+  it("não deixa caminho de arquivo no meio do texto", () => {
+    // era o sintoma do formato antigo: o .md ficava poluído de caminho
+    const depois = idaEVolta("Falar com @Briefing Acme.");
+    expect(depois).not.toContain("notas/");
+    expect(depois).not.toContain(".md");
+  });
+
+  it("duas menções na mesma linha resolvem as duas", () => {
+    const depois = idaEVolta("De @Grade suíça para @Briefing Acme.");
+    const links = extrairLinks(depois, indice);
+    expect(links.map((l) => l.alvo?.titulo).sort()).toEqual([
+      "Briefing Acme",
+      "Grade suíça",
+    ]);
+  });
+
+  it("o [[link]] antigo continua funcionando, para não quebrar o que já existe", () => {
+    const depois = idaEVolta("Ver [[Briefing Acme]] e @Grade suíça.");
+    const links = extrairLinks(depois, indice);
+    expect(links.map((l) => l.alvo?.titulo).sort()).toEqual([
+      "Briefing Acme",
+      "Grade suíça",
+    ]);
+  });
+});

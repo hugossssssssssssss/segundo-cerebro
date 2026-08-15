@@ -2,31 +2,32 @@ import { useState, useRef } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import JSZip from "jszip";
 import TurndownService from "turndown";
+import { PDFDocument } from "pdf-lib";
 import {
   RefreshCw,
   FileText,
   Image as ImageIcon,
   FileType,
   Download,
-  FileCheck,
   FilePlus,
   Loader2,
   Check,
   Copy,
   FolderArchive,
   Upload,
+  FileCheck,
 } from "lucide-react";
-import { Botao, Cartao, Aviso, Selo } from "@/components/ui";
+import { Botao, Cartao, Aviso } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { lerConfig } from "@/lib/settings";
 import { gravar } from "@/lib/github";
 import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-// Configura o worker do PDF.js via Vite bundle local sem dependencia de CDN externa
+// Configura o worker do PDF.js via Vite bundle local
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
-type AbaConversor = "pdf_para_img" | "img_para_img" | "texto_para_md";
+type AbaConversor = "pdf_para_img" | "img_para_pdf" | "img_para_img" | "texto_para_md";
 
 interface PaginaRenderizada {
   numPagina: number;
@@ -41,6 +42,9 @@ export default function Conversor() {
   const [arquivoPdf, setArquivoPdf] = useState<File | null>(null);
   const [paginasRenderizadas, setPaginasRenderizadas] = useState<PaginaRenderizada[]>([]);
   const [formatoSaidaPdf, setFormatoSaidaPdf] = useState<"png" | "jpeg">("png");
+
+  // Estados de Imagem -> PDF
+  const [arquivosParaPdf, setArquivosParaPdf] = useState<File[]>([]);
 
   // Estados de Imagem -> Imagem
   const [arquivosImagem, setArquivosImagem] = useState<File[]>([]);
@@ -87,7 +91,6 @@ export default function Conversor() {
 
       for (let i = 1; i <= totalPaginas; i++) {
         const page = await pdf.getPage(i);
-        // Renderiza com escala 2x para alta qualidade visual
         const viewport = page.getViewport({ scale: 2.0 });
         const canvas = document.createElement("canvas");
         canvas.width = Math.floor(viewport.width);
@@ -95,11 +98,7 @@ export default function Conversor() {
         const ctx = canvas.getContext("2d");
 
         if (ctx) {
-          await page.render({
-            canvasContext: ctx,
-            viewport: viewport,
-          } as any).promise;
-
+          await page.render({ canvasContext: ctx, viewport } as any).promise;
           const mimeType = formatoSaidaPdf === "png" ? "image/png" : "image/jpeg";
           const dataUrl = canvas.toDataURL(mimeType, 0.92);
           const ext = formatoSaidaPdf === "png" ? "png" : "jpg";
@@ -116,27 +115,24 @@ export default function Conversor() {
       setPaginasRenderizadas(resultados);
       setMensagemSucesso(`Todas as ${totalPaginas} páginas foram convertidas em imagem com sucesso!`);
     } catch (err: any) {
-      console.error("Erro ao converter PDF para imagem:", err);
       setErro(`Erro ao processar o PDF: ${err?.message || String(err)}`);
     } finally {
       setProcessando(false);
     }
   }
 
-  // Baixar todas as páginas em arquivo .ZIP
-  async function baixarZipImagensPdf() {
+  function baixarZipImagensPdf() {
     if (paginasRenderizadas.length === 0) return;
     setProcessando(true);
-    try {
-      const zip = new JSZip();
-      const pasta = zip.folder("paginas_pdf");
+    const zip = new JSZip();
+    const pasta = zip.folder("paginas_pdf");
 
-      for (const item of paginasRenderizadas) {
-        const base64Data = item.dataUrl.split(",")[1];
-        pasta?.file(item.nomeArquivo, base64Data, { base64: true });
-      }
+    for (const item of paginasRenderizadas) {
+      const base64Data = item.dataUrl.split(",")[1];
+      pasta?.file(item.nomeArquivo, base64Data, { base64: true });
+    }
 
-      const content = await zip.generateAsync({ type: "blob" });
+    zip.generateAsync({ type: "blob" }).then((content) => {
       const url = URL.createObjectURL(content);
       const a = document.createElement("a");
       a.href = url;
@@ -145,14 +141,74 @@ export default function Conversor() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      setProcessando(false);
+    });
+  }
+
+  // 2. CONVERTER IMAGENS PARA PDF
+  async function converterImagensParaPdf() {
+    if (arquivosParaPdf.length === 0) {
+      setErro("Selecione pelo menos 1 imagem para converter em PDF.");
+      return;
+    }
+    setProcessando(true);
+    setErro("");
+    setMensagemSucesso("");
+
+    try {
+      const pdfDoc = await PDFDocument.create();
+
+      for (const imgFile of arquivosParaPdf) {
+        const bytes = await imgFile.arrayBuffer();
+        let imagemEmbed;
+        const tipo = imgFile.type.toLowerCase();
+
+        if (tipo.includes("png")) {
+          imagemEmbed = await pdfDoc.embedPng(bytes);
+        } else if (tipo.includes("jpeg") || tipo.includes("jpg")) {
+          imagemEmbed = await pdfDoc.embedJpg(bytes);
+        } else {
+          const imgEl = new Image();
+          imgEl.src = URL.createObjectURL(imgFile);
+          await new Promise((res) => (imgEl.onload = res));
+          const canvas = document.createElement("canvas");
+          canvas.width = imgEl.width;
+          canvas.height = imgEl.height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(imgEl, 0, 0);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+          const jpgBytes = await (await fetch(dataUrl)).arrayBuffer();
+          imagemEmbed = await pdfDoc.embedJpg(jpgBytes);
+        }
+
+        const page = pdfDoc.addPage([imagemEmbed.width, imagemEmbed.height]);
+        page.drawImage(imagemEmbed, {
+          x: 0,
+          y: 0,
+          width: imagemEmbed.width,
+          height: imagemEmbed.height,
+        });
+      }
+
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes.buffer as ArrayBuffer], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Imagens_Convertidas.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setMensagemSucesso("Imagens convertidas em PDF com sucesso!");
     } catch {
-      setErro("Erro ao gerar arquivo ZIP.");
+      setErro("Erro ao converter imagens para PDF.");
     } finally {
       setProcessando(false);
     }
   }
 
-  // 2. CONVERTER IMAGEM (WEBP, PNG, JPG, SVG, BMP → PNG, JPG, WEBP)
+  // 3. CONVERTER IMAGEM (WEBP, PNG, JPG → PNG, JPG, WEBP)
   async function converterImagens() {
     if (arquivosImagem.length === 0) {
       setErro("Selecione pelo menos 1 imagem para converter.");
@@ -188,7 +244,6 @@ export default function Conversor() {
         const novoNome = `${nomePuro}_convertido.${formatoSaidaImg}`;
 
         if (arquivosImagem.length === 1) {
-          // Download direto se for só 1 imagem
           const a = document.createElement("a");
           a.href = dataUrl;
           a.download = novoNome;
@@ -196,7 +251,6 @@ export default function Conversor() {
           a.click();
           document.body.removeChild(a);
         } else {
-          // ZIP se forem múltiplas imagens
           zip.file(novoNome, base64Data, { base64: true });
         }
         URL.revokeObjectURL(img.src);
@@ -222,7 +276,7 @@ export default function Conversor() {
     }
   }
 
-  // 3. CONVERTER TEXTO / HTML / JSON / CSV PARA MARKDOWN
+  // 4. CONVERTER TEXTO PARA MARKDOWN
   function converterTextoParaMarkdown() {
     if (!conteudoTextoInput.trim()) {
       setErro("Digite ou envie um texto/código para converter.");
@@ -270,7 +324,6 @@ export default function Conversor() {
     }
   }
 
-  // Salva o Markdown gerado como uma nova Nota no Segundo Cérebro do GitHub!
   async function salvarComoNotaDoApp() {
     if (!markdownResultado.trim()) return;
     setSalvandoNota(true);
@@ -285,16 +338,15 @@ export default function Conversor() {
         corpo: markdownResultado,
       };
       const textoMd = escreverMarkdown(doc);
-      await gravar(cfg, caminho, textoMd, undefined, `Nota criada via Conversor Nativo`);
+      await gravar(cfg, caminho, textoMd, undefined, `Nota criada via Conversor`);
       setMensagemSucesso(`Salvo como nota "${titulo}" no seu repositório com sucesso!`);
     } catch {
-      setErro("Erro ao salvar como nota no repositório. Verifique suas chaves nos Ajustes.");
+      setErro("Erro ao salvar como nota no repositório.");
     } finally {
       setSalvandoNota(false);
     }
   }
 
-  // Seleção de arquivo por upload
   function aoSelecionarArquivos(files: FileList | null) {
     if (!files || files.length === 0) return;
     setErro("");
@@ -303,6 +355,8 @@ export default function Conversor() {
     if (abaAtiva === "pdf_para_img") {
       setArquivoPdf(files[0]);
       setPaginasRenderizadas([]);
+    } else if (abaAtiva === "img_para_pdf") {
+      setArquivosParaPdf(Array.from(files));
     } else if (abaAtiva === "img_para_img") {
       setArquivosImagem(Array.from(files));
     } else if (abaAtiva === "texto_para_md") {
@@ -321,49 +375,43 @@ export default function Conversor() {
     }
   }
 
+  const modulosConversor: { id: AbaConversor; label: string; Icone: any }[] = [
+    { id: "pdf_para_img", label: "PDF → PNG / JPG", Icone: FileText },
+    { id: "img_para_pdf", label: "Imagens → PDF", Icone: FilePlus },
+    { id: "img_para_img", label: "WEBP / PNG / JPG → Outros", Icone: ImageIcon },
+    { id: "texto_para_md", label: "TXT / HTML / JSON → Markdown", Icone: FileType },
+  ];
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-5">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-              <RefreshCw size={20} />
-            </div>
-            Conversor Nativo
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Converta PDFs para imagens PNG/JPG, troque formatos de imagem (WEBP, PNG, JPG) e transforme textos/HTML em Markdown 100% no seu navegador.
-          </p>
-        </div>
-
-        <Selo tom="sucesso" className="self-start sm:self-center px-3 py-1">
-          ⚡ 100% Client-Side
-        </Selo>
+      {/* Cabeçalho Limpo */}
+      <div className="border-b border-border/60 pb-4">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+            <RefreshCw size={20} />
+          </div>
+          Conversor
+        </h1>
       </div>
 
-      {/* Abas do Conversor */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-border/40 scrollbar-none">
-        {[
-          { id: "pdf_para_img", label: "PDF → PNG / JPG", Icone: FileText },
-          { id: "img_para_img", label: "WEBP / PNG / JPG → Outros", Icone: ImageIcon },
-          { id: "texto_para_md", label: "TXT / HTML / JSON → Markdown", Icone: FileType },
-        ].map(({ id, label, Icone }) => (
+      {/* Navegação por Abas das Conversões Separadas */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {modulosConversor.map(({ id, label, Icone }) => (
           <button
             key={id}
             onClick={() => {
-              setAbaAtiva(id as AbaConversor);
+              setAbaAtiva(id);
               setErro("");
               setMensagemSucesso("");
             }}
             className={cn(
-              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200",
+              "flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-xs font-semibold border transition-all text-center",
               abaAtiva === id
-                ? "bg-primary text-primary-foreground shadow-sm scale-105"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-card text-muted-foreground border-border hover:bg-accent hover:text-foreground"
             )}
           >
-            <Icone size={15} />
+            <Icone size={18} />
             <span>{label}</span>
           </button>
         ))}
@@ -373,7 +421,7 @@ export default function Conversor() {
       {erro && <Aviso tom="erro">{erro}</Aviso>}
       {mensagemSucesso && <Aviso tom="sucesso">{mensagemSucesso}</Aviso>}
 
-      {/* ABA 1: PDF PARA IMAGEM (PNG / JPG) */}
+      {/* CONVERSÃO 1: PDF PARA PNG/JPG */}
       {abaAtiva === "pdf_para_img" && (
         <div className="space-y-6">
           <Cartao className="p-6 border-dashed border-2 border-border/80 hover:border-primary/50 transition-colors text-center cursor-pointer bg-card/40">
@@ -394,9 +442,6 @@ export default function Conversor() {
               <div>
                 <p className="text-sm font-semibold text-foreground">
                   {arquivoPdf ? `Arquivo selecionado: ${arquivoPdf.name}` : "Clique ou arraste um arquivo PDF aqui"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Renderiza todas as páginas em imagens de alta resolução (2x DPI).
                 </p>
               </div>
               <Botao variante="neutro" tamanho="pequeno" className="mt-2">
@@ -419,7 +464,7 @@ export default function Conversor() {
                         : "bg-secondary text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    PNG (Sem perdas)
+                    PNG
                   </button>
                   <button
                     onClick={() => setFormatoSaidaPdf("jpeg")}
@@ -430,7 +475,7 @@ export default function Conversor() {
                         : "bg-secondary text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    JPG (Mais leve)
+                    JPG
                   </button>
                 </div>
               </div>
@@ -447,7 +492,6 @@ export default function Conversor() {
             </div>
           )}
 
-          {/* Galeria de Páginas Renderizadas */}
           {paginasRenderizadas.length > 0 && (
             <div className="space-y-4 pt-2 border-t border-border">
               <div className="flex items-center justify-between">
@@ -474,7 +518,6 @@ export default function Conversor() {
                         href={p.dataUrl}
                         download={p.nomeArquivo}
                         className="p-1 rounded-md text-primary hover:bg-primary/10 transition-colors"
-                        title="Baixar imagem"
                       >
                         <Download size={14} />
                       </a>
@@ -487,7 +530,55 @@ export default function Conversor() {
         </div>
       )}
 
-      {/* ABA 2: CONVERSOR DE IMAGENS */}
+      {/* CONVERSÃO 2: IMAGENS PARA PDF */}
+      {abaAtiva === "img_para_pdf" && (
+        <div className="space-y-6">
+          <Cartao className="p-6 border-dashed border-2 border-border/80 hover:border-primary/50 transition-colors text-center cursor-pointer bg-card/40">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={(e) => aoSelecionarArquivos(e.target.files)}
+              className="hidden"
+            />
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="flex flex-col items-center justify-center gap-2.5 py-6"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                <ImageIcon size={24} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {arquivosParaPdf.length > 0
+                    ? `${arquivosParaPdf.length} imagem(ns) selecionada(s)`
+                    : "Clique ou arraste imagens (PNG, JPG, WEBP)"}
+                </p>
+              </div>
+              <Botao variante="neutro" tamanho="pequeno" className="mt-2">
+                Selecionar Imagens
+              </Botao>
+            </div>
+          </Cartao>
+
+          {arquivosParaPdf.length > 0 && (
+            <div className="flex justify-end pt-2">
+              <Botao
+                variante="primario"
+                disabled={processando}
+                onClick={converterImagensParaPdf}
+                className="w-full sm:w-auto flex items-center gap-2"
+              >
+                {processando ? <Loader2 size={16} className="animate-spin" /> : <FilePlus size={16} />}
+                <span>Converter {arquivosParaPdf.length} Imagens em PDF</span>
+              </Botao>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* CONVERSÃO 3: FORMATOS DE IMAGEM */}
       {abaAtiva === "img_para_img" && (
         <div className="space-y-6">
           <Cartao className="p-6 border-dashed border-2 border-border/80 hover:border-primary/50 transition-colors text-center cursor-pointer bg-card/40">
@@ -511,9 +602,6 @@ export default function Conversor() {
                   {arquivosImagem.length > 0
                     ? `${arquivosImagem.length} imagem(ns) selecionada(s)`
                     : "Clique ou arraste imagens (WEBP, PNG, JPG, GIF, SVG, BMP)"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Converta múltiplos arquivos simultaneamente direto no seu navegador.
                 </p>
               </div>
               <Botao variante="neutro" tamanho="pequeno" className="mt-2">
@@ -575,7 +663,7 @@ export default function Conversor() {
         </div>
       )}
 
-      {/* ABA 3: TEXTO / HTML / JSON → MARKDOWN */}
+      {/* CONVERSÃO 4: TEXTO PARA MARKDOWN */}
       {abaAtiva === "texto_para_md" && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-border bg-card/60">
@@ -617,7 +705,6 @@ export default function Conversor() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Entrada */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Conteúdo Original ({formatoTextoInput.toUpperCase()})
@@ -639,7 +726,6 @@ export default function Conversor() {
               </Botao>
             </div>
 
-            {/* Resultado Markdown */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">

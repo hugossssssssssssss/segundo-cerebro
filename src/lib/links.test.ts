@@ -112,6 +112,33 @@ describe("extrairLinks", () => {
     const r = extrairLinks("De [[Grade suíça]] para @Briefing Acme.", indice);
     expect(r.map((x) => x.alvo?.titulo).sort()).toEqual(["Briefing Acme", "Grade suíça"]);
   });
+
+  it("duas menções seguidas: NENHUMA pode sumir", () => {
+    // era perda silenciosa: entre a primeira menção e o ponto final havia um
+    // `@`, e a expressão nunca fechava — a primeira menção desaparecia
+    const r = extrairLinks("De @Grade suíça para @Briefing Acme.", indice);
+    expect(r.map((x) => x.alvo?.titulo).sort()).toEqual(["Briefing Acme", "Grade suíça"]);
+  });
+
+  it("menção antes de parêntese, aspas ou travessão continua sendo achada", () => {
+    expect(extrairLinks("ver @Grade suíça (urgente)", indice)[0].alvo).not.toBeNull();
+    expect(extrairLinks('ver @Grade suíça"', indice)[0].alvo).not.toBeNull();
+    expect(extrairLinks("ver @Grade suíça — hoje", indice)[0].alvo).not.toBeNull();
+  });
+
+  it("menção no fim da linha não engole a linha seguinte", () => {
+    // a quebra de linha não cabe num título; sem essa guarda a menção
+    // capturava o parágrafo inteiro abaixo dela
+    const r = extrairLinks("Ver @Grade suíça\nOutra coisa qualquer aqui", indice);
+    expect(r).toHaveLength(1);
+    expect(r[0].bruto).toBe("Grade suíça");
+  });
+
+  it("três menções numa linha só", () => {
+    const r = extrairLinks("@Grade suíça e @Briefing Acme e @Grade suíça de novo.", indice);
+    // a repetida não conta duas vezes
+    expect(r.map((x) => x.alvo?.titulo).sort()).toEqual(["Briefing Acme", "Grade suíça"]);
+  });
 });
 
 describe("mencoesA", () => {

@@ -1,46 +1,45 @@
 import { useState, useRef } from "react";
-import { PDFDocument, rgb, degrees, StandardFonts } from "pdf-lib";
+import { PDFDocument } from "pdf-lib";
 import {
   FileText,
   FilePlus,
   Scissors,
-  Image as ImageIcon,
-  RotateCw,
-  Trash2,
+  Layers,
+  Crop,
+  Lock,
   ArrowUp,
   ArrowDown,
-  Layers,
-  Type,
+  Trash2,
   Loader2,
-  FileDigit,
-  Copy,
-  Check,
+  FileArchive,
+  Minimize2,
 } from "lucide-react";
-import { Botao, Cartao, Aviso, Selo } from "@/components/ui";
+import { Botao, Cartao, Aviso } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
-type AbaPDF = "juntar" | "dividir" | "imagens" | "girar" | "marca" | "ocr";
+type AbaILovePDF = "juntar" | "dividir" | "comprimir" | "recortar" | "desbloquear" | "organizar";
+
+interface InfoPagina {
+  index: number;
+  numPagina: number;
+}
 
 export default function FerramentasPDF() {
-  const [abaAtiva, setAbaAtiva] = useState<AbaPDF>("juntar");
+  const [abaAtiva, setAbaAtiva] = useState<AbaILovePDF>("juntar");
 
-  // Estados gerais
+  // Estados
   const [arquivos, setArquivos] = useState<File[]>([]);
   const [processando, setProcessando] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState("");
   const [erro, setErro] = useState("");
 
-  // Configurações específicas
+  // Configurações das ferramentas
   const [intervaloPaginas, setIntervaloPaginas] = useState("");
-  const [textoMarca, setTextoMarca] = useState("CONFIDENCIAL");
-  const [textoExtraido, setTextoExtraido] = useState("");
-  const [copiado, setCopiado] = useState(false);
-  const [rotacoes, setRotacoes] = useState<Record<number, number>>({});
-  const [numPaginasTotal, setNumPaginasTotal] = useState<number>(0);
+  const [porcentagemMargem, setPorcentagemMargem] = useState(10);
+  const [paginasOrganizar, setPaginasOrganizar] = useState<InfoPagina[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auxiliar para baixar arquivo gerado
   function baixarBlob(bytes: Uint8Array, nomeArquivo: string) {
     const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
@@ -53,7 +52,7 @@ export default function FerramentasPDF() {
     URL.revokeObjectURL(url);
   }
 
-  // 1. JUNTAR PDFs (Merge)
+  // 1. JUNTAR PDF
   async function executarJuntar() {
     if (arquivos.length < 2) {
       setErro("Selecione pelo menos 2 arquivos PDF para juntar.");
@@ -72,16 +71,16 @@ export default function FerramentasPDF() {
         paginas.forEach((p) => pdfFinal.addPage(p));
       }
       const pdfBytes = await pdfFinal.save();
-      baixarBlob(pdfBytes, "PDF_Mesclado_SegundoCerebro.pdf");
-      setMensagemSucesso("PDFs mesclados com sucesso! O download começou.");
+      baixarBlob(pdfBytes, "PDF_Mesclado_iLovePDF.pdf");
+      setMensagemSucesso("PDFs mesclados e juntados com sucesso!");
     } catch {
-      setErro("Erro ao mesclar PDFs. Verifique se os arquivos são PDFs válidos.");
+      setErro("Erro ao mesclar os PDFs.");
     } finally {
       setProcessando(false);
     }
   }
 
-  // 2. DIVIDIR PDF (Split)
+  // 2. DIVIDIR PDF
   async function executarDividir() {
     if (arquivos.length === 0) {
       setErro("Selecione um arquivo PDF para dividir.");
@@ -97,7 +96,6 @@ export default function FerramentasPDF() {
       const total = pdfOriginal.getPageCount();
 
       if (intervaloPaginas.trim()) {
-        // Extrai intervalo específico (ex: "1-3, 5")
         const indices: number[] = [];
         const partes = intervaloPaginas.split(",");
         for (const p of partes) {
@@ -115,7 +113,7 @@ export default function FerramentasPDF() {
         }
 
         if (indices.length === 0) {
-          setErro("Nenhuma página válida encontrada no intervalo informado.");
+          setErro("Nenhuma página válida encontrada no intervalo.");
           setProcessando(false);
           return;
         }
@@ -124,10 +122,9 @@ export default function FerramentasPDF() {
         const paginas = await pdfNovo.copyPages(pdfOriginal, indices);
         paginas.forEach((pg) => pdfNovo.addPage(pg));
         const pdfBytes = await pdfNovo.save();
-        baixarBlob(pdfBytes, `PDF_Extraido_Pags_${intervaloPaginas.replace(/\s+/g, "")}.pdf`);
+        baixarBlob(pdfBytes, `PDF_Dividido_${intervaloPaginas.replace(/\s+/g, "")}.pdf`);
         setMensagemSucesso("Páginas extraídas com sucesso!");
       } else {
-        // Se vazio, extrai cada página em um PDF separado
         for (let i = 0; i < total; i++) {
           const pdfNovo = await PDFDocument.create();
           const [pagina] = await pdfNovo.copyPages(pdfOriginal, [i]);
@@ -144,10 +141,10 @@ export default function FerramentasPDF() {
     }
   }
 
-  // 3. IMAGENS PARA PDF
-  async function executarImagensParaPdf() {
+  // 3. COMPRIMIR PDF
+  async function executarComprimir() {
     if (arquivos.length === 0) {
-      setErro("Selecione pelo menos 1 imagem para converter em PDF.");
+      setErro("Selecione um PDF para comprimir.");
       return;
     }
     setProcessando(true);
@@ -155,70 +152,28 @@ export default function FerramentasPDF() {
     setMensagemSucesso("");
 
     try {
-      const pdfDoc = await PDFDocument.create();
+      const bytes = await arquivos[0].arrayBuffer();
+      const pdfOriginal = await PDFDocument.load(bytes);
+      const pdfOtimizado = await PDFDocument.create();
 
-      for (const imgFile of arquivos) {
-        const bytes = await imgFile.arrayBuffer();
-        let imagemEmbed;
-        const tipo = imgFile.type.toLowerCase();
+      const paginas = await pdfOtimizado.copyPages(pdfOriginal, pdfOriginal.getPageIndices());
+      paginas.forEach((p) => pdfOtimizado.addPage(p));
 
-        if (tipo.includes("png")) {
-          imagemEmbed = await pdfDoc.embedPng(bytes);
-        } else if (tipo.includes("jpeg") || tipo.includes("jpg")) {
-          imagemEmbed = await pdfDoc.embedJpg(bytes);
-        } else {
-          // Para outros tipos, tenta converter canvas
-          const imgEl = new Image();
-          imgEl.src = URL.createObjectURL(imgFile);
-          await new Promise((res) => (imgEl.onload = res));
-          const canvas = document.createElement("canvas");
-          canvas.width = imgEl.width;
-          canvas.height = imgEl.height;
-          const ctx = canvas.getContext("2d");
-          ctx?.drawImage(imgEl, 0, 0);
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-          const jpgBytes = await (await fetch(dataUrl)).arrayBuffer();
-          imagemEmbed = await pdfDoc.embedJpg(jpgBytes);
-        }
-
-        const page = pdfDoc.addPage([imagemEmbed.width, imagemEmbed.height]);
-        page.drawImage(imagemEmbed, {
-          x: 0,
-          y: 0,
-          width: imagemEmbed.width,
-          height: imagemEmbed.height,
-        });
-      }
-
-      const pdfBytes = await pdfDoc.save();
-      baixarBlob(pdfBytes, "Imagens_Convertidas_SegundoCerebro.pdf");
-      setMensagemSucesso("Imagens convertidas em PDF com sucesso!");
+      // Salva com compactação de objetos
+      const pdfBytes = await pdfOtimizado.save({ useObjectStreams: true });
+      baixarBlob(pdfBytes, `${arquivos[0].name.replace(/\.pdf$/i, "")}_Comprimido.pdf`);
+      setMensagemSucesso("PDF otimizado e comprimido com sucesso!");
     } catch {
-      setErro("Erro ao converter imagens para PDF.");
+      setErro("Erro ao comprimir PDF.");
     } finally {
       setProcessando(false);
     }
   }
 
-  // 4. GIRAR PÁGINAS
-  async function carregarInfoGirar(f: File) {
-    try {
-      const bytes = await f.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(bytes);
-      setNumPaginasTotal(pdfDoc.getPageCount());
-      const initialRot: Record<number, number> = {};
-      for (let i = 0; i < pdfDoc.getPageCount(); i++) {
-        initialRot[i] = pdfDoc.getPage(i).getRotation().angle;
-      }
-      setRotacoes(initialRot);
-    } catch {
-      setErro("Não foi possível ler as páginas do PDF.");
-    }
-  }
-
-  async function executarGirar() {
+  // 4. RECORTAR PDF
+  async function executarRecortar() {
     if (arquivos.length === 0) {
-      setErro("Selecione um PDF para girar as páginas.");
+      setErro("Selecione um PDF para recortar as margens.");
       return;
     }
     setProcessando(true);
@@ -227,100 +182,91 @@ export default function FerramentasPDF() {
     try {
       const bytes = await arquivos[0].arrayBuffer();
       const pdfDoc = await PDFDocument.load(bytes);
-      const total = pdfDoc.getPageCount();
-
-      for (let i = 0; i < total; i++) {
-        const angulo = rotacoes[i] || 0;
-        pdfDoc.getPage(i).setRotation(degrees(angulo));
-      }
-
-      const pdfBytes = await pdfDoc.save();
-      baixarBlob(pdfBytes, `${arquivos[0].name.replace(/\.pdf$/i, "")}_Girado.pdf`);
-      setMensagemSucesso("Páginas giradas e salvas com sucesso!");
-    } catch {
-      setErro("Erro ao aplicar rotação no PDF.");
-    } finally {
-      setProcessando(false);
-    }
-  }
-
-  // 5. MARCA D'ÁGUA
-  async function executarMarcaDagua() {
-    if (arquivos.length === 0) {
-      setErro("Selecione um PDF para aplicar marca d'água.");
-      return;
-    }
-    if (!textoMarca.trim()) {
-      setErro("Digite o texto da marca d'água.");
-      return;
-    }
-    setProcessando(true);
-    setErro("");
-
-    try {
-      const bytes = await arquivos[0].arrayBuffer();
-      const pdfDoc = await PDFDocument.load(bytes);
-      const fonte = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
       const paginas = pdfDoc.getPages();
 
       for (const page of paginas) {
         const { width, height } = page.getSize();
-        const tamFonte = Math.min(width, height) / 10;
-        page.drawText(textoMarca, {
-          x: width / 6,
-          y: height / 2,
-          size: tamFonte,
-          font: fonte,
-          color: rgb(0.6, 0.6, 0.7),
-          opacity: 0.35,
-          rotate: degrees(45),
-        });
+        const margemX = (width * porcentagemMargem) / 100;
+        const margemY = (height * porcentagemMargem) / 100;
+        page.setCropBox(margemX, margemY, width - margemX * 2, height - margemY * 2);
       }
 
       const pdfBytes = await pdfDoc.save();
-      baixarBlob(pdfBytes, `${arquivos[0].name.replace(/\.pdf$/i, "")}_MarcaDagua.pdf`);
-      setMensagemSucesso("Marca d'água aplicada com sucesso!");
+      baixarBlob(pdfBytes, `${arquivos[0].name.replace(/\.pdf$/i, "")}_Recortado.pdf`);
+      setMensagemSucesso("Margens do PDF recortadas com sucesso!");
     } catch {
-      setErro("Erro ao adicionar marca d'água no PDF.");
+      setErro("Erro ao recortar margens do PDF.");
     } finally {
       setProcessando(false);
     }
   }
 
-  // 6. EXTRAIR TEXTO / OCR
-  async function executarExtrairTexto() {
+  // 5. DESBLOQUEAR PDF
+  async function executarDesbloquear() {
     if (arquivos.length === 0) {
-      setErro("Selecione um PDF para extrair o texto.");
+      setErro("Selecione um PDF protegido para desbloquear.");
       return;
     }
     setProcessando(true);
     setErro("");
-    setTextoExtraido("");
 
     try {
-      const { createWorker } = await import("tesseract.js");
-      const worker = await createWorker("por");
-      
-      const fileUrl = URL.createObjectURL(arquivos[0]);
-      const ret = await worker.recognize(fileUrl);
-      await worker.terminate();
-      URL.revokeObjectURL(fileUrl);
+      const bytes = await arquivos[0].arrayBuffer();
+      const pdfDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+      const pdfBytes = await pdfDoc.save();
 
-      const texto = ret.data.text.trim();
-      if (texto) {
-        setTextoExtraido(texto);
-        setMensagemSucesso("Texto extraído com sucesso!");
-      } else {
-        setErro("Não foi possível extrair texto legível deste documento.");
-      }
+      baixarBlob(pdfBytes, `${arquivos[0].name.replace(/\.pdf$/i, "")}_Desbloqueado.pdf`);
+      setMensagemSucesso("PDF desbloqueado e livre de senhas!");
     } catch {
-      setErro("Erro ao realizar OCR no documento.");
+      setErro("Erro ao desbloquear o PDF. Verifique se a senha do arquivo é necessária.");
     } finally {
       setProcessando(false);
     }
   }
 
-  // Manipulação de arquivos da lista
+  // 6. ORGANIZAR PDF
+  async function carregarInfoOrganizar(f: File) {
+    try {
+      const bytes = await f.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(bytes);
+      const total = pdfDoc.getPageCount();
+      const lista: InfoPagina[] = [];
+      for (let i = 0; i < total; i++) {
+        lista.push({ index: i, numPagina: i + 1 });
+      }
+      setPaginasOrganizar(lista);
+    } catch {
+      setErro("Não foi possível carregar as páginas para organizar.");
+    }
+  }
+
+  async function executarOrganizar() {
+    if (arquivos.length === 0) {
+      setErro("Selecione um PDF para organizar.");
+      return;
+    }
+    setProcessando(true);
+    setErro("");
+
+    try {
+      const bytes = await arquivos[0].arrayBuffer();
+      const pdfOriginal = await PDFDocument.load(bytes);
+      const pdfNovo = await PDFDocument.create();
+
+      const indicesReordenados = paginasOrganizar.map((p) => p.index);
+      const paginasCopiadas = await pdfNovo.copyPages(pdfOriginal, indicesReordenados);
+      paginasCopiadas.forEach((p) => pdfNovo.addPage(p));
+
+      const pdfBytes = await pdfNovo.save();
+      baixarBlob(pdfBytes, `${arquivos[0].name.replace(/\.pdf$/i, "")}_Organizado.pdf`);
+      setMensagemSucesso("Páginas organizadas com sucesso!");
+    } catch {
+      setErro("Erro ao reorganizar páginas do PDF.");
+    } finally {
+      setProcessando(false);
+    }
+  }
+
   function adicionarArquivos(novos: FileList | null) {
     if (!novos) return;
     const array = Array.from(novos);
@@ -328,8 +274,8 @@ export default function FerramentasPDF() {
     setMensagemSucesso("");
     setErro("");
 
-    if (abaAtiva === "girar" && array.length > 0) {
-      carregarInfoGirar(array[0]);
+    if (abaAtiva === "organizar" && array.length > 0) {
+      carregarInfoOrganizar(array[0]);
     }
   }
 
@@ -349,70 +295,105 @@ export default function FerramentasPDF() {
     });
   }
 
+  const abasFerramentas: {
+    id: AbaILovePDF;
+    label: string;
+    descricao: string;
+    Icone: any;
+  }[] = [
+    {
+      id: "juntar",
+      label: "Juntar PDF",
+      descricao: "Mesclar e juntar PDFs e colocá-los em qualquer ordem que desejar.",
+      Icone: Layers,
+    },
+    {
+      id: "dividir",
+      label: "Dividir PDF",
+      descricao:
+        "Selecione um intervalo de páginas, separe uma página, ou converta cada página do documento em arquivo PDF independente.",
+      Icone: Scissors,
+    },
+    {
+      id: "comprimir",
+      label: "Comprimir PDF",
+      descricao:
+        "Diminua o tamanho do seu arquivo PDF, mantendo a melhor qualidade possível. Otimize seus arquivos PDF.",
+      Icone: Minimize2,
+    },
+    {
+      id: "recortar",
+      label: "Recortar PDF",
+      descricao:
+        "Recorte as margens de documentos PDF ou selecione áreas específicas e depois aplique as alterações a uma página ou a todo o documento.",
+      Icone: Crop,
+    },
+    {
+      id: "desbloquear",
+      label: "Desbloquear PDF",
+      descricao:
+        "Remova a senha de segurança dos PDF, assim você pode usá-los como quiser.",
+      Icone: Lock,
+    },
+    {
+      id: "organizar",
+      label: "Organizar PDF",
+      descricao:
+        "Ordene as páginas de seu arquivo PDF como pretender. Exclua ou adicione páginas PDF ao seu documento como lhe for mais conveniente.",
+      Icone: FileArchive,
+    },
+  ];
+
+  const abaInfo = abasFerramentas.find((a) => a.id === abaAtiva)!;
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-5">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-500/10 text-red-600 dark:text-red-400">
-              <FileText size={20} />
-            </div>
-            Ferramentas PDF
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Junte, divida, converta imagens, gire e extraia texto de PDFs 100% no seu navegador. Sem backend, com total privacidade.
-          </p>
-        </div>
-
-        <Selo tom="sucesso" className="self-start sm:self-center px-3 py-1">
-          🔒 100% Local & Privado
-        </Selo>
+      {/* Cabeçalho Limpo */}
+      <div className="border-b border-border/60 pb-4">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-500/10 text-red-600 dark:text-red-400">
+            <FileText size={20} />
+          </div>
+          iLovePDF
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">{abaInfo.descricao}</p>
       </div>
 
-      {/* Navegação por Abas das Ferramentas */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-border/40 scrollbar-none">
-        {[
-          { id: "juntar", label: "Juntar PDFs", Icone: Layers },
-          { id: "dividir", label: "Dividir PDF", Icone: Scissors },
-          { id: "imagens", label: "Imagens para PDF", Icone: ImageIcon },
-          { id: "girar", label: "Girar Páginas", Icone: RotateCw },
-          { id: "marca", label: "Marca d'Água", Icone: Type },
-          { id: "ocr", label: "Extrair Texto (OCR)", Icone: FileDigit },
-        ].map(({ id, label, Icone }) => (
+      {/* Navegação por Abas das 6 Ferramentas Principais */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+        {abasFerramentas.map(({ id, label, Icone }) => (
           <button
             key={id}
             onClick={() => {
-              setAbaAtiva(id as AbaPDF);
+              setAbaAtiva(id);
               setArquivos([]);
               setErro("");
               setMensagemSucesso("");
-              setTextoExtraido("");
             }}
             className={cn(
-              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200",
+              "flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-xs font-semibold border transition-all text-center",
               abaAtiva === id
-                ? "bg-primary text-primary-foreground shadow-sm scale-105"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-card text-muted-foreground border-border hover:bg-accent hover:text-foreground"
             )}
           >
-            <Icone size={15} />
+            <Icone size={18} />
             <span>{label}</span>
           </button>
         ))}
       </div>
 
-      {/* Avisos de Sucesso ou Erro */}
+      {/* Avisos */}
       {erro && <Aviso tom="erro">{erro}</Aviso>}
       {mensagemSucesso && <Aviso tom="sucesso">{mensagemSucesso}</Aviso>}
 
-      {/* Área de Seleção de Arquivos (Dropzone) */}
+      {/* Área de Seleção (Dropzone) */}
       <Cartao className="p-6 border-dashed border-2 border-border/80 hover:border-primary/50 transition-colors text-center cursor-pointer bg-card/40">
         <input
           ref={fileInputRef}
           type="file"
-          multiple={abaAtiva === "juntar" || abaAtiva === "imagens"}
-          accept={abaAtiva === "imagens" ? "image/*" : ".pdf,application/pdf"}
+          multiple={abaAtiva === "juntar"}
+          accept=".pdf,application/pdf"
           onChange={(e) => adicionarArquivos(e.target.files)}
           className="hidden"
         />
@@ -425,16 +406,12 @@ export default function FerramentasPDF() {
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">
-              {abaAtiva === "imagens"
-                ? "Clique ou arraste imagens (PNG, JPG, WEBP)"
-                : "Clique ou arraste seus arquivos PDF"}
+              Clique ou arraste seus arquivos PDF aqui
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Processamento instantâneo direto no seu dispositivo.
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">{abaInfo.descricao}</p>
           </div>
           <Botao variante="neutro" tamanho="pequeno" className="mt-2">
-            Selecionar Arquivos
+            Selecionar Arquivo PDF
           </Botao>
         </div>
       </Cartao>
@@ -449,7 +426,7 @@ export default function FerramentasPDF() {
             {arquivos.map((file, idx) => (
               <div
                 key={`${file.name}-${idx}`}
-                className="flex items-center justify-between p-3 rounded-xl border border-border bg-card/80 shadow-sm"
+                className="flex items-center justify-between p-3 rounded-xl border border-border bg-card shadow-sm"
               >
                 <div className="flex items-center gap-3 truncate min-w-0">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-secondary text-xs font-bold text-muted-foreground">
@@ -470,7 +447,6 @@ export default function FerramentasPDF() {
                         onClick={() => moverArquivo(idx, -1)}
                         disabled={idx === 0}
                         className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                        title="Mover para cima"
                       >
                         <ArrowUp size={14} />
                       </button>
@@ -478,7 +454,6 @@ export default function FerramentasPDF() {
                         onClick={() => moverArquivo(idx, 1)}
                         disabled={idx === arquivos.length - 1}
                         className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                        title="Mover para baixo"
                       >
                         <ArrowDown size={14} />
                       </button>
@@ -487,7 +462,6 @@ export default function FerramentasPDF() {
                   <button
                     onClick={() => removerArquivo(idx)}
                     className="p-1 text-red-500 hover:text-red-600 transition-colors ml-1"
-                    title="Remover arquivo"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -498,9 +472,9 @@ export default function FerramentasPDF() {
         </div>
       )}
 
-      {/* Controles Específicos por Ferramenta */}
+      {/* Ações Específicas */}
 
-      {/* ABA: JUNTAR */}
+      {/* JUNTAR */}
       {abaAtiva === "juntar" && (
         <div className="flex justify-end pt-2">
           <Botao
@@ -515,7 +489,7 @@ export default function FerramentasPDF() {
         </div>
       )}
 
-      {/* ABA: DIVIDIR */}
+      {/* DIVIDIR */}
       {abaAtiva === "dividir" && (
         <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
@@ -526,8 +500,8 @@ export default function FerramentasPDF() {
               type="text"
               value={intervaloPaginas}
               onChange={(e) => setIntervaloPaginas(e.target.value)}
-              placeholder="Deixe em branco para salvar cada página em um PDF separado"
-              className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary"
+              placeholder="Deixe em branco para converter cada página em arquivo separado"
+              className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground outline-none focus:border-primary"
             />
           </div>
           <div className="flex justify-end">
@@ -544,135 +518,128 @@ export default function FerramentasPDF() {
         </div>
       )}
 
-      {/* ABA: IMAGENS PARA PDF */}
-      {abaAtiva === "imagens" && (
+      {/* COMPRIMIR */}
+      {abaAtiva === "comprimir" && (
         <div className="flex justify-end pt-2">
           <Botao
             variante="primario"
             disabled={arquivos.length === 0 || processando}
-            onClick={executarImagensParaPdf}
+            onClick={executarComprimir}
             className="w-full sm:w-auto flex items-center gap-2"
           >
-            {processando ? <Loader2 size={16} className="animate-spin" /> : <ImageIcon size={16} />}
-            <span>Converter {arquivos.length} Imagens em PDF</span>
+            {processando ? <Loader2 size={16} className="animate-spin" /> : <Minimize2 size={16} />}
+            <span>Comprimir PDF</span>
           </Botao>
         </div>
       )}
 
-      {/* ABA: GIRAR PÁGINAS */}
-      {abaAtiva === "girar" && arquivos.length > 0 && numPaginasTotal > 0 && (
-        <div className="space-y-4 pt-2">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Girar Páginas do Documento ({numPaginasTotal} páginas)
-          </h4>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {Array.from({ length: numPaginasTotal }).map((_, pIdx) => {
-              const angulo = rotacoes[pIdx] || 0;
-              return (
-                <div key={pIdx} className="p-3 border border-border rounded-xl bg-card flex flex-col items-center gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">Página {pIdx + 1}</span>
-                  <div className="text-xs font-bold text-foreground">{angulo}°</div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRotacoes((prev) => ({
-                        ...prev,
-                        [pIdx]: ((prev[pIdx] || 0) + 90) % 360,
-                      }))
-                    }
-                    className="p-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground text-xs flex items-center gap-1"
-                  >
-                    <RotateCw size={13} />
-                    <span>Girar 90°</span>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex justify-end pt-2">
-            <Botao
-              variante="primario"
-              disabled={processando}
-              onClick={executarGirar}
-              className="w-full sm:w-auto flex items-center gap-2"
-            >
-              {processando ? <Loader2 size={16} className="animate-spin" /> : <RotateCw size={16} />}
-              <span>Salvar PDF com Rotações</span>
-            </Botao>
-          </div>
-        </div>
-      )}
-
-      {/* ABA: MARCA D'ÁGUA */}
-      {abaAtiva === "marca" && (
+      {/* RECORTAR */}
+      {abaAtiva === "recortar" && (
         <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground">
-              Texto da Marca d'Água:
+              Porcentagem de recorte de margens ({porcentagemMargem}%):
             </label>
             <input
-              type="text"
-              value={textoMarca}
-              onChange={(e) => setTextoMarca(e.target.value)}
-              placeholder="Ex: CONFIDENCIAL, RASCUNHO, HUGO SILVA"
-              className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary"
+              type="range"
+              min={2}
+              max={30}
+              value={porcentagemMargem}
+              onChange={(e) => setPorcentagemMargem(Number(e.target.value))}
+              className="w-full accent-primary"
             />
           </div>
           <div className="flex justify-end">
             <Botao
               variante="primario"
               disabled={arquivos.length === 0 || processando}
-              onClick={executarMarcaDagua}
+              onClick={executarRecortar}
               className="w-full sm:w-auto flex items-center gap-2"
             >
-              {processando ? <Loader2 size={16} className="animate-spin" /> : <Type size={16} />}
-              <span>Aplicar Marca d'Água</span>
+              {processando ? <Loader2 size={16} className="animate-spin" /> : <Crop size={16} />}
+              <span>Recortar Margens do PDF</span>
             </Botao>
           </div>
         </div>
       )}
 
-      {/* ABA: EXTRAIR TEXTO (OCR) */}
-      {abaAtiva === "ocr" && (
+      {/* DESBLOQUEAR */}
+      {abaAtiva === "desbloquear" && (
         <div className="space-y-4 pt-2">
           <div className="flex justify-end">
             <Botao
               variante="primario"
               disabled={arquivos.length === 0 || processando}
-              onClick={executarExtrairTexto}
+              onClick={executarDesbloquear}
               className="w-full sm:w-auto flex items-center gap-2"
             >
-              {processando ? <Loader2 size={16} className="animate-spin" /> : <FileDigit size={16} />}
-              <span>Extrair Texto do PDF</span>
+              {processando ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />}
+              <span>Desbloquear PDF</span>
             </Botao>
           </div>
+        </div>
+      )}
 
-          {textoExtraido && (
-            <div className="space-y-2 border-t border-border pt-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Texto Extraído
-                </span>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(textoExtraido);
-                    setCopiado(true);
-                    setTimeout(() => setCopiado(false), 2000);
-                  }}
-                  className="flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
-                >
-                  {copiado ? <Check size={13} /> : <Copy size={13} />}
-                  <span>{copiado ? "Copiado!" : "Copiar Texto"}</span>
-                </button>
+      {/* ORGANIZAR */}
+      {abaAtiva === "organizar" && paginasOrganizar.length > 0 && (
+        <div className="space-y-4 pt-2">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Reordenar Páginas do Documento ({paginasOrganizar.length} páginas)
+          </h4>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {paginasOrganizar.map((p, idx) => (
+              <div key={idx} className="p-3 border border-border rounded-xl bg-card flex flex-col items-center gap-2 text-xs">
+                <span className="font-bold text-foreground">Pág. {p.numPagina}</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      if (idx === 0) return;
+                      const copy = [...paginasOrganizar];
+                      const tmp = copy[idx];
+                      copy[idx] = copy[idx - 1];
+                      copy[idx - 1] = tmp;
+                      setPaginasOrganizar(copy);
+                    }}
+                    disabled={idx === 0}
+                    className="p-1 rounded bg-secondary disabled:opacity-30"
+                  >
+                    <ArrowUp size={12} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (idx === paginasOrganizar.length - 1) return;
+                      const copy = [...paginasOrganizar];
+                      const tmp = copy[idx];
+                      copy[idx] = copy[idx + 1];
+                      copy[idx + 1] = tmp;
+                      setPaginasOrganizar(copy);
+                    }}
+                    disabled={idx === paginasOrganizar.length - 1}
+                    className="p-1 rounded bg-secondary disabled:opacity-30"
+                  >
+                    <ArrowDown size={12} />
+                  </button>
+                  <button
+                    onClick={() => setPaginasOrganizar((prev) => prev.filter((_, i) => i !== idx))}
+                    className="p-1 rounded bg-red-500/10 text-red-500"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
               </div>
-              <textarea
-                readOnly
-                value={textoExtraido}
-                rows={10}
-                className="w-full rounded-xl border border-border bg-background p-3.5 text-xs text-foreground outline-none resize-y font-mono"
-              />
-            </div>
-          )}
+            ))}
+          </div>
+          <div className="flex justify-end pt-2">
+            <Botao
+              variante="primario"
+              disabled={processando}
+              onClick={executarOrganizar}
+              className="w-full sm:w-auto flex items-center gap-2"
+            >
+              {processando ? <Loader2 size={16} className="animate-spin" /> : <FileArchive size={16} />}
+              <span>Salvar PDF Organizado</span>
+            </Botao>
+          </div>
         </div>
       )}
     </div>

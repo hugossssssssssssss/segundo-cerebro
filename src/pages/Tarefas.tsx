@@ -246,7 +246,8 @@ export default function Tarefas() {
     const caminho =
       t.caminho || nomeLivre(PASTA, t.titulo, tarefas.map((x) => x.caminho));
     const docAtualizado = lerMarkdown(texto);
-    atualizarCacheLocal(caminho, texto, docAtualizado, t.sha || undefined);
+    // Só DEPOIS de gravar, com o sha devolvido pelo GitHub — ver a explicação
+    // em `atualizarCacheLocal` (repo.ts).
     const sha = await gravar(cfg, caminho, texto, t.sha || undefined, mensagem);
     atualizarCacheLocal(caminho, texto, docAtualizado, sha);
     invalidarCache();

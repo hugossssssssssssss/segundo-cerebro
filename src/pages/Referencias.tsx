@@ -255,7 +255,8 @@ export default function Referencias() {
         editando.caminho ||
         nomeLivre(PASTA_REFS, editando.titulo, refs.map((x) => x.caminho));
       const docAtualizado = lerMarkdown(texto);
-      atualizarCacheLocal(caminho, texto, docAtualizado, editando.sha || undefined);
+      // Só DEPOIS de gravar, com o sha devolvido pelo GitHub — ver a explicação
+      // em `atualizarCacheLocal` (repo.ts).
       const novaSha = await gravar(cfg, caminho, texto, editando.sha || undefined);
       atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
       invalidarCache();

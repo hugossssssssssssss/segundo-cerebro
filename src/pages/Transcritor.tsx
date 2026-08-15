@@ -15,7 +15,7 @@ import {
   Sparkles,
   Volume2,
 } from "lucide-react";
-import { Botao, Cartao, Aviso, Selo } from "@/components/ui";
+import { Botao, Cartao, Aviso } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { lerConfig } from "@/lib/settings";
 import {
@@ -230,22 +230,16 @@ export default function Transcritor() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 space-y-6">
       {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-5">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-              <Mic size={20} />
-            </div>
-            Transcrição de Áudio
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Transcreva áudios do WhatsApp, reuniões e entrevistas com opções 100% locais no navegador ou via IA.
-          </p>
-        </div>
-
-        <Selo tom="sucesso" className="self-start sm:self-center px-3 py-1 flex items-center gap-1.5">
-          🔒 Fila em Segundo Plano
-        </Selo>
+      <div className="border-b border-border/60 pb-4">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+            <Mic size={20} />
+          </div>
+          Transcrição de Áudio
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Transcreva áudios do WhatsApp, reuniões e entrevistas com opções 100% locais no navegador ou via IA.
+        </p>
       </div>
 
       {/* Seleção do Motor de Transcrição */}
