@@ -34,6 +34,10 @@ import {
   Settings2,
   Zap,
   Search,
+  Check,
+  LayoutGrid,
+  List,
+  ArrowRight,
 } from "lucide-react";
 
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -59,13 +63,13 @@ import { Carregando, Vazio } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 const CORES_ETAPAS = {
-  blue: { bg: "bg-blue-500/10", border: "border-blue-500/30", text: "text-blue-500", header: "bg-blue-500" },
-  purple: { bg: "bg-purple-500/10", border: "border-purple-500/30", text: "text-purple-500", header: "bg-purple-500" },
-  amber: { bg: "bg-amber-500/10", border: "border-amber-500/30", text: "text-amber-500", header: "bg-amber-500" },
-  emerald: { bg: "bg-emerald-500/10", border: "border-emerald-500/30", text: "text-emerald-500", header: "bg-emerald-500" },
-  indigo: { bg: "bg-indigo-500/10", border: "border-indigo-500/30", text: "text-indigo-500", header: "bg-indigo-500" },
-  rose: { bg: "bg-rose-500/10", border: "border-rose-500/30", text: "text-rose-500", header: "bg-rose-500" },
-  slate: { bg: "bg-slate-500/10", border: "border-slate-500/30", text: "text-slate-500", header: "bg-slate-500" },
+  blue: { bg: "bg-blue-500/10", border: "border-blue-500", text: "text-blue-500", header: "bg-blue-500" },
+  purple: { bg: "bg-purple-500/10", border: "border-purple-500", text: "text-purple-500", header: "bg-purple-500" },
+  amber: { bg: "bg-amber-500/10", border: "border-amber-500", text: "text-amber-500", header: "bg-amber-500" },
+  emerald: { bg: "bg-emerald-500/10", border: "border-emerald-500", text: "text-emerald-500", header: "bg-emerald-500" },
+  indigo: { bg: "bg-indigo-500/10", border: "border-indigo-500", text: "text-indigo-500", header: "bg-indigo-500" },
+  rose: { bg: "bg-rose-500/10", border: "border-rose-500", text: "text-rose-500", header: "bg-rose-500" },
+  slate: { bg: "bg-slate-500/10", border: "border-slate-500", text: "text-slate-500", header: "bg-slate-500" },
 };
 
 function CartaoSortable({
@@ -94,10 +98,10 @@ function CartaoSortable({
       ref={setNodeRef}
       style={style}
       onClick={() => aoClicar(card)}
-      className="group relative flex flex-col gap-2 rounded-xl border border-border bg-card p-3.5 shadow-xs hover:border-primary/40 transition-all cursor-pointer select-none"
+      className="group relative flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5 shadow-xs hover:border-primary/50 hover:shadow-md transition-all cursor-pointer select-none"
     >
       <div className="flex items-start justify-between gap-2">
-        <h4 className="font-bold text-xs text-foreground group-hover:text-primary transition-colors line-clamp-2">
+        <h4 className="font-bold text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug">
           {card.titulo}
         </h4>
         <div
@@ -110,7 +114,7 @@ function CartaoSortable({
         </div>
       </div>
 
-      {/* Barra de Progresso de Checklist */}
+      {/* Barra de Progresso do Checklist */}
       {totalChecklists > 0 && (
         <div className="space-y-1 pt-1">
           <div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium">
@@ -118,9 +122,9 @@ function CartaoSortable({
               <CheckSquare size={11} className={pctChecklist === 100 ? "text-emerald-500" : "text-amber-500"} />
               Checklist ({concluidosChecklists}/{totalChecklists})
             </span>
-            <span>{pctChecklist}%</span>
+            <span className="font-bold">{pctChecklist}%</span>
           </div>
-          <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
             <div
               className={cn("h-full transition-all duration-300", pctChecklist === 100 ? "bg-emerald-500" : "bg-primary")}
               style={{ width: `${pctChecklist}%` }}
@@ -133,15 +137,15 @@ function CartaoSortable({
       <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50 text-[10px] text-muted-foreground">
         <div>
           {card.urgente && (
-            <Badge variant="destructive" className="text-[9px] py-0 px-1.5 font-semibold">
-              Urgente
+            <Badge variant="destructive" className="text-[9px] py-0 px-1.5 font-bold">
+              ⚡ Urgente
             </Badge>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 font-medium">
           {card.comentarios.length > 0 && (
-            <span className="flex items-center gap-1 font-medium">
+            <span className="flex items-center gap-1">
               <MessageSquare size={11} />
               {card.comentarios.length}
             </span>
@@ -170,17 +174,17 @@ function ColunaEtapa({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col rounded-2xl border border-border/80 bg-card/60 p-3 h-full min-h-[500px] transition-all",
-        isOver && "border-primary bg-primary/5 shadow-md"
+        "flex flex-col rounded-2xl border border-border bg-card/60 p-3.5 h-full min-h-[520px] transition-all border-t-4",
+        estiloCor.border,
+        isOver && "border-primary bg-primary/5 shadow-lg"
       )}
     >
-      {/* Topo da Coluna */}
-      <div className="flex items-center justify-between pb-3 mb-2 border-b border-border/60">
+      {/* Cabeçalho da Coluna CRM */}
+      <div className="flex items-center justify-between pb-3 mb-3 border-b border-border/60">
         <div className="flex items-center gap-2 min-w-0">
-          <div className={cn("h-3 w-3 rounded-full shrink-0", estiloCor.header)} />
-          <h3 className="font-bold text-xs text-foreground truncate">{etapa.nome}</h3>
-          <Badge variant="secondary" className="text-[10px] py-0 px-1.5 font-bold">
-            {cards.length} {cards.length === 1 ? "Card" : "Cards"}
+          <h3 className="font-bold text-xs uppercase tracking-wider text-foreground truncate">{etapa.nome}</h3>
+          <Badge variant="secondary" className="text-[10px] py-0 px-1.5 font-bold shrink-0">
+            {cards.length}
           </Badge>
         </div>
 
@@ -189,13 +193,13 @@ function ColunaEtapa({
           className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           title="Adicionar novo Card nesta etapa"
         >
-          <Plus size={15} />
+          <Plus size={16} />
         </button>
       </div>
 
-      {/* Lista de Cards */}
+      {/* Lista de Cards da Etapa */}
       <SortableContext items={cards.map((c) => c.caminho)} strategy={verticalListSortingStrategy}>
-        <div className="flex-1 space-y-2.5 overflow-y-auto min-h-[100px]">
+        <div className="flex-1 space-y-3 overflow-y-auto min-h-[120px]">
           {cards.map((card) => (
             <CartaoSortable key={card.caminho} card={card} aoClicar={aoClicarCard} />
           ))}
@@ -215,6 +219,9 @@ export default function Processos() {
   const [cards, setCards] = useState<CardProcesso[]>([]);
   const [processoAtivoId, setProcessoAtivoId] = useState<string>("");
 
+  // Alternador de Visão (Kanban vs Tabela)
+  const [modoVisao, setModoVisao] = useState<"kanban" | "tabela">("kanban");
+
   const [cardEmEdicao, setCardEmEdicao] = useState<CardProcesso | null>(null);
   const [modalNovoCardAberto, setModalNovoCardAberto] = useState(false);
   const [etapaNovoCard, setEtapaNovoCard] = useState<string>("");
@@ -226,7 +233,6 @@ export default function Processos() {
   // Modal de Exclusão com Motivo
   const [cardParaExcluir, setCardParaExcluir] = useState<CardProcesso | null>(null);
   const [motivoExclusao, setMotivoExclusao] = useState<string>("Concluído com Sucesso");
-  const [justificativaExclusao, setJustificativaExclusao] = useState<string>("");
 
   // Pesquisa
   const [pesquisaCard, setPesquisaCard] = useState("");
@@ -657,7 +663,7 @@ export default function Processos() {
     return (
       <Vazio
         titulo="Construtor de Processos do Klaus"
-        descricao="Conecte seu GitHub nos Ajustes para gerenciar seus processos e Cards."
+        descricao="Conecte seu GitHub nos Ajustes para gerenciar seus fluxos de trabalho."
         acao={
           <Link to="/config">
             <Button>Ir para Ajustes</Button>
@@ -668,27 +674,27 @@ export default function Processos() {
   }
 
   if (carregando && processos.length === 0) {
-    return <Carregando texto="Carregando seus processos..." />;
+    return <Carregando texto="Carregando suíte de processos..." />;
   }
 
   return (
     <div className="flex-1 space-y-6 animate-in fade-in duration-300 w-full pb-10">
-      {/* Topo Limpo do Construtor de Processos */}
+      {/* Topo no Estilo CRM Profissional (Pipefy / HubSpot Layout) */}
       <div className="flex flex-col gap-4 bg-card p-6 rounded-2xl border border-border shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <GitMerge className="h-6 w-6 text-primary" />
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                Construtor de Processos
+                Pipeline de Processos & Tarefas
               </h1>
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Organize qualquer tipo de fluxo de trabalho, checklists por etapa e automações.
+              Gerenciador visual de etapas, transições e automações.
             </p>
           </div>
 
-          {/* Seletor de Processo & Ações */}
+          {/* Seletor de Pipeline + Alternador de Visão + Ações */}
           <div className="flex items-center gap-2 flex-wrap">
             {processos.length > 0 && (
               <div className="relative">
@@ -706,6 +712,33 @@ export default function Processos() {
                 <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               </div>
             )}
+
+            {/* Alternador de Visão (Kanban vs Tabela) */}
+            <div className="flex items-center rounded-xl border border-border bg-muted/40 p-0.5">
+              <button
+                onClick={() => setModoVisao("kanban")}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                  modoVisao === "kanban" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                )}
+                title="Visão Quadro Kanban"
+              >
+                <LayoutGrid size={14} />
+                <span className="hidden sm:inline">Quadro</span>
+              </button>
+
+              <button
+                onClick={() => setModoVisao("tabela")}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                  modoVisao === "tabela" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                )}
+                title="Visão Tabela de Dados CRM"
+              >
+                <List size={14} />
+                <span className="hidden sm:inline">Tabela</span>
+              </button>
+            </div>
 
             {processoAtivo && (
               <>
@@ -726,10 +759,10 @@ export default function Processos() {
                   variant="outline"
                   onClick={() => setModalConfigProcessoAberto(true)}
                   className="gap-1.5 text-xs font-medium"
-                  title="Configurar etapas e checklists deste processo"
+                  title="Configurar etapas e colunas deste pipeline"
                 >
                   <Settings2 size={14} />
-                  <span>Configurar</span>
+                  <span>Estrutura</span>
                 </Button>
 
                 <Button
@@ -737,7 +770,7 @@ export default function Processos() {
                   variant="outline"
                   onClick={() => setModalAutomacoesAberto(true)}
                   className="gap-1.5 text-xs font-medium text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
-                  title="Configurar automações e regras de transição"
+                  title="Configurar regras de automação"
                 >
                   <Zap size={14} />
                   <span>Automações</span>
@@ -752,12 +785,12 @@ export default function Processos() {
               className="gap-1.5 text-xs font-medium"
             >
               <Plus size={14} />
-              <span>Criar Processo</span>
+              <span>Novo Funil</span>
             </Button>
           </div>
         </div>
 
-        {/* Pesquisa Limpa de Cards */}
+        {/* Pesquisa & Contador */}
         {processoAtivo && (
           <div className="pt-3 border-t border-border flex items-center justify-between gap-4">
             <div className="relative flex-1 max-w-sm">
@@ -766,13 +799,13 @@ export default function Processos() {
                 type="text"
                 value={pesquisaCard}
                 onChange={(e) => setPesquisaCard(e.target.value)}
-                placeholder="Pesquisar Cards neste processo..."
+                placeholder="Pesquisar Cards no pipeline..."
                 className="w-full rounded-xl border border-border bg-background px-3 py-1.5 pl-9 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
             <span className="text-xs text-muted-foreground font-medium">
-              Total: {cardsFiltrados.length} {cardsFiltrados.length === 1 ? "Card" : "Cards"}
+              Total: <strong className="text-foreground">{cardsFiltrados.length}</strong> {cardsFiltrados.length === 1 ? "Card" : "Cards"}
             </span>
           </div>
         )}
@@ -785,8 +818,8 @@ export default function Processos() {
         </div>
       )}
 
-      {/* Quadro Kanban de Colunas */}
-      {processoAtivo && (
+      {/* MODALIDADE 1: VISÃO QUADRO KANBAN */}
+      {modoVisao === "kanban" && processoAtivo && (
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={aoArrastarInicio} onDragEnd={aoArrastarFim}>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-start">
             {processoAtivo.etapas.map((etapa) => {
@@ -816,184 +849,276 @@ export default function Processos() {
         </DndContext>
       )}
 
-      {/* MODAL DE DETALHES DO CARD */}
+      {/* MODALIDADE 2: VISÃO TABELA CRM COMPACTA */}
+      {modoVisao === "tabela" && processoAtivo && (
+        <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-border bg-muted/30 text-muted-foreground uppercase text-[10px] font-bold">
+                <tr>
+                  <th className="py-3 px-4">Título do Card</th>
+                  <th className="py-3 px-4">Etapa Atual</th>
+                  <th className="py-3 px-4">Checklist</th>
+                  <th className="py-3 px-4">Status / Prioridade</th>
+                  <th className="py-3 px-4 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {cardsFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-muted-foreground italic">
+                      Nenhum Card encontrado neste processo.
+                    </td>
+                  </tr>
+                ) : (
+                  cardsFiltrados.map((card) => {
+                    const etapaObj = processoAtivo.etapas.find((e) => e.id === card.etapaId);
+                    const totalChk = Object.keys(card.checklists).length;
+                    const concluidosChk = Object.values(card.checklists).filter(Boolean).length;
+
+                    return (
+                      <tr
+                        key={card.caminho}
+                        onClick={() => setCardEmEdicao(card)}
+                        className="hover:bg-accent/40 cursor-pointer transition-colors"
+                      >
+                        <td className="py-3 px-4 font-bold text-foreground">{card.titulo}</td>
+                        <td className="py-3 px-4">
+                          <Badge variant="outline" className="text-[10px] font-bold">
+                            {etapaObj?.nome || "Etapa"}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {totalChk > 0 ? `${concluidosChk}/${totalChk}` : "-"}
+                        </td>
+                        <td className="py-3 px-4">
+                          {card.urgente ? (
+                            <Badge variant="destructive" className="text-[9px]">⚡ Urgente</Badge>
+                          ) : (
+                            <span className="text-muted-foreground font-medium">Normal</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <Button size="sm" variant="ghost" className="h-7 text-xs">
+                            Abrir ➔
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* PAINEL / MODAL DE DETALHES DO CARD (ESTILO DEAL VIEW DO HUBSPOT/PIPEFY COM STEPPER HORIZONTAL) */}
       {cardEmEdicao && processoAtivo && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
           onClick={() => setCardEmEdicao(null)}
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-2xl flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
+            className="flex max-h-[90vh] w-full max-w-3xl flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header do Card */}
-            <div className="flex items-center justify-between border-b border-border p-4 bg-muted/20">
-              <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                <div className="relative">
-                  <select
-                    value={cardEmEdicao.etapaId}
-                    onChange={(e) => {
-                      const novaEtapaId = e.target.value;
-                      const res = executarRegrasAoMudarEtapa(cardEmEdicao, processoAtivo, cardEmEdicao.etapaId, novaEtapaId);
-                      salvarCard(res.cardAtualizado);
-                    }}
-                    className="appearance-none bg-primary/10 border border-primary/30 text-primary font-bold text-xs rounded-xl px-3 py-1.5 pr-7 focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    {processoAtivo.etapas.map((et) => (
-                      <option key={et.id} value={et.id}>
-                        {et.nome}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-primary pointer-events-none" />
-                </div>
+            {/* Header do Card com Botão de Fechar */}
+            <div className="flex items-center justify-between border-b border-border px-5 py-3 bg-muted/20">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Detalhes do Card
+              </span>
+              <button
+                onClick={() => setCardEmEdicao(null)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
-                <button
-                  onClick={() => salvarCard({ ...cardEmEdicao, urgente: !cardEmEdicao.urgente })}
-                  className={cn(
-                    "text-xs px-2.5 py-1 rounded-xl font-bold border transition-colors",
-                    cardEmEdicao.urgente
-                      ? "bg-rose-500/10 text-rose-500 border-rose-500/30"
-                      : "bg-muted text-muted-foreground border-border hover:text-foreground"
-                  )}
-                >
-                  {cardEmEdicao.urgente ? "⚡ Urgente" : "Marcar Urgente"}
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => setCardParaExcluir(cardEmEdicao)}
-                  className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  title="Excluir ou arquivar este Card"
-                >
-                  <Trash2 size={16} />
-                </button>
-
-                <button
-                  onClick={() => setCardEmEdicao(null)}
-                  className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                >
-                  <X size={18} />
-                </button>
+            {/* STEPPER HORIZONTAL DE PROGRESSO DE ETAPAS (ESTILO HUBSPOT / PIPEFY) */}
+            <div className="px-5 py-3 border-b border-border bg-card">
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+                {processoAtivo.etapas.map((et, idx) => {
+                  const ehAtivo = et.id === cardEmEdicao.etapaId;
+                  return (
+                    <div key={et.id} className="flex items-center shrink-0">
+                      <button
+                        onClick={() => {
+                          const res = executarRegrasAoMudarEtapa(cardEmEdicao, processoAtivo, cardEmEdicao.etapaId, et.id);
+                          salvarCard(res.cardAtualizado);
+                        }}
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border",
+                          ehAtivo
+                            ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                            : "bg-muted/40 text-muted-foreground border-border hover:bg-accent hover:text-foreground"
+                        )}
+                      >
+                        {ehAtivo && <Check size={12} />}
+                        <span>{idx + 1}. {et.nome}</span>
+                      </button>
+                      {idx < processoAtivo.etapas.length - 1 && (
+                        <ArrowRight size={12} className="text-muted-foreground/40 mx-1 shrink-0" />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Conteúdo do Card */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 min-h-0">
-              {/* Título Editável */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
-                  Título do Card
-                </label>
-                <input
-                  type="text"
-                  value={cardEmEdicao.titulo}
-                  onChange={(e) => salvarCard({ ...cardEmEdicao, titulo: e.target.value })}
-                  className="w-full text-base sm:text-lg font-bold text-foreground bg-background border border-border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Título do Card..."
-                />
-              </div>
-
-              {/* Descrição / Notas do Card */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
-                  Descrição & Notas
-                </label>
-                <textarea
-                  value={cardEmEdicao.corpo}
-                  onChange={(e) => salvarCard({ ...cardEmEdicao, corpo: e.target.value })}
-                  placeholder="Adicione detalhes, briefing ou anotações..."
-                  rows={4}
-                  className="w-full rounded-xl border border-border bg-background p-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary leading-relaxed resize-y"
-                />
-              </div>
-
-              {/* Checklists da Etapa */}
-              <div className="space-y-3">
-                {(() => {
-                  const totalChk = Object.keys(cardEmEdicao.checklists).length;
-                  const concluidosChk = Object.values(cardEmEdicao.checklists).filter(Boolean).length;
-                  const pctChk = totalChk > 0 ? Math.round((concluidosChk / totalChk) * 100) : 0;
-
-                  return (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-xs text-foreground uppercase tracking-wider flex items-center gap-1.5">
-                          <CheckSquare size={14} className="text-primary" />
-                          Checklists da Etapa ({concluidosChk}/{totalChk})
-                        </h3>
-                        <span className="text-xs font-bold text-muted-foreground">{pctChk}%</span>
-                      </div>
-
-                      {totalChk > 0 && (
-                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                          <div
-                            className={cn("h-full transition-all duration-300", pctChk === 100 ? "bg-emerald-500" : "bg-primary")}
-                            style={{ width: `${pctChk}%` }}
-                          />
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-
-                <div className="space-y-2 pt-1">
-                  {processoAtivo.etapas
-                    .find((e) => e.id === cardEmEdicao.etapaId)
-                    ?.checklistsPadrao.map((chk) => {
-                      const concluido = Boolean(cardEmEdicao.checklists[chk.id]);
-                      return (
-                        <label
-                          key={chk.id}
-                          className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:bg-accent/50 cursor-pointer transition-colors"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={concluido}
-                            onChange={() => alternarChecklistCard(chk.id, concluido)}
-                            className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
-                          />
-                          <span className={cn("text-xs font-medium", concluido && "line-through text-muted-foreground")}>
-                            {chk.texto}
-                          </span>
-                        </label>
-                      );
-                    })}
-                </div>
-              </div>
-
-              {/* Comentários & Histórico */}
-              <div className="space-y-3 pt-4 border-t border-border">
-                <h3 className="font-bold text-xs text-foreground uppercase tracking-wider flex items-center gap-1.5">
-                  <MessageSquare size={14} className="text-primary" />
-                  Histórico & Comentários
-                </h3>
-
-                <div className="flex gap-2">
+            {/* Conteúdo em 2 Colunas (Estilo Deal Detail View) */}
+            <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
+              {/* Coluna Principal (2/3 - Conteúdo, Checklists e Comentários) */}
+              <div className="md:col-span-2 p-6 space-y-6">
+                {/* Título Editável */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Título do Card
+                  </label>
                   <input
                     type="text"
-                    value={novoComentarioTexto}
-                    onChange={(e) => setNovoComentarioTexto(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && adicionarComentarioCard()}
-                    placeholder="Adicionar comentário..."
-                    className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={cardEmEdicao.titulo}
+                    onChange={(e) => salvarCard({ ...cardEmEdicao, titulo: e.target.value })}
+                    className="w-full text-base sm:text-lg font-bold text-foreground bg-background border border-border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Título do Card..."
                   />
-                  <Button size="sm" onClick={adicionarComentarioCard} className="text-xs font-semibold shrink-0">
-                    Enviar
-                  </Button>
                 </div>
 
-                <div className="space-y-2 pt-2">
-                  {cardEmEdicao.comentarios.map((c) => (
-                    <div key={c.id} className="p-3 rounded-xl border border-border/80 bg-card/40 space-y-1">
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                        <span className="font-bold text-foreground">{c.autor}</span>
-                        <span>{new Date(c.data).toLocaleDateString("pt-BR")}</span>
+                {/* Descrição / Notas do Card */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Descrição & Anotações
+                  </label>
+                  <textarea
+                    value={cardEmEdicao.corpo}
+                    onChange={(e) => salvarCard({ ...cardEmEdicao, corpo: e.target.value })}
+                    placeholder="Adicione detalhes, rascunhos ou anotações desta tarefa..."
+                    rows={4}
+                    className="w-full rounded-xl border border-border bg-background p-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary leading-relaxed resize-y"
+                  />
+                </div>
+
+                {/* Checklists Interativos com Barra de Progresso */}
+                <div className="space-y-3">
+                  {(() => {
+                    const totalChk = Object.keys(cardEmEdicao.checklists).length;
+                    const concluidosChk = Object.values(cardEmEdicao.checklists).filter(Boolean).length;
+                    const pctChk = totalChk > 0 ? Math.round((concluidosChk / totalChk) * 100) : 0;
+
+                    return (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-bold text-xs text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                            <CheckSquare size={14} className="text-primary" />
+                            Checklists da Etapa ({concluidosChk}/{totalChk})
+                          </h3>
+                          <span className="text-xs font-bold text-muted-foreground">{pctChk}%</span>
+                        </div>
+
+                        {totalChk > 0 && (
+                          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={cn("h-full transition-all duration-300", pctChk === 100 ? "bg-emerald-500" : "bg-primary")}
+                              style={{ width: `${pctChk}%` }}
+                            />
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+
+                  <div className="space-y-2 pt-1">
+                    {processoAtivo.etapas
+                      .find((e) => e.id === cardEmEdicao.etapaId)
+                      ?.checklistsPadrao.map((chk) => {
+                        const concluido = Boolean(cardEmEdicao.checklists[chk.id]);
+                        return (
+                          <label
+                            key={chk.id}
+                            className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:bg-accent/50 cursor-pointer transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={concluido}
+                              onChange={() => alternarChecklistCard(chk.id, concluido)}
+                              className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
+                            />
+                            <span className={cn("text-xs font-medium", concluido && "line-through text-muted-foreground")}>
+                              {chk.texto}
+                            </span>
+                          </label>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                {/* Comentários & Histórico */}
+                <div className="space-y-3 pt-4 border-t border-border">
+                  <h3 className="font-bold text-xs text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <MessageSquare size={14} className="text-primary" />
+                    Histórico & Comentários
+                  </h3>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={novoComentarioTexto}
+                      onChange={(e) => setNovoComentarioTexto(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && adicionarComentarioCard()}
+                      placeholder="Adicionar nota..."
+                      className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <Button size="sm" onClick={adicionarComentarioCard} className="text-xs font-semibold shrink-0">
+                      Enviar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2 pt-2">
+                    {cardEmEdicao.comentarios.map((c) => (
+                      <div key={c.id} className="p-3 rounded-xl border border-border/80 bg-card/40 space-y-1">
+                        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                          <span className="font-bold text-foreground">{c.autor}</span>
+                          <span>{new Date(c.data).toLocaleDateString("pt-BR")}</span>
+                        </div>
+                        <p className="text-xs text-foreground leading-relaxed">{c.texto}</p>
                       </div>
-                      <p className="text-xs text-foreground leading-relaxed">{c.texto}</p>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Coluna Lateral de Atributos (1/3) */}
+              <div className="p-6 bg-muted/10 space-y-5 flex flex-col justify-between">
+                <div className="space-y-4">
+                  <h3 className="font-bold text-xs text-foreground uppercase tracking-wider">Atributos do Card</h3>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-semibold text-muted-foreground block">Prioridade</label>
+                    <button
+                      onClick={() => salvarCard({ ...cardEmEdicao, urgente: !cardEmEdicao.urgente })}
+                      className={cn(
+                        "w-full text-xs py-2 px-3 rounded-xl font-bold border transition-colors flex items-center justify-center gap-2",
+                        cardEmEdicao.urgente
+                          ? "bg-rose-500/10 text-rose-500 border-rose-500/30"
+                          : "bg-background text-muted-foreground border-border hover:text-foreground"
+                      )}
+                    >
+                      {cardEmEdicao.urgente ? "⚡ Urgente Marcado" : "Marcar como Urgente"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-border">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCardParaExcluir(cardEmEdicao)}
+                    className="w-full text-xs text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5"
+                  >
+                    <Trash2 size={14} />
+                    <span>Excluir / Arquivar Card</span>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1022,7 +1147,7 @@ export default function Processos() {
 
             <div className="p-5 space-y-4">
               <p className="text-xs text-muted-foreground">
-                Você está prestes a excluir o Card <strong className="text-foreground">{cardParaExcluir.titulo}</strong>. Selecione o motivo da finalização:
+                Você está prestes a excluir o Card <strong className="text-foreground">{cardParaExcluir.titulo}</strong>. Selecione a razão da finalização:
               </p>
 
               <div className="space-y-1">
@@ -1037,17 +1162,6 @@ export default function Processos() {
                   <option value="Fora de escopo / Duplicado">Fora de escopo / Duplicado</option>
                   <option value="Outro motivo">Outro motivo</option>
                 </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase">Justificativa (Opcional)</label>
-                <input
-                  type="text"
-                  value={justificativaExclusao}
-                  onChange={(e) => setJustificativaExclusao(e.target.value)}
-                  placeholder="Ex: Projeto entregue e aprovado..."
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
-                />
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
