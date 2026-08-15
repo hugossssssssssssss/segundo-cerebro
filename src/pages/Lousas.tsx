@@ -295,7 +295,23 @@ export default function Lousas() {
       });
 
       setMensagemSucesso(`Lousa "${tituloLimpo}" salva com sucesso! (${elementosValidos.length} elementos gravados)`);
-      await carregar();
+      setLousas((prev) => {
+        const index = prev.findIndex((x) => x.caminho === novoCaminho || (aberta.caminho && x.caminho === aberta.caminho));
+        const novoItem: ItemRepo = {
+          caminho: novoCaminho,
+          nome: novoCaminho.split("/").pop() || "",
+          sha: novaSha,
+          texto: textoParaGravar,
+          tamanho: textoParaGravar.length,
+          doc: docFormatado,
+        };
+        if (index >= 0) {
+          const copia = [...prev];
+          copia[index] = novoItem;
+          return copia;
+        }
+        return [novoItem, ...prev];
+      });
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {

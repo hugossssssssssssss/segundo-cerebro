@@ -11,7 +11,7 @@ import {
   arquivosIlegiveis,
   type ItemRepo,
 } from "@/lib/repo";
-import { montarIndice, mencoesA } from "@/lib/links";
+import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
 import {
   escreverMarkdown,
   lerMarkdown,
@@ -112,7 +112,7 @@ export default function Notas() {
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
   
   const opcoesRelacionamento = useMemo(() => {
-    return Array.from(indice.values()).map(a => ({
+    return alvosUnicos(indice).map(a => ({
       titulo: a.titulo,
       caminho: a.caminho
     })).sort((a, b) => a.titulo.localeCompare(b.titulo));

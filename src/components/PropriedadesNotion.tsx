@@ -25,6 +25,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link as LinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extrairMencoesTexto } from "@/lib/links";
 
 export function abrirItemSpa(caminho: string) {
   if (!caminho) return;
@@ -711,7 +712,7 @@ export function PropriedadesNotion({
     if (tipo === "relation") {
       const relacoes = Array.isArray(valor) ? valor : valor ? [valor] : [];
       
-      const textoMencoes = (corpoTexto || "").match(/@[a-zA-Z0-9_\-áàâãéèêíïóôõöúçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ\s]{2,60}/g) || [];
+      const textoMencoes = extrairMencoesTexto(corpoTexto || "", opcoesRelacionamento.map(o => o.titulo));
       const unicosMencoes = Array.from(new Set([...relacoes, ...textoMencoes.map(m => m.trim())]));
 
       return (

@@ -14,7 +14,7 @@ import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotio
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { ler, gravar, apagar } from "@/lib/github";
 import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal, type ItemRepo } from "@/lib/repo";
-import { montarIndice, mencoesA } from "@/lib/links";
+import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
 import {
   lerMarkdown,
   escreverMarkdown,
@@ -240,7 +240,7 @@ export default function Tarefas() {
   );
   
   const opcoesRelacionamento = useMemo(() => {
-    return Array.from(indice.values()).map(a => ({
+    return alvosUnicos(indice).map(a => ({
       titulo: a.titulo,
       caminho: a.caminho
     })).sort((a, b) => a.titulo.localeCompare(b.titulo));
