@@ -192,14 +192,19 @@ export default function Lousas() {
       let currentAppState: any = {};
       let files: any = {};
 
-      if (excalidrawAPI) {
-        elements = excalidrawAPI.getSceneElements() || [];
+      const apiElements = excalidrawAPI ? excalidrawAPI.getSceneElements() : null;
+      if (apiElements && apiElements.length > 0) {
+        elements = apiElements;
         currentAppState = excalidrawAPI.getAppState() || {};
         files = excalidrawAPI.getFiles() || {};
       } else if (elementsRef.current && elementsRef.current.length > 0) {
         elements = elementsRef.current;
         currentAppState = appStateRef.current || {};
         files = filesRef.current || {};
+      } else if (excalidrawAPI) {
+        elements = apiElements || [];
+        currentAppState = excalidrawAPI.getAppState() || {};
+        files = excalidrawAPI.getFiles() || {};
       } else if (aberta.dados) {
         elements = aberta.dados.elements || [];
         currentAppState = aberta.dados.appState || {};
@@ -445,19 +450,7 @@ export default function Lousas() {
           <Suspense fallback={<Carregando texto="Carregando editor visual Excalidraw..." />}>
             <ExcalidrawComp
               key={aberta?.caminho ? `excalidraw-${aberta.caminho}` : "excalidraw-nova"}
-              excalidrawAPI={(api) => {
-                setExcalidrawAPI(api);
-                if (api && aberta?.dados?.elements) {
-                  try {
-                    api.updateScene({
-                      elements: aberta.dados.elements || [],
-                      appState: aberta.dados.appState || {},
-                    });
-                  } catch {
-                    // ignora
-                  }
-                }
-              }}
+              excalidrawAPI={(api) => setExcalidrawAPI(api)}
               theme={ehModoEscuro ? "dark" : "light"}
               onChange={(elements, appState, files) => {
                 elementsRef.current = elements as any[];

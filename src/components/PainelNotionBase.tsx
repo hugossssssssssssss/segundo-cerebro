@@ -15,6 +15,7 @@ import { PropriedadesNotion } from "@/components/PropriedadesNotion";
 import { EditorNotion } from "@/components/EditorNotion";
 import { Subtarefas } from "@/components/Subtarefas";
 import { MencionadoEm } from "@/components/Links";
+import { MapaMentalEmbed } from "@/components/MapaMentalEmbed";
 import { sincronizarRelacionamentos } from "@/lib/links";
 import { cn } from "@/lib/utils";
 
@@ -319,6 +320,18 @@ export function PainelNotionBase({
     sincronizarCorpo(corpo);
   }, [corpo, titulosConhecidos, sincronizarCorpo]);
 
+  const lousasMencionadas = useMemo(() => {
+    if (!opcoesRelacionamento || opcoesRelacionamento.length === 0) return [];
+    const rels = (dadosProps.relacionamentos as string[]) || [];
+    const textoCombinado = `${corpo || ""} ${rels.join(" ")}`.toLowerCase();
+    return opcoesRelacionamento.filter((o) => {
+      const ehLousa = o.caminho.startsWith("lousas/") || o.caminho.includes("lousa");
+      if (!ehLousa) return false;
+      const norm = o.titulo.toLowerCase().trim();
+      return norm && (textoCombinado.includes(`@${norm}`) || textoCombinado.includes(`[[${norm}]]`) || textoCombinado.includes(norm));
+    });
+  }, [opcoesRelacionamento, corpo, dadosProps.relacionamentos]);
+
   const eTarefa = rotuloTipo?.toLowerCase().includes("tarefa");
 
   const conteudo = (
@@ -373,6 +386,24 @@ export function PainelNotionBase({
           }}
         />
       </div>
+
+      {lousasMencionadas.length > 0 && (
+        <div className="space-y-4 my-6">
+          {lousasMencionadas.map((l) => (
+            <MapaMentalEmbed
+              key={l.caminho}
+              item={{
+                caminho: l.caminho,
+                nome: l.caminho.split("/").pop() || "",
+                sha: "",
+                texto: "",
+                tamanho: 0,
+                doc: { dados: { titulo: l.titulo, tipo: "lousa" }, corpo: "" },
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {mencoes.length > 0 && (
         <div className="mt-6 border-t border-border pt-5">
