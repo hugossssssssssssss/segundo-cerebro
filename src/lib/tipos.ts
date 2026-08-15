@@ -174,7 +174,12 @@ export interface CardProcesso extends ItemBase {
   etapaId: string;
   titulo: string;
   cliente?: string;
+  empresa?: string;
+  email?: string;
+  telefone?: string;
   valor?: number;
+  prazo?: string;
+  prioridade?: "baixa" | "media" | "alta" | "urgente";
   corpo: string;
   checklists: Record<string, boolean>;
   checklistsExtras?: Array<{ id: string; texto: string; concluido: boolean }>;

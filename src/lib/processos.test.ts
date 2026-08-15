@@ -40,15 +40,20 @@ describe("Módulo de Processos e Funis", () => {
     expect(fm.titulo).toBe("Processo Teste");
   });
 
-  it("deve converter DocumentoMarkdown em CardProcesso", () => {
+  it("deve converter DocumentoMarkdown em CardProcesso com campos de CRM", () => {
     const doc = {
       dados: {
         id: "c1",
         processoId: "p1",
         etapaId: "e1",
-        titulo: "Cliente ACME",
-        cliente: "ACME Corp",
-        valor: 1500,
+        titulo: "Contato Comercial ACME",
+        cliente: "Fulano de Tal",
+        empresa: "ACME Corp",
+        email: "fulano@acme.com",
+        telefone: "5511999999999",
+        valor: 2500,
+        prazo: "2026-12-31",
+        prioridade: "alta",
         checklists: { b1: true },
         comentarios: [{ id: "com1", data: "2026-08-15", autor: "Hugo", texto: "Iniciado" }],
         urgente: false,
@@ -58,12 +63,16 @@ describe("Módulo de Processos e Funis", () => {
 
     const card = comoCardProcesso(doc, "processos/cards/c1.md", "sha456");
     expect(card.id).toBe("c1");
-    expect(card.cliente).toBe("ACME Corp");
-    expect(card.valor).toBe(1500);
-    expect(card.checklists.b1).toBe(true);
+    expect(card.cliente).toBe("Fulano de Tal");
+    expect(card.empresa).toBe("ACME Corp");
+    expect(card.email).toBe("fulano@acme.com");
+    expect(card.telefone).toBe("5511999999999");
+    expect(card.valor).toBe(2500);
+    expect(card.prioridade).toBe("alta");
 
     const fm = cardProcessoParaFrontmatter(card);
-    expect(fm.cliente).toBe("ACME Corp");
+    expect(fm.empresa).toBe("ACME Corp");
+    expect(fm.email).toBe("fulano@acme.com");
   });
 
   it("deve executar regra de automação ao concluir checklist", () => {

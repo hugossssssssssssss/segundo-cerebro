@@ -158,12 +158,17 @@ export function comoCardProcesso(
   const etapaId = typeof d.etapaId === "string" ? d.etapaId : "";
   const titulo = typeof d.titulo === "string" ? d.titulo : tituloFallback;
   const cliente = typeof d.cliente === "string" ? d.cliente : undefined;
+  const empresa = typeof d.empresa === "string" ? d.empresa : undefined;
+  const email = typeof d.email === "string" ? d.email : undefined;
+  const telefone = typeof d.telefone === "string" ? d.telefone : undefined;
   const valor = typeof d.valor === "number" ? d.valor : undefined;
+  const prazo = typeof d.prazo === "string" ? d.prazo : undefined;
+  const prioridade = typeof d.prioridade === "string" && ["baixa", "media", "alta", "urgente"].includes(d.prioridade) ? (d.prioridade as CardProcesso["prioridade"]) : undefined;
   const checklists = typeof d.checklists === "object" && d.checklists !== null ? (d.checklists as Record<string, boolean>) : {};
   const checklistsExtras = Array.isArray(d.checklistsExtras) ? (d.checklistsExtras as any[]) : [];
   const comentarios = Array.isArray(d.comentarios) ? (d.comentarios as ComentarioCard[]) : [];
   const tags = Array.isArray(d.tags) ? (d.tags as string[]) : [];
-  const urgente = Boolean(d.urgente);
+  const urgente = Boolean(d.urgente) || prioridade === "urgente";
   const atualizadoEm = typeof d.atualizadoEm === "string" ? d.atualizadoEm : new Date().toISOString();
 
   return {
@@ -175,7 +180,12 @@ export function comoCardProcesso(
     etapaId,
     titulo,
     cliente,
+    empresa,
+    email,
+    telefone,
     valor,
+    prazo,
+    prioridade,
     corpo: doc.corpo || "",
     checklists,
     checklistsExtras,
@@ -194,7 +204,12 @@ export function cardProcessoParaFrontmatter(c: CardProcesso): Record<string, any
     etapaId: c.etapaId,
     titulo: c.titulo,
     cliente: c.cliente,
+    empresa: c.empresa,
+    email: c.email,
+    telefone: c.telefone,
     valor: c.valor,
+    prazo: c.prazo,
+    prioridade: c.prioridade,
     checklists: c.checklists,
     checklistsExtras: c.checklistsExtras,
     comentarios: c.comentarios,
