@@ -334,6 +334,41 @@ export function PainelNotionBase({
 
   const eTarefa = rotuloTipo?.toLowerCase().includes("tarefa");
 
+  const [posicaoEmbeds, setPosicaoEmbeds] = useState<Record<string, "topo" | "base">>({});
+
+  const renderizarEmbeds = (posTarget: "topo" | "base") => {
+    const filtrados = lousasMencionadas.filter((l) => (posicaoEmbeds[l.caminho] || "base") === posTarget);
+    if (filtrados.length === 0) return null;
+    return (
+      <div className="space-y-4 my-4">
+        {filtrados.map((l) => {
+          const ehTopo = (posicaoEmbeds[l.caminho] || "base") === "topo";
+          return (
+            <MapaMentalEmbed
+              key={l.caminho}
+              item={{
+                caminho: l.caminho,
+                nome: l.caminho.split("/").pop() || "",
+                sha: "",
+                texto: "",
+                tamanho: 0,
+                doc: { dados: { titulo: l.titulo, tipo: "lousa" }, corpo: "" },
+              }}
+              podeSubir={!ehTopo}
+              podeDescer={ehTopo}
+              onMoverSubir={() => {
+                setPosicaoEmbeds((prev) => ({ ...prev, [l.caminho]: "topo" }));
+              }}
+              onMoverDescer={() => {
+                setPosicaoEmbeds((prev) => ({ ...prev, [l.caminho]: "base" }));
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
   const conteudo = (
     <div className="space-y-5 max-w-4xl mx-auto w-full">
       {erro && <Aviso tom="erro">{erro}</Aviso>}
@@ -374,6 +409,9 @@ export function PainelNotionBase({
         </>
       )}
 
+      {/* Renderiza mapas mentais movidos para o topo da página */}
+      {renderizarEmbeds("topo")}
+
       <div className="min-h-[220px]">
         <EditorNotion
           key={caminhoItem || "nota-editor"}
@@ -387,51 +425,8 @@ export function PainelNotionBase({
         />
       </div>
 
-      {lousasMencionadas.length > 0 && (
-        <div className="space-y-4 my-6">
-          {lousasMencionadas.map((l, idx) => (
-            <MapaMentalEmbed
-              key={l.caminho}
-              item={{
-                caminho: l.caminho,
-                nome: l.caminho.split("/").pop() || "",
-                sha: "",
-                texto: "",
-                tamanho: 0,
-                doc: { dados: { titulo: l.titulo, tipo: "lousa" }, corpo: "" },
-              }}
-              podeSubir={idx > 0}
-              podeDescer={idx < lousasMencionadas.length - 1}
-              onMoverSubir={() => {
-                const termo = `@${l.titulo}`;
-                if (corpo.includes(termo)) {
-                  const partes = corpo.split("\n");
-                  const pos = partes.findIndex((p) => p.includes(termo));
-                  if (pos > 0) {
-                    const temp = partes[pos - 1];
-                    partes[pos - 1] = partes[pos];
-                    partes[pos] = temp;
-                    setCorpo(partes.join("\n"));
-                  }
-                }
-              }}
-              onMoverDescer={() => {
-                const termo = `@${l.titulo}`;
-                if (corpo.includes(termo)) {
-                  const partes = corpo.split("\n");
-                  const pos = partes.findIndex((p) => p.includes(termo));
-                  if (pos >= 0 && pos < partes.length - 1) {
-                    const temp = partes[pos + 1];
-                    partes[pos + 1] = partes[pos];
-                    partes[pos] = temp;
-                    setCorpo(partes.join("\n"));
-                  }
-                }
-              }}
-            />
-          ))}
-        </div>
-      )}
+      {/* Renderiza mapas mentais na base do documento */}
+      {renderizarEmbeds("base")}
 
       {mencoes.length > 0 && (
         <div className="mt-6 border-t border-border pt-5">
