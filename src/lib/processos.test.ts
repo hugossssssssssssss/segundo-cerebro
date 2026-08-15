@@ -15,7 +15,7 @@ import type { Processo, CardProcesso } from "./tipos";
 describe("Módulo de Processos e Funis", () => {
   it("deve conter modelos padrão pré-configurados", () => {
     expect(MODELOS_PROCESSO_PADRAO.length).toBeGreaterThanOrEqual(3);
-    expect(MODELOS_PROCESSO_PADRAO[0].titulo).toContain("Identidade Visual");
+    expect(MODELOS_PROCESSO_PADRAO[0].titulo).toContain("Kanban Geral");
   });
 
   it("deve converter DocumentoMarkdown em Processo e retornar frontmatter", () => {

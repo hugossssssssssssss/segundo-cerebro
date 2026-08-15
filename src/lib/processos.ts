@@ -16,130 +16,89 @@ export const MODELOS_PROCESSO_PADRAO: Array<{
   regras: RegraAutomacao[];
 }> = [
   {
-    titulo: "Identidade Visual & Branding",
-    descricao: "Fluxo completo de criação de marca, do briefing ao handoff de arquivos.",
+    titulo: "Kanban Geral",
+    descricao: "Fluxo simples de 3 colunas para qualquer tipo de tarefa ou processo.",
     etapas: [
       {
-        id: "briefing",
-        nome: "Briefing & Pesquisa",
+        id: "a_fazer",
+        nome: "A Fazer",
         cor: "blue",
         checklistsPadrao: [
-          { id: "b1", texto: "Enviar formulário de briefing ao cliente" },
-          { id: "b2", texto: "Receber respostas e realizar reunião de alinhamento" },
-          { id: "b3", texto: "Coletar referências e montar Moodboard" },
+          { id: "k1", texto: "Revisar requisitos e detalhes do cartão" },
         ],
       },
       {
-        id: "criacao",
-        nome: "Conceito & Criação",
-        cor: "purple",
-        checklistsPadrao: [
-          { id: "c1", texto: "Desenvolver 3 opções de logotipo" },
-          { id: "c2", texto: "Definir paleta de cores e tipografias de apoio" },
-          { id: "c3", texto: "Aplicar marca em 3 mockups de teste" },
-        ],
-      },
-      {
-        id: "aprovacao",
-        nome: "Aprovação do Cliente",
+        id: "em_andamento",
+        nome: "Em Andamento",
         cor: "amber",
         checklistsPadrao: [
-          { id: "a1", texto: "Enviar apresentação em PDF para o cliente" },
-          { id: "a2", texto: "Coletar feedback ou aprovação final" },
+          { id: "k2", texto: "Executar etapas principais" },
         ],
       },
       {
-        id: "entrega",
-        nome: "Handoff & Entrega",
+        id: "concluido",
+        nome: "Concluído",
         cor: "emerald",
         checklistsPadrao: [
-          { id: "e1", texto: "Exportar arquivos vetoriais (SVG, EPS, PDF)" },
-          { id: "e2", texto: "Gerar versões PNG sem fundo e manual de marca" },
-          { id: "e3", texto: "Receber 50% de pagamento final" },
-        ],
-      },
-    ],
-    regras: [
-      {
-        id: "r1",
-        gatilho: "ao_mudar_etapa",
-        condicao: { etapaOrigemId: "aprovacao" },
-        acao: "adicionar_comentario",
-        parametros: { mensagemComentario: "Projeto movido para aprovação do cliente." },
-      },
-    ],
-  },
-  {
-    titulo: "Social Media & Conteúdo",
-    descricao: "Gestão e aprovação de posts, carrosséis e vídeos curtos.",
-    etapas: [
-      {
-        id: "ideacao",
-        nome: "Ideação & Pauta",
-        cor: "slate",
-        checklistsPadrao: [
-          { id: "s1", texto: "Definir tema da publicação" },
-          { id: "s2", texto: "Escrever roteiro / estrutura da legenda" },
-        ],
-      },
-      {
-        id: "design",
-        nome: "Design da Peça",
-        cor: "indigo",
-        checklistsPadrao: [
-          { id: "s3", texto: "Criar arte estática ou carrossel no Photoshop/Figma" },
-          { id: "s4", texto: "Revisar tamanho e proporção de tela" },
-        ],
-      },
-      {
-        id: "aprovacao_post",
-        nome: "Aprovação do Cliente",
-        cor: "amber",
-        checklistsPadrao: [
-          { id: "s5", texto: "Enviar prévia com legenda para aprovação" },
-        ],
-      },
-      {
-        id: "agendado",
-        nome: "Agendado / Publicado",
-        cor: "emerald",
-        checklistsPadrao: [
-          { id: "s6", texto: "Agendar publicação na plataforma" },
+          { id: "k3", texto: "Validar e finalizar item" },
         ],
       },
     ],
     regras: [],
   },
   {
-    titulo: "Funil Comercial & Orçamentos",
-    descricao: "Acompanhamento de novos contatos, propostas enviadas e fecho.",
+    titulo: "Pipeline de Atendimento & Vendas",
+    descricao: "Gestão de contatos, propostas e negociações.",
     etapas: [
       {
-        id: "contato",
-        nome: "Novo Contato / Lead",
+        id: "novo_contato",
+        nome: "Novo Contato",
         cor: "blue",
         checklistsPadrao: [
-          { id: "f1", texto: "Entender demanda inicial do cliente" },
-          { id: "f2", texto: "Enviar estimativa preliminar de prazo" },
+          { id: "v1", texto: "Entender necessidade inicial" },
         ],
       },
       {
-        id: "proposta",
-        nome: "Proposta Enviada",
+        id: "em_negociacao",
+        nome: "Em Negociação",
         cor: "amber",
         checklistsPadrao: [
-          { id: "f3", texto: "Montar proposta comercial personalizada em PDF" },
-          { id: "f4", texto: "Gerar link direto de atendimento no WhatsApp" },
+          { id: "v2", texto: "Enviar proposta comercial" },
+          { id: "v3", texto: "Acompanhar retorno" },
         ],
       },
       {
         id: "fechado",
-        nome: "Contrato Fechado",
+        nome: "Fechado / Ganho",
         cor: "emerald",
         checklistsPadrao: [
-          { id: "f5", texto: "Enviar contrato assinado" },
-          { id: "f6", texto: "Confirmar pagamento do sinal" },
+          { id: "v4", texto: "Confirmar contratação ou pagamento" },
         ],
+      },
+    ],
+    regras: [],
+  },
+  {
+    titulo: "Processo em 3 Fases",
+    descricao: "Modelo flexível para triagem, execução e entrega.",
+    etapas: [
+      {
+        id: "fase1",
+        nome: "Triagem",
+        cor: "slate",
+        checklistsPadrao: [{ id: "p1", texto: "Coletar informações iniciais" }],
+      },
+      {
+        id: "fase2",
+        nome: "Em Processamento",
+        cor: "purple",
+        checklistsPadrao: [{ id: "p2", texto: "Executar processo principal" }],
+      },
+      {
+        id: "fase3",
+        nome: "Finalizado",
+        cor: "emerald",
+        checklistsPadrao: [{ id: "p3", texto: "Arquivar cartão" }],
       },
     ],
     regras: [],

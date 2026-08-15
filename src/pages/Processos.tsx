@@ -31,9 +31,10 @@ import {
   User,
   Sparkles,
   AlertTriangle,
-  Layers,
   ChevronDown,
   GripVertical,
+  Settings2,
+  Zap,
 } from "lucide-react";
 
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -51,7 +52,7 @@ import {
   executarRegrasAoChecklist,
   executarRegrasAoMudarEtapa,
 } from "@/lib/automacoesProcesso";
-import type { Processo, CardProcesso, EtapaProcesso, ComentarioCard } from "@/lib/tipos";
+import type { Processo, CardProcesso, EtapaProcesso, RegraAutomacao, ComentarioCard } from "@/lib/tipos";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -228,9 +229,30 @@ export default function Processos() {
   const [modalNovoCardAberto, setModalNovoCardAberto] = useState(false);
   const [etapaNovoCard, setEtapaNovoCard] = useState<string>("");
 
+  const [modalConfigProcessoAberto, setModalConfigProcessoAberto] = useState(false);
+  const [modalAutomacoesAberto, setModalAutomacoesAberto] = useState(false);
+  const [modalNovoProcessoAberto, setModalNovoProcessoAberto] = useState(false);
+
+  // Estados dos formulários
   const [novoCardTitulo, setNovoCardTitulo] = useState("");
   const [novoCardCliente, setNovoCardCliente] = useState("");
   const [novoCardValor, setNovoCardValor] = useState("");
+
+  const [novoProcessoTitulo, setNovoProcessoTitulo] = useState("");
+  const [novoProcessoDescricao, setNovoProcessoDescricao] = useState("");
+
+  const [novaEtapaNome, setNovaEtapaNome] = useState("");
+  const [novaEtapaCor, setNovaEtapaCor] = useState<EtapaProcesso["cor"]>("blue");
+  const [novoChecklistTexto, setNovoChecklistTexto] = useState("");
+  const [etapaSelecionadaChecklist, setEtapaSelecionadaChecklist] = useState<string>("");
+
+  // Estado para adicionar automação
+  const [novaRegraGatilho, setNovaRegraGatilho] = useState<RegraAutomacao["gatilho"]>("ao_concluir_checklist");
+  const [novaRegraChecklistId, setNovaRegraChecklistId] = useState("");
+  const [novaRegraEtapaOrigemId, setNovaRegraEtapaOrigemId] = useState("");
+  const [novaRegraAcao, setNovaRegraAcao] = useState<RegraAutomacao["acao"]>("mudar_etapa");
+  const [novaRegraEtapaDestinoId, setNovaRegraEtapaDestinoId] = useState("");
+  const [novaRegraComentario, setNovaRegraComentario] = useState("");
 
   const [novoComentarioTexto, setNovoComentarioTexto] = useState("");
   const [dragCardAtivo, setDragCardAtivo] = useState<CardProcesso | null>(null);
@@ -249,16 +271,46 @@ export default function Processos() {
       const arqProcessos = daPasta(todos, "processos").filter((i) => !i.caminho.startsWith("processos/cards/"));
       const arqCards = daPasta(todos, "processos/cards");
 
-      const listaProc = arqProcessos.map((i) => comoProcesso(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)));
+      let listaProc = arqProcessos.map((i) => comoProcesso(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)));
       const listaCards = arqCards.map((i) => comoCardProcesso(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)));
 
-      if (listaProc.length > 0) {
+      // Se o repositório não tiver nenhum processo ainda, inicializar com o Kanban Geral automaticamente
+      if (listaProc.length === 0) {
+        const mod = MODELOS_PROCESSO_PADRAO[0];
+        const id = `proc_${Date.now()}`;
+        const caminho = `processos/${id}.md`;
+        const novoProc: Processo = {
+          caminho,
+          sha: "",
+          bruto: {},
+          id,
+          titulo: mod.titulo,
+          corpo: "",
+          descricao: mod.descricao,
+          etapas: mod.etapas,
+          regras: mod.regras,
+          atualizadoEm: new Date().toISOString(),
+        };
+
+        listaProc = [novoProc];
+        setProcessos([novoProc]);
+        setProcessoAtivoId(id);
+
+        const texto = escreverMarkdown({
+          dados: processoParaFrontmatter(novoProc),
+          corpo: `Processo de ${mod.titulo}`,
+        });
+        gravar(cfg, caminho, texto).then((sha) => {
+          atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
+        });
+      } else {
         setProcessos(listaProc);
-        setCards(listaCards);
         if (!processoAtivoId) {
           setProcessoAtivoId(listaProc[0].id);
         }
       }
+
+      setCards(listaCards);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
@@ -272,6 +324,65 @@ export default function Processos() {
 
   const processoAtivo = processos.find((p) => p.id === processoAtivoId) || processos[0];
   const cardsDoProcesso = cards.filter((c) => c.processoId === (processoAtivo?.id || ""));
+
+  const salvarProcessoAtivo = async (procAtualizado: Processo) => {
+    setProcessos((prev) => prev.map((p) => (p.id === procAtualizado.id ? procAtualizado : p)));
+
+    try {
+      const texto = escreverMarkdown({
+        dados: processoParaFrontmatter(procAtualizado),
+        corpo: procAtualizado.corpo || `Processo de ${procAtualizado.titulo}`,
+      });
+
+      const sha = await gravar(cfg, procAtualizado.caminho, texto, procAtualizado.sha || undefined);
+      atualizarCacheLocal(procAtualizado.caminho, texto, lerMarkdown(texto), sha);
+      setProcessos((prev) => prev.map((p) => (p.id === procAtualizado.id ? { ...procAtualizado, sha } : p)));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const criarProcessoEmBranco = async () => {
+    if (!novoProcessoTitulo.trim()) return;
+
+    const id = `proc_${Date.now()}`;
+    const caminho = `processos/${id}.md`;
+    const novoProc: Processo = {
+      caminho,
+      sha: "",
+      bruto: {},
+      id,
+      titulo: novoProcessoTitulo.trim(),
+      corpo: "",
+      descricao: novoProcessoDescricao.trim(),
+      etapas: [
+        { id: "e1", nome: "Etapa 1", cor: "blue", checklistsPadrao: [] },
+        { id: "e2", nome: "Etapa 2", cor: "amber", checklistsPadrao: [] },
+        { id: "e3", nome: "Etapa 3", cor: "emerald", checklistsPadrao: [] },
+      ],
+      regras: [],
+      atualizadoEm: new Date().toISOString(),
+    };
+
+    setProcessos((prev) => [...prev, novoProc]);
+    setProcessoAtivoId(id);
+    setNovoProcessoTitulo("");
+    setNovoProcessoDescricao("");
+    setModalNovoProcessoAberto(false);
+
+    try {
+      const texto = escreverMarkdown({
+        dados: processoParaFrontmatter(novoProc),
+        corpo: `Processo de ${novoProc.titulo}`,
+      });
+
+      const sha = await gravar(cfg, caminho, texto);
+      atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
+      setProcessos((prev) => prev.map((p) => (p.id === id ? { ...p, sha } : p)));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    }
+  };
 
   const criarModeloProcessoPadrao = async (modeloIndex: number) => {
     const mod = MODELOS_PROCESSO_PADRAO[modeloIndex];
@@ -292,7 +403,6 @@ export default function Processos() {
       atualizadoEm: new Date().toISOString(),
     };
 
-    // Atualização otimista local
     setProcessos((prev) => [...prev, novoProc]);
     setProcessoAtivoId(id);
 
@@ -311,7 +421,6 @@ export default function Processos() {
   };
 
   const salvarCard = async (cardAtualizado: CardProcesso) => {
-    // Atualização otimista local
     setCards((prev) => prev.map((c) => (c.id === cardAtualizado.id ? cardAtualizado : c)));
     setCardEmEdicao((prev) => (prev && prev.id === cardAtualizado.id ? cardAtualizado : prev));
 
@@ -337,10 +446,16 @@ export default function Processos() {
     const id = `card_${Date.now()}`;
     const caminho = `processos/cards/${id}.md`;
 
-    // Preencher checklists padrão da etapa
-    const etapaObj = processoAtivo.etapas.find((e) => e.id === etapaNovoCard) || processoAtivo.etapas[0];
+    const etapaObj =
+      processoAtivo.etapas.find((e) => e.id === etapaNovoCard) || processoAtivo.etapas[0] || {
+        id: "etapa_padrao",
+        nome: "Etapa",
+        cor: "blue",
+        checklistsPadrao: [],
+      };
+
     const checklistsIniciais: Record<string, boolean> = {};
-    etapaObj?.checklistsPadrao.forEach((chk) => {
+    etapaObj.checklistsPadrao?.forEach((chk) => {
       checklistsIniciais[chk.id] = false;
     });
 
@@ -361,7 +476,7 @@ export default function Processos() {
           id: `com_${Date.now()}`,
           data: new Date().toISOString(),
           autor: "Klaus Bot",
-          texto: `Projeto criado na etapa '${etapaObj.nome}'.`,
+          texto: `Cartão criado na etapa '${etapaObj.nome}'.`,
         },
       ],
       tags: [],
@@ -369,7 +484,6 @@ export default function Processos() {
       atualizadoEm: new Date().toISOString(),
     };
 
-    // Atualização otimista no estado local
     setCards((prev) => [...prev, novoCard]);
     setNovoCardTitulo("");
     setNovoCardCliente("");
@@ -431,6 +545,95 @@ export default function Processos() {
     }
   };
 
+  // Funções de Gestão de Etapas
+  const adicionarEtapa = async () => {
+    if (!novaEtapaNome.trim() || !processoAtivo) return;
+
+    const novaEtapa: EtapaProcesso = {
+      id: `etapa_${Date.now()}`,
+      nome: novaEtapaNome.trim(),
+      cor: novaEtapaCor,
+      checklistsPadrao: [],
+    };
+
+    const procAtualizado = {
+      ...processoAtivo,
+      etapas: [...processoAtivo.etapas, novaEtapa],
+    };
+
+    setNovaEtapaNome("");
+    await salvarProcessoAtivo(procAtualizado);
+  };
+
+  const removerEtapa = async (etapaId: string) => {
+    if (!processoAtivo || processoAtivo.etapas.length <= 1) return;
+
+    const procAtualizado = {
+      ...processoAtivo,
+      etapas: processoAtivo.etapas.filter((e) => e.id !== etapaId),
+    };
+
+    await salvarProcessoAtivo(procAtualizado);
+  };
+
+  const adicionarChecklistPadraoEtapa = async (etapaId: string) => {
+    if (!novoChecklistTexto.trim() || !processoAtivo) return;
+
+    const novoItem = {
+      id: `chk_${Date.now()}`,
+      texto: novoChecklistTexto.trim(),
+    };
+
+    const procAtualizado = {
+      ...processoAtivo,
+      etapas: processoAtivo.etapas.map((et) =>
+        et.id === etapaId
+          ? { ...et, checklistsPadrao: [...et.checklistsPadrao, novoItem] }
+          : et
+      ),
+    };
+
+    setNovoChecklistTexto("");
+    await salvarProcessoAtivo(procAtualizado);
+  };
+
+  // Funções de Gestão de Regras de Automação
+  const adicionarRegraAutomacao = async () => {
+    if (!processoAtivo) return;
+
+    const novaRegra: RegraAutomacao = {
+      id: `regra_${Date.now()}`,
+      gatilho: novaRegraGatilho,
+      condicao: {
+        checklistId: novaRegraGatilho === "ao_concluir_checklist" ? novaRegraChecklistId : undefined,
+        etapaOrigemId: novaRegraGatilho === "ao_mudar_etapa" ? novaRegraEtapaOrigemId : undefined,
+      },
+      acao: novaRegraAcao,
+      parametros: {
+        etapaDestinoId: novaRegraAcao === "mudar_etapa" ? novaRegraEtapaDestinoId : undefined,
+        mensagemComentario: novaRegraAcao === "adicionar_comentario" ? novaRegraComentario : undefined,
+      },
+    };
+
+    const procAtualizado = {
+      ...processoAtivo,
+      regras: [...processoAtivo.regras, novaRegra],
+    };
+
+    await salvarProcessoAtivo(procAtualizado);
+  };
+
+  const removerRegraAutomacao = async (regraId: string) => {
+    if (!processoAtivo) return;
+
+    const procAtualizado = {
+      ...processoAtivo,
+      regras: processoAtivo.regras.filter((r) => r.id !== regraId),
+    };
+
+    await salvarProcessoAtivo(procAtualizado);
+  };
+
   const aoArrastarInicio = (e: DragStartEvent) => {
     const cardEncontrado = cards.find((c) => c.caminho === e.active.id);
     if (cardEncontrado) setDragCardAtivo(cardEncontrado);
@@ -447,12 +650,10 @@ export default function Processos() {
     const card = cards.find((c) => c.caminho === cardId);
     if (!card || card.etapaId === etapaDestinoId) return;
 
-    // Verificar se over.id é uma etapa do processo
     const etapaExiste = processoAtivo.etapas.some((et) => et.id === etapaDestinoId);
     if (!etapaExiste) return;
 
     const res = executarRegrasAoMudarEtapa(card, processoAtivo, card.etapaId, etapaDestinoId);
-    setCards((prev) => prev.map((c) => (c.caminho === cardId ? res.cardAtualizado : c)));
     await salvarCard(res.cardAtualizado);
   };
 
@@ -486,7 +687,7 @@ export default function Processos() {
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Gerencie projetos, checklists por etapa e automações flexíveis.
+            Gerencie qualquer tipo de funil de trabalho, checklists por etapa e automações.
           </p>
         </div>
 
@@ -510,28 +711,51 @@ export default function Processos() {
           )}
 
           {processoAtivo && (
-            <Button
-              size="sm"
-              onClick={() => {
-                setEtapaNovoCard(processoAtivo.etapas[0]?.id || "");
-                setModalNovoCardAberto(true);
-              }}
-              className="gap-1.5 text-xs font-semibold"
-            >
-              <Plus size={15} />
-              <span>Novo Projeto</span>
-            </Button>
+            <>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEtapaNovoCard(processoAtivo.etapas[0]?.id || "");
+                  setModalNovoCardAberto(true);
+                }}
+                className="gap-1.5 text-xs font-semibold"
+              >
+                <Plus size={15} />
+                <span>Novo Cartão</span>
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setModalConfigProcessoAberto(true)}
+                className="gap-1.5 text-xs font-medium"
+                title="Configurar etapas e checklists deste processo"
+              >
+                <Settings2 size={14} />
+                <span>Configurar</span>
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setModalAutomacoesAberto(true)}
+                className="gap-1.5 text-xs font-medium text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+                title="Configurar automações e regras de transição"
+              >
+                <Zap size={14} />
+                <span>Automações</span>
+              </Button>
+            </>
           )}
 
           <Button
             size="sm"
-            variant="outline"
-            onClick={() => criarModeloProcessoPadrao(0)}
+            variant="secondary"
+            onClick={() => setModalNovoProcessoAberto(true)}
             className="gap-1.5 text-xs font-medium"
-            title="Criar novo processo usando o modelo de Identidade Visual"
           >
-            <Sparkles size={14} className="text-amber-500" />
-            <span>+ Modelo Branding</span>
+            <Plus size={14} />
+            <span>Criar Processo</span>
           </Button>
         </div>
       </div>
@@ -543,32 +767,11 @@ export default function Processos() {
         </div>
       )}
 
-      {/* Estado sem nenhum processo cadastrado */}
-      {processos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-border rounded-2xl bg-card/40 space-y-4">
-          <div className="p-4 rounded-2xl bg-primary/10 text-primary">
-            <Layers size={32} />
-          </div>
-          <div className="space-y-1 max-w-md">
-            <h3 className="font-bold text-lg text-foreground">Nenhum processo criado ainda</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Crie seu primeiro funil de trabalho a partir de nossos modelos prontos para Identidade Visual, Social Media ou Orçamentos.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 pt-2">
-            {MODELOS_PROCESSO_PADRAO.map((mod, idx) => (
-              <Button key={mod.titulo} onClick={() => criarModeloProcessoPadrao(idx)} variant="outline" size="sm" className="gap-2 text-xs">
-                <Sparkles size={14} className="text-amber-500" />
-                <span>{mod.titulo}</span>
-              </Button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        /* Quadro Kanban de Colunas */
+      {/* Quadro Kanban de Colunas */}
+      {processoAtivo && (
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={aoArrastarInicio} onDragEnd={aoArrastarFim}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-start">
-            {processoAtivo?.etapas.map((etapa) => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-start">
+            {processoAtivo.etapas.map((etapa) => {
               const cardsDaEtapa = cardsDoProcesso.filter((c) => c.etapaId === etapa.id);
               return (
                 <ColunaEtapa
@@ -596,7 +799,82 @@ export default function Processos() {
         </DndContext>
       )}
 
-      {/* Modal de Detalhes do Cartão / Projeto */}
+      {/* Modal de Criar Novo Cartão / Item */}
+      {modalNovoCardAberto && processoAtivo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setModalNovoCardAberto(false)}
+        >
+          <div
+            className="flex w-full max-w-md flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <h3 className="font-bold text-sm text-foreground">Novo Cartão no Funil</h3>
+              <button onClick={() => setModalNovoCardAberto(false)} className="p-1 rounded-lg text-muted-foreground hover:text-foreground">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase">Título do Cartão *</label>
+                <input
+                  type="text"
+                  value={novoCardTitulo}
+                  onChange={(e) => setNovoCardTitulo(e.target.value)}
+                  placeholder="Ex: Tarefa / Assunto / Cliente / Projeto"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase">Etapa Inicial</label>
+                <select
+                  value={etapaNovoCard}
+                  onChange={(e) => setEtapaNovoCard(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {processoAtivo.etapas.map((et) => (
+                    <option key={et.id} value={et.id}>
+                      {et.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase">Cliente ou Pessoa (Opcional)</label>
+                <input
+                  type="text"
+                  value={novoCardCliente}
+                  onChange={(e) => setNovoCardCliente(e.target.value)}
+                  placeholder="Ex: Nome da pessoa ou empresa"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase">Valor Estimado em R$ (Opcional)</label>
+                <input
+                  type="number"
+                  value={novoCardValor}
+                  onChange={(e) => setNovoCardValor(e.target.value)}
+                  placeholder="Ex: 1500"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <Button onClick={criarNovoCard} className="w-full text-xs font-semibold py-5 rounded-xl mt-2">
+                Criar Cartão
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Detalhes do Cartão */}
       {cardEmEdicao && processoAtivo && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
@@ -643,7 +921,7 @@ export default function Processos() {
                 {cardEmEdicao.cliente && (
                   <div className="p-3 rounded-xl border border-border bg-card/50 space-y-1">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                      <User size={12} /> Cliente
+                      <User size={12} /> Cliente / Pessoa
                     </span>
                     <p className="text-xs font-bold text-foreground">{cardEmEdicao.cliente}</p>
                   </div>
@@ -652,7 +930,7 @@ export default function Processos() {
                 {cardEmEdicao.valor !== undefined && (
                   <div className="p-3 rounded-xl border border-border bg-card/50 space-y-1">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                      <DollarSign size={12} /> Valor do Projeto
+                      <DollarSign size={12} /> Valor
                     </span>
                     <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                       R$ {cardEmEdicao.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -663,12 +941,10 @@ export default function Processos() {
 
               {/* Checklists por Etapa */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-xs text-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <CheckSquare size={14} className="text-primary" />
-                    Checklists da Etapa
-                  </h3>
-                </div>
+                <h3 className="font-bold text-xs text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <CheckSquare size={14} className="text-primary" />
+                  Checklists da Etapa
+                </h3>
 
                 <div className="space-y-2">
                   {processoAtivo.etapas
@@ -708,7 +984,7 @@ export default function Processos() {
                     value={novoComentarioTexto}
                     onChange={(e) => setNovoComentarioTexto(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && adicionarComentarioCard()}
-                    placeholder="Adicionar nota ou comentário sobre o projeto..."
+                    placeholder="Adicionar nota ou comentário..."
                     className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                   <Button size="sm" onClick={adicionarComentarioCard} className="text-xs font-semibold shrink-0">
@@ -733,61 +1009,375 @@ export default function Processos() {
         </div>
       )}
 
-      {/* Modal de Criar Novo Cartão / Projeto */}
-      {modalNovoCardAberto && processoAtivo && (
+      {/* Modal de Configurar Etapas do Processo */}
+      {modalConfigProcessoAberto && processoAtivo && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
-          onClick={() => setModalNovoCardAberto(false)}
+          onClick={() => setModalConfigProcessoAberto(false)}
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-xl flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                <Settings2 size={16} /> Configurar Etapas & Checklists
+              </h3>
+              <button onClick={() => setModalConfigProcessoAberto(false)} className="p-1 rounded-lg text-muted-foreground hover:text-foreground">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-6">
+              {/* Nome e Descrição */}
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase">Nome do Processo</label>
+                  <input
+                    type="text"
+                    value={processoAtivo.titulo}
+                    onChange={(e) => salvarProcessoAtivo({ ...processoAtivo, titulo: e.target.value })}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Lista de Etapas Existentes */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-xs text-foreground uppercase tracking-wider">Etapas Atuais</h4>
+
+                <div className="space-y-3">
+                  {processoAtivo.etapas.map((etapa) => (
+                    <div key={etapa.id} className="p-3 rounded-xl border border-border bg-card/50 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1">
+                          <input
+                            type="text"
+                            value={etapa.nome}
+                            onChange={(e) =>
+                              salvarProcessoAtivo({
+                                ...processoAtivo,
+                                etapas: processoAtivo.etapas.map((et) => (et.id === etapa.id ? { ...et, nome: e.target.value } : et)),
+                              })
+                            }
+                            className="font-bold text-xs bg-transparent border-b border-border focus:outline-none focus:border-primary px-1 py-0.5 flex-1"
+                          />
+                        </div>
+
+                        {processoAtivo.etapas.length > 1 && (
+                          <button
+                            onClick={() => removerEtapa(etapa.id)}
+                            className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                            title="Excluir etapa"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Checklists Padrão da Etapa */}
+                      <div className="pl-2 space-y-1 border-l-2 border-primary/20">
+                        <span className="text-[10px] font-semibold text-muted-foreground">Checklists Padrão da Etapa:</span>
+                        {etapa.checklistsPadrao.map((chk) => (
+                          <div key={chk.id} className="text-xs text-foreground flex items-center justify-between">
+                            <span>• {chk.texto}</span>
+                          </div>
+                        ))}
+
+                        <div className="flex gap-2 pt-1">
+                          <input
+                            type="text"
+                            value={etapaSelecionadaChecklist === etapa.id ? novoChecklistTexto : ""}
+                            onChange={(e) => {
+                              setEtapaSelecionadaChecklist(etapa.id);
+                              setNovoChecklistTexto(e.target.value);
+                            }}
+                            placeholder="Adicionar item de checklist padrão..."
+                            className="flex-1 rounded-lg border border-border bg-background px-2 py-1 text-[11px]"
+                          />
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => adicionarChecklistPadraoEtapa(etapa.id)}
+                            className="text-[11px] h-7 px-2"
+                          >
+                            + Adicionar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Adicionar Nova Etapa */}
+              <div className="pt-3 border-t border-border space-y-2">
+                <h4 className="font-bold text-xs text-foreground uppercase tracking-wider">+ Nova Etapa</h4>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={novaEtapaNome}
+                    onChange={(e) => setNovaEtapaNome(e.target.value)}
+                    placeholder="Nome da nova coluna/etapa..."
+                    className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <select
+                    value={novaEtapaCor}
+                    onChange={(e) => setNovaEtapaCor(e.target.value as any)}
+                    className="rounded-xl border border-border bg-background px-2 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="blue">Azul</option>
+                    <option value="purple">Roxo</option>
+                    <option value="amber">Amarelo</option>
+                    <option value="emerald">Verde</option>
+                    <option value="indigo">Índigo</option>
+                    <option value="rose">Rosa</option>
+                    <option value="slate">Cinza</option>
+                  </select>
+                  <Button onClick={adicionarEtapa} size="sm" className="text-xs font-semibold">
+                    Adicionar Coluna
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Automações do Processo */}
+      {modalAutomacoesAberto && processoAtivo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setModalAutomacoesAberto(false)}
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-xl flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border p-4 bg-amber-500/10">
+              <h3 className="font-bold text-sm text-amber-500 flex items-center gap-2">
+                <Zap size={16} /> Automações do Processo
+              </h3>
+              <button onClick={() => setModalAutomacoesAberto(false)} className="p-1 rounded-lg text-muted-foreground hover:text-foreground">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-6">
+              {/* Regras Ativas */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-xs text-foreground uppercase tracking-wider">Regras Ativas</h4>
+
+                {processoAtivo.regras.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">Nenhuma regra de automação configurada ainda.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {processoAtivo.regras.map((regra) => (
+                      <div key={regra.id} className="p-3 rounded-xl border border-border bg-card/60 flex items-center justify-between gap-3 text-xs">
+                        <div className="space-y-1">
+                          <span className="font-bold text-primary">SE</span>{" "}
+                          <span>
+                            {regra.gatilho === "ao_concluir_checklist" ? "concluir checklist" : "mover de etapa"}
+                          </span>{" "}
+                          <span className="font-bold text-emerald-500">ENTÃO</span>{" "}
+                          <span>
+                            {regra.acao === "mudar_etapa"
+                              ? `mover para '${processoAtivo.etapas.find((e) => e.id === regra.parametros.etapaDestinoId)?.nome || regra.parametros.etapaDestinoId}'`
+                              : regra.acao === "marcar_urgente"
+                              ? "marcar como urgente"
+                              : `comentar '${regra.parametros.mensagemComentario}'`}
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={() => removerRegraAutomacao(regra.id)}
+                          className="p-1 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Criar Nova Regra */}
+              <div className="pt-3 border-t border-border space-y-3">
+                <h4 className="font-bold text-xs text-foreground uppercase tracking-wider">+ Criar Nova Regra</h4>
+
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-muted-foreground uppercase">Gatilho (Quando isso acontecer)</label>
+                    <select
+                      value={novaRegraGatilho}
+                      onChange={(e) => setNovaRegraGatilho(e.target.value as any)}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="ao_concluir_checklist">Ao Concluir um Checklist</option>
+                      <option value="ao_mudar_etapa">Ao Mudar de Etapa</option>
+                    </select>
+                  </div>
+
+                  {novaRegraGatilho === "ao_concluir_checklist" && (
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-muted-foreground uppercase">Qual Checklist?</label>
+                      <select
+                        value={novaRegraChecklistId}
+                        onChange={(e) => setNovaRegraChecklistId(e.target.value)}
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="">Qualquer checklist da etapa</option>
+                        {processoAtivo.etapas.flatMap((et) =>
+                          et.checklistsPadrao.map((chk) => (
+                            <option key={chk.id} value={chk.id}>
+                              {et.nome} → {chk.texto}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </div>
+                  )}
+
+                  {novaRegraGatilho === "ao_mudar_etapa" && (
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-muted-foreground uppercase">Qual Etapa de Origem?</label>
+                      <select
+                        value={novaRegraEtapaOrigemId}
+                        onChange={(e) => setNovaRegraEtapaOrigemId(e.target.value)}
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="">Qualquer Etapa</option>
+                        {processoAtivo.etapas.map((et) => (
+                          <option key={et.id} value={et.id}>
+                            {et.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-muted-foreground uppercase">Ação (Faça isso automaticamente)</label>
+                    <select
+                      value={novaRegraAcao}
+                      onChange={(e) => setNovaRegraAcao(e.target.value as any)}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="mudar_etapa">Mover Cartão para outra Etapa</option>
+                      <option value="marcar_urgente">Marcar Cartão como Urgente</option>
+                      <option value="adicionar_comentario">Adicionar Comentario / Nota Automática</option>
+                    </select>
+                  </div>
+
+                  {novaRegraAcao === "mudar_etapa" && (
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-muted-foreground uppercase">Etapa de Destino</label>
+                      <select
+                        value={novaRegraEtapaDestinoId}
+                        onChange={(e) => setNovaRegraEtapaDestinoId(e.target.value)}
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="">Selecione a Etapa...</option>
+                        {processoAtivo.etapas.map((et) => (
+                          <option key={et.id} value={et.id}>
+                            {et.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {novaRegraAcao === "adicionar_comentario" && (
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-muted-foreground uppercase">Mensagem do Comentário</label>
+                      <input
+                        type="text"
+                        value={novaRegraComentario}
+                        onChange={(e) => setNovaRegraComentario(e.target.value)}
+                        placeholder="Ex: Etapa iniciada automaticamente..."
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  )}
+
+                  <Button onClick={adicionarRegraAutomacao} className="w-full text-xs font-semibold py-4 rounded-xl mt-2">
+                    Salvar Automação
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Criar Novo Processo em Branco */}
+      {modalNovoProcessoAberto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setModalNovoProcessoAberto(false)}
         >
           <div
             className="flex w-full max-w-md flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border p-4">
-              <h3 className="font-bold text-sm text-foreground">Novo Cartão de Projeto</h3>
-              <button onClick={() => setModalNovoCardAberto(false)} className="p-1 rounded-lg text-muted-foreground hover:text-foreground">
+              <h3 className="font-bold text-sm text-foreground">Criar Novo Processo</h3>
+              <button onClick={() => setModalNovoProcessoAberto(false)} className="p-1 rounded-lg text-muted-foreground hover:text-foreground">
                 <X size={18} />
               </button>
             </div>
 
             <div className="p-4 space-y-3">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase">Título do Projeto *</label>
+                <label className="text-[11px] font-bold text-muted-foreground uppercase">Nome do Processo / Funil *</label>
                 <input
                   type="text"
-                  value={novoCardTitulo}
-                  onChange={(e) => setNovoCardTitulo(e.target.value)}
-                  placeholder="Ex: Redesign de Logo Acme Corp"
+                  value={novoProcessoTitulo}
+                  onChange={(e) => setNovoProcessoTitulo(e.target.value)}
+                  placeholder="Ex: Atendimento de Clientes / Projetos Pessoais"
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
                   autoFocus
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase">Nome do Cliente</label>
+                <label className="text-[11px] font-bold text-muted-foreground uppercase">Descrição (Opcional)</label>
                 <input
                   type="text"
-                  value={novoCardCliente}
-                  onChange={(e) => setNovoCardCliente(e.target.value)}
-                  placeholder="Ex: Fulano de Tal"
+                  value={novoProcessoDescricao}
+                  onChange={(e) => setNovoProcessoDescricao(e.target.value)}
+                  placeholder="Ex: Acompanhamento de propostas e entregas"
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase">Valor Estimado (R$)</label>
-                <input
-                  type="number"
-                  value={novoCardValor}
-                  onChange={(e) => setNovoCardValor(e.target.value)}
-                  placeholder="Ex: 2500"
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+              <div className="pt-2">
+                <Button onClick={criarProcessoEmBranco} className="w-full text-xs font-semibold py-5 rounded-xl">
+                  Criar Processo
+                </Button>
               </div>
 
-              <Button onClick={criarNovoCard} className="w-full text-xs font-semibold py-5 rounded-xl mt-2">
-                Criar Cartão no Funil
-              </Button>
+              <div className="pt-3 border-t border-border">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase block mb-2">Ou escolha um modelo pronto:</span>
+                <div className="space-y-2">
+                  {MODELOS_PROCESSO_PADRAO.map((mod, idx) => (
+                    <button
+                      key={mod.titulo}
+                      onClick={() => {
+                        criarModeloProcessoPadrao(idx);
+                        setModalNovoProcessoAberto(false);
+                      }}
+                      className="w-full text-left p-2.5 rounded-xl border border-border hover:bg-accent transition-colors flex items-center justify-between text-xs"
+                    >
+                      <div>
+                        <span className="font-bold text-foreground block">{mod.titulo}</span>
+                        <span className="text-[10px] text-muted-foreground">{mod.descricao}</span>
+                      </div>
+                      <Sparkles size={14} className="text-amber-500 shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
