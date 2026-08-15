@@ -151,7 +151,8 @@ export function PainelNotionBase({
         tipo,
       };
     });
-  }, [opcoesRelacionamento]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opcoesRelacionamento.map((x) => x.caminho).join(",")]);
 
   // Cabeçalho unificado com alternador dos 4 Modos de Visão
   const cabecalho = (

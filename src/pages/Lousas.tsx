@@ -407,7 +407,7 @@ export default function Lousas() {
         <div className="flex-1 w-full min-h-[500px] rounded-2xl overflow-hidden border border-border shadow-md bg-background relative">
           <Suspense fallback={<Carregando texto="Carregando editor visual Excalidraw..." />}>
             <ExcalidrawComp
-              key={aberta.caminho || aberta.tituloOriginal || "nova"}
+              key="excalidraw-main-canvas"
               excalidrawAPI={(api) => setExcalidrawAPI(api)}
               theme={ehModoEscuro ? "dark" : "light"}
               onChange={(elements, appState, files) => {

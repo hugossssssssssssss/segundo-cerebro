@@ -80,6 +80,7 @@ export function EditorNotion({
   const ultimoMd = useRef(markdown);
 
   const [alvos, setAlvos] = useState<Alvo[]>([]);
+  const alvosOverrideKey = alvosOverride ? alvosOverride.map((x) => x.caminho).join(",") : "";
 
   useEffect(() => {
     if (alvosOverride && alvosOverride.length > 0) {
@@ -103,7 +104,8 @@ export function EditorNotion({
     return () => {
       cancelado = true;
     };
-  }, [acervo, alvosOverride]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acervo, alvosOverrideKey]);
 
   /** Monta os itens do menu a partir do que já está em memória. */
   const itensDoMenu = (query: string) =>
