@@ -4,10 +4,12 @@
  * Cada referência é um .md em `referencias/`. A imagem vai para
  * `referencias/imagens/` e o .md aponta para ela com markdown normal
  * (`![](imagens/arquivo.jpg)`), para continuar legível fora do app.
+ *
+ * Os tipos e funções de conversão vivem agora em `tipos.ts` e `entidades.ts`.
+ * Este arquivo re-exporta com nomes legados e guarda as funções específicas
+ * de imagem e upload.
  */
 
-import type { Documento, Frontmatter } from "./markdown";
-import { comoLista, mesclarFrontmatter } from "./markdown";
 import type { Settings } from "./settings";
 
 export const PASTA_REFS = "referencias";
@@ -16,60 +18,19 @@ export const PASTA_IMAGENS = "referencias/imagens";
 /** Limite do GitHub por arquivo via API. Acima disso a gravação falha. */
 export const LIMITE_IMAGEM = 5 * 1024 * 1024;
 
-export type Referencia = {
-  /** Frontmatter como veio do arquivo — preserva campos que o app não conhece */
-  bruto: Frontmatter;
-  caminho: string;
-  id: string;
-  sha: string;
-  titulo: string;
-  /** Caminho da imagem no repo, se houver */
-  imagem?: string;
-  fonte?: string;
-  tags: string[];
-  /** O campo que faz a diferença: por que você salvou isto */
-  porque: string;
-  corpo: string;
-};
+// Re-exporta o contrato central
+export { type Referencia } from "./tipos";
+export { comoReferencia } from "./entidades";
 
-export function comoReferencia(
-  doc: Documento,
-  caminho: string,
-  sha: string,
-  tituloFallback: string,
-): Referencia {
-  const d = doc.dados;
-  return {
-    bruto: doc.dados,
-    caminho,
-    id: caminho.split("/").pop()!.replace(/\.md$/, ""),
-    sha,
-    titulo:
-      typeof d.titulo === "string" && d.titulo.trim()
-        ? d.titulo.trim()
-        : tituloFallback,
-    imagem: typeof d.imagem === "string" ? d.imagem : extrairImagem(doc.corpo),
-    fonte: typeof d.fonte === "string" ? d.fonte : undefined,
-    tags: comoLista(d.tags),
-    porque: typeof d.porque === "string" ? d.porque : "",
-    corpo: doc.corpo,
-  };
-}
+import { referenciaParaArquivo } from "./entidades";
+import type { Referencia } from "./tipos";
 
-/** Acha a primeira imagem no corpo, para quem editou o arquivo por fora. */
-function extrairImagem(corpo: string): string | undefined {
-  return corpo.match(/!\[[^\]]*\]\(([^)]+)\)/)?.[1];
-}
-
+/**
+ * Wrapper legado que retorna só o frontmatter (Record), não {dados,corpo}.
+ * As telas novas usam `referenciaParaArquivo` de entidades.ts.
+ */
 export function refParaFrontmatter(r: Referencia): Record<string, unknown> {
-  return mesclarFrontmatter(r.bruto, {
-    titulo: r.titulo,
-    tipo: "referencia",
-    imagem: r.imagem,
-    fonte: r.fonte,
-    porque: r.porque || undefined,
-    tags: r.tags.length ? r.tags : undefined,
-  });
+  return referenciaParaArquivo(r).dados;
 }
 
 /** Nome de arquivo para a imagem, preservando a extensão original. */

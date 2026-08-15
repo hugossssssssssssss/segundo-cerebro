@@ -1,7 +1,13 @@
 # Instruções para agentes de IA
 
-App web do "segundo cérebro" do Hugo, designer gráfico brasileiro.
+App web "Klaus" (segundo cérebro) do Hugo, designer gráfico brasileiro.
 **Responda sempre em português do Brasil e explique sem jargão técnico** — ele não é desenvolvedor.
+
+> **Leia o [ARCHITECTURE.md](ARCHITECTURE.md) antes de mexer no código.** Ele é
+> gerado a cada `npm run build` a partir de `src/lib/tipos.ts` e
+> `src/lib/entidades.ts`, então o mapa das entidades, das pastas e dos campos
+> de frontmatter que está lá nunca fica velho. Este arquivo aqui explica o
+> *porquê* das decisões; o ARCHITECTURE.md explica o *o quê*, direto do código.
 
 ## A ideia em uma frase
 
@@ -89,7 +95,7 @@ arquivos.
 ## Antes de entregar qualquer mudança
 
 ```
-npm test          # 286 testes; nenhum precisa de rede.
+npm test          # 357 testes; nenhum precisa de rede.
                   # Inclui testes de componente (jsdom + Testing Library):
                   # três das quatro perdas de dados achadas nas auditorias
                   # viviam em componentes e eram invisíveis sem eles.

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && npm run arquitetura && vite build",
+    "arquitetura": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gerar-arquitetura.ts",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",

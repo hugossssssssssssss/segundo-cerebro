@@ -1,4 +1,4 @@
-# Segundo Cérebro
+# Klaus
 
 Notas, tarefas, referências visuais e plano de carreira — num lugar só, sobre arquivos Markdown.
 

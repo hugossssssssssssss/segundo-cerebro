@@ -1,26 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Plus, Search, Tag, FileText } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { gravar, apagar } from "@/lib/github";
-import {
-  carregarRepo,
-  daPasta,
-  invalidarCache,
-  atualizarCacheLocal,
-  arquivosIlegiveis,
-  type ItemRepo,
-} from "@/lib/repo";
+import { useItemRepo } from "@/lib/useItemRepo";
+import { useSalvar } from "@/lib/useSalvar";
+import { PASTAS } from "@/lib/tipos";
+import { comoNota, notaParaArquivo } from "@/lib/entidades";
 import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
 import {
   escreverMarkdown,
-  lerMarkdown,
   tituloProvavel,
   nomeLivre,
-  mesclarFrontmatter,
   type Frontmatter,
 } from "@/lib/markdown";
-import { hojeISO, lerParametroAbrir } from "@/lib/utils";
+import { lerParametroAbrir } from "@/lib/utils";
 import {
   Botao,
   Campo,
@@ -30,19 +23,13 @@ import {
   Carregando,
 } from "@/components/ui";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
+import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
+import type { Nota } from "@/lib/tipos";
 
-const PASTA = "notas";
-
-type NotaAberta = {
-  bruto: Frontmatter;
-  caminho: string;
-  sha: string;
-  titulo: string;
-  corpo: string;
+// Nota com rastreamento de mudanças para o painel de edição
+type NotaAberta = Nota & {
   original: { titulo: string; corpo: string; bruto?: Frontmatter };
 };
-
-import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 
 export default function Notas() {
   const cfg = lerConfig();
@@ -51,150 +38,58 @@ export default function Notas() {
   const navegar = useNavigate();
   const { abrirFlutuante, focarFlutuante } = useItemFlutuante();
 
-  const [arquivos, setArquivos] = useState<ItemRepo[]>([]);
-  const [titulos, setTitulos] = useState<Record<string, string>>({});
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState("");
+  // ── Carregamento ──────────────────────────────────────────────────────────
+  const { itens: arquivos, acervo, titulos, carregando, erro: erroCarregar, ilegiveis, recarregar } =
+    useItemRepo(cfg, PASTAS.notas, (item) =>
+      comoNota(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+    );
+
+  // ── Salvamento ────────────────────────────────────────────────────────────
+  const { salvarTexto, apagarItem, salvando, erro: erroSalvar, limparErro } = useSalvar(cfg);
+  const erro = erroCarregar || erroSalvar;
+
+  // ── Estado da UI ──────────────────────────────────────────────────────────
   const [busca, setBusca] = useState("");
   const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>("popup");
   const [aberta, setAberta] = useState<NotaAberta | null>(null);
-  const [salvando, setSalvando] = useState(false);
-  // acervo inteiro: serve para resolver os [[links]] e as menções
-  const [acervo, setAcervo] = useState<ItemRepo[]>([]);
-  const [ilegiveis, setIlegiveis] = useState<string[]>([]);
 
-  /* ------------------------------------------------------------ listagem */
-
-  /**
-   * Já houve um carregamento nesta tela?
-   *
-   * Guardado num ref, e não lido de `arquivos.length`, porque `arquivos.length`
-   * estava nas dependências do `carregarLista` — que é justamente quem altera
-   * `arquivos`. Cada nota criada mudava o tamanho da lista, o callback era
-   * reconstruído e o efeito disparava outro carregamento do repositório.
-   */
-  const jaCarregouRef = useRef(false);
-
-  const carregarLista = useCallback(async (silencioso = false) => {
-    if (!pronto) {
-      setCarregando(false);
-      return;
-    }
-    if (!silencioso && !jaCarregouRef.current) {
-      setCarregando(true);
-    }
-    setErro("");
-    try {
-      const todos = await carregarRepo(cfg);
-      setIlegiveis(arquivosIlegiveis());
-      setAcervo(todos);
-      const lista = daPasta(todos, PASTA);
-      setArquivos(lista);
-      setTitulos(
-        Object.fromEntries(
-          lista.map((i) => [i.caminho, tituloProvavel(i.doc, i.nome)]),
-        ),
-      );
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    } finally {
-      jaCarregouRef.current = true;
-      setCarregando(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
-
-  useEffect(() => {
-    carregarLista();
-    const aoAtualizar = () => carregarLista(true);
-    window.addEventListener("acervo-atualizado", aoAtualizar);
-    return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
-  }, [carregarLista]);
-
-  // Índice para relacionamentos e menções
+  // ── Relacionamentos ────────────────────────────────────────────────────────
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
-  
-  const opcoesRelacionamento = useMemo(() => {
-    return alvosUnicos(indice).map(a => ({
-      titulo: a.titulo,
-      caminho: a.caminho
-    })).sort((a, b) => a.titulo.localeCompare(b.titulo));
-  }, [indice]);
+  const opcoesRelacionamento = useMemo(() =>
+    alvosUnicos(indice)
+      .map(a => ({ titulo: a.titulo, caminho: a.caminho }))
+      .sort((a, b) => a.titulo.localeCompare(b.titulo)),
+    [indice],
+  );
+  const mencoesNotaAberta = useMemo(() => {
+    if (!aberta?.caminho) return [];
+    return mencoesA(aberta.caminho, acervo, indice);
+  }, [aberta?.caminho, acervo, indice]);
 
-  // Abre item vindo por parâmetro de busca na URL (processa somente 1 vez por mudanca de busca)
+  // ── Abre item pela URL ─────────────────────────────────────────────────────
   const processouUrlRef = useRef<string | null>(null);
   useEffect(() => {
     const urlAtual = `${location.pathname}${location.search}${location.hash}`;
     const abrirCaminho = lerParametroAbrir(location);
     if (!abrirCaminho) return;
     if (processouUrlRef.current === urlAtual) return;
-
     if (acervo.length > 0) {
       if (focarFlutuante(abrirCaminho)) return;
       const alvo = acervo.find((a) => a.caminho === abrirCaminho);
       if (alvo) {
         processouUrlRef.current = urlAtual;
-        const titulo = tituloProvavel(alvo.doc, alvo.nome);
-        setAberta({
-          bruto: alvo.doc.dados,
-          caminho: alvo.caminho,
-          sha: alvo.sha,
-          titulo,
-          corpo: alvo.doc.corpo,
-          original: { titulo, corpo: alvo.doc.corpo, bruto: alvo.doc.dados },
-        });
+        const nota = comoNota(alvo.doc, alvo.caminho, alvo.sha, tituloProvavel(alvo.doc, alvo.nome));
+        setAberta({ ...nota, original: { titulo: nota.titulo, corpo: nota.corpo, bruto: nota.bruto } });
       }
     }
   }, [location.pathname, location.search, location.hash, acervo.length > 0]);
 
-  const mencoesNotaAberta = useMemo(() => {
-    if (!aberta?.caminho) return [];
-    return mencoesA(aberta.caminho, acervo, indice);
-  }, [aberta?.caminho, acervo, indice]);
-
+  // ── Proteção contra fechar com mudança não salva ───────────────────────────
   const mudou = aberta
     ? aberta.titulo !== aberta.original.titulo ||
       aberta.corpo !== aberta.original.corpo ||
-      JSON.stringify(aberta.bruto) !== JSON.stringify(aberta.original.bruto) 
+      JSON.stringify(aberta.bruto) !== JSON.stringify(aberta.original.bruto)
     : false;
-
-  function fecharNota() {
-    setAberta(null);
-    navegar(location.pathname, { replace: true });
-  }
-
-  // Quando o usuário clica no modo flutuante, transfere para o provedor global que flutua pelo app inteiro
-  useEffect(() => {
-    if (modoVisao === "flutuante" && aberta) {
-      abrirFlutuante({
-        id: aberta.caminho,
-        rotuloTipo: aberta.caminho ? "Nota" : "Nova nota",
-        titulo: aberta.titulo,
-        corpo: aberta.corpo,
-        dadosProps: aberta.bruto,
-        camposFixosProps: {
-          tipo: { icone: <FileText className="h-4 w-4 opacity-50 text-orange-500" />, tipo: "select", opcoes: ["nota", "referencia", "rascunho"] },
-          tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
-        },
-        caminho: aberta.caminho,
-        sha: aberta.sha,
-        temMudancas: mudou,
-        salvando,
-        erro,
-        mencoes: mencoesNotaAberta,
-        opcoesRelacionamento,
-        setTitulo: (t) => setAberta((cur) => cur ? { ...cur, titulo: t } : null),
-        setCorpo: (c) => setAberta((cur) => cur ? { ...cur, corpo: c } : null),
-        onChangeProps: (nProps) => setAberta((cur) => cur ? { ...cur, bruto: nProps } : null),
-        aoSalvar: async () => {
-          if (aberta) await salvar(aberta);
-        },
-        aoRemover: aberta.caminho ? async () => { await remover(); } : undefined,
-      });
-      setAberta(null);
-      setModoVisao("popup");
-    }
-  }, [modoVisao, aberta]);
 
   useEffect(() => {
     if (!aberta) return;
@@ -217,133 +112,95 @@ export default function Notas() {
     return () => removeEventListener("beforeunload", aoSair);
   }, [mudou]);
 
-  /* ------------------------------------------------------------- ações */
+  // ── Modo flutuante ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (modoVisao === "flutuante" && aberta) {
+      abrirFlutuante({
+        id: aberta.caminho,
+        rotuloTipo: aberta.caminho ? "Nota" : "Nova nota",
+        titulo: aberta.titulo,
+        corpo: aberta.corpo,
+        dadosProps: aberta.bruto,
+        camposFixosProps: {
+          tipo: { icone: <FileText className="h-4 w-4 opacity-50 text-orange-500" />, tipo: "select", opcoes: ["nota", "referencia", "rascunho"] },
+          tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
+        },
+        caminho: aberta.caminho,
+        sha: aberta.sha,
+        temMudancas: mudou,
+        salvando,
+        erro,
+        mencoes: mencoesNotaAberta,
+        opcoesRelacionamento,
+        setTitulo: (t) => setAberta((cur) => cur ? { ...cur, titulo: t } : null),
+        setCorpo: (c) => setAberta((cur) => cur ? { ...cur, corpo: c } : null),
+        onChangeProps: (nProps) => setAberta((cur) => cur ? { ...cur, bruto: nProps } : null),
+        aoSalvar: async () => { if (aberta) await salvar(aberta); },
+        aoRemover: aberta.caminho ? async () => { await remover(); } : undefined,
+      });
+      setAberta(null);
+      setModoVisao("popup");
+    }
+  }, [modoVisao, aberta]);
 
-  function abrir(a: ItemRepo) {
-    if (focarFlutuante(a.caminho)) return;
-    if (aberta && aberta.caminho !== a.caminho && mudou) {
-      // trocar de nota grava a anterior em segundo plano; se falhar, a
-      // mensagem já aparece pelo `setErro` de dentro do `salvar`
+  // ── Ações ──────────────────────────────────────────────────────────────────
+
+  function fecharNota() {
+    setAberta(null);
+    limparErro();
+    navegar(location.pathname, { replace: true });
+  }
+
+  function abrir(nota: Nota) {
+    if (focarFlutuante(nota.caminho)) return;
+    if (aberta && aberta.caminho !== nota.caminho && mudou) {
       salvar(aberta).catch(() => {});
     }
-    const titulo = titulos[a.caminho] ?? tituloProvavel(a.doc, a.nome);
-    setAberta({
-      bruto: a.doc.dados,
-      caminho: a.caminho,
-      sha: a.sha,
-      titulo,
-      corpo: a.doc.corpo,
-      original: { titulo, corpo: a.doc.corpo, bruto: a.doc.dados },
-    });
-    window.history.replaceState(null, "", `?abrir=${encodeURIComponent(a.caminho)}`);
+    setAberta({ ...nota, original: { titulo: nota.titulo, corpo: nota.corpo, bruto: nota.bruto } });
+    window.history.replaceState(null, "", `?abrir=${encodeURIComponent(nota.caminho)}`);
   }
 
   function nova() {
-    setAberta({
+    const notaVazia: NotaAberta = {
       bruto: {},
       caminho: "",
       sha: "",
       titulo: "",
+      tipo: "nota",
+      tags: [],
       corpo: "",
       original: { titulo: "", corpo: "", bruto: {} },
-    });
+    };
+    setAberta(notaVazia);
   }
+
   async function salvar(alvo?: NotaAberta) {
     const n = alvo || aberta;
     if (!n) return;
     const titulo = n.titulo.trim() || "Sem título";
+    const notaAtualizada: Nota = { ...n, titulo };
+    const { dados, corpo } = notaParaArquivo(notaAtualizada);
+    const texto = escreverMarkdown({ dados, corpo });
+    const caminho = n.caminho || nomeLivre(PASTAS.notas, titulo, arquivos.map((a) => a.caminho));
 
-    setSalvando(true);
-    setErro("");
-    try {
-      const texto = escreverMarkdown({
-        dados: mesclarFrontmatter(n.bruto, {
-          titulo,
-          tipo:
-            typeof n.bruto.tipo === "string" && n.bruto.tipo
-              ? n.bruto.tipo
-              : "nota",
-          atualizado: hojeISO(),
-        }),
-        corpo: n.corpo,
-      });
+    const novaSha = await salvarTexto(caminho, texto, n.sha || undefined);
 
-      const caminho =
-        n.caminho ||
-        nomeLivre(PASTA, titulo, arquivos.map((a) => a.caminho));
+    setAberta((atual) => {
+      if (!atual || (atual.caminho !== caminho && atual.caminho !== "")) return atual;
+      return { ...atual, caminho, sha: novaSha, titulo, original: { titulo, corpo, bruto: dados } };
+    });
 
-      const docAtualizado = lerMarkdown(texto);
-
-      // Só DEPOIS de gravar, e com o sha que o GitHub devolveu.
-      //
-      // Atualizar o cache antes da gravação parece adiantar a vida, mas grava
-      // o texto novo debaixo do sha ANTIGO — e o `repo.ts` inteiro se apoia na
-      // promessa de que sha igual significa bytes iguais. Se a gravação
-      // falhasse, o app continuava mostrando o texto como salvo pela sessão
-      // inteira, e ele sumia no recarregamento seguinte.
-      const novaSha = await gravar(
-        cfg,
-        caminho,
-        texto,
-        n.sha || undefined,
-      );
-      atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
-      invalidarCache();
-
-      // Atualiza a lista e os títulos locais em memória (0ms)
-      setArquivos((lista) => {
-        const itemRepo: ItemRepo = {
-          caminho,
-          nome: caminho.split("/").pop() || "",
-          sha: novaSha,
-          doc: docAtualizado,
-          tamanho: texto.length,
-          texto,
-        };
-        const existe = lista.some((x) => x.caminho === caminho);
-        if (existe) {
-          return lista.map((x) => (x.caminho === caminho ? itemRepo : x));
-        }
-        return [itemRepo, ...lista];
-      });
-
-      setTitulos((cur) => ({ ...cur, [caminho]: titulo }));
-
-      const nSalva: NotaAberta = {
-        ...n,
-        caminho,
-        sha: novaSha,
-        original: { titulo, corpo: n.corpo, bruto: n.bruto },
-      };
-
-      setAberta((atual) => {
-        if (atual && (atual.caminho === nSalva.caminho || !atual.caminho)) {
-          return nSalva;
-        }
-        return atual;
-      });
-    } catch (e) {
-      // Repassa o erro depois de mostrá-lo: quem fecha o painel precisa
-      // saber que a gravação falhou, para não fechar em cima do texto.
-      setErro(e instanceof Error ? e.message : String(e));
-      throw e;
-    } finally {
-      setSalvando(false);
-    }
+    recarregar();
   }
 
   async function remover() {
     if (!aberta?.caminho) return;
-    try {
-      await apagar(cfg, aberta.caminho, aberta.sha);
-      invalidarCache();
-      fecharNota();
-      await carregarLista();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    }
+    await apagarItem(aberta.caminho, aberta.sha);
+    fecharNota();
+    recarregar();
   }
 
+  // ── Sem configuração ────────────────────────────────────────────────────────
   if (!pronto) {
     return (
       <Vazio
@@ -358,12 +215,9 @@ export default function Notas() {
     );
   }
 
-
-
-  /* -------------------------------------------------------------- lista */
-
+  // ── Lista ───────────────────────────────────────────────────────────────────
   const visiveis = arquivos.filter((a) =>
-    (titulos[a.caminho] ?? a.nome).toLowerCase().includes(busca.toLowerCase()),
+    (titulos[a.caminho] ?? a.caminho).toLowerCase().includes(busca.toLowerCase()),
   );
 
   return (
@@ -413,17 +267,17 @@ export default function Notas() {
         <Vazio titulo="Nada encontrado" descricao={`Nenhuma nota com "${busca}".`} />
       ) : (
         <div className="grid gap-3">
-          {visiveis.map((a) => {
-            const tituloNota = titulos[a.caminho] ?? a.nome;
+          {visiveis.map((nota) => {
+            const tituloNota = titulos[nota.caminho] ?? nota.titulo ?? nota.caminho;
             return (
               <Cartao
-                key={a.caminho}
+                key={nota.caminho}
                 className="cursor-pointer p-4 transition-colors hover:bg-accent flex items-center justify-between group"
-                onClick={() => abrir(a)}
+                onClick={() => abrir(nota)}
               >
                 <div className="min-w-0 flex-1 pr-3">
                   <p className="font-medium">{tituloNota}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{a.nome}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{nota.caminho.split("/").pop()}</p>
                 </div>
               </Cartao>
             );

@@ -1,19 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Masonry } from "react-plock";
 import { Plus, Trash2, ImagePlus, ExternalLink, ScanText } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { gravar, gravarBinario, apagar } from "@/lib/github";
-import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal } from "@/lib/repo";
+import { gravarBinario } from "@/lib/github";
+import { invalidarCache } from "@/lib/repo";
+import { useItemRepo } from "@/lib/useItemRepo";
+import { useSalvar } from "@/lib/useSalvar";
+import { PASTAS } from "@/lib/tipos";
+import { comoReferencia, referenciaParaArquivo } from "@/lib/entidades";
+import { escreverMarkdown, tituloProvavel, nomeLivre } from "@/lib/markdown";
 import {
-  escreverMarkdown,
-  lerMarkdown,
-  tituloProvavel,
-  nomeLivre,
-} from "@/lib/markdown";
-import {
-  comoReferencia,
-  refParaFrontmatter,
   nomeDeImagem,
   arquivoParaBase64,
   todasAsTags,
@@ -45,58 +42,33 @@ export default function Referencias() {
   const location = useLocation();
   const navegar = useNavigate();
 
-  const [refs, setRefs] = useState<Referencia[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState("");
-  const [salvando, setSalvando] = useState(false);
+  // ── Carregamento ──────────────────────────────────────────────────────────
+  const { itens: refs, carregando, erro: erroCarregar, recarregar } =
+    useItemRepo(cfg, PASTAS.referencias, (item) =>
+      comoReferencia(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+    );
+
+  // ── Salvamento ────────────────────────────────────────────────────────────
+  const { salvarTexto, apagarItem, salvando, erro: erroSalvar, limparErro } = useSalvar(cfg);
+
+  // ── Estado da UI ──────────────────────────────────────────────────────────
+  const [erroLocal, setErroLocal] = useState("");
+  const erro = erroLocal || erroCarregar || erroSalvar;
+
   const [enviando, setEnviando] = useState(false);
-  // etapas separadas: encolher acontece no aparelho, enviar depende da rede
   const [encolhendo, setEncolhendo] = useState(false);
-  // recado que não é erro: quanto a imagem encolheu, quanto texto o OCR achou
   const [nota, setNota] = useState("");
   const [lendoTexto, setLendoTexto] = useState(false);
   const [progressoOcr, setProgressoOcr] = useState(0);
   const [editando, setEditando] = useState<Referencia | null>(null);
   const [original, setOriginal] = useState<Referencia | null>(null);
-  // prévia local da imagem recém-enviada, antes de existir no repositório
   const [previa, setPrevia] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<string | null>(null);
   const [paletasExtraidas, setPaletasExtraidas] = useState<Record<string, string[]>>({});
   const [corCopiada, setCorCopiada] = useState<string | null>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
 
-  /* ----------------------------------------------------------- carregar */
-
-  const carregar = useCallback(async () => {
-    if (!pronto) {
-      setCarregando(false);
-      return;
-    }
-    setCarregando(true);
-    setErro("");
-    try {
-      const itens = daPasta(await carregarRepo(cfg, { memoria: 3000 }), PASTA_REFS);
-      setRefs(
-        itens.map((i) =>
-          comoReferencia(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)),
-        ),
-      );
-      // As imagens NÃO são baixadas aqui. Antes, entrar nesta aba baixava
-      // todas de uma vez — 40 referências podiam ser 60 MB no 4G, a cada
-      // visita. Agora cada cartão pede a sua quando chega perto da tela.
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    } finally {
-      setCarregando(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
-
-  useEffect(() => {
-    carregar();
-  }, [carregar]);
-
-  // Abre item vindo por parâmetro de busca na URL
+  // ── Abre item pela URL ─────────────────────────────────────────────────────
   useEffect(() => {
     const abrirCaminho = lerParametroAbrir(location);
     if (abrirCaminho && refs.length > 0 && (!editando || editando.caminho !== abrirCaminho)) {
@@ -109,29 +81,15 @@ export default function Referencias() {
     }
   }, [location.pathname, location.search, location.hash, refs]);
 
-
-  /* -------------------------------------------------------------- ações */
+  // ── Ações ──────────────────────────────────────────────────────────────────
 
   async function enviarImagem(escolhido: File) {
     if (!editando) return;
-
     setEnviando(true);
-    setErro("");
+    setErroLocal("");
     setNota("");
 
-    /**
-     * Um `try` só, cobrindo a função inteira.
-     *
-     * O `setEnviando(true)` acontecia antes da compressão, mas o `try/finally`
-     * cobria só o `setEncolhendo`. Se a compressão falhasse — HEIC de iPhone,
-     * formato que o navegador não decodifica, arquivo corrompido — a exceção
-     * escapava e o `setEnviando(false)` nunca rodava: o botão de enviar imagem
-     * ficava desabilitado até recarregar a página, sem erro nenhum na tela.
-     */
     try {
-      // Encolhe ANTES de checar o limite: uma foto de celular de 9 MB era
-      // recusada de cara, e a única saída era exportar menor num editor. Agora
-      // ela cabe sozinha e o repositório para de engordar a cada referência.
       setEncolhendo(true);
       let preparada;
       try {
@@ -142,7 +100,7 @@ export default function Referencias() {
 
       const excedeu = erroDeTamanho(preparada);
       if (excedeu) {
-        setErro(excedeu);
+        setErroLocal(excedeu);
         return;
       }
 
@@ -156,8 +114,6 @@ export default function Referencias() {
       setEditando({
         ...editando,
         imagem: relativo,
-        // Deixa a imagem visível no corpo também, para o arquivo continuar
-        // fazendo sentido aberto em qualquer editor de Markdown.
         corpo: editando.corpo.includes(relativo)
           ? editando.corpo
           : `![](${relativo})\n\n${editando.corpo}`.trim(),
@@ -166,8 +122,7 @@ export default function Referencias() {
       setPrevia((antiga) => {
         if (antiga) URL.revokeObjectURL(antiga);
         const novaUrl = URL.createObjectURL(arquivo);
-        
-        // Tentar extrair paleta de cores da nova imagem
+
         const img = new Image();
         img.src = novaUrl;
         import("@/lib/paleta")
@@ -175,17 +130,10 @@ export default function Referencias() {
           .then((paleta) => {
             if (paleta.length > 0) {
               setEditando((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      bruto: { ...prev.bruto, paleta },
-                    }
-                  : null,
+                prev ? { ...prev, bruto: { ...prev.bruto, paleta } } : null,
               );
             }
           })
-          // a paleta é um extra: se não sair, a imagem já está gravada e não
-          // há por que estragar o envio com um erro
           .catch(() => {});
 
         return novaUrl;
@@ -193,35 +141,22 @@ export default function Referencias() {
 
       setNota(resumoCompressao(preparada));
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      setErroLocal(e instanceof Error ? e.message : String(e));
     } finally {
       setEnviando(false);
     }
   }
 
-  /**
-   * Lê o texto que está dentro da imagem e escreve nas anotações.
-   *
-   * Você salva print de site, de slide, de post — e hoje esse texto é invisível
-   * para a busca. Depois de passar por aqui ele vira texto no `.md`, então
-   * ⌘K acha a referência pelo que estava escrito NA imagem.
-   *
-   * É sob demanda de propósito: o pacote de idioma do Tesseract tem alguns
-   * megabytes e só baixa quando você aperta o botão. Ninguém paga esse download
-   * sem pedir.
-   */
   async function lerTextoDaImagem() {
     if (!editando?.imagem && !previa) {
-      setErro("Adicione uma imagem antes de extrair o texto.");
+      setErroLocal("Adicione uma imagem antes de extrair o texto.");
       return;
     }
 
     setLendoTexto(true);
-    setErro("");
+    setErroLocal("");
     setNota("");
 
-    // quando a imagem já está salva no repositório, precisamos baixá-la com o
-    // token — e liberar o blob depois, senão fica preso na memória da aba
     let temporaria: string | null = null;
     try {
       const fonte =
@@ -242,7 +177,7 @@ export default function Referencias() {
         `Texto extraído da imagem (${texto.length} caracteres) e colocado nas anotações. Confira antes de salvar.`,
       );
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      setErroLocal(e instanceof Error ? e.message : String(e));
     } finally {
       if (temporaria) URL.revokeObjectURL(temporaria);
       setLendoTexto(false);
@@ -252,70 +187,37 @@ export default function Referencias() {
 
   async function salvar() {
     if (!editando?.titulo.trim()) {
-      setErro("A referência precisa de um título.");
+      setErroLocal("A referência precisa de um título.");
       return;
     }
-    setSalvando(true);
-    setErro("");
+    setErroLocal("");
     try {
-      const texto = escreverMarkdown({
-        dados: refParaFrontmatter(editando),
-        corpo: editando.corpo,
-      });
-      const caminho =
-        editando.caminho ||
+      const { dados, corpo } = referenciaParaArquivo(editando);
+      const texto = escreverMarkdown({ dados, corpo });
+      const caminho = editando.caminho ||
         nomeLivre(PASTA_REFS, editando.titulo, refs.map((x) => x.caminho));
-      const docAtualizado = lerMarkdown(texto);
-      // Só DEPOIS de gravar, com o sha devolvido pelo GitHub — ver a explicação
-      // em `atualizarCacheLocal` (repo.ts).
-      const novaSha = await gravar(cfg, caminho, texto, editando.sha || undefined);
-      atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
-      invalidarCache();
+      await salvarTexto(caminho, texto, editando.sha || undefined);
       fecharModal();
-      await carregar();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSalvando(false);
+      recarregar();
+    } catch {
+      // erro já está em erroSalvar
     }
   }
 
   async function remover(r: Referencia) {
     if (!confirm(`Apagar "${r.titulo}"?\n\nA imagem continua no repositório.`))
       return;
-    try {
-      await apagar(cfg, r.caminho, r.sha);
-      invalidarCache();
-      fecharModal();
-      await carregar();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    }
+    await apagarItem(r.caminho, r.sha);
+    fecharModal();
+    recarregar();
   }
-
-  /* --------------------------------------------------------- sem config */
-
-  if (!pronto) {
-    return (
-      <Vazio
-        titulo="Falta conectar sua conta"
-        descricao="Preencha sua conta do GitHub e o token na aba de Ajustes."
-        acao={
-          <Link to="/config">
-            <Botao>Ir para Ajustes</Botao>
-          </Link>
-        }
-      />
-    );
-  }
-
-  const tags = todasAsTags(refs);
-  const visiveis = filtro ? refs.filter((r) => r.tags.includes(filtro)) : refs;
 
   function fecharModal() {
     setEditando(null);
     setOriginal(null);
     setNota("");
+    limparErro();
+    setErroLocal("");
     setPrevia((p) => {
       if (p) URL.revokeObjectURL(p);
       return null;
@@ -334,8 +236,26 @@ export default function Referencias() {
       corpo: "",
     };
     setEditando(vazia);
-    setOriginal(vazia); // senão o modal abre já dizendo que há mudanças
+    setOriginal(vazia);
   };
+
+  // ── Sem configuração ────────────────────────────────────────────────────────
+  if (!pronto) {
+    return (
+      <Vazio
+        titulo="Falta conectar sua conta"
+        descricao="Preencha sua conta do GitHub e o token na aba de Ajustes."
+        acao={
+          <Link to="/config">
+            <Botao>Ir para Ajustes</Botao>
+          </Link>
+        }
+      />
+    );
+  }
+
+  const tags = todasAsTags(refs);
+  const visiveis = filtro ? refs.filter((r) => r.tags.includes(filtro)) : refs;
 
   return (
     <div className="space-y-5">
@@ -435,7 +355,6 @@ export default function Referencias() {
                       }}
                     />
                   )}
-                  {/* Overlay on Hover */}
                   <div className="absolute inset-0 bg-black/30 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex flex-col justify-between p-4 pointer-events-none">
                     <div className="flex justify-end">
                       <Button variant="secondary" size="sm" className="rounded-full h-8 font-semibold opacity-0 translate-y-[-10px] transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, useRef, lazy, Suspense } from "react";
+import { useEffect, useState, useRef, lazy, Suspense } from "react";
+import type { ExcalidrawInitialDataState } from "@excalidraw/excalidraw/types";
 import { Link } from "react-router-dom";
 import {
   Plus,
@@ -14,20 +15,16 @@ import {
 } from "lucide-react";
 import "@excalidraw/excalidraw/index.css";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { gravar, apagar, lerOuVazio } from "@/lib/github";
-import {
-  carregarRepo,
-  daPasta,
-  invalidarCache,
-  atualizarCacheLocal,
-  removerDoCacheLocal,
-  type ItemRepo,
-} from "@/lib/repo";
+import { lerOuVazio } from "@/lib/github";
+import { removerDoCacheLocal, type ItemRepo } from "@/lib/repo";
+import { useItemRepo } from "@/lib/useItemRepo";
+import { useSalvar } from "@/lib/useSalvar";
+import { PASTAS } from "@/lib/tipos";
 import { tituloProvavel, nomeLivre, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
 import { propagarRenomeacao } from "@/lib/links";
 import { Botao, Campo, Cartao, Aviso, Vazio, Carregando, ModalConfirmacao } from "@/components/ui";
 
-const PASTA = "lousas";
+const PASTA = PASTAS.lousas;
 
 const ExcalidrawComp = lazy(() =>
   import("@excalidraw/excalidraw").then((m) => ({ default: m.Excalidraw })),
@@ -35,9 +32,9 @@ const ExcalidrawComp = lazy(() =>
 
 type DadosLousa = {
   title?: string;
-  elements?: any[];
-  appState?: any;
-  files?: any;
+  elements?: unknown[];
+  appState?: Record<string, unknown>;
+  files?: unknown;
 };
 
 type LousaAberta = {
@@ -52,46 +49,35 @@ export default function Lousas() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
 
-  const [lousas, setLousas] = useState<ItemRepo[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState("");
+  // ── Carregamento ──────────────────────────────────────────────────────────
+  // useItemRepo retorna ItemRepo[] — lousas têm tratamento especial de abertura
+  // então não as convertemos aqui (a conversão acontece no `abrir`)
+  const { itens: lousas, carregando, erro: erroCarregar, recarregar } =
+    useItemRepo(cfg, PASTA, (item) => item);
+
+  // ── Salvamento ────────────────────────────────────────────────────────────
+  // Uma única instância: duas chamadas criariam dois estados `salvando`/`erro`
+  // independentes, e o do apagar nunca chegaria à tela.
+  const { salvarTexto, apagarItem, salvando, erro: erroSalvar } = useSalvar(cfg);
+
+  // ── Estado da UI ──────────────────────────────────────────────────────────
+  const [erroLocal, setErroLocal] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState("");
+  const erro = erroLocal || erroCarregar || erroSalvar;
+
   const [aberta, setAberta] = useState<LousaAberta | null>(null);
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
   const [telaCheia, setTelaCheia] = useState(false);
   const [lousaParaDeletar, setLousaParaDeletar] = useState<{ caminho: string; sha: string; titulo: string } | null>(null);
 
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
-  const elementsRef = useRef<any[]>([]);
-  const appStateRef = useRef<any>({});
-  const filesRef = useRef<any>({});
+  const elementsRef = useRef<unknown[]>([]);
+  const appStateRef = useRef<Record<string, unknown>>({});
+  const filesRef = useRef<unknown>({});
 
-  const carregar = useCallback(async () => {
-    if (!pronto) {
-      setCarregando(false);
-      return;
-    }
-    setCarregando(true);
-    setErro("");
-    try {
-      const todos = await carregarRepo(cfg);
-      const itens = daPasta(todos, PASTA);
-      setLousas(itens);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    } finally {
-      setCarregando(false);
-    }
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
-
-  useEffect(() => {
-    carregar();
-  }, [carregar]);
-
+  // ── Abre uma lousa (carrega JSON do corpo) ─────────────────────────────────
   async function abrir(item: ItemRepo) {
-    setCarregando(true);
-    setErro("");
+    setErroLocal("");
     setMensagemSucesso("");
     try {
       let conteudo = item.texto || "";
@@ -113,8 +99,8 @@ export default function Lousas() {
             dados = { elements: parsed };
           } else if (parsed && typeof parsed === "object") {
             dados = parsed;
-            if (parsed.title || parsed.titulo) {
-              titulo = parsed.title || parsed.titulo;
+            if ((parsed as Record<string, unknown>).title || (parsed as Record<string, unknown>).titulo) {
+              titulo = (parsed as Record<string, unknown>).title as string || (parsed as Record<string, unknown>).titulo as string;
             }
           }
         }
@@ -122,8 +108,8 @@ export default function Lousas() {
         dados = { elements: [] };
       }
 
-      elementsRef.current = dados.elements || [];
-      appStateRef.current = dados.appState || {};
+      elementsRef.current = (dados.elements as unknown[]) || [];
+      appStateRef.current = (dados.appState as Record<string, unknown>) || {};
       filesRef.current = dados.files || {};
 
       setAberta({
@@ -134,13 +120,11 @@ export default function Lousas() {
         dados,
       });
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    } finally {
-      setCarregando(false);
+      setErroLocal(e instanceof Error ? e.message : String(e));
     }
   }
 
-  // Abertura automática via parâmetro de URL (?abrir=lousas/nome.md) e reagente a hashchange
+  // ── Abertura automática via parâmetro de URL ───────────────────────────────
   useEffect(() => {
     function checarParametros() {
       const hash = window.location.hash;
@@ -168,6 +152,8 @@ export default function Lousas() {
     return () => window.removeEventListener("hashchange", checarParametros);
   }, [lousas, aberta]);
 
+  // ── Ações ──────────────────────────────────────────────────────────────────
+
   function novaLousa() {
     elementsRef.current = [];
     appStateRef.current = {};
@@ -183,14 +169,10 @@ export default function Lousas() {
 
   async function salvar() {
     if (!aberta) return;
-    setSalvando(true);
-    setErro("");
+    setErroLocal("");
     setMensagemSucesso("");
 
     try {
-      let currentAppState: any = {};
-      let files: any = {};
-
       const apiElements = excalidrawAPI ? excalidrawAPI.getSceneElements() : null;
       let elementsToSave = (apiElements && apiElements.length > 0) ? apiElements : [];
       if (elementsToSave.length === 0 && elementsRef.current && elementsRef.current.length > 0) {
@@ -200,16 +182,21 @@ export default function Lousas() {
         elementsToSave = aberta.dados.elements;
       }
 
-      currentAppState = excalidrawAPI ? (excalidrawAPI.getAppState() || {}) : (appStateRef.current || {});
-      files = excalidrawAPI ? (excalidrawAPI.getFiles() || {}) : (filesRef.current || {});
+      const currentAppState: Record<string, unknown> = excalidrawAPI
+        ? (excalidrawAPI.getAppState() || {})
+        : (appStateRef.current || {});
+      const files = excalidrawAPI
+        ? (excalidrawAPI.getFiles() || {})
+        : (filesRef.current || {});
 
       const elementosValidos = Array.isArray(elementsToSave)
-        ? elementsToSave.filter((el) => !el.isDeleted)
+        ? elementsToSave.filter((el: any) => !el.isDeleted)
         : [];
 
       const tituloLimpo = aberta.titulo.trim() || "Lousa Sem Título";
+      const ehModoEscuro = document.documentElement.classList.contains("dark");
 
-      // Gerar preview vetorial SVG para embedding nativo nítido nos documentos
+      // Gera preview SVG
       let svgHtmlString = "";
       try {
         if (elementosValidos.length > 0) {
@@ -220,7 +207,7 @@ export default function Lousas() {
               ...currentAppState,
               exportWithDarkMode: ehModoEscuro,
               exportBackground: true,
-              viewBackgroundColor: currentAppState?.viewBackgroundColor || (ehModoEscuro ? "#121212" : "#ffffff"),
+              viewBackgroundColor: (currentAppState?.viewBackgroundColor as string) || (ehModoEscuro ? "#121212" : "#ffffff"),
             },
             files,
           });
@@ -247,7 +234,6 @@ export default function Lousas() {
       };
 
       const textoCena = JSON.stringify(dadosParaSalvar, null, 2);
-
       const textoParaGravar = escreverMarkdown({
         dados: {
           titulo: tituloLimpo,
@@ -257,27 +243,15 @@ export default function Lousas() {
         corpo: textoCena,
       });
 
-      const novoCaminho =
-        aberta.caminho ||
+      const novoCaminho = aberta.caminho ||
         nomeLivre(PASTA, tituloLimpo, lousas.map((a) => a.caminho));
 
-      const novaSha = await gravar(
-        cfg,
+      const novaSha = await salvarTexto(
         novoCaminho,
         textoParaGravar,
         aberta.sha || undefined,
         `salvar lousa: ${tituloLimpo}`,
       );
-
-      const docFormatado = lerMarkdown(textoParaGravar);
-
-      atualizarCacheLocal(
-        novoCaminho,
-        textoParaGravar,
-        docFormatado,
-        novaSha
-      );
-      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
 
       setAberta({
         caminho: novoCaminho,
@@ -292,48 +266,27 @@ export default function Lousas() {
       }
 
       setMensagemSucesso(`Lousa "${tituloLimpo}" salva com sucesso! (${elementosValidos.length} elementos gravados)`);
-      setLousas((prev) => {
-        const index = prev.findIndex((x) => x.caminho === novoCaminho || (aberta.caminho && x.caminho === aberta.caminho));
-        const novoItem: ItemRepo = {
-          caminho: novoCaminho,
-          nome: novoCaminho.split("/").pop() || "",
-          sha: novaSha,
-          texto: textoParaGravar,
-          tamanho: textoParaGravar.length,
-          doc: docFormatado,
-        };
-        if (index >= 0) {
-          const copia = [...prev];
-          copia[index] = novoItem;
-          return copia;
-        }
-        return [novoItem, ...prev];
-      });
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSalvando(false);
+      recarregar();
+    } catch {
+      // erro já está em erroSalvar
     }
   }
 
-  // Exclusão no modal interno da aplicação (Sem confirmação de navegador)
   async function executarExclusao() {
     if (!lousaParaDeletar) return;
     const { caminho: alvoCaminho, sha: alvoSha } = lousaParaDeletar;
     setLousaParaDeletar(null);
 
-    // Remoção visual instantânea em 0ms
-    setLousas((prev) => prev.filter((x) => x.caminho !== alvoCaminho));
+    // Remoção visual instantânea
     removerDoCacheLocal(alvoCaminho);
-    invalidarCache();
-    window.dispatchEvent(new CustomEvent("acervo-atualizado"));
     if (aberta && aberta.caminho === alvoCaminho) setAberta(null);
 
     try {
-      await apagar(cfg, alvoCaminho, alvoSha || "");
+      await apagarItem(alvoCaminho, alvoSha || "");
+      recarregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-      await carregar();
+      setErroLocal(e instanceof Error ? e.message : String(e));
+      recarregar();
     }
   }
 
@@ -345,6 +298,7 @@ export default function Lousas() {
     setTimeout(() => setCopiadoId(null), 2000);
   }
 
+  // ── Sem configuração ────────────────────────────────────────────────────────
   if (!pronto) {
     return (
       <Vazio
@@ -434,25 +388,34 @@ export default function Lousas() {
           <Suspense fallback={<Carregando texto="Carregando editor visual Excalidraw..." />}>
             <ExcalidrawComp
               key={aberta?.caminho ? `excalidraw-${aberta.caminho}` : "excalidraw-nova"}
-              excalidrawAPI={(api) => setExcalidrawAPI(api)}
+              excalidrawAPI={(api: any) => setExcalidrawAPI(api)}
               theme={ehModoEscuro ? "dark" : "light"}
-              onChange={(elements, appState, files) => {
-                elementsRef.current = elements as any[];
+              onChange={(elements: any, appState: any, files: any) => {
+                elementsRef.current = elements as unknown[];
                 appStateRef.current = appState;
                 filesRef.current = files;
               }}
+              /*
+               * A cena vem de um .md que pode ter sido editado à mão, então o
+               * tipo interno é deliberadamente frouxo (`unknown`). Aqui é a
+               * fronteira com a biblioteca: um cast só, explícito, em vez de
+               * `any` espalhado pelo arquivo. O Excalidraw valida em runtime e
+               * cai para uma cena vazia se o JSON não servir.
+               */
               initialData={{
-                elements: aberta.dados.elements || [],
+                elements: aberta.dados.elements ?? [],
                 appState: {
-                  ...(aberta.dados.appState || {}),
-                  viewBackgroundColor: aberta.dados.appState?.viewBackgroundColor || (ehModoEscuro ? "#121212" : "#ffffff"),
-                  gridSize: aberta.dados.appState?.gridSize || null,
-                  scrollX: aberta.dados.appState?.scrollX || 0,
-                  scrollY: aberta.dados.appState?.scrollY || 0,
-                  zoom: aberta.dados.appState?.zoom || { value: 1 },
+                  ...(aberta.dados.appState ?? {}),
+                  viewBackgroundColor:
+                    (aberta.dados.appState?.viewBackgroundColor as string) ||
+                    (ehModoEscuro ? "#121212" : "#ffffff"),
+                  gridSize: aberta.dados.appState?.gridSize as number | undefined,
+                  scrollX: (aberta.dados.appState?.scrollX as number) || 0,
+                  scrollY: (aberta.dados.appState?.scrollY as number) || 0,
+                  zoom: (aberta.dados.appState?.zoom as { value: number }) ?? { value: 1 },
                 },
-                files: aberta.dados.files || {},
-              }}
+                files: aberta.dados.files ?? {},
+              } as unknown as ExcalidrawInitialDataState}
               UIOptions={{
                 canvasActions: {
                   changeViewBackgroundColor: true,
@@ -466,7 +429,6 @@ export default function Lousas() {
           </Suspense>
         </div>
 
-        {/* Modal interno elegante de confirmação de exclusão (Sem popups de navegador) */}
         <ModalConfirmacao
           aberto={Boolean(lousaParaDeletar)}
           titulo={`Apagar "${lousaParaDeletar?.titulo || 'Lousa'}"?`}
@@ -490,7 +452,7 @@ export default function Lousas() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Layout size={20} />
             </div>
-            Excalidraw (Mapas Mentais & Lousas)
+            Excalidraw (Mapas Mentais &amp; Lousas)
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Desenhe diagramas, mapas mentais e conecte aos seus projetos, notas e metas.
@@ -530,7 +492,7 @@ export default function Lousas() {
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-sm text-foreground truncate">{titulo}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      Excalidraw • `{item.caminho}`
+                      Excalidraw • {item.caminho}
                     </p>
                   </div>
                 </div>
@@ -563,7 +525,6 @@ export default function Lousas() {
         </div>
       )}
 
-      {/* Modal interno elegante de confirmação de exclusão (Sem popups de navegador) */}
       <ModalConfirmacao
         aberto={Boolean(lousaParaDeletar)}
         titulo={`Apagar "${lousaParaDeletar?.titulo || 'Lousa'}"?`}

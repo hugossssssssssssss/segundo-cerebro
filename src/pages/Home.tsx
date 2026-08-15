@@ -18,6 +18,7 @@ import {
   Settings2,
   Calendar,
   Tag,
+  ListTodo,
 } from "lucide-react";
 import {
   DndContext,
@@ -45,7 +46,6 @@ import { tituloProvavel, escreverMarkdown, nomeLivre, lerMarkdown, mesclarFrontm
 import { comoReferencia, type Referencia } from "@/lib/referencias";
 import { comoMeta, comoEntrega, resumir, metaParaFrontmatter, type Meta, type ResumoMeta } from "@/lib/pdi";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
-import { PainelTarefaNotion } from "@/pages/Tarefas";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 
@@ -443,7 +443,7 @@ export default function Home() {
   if (!pronto) {
     return (
       <Vazio
-        titulo="Bem-vindo ao Segundo Cérebro"
+        titulo="Bem-vindo ao Klaus"
         descricao="Conecte sua conta do GitHub para começar a organizar suas tarefas e notas num lugar só."
         acao={
           <Link to="/config">
@@ -812,7 +812,7 @@ export default function Home() {
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Seu centro de comando do Segundo Cérebro. Arraste e dimensione os blocos como desejar.
+            Seu centro de comando do Klaus. Arraste e dimensione os blocos como desejar.
           </p>
         </div>
 
@@ -845,29 +845,63 @@ export default function Home() {
       </DndContext>
       {/* Painel Notion para edição direta na Home sem pulos de tela */}
       {editandoTarefa !== null && (
-        <PainelTarefaNotion
+        <PainelNotionBase
+          rotuloTipo={editandoTarefa.caminho ? "Tarefa" : "Nova tarefa"}
           modoVisao={modoVisao}
           setModoVisao={setModoVisao}
-          editando={editandoTarefa}
-          original={origTarefa}
+          titulo={editandoTarefa.titulo}
+          setTitulo={(t) => setEditandoTarefa({ ...editandoTarefa, titulo: t })}
+          corpo={editandoTarefa.corpo}
+          setCorpo={(c) => setEditandoTarefa({ ...editandoTarefa, corpo: c })}
+          caminhoItem={editandoTarefa.caminho}
+          dadosProps={{
+            ...editandoTarefa.bruto,
+            status: editandoTarefa.status,
+            prazo: editandoTarefa.prazo,
+            tags: editandoTarefa.tags,
+          }}
+          onChangeProps={(nProps) => {
+            setEditandoTarefa({
+              ...editandoTarefa,
+              bruto: nProps,
+              status: (nProps.status as Tarefa["status"]) || editandoTarefa.status,
+              prazo: nProps.prazo as string | undefined,
+              tags: Array.isArray(nProps.tags)
+                ? (nProps.tags as string[])
+                : editandoTarefa.tags,
+            });
+          }}
+          camposFixosProps={{
+            status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
+            prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
+            tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" },
+          }}
           salvando={salvandoItem}
+          temMudancas={
+            origTarefa !== null &&
+            JSON.stringify(editandoTarefa) !== JSON.stringify(origTarefa)
+          }
           aoFechar={() => {
             setEditandoTarefa(null);
             setOrigTarefa(null);
           }}
-          aoSalvar={salvarTarefaHome}
-          aoRemover={async () => {
-            if (!editandoTarefa?.caminho) return;
-            await apagar(cfg, editandoTarefa.caminho, editandoTarefa.sha);
-            invalidarCache();
-            setEditandoTarefa(null);
-            setOrigTarefa(null);
-            await carregar();
+          aoSalvar={async () => {
+            await salvarTarefaHome(editandoTarefa);
           }}
-          setEditando={setEditandoTarefa}
-          opcoesRelacionamento={[]}
-          mencoesDaTarefa={[]}
+          aoRemover={
+            editandoTarefa.caminho
+              ? async () => {
+                  await apagar(cfg, editandoTarefa.caminho, editandoTarefa.sha);
+                  invalidarCache();
+                  setEditandoTarefa(null);
+                  setOrigTarefa(null);
+                  await carregar();
+                }
+              : undefined
+          }
           erro={erro}
+          mencoes={[]}
+          opcoesRelacionamento={[]}
         />
       )}
       {/* Painel para Nota na Home */}

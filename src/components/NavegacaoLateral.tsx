@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { LogoKlaus } from "./LogoKlaus";
 
 export interface ItemNavegacao {
   para: string;
@@ -101,10 +102,8 @@ export function NavegacaoLateral({
             onClick={aoNavegar}
             className="flex items-center gap-2.5 font-semibold tracking-tight text-foreground truncate"
           >
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xs shadow-sm shrink-0">
-              SC
-            </div>
-            <span className="truncate text-sm font-bold">Segundo Cérebro</span>
+            <LogoKlaus tamanho={28} />
+            <span className="truncate text-base font-bold tracking-tight">Klaus</span>
           </NavLink>
         )}
 
@@ -112,10 +111,10 @@ export function NavegacaoLateral({
           <NavLink
             to="/home"
             onClick={aoNavegar}
-            className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xs shadow-sm"
-            title="Segundo Cérebro"
+            className="mx-auto flex items-center justify-center p-1 rounded-xl hover:opacity-80 transition-opacity"
+            title="Klaus"
           >
-            SC
+            <LogoKlaus tamanho={28} />
           </NavLink>
         )}
 

@@ -1,23 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Target, Calendar, Package, Trash2, AlertTriangle, Sparkles, CheckSquare } from "lucide-react";
+import {
+  Target,
+  Calendar,
+  Package,
+  Trash2,
+  AlertTriangle,
+  Sparkles,
+  CheckSquare,
+} from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { gravar, apagar } from "@/lib/github";
-import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal } from "@/lib/repo";
+import { useItemRepo } from "@/lib/useItemRepo";
+import { useSalvar } from "@/lib/useSalvar";
+import { PASTAS } from "@/lib/tipos";
+import { comoMeta, comoEntrega, metaParaArquivo, entregaParaArquivo } from "@/lib/entidades";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import {
   escreverMarkdown,
-  lerMarkdown,
   tituloProvavel,
   nomeLivre,
   nomeDeArquivo,
 } from "@/lib/markdown";
 import {
-  comoMeta,
-  comoEntrega,
-  metaParaFrontmatter,
-  entregaParaFrontmatter,
   resumir,
   paradas,
   semMeta,
@@ -70,66 +75,41 @@ export default function PDI() {
   const pronto = configCompleta(cfg);
   const location = useLocation();
   const navegar = useNavigate();
+  const { abrirFlutuante, focarFlutuante } = useItemFlutuante();
 
-  const [metas, setMetas] = useState<Meta[]>([]);
-  const [entregas, setEntregas] = useState<Entrega[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState("");
-  const [salvando, setSalvando] = useState(false);
+  // ── Carregamento — dois hooks, um repositório (cache por sha) ─────────────
+  // Os dois hooks chamam carregarRepo() que tem cache interno — a segunda
+  // chamada não faz nova requisição se o sha não mudou.
+  const { itens: metas, recarregar: recarregarMetas, carregando: carregandoMetas, erro: erroMetas } =
+    useItemRepo(cfg, PASTAS.metas as typeof PASTA_METAS, (item) =>
+      comoMeta(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+    );
+
+  const { itens: entregas, recarregar: recarregarEntregas, carregando: carregandoEntregas, erro: erroEntregas } =
+    useItemRepo(cfg, PASTAS.entregas as typeof PASTA_ENTREGAS, (item) =>
+      comoEntrega(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+    );
+
+  const carregando = carregandoMetas || carregandoEntregas;
+
+  function recarregar() {
+    recarregarMetas();
+    recarregarEntregas();
+  }
+
+  // ── Salvamento ────────────────────────────────────────────────────────────
+  const { salvarTexto, apagarItem, salvando, erro: erroSalvar, limparErro } = useSalvar(cfg);
+  const [erroLocal, setErroLocal] = useState("");
+  const erro = erroLocal || erroMetas || erroEntregas || erroSalvar;
+
+  // ── Estado da UI ──────────────────────────────────────────────────────────
   const [editandoMeta, setEditandoMeta] = useState<Meta | null>(null);
   const [editandoEntrega, setEditandoEntrega] = useState<Entrega | null>(null);
   const [modoVisaoMeta, setModoVisaoMeta] = useState<ModoVisaoNotion>("popup");
-  // cópias de como estavam ao abrir, para detectar mudança não salva
   const [origMeta, setOrigMeta] = useState<Meta | null>(null);
   const [origEntrega, setOrigEntrega] = useState<Entrega | null>(null);
 
-  /* ----------------------------------------------------------- carregar */
-
-  /**
-   * Já houve um carregamento nesta tela? Guardado num ref porque o tamanho da
-   * lista estava nas dependências do carregador — que é justamente quem altera
-   * a lista, disparando um carregamento extra a cada item criado.
-   */
-  const jaCarregouRef = useRef(false);
-
-  const carregar = useCallback(async (silencioso = false) => {
-    if (!pronto) {
-      setCarregando(false);
-      return;
-    }
-    if (!silencioso && !jaCarregouRef.current) {
-      setCarregando(true);
-    }
-    setErro("");
-    try {
-      // um carregamento só do repositório serve as duas pastas
-      const todos = await carregarRepo(cfg, { memoria: 3000 });
-      setMetas(
-        daPasta(todos, PASTA_METAS).map((i) =>
-          comoMeta(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)),
-        ),
-      );
-      setEntregas(
-        daPasta(todos, PASTA_ENTREGAS).map((i) =>
-          comoEntrega(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)),
-        ),
-      );
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    } finally {
-      jaCarregouRef.current = true;
-      setCarregando(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
-
-  const { abrirFlutuante, focarFlutuante } = useItemFlutuante();
-
-  useEffect(() => {
-    carregar();
-  }, [carregar]);
-
-  // Abre item vindo por parâmetro de busca na URL (processa somente 1 vez por mudanca de busca)
+  // ── Abre item pela URL ─────────────────────────────────────────────────────
   const processouUrlRef = useRef<string | null>(null);
   useEffect(() => {
     const urlAtual = `${location.pathname}${location.search}${location.hash}`;
@@ -155,13 +135,7 @@ export default function PDI() {
     }
   }, [location.pathname, location.search, location.hash, metas.length > 0, entregas.length > 0]);
 
-  function fecharMeta() {
-    setEditandoMeta(null);
-    setOrigMeta(null);
-    navegar(location.pathname, { replace: true });
-  }
-
-  // Quando o usuário clica no modo flutuante, transfere para o provedor global que flutua pelo app inteiro
+  // ── Modo flutuante de metas ────────────────────────────────────────────────
   useEffect(() => {
     if (modoVisaoMeta === "flutuante" && editandoMeta) {
       abrirFlutuante({
@@ -186,10 +160,13 @@ export default function PDI() {
         erro,
         setTitulo: (t) => setEditandoMeta((cur) => cur ? { ...cur, titulo: t } : null),
         setCorpo: (c) => setEditandoMeta((cur) => cur ? { ...cur, corpo: c } : null),
-        onChangeProps: (nProps) => setEditandoMeta((cur) => cur ? { ...cur, status: nProps.status || cur.status, prazo: nProps.prazo, indicador: nProps.indicador || cur.indicador } : null),
-        aoSalvar: async () => {
-          if (editandoMeta) await salvarMeta(editandoMeta);
-        },
+        onChangeProps: (nProps) => setEditandoMeta((cur) => cur ? {
+          ...cur,
+          status: (nProps.status as StatusMeta) || cur.status,
+          prazo: nProps.prazo as string | undefined,
+          indicador: (nProps.indicador as string) || cur.indicador,
+        } : null),
+        aoSalvar: async () => { if (editandoMeta) await salvarMeta(editandoMeta); },
         aoRemover: editandoMeta.caminho ? async () => { await removerMeta(editandoMeta); } : undefined,
       });
       setEditandoMeta(null);
@@ -198,105 +175,78 @@ export default function PDI() {
     }
   }, [modoVisaoMeta, editandoMeta]);
 
-  function fecharEntrega() {
-    setEditandoEntrega(null);
-    setOrigEntrega(null);
+  // ── Alerta ao sair com mudanças ────────────────────────────────────────────
+  useEffect(() => {
+    const temMudancas = editandoMeta !== null && origMeta !== null &&
+      JSON.stringify(editandoMeta) !== JSON.stringify(origMeta);
+    if (!temMudancas) return;
+    const aoSair = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", aoSair);
+    return () => window.removeEventListener("beforeunload", aoSair);
+  }, [editandoMeta, origMeta]);
+
+  // ── Ações ──────────────────────────────────────────────────────────────────
+
+  function fecharMeta() {
+    setEditandoMeta(null);
+    setOrigMeta(null);
+    limparErro();
+    setErroLocal("");
     navegar(location.pathname, { replace: true });
   }
 
-  // Alerta ao fechar aba do navegador com edições pendentes no PDI
-  useEffect(() => {
-    const temMudancasMeta = editandoMeta !== null && origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta);
-    if (!temMudancasMeta) return;
-    const aoSairDaJanela = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", aoSairDaJanela);
-    return () => window.removeEventListener("beforeunload", aoSairDaJanela);
-  }, [editandoMeta, origMeta]);
-
-  /* -------------------------------------------------------------- ações */
+  function fecharEntrega() {
+    setEditandoEntrega(null);
+    setOrigEntrega(null);
+    limparErro();
+    setErroLocal("");
+    navegar(location.pathname, { replace: true });
+  }
 
   async function salvarMeta(alvo?: Meta) {
     const m = alvo || editandoMeta;
     if (!m) return;
     const tituloValido = m.titulo.trim() || "Sem título";
     const metaParaSalvar = { ...m, titulo: tituloValido };
-
-    setSalvando(true);
-    setErro("");
+    setErroLocal("");
     try {
-      const texto = escreverMarkdown({
-        dados: metaParaFrontmatter(metaParaSalvar),
-        corpo: metaParaSalvar.corpo,
-      });
-      const caminho =
-        metaParaSalvar.caminho ||
+      const { dados, corpo } = metaParaArquivo(metaParaSalvar);
+      const texto = escreverMarkdown({ dados, corpo });
+      const caminho = metaParaSalvar.caminho ||
         nomeLivreSemData(PASTA_METAS, metaParaSalvar.titulo, metas.map((x) => x.caminho));
-      const docAtualizado = lerMarkdown(texto);
-      // Só DEPOIS de gravar, com o sha devolvido pelo GitHub — ver a explicação
-      // em `atualizarCacheLocal` (repo.ts).
-      const novaSha = await gravar(cfg, caminho, texto, metaParaSalvar.sha || undefined);
-      atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
-      invalidarCache();
+      const novaSha = await salvarTexto(caminho, texto, metaParaSalvar.sha || undefined);
       const salvaMeta: Meta = { ...metaParaSalvar, caminho, sha: novaSha };
-      setMetas((lista) => {
-        const existe = lista.some((x) => x.caminho === salvaMeta.caminho);
-        if (existe) {
-          return lista.map((x) => (x.caminho === salvaMeta.caminho ? salvaMeta : x));
-        }
-        return [salvaMeta, ...lista];
-      });
       setEditandoMeta((atual) => {
-        if (atual && (atual.caminho === salvaMeta.caminho || !atual.caminho)) {
-          return salvaMeta;
-        }
+        if (atual && (atual.caminho === salvaMeta.caminho || !atual.caminho)) return salvaMeta;
         return atual;
       });
       setOrigMeta((orig) => {
-        if (orig && (orig.caminho === salvaMeta.caminho || !orig.caminho)) {
-          return salvaMeta;
-        }
+        if (orig && (orig.caminho === salvaMeta.caminho || !orig.caminho)) return salvaMeta;
         return orig;
       });
-    } catch (e) {
-      // Repassa o erro depois de mostrá-lo: quem fecha o painel precisa
-      // saber que a gravação falhou, para não fechar em cima do texto.
-      setErro(e instanceof Error ? e.message : String(e));
-      throw e;
-    } finally {
-      setSalvando(false);
+      recarregar();
+    } catch {
+      // erro já está em erroSalvar via useSalvar
     }
   }
 
   async function salvarEntrega() {
     if (!editandoEntrega?.titulo.trim()) {
-      setErro("A entrega precisa de um título.");
+      setErroLocal("A entrega precisa de um título.");
       return;
     }
-    setSalvando(true);
-    setErro("");
+    setErroLocal("");
     try {
       const limpa = { ...editandoEntrega, iaSugeriu: false };
-      const texto = escreverMarkdown({
-        dados: entregaParaFrontmatter(limpa),
-        corpo: limpa.corpo,
-      });
-      const caminho =
-        limpa.caminho ||
+      const { dados, corpo } = entregaParaArquivo(limpa);
+      const texto = escreverMarkdown({ dados, corpo });
+      const caminho = limpa.caminho ||
         nomeLivre(PASTA_ENTREGAS, limpa.titulo, entregas.map((x) => x.caminho));
-      await gravar(cfg, caminho, texto, limpa.sha || undefined);
-      invalidarCache();
+      await salvarTexto(caminho, texto, limpa.sha || undefined);
       fecharEntrega();
-      await carregar();
-    } catch (e) {
-      // Repassa o erro depois de mostrá-lo: quem fecha o painel precisa
-      // saber que a gravação falhou, para não fechar em cima do texto.
-      setErro(e instanceof Error ? e.message : String(e));
-      throw e;
-    } finally {
-      setSalvando(false);
+      recarregar();
+    } catch {
+      // erro já está em erroSalvar
     }
   }
 
@@ -307,30 +257,19 @@ export default function PDI() {
       : "";
     if (!confirm(`Apagar a meta "${m.titulo}"?${aviso}\n\nDá para recuperar pelo histórico do GitHub.`))
       return;
-    try {
-      await apagar(cfg, m.caminho, m.sha);
-      invalidarCache();
-      fecharMeta();
-      await carregar();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    }
+    await apagarItem(m.caminho, m.sha);
+    fecharMeta();
+    recarregar();
   }
 
   async function removerEntrega(e: Entrega) {
     if (!confirm(`Apagar "${e.titulo}"?`)) return;
-    try {
-      await apagar(cfg, e.caminho, e.sha);
-      invalidarCache();
-      fecharEntrega();
-      await carregar();
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : String(err));
-    }
+    await apagarItem(e.caminho, e.sha);
+    fecharEntrega();
+    recarregar();
   }
 
-  /* --------------------------------------------------------- sem config */
-
+  // ── Sem configuração ────────────────────────────────────────────────────────
   if (!pronto) {
     return (
       <Vazio
@@ -362,7 +301,6 @@ export default function PDI() {
       corpo: "",
     };
     setEditandoMeta(vazia);
-    // sem isto o modal já abria dizendo "você tem alterações não salvas"
     setOrigMeta(vazia);
   };
 
@@ -488,7 +426,12 @@ export default function PDI() {
                 {resumos.map(({ meta: m, entregas: ligadas }) => (
                   <Cartao key={m.id} className="p-4">
                     <button
-                      onClick={() => { if (focarFlutuante(m.caminho)) return; setEditandoMeta(m); setOrigMeta(m); navegar(`?abrir=${encodeURIComponent(m.caminho)}`, { replace: true }); }}
+                      onClick={() => {
+                        if (focarFlutuante(m.caminho)) return;
+                        setEditandoMeta(m);
+                        setOrigMeta(m);
+                        navegar(`?abrir=${encodeURIComponent(m.caminho)}`, { replace: true });
+                      }}
                       className="w-full text-left"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -533,7 +476,11 @@ export default function PDI() {
                         {ligadas.slice(0, 4).map((e) => (
                           <li key={e.id}>
                             <button
-                              onClick={() => { setEditandoEntrega(e); setOrigEntrega(e); navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true }); }}
+                              onClick={() => {
+                                setEditandoEntrega(e);
+                                setOrigEntrega(e);
+                                navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
+                              }}
                               className="flex w-full items-center gap-2 text-left text-sm text-muted-foreground hover:text-foreground"
                             >
                               <span className="text-xs tabular-nums">
@@ -572,7 +519,11 @@ export default function PDI() {
                     <Cartao
                       key={e.id}
                       className="cursor-pointer p-3.5 transition-colors hover:bg-accent"
-                      onClick={() => { setEditandoEntrega(e); setOrigEntrega(e); navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true }); }}
+                      onClick={() => {
+                        setEditandoEntrega(e);
+                        setOrigEntrega(e);
+                        navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
+                      }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <p className="font-medium">{e.titulo}</p>
@@ -601,7 +552,6 @@ export default function PDI() {
       )}
 
       {/* ------------------------------------------------- modal da meta */}
-      {/* ------------------------------------------------- modal da meta */}
       {editandoMeta !== null && (
         <PainelNotionBase
           rotuloTipo={editandoMeta.caminho ? "Meta da Carreira" : "Nova meta"}
@@ -621,8 +571,8 @@ export default function PDI() {
             setEditandoMeta({
               ...editandoMeta,
               status: (novosDados.status as StatusMeta) || editandoMeta.status,
-              prazo: novosDados.prazo,
-              indicador: novosDados.indicador || editandoMeta.indicador,
+              prazo: novosDados.prazo as string | undefined,
+              indicador: (novosDados.indicador as string) || editandoMeta.indicador,
             });
           }}
           camposFixosProps={{

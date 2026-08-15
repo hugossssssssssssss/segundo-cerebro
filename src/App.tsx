@@ -25,6 +25,7 @@ import { Busca } from "@/components/Busca";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { NavegacaoLateral } from "@/components/NavegacaoLateral";
 import { GavetaMais } from "@/components/GavetaMais";
+import { LogoKlaus } from "@/components/LogoKlaus";
 import { Carregando } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -160,8 +161,9 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                 <PanelLeft size={18} />
               </button>
 
-              <NavLink to="/home" className="font-semibold tracking-tight text-sm sm:text-base">
-                Segundo Cérebro
+              <NavLink to="/home" className="flex items-center gap-2 font-bold tracking-tight text-sm sm:text-base hover:opacity-90 transition-opacity">
+                <LogoKlaus tamanho={24} />
+                <span>Klaus</span>
               </NavLink>
             </div>
 

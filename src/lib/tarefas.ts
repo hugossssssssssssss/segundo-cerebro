@@ -4,74 +4,45 @@
  * Uma tarefa é um arquivo .md em `tarefas/`. O frontmatter guarda o estado;
  * o corpo é anotação livre. O tempo de pomodoro é registrado no próprio corpo,
  * para continuar legível fora do app.
+ *
+ * Os tipos e funções de conversão vivem agora em `tipos.ts` e `entidades.ts`.
+ * Este arquivo re-exporta tudo com os nomes legados para não quebrar imports.
  */
 
-import type { Documento, Frontmatter } from "./markdown";
-import { comoLista, mesclarFrontmatter } from "./markdown";
 import { diasAte, dataISO } from "./utils";
+import type { Tarefa } from "./tipos";
 
-export const STATUS = ["a-fazer", "fazendo", "feito"] as const;
-export type Status = (typeof STATUS)[number];
+// Re-exporta os contratos centrais com os nomes que o restante do app usa
+export {
+  STATUS_TAREFA as STATUS,
+  ROTULO_STATUS_TAREFA as ROTULO_STATUS,
+  type StatusTarefa as Status,
+  type Tarefa,
+} from "./tipos";
 
-export const ROTULO_STATUS: Record<Status, string> = {
-  "a-fazer": "A fazer",
-  fazendo: "Fazendo",
-  feito: "Feito",
-};
+export {
+  comoTarefa,
+} from "./entidades";
 
-export type Tarefa = {
-  /** Frontmatter como veio do arquivo — preserva campos que o app não conhece */
-  bruto: Frontmatter;
-  caminho: string;
-  sha: string;
-  titulo: string;
-  status: Status;
-  prazo?: string;
-  tags: string[];
-  corpo: string;
-};
+import { tarefaParaArquivo } from "./entidades";
 
-export function statusValido(v: unknown): Status {
-  return STATUS.includes(v as Status) ? (v as Status) : "a-fazer";
-}
-
-/** Monta uma Tarefa a partir do arquivo lido. Campos ausentes viram padrão. */
-export function comoTarefa(
-  doc: Documento,
-  caminho: string,
-  sha: string,
-  tituloFallback: string,
-): Tarefa {
-  const d = doc.dados;
-  return {
-    bruto: doc.dados,
-    caminho,
-    sha,
-    titulo:
-      typeof d.titulo === "string" && d.titulo.trim()
-        ? d.titulo.trim()
-        : tituloFallback,
-    status: statusValido(d.status),
-    prazo: typeof d.prazo === "string" ? d.prazo : undefined,
-    tags: comoLista(d.tags),
-    corpo: doc.corpo,
-  };
-}
-
-/** Frontmatter para gravar de volta. */
+/**
+ * Retorna o frontmatter de uma tarefa para gravar de volta.
+ * Mantido com assinatura legada (retorna Record, não {dados, corpo})
+ * para compatibilidade com os testes existentes e com o código antigo.
+ * As telas novas devem usar `tarefaParaArquivo` de `entidades.ts`.
+ */
 export function paraFrontmatter(t: Tarefa): Record<string, unknown> {
-  const agora = new Date().toISOString();
-  const criado = t.bruto.criado || t.bruto.criado_em || agora.slice(0, 10);
-  return mesclarFrontmatter(t.bruto, {
-    titulo: t.titulo,
-    tipo: "tarefa",
-    status: t.status,
-    prazo: t.prazo,
-    tags: t.tags.length ? t.tags : undefined,
-    criado,
-    atualizado: agora,
-  });
+  return tarefaParaArquivo(t).dados;
 }
+
+/** @deprecated Use StatusTarefa de tipos.ts */
+export function statusValido(v: unknown): import("./tipos").StatusTarefa {
+  const validos = ["a-fazer", "fazendo", "feito"] as const;
+  return validos.includes(v as typeof validos[number]) ? (v as typeof validos[number]) : "a-fazer";
+}
+
+
 
 /* -------------------------------------------------------------- ordenação */
 

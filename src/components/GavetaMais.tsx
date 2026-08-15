@@ -3,6 +3,7 @@ import { X, Sparkles, Settings, Moon, Sun } from "lucide-react";
 import { gruposNavegacao } from "./NavegacaoLateral";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { LogoKlaus } from "./LogoKlaus";
 
 interface GavetaMaisProps {
   aberta: boolean;
@@ -24,8 +25,8 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
   if (!aberta) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm transition-opacity sm:hidden">
-      {/* Clique fora fecha a gaveta */}
+    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 sm:hidden backdrop-blur-xs animate-in fade-in duration-200">
+      {/* Fundo clicável para fechar */}
       <div className="flex-1" onClick={aoFechar} />
 
       {/* Conteúdo da Gaveta estilo Bottom Sheet */}
@@ -33,11 +34,9 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
         {/* Topo da Gaveta */}
         <div className="flex items-center justify-between pb-2 border-b border-border">
           <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-primary text-primary-foreground font-bold text-xs">
-              SC
-            </div>
+            <LogoKlaus tamanho={24} />
             <span className="font-bold text-sm tracking-tight text-foreground">
-              Menu do Segundo Cérebro
+              Menu do Klaus
             </span>
           </div>
           <button

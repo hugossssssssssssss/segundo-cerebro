@@ -20,15 +20,11 @@ import MiniSearch from "minisearch";
 import type { ItemRepo } from "./repo";
 import { tituloProvavel, comoLista } from "./markdown";
 
-export type TipoItem =
-  | "tarefa"
-  | "nota"
-  | "referencia"
-  | "lousa"
-  | "meta"
-  | "entrega"
-  | "reuniao"
-  | "outro";
+// Re-exporta os contratos centrais de tipos.ts
+export type { TipoItem } from "./tipos";
+export { ROTULO_TIPO, ROTA_POR_TIPO as ROTA_TIPO } from "./tipos";
+import { ROTULO_TIPO } from "./tipos";
+import type { TipoItem } from "./tipos";
 
 export type Resultado = {
   caminho: string;
@@ -38,29 +34,6 @@ export type Resultado = {
   trecho: string;
   /** Maior = mais relevante */
   peso: number;
-};
-
-export const ROTULO_TIPO: Record<TipoItem, string> = {
-  tarefa: "Tarefa",
-  nota: "Nota",
-  referencia: "Pinterest / Referência",
-  lousa: "Excalidraw / Mapa Mental",
-  meta: "Meta",
-  entrega: "Entrega",
-  reuniao: "Reunião",
-  outro: "Outro",
-};
-
-/** Para onde navegar ao clicar num resultado. */
-export const ROTA_TIPO: Record<TipoItem, string> = {
-  tarefa: "/tarefas",
-  nota: "/notas",
-  referencia: "/referencias",
-  lousa: "/lousas",
-  meta: "/pdi",
-  entrega: "/pdi",
-  reuniao: "/notas",
-  outro: "/notas",
 };
 
 /** Descobre o tipo pelo frontmatter e, se faltar, pela pasta. */

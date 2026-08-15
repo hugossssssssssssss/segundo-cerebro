@@ -56,7 +56,7 @@ export const FERRAMENTAS = [
       {
         name: "criar_item",
         description:
-          "Cria um item novo no segundo cérebro do Hugo. Uma chamada por item.",
+          "Cria um item novo no Klaus. Uma chamada por item.",
         parameters: {
           type: "object",
           properties: {

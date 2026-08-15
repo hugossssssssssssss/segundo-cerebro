@@ -263,7 +263,7 @@ export default function Transcritor() {
     URL.revokeObjectURL(url);
   }
 
-  // Salvar transcrição como Nota no Segundo Cérebro do GitHub
+  // Salvar transcrição como Nota no Klaus (GitHub)
   async function salvarComoNota(item: ItemTranscricao) {
     if (!item.transcricao) return;
     setSalvandoNota(true);

@@ -24,7 +24,7 @@ export class ErroGemini extends Error {}
  * As duas regras que mais importam: nunca inventar fato sobre o trabalho do
  * Hugo, e marcar como sugestão o que ele ainda não conferiu.
  */
-export const INSTRUCAO_BASE = `Você é o assistente do segundo cérebro do Hugo, designer gráfico brasileiro.
+export const INSTRUCAO_BASE = `Você é o assistente do Klaus (segundo cérebro do Hugo), designer gráfico brasileiro.
 
 REGRAS:
 1. Responda em português do Brasil, direto, sem introduções do tipo "claro, vou te ajudar".
@@ -58,7 +58,7 @@ export async function conversar(
   const base = `${INSTRUCAO_BASE}\n\nHoje é ${hojeISO()}.`;
 
   const instrucao = contexto
-    ? `${base}\n\n--- CONTEÚDO ATUAL DO SEGUNDO CÉREBRO ---\n${contexto}\n--- FIM DO CONTEÚDO ---`
+    ? `${base}\n\n--- CONTEÚDO ATUAL DO KLAUS ---\n${contexto}\n--- FIM DO CONTEÚDO ---`
     : base;
 
   let resposta: Response;
