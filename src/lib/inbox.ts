@@ -101,7 +101,98 @@ export function extrairLembretesDeTexto(
 }
 
 /**
- * Varre todo o acervo do repositório para extrair lembretes e tarefas atrasadas.
+ * Adia uma data/hora de lembrete com base na opção selecionada (Snooze).
+ */
+export function adiarDataHora(
+  dataHoraBase: string,
+  opcao: "1h" | "amanha" | "3dias" | "proxima_segunda",
+  agora: Date = new Date(),
+): string {
+  let baseDate = new Date(dataHoraBase);
+  if (isNaN(baseDate.getTime())) {
+    baseDate = new Date(agora);
+  }
+
+  if (opcao === "1h") {
+    baseDate.setHours(baseDate.getHours() + 1);
+  } else if (opcao === "amanha") {
+    baseDate.setDate(baseDate.getDate() + 1);
+    baseDate.setHours(9, 0, 0, 0);
+  } else if (opcao === "3dias") {
+    baseDate.setDate(baseDate.getDate() + 3);
+    baseDate.setHours(9, 0, 0, 0);
+  } else if (opcao === "proxima_segunda") {
+    const diaDaSemana = baseDate.getDay();
+    const diasAteSegunda = (8 - diaDaSemana) % 7 || 7;
+    baseDate.setDate(baseDate.getDate() + diasAteSegunda);
+    baseDate.setHours(9, 0, 0, 0);
+  }
+
+  const yyyy = baseDate.getFullYear();
+  const mm = String(baseDate.getMonth() + 1).padStart(2, "0");
+  const dd = String(baseDate.getDate()).padStart(2, "0");
+  const hh = String(baseDate.getHours()).padStart(2, "0");
+  const min = String(baseDate.getMinutes()).padStart(2, "0");
+
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
+/**
+ * Identifica notas paradas/inativas no repositório há mais de X dias (Ideia 10).
+ */
+export function compilarNotasInativas(
+  itensRepo: ItemRepo[],
+  mapaEstado: MapaEstadoInbox = {},
+  agora: Date = new Date(),
+  diasLimite = 30,
+): ItemInbox[] {
+  const resultado: ItemInbox[] = [];
+  const limiteMs = diasLimite * 24 * 60 * 60 * 1000;
+
+  for (const item of itensRepo) {
+    if (!item.caminho.startsWith("notas/")) continue;
+    const doc = lerMarkdown(item.texto);
+    const atualizadoEm = (doc.dados.atualizado as string) || (doc.dados.criado as string);
+
+    let dataNota: Date | null = null;
+    if (atualizadoEm) {
+      dataNota = new Date(atualizadoEm);
+    } else {
+      const matchData = item.nome.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (matchData) dataNota = new Date(matchData[1]);
+    }
+
+    if (dataNota && !isNaN(dataNota.getTime())) {
+      const diffMs = agora.getTime() - dataNota.getTime();
+      if (diffMs >= limiteMs) {
+        const id = `nota-inativa-${item.caminho}`;
+        const estado = mapaEstado[id];
+        if (!estado?.descartado) {
+          const tituloDoc = tituloProvavel(doc, item.nome);
+          const diasInativo = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          const tags = Array.isArray(doc.dados.tags) ? (doc.dados.tags as string[]) : [];
+          resultado.push({
+            id,
+            tipo: "nota_inativa",
+            titulo: `Nota inativa: ${tituloDoc}`,
+            descricao: `Esta nota não é alterada há ${diasInativo} dias. Deseja revisar ou arquivar?`,
+            caminhoOrigem: item.caminho,
+            tituloOrigem: tituloDoc,
+            dataVencimento: dataNota.toISOString().slice(0, 10),
+            visto: Boolean(estado?.visto),
+            vistoEm: estado?.vistoEm,
+            tags,
+          });
+        }
+      }
+    }
+  }
+
+  return resultado;
+}
+
+/**
+ * Varre todo o acervo do repositório para extrair lembretes, tarefas atrasadas e notas inativas.
  */
 export function compilarItensInbox(
   itensRepo: ItemRepo[],
@@ -109,13 +200,13 @@ export function compilarItensInbox(
   agora: Date = new Date(),
 ): ItemInbox[] {
   const resultado: ItemInbox[] = [];
-
   const hojeIso = agora.toISOString().slice(0, 10);
 
   for (const item of itensRepo) {
     if (!item.texto) continue;
     const doc = lerMarkdown(item.texto);
     const tituloDoc = tituloProvavel(doc, item.nome);
+    const tagsDoc = Array.isArray(doc.dados.tags) ? (doc.dados.tags as string[]) : [];
 
     // 1. Tarefas Atrasadas (em tarefas/)
     if (item.caminho.startsWith("tarefas/")) {
@@ -139,6 +230,7 @@ export function compilarItensInbox(
             vistoEm: estado?.vistoEm,
             notificadoTelegram: estado?.notificadoTelegram,
             notificadoEmail: estado?.notificadoEmail,
+            tags: tagsDoc,
           });
         }
       }
@@ -168,10 +260,15 @@ export function compilarItensInbox(
           notificadoTelegram: estado?.notificadoTelegram,
           notificadoEmail: estado?.notificadoEmail,
           lembreteBruto: formatarTagLembrete(lembrete.titulo, lembrete.dataHora),
+          tags: tagsDoc,
         });
       }
     }
   }
+
+  // 3. Notas inativas (> 30 dias)
+  const inativas = compilarNotasInativas(itensRepo, mapaEstado, agora, 30);
+  resultado.push(...inativas);
 
   // Ordenar por data de vencimento (os mais recentes/urgentes primeiro)
   return resultado.sort((a, b) => b.dataVencimento.localeCompare(a.dataVencimento));

@@ -190,7 +190,7 @@ export interface CardProcesso extends ItemBase {
   atualizadoEm: string;
 }
 
-export type TipoItemInbox = "lembrete" | "tarefa_atrasada";
+export type TipoItemInbox = "lembrete" | "tarefa_atrasada" | "nota_inativa";
 
 export interface Lembrete {
   id: string;
@@ -216,6 +216,7 @@ export interface ItemInbox {
   notificadoTelegram?: boolean;
   notificadoEmail?: boolean;
   lembreteBruto?: string;
+  tags?: string[];
 }
 
 /* ========================================================= MAPEAMENTOS */

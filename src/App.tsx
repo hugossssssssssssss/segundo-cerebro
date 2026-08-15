@@ -30,6 +30,9 @@ import { GavetaMais } from "@/components/GavetaMais";
 import { LogoKlaus } from "@/components/LogoKlaus";
 import { Carregando } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { lerConfig, configCompleta } from "@/lib/settings";
+import { carregarRepo } from "@/lib/repo";
+import { carregarEstadoInbox, compilarItensInbox } from "@/lib/inbox";
 
 /**
  * HashRouter (URLs com #) em vez de BrowserRouter: o GitHub Pages não sabe
@@ -117,6 +120,30 @@ function Estrutura({ children }: { children: React.ReactNode }) {
     document.addEventListener("keydown", aoTeclar);
     return () => document.removeEventListener("keydown", aoTeclar);
   }, []);
+
+  // Badge no título da página / favicon (Ideia 9)
+  useEffect(() => {
+    const atualizarTituloBadge = async () => {
+      const cfg = lerConfig();
+      if (!configCompleta(cfg)) return;
+      try {
+        const [todos, estadoRes] = await Promise.all([
+          carregarRepo(cfg),
+          carregarEstadoInbox(cfg),
+        ]);
+        const itens = compilarItensInbox(todos, estadoRes.mapa);
+        const naoVistos = itens.filter((i) => !i.visto).length;
+        if (naoVistos > 0) {
+          document.title = `(${naoVistos}) Klaus - Caixa de Entrada`;
+        } else {
+          document.title = "Klaus - Segundo Cérebro";
+        }
+      } catch {
+        // ignora
+      }
+    };
+    atualizarTituloBadge();
+  }, [pathname]);
 
   /**
    * Compartilhar de outro app do Android cai aqui.

@@ -7,6 +7,8 @@ import { lerConfig } from "@/lib/settings";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
 import { montarIndice, alvosUnicos, filtrarAlvos, type Alvo } from "@/lib/links";
 import { restaurarWikilinks } from "@/lib/markdown";
+import { formatarTagLembrete } from "@/lib/inbox";
+import { ModalLembrete } from "./ModalLembrete";
 
 /**
  * Auxiliar para converter URLs coladas do tipo ?abrir=caminho ou [[alvo]] em @ Nome do Item
@@ -103,9 +105,11 @@ export function EditorNotion({
     };
   }, [acervo, alvosOverrideKey]);
 
+  const [modalLembreteAberto, setModalLembreteAberto] = useState(false);
+
   /** Monta os itens do menu a partir do que já está em memória. */
-  const itensDoMenu = (query: string) =>
-    filtrarAlvos(alvos, query, 35).map((s) => {
+  const itensDoMenu = (query: string) => {
+    const itens = filtrarAlvos(alvos, query, 35).map((s) => {
       const ehLousa = s.tipo === "lousa" || s.caminho.startsWith("lousas/");
       return {
         title: ehLousa ? `🗺️ @${s.titulo}` : `@${s.titulo}`,
@@ -115,6 +119,20 @@ export function EditorNotion({
         },
       };
     });
+
+    const q = query.toLowerCase().trim();
+    if (!q || "lembrete".includes(q) || "lembre".includes(q)) {
+      itens.unshift({
+        title: "⏰ @lembrete — Agendar Lembrete",
+        subtext: "Abrir seletor de data, hora e notificações",
+        onItemClick: () => {
+          setModalLembreteAberto(true);
+        },
+      });
+    }
+
+    return itens;
+  };
 
   // acompanha o botão de tema do cabeçalho
   useEffect(() => {
@@ -301,6 +319,15 @@ export function EditorNotion({
           getItems={async (query) => itensDoMenu(query)}
         />
       </BlockNoteView>
+
+      <ModalLembrete
+        aberto={modalLembreteAberto}
+        aoFechar={() => setModalLembreteAberto(false)}
+        aoSalvar={(titulo, dataHora) => {
+          const tag = formatarTagLembrete(titulo, dataHora);
+          editor.insertInlineContent([`${tag} `]);
+        }}
+      />
       <style>{`
         .notion-editor-wrapper .bn-container { font-family: inherit; }
         .notion-editor-wrapper .bn-editor { padding-left: 0; padding-right: 0; }

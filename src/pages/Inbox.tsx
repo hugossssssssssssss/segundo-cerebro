@@ -11,6 +11,10 @@ import {
   Filter,
   Plus,
   RefreshCw,
+  Sparkles,
+  Clock,
+  Tag,
+  Archive,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
@@ -22,14 +26,17 @@ import {
   enviarNotificacaoEmailGoogle,
   precisaEscalationInatividade,
   formatarTagLembrete,
+  adiarDataHora,
   type MapaEstadoInbox,
 } from "@/lib/inbox";
+import { extrairLembretesComIA } from "@/lib/gemini";
+import type { ItemInbox } from "@/lib/tipos";
 import { Botao, Cartao, Selo, Aviso, Vazio, Carregando } from "@/components/ui";
 import { ModalLembrete } from "@/components/ModalLembrete";
 import { useSalvar } from "@/lib/useSalvar";
 import { lerMarkdown, escreverMarkdown } from "@/lib/markdown";
 
-type AbaFiltro = "nao_vistos" | "lembretes" | "atrasadas" | "todas" | "arquivados";
+type AbaFiltro = "nao_vistos" | "lembretes" | "atrasadas" | "inativas" | "todas" | "arquivados";
 
 export default function Inbox() {
   const cfg = lerConfig();
@@ -43,7 +50,9 @@ export default function Inbox() {
   const [mapaEstado, setMapaEstado] = useState<MapaEstadoInbox>({});
   const [shaEstado, setShaEstado] = useState<string | undefined>(undefined);
   const [aba, setAba] = useState<AbaFiltro>("nao_vistos");
+  const [tagSelecionada, setTagSelecionada] = useState<string | null>(null);
   const [modalNovoAberto, setModalNovoAberto] = useState(false);
+  const [extraindoIA, setExtraindoIA] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
 
   // Carrega repositório e estado da Inbox
@@ -75,6 +84,41 @@ export default function Inbox() {
   const itensCompilados = useMemo(() => {
     return compilarItensInbox(acervo, mapaEstado);
   }, [acervo, mapaEstado]);
+
+  // Extrai todas as tags únicas dos itens
+  const todasTags = useMemo(() => {
+    const tagsSet = new Set<string>();
+    for (const item of itensCompilados) {
+      if (item.tags) {
+        for (const t of item.tags) tagsSet.add(t);
+      }
+    }
+    return Array.from(tagsSet);
+  }, [itensCompilados]);
+
+  // Cálculo da Visão Semanal (próximos 7 dias)
+  const visaoSemanal = useMemo(() => {
+    const dias = [];
+    const hoje = new Date();
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(hoje);
+      d.setDate(hoje.getDate() + i);
+      const iso = d.toISOString().slice(0, 10);
+      const diaDaSemana = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+      const total = itensCompilados.filter((item) => item.dataVencimento.startsWith(iso) && !item.visto).length;
+
+      dias.push({
+        dataIso: iso,
+        diaDaSemana,
+        diaNumero: d.getDate(),
+        total,
+        ehHoje: i === 0,
+      });
+    }
+
+    return dias;
+  }, [itensCompilados]);
 
   // Checagem automática de regras de escalonamento Telegram / Email
   useEffect(() => {
@@ -124,7 +168,7 @@ export default function Inbox() {
     verificarEscalation();
   }, [itensCompilados, cfg.inboxTelegramAtivo, cfg.inboxEscalaHoras, cfg.telegramBotToken, cfg.telegramChatId, cfg.googleEmailAtivo, cfg.googleAppsScriptUrl]);
 
-  // Marcar item como visto / não visto
+  // Alternar visto/não visto
   const alternarVisto = async (id: string) => {
     const atual = mapaEstado[id]?.visto;
     const novoMapa: MapaEstadoInbox = {
@@ -138,6 +182,43 @@ export default function Inbox() {
     setMapaEstado(novoMapa);
     const novoSha = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
     if (novoSha) setShaEstado(novoSha);
+  };
+
+  // Snooze / Adiar lembrete em 1 clique (Ideia 1)
+  const adiarItem = async (
+    item: ItemInbox,
+    opcao: "1h" | "amanha" | "3dias" | "proxima_segunda",
+  ) => {
+    const novaDataHora = adiarDataHora(item.dataVencimento, opcao);
+
+    // Se tiver arquivo de origem e tag de lembrete bruta, atualiza o arquivo no GitHub
+    if (item.lembreteBruto && item.caminhoOrigem) {
+      const docAlvo = acervo.find((i) => i.caminho === item.caminhoOrigem);
+      if (docAlvo && docAlvo.texto) {
+        const doc = lerMarkdown(docAlvo.texto);
+        const novaTag = formatarTagLembrete(item.titulo, novaDataHora);
+        const corpoAtualizado = doc.corpo.replace(item.lembreteBruto, novaTag);
+        const novoTexto = escreverMarkdown({ dados: doc.dados, corpo: corpoAtualizado });
+
+        await salvarTexto(docAlvo.caminho, novoTexto, docAlvo.sha, `adiar lembrete: ${item.titulo}`);
+      }
+    } else {
+      // Para tarefas ou itens sem tag, atualiza o mapa de estado com visto
+      const novoMapa: MapaEstadoInbox = {
+        ...mapaEstado,
+        [item.id]: {
+          ...mapaEstado[item.id],
+          visto: true,
+          vistoEm: new Date().toISOString(),
+        },
+      };
+      setMapaEstado(novoMapa);
+      await gravarEstadoInbox(cfg, novoMapa, shaEstado);
+    }
+
+    setMensagemSucesso(`Lembrete adiado para ${novaDataHora}!`);
+    setTimeout(() => setMensagemSucesso(null), 3000);
+    carregar();
   };
 
   // Marcar todos como vistos
@@ -174,13 +255,54 @@ export default function Inbox() {
     if (novoSha) setShaEstado(novoSha);
   };
 
-  // Criar um novo lembrete e anexar na nota/tarefa padrão ou ativa
+  // Extrair lembretes com a IA Gemini (Ideia 7)
+  const executarExtracaoIA = async () => {
+    if (!cfg.geminiKey) {
+      alert("Configure a chave do Gemini na tela de Ajustes para usar esta função!");
+      return;
+    }
+    setExtraindoIA(true);
+
+    try {
+      let totalExtraidos = 0;
+      // Examina até 5 notas recentes
+      const notasRecentes = acervo.filter((i) => i.caminho.startsWith("notas/")).slice(0, 5);
+
+      for (const item of notasRecentes) {
+        const extraidos = await extrairLembretesComIA(cfg, item.texto);
+        if (extraidos.length > 0) {
+          const doc = lerMarkdown(item.texto);
+          let corpoNovos = doc.corpo;
+          for (const ext of extraidos) {
+            const tag = formatarTagLembrete(ext.titulo, ext.dataHora);
+            corpoNovos += `\n\n${tag}`;
+            totalExtraidos++;
+          }
+          const novoTexto = escreverMarkdown({ dados: doc.dados, corpo: corpoNovos });
+          await salvarTexto(item.caminho, novoTexto, item.sha, "IA: extrair lembretes automaticamente");
+        }
+      }
+
+      if (totalExtraidos > 0) {
+        setMensagemSucesso(`✨ A IA encontrou e agendou ${totalExtraidos} lembretes em seus documentos!`);
+        carregar();
+      } else {
+        setMensagemSucesso("A IA analisou seus documentos recentes e não encontrou novos prazos pendentes.");
+      }
+    } catch (e) {
+      setErro("Falha ao extrair lembretes com a IA.");
+    } finally {
+      setExtraindoIA(false);
+      setTimeout(() => setMensagemSucesso(null), 4000);
+    }
+  };
+
+  // Criar um novo lembrete
   const salvarNovoLembrete = async (
     titulo: string,
     dataHora: string,
     canais: ("inbox" | "telegram" | "email")[],
   ) => {
-    // Escolhe nota para salvar (primeira nota em notas/ ou cria uma)
     const notaAlvo = acervo.find((i) => i.caminho.startsWith("notas/")) || acervo[0];
     if (!notaAlvo) return;
 
@@ -191,7 +313,6 @@ export default function Inbox() {
 
     await salvarTexto(notaAlvo.caminho, novoTexto, notaAlvo.sha, `adicionar lembrete: ${titulo}`);
 
-    // Disparar Telegram imediato se configurado
     if (canais.includes("telegram") && cfg.telegramBotToken && cfg.telegramChatId) {
       await enviarNotificacaoTelegram(
         cfg.telegramBotToken,
@@ -205,23 +326,28 @@ export default function Inbox() {
     carregar();
   };
 
-
-
   // Filtragem dos itens exibidos
   const itensExibidos = useMemo(() => {
     return itensCompilados.filter((item) => {
-      if (aba === "nao_vistos") return !item.visto;
+      // Filtro por Tag (Ideia 6)
+      if (tagSelecionada && (!item.tags || !item.tags.includes(tagSelecionada))) {
+        return false;
+      }
+
+      if (aba === "nao_vistos") return !item.visto && item.tipo !== "nota_inativa";
       if (aba === "lembretes") return item.tipo === "lembrete" && !item.visto;
       if (aba === "atrasadas") return item.tipo === "tarefa_atrasada" && !item.visto;
+      if (aba === "inativas") return item.tipo === "nota_inativa";
       if (aba === "todas") return true;
       if (aba === "arquivados") return item.visto;
       return true;
     });
-  }, [itensCompilados, aba]);
+  }, [itensCompilados, aba, tagSelecionada]);
 
-  const contagemNaoVistos = itensCompilados.filter((i) => !i.visto).length;
+  const contagemNaoVistos = itensCompilados.filter((i) => !i.visto && i.tipo !== "nota_inativa").length;
   const contagemAtrasadas = itensCompilados.filter((i) => i.tipo === "tarefa_atrasada" && !i.visto).length;
   const contagemLembretes = itensCompilados.filter((i) => i.tipo === "lembrete" && !i.visto).length;
+  const contagemInativas = itensCompilados.filter((i) => i.tipo === "nota_inativa").length;
 
   const navegarParaOrigem = (caminho: string) => {
     let pasta = "notas";
@@ -255,11 +381,22 @@ export default function Inbox() {
             )}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Lembretes agendados e alertas de tarefas que precisam da sua atenção.
+            Lembretes agendados, tarefas atrasadas e sugestões de organização.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Botao
+            variante="neutro"
+            tamanho="pequeno"
+            onClick={executarExtracaoIA}
+            disabled={extraindoIA}
+            title="Usar a IA Gemini para identificar compromissos nos documentos"
+          >
+            <Sparkles size={14} className={extraindoIA ? "animate-spin text-amber-500" : "text-amber-500"} />
+            {extraindoIA ? "Analisando..." : "IA Extrair Prazos"}
+          </Botao>
+
           <Botao variante="neutro" tamanho="pequeno" onClick={() => carregar()}>
             <RefreshCw size={14} className={carregando ? "animate-spin" : ""} />
             Atualizar
@@ -275,7 +412,42 @@ export default function Inbox() {
       {mensagemSucesso && <Aviso tom="sucesso">{mensagemSucesso}</Aviso>}
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 
-      {/* Abas e Filtros */}
+      {/* Visão Semanal / Linha do Tempo (Ideia 8) */}
+      <div className="rounded-xl border border-border/80 bg-card p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
+            <Calendar size={14} /> Próximos 7 Dias
+          </h2>
+          <span className="text-[11px] text-muted-foreground">Visão Geral</span>
+        </div>
+
+        <div className="grid grid-cols-7 gap-1.5 text-center">
+          {visaoSemanal.map((d) => (
+            <div
+              key={d.dataIso}
+              className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-colors ${
+                d.ehHoje
+                  ? "border-primary bg-primary/10 font-bold"
+                  : "border-border/60 bg-secondary/40 hover:bg-accent"
+              }`}
+            >
+              <span className="text-[10px] uppercase font-mono text-muted-foreground">
+                {d.diaDaSemana}
+              </span>
+              <span className="text-sm font-semibold">{d.diaNumero}</span>
+              {d.total > 0 ? (
+                <span className="mt-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                  {d.total}
+                </span>
+              ) : (
+                <span className="mt-1 text-[10px] text-muted-foreground/50">-</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Abas Principais */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
         <div className="flex flex-wrap gap-1">
           <button
@@ -315,6 +487,18 @@ export default function Inbox() {
           </button>
 
           <button
+            onClick={() => setAba("inativas")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              aba === "inativas"
+                ? "bg-amber-500 text-white font-semibold"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            }`}
+          >
+            <Archive size={14} />
+            Notas Inativas ({contagemInativas})
+          </button>
+
+          <button
             onClick={() => setAba("todas")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               aba === "todas"
@@ -350,6 +534,38 @@ export default function Inbox() {
         )}
       </div>
 
+      {/* Filtro por Tags/Projetos (Ideia 6) */}
+      {todasTags.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap py-1">
+          <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+            <Tag size={12} /> Tags:
+          </span>
+          <button
+            onClick={() => setTagSelecionada(null)}
+            className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${
+              tagSelecionada === null
+                ? "bg-primary text-primary-foreground font-semibold"
+                : "bg-secondary/60 text-muted-foreground hover:bg-accent"
+            }`}
+          >
+            Todas
+          </button>
+          {todasTags.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTagSelecionada(t === tagSelecionada ? null : t)}
+              className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                tagSelecionada === t
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "bg-secondary/60 text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              #{t}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Lista de Conteúdo */}
       {carregando ? (
         <Carregando texto="Buscando lembretes e tarefas..." />
@@ -371,6 +587,8 @@ export default function Inbox() {
         <div className="space-y-3">
           {itensExibidos.map((item) => {
             const ehAtrasada = item.tipo === "tarefa_atrasada";
+            const ehInativa = item.tipo === "nota_inativa";
+
             return (
               <Cartao
                 key={item.id}
@@ -378,6 +596,8 @@ export default function Inbox() {
                   !item.visto
                     ? ehAtrasada
                       ? "border-destructive/40 bg-destructive/5"
+                      : ehInativa
+                      ? "border-amber-500/40 bg-amber-500/5"
                       : "border-primary/40 bg-primary/5"
                     : "opacity-75"
                 }`}
@@ -388,10 +608,18 @@ export default function Inbox() {
                       className={`rounded-xl p-2.5 shrink-0 ${
                         ehAtrasada
                           ? "bg-destructive/15 text-destructive"
+                          : ehInativa
+                          ? "bg-amber-500/15 text-amber-500"
                           : "bg-primary/15 text-primary"
                       }`}
                     >
-                      {ehAtrasada ? <AlertTriangle size={20} /> : <Bell size={20} />}
+                      {ehAtrasada ? (
+                        <AlertTriangle size={20} />
+                      ) : ehInativa ? (
+                        <Archive size={20} />
+                      ) : (
+                        <Bell size={20} />
+                      )}
                     </div>
 
                     <div className="min-w-0 flex-1 space-y-1">
@@ -399,12 +627,17 @@ export default function Inbox() {
                         <h3 className="font-semibold text-base text-foreground leading-snug">
                           {item.titulo}
                         </h3>
-                        <Selo tom={ehAtrasada ? "perigo" : "primario"}>
-                          {ehAtrasada ? "Tarefa Atrasada" : "Lembrete"}
+                        <Selo tom={ehAtrasada ? "perigo" : ehInativa ? "aviso" : "primario"}>
+                          {ehAtrasada ? "Tarefa Atrasada" : ehInativa ? "Nota Inativa" : "Lembrete"}
                         </Selo>
                         {item.notificadoTelegram && (
                           <Selo tom="sucesso">Telegram Enviado</Selo>
                         )}
+                        {item.tags?.map((t) => (
+                          <span key={t} className="text-[10px] font-mono text-muted-foreground">
+                            #{t}
+                          </span>
+                        ))}
                       </div>
 
                       {item.descricao && (
@@ -428,8 +661,38 @@ export default function Inbox() {
                     </div>
                   </div>
 
-                  {/* Ações do item */}
-                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40 w-full sm:w-auto justify-end">
+                  {/* Ações e Snooze em 1 Clique (Ideia 1) */}
+                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40 w-full sm:w-auto justify-end flex-wrap">
+                    {/* Botões rápidos de Snooze para lembretes */}
+                    {!item.visto && !ehInativa && (
+                      <div className="flex items-center gap-1 border-r border-border/60 pr-2 mr-1">
+                        <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-0.5">
+                          <Clock size={11} /> Adiar:
+                        </span>
+                        <button
+                          onClick={() => adiarItem(item, "1h")}
+                          className="px-2 py-1 rounded bg-secondary text-[11px] font-medium hover:bg-accent transition-colors"
+                          title="Adiar 1 hora"
+                        >
+                          +1h
+                        </button>
+                        <button
+                          onClick={() => adiarItem(item, "amanha")}
+                          className="px-2 py-1 rounded bg-secondary text-[11px] font-medium hover:bg-accent transition-colors"
+                          title="Adiar para Amanhã às 09:00"
+                        >
+                          Amanhã
+                        </button>
+                        <button
+                          onClick={() => adiarItem(item, "3dias")}
+                          className="px-2 py-1 rounded bg-secondary text-[11px] font-medium hover:bg-accent transition-colors hidden sm:inline-block"
+                          title="Adiar 3 dias"
+                        >
+                          +3d
+                        </button>
+                      </div>
+                    )}
+
                     <Botao
                       variante={item.visto ? "neutro" : "primario"}
                       tamanho="pequeno"
@@ -453,7 +716,7 @@ export default function Inbox() {
                       variante="fantasma"
                       tamanho="icone"
                       onClick={() => descartarItem(item.id)}
-                      title="Arquivar"
+                      title="Arquivar / Descartar"
                     >
                       <Trash2 size={16} className="text-muted-foreground hover:text-destructive" />
                     </Botao>

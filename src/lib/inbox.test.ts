@@ -6,6 +6,7 @@ import {
   precisaEscalationInatividade,
   lerEstadoInboxLocal,
   salvarEstadoInboxLocal,
+  adiarDataHora,
 } from "./inbox";
 import type { ItemRepo } from "./repo";
 
@@ -124,5 +125,14 @@ prazo: 2026-08-10
     salvarEstadoInboxLocal({ "item-1": { visto: true, vistoEm: "2026-08-15" } });
     const atualizado = lerEstadoInboxLocal();
     expect(atualizado["item-1"].visto).toBe(true);
+  });
+
+  it("adiarDataHora calcula a nova data corretamente para 1h e amanhã", () => {
+    const agora = new Date("2026-08-15T10:00:00Z");
+    const em1h = adiarDataHora("2026-08-15 10:00", "1h", agora);
+    expect(em1h).toContain("11:00");
+
+    const amanha = adiarDataHora("2026-08-15 10:00", "amanha", agora);
+    expect(amanha).toContain("09:00");
   });
 });

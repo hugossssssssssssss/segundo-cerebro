@@ -343,3 +343,53 @@ REGRAS OBRIGATÓRIAS:
 
   throw new ErroGemini(ultimoErro || "Não foi possível conectar a nenhum modelo Gemini disponível.");
 }
+
+/**
+ * Analisa o conteúdo de um documento com a IA Gemini e extrai prazos/lembretes.
+ */
+export async function extrairLembretesComIA(
+  cfg: Settings,
+  textoDoc: string,
+): Promise<Array<{ titulo: string; dataHora: string }>> {
+  if (!cfg.geminiKey) return [];
+
+  const modelos = [cfg.geminiModel || "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  const prompt = `Analise o texto abaixo e extraia compromissos, lembretes ou prazos de entrega nele mencionados.
+Retorne EXCLUSIVAMENTE um JSON sem formatação no seguinte formato:
+[{"titulo": "Descrição do lembrete", "dataHora": "YYYY-MM-DD HH:mm"}]
+
+Se não houver prazos ou lembretes, devolva [].
+
+Texto:
+${textoDoc}`;
+
+  for (const mod of modelos) {
+    const url = `${BASE}/${mod}:generateContent`;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": cfg.geminiKey.trim(),
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const jsonMatch = rawText.match(/\[\s*\{[\s\S]*\}\s*\]/) || rawText.match(/\[\]/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      }
+    } catch {
+      // avança para próximo modelo
+    }
+  }
+
+  return [];
+}
