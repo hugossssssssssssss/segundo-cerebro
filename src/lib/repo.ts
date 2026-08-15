@@ -137,7 +137,7 @@ async function arvore(cfg: Settings): Promise<Folha[]> {
     .filter(
       (n: { type: string; path: string }) =>
         n.type === "blob" &&
-        n.path.endsWith(".md") &&
+        (n.path.endsWith(".md") || n.path.endsWith(".json")) &&
         !n.path.split("/").pop()!.startsWith("."),
     )
     .map((n: Folha) => ({ path: n.path, sha: n.sha, size: n.size }));

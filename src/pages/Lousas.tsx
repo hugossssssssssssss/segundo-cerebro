@@ -22,7 +22,7 @@ import {
   atualizarCacheLocal,
   type ItemRepo,
 } from "@/lib/repo";
-import { tituloProvavel, nomeLivre } from "@/lib/markdown";
+import { tituloProvavel, nomeLivre, escreverMarkdown } from "@/lib/markdown";
 import { Botao, Campo, Cartao, Aviso, Vazio, Carregando } from "@/components/ui";
 
 const PASTA = "lousas";
@@ -96,8 +96,12 @@ export default function Lousas() {
       let dados: DadosLousa = { elements: [] };
       let titulo = (item.doc.dados.titulo as string) || tituloProvavel(item.doc, item.nome);
 
+      const textoCena = item.doc.corpo && item.doc.corpo.trim().startsWith("{")
+        ? item.doc.corpo.trim()
+        : conteudo.trim();
+
       try {
-        const parsed = JSON.parse(conteudo);
+        const parsed = JSON.parse(textoCena);
         if (Array.isArray(parsed)) {
           dados = { elements: parsed };
         } else if (parsed && typeof parsed === "object") {
@@ -128,7 +132,7 @@ export default function Lousas() {
     }
   }
 
-  // Abertura automática via parâmetro de URL (?abrir=lousas/nome.json) e reagente a hashchange
+  // Abertura automática via parâmetro de URL (?abrir=lousas/nome.md) e reagente a hashchange
   useEffect(() => {
     function checarParametros() {
       const hash = window.location.hash;
@@ -212,22 +216,35 @@ export default function Lousas() {
         files,
       };
 
-      const json = JSON.stringify(dadosParaSalvar, null, 2);
+      const jsonCena = JSON.stringify(dadosParaSalvar, null, 2);
 
       let novoCaminho = aberta.caminho;
       if (!aberta.caminho || aberta.titulo !== aberta.tituloOriginal) {
         novoCaminho = nomeLivre(
           PASTA,
-          `${tituloLimpo}.json`,
-          lousas.map((x) => x.caminho)
+          tituloLimpo,
+          lousas.map((x) => x.caminho),
+          ".md"
         );
       }
+
+      // Monta documento no padrão do app (Markdown com Frontmatter YAML + JSON no corpo)
+      const docFormatado = {
+        dados: {
+          titulo: tituloLimpo,
+          tipo: "lousa",
+          atualizado_em: new Date().toISOString(),
+        },
+        corpo: jsonCena,
+      };
+
+      const textoParaGravar = escreverMarkdown(docFormatado);
 
       if (aberta.caminho && aberta.caminho !== novoCaminho) {
         try {
           await apagar(cfg, aberta.caminho, aberta.sha);
         } catch {
-          // ignora falha de exclusão do antigo
+          // ignora falha de exclusão
         }
       }
 
@@ -236,7 +253,7 @@ export default function Lousas() {
         novaSha = await gravar(
           cfg,
           novoCaminho,
-          json,
+          textoParaGravar,
           aberta.caminho === novoCaminho ? aberta.sha || undefined : undefined,
           `lousa: ${tituloLimpo}`
         );
@@ -245,7 +262,7 @@ export default function Lousas() {
           novaSha = await gravar(
             cfg,
             novoCaminho,
-            json,
+            textoParaGravar,
             undefined,
             `lousa: ${tituloLimpo}`
           );
@@ -256,8 +273,8 @@ export default function Lousas() {
 
       atualizarCacheLocal(
         novoCaminho,
-        json,
-        { dados: { titulo: tituloLimpo, tipo: "lousa" }, corpo: json },
+        textoParaGravar,
+        docFormatado,
         novaSha
       );
       invalidarCache();
@@ -294,7 +311,7 @@ export default function Lousas() {
 
   function copiarWikilink(caminho: string, titulo: string, e?: React.MouseEvent) {
     if (e) e.stopPropagation();
-    const link = `[[${titulo}]]`;
+    const link = `@${titulo}`;
     navigator.clipboard.writeText(link);
     setCopiadoId(caminho);
     setTimeout(() => setCopiadoId(null), 2000);
@@ -349,7 +366,7 @@ export default function Lousas() {
                 className="flex items-center gap-1.5"
               >
                 {copiadoId === aberta.caminho ? <Check size={14} /> : <LinkIcon size={14} />}
-                <span>{copiadoId === aberta.caminho ? "Link Copiado!" : `Copiar [[${aberta.titulo}]]`}</span>
+                <span>{copiadoId === aberta.caminho ? "Copiado!" : `Copiar @${aberta.titulo}`}</span>
               </Botao>
             )}
 
@@ -477,7 +494,7 @@ export default function Lousas() {
                   variante="neutro"
                   tamanho="icone"
                   onClick={(e) => copiarWikilink(item.caminho, titulo, e)}
-                  title="Copiar [[nome]] para vincular em notas e metas"
+                  title="Copiar @nome para vincular em notas e metas"
                   className="shrink-0"
                 >
                   {copiadoId === item.caminho ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}

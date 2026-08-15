@@ -107,14 +107,17 @@ export function nomeLivre(
   pasta: string,
   titulo: string,
   ocupados: Iterable<string>,
+  extensao: string = ".md"
 ): string {
   const usados = new Set(ocupados);
-  const base = nomeDeArquivo(titulo).replace(/\.md$/, "");
+  const ext = titulo.endsWith(".json") ? ".json" : extensao;
+  const tituloSemExt = titulo.replace(/\.(md|json)$/i, "");
+  const base = nomeDeArquivo(tituloSemExt);
 
-  let candidato = `${pasta}/${base}.md`;
+  let candidato = `${pasta}/${base}${ext}`;
   let n = 2;
   while (usados.has(candidato)) {
-    candidato = `${pasta}/${base}-${n}.md`;
+    candidato = `${pasta}/${base}-${n}${ext}`;
     n++;
   }
   return candidato;
