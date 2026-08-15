@@ -90,7 +90,12 @@ export function EditorNotion({
         setAlvos(alvosOverride);
         return;
       }
-      carregarRepo(lerConfig(), { memoria: 0 })
+      // `memoria` e não 0: isto só monta a lista de títulos para o
+      // autocompletar do `@`. Forçar rede aqui fazia abrir o editor custar uma
+      // leitura completa do repositório — e num túnel de metrô o autocompletar
+      // simplesmente vinha vazio, sem explicação. O evento "acervo-atualizado"
+      // logo abaixo já garante que a lista acompanhe quem for criado depois.
+      carregarRepo(lerConfig(), { memoria: 30_000 })
         .then((todos) => {
           const indice = montarIndice(todos);
           setAlvos(alvosUnicos(indice));

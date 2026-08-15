@@ -27,6 +27,7 @@ import { Busca } from "@/components/Busca";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { ToastsContainer } from "@/components/ToastsContainer";
 import { NavegacaoLateral } from "@/components/NavegacaoLateral";
+import { LimiteDeErro } from "@/components/LimiteDeErro";
 import { GavetaMais } from "@/components/GavetaMais";
 import { LogoKlaus } from "@/components/LogoKlaus";
 import { Carregando } from "@/components/ui";
@@ -116,7 +117,10 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         e.preventDefault();
         setCapturando(true);
       } else if (tecla === "b") {
+        // Antes isto só chamava preventDefault e não fazia nada: o app roubava
+        // o atalho do navegador em troca de coisa nenhuma.
         e.preventDefault();
+        setColapsada((v) => !v);
       }
     };
     document.addEventListener("keydown", aoTeclar);
@@ -134,29 +138,49 @@ function Estrutura({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("online", aoVoltarOnline);
   }, []);
 
-  // Badge no título da página / favicon (Ideia 9)
+  /**
+   * Badge de pendências no título da aba.
+   *
+   * Antes isto dependia de `pathname`, então CADA troca de tela recarregava o
+   * repositório inteiro só para calcular um número — e ainda por cima em
+   * paralelo com a carga que a própria tela nova estava disparando. Eram ~3
+   * requisições ao GitHub por clique na navegação, com o teto de 5.000/hora
+   * bem à vista num dia de uso intenso.
+   *
+   * Agora roda uma vez ao abrir e depois só quando o acervo realmente muda —
+   * que é o único momento em que o número pode ter mudado. O `memoria` faz a
+   * carga reaproveitar o que `repo.ts` já tem em mãos.
+   */
   useEffect(() => {
+    let cancelado = false;
+
     const atualizarTituloBadge = async () => {
       const cfg = lerConfig();
       if (!configCompleta(cfg)) return;
       try {
         const [todos, estadoRes] = await Promise.all([
-          carregarRepo(cfg),
+          carregarRepo(cfg, { memoria: 30_000 }),
           carregarEstadoInbox(cfg),
         ]);
+        if (cancelado) return;
         const itens = compilarItensInbox(todos, estadoRes.mapa);
         const naoVistos = itens.filter((i) => !i.visto).length;
-        if (naoVistos > 0) {
-          document.title = `(${naoVistos}) Klaus - Caixa de Entrada`;
-        } else {
-          document.title = "Klaus - Segundo Cérebro";
-        }
+        document.title =
+          naoVistos > 0
+            ? `(${naoVistos}) Klaus - Caixa de Entrada`
+            : "Klaus - Segundo Cérebro";
       } catch {
-        // ignora
+        // um badge que falha não pode atrapalhar o resto do app
       }
     };
+
     atualizarTituloBadge();
-  }, [pathname]);
+    window.addEventListener("acervo-atualizado", atualizarTituloBadge);
+    return () => {
+      cancelado = true;
+      window.removeEventListener("acervo-atualizado", atualizarTituloBadge);
+    };
+  }, []);
 
   /**
    * Compartilhar de outro app do Android cai aqui.
@@ -272,9 +296,16 @@ function Estrutura({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        {/* Conteúdo da Tela */}
+        {/*
+          Conteúdo da Tela.
+
+          O boundary fica AQUI DENTRO e não em volta da Estrutura: assim um erro
+          numa tela não leva junto a barra lateral e o cabeçalho, e você
+          consegue navegar para outro lugar sem recarregar a página. A `chave`
+          é o caminho da rota — trocar de tela zera o erro automaticamente.
+        */}
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 sm:px-6 py-8 pb-28 sm:pb-8">
-          {children}
+          <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
         </main>
       </div>
 
@@ -339,6 +370,12 @@ function Estrutura({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <HashRouter>
+      {/*
+        Boundary da raiz: a última rede antes da tela branca. Pega o que
+        quebrar fora das rotas — os provedores, a barra lateral, os modais
+        globais. O de dentro da <main> pega o resto.
+      */}
+      <LimiteDeErro>
       <ProvedorFlutuanteGlobal>
         <ProvedorFerramentasFlutuantes>
           <Estrutura>
@@ -365,6 +402,7 @@ export default function App() {
           </Estrutura>
         </ProvedorFerramentasFlutuantes>
       </ProvedorFlutuanteGlobal>
+      </LimiteDeErro>
     </HashRouter>
   );
 }

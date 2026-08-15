@@ -21,12 +21,20 @@ export function HistoricoDiffModal({
   aberto: boolean;
   aoFechar: () => void;
   caminho: string;
-  conteudoAtual: string;
+  /**
+   * O arquivo inteiro como está hoje. Opcional: quem abre o histórico
+   * normalmente tem o título e o corpo separados, não o `.md` montado — e
+   * remontar na mão só para comparar daria um diff cheio de diferença falsa no
+   * frontmatter. Sem este valor, o componente busca a versão salva no GitHub.
+   */
+  conteudoAtual?: string;
 }) {
   const [commits, setCommits] = useState<CommitItem[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [commitSelecionado, setCommitSelecionado] = useState<string | null>(null);
   const [conteudoAntigo, setConteudoAntigo] = useState<string>("");
+  /** A versão salva hoje, quando quem abriu não passou `conteudoAtual`. */
+  const [conteudoSalvo, setConteudoSalvo] = useState<string>("");
   const [carregandoDiff, setCarregandoDiff] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -81,6 +89,16 @@ export function HistoricoDiffModal({
       .finally(() => setCarregandoDiff(false));
   }, [commitSelecionado, caminho, cfg]);
 
+  // Busca a versão salva hoje, quando quem abriu não tinha o arquivo montado.
+  useEffect(() => {
+    if (!aberto || !caminho || conteudoAtual !== undefined) return;
+    lerOuVazio(cfg, caminho)
+      .then((txt: string) => setConteudoSalvo(txt))
+      .catch(() => setConteudoSalvo(""));
+  }, [aberto, caminho, conteudoAtual, cfg]);
+
+  const textoAtual = conteudoAtual ?? conteudoSalvo;
+
   const ehModoEscuro = document.documentElement.classList.contains("dark");
 
   return (
@@ -126,7 +144,7 @@ export function HistoricoDiffModal({
               <div className="overflow-x-auto rounded-lg border border-border text-xs max-h-96 bg-background">
                 <ReactDiffViewer
                   oldValue={conteudoAntigo}
-                  newValue={conteudoAtual}
+                  newValue={textoAtual}
                   splitView={false}
                   useDarkTheme={ehModoEscuro}
                   leftTitle="Versão Selecionada (Anterior)"

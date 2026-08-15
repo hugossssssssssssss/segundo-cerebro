@@ -15,6 +15,7 @@
 
 import { Readability } from "@mozilla/readability";
 import TurndownService from "turndown";
+import { sanitizarHTML } from "./sanitizer";
 
 /* -------------------------------------------------------------- metadados */
 
@@ -235,7 +236,21 @@ export function converterHtmlParaMarkdown(
       codeBlockStyle: "fenced",
       bulletListMarker: "-",
     });
-    const conteudo = turndown.turndown(artigo?.content || html);
+    /**
+     * Sanitiza ANTES do Turndown, e não o HTML de entrada lá em cima.
+     *
+     * A ordem importa: `sanitizarHTML` devolve só o `<body>` e remove os
+     * `<script>` — inclusive o `application/ld+json`, que é justamente a
+     * melhor fonte de autor e data. Limpar antes custaria os metadados.
+     *
+     * Aqui já passamos do `extrairMetadados` e do Readability, então o que
+     * sobra é exatamente o que vai virar arquivo no seu repositório. Como esse
+     * HTML costuma chegar por um proxy de terceiros (ver `capturarUrlWeb`), ele
+     * é conteúdo não confiável por definição.
+     */
+    const conteudo = turndown.turndown(
+      sanitizarHTML(artigo?.content || html),
+    );
 
     const titulo = (artigo?.title || metadados.titulo).trim();
 

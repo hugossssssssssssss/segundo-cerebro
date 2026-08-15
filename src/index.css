@@ -89,11 +89,23 @@
 
 @layer base {
   * {
-    border-color: var(--border);
+    /*
+     * hsl() é obrigatório aqui. Os tokens acima guardam só os números
+     * ("240 5.9% 90%"), e é o bloco `@theme inline` que os embrulha em hsl()
+     * para gerar as classes do Tailwind (bg-background, border-border…).
+     *
+     * Estas três regras não passam pelo @theme: elas leem a variável crua.
+     * Sem o hsl(), o valor não é uma cor válida e o navegador DESCARTA a
+     * declaração inteira — em silêncio. O sintoma era difícil de rastrear:
+     * toda borda sem classe de cor caía no `currentColor` do preflight do
+     * Tailwind (preta no claro, branca no escuro), e o body ficava sem fundo,
+     * escondido apenas pela div raiz do App que tem `bg-background`.
+     */
+    border-color: hsl(var(--border));
   }
   body {
-    background-color: var(--background);
-    color: var(--foreground);
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-family:
       Inter,
       -apple-system,

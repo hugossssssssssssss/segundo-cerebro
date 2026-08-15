@@ -52,6 +52,14 @@ export default function Configuracoes() {
           Estes dados ficam guardados só no navegador deste aparelho. Nunca vão
           para o código nem para a internet.
         </p>
+        <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+          <strong className="text-foreground">Sendo honesto sobre a proteção:</strong>{" "}
+          suas chaves ficam embaralhadas no navegador, o que evita que apareçam
+          em texto legível — mas isso <em>não</em> é criptografia. Quem tiver
+          acesso a este aparelho consegue lê-las. Por isso o token do GitHub
+          deve valer só para o repositório dos seus dados: se algum dia vazar,
+          você revoga em um clique e nada mais é afetado.
+        </p>
       </div>
 
       <Cartao className="p-5 space-y-4">

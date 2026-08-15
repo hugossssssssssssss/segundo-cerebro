@@ -266,9 +266,20 @@ export function compilarItensInbox(
     }
   }
 
-  // 3. Notas inativas (> 30 dias)
-  const inativas = compilarNotasInativas(itensRepo, mapaEstado, agora, 30);
-  resultado.push(...inativas);
+  /*
+   * 3. Notas inativas — DESLIGADO por padrão, de propósito.
+   *
+   * Num segundo cérebro, a maioria esmagadora das notas é para ficar parada.
+   * Uma referência de tipografia salva em fevereiro não precisa ser "revisada"
+   * em março. Com 200 notas, esta regra enchia a caixa de entrada com ~150
+   * alertas falsos no dia 31 — e uma caixa que sempre tem 150 itens é uma
+   * caixa que ninguém abre. Isso matava junto os lembretes de verdade, que são
+   * a razão desta tela existir.
+   *
+   * A função continua exportada e testada. Quando houver uma tela de "revisão
+   * semanal" — onde uma sugestão gentil faz sentido — é lá que ela entra, e
+   * não aqui, misturada com prazos vencidos.
+   */
 
   // Ordenar por data de vencimento (os mais recentes/urgentes primeiro)
   return resultado.sort((a, b) => b.dataVencimento.localeCompare(a.dataVencimento));

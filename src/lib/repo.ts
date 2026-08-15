@@ -43,6 +43,23 @@ type Cache = {
 let cache: Cache | null = null;
 
 /**
+ * A carga que está acontecendo AGORA, se houver.
+ *
+ * Sem isto, duas partes do app que abrem juntas — e elas sempre abrem juntas —
+ * disparavam duas leituras completas do repositório em paralelo. O caso real:
+ * ao trocar de tela, o contador da caixa de entrada no `App.tsx`, o
+ * `useItemRepo` da tela nova e o autocompletar de `@` do editor pediam o
+ * acervo no mesmo instante. Nenhum via o cache do outro, porque nenhum tinha
+ * terminado ainda: eram três árvores completas para responder à mesma pergunta.
+ *
+ * Guardar a Promise resolve isso sem nenhuma coordenação entre quem chama.
+ * O segundo pedido recebe exatamente o mesmo trabalho do primeiro, e o teto de
+ * 5.000 requisições por hora do GitHub deixa de ser uma preocupação no uso
+ * normal.
+ */
+let cargaEmVoo: { chave: string; promessa: Promise<ItemRepo[]> } | null = null;
+
+/**
  * Texto de cada arquivo, indexado pelo sha do blob.
  *
  * Vive FORA do cache e sobrevive à invalidação — essa é a diferença que
@@ -79,6 +96,10 @@ function chaveDe(cfg: Settings): string {
 /** Chamar depois de gravar ou apagar, para a próxima leitura buscar de novo. */
 export function invalidarCache(): void {
   cache = null;
+  // Uma carga que começou ANTES desta gravação não conhece o que acabou de ser
+  // gravado. Deixá-la no ar faria a próxima leitura receber, de carona, um
+  // acervo desatualizado — exatamente o que invalidar existe para evitar.
+  cargaEmVoo = null;
 }
 
 /**
@@ -89,6 +110,7 @@ export function invalidarCache(): void {
  */
 export function esquecerTudo(): void {
   cache = null;
+  cargaEmVoo = null;
   textoPorSha.clear();
 }
 
@@ -221,6 +243,28 @@ export async function carregarRepo(
     return cache.itens;
   }
 
+  // Já há uma carga do mesmo repositório a caminho: pegue carona nela em vez
+  // de abrir uma segunda. `forcarRede` também pega carona — quem força quer o
+  // conteúdo fresco, e uma carga que começou agora já é fresca o bastante.
+  if (cargaEmVoo?.chave === chave) {
+    return cargaEmVoo.promessa;
+  }
+
+  const promessa = carregarDeVerdade(cfg, chave);
+  cargaEmVoo = { chave, promessa };
+  try {
+    return await promessa;
+  } finally {
+    // só limpa se ninguém tiver começado outra carga nesse meio-tempo
+    if (cargaEmVoo?.promessa === promessa) cargaEmVoo = null;
+  }
+}
+
+/** O trabalho de verdade. Separado para a deduplicação acima ficar legível. */
+async function carregarDeVerdade(
+  cfg: Settings,
+  chave: string,
+): Promise<ItemRepo[]> {
   // 1 requisição barata que diz o sha de cada arquivo. É ela que detecta
   // qualquer alteração feita fora do app.
   const folhas = await arvore(cfg);

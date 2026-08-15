@@ -39,7 +39,26 @@ export type Settings = {
 const CHAVE = "segundo-cerebro:config";
 const CHAVE_OFUSCADA = "segundo-cerebro:config:enc";
 
-/** Chave fixa de embaralhamento local para evitar texto puro no localStorage */
+/**
+ * ATENÇÃO — ISTO NÃO É CRIPTOGRAFIA. É EMBARALHAMENTO.
+ *
+ * A "chave" abaixo está no código, e este repositório é PÚBLICO. Qualquer
+ * pessoa que consiga ler o `localStorage` deste navegador — uma extensão, um
+ * XSS, alguém no seu aparelho, um backup do perfil do Chrome — desfaz isto em
+ * três linhas. O único ganho real é que o token não aparece em texto legível
+ * para quem abrir o DevTools por acaso.
+ *
+ * O nome anterior desta constante era `KLAUS_LOCAL_SECURE_STORAGE_V1`, e o
+ * comentário dizia "formato protegido". Isso era pior do que não ter nada:
+ * criava a impressão de que a pendência de segurança tinha sido resolvida.
+ * Ela NÃO foi. Continua valendo o que está no AGENTS.md: a proteção de
+ * verdade é derivar uma chave de uma senha sua com WebCrypto (PBKDF2 →
+ * AES-GCM) e manter a chave só em memória.
+ *
+ * Enquanto isso não existir, a defesa real continua sendo o escopo do token:
+ * fine-grained, um único repositório, só Contents. Se vazar, o estrago é
+ * limitado aos seus próprios arquivos e você revoga em um clique.
+ */
 const SALT_LOCAL = "KLAUS_LOCAL_SECURE_STORAGE_V1";
 
 function codificarTexto(texto: string): string {

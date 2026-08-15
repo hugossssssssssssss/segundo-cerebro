@@ -96,7 +96,7 @@ arquivos.
 ## Antes de entregar qualquer mudança
 
 ```
-npm test          # 357 testes; nenhum precisa de rede.
+npm test          # 387 testes; nenhum precisa de rede.
                   # Inclui testes de componente (jsdom + Testing Library):
                   # três das quatro perdas de dados achadas nas auditorias
                   # viviam em componentes e eram invisíveis sem eles.
@@ -159,7 +159,10 @@ em dia com as menções do corpo. Duas armadilhas já pagas:
 
 ## Pendências conscientes
 
-- Token e chave ficam em texto puro no `localStorage`. O plano discutido é criptografá-los com uma senha (WebCrypto, sem backend). O Hugo adiou por ora.
+- **Token e chave NÃO estão protegidos.** Eles são embaralhados com um XOR de chave fixa que está neste repositório público (`SALT_LOCAL` em `settings.ts`) — isso esconde de olho desatento, não de atacante. A proteção de verdade continua pendente: derivar a chave de uma senha com WebCrypto (PBKDF2 → AES-GCM). **Não descreva o estado atual como "seguro" ou "protegido" em código, comentário ou interface** — já houve uma rodada em que o nome da constante fez parecer que a pendência estava resolvida.
 - `ia_sugeriu` só é GRAVADO em `pdi/entregas`, que é onde existe tela para conferir e limpar. Se você criar essa interface em outra pasta, ajuste `marcaDaIA` em `acoes.ts`.
-- Sem funcionamento offline: o app depende do GitHub estar acessível.
+- **Offline é parcial.** `offlineQueue.ts` guarda as gravações e as descarrega quando a conexão volta, mas **não há service worker**: se o app não estiver aberto, ele não carrega sem internet. Falta `vite-plugin-pwa`.
+- **Os lembretes só disparam com o app aberto.** `inbox.ts` roda dentro de um `useEffect`. Um agendador de verdade precisa viver fora do navegador — o caminho discutido é um workflow com `schedule: cron` no repositório de DADOS, que de quebra tira o token do Telegram do `localStorage`.
+- **`caixa-entrada/estado.json` é um índice derivado** e contradiz a regra 1 acima. O merge é "último a gravar vence" (`carregarEstadoInbox` faz `{...local, ...remoto}`), então marcar como visto em dois aparelhos perde um dos dois. O certo é guardar `visto_em` no frontmatter do próprio arquivo de origem.
 - Imagens engordam o repositório. Acima de ~1 GB, migrar para um bucket e guardar só os links.
+- **O bundle carrega ~1,3 MB de diagramas que ninguém usa** (mermaid, cytoscape, katex), arrastados pelo `@excalidraw/excalidraw`. Some com os 4,7 MB do próprio Excalidraw.

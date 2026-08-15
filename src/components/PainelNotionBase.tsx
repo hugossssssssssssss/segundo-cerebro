@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import {
   Square,
   PanelRight,
@@ -9,6 +9,9 @@ import {
   Minimize2,
   Maximize,
   Pin,
+  // `History` puro colidiria com o tipo History do DOM e o TypeScript tentaria
+  // usar o do navegador como componente JSX.
+  History as IconeHistorico,
 } from "lucide-react";
 import { Botao, Aviso, ModalConfirmacao } from "@/components/ui";
 import { PropriedadesNotion } from "@/components/PropriedadesNotion";
@@ -18,6 +21,12 @@ import { MencionadoEm } from "@/components/Links";
 import { MapaMentalEmbed } from "@/components/MapaMentalEmbed";
 import { sincronizarRelacionamentos } from "@/lib/links";
 import { cn } from "@/lib/utils";
+
+const HistoricoDiffModal = lazy(() =>
+  import("@/components/HistoricoDiffModal").then((m) => ({
+    default: m.HistoricoDiffModal,
+  })),
+);
 
 export type ModoVisaoNotion = "popup" | "lado" | "telacheia" | "flutuante";
 
@@ -66,6 +75,7 @@ export function PainelNotionBase({
 }: PainelNotionBaseProps) {
   const [confirmandoApagar, setConfirmandoApagar] = useState(false);
   const [minimizadoFlutuante, setMinimizadoFlutuante] = useState(false);
+  const [vendoHistorico, setVendoHistorico] = useState(false);
 
   // Guarda referencias atualizadas para evitarfechar sem salvar por causa de closures desatualizados
   const salvandoRef = useRef(salvando);
@@ -255,30 +265,67 @@ export function PainelNotionBase({
 
   const rodape = (
     <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-4 sm:px-5 py-2.5 bg-card">
-      {aoRemover ? (
-        <Botao variante="fantasma" onClick={() => setConfirmandoApagar(true)} className="text-destructive hover:bg-destructive/10 text-xs">
-          <Trash2 size={14} />
-          <span>Apagar</span>
-        </Botao>
-      ) : <div />}
+      <div className="flex items-center gap-1">
+        {aoRemover ? (
+          <Botao variante="fantasma" onClick={() => setConfirmandoApagar(true)} className="text-destructive hover:bg-destructive/10 text-xs">
+            <Trash2 size={14} />
+            <span>Apagar</span>
+          </Botao>
+        ) : null}
+
+        {/*
+          Cada gravação é um commit, então TODA versão anterior deste arquivo
+          existe e é recuperável. Isso é a promessa central do Klaus, e até
+          agora não havia nenhum lugar na interface para vê-la: o componente
+          que faz o trabalho estava pronto e importado por ninguém.
+        */}
+        {caminhoItem && (
+          <Botao
+            variante="fantasma"
+            onClick={() => setVendoHistorico(true)}
+            className="text-xs text-muted-foreground"
+            title="Ver as versões anteriores deste arquivo"
+          >
+            <IconeHistorico size={14} />
+            <span>Histórico</span>
+          </Botao>
+        )}
+      </div>
       <span className="text-[11px] text-muted-foreground">Salva automaticamente ao fechar</span>
     </div>
   );
 
   const modaisConfirmacao = (
-    <ModalConfirmacao
-      aberto={confirmandoApagar}
-      titulo={`Apagar "${titulo || "este item"}"?`}
-      descricao="Tem certeza de que deseja apagar? Ele será excluído do repositório no GitHub."
-      textoConfirmar="Sim, apagar"
-      textoCancelar="Cancelar"
-      varianteConfirmar="perigo"
-      aoConfirmar={() => {
-        setConfirmandoApagar(false);
-        if (aoRemover) aoRemover();
-      }}
-      aoCancelar={() => setConfirmandoApagar(false)}
-    />
+    <>
+      <ModalConfirmacao
+        aberto={confirmandoApagar}
+        titulo={`Apagar "${titulo || "este item"}"?`}
+        descricao="Tem certeza de que deseja apagar? Ele será excluído do repositório no GitHub — mas continua recuperável pelo histórico do Git."
+        textoConfirmar="Sim, apagar"
+        textoCancelar="Cancelar"
+        varianteConfirmar="perigo"
+        aoConfirmar={() => {
+          setConfirmandoApagar(false);
+          if (aoRemover) aoRemover();
+        }}
+        aoCancelar={() => setConfirmandoApagar(false)}
+      />
+
+      {/*
+        Carregado sob demanda: o visualizador de diff traz uma biblioteca
+        própria junto, e ela não tem por que pesar em quem nunca abre o
+        histórico.
+      */}
+      {vendoHistorico && caminhoItem && (
+        <Suspense fallback={null}>
+          <HistoricoDiffModal
+            aberto
+            aoFechar={() => setVendoHistorico(false)}
+            caminho={caminhoItem}
+          />
+        </Suspense>
+      )}
+    </>
   );
 
   /**

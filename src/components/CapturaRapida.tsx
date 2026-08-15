@@ -279,6 +279,23 @@ export function CapturaRapida({
 
         {erro && <p className="mt-2 text-xs text-destructive">{erro}</p>}
 
+        {/*
+          O aviso aparece assim que o texto vira uma URL, e não depois de
+          clicar: a informação só serve ANTES da decisão. O comentário sobre
+          isso já existia dentro de `capturarUrlWeb`, mas comentário fica no
+          código e quem está capturando está aqui.
+        */}
+        {/^https?:\/\//i.test(texto.trim()) && (
+          <p className="mt-2 rounded-lg border border-[var(--warning)]/30 bg-[var(--warning)]/10 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Antes de capturar um site:</strong>{" "}
+            a maioria das páginas recusa o pedido direto do navegador, e aí o
+            endereço passa por um serviço público de terceiros para ser baixado.
+            Para um artigo público, tudo bem. Para uma página do trabalho ou
+            atrás de login, copie e cole o texto aqui em vez do endereço — assim
+            nada sai do seu aparelho.
+          </p>
+        )}
+
         <p className="mt-2 text-xs text-muted-foreground">
           Organizar depois. Aqui é só despejar.
         </p>

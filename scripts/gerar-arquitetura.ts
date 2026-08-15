@@ -354,8 +354,23 @@ ${tabelaTelas}
   \`salvando\`/\`erro\` independentes e um deles nunca chega à tela.
 - **O token do GitHub e a chave do Gemini só existem via \`lerConfig()\`.** Nunca
   no código, nunca em outro storage.
-- **Sem backend.** Nenhum \`fetch\` para algo que não seja \`api.github.com\`
-  (a transcrição local e o OCR rodam no próprio navegador).
+- **Sem backend PRÓPRIO.** Não existe servidor nosso, e não deve passar a
+  existir. Mas a regra antiga dizia "nenhum \`fetch\` além de \`api.github.com\`"
+  e isso deixou de ser verdade em cinco lugares — a regra escrita assim não
+  protegia mais nada, só enganava quem a lesse. As saídas de rede de hoje,
+  todas conscientes:
+  | Destino | Onde | Por quê |
+  |---|---|---|
+  | \`api.github.com\` | \`github.ts\`, \`repo.ts\` | os seus dados |
+  | \`generativelanguage.googleapis.com\` | \`gemini.ts\` | chat, transcrição |
+  | \`api.telegram.org\` | \`inbox.ts\` | notificações |
+  | \`script.google.com\` | \`inbox.ts\` | e-mail, URL que você configura |
+  | \`corsproxy.io\`, \`allorigins.win\` | \`clipper.ts\` | **proxy de terceiros**, avisado na tela |
+  | \`cdnjs.cloudflare.com\` | \`Conversor.tsx\` | cMaps do pdf.js — **deveria ser empacotado** |
+
+  Antes de adicionar a sétima, pergunte se ela precisa mesmo existir. A
+  transcrição local e o OCR rodam no próprio navegador, sem rede nenhuma —
+  esse é o padrão a seguir.
 - **Sem índice derivado.** \`carregarRepo\` usa cache por SHA; a verdade continua
   sendo o \`.md\`.
 
