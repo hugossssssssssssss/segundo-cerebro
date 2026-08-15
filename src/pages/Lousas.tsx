@@ -22,7 +22,7 @@ import {
   atualizarCacheLocal,
   type ItemRepo,
 } from "@/lib/repo";
-import { tituloProvavel, nomeLivre, escreverMarkdown } from "@/lib/markdown";
+import { tituloProvavel, nomeLivre, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
 import { Botao, Campo, Cartao, Aviso, Vazio, Carregando } from "@/components/ui";
 
 const PASTA = "lousas";
@@ -93,21 +93,24 @@ export default function Lousas() {
     setMensagemSucesso("");
     try {
       const conteudo = await lerOuVazio(cfg, item.caminho, item.sha);
+      const docParsed = lerMarkdown(conteudo);
       let dados: DadosLousa = { elements: [] };
-      let titulo = (item.doc.dados.titulo as string) || tituloProvavel(item.doc, item.nome);
+      let titulo = (item.doc.dados.titulo as string) || (docParsed.dados.titulo as string) || tituloProvavel(item.doc, item.nome);
 
-      const textoCena = item.doc.corpo && item.doc.corpo.trim().startsWith("{")
-        ? item.doc.corpo.trim()
-        : conteudo.trim();
+      const textoCena = docParsed.corpo && docParsed.corpo.trim().startsWith("{")
+        ? docParsed.corpo.trim()
+        : (conteudo.trim().startsWith("{") ? conteudo.trim() : "");
 
       try {
-        const parsed = JSON.parse(textoCena);
-        if (Array.isArray(parsed)) {
-          dados = { elements: parsed };
-        } else if (parsed && typeof parsed === "object") {
-          dados = parsed;
-          if (parsed.title || parsed.titulo) {
-            titulo = parsed.title || parsed.titulo;
+        if (textoCena) {
+          const parsed = JSON.parse(textoCena);
+          if (Array.isArray(parsed)) {
+            dados = { elements: parsed };
+          } else if (parsed && typeof parsed === "object") {
+            dados = parsed;
+            if (parsed.title || parsed.titulo) {
+              titulo = parsed.title || parsed.titulo;
+            }
           }
         }
       } catch {

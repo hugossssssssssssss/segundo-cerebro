@@ -107,7 +107,7 @@ export function EditorNotion({
 
   /** Monta os itens do menu a partir do que já está em memória. */
   const itensDoMenu = (query: string) =>
-    filtrarAlvos(alvos, query).map((s) => ({
+    filtrarAlvos(alvos, query, 35).map((s) => ({
       title: `@${s.titulo}`,
       subtext: s.caminho,
       onItemClick: () => {
