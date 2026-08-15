@@ -125,7 +125,8 @@ export default function Configuracoes() {
         <div>
           <h2 className="font-medium">Inteligência artificial</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Opcional. Só é usada na aba de Chat — o resto do app funciona sem.
+            Opcional. Usada na aba Conversar e, se você escolher, para
+            transcrever áudio — o resto do app funciona sem.
           </p>
         </div>
 

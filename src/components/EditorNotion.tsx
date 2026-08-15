@@ -4,7 +4,7 @@ import { SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { lerConfig } from "@/lib/settings";
-import { carregarRepo } from "@/lib/repo";
+import { carregarRepo, type ItemRepo } from "@/lib/repo";
 import { montarIndice, alvosUnicos, filtrarAlvos, type Alvo } from "@/lib/links";
 import { restaurarWikilinks } from "@/lib/markdown";
 
@@ -32,16 +32,44 @@ export function formatarTextoAoColar(texto: string): string | null {
 }
 
 /**
+ * `CSS.highlights` é a API de destaque do CSS: ela pinta intervalos de texto
+ * sem alterar o DOM, que é o que permite colorir as menções dentro do editor
+ * sem brigar com o ProseMirror. Esta versão do TypeScript ainda não a tipa,
+ * daí a declaração aqui — restrita ao pouco que usamos.
+ */
+type RegistroDeRealce = {
+  set(nome: string, realce: unknown): void;
+  delete(nome: string): void;
+};
+
+function registroDeRealce(): RegistroDeRealce | null {
+  if (typeof CSS === "undefined") return null;
+  const comRealce = CSS as unknown as { highlights?: RegistroDeRealce };
+  return comRealce.highlights ?? null;
+}
+
+function criarRealce(faixas: Range[]): unknown | null {
+  const Construtor = (globalThis as unknown as {
+    Highlight?: new (...faixas: Range[]) => unknown;
+  }).Highlight;
+  return Construtor ? new Construtor(...faixas) : null;
+}
+
+/**
  * Editor de texto rico que lê e escreve Markdown.
  */
 export function EditorNotion({
   markdown,
   onChange,
   editable = true,
+  acervo,
+  alvosOverride,
 }: {
   markdown: string;
   onChange: (markdown: string) => void;
   editable?: boolean;
+  acervo?: ItemRepo[];
+  alvosOverride?: Alvo[];
 }) {
   const [pronto, setPronto] = useState(false);
   const [escuro, setEscuro] = useState(
@@ -51,18 +79,19 @@ export function EditorNotion({
   const editor = useCreateBlockNote();
   const ultimoMd = useRef(markdown);
 
-  /**
-   * Itens que o menu do `@` oferece.
-   *
-   * Carregados UMA vez, quando o editor abre. A versão anterior chamava
-   * `carregarRepo` dentro do `getItems`, ou seja, a cada tecla digitada
-   * depois do `@` — com o cache de 5s vencido no meio da digitação, isso
-   * virava uma ida à rede buscando o repositório inteiro enquanto você
-   * escrevia o nome.
-   */
   const [alvos, setAlvos] = useState<Alvo[]>([]);
 
   useEffect(() => {
+    if (alvosOverride && alvosOverride.length > 0) {
+      setAlvos(alvosOverride);
+      return;
+    }
+    if (acervo && acervo.length > 0) {
+      const indice = montarIndice(acervo);
+      setAlvos(alvosUnicos(indice));
+      return;
+    }
+
     let cancelado = false;
     carregarRepo(lerConfig(), { memoria: 30_000 })
       .then((todos) => {
@@ -70,13 +99,11 @@ export function EditorNotion({
         const indice = montarIndice(todos);
         setAlvos(alvosUnicos(indice));
       })
-      // sem conexão ou sem token, o menu simplesmente não sugere nada —
-      // não é motivo para derrubar o editor
       .catch(() => {});
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [acervo, alvosOverride]);
 
   /** Monta os itens do menu a partir do que já está em memória. */
   const itensDoMenu = (query: string) =>
@@ -133,6 +160,23 @@ export function EditorNotion({
   /**
    * Destaca as menções com a cor do tipo do item.
    *
+   * Duas decisões que não são detalhe:
+   *
+   * 1. **Procura pelo TEXTO, não por `<a href>`.** A menção passou a ser
+   *    gravada como texto puro (o formato de link apontava para um caminho
+   *    relativo que dava 404). A versão anterior só sabia pintar elemento
+   *    `<a>`, então depois daquela mudança nenhuma menção aparecia colorida.
+   *
+   * 2. **Usa a API de destaque do CSS, que não encosta no DOM.** Envolver o
+   *    texto em `<span>` aqui dentro seria pedir briga com o ProseMirror (o
+   *    motor do BlockNote): ele reescreve o conteúdo a cada tecla e trata
+   *    elemento estranho como conteúdo do documento — o risco vai de perder o
+   *    cursor a sujar o arquivo. `CSS.highlights` pinta intervalos por fora,
+   *    sem alterar uma vírgula do documento.
+   *
+   * Onde a API não existe (navegador antigo), a menção fica sem cor e nada
+   * mais muda — o texto e os links continuam funcionando igual.
+   *
    * Este efeito precisa ficar ANTES do `return` de "Carregando editor…".
    * Um hook depois de um return antecipado muda a quantidade de hooks entre
    * um render e outro, e o React derruba o componente com "Rendered more
@@ -140,50 +184,96 @@ export function EditorNotion({
    */
   useEffect(() => {
     if (!pronto) return;
-    const container = document.querySelector(".notion-editor-wrapper");
-    if (!container) return;
 
-    const aplicarCoresMencoes = () => {
-      const links = container.querySelectorAll("a");
-      links.forEach((a) => {
-        const href = a.getAttribute("href") || "";
-        if (href.includes("tarefa")) {
-          a.style.color = "#2563eb";
-          a.style.backgroundColor = "rgba(37, 99, 235, 0.14)";
-          a.style.border = "1px solid rgba(37, 99, 235, 0.25)";
-          a.style.borderRadius = "6px";
-          a.style.padding = "1px 6px";
-          a.style.fontWeight = "600";
-        } else if (href.includes("pdi") || href.includes("meta")) {
-          a.style.color = "#059669";
-          a.style.backgroundColor = "rgba(5, 150, 105, 0.14)";
-          a.style.border = "1px solid rgba(5, 150, 105, 0.25)";
-          a.style.borderRadius = "6px";
-          a.style.padding = "1px 6px";
-          a.style.fontWeight = "600";
-        } else if (href.includes("nota")) {
-          a.style.color = "#d97706";
-          a.style.backgroundColor = "rgba(217, 119, 6, 0.14)";
-          a.style.border = "1px solid rgba(217, 119, 6, 0.25)";
-          a.style.borderRadius = "6px";
-          a.style.padding = "1px 6px";
-          a.style.fontWeight = "600";
-        } else if (href.includes("referencia")) {
-          a.style.color = "#7c3aed";
-          a.style.backgroundColor = "rgba(124, 58, 237, 0.14)";
-          a.style.border = "1px solid rgba(124, 58, 237, 0.25)";
-          a.style.borderRadius = "6px";
-          a.style.padding = "1px 6px";
-          a.style.fontWeight = "600";
+    const realces = registroDeRealce();
+    if (!realces) return;
+
+    const container = document.querySelector(".notion-editor-wrapper");
+    if (!container || alvos.length === 0) return;
+
+    const semAcento = (s: string) =>
+      s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+    // do título mais longo para o mais curto: "Grade suíça" tem que ganhar de
+    // "Grade" quando os dois existem
+    const porTamanho = [...alvos].sort(
+      (a, b) => b.titulo.length - a.titulo.length,
+    );
+
+    const nomeDoRealce = (tipo: string) =>
+      tipo === "tarefa"
+        ? "sc-mencao-tarefa"
+        : tipo === "meta" || tipo === "entrega"
+          ? "sc-mencao-meta"
+          : tipo === "referencia"
+            ? "sc-mencao-referencia"
+            : tipo === "lousa"
+              ? "sc-mencao-lousa"
+              : "sc-mencao-nota";
+
+    const TIPOS = [
+      "sc-mencao-tarefa",
+      "sc-mencao-meta",
+      "sc-mencao-referencia",
+      "sc-mencao-lousa",
+      "sc-mencao-nota",
+    ];
+
+    const pintar = () => {
+      const faixas = new Map<string, Range[]>(TIPOS.map((t) => [t, []]));
+
+      const caminhante = document.createTreeWalker(
+        container,
+        NodeFilter.SHOW_TEXT,
+      );
+
+      for (let no = caminhante.nextNode(); no; no = caminhante.nextNode()) {
+        const texto = no.textContent ?? "";
+        for (let i = texto.indexOf("@"); i >= 0; i = texto.indexOf("@", i + 1)) {
+          // mesma guarda da expressão em links.ts: `@` grudado em letra,
+          // número ou ponto é e-mail, não menção
+          const anterior = i > 0 ? texto[i - 1] : "";
+          if (anterior && /[\w.@-]/.test(anterior)) continue;
+
+          const depoisDoArroba = texto.slice(i + 1);
+          const achado = porTamanho.find(
+            (a) =>
+              semAcento(depoisDoArroba.slice(0, a.titulo.length)) ===
+              semAcento(a.titulo),
+          );
+          if (!achado) continue;
+
+          const faixa = document.createRange();
+          faixa.setStart(no, i);
+          faixa.setEnd(no, i + 1 + achado.titulo.length);
+          faixas.get(nomeDoRealce(achado.tipo))!.push(faixa);
+
+          i += achado.titulo.length; // não procura dentro do que já casou
         }
-      });
+      }
+
+      for (const [nome, lista] of faixas) {
+        const realce = lista.length ? criarRealce(lista) : null;
+        if (realce) realces.set(nome, realce);
+        else realces.delete(nome);
+      }
     };
 
-    aplicarCoresMencoes();
-    const obs = new MutationObserver(aplicarCoresMencoes);
-    obs.observe(container, { childList: true, subtree: true });
-    return () => obs.disconnect();
-  }, [pronto]);
+    pintar();
+    const obs = new MutationObserver(pintar);
+    obs.observe(container, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    return () => {
+      obs.disconnect();
+      // o editor fechou: o destaque some junto, senão sobra intervalo
+      // apontando para nó que não existe mais
+      for (const nome of TIPOS) realces.delete(nome);
+    };
+  }, [pronto, alvos]);
 
   if (!pronto) {
     return (
@@ -241,6 +331,53 @@ export function EditorNotion({
           border-radius: 6px;
           cursor: pointer;
           transition: background-color 0.15s ease;
+        }
+
+        /* Cores das menções, por tipo do item.
+           O seletor ::highlight aceita só cor, fundo e sublinhado — nada de
+           borda ou arredondamento. Por isso a menção fica com uma tarja
+           colorida em vez da "pílula" de antes. */
+        ::highlight(sc-mencao-tarefa) {
+          color: #1d4ed8;
+          background-color: rgba(37, 99, 235, 0.16);
+        }
+        ::highlight(sc-mencao-meta) {
+          color: #047857;
+          background-color: rgba(5, 150, 105, 0.16);
+        }
+        ::highlight(sc-mencao-nota) {
+          color: #b45309;
+          background-color: rgba(217, 119, 6, 0.16);
+        }
+        ::highlight(sc-mencao-referencia) {
+          color: #6d28d9;
+          background-color: rgba(124, 58, 237, 0.16);
+        }
+        ::highlight(sc-mencao-lousa) {
+          color: #4f46e5;
+          background-color: rgba(79, 70, 229, 0.16);
+        }
+
+        /* No escuro o texto precisa clarear, senão some no fundo */
+        .dark ::highlight(sc-mencao-tarefa) {
+          color: #93c5fd;
+          background-color: rgba(37, 99, 235, 0.28);
+        }
+        .dark ::highlight(sc-mencao-meta) {
+          color: #6ee7b7;
+          background-color: rgba(5, 150, 105, 0.28);
+        }
+        .dark ::highlight(sc-mencao-nota) {
+          color: #fcd34d;
+          background-color: rgba(217, 119, 6, 0.28);
+        }
+        .dark ::highlight(sc-mencao-referencia) {
+          color: #c4b5fd;
+          background-color: rgba(124, 58, 237, 0.28);
+        }
+        .dark ::highlight(sc-mencao-lousa) {
+          color: #818cf8;
+          background-color: rgba(79, 70, 229, 0.28);
         }
       `}</style>
     </div>

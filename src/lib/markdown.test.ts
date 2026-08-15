@@ -14,6 +14,7 @@ import {
   tituloProvavel,
   nomeDeArquivo,
   comoLista,
+  restaurarWikilinks,
 } from "./markdown";
 
 describe("lerMarkdown", () => {
@@ -131,5 +132,36 @@ describe("comoLista", () => {
     expect(comoLista("só uma")).toEqual(["só uma"]);
     expect(comoLista(undefined)).toEqual([]);
     expect(comoLista("")).toEqual([]);
+  });
+});
+
+describe("restaurarWikilinks", () => {
+  it("[[alvo]] vira @alvo", () => {
+    expect(restaurarWikilinks("Veja [[Grade suíça]] hoje")).toBe(
+      "Veja @Grade suíça hoje",
+    );
+  });
+
+  it("colchetes escapados pelo editor também são convertidos", () => {
+    // o serializador do BlockNote grava \[\[assim\]\]
+    expect(restaurarWikilinks("Veja \\[\\[Grade suíça\\]\\] hoje")).toBe(
+      "Veja @Grade suíça hoje",
+    );
+  });
+
+  it("[[alvo|texto]] fica com o TEXTO, sem a barra sobrando", () => {
+    // virava "@Briefing|o brief": barra solta na frase, sem casar com nada
+    expect(restaurarWikilinks("Veja [[Briefing Acme|o brief]].")).toBe(
+      "Veja @o brief.",
+    );
+  });
+
+  it("caixinha de subtarefa não é confundida com wikilink", () => {
+    const corpo = "- [ ] comprar papel\n- [x] revisar";
+    expect(restaurarWikilinks(corpo)).toBe(corpo);
+  });
+
+  it("texto sem wikilink nenhum passa intacto", () => {
+    expect(restaurarWikilinks("Só um texto comum.")).toBe("Só um texto comum.");
   });
 });

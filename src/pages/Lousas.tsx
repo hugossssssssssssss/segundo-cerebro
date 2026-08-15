@@ -140,9 +140,13 @@ export default function Lousas() {
         const urlParams = new URLSearchParams(hash.split("?")[1] || "");
         const caminhoAbrir = urlParams.get("abrir");
         if (caminhoAbrir) {
-          const itemEncontrado = lousas.find(
-            (i) => i.caminho === caminhoAbrir || i.caminho.includes(caminhoAbrir)
-          );
+          const target = caminhoAbrir.toLowerCase().trim();
+          const itemEncontrado = lousas.find((i) => {
+            const t = ((i.doc.dados.titulo as string) || tituloProvavel(i.doc, i.nome)).toLowerCase().trim();
+            const c = i.caminho.toLowerCase().trim();
+            const base = i.nome.replace(/\.(md|json|excalidraw)$/i, "").toLowerCase().trim();
+            return c === target || c.includes(target) || t === target || t.includes(target) || base === target;
+          });
           if (itemEncontrado && (!aberta || aberta.caminho !== itemEncontrado.caminho)) {
             abrir(itemEncontrado);
           }

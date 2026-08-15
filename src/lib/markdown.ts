@@ -153,10 +153,18 @@ export function mesclarFrontmatter(
  * `?abrir=...` para o formato limpo `@alvo`.
  */
 export function restaurarWikilinks(markdown: string): string {
-  // Converte \[\[alvo\]\] e [[alvo]] para @alvo
+  // Converte \[\[alvo\]\] e [[alvo]] para @alvo.
+  //
+  // `[[alvo|texto exibido]]` fica com o TEXTO, não com o alvo mais a barra.
+  // Sem tratar o `|`, "[[Briefing|o brief]]" virava "@Briefing|o brief" — com
+  // a barra solta no meio da frase, e sem casar com item nenhum.
   let limpo = markdown.replace(
     /\\?\[\\?\[([^\[\]\n]{1,200}?)\\?\]\\?\]/g,
-    (_todo, alvo) => `@${alvo.trim()}`,
+    (_todo, alvo: string) => {
+      const barra = alvo.indexOf("|");
+      const escolhido = barra >= 0 ? alvo.slice(barra + 1) : alvo;
+      return `@${escolhido.trim()}`;
+    },
   );
 
   // Converte URLs do tipo https://.../?abrir=tarefas%2F2026-08-14-dasd.md coladas diretamente para @dasd

@@ -169,12 +169,19 @@ export default function Tarefas() {
     localStorage.setItem("tarefa-modo-visao", novo);
   };
 
+  /**
+   * Já houve um carregamento nesta tela? Guardado num ref porque o tamanho da
+   * lista estava nas dependências do carregador — que é justamente quem altera
+   * a lista, disparando um carregamento extra a cada item criado.
+   */
+  const jaCarregouRef = useRef(false);
+
   const carregar = useCallback(async (silencioso = false) => {
     if (!pronto) {
       setCarregando(false);
       return;
     }
-    if (!silencioso && tarefas.length === 0) {
+    if (!silencioso && !jaCarregouRef.current) {
       setCarregando(true);
     }
     setErro("");
@@ -192,9 +199,10 @@ export default function Tarefas() {
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
+      jaCarregouRef.current = true;
       setCarregando(false);
     }
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch, tarefas.length]);
+  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
   useEffect(() => {
     carregar();

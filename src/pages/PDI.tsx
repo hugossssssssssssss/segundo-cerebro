@@ -85,12 +85,19 @@ export default function PDI() {
 
   /* ----------------------------------------------------------- carregar */
 
+  /**
+   * Já houve um carregamento nesta tela? Guardado num ref porque o tamanho da
+   * lista estava nas dependências do carregador — que é justamente quem altera
+   * a lista, disparando um carregamento extra a cada item criado.
+   */
+  const jaCarregouRef = useRef(false);
+
   const carregar = useCallback(async (silencioso = false) => {
     if (!pronto) {
       setCarregando(false);
       return;
     }
-    if (!silencioso && metas.length === 0) {
+    if (!silencioso && !jaCarregouRef.current) {
       setCarregando(true);
     }
     setErro("");
@@ -110,10 +117,11 @@ export default function PDI() {
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
+      jaCarregouRef.current = true;
       setCarregando(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch, metas.length]);
+  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
   const { abrirFlutuante, focarFlutuante } = useItemFlutuante();
 

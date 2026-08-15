@@ -119,26 +119,34 @@ export default function Referencias() {
     setErro("");
     setNota("");
 
-    // Encolhe ANTES de checar o limite: uma foto de celular de 9 MB era
-    // recusada de cara, e a única saída era exportar menor num editor. Agora
-    // ela cabe sozinha e o repositório para de engordar a cada referência.
-    setEncolhendo(true);
-    let preparada;
+    /**
+     * Um `try` só, cobrindo a função inteira.
+     *
+     * O `setEnviando(true)` acontecia antes da compressão, mas o `try/finally`
+     * cobria só o `setEncolhendo`. Se a compressão falhasse — HEIC de iPhone,
+     * formato que o navegador não decodifica, arquivo corrompido — a exceção
+     * escapava e o `setEnviando(false)` nunca rodava: o botão de enviar imagem
+     * ficava desabilitado até recarregar a página, sem erro nenhum na tela.
+     */
     try {
-      preparada = await prepararImagem(escolhido);
-    } finally {
-      setEncolhendo(false);
-    }
+      // Encolhe ANTES de checar o limite: uma foto de celular de 9 MB era
+      // recusada de cara, e a única saída era exportar menor num editor. Agora
+      // ela cabe sozinha e o repositório para de engordar a cada referência.
+      setEncolhendo(true);
+      let preparada;
+      try {
+        preparada = await prepararImagem(escolhido);
+      } finally {
+        setEncolhendo(false);
+      }
 
-    const excedeu = erroDeTamanho(preparada);
-    if (excedeu) {
-      setErro(excedeu);
-      setEnviando(false);
-      return;
-    }
+      const excedeu = erroDeTamanho(preparada);
+      if (excedeu) {
+        setErro(excedeu);
+        return;
+      }
 
-    const arquivo = preparada.arquivo;
-    try {
+      const arquivo = preparada.arquivo;
       const nome = nomeDeImagem(escolhido.name);
       const base64 = await arquivoParaBase64(arquivo);
       await gravarBinario(cfg, `${PASTA_IMAGENS}/${nome}`, base64);
@@ -162,8 +170,9 @@ export default function Referencias() {
         // Tentar extrair paleta de cores da nova imagem
         const img = new Image();
         img.src = novaUrl;
-        import("@/lib/paleta").then(({ extrairPaletaDaImagem }) => {
-          extrairPaletaDaImagem(img).then((paleta) => {
+        import("@/lib/paleta")
+          .then(({ extrairPaletaDaImagem }) => extrairPaletaDaImagem(img))
+          .then((paleta) => {
             if (paleta.length > 0) {
               setEditando((prev) =>
                 prev
@@ -174,8 +183,10 @@ export default function Referencias() {
                   : null,
               );
             }
-          });
-        });
+          })
+          // a paleta é um extra: se não sair, a imagem já está gravada e não
+          // há por que estragar o envio com um erro
+          .catch(() => {});
 
         return novaUrl;
       });

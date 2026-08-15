@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Square,
   PanelRight,
@@ -136,6 +136,23 @@ export function PainelNotionBase({
     return () => window.removeEventListener("beforeunload", aoSairDaJanela);
   }, [temMudancas]);
 
+  const alvosOverride = useMemo(() => {
+    if (!opcoesRelacionamento || opcoesRelacionamento.length === 0) return undefined;
+    return opcoesRelacionamento.map((o) => {
+      const pasta = o.caminho.split("/")[0]?.toLowerCase() || "";
+      let tipo: any = "nota";
+      if (pasta === "tarefas") tipo = "tarefa";
+      else if (pasta === "referencias") tipo = "referencia";
+      else if (pasta === "pdi" || pasta === "metas") tipo = "meta";
+      else if (pasta === "lousas") tipo = "lousa";
+      return {
+        caminho: o.caminho,
+        titulo: o.titulo,
+        tipo,
+      };
+    });
+  }, [opcoesRelacionamento]);
+
   // Cabeçalho unificado com alternador dos 4 Modos de Visão
   const cabecalho = (
     <div className="flex shrink-0 items-center justify-between border-b border-border px-4 sm:px-5 py-3 bg-card">
@@ -262,14 +279,44 @@ export function PainelNotionBase({
     />
   );
 
-  // Sincroniza automaticamente menções no texto com a propriedade de relacionamentos
+  /**
+   * Títulos que existem de fato, para resolver as menções do corpo.
+   *
+   * Enquanto a lista está vazia o acervo ainda não chegou — e aí passamos
+   * `undefined` de propósito, o que faz `sincronizarRelacionamentos` não mexer
+   * em nada. Passar uma lista VAZIA seria pior que não sincronizar: nenhuma
+   * menção seria reconhecida, e o campo `relacionamentos` do arquivo seria
+   * apagado só porque a tela abriu antes do repositório carregar.
+   */
+  const titulosConhecidos = useMemo(
+    () =>
+      opcoesRelacionamento.length
+        ? opcoesRelacionamento.map((o) => o.titulo)
+        : undefined,
+    [opcoesRelacionamento],
+  );
+
+  /**
+   * Mantém o campo `relacionamentos` em dia com as menções do corpo.
+   *
+   * Um lugar só. Antes isto vivia aqui E dentro do `onChange` do editor,
+   * fazendo o mesmo trabalho duas vezes — e a versão daqui ainda lia um
+   * `dadosProps` velho, porque só o `corpo` estava nas dependências.
+   */
+  const sincronizarRef = useRef({ dadosProps, onChangeProps, titulosConhecidos });
+  sincronizarRef.current = { dadosProps, onChangeProps, titulosConhecidos };
+
+  const sincronizarCorpo = useCallback((textoDoCorpo: string) => {
+    const { dadosProps: dados, onChangeProps: aoMudar, titulosConhecidos: titulos } =
+      sincronizarRef.current;
+    const sinc = sincronizarRelacionamentos(dados, textoDoCorpo, titulos);
+    if (JSON.stringify(sinc) !== JSON.stringify(dados)) aoMudar(sinc);
+  }, []);
+
   useEffect(() => {
     if (!corpo) return;
-    const sinc = sincronizarRelacionamentos(dadosProps, corpo);
-    if (JSON.stringify(sinc) !== JSON.stringify(dadosProps)) {
-      onChangeProps(sinc);
-    }
-  }, [corpo]);
+    sincronizarCorpo(corpo);
+  }, [corpo, titulosConhecidos, sincronizarCorpo]);
 
   const eTarefa = rotuloTipo?.toLowerCase().includes("tarefa");
 
@@ -317,13 +364,11 @@ export function PainelNotionBase({
         <EditorNotion
           key={caminhoItem || titulo || "editor"}
           markdown={corpo}
+          alvosOverride={alvosOverride}
           onChange={(v) => {
             const nCorpo = v ?? "";
             setCorpo(nCorpo);
-            const sinc = sincronizarRelacionamentos(dadosProps, nCorpo);
-            if (JSON.stringify(sinc) !== JSON.stringify(dadosProps)) {
-              onChangeProps(sinc);
-            }
+            // o efeito acima reage ao `corpo` novo e sincroniza sozinho
           }}
         />
       </div>

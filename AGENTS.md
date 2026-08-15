@@ -38,7 +38,7 @@ Publicado em https://hugossssssssssssss.github.io/segundo-cerebro/ pelo workflow
 | `src/lib/github.ts` | **Escrita** (gravar/apagar) e leitura pontual de um arquivo. Traduz erro do GitHub, distinguindo limite de API de falta de permissão |
 | `src/lib/markdown.ts` | Frontmatter tolerante a falha, nomes de arquivo, mesclagem, `restaurarWikilinks` |
 | `src/lib/busca.ts` | Busca em título, corpo e tags de tudo, no navegador |
-| `src/lib/links.ts` | `[[links]]`, índice por título e "mencionado em" |
+| `src/lib/links.ts` | `@menções` (e os `[[links]]` antigos), índice por título e "mencionado em" |
 | `src/lib/acoes.ts` | O que a IA pode criar, editar e apagar — com validação e confirmação |
 | `src/lib/settings.ts` | Config no localStorage; limpa o que vem do copiar-e-colar |
 | `src/lib/tarefas.ts` | Status, prazo, urgência, pomodoro, subtarefas |
@@ -47,7 +47,7 @@ Publicado em https://hugossssssssssssss.github.io/segundo-cerebro/ pelo workflow
 | `src/lib/gemini.ts` | Chamada ao Gemini com ferramentas, e os prompts salvos |
 | `src/components/ui.tsx` | Componentes próprios (Botao, Cartao, Selo, Modal…) |
 | `src/components/ui/*.tsx` | Componentes shadcn, do redesign. **Há duplicação com o de cima** — ao mexer, prefira um e siga nele |
-| `src/components/EditorNotion.tsx` | Editor BlockNote. Desescapa os `[[links]]` na saída e re-sincroniza quando o corpo muda por fora |
+| `src/components/EditorNotion.tsx` | Editor BlockNote. Converte `[[links]]` em `@menções` na saída, autocompleta com `@` e re-sincroniza quando o corpo muda por fora |
 | `src/pages/*.tsx` | Uma tela por área |
 
 ## Padrão de uma tela
@@ -89,7 +89,7 @@ arquivos.
 ## Antes de entregar qualquer mudança
 
 ```
-npm test          # 186 testes; nenhum precisa de rede.
+npm test          # 286 testes; nenhum precisa de rede.
                   # Inclui testes de componente (jsdom + Testing Library):
                   # três das quatro perdas de dados achadas nas auditorias
                   # viviam em componentes e eram invisíveis sem eles.
@@ -102,10 +102,10 @@ Nunca diga que funciona sem ter rodado. E teste também numa tela estreita: meta
 ## O editor e o corpo do texto
 
 **Dois componentes escrevem no mesmo corpo:** `Subtarefas` (as caixinhas) e
-`EditorNotion`. Isso é seguro — verificado: o registro do pomodoro, os
-`[[links]]` e as caixinhas sobrevivem à ida e volta pelo serializador
-(`editor.test.ts`). O custo é perder a posição do cursor no editor ao marcar
-uma caixinha, o que não acontece enquanto você digita.
+`EditorNotion`. Isso é seguro — verificado: o registro do pomodoro, as menções
+e as caixinhas sobrevivem à ida e volta pelo serializador (`editor.test.ts`).
+O custo é perder a posição do cursor no editor ao marcar uma caixinha, o que
+não acontece enquanto você digita.
 
 
 `EditorNotion` re-sincroniza quando o `markdown` muda por fora (as subtarefas
@@ -113,14 +113,46 @@ editam o mesmo corpo). O truque é o `ultimoMd`: o editor guarda o que ele
 mesmo emitiu, ignora esse eco e só re-analisa o que veio de fora — senão o
 cursor saltaria a cada tecla.
 
-**Ao mexer aqui, mantenha `restaurarWikilinks` na saída.** Sem ela o
-serializador grava os colchetes escapados, o arquivo fica sujo no GitHub e o
-app deixa de reconhecer os links.
+**Ao mexer aqui, mantenha `restaurarWikilinks` na saída.** Ela faz duas
+coisas, e as duas importam:
+
+1. **Limpa o escape do serializador.** O BlockNote grava `\[\[Briefing\]\]`
+   com os colchetes escapados; sem a limpeza o arquivo fica sujo no GitHub e
+   o app deixa de reconhecer a ligação.
+2. **Converte `[[alvo]]` em `@alvo`.** A ligação entre itens é escrita com
+   `@` — foi a decisão tomada quando o autocompletar passou a usar esse
+   gatilho. Os `[[links]]` antigos continuam sendo RESOLVIDOS (ver `PADRAO` em
+   `links.ts`), mas todo arquivo que passa pelo editor sai padronizado em `@`.
+   Isso reescreve o `.md` do Hugo: é conversão de mão única e consciente.
+
+**Menção é TEXTO PURO no arquivo**, nunca `[@Nome](caminho.md)`. O caminho
+seria contado da raiz do repositório enquanto o arquivo que contém a menção
+mora numa subpasta — o link resolvia errado e dava 404 no GitHub. Quem resolve
+a menção é `extrairLinks`, pelo texto.
+
+**A cor das menções vem de `CSS.highlights`**, não de `<span>` injetado. O
+ProseMirror (motor do BlockNote) reescreve o DOM a cada tecla e trata elemento
+estranho como conteúdo do documento — envolver texto em tag ali dentro custa
+o cursor, e pode sujar o arquivo.
+
+## Menção, relacionamento e o campo `relacionamentos`
+
+`sincronizarRelacionamentos` mantém o campo `relacionamentos` do frontmatter
+em dia com as menções do corpo. Duas armadilhas já pagas:
+
+- **Ela precisa da lista de títulos que existem.** `@Grade suíça para @Briefing`
+  é ambíguo: sem saber o que existe, não dá para saber onde o primeiro título
+  termina. Sem a lista, a função NÃO MEXE EM NADA — de propósito. Passar uma
+  lista vazia apagaria o campo só porque a tela abriu antes do repositório
+  carregar.
+- **Só `@` conta como menção em link markdown.** A expressão aceitava
+  `[qualquer coisa](href)`, então um `[Google](https://google.com)` virava o
+  relacionamento "@Google", e o `![](imagens/foto.png)` de toda referência
+  visual virava um relacionamento com o texto alternativo da imagem.
 
 ## Pendências conscientes
 
 - Token e chave ficam em texto puro no `localStorage`. O plano discutido é criptografá-los com uma senha (WebCrypto, sem backend). O Hugo adiou por ora.
-- Não há autocompletar de `[[` desde que o corpo passou para o BlockNote; trazê-lo de volta exige uma extensão do editor.
 - `ia_sugeriu` só é GRAVADO em `pdi/entregas`, que é onde existe tela para conferir e limpar. Se você criar essa interface em outra pasta, ajuste `marcaDaIA` em `acoes.ts`.
 - Sem funcionamento offline: o app depende do GitHub estar acessível.
 - Imagens engordam o repositório. Acima de ~1 GB, migrar para um bucket e guardar só os links.

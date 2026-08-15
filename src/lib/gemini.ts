@@ -259,11 +259,22 @@ export async function transcreverAudioComIA(
 
   aoProgresso?.("Processando transcrição e oradores com IA...");
 
-  const modelos = ["gemini-1.5-flash-latest", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"];
+  /**
+   * Começa pelo modelo escolhido em Ajustes.
+   *
+   * Antes esta lista era fixa e ignorava a escolha do Hugo — e ainda por cima
+   * três dos quatro modelos eram da família 1.5, aposentada para chaves novas:
+   * na prática só o quarto respondia, depois de três tentativas queimadas.
+   */
+  const modelos = [
+    ...new Set(
+      [cfg.geminiModel, "gemini-2.5-flash", "gemini-2.0-flash"].filter(Boolean),
+    ),
+  ];
   let ultimoErro = "";
 
   for (const mod of modelos) {
-    const url = `${BASE}/${mod}:generateContent?key=${encodeURIComponent(cfg.geminiKey)}`;
+    const url = `${BASE}/${mod}:generateContent`;
 
     const body = {
       contents: [
@@ -291,7 +302,13 @@ REGRAS OBRIGATÓRIAS:
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          // No CABEÇALHO, não na URL. Antes ia como `?key=...`, e chave em URL
+          // acaba em log de servidor, em histórico e no cabeçalho Referer. A
+          // função `conversar`, logo acima, sempre fez assim.
+          "x-goog-api-key": cfg.geminiKey.trim(),
+        },
         body: JSON.stringify(body),
       });
 
@@ -299,11 +316,27 @@ REGRAS OBRIGATÓRIAS:
         const data = await res.json();
         const textoResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (textoResult) return textoResult;
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        ultimoErro = errData.error?.message || `Erro HTTP ${res.status}`;
+        ultimoErro = "O Gemini respondeu sem texto nenhum.";
+        continue;
+      }
+
+      const errData = await res.json().catch(() => ({}));
+      ultimoErro = errData.error?.message || `Erro HTTP ${res.status}`;
+
+      // Chave inválida ou sem permissão não melhora trocando de modelo:
+      // insistir só gasta requisição e troca a mensagem certa por uma pior.
+      if (res.status === 401 || res.status === 403) {
+        throw new ErroGemini(
+          "Chave do Gemini inválida ou sem permissão. Confira em Ajustes.",
+        );
+      }
+      if (res.status === 429) {
+        throw new ErroGemini(
+          "Você passou do limite gratuito do Gemini por agora. Tente de novo daqui a pouco.",
+        );
       }
     } catch (e: any) {
+      if (e instanceof ErroGemini) throw e;
       ultimoErro = e?.message || String(e);
     }
   }

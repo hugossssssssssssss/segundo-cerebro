@@ -69,7 +69,7 @@ export const FERRAMENTAS = [
             corpo: {
               type: "string",
               description:
-                "Texto livre. Use [[Título de outro item]] para ligar a outra coisa dele.",
+                "Texto livre. Use @Título de outro item para ligar a outra coisa dele.",
             },
             status: {
               type: "string",

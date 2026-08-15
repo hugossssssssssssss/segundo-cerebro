@@ -65,12 +65,22 @@ export default function Notas() {
 
   /* ------------------------------------------------------------ listagem */
 
+  /**
+   * Já houve um carregamento nesta tela?
+   *
+   * Guardado num ref, e não lido de `arquivos.length`, porque `arquivos.length`
+   * estava nas dependências do `carregarLista` — que é justamente quem altera
+   * `arquivos`. Cada nota criada mudava o tamanho da lista, o callback era
+   * reconstruído e o efeito disparava outro carregamento do repositório.
+   */
+  const jaCarregouRef = useRef(false);
+
   const carregarLista = useCallback(async (silencioso = false) => {
     if (!pronto) {
       setCarregando(false);
       return;
     }
-    if (!silencioso && arquivos.length === 0) {
+    if (!silencioso && !jaCarregouRef.current) {
       setCarregando(true);
     }
     setErro("");
@@ -88,10 +98,11 @@ export default function Notas() {
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
+      jaCarregouRef.current = true;
       setCarregando(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch, arquivos.length]);
+  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
   useEffect(() => {
     carregarLista();

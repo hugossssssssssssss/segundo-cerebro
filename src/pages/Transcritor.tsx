@@ -48,7 +48,24 @@ export default function Transcritor() {
     const salvo = localStorage.getItem(CHAVE_STORAGE);
     if (!salvo) return [];
     try {
-      return JSON.parse(salvo);
+      const lido: ItemTranscricao[] = JSON.parse(salvo);
+
+      /**
+       * Item que ficou "processando" quando a página foi recarregada não tem
+       * como continuar: o áudio vive na memória da aba, e a aba se foi. Antes
+       * ele voltava com a rodinha girando para sempre, sem nenhuma saída.
+       * Vira erro com instrução do que fazer.
+       */
+      return lido.map((item) =>
+        item.status === "processando" || item.status === "pendente"
+          ? {
+              ...item,
+              status: "erro" as const,
+              erroMsg:
+                "A transcrição foi interrompida quando a página recarregou. Envie o áudio de novo.",
+            }
+          : item,
+      );
     } catch {
       return [];
     }
@@ -63,13 +80,53 @@ export default function Transcritor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const arquivosCacheRef = useRef<Map<string, File>>(new Map());
 
-  // Salva no localStorage sempre que a fila muda
+  /**
+   * Guarda a fila entre visitas — sem derrubar a página quando não couber.
+   *
+   * O `localStorage` tem cerca de 5 MB e as transcrições inteiras iam para lá.
+   * Estourar a cota lança uma exceção, e como isto roda dentro de um efeito
+   * sem `try`, a exceção subia e levava a tela junto. Agora guardamos só as
+   * mais recentes e, se ainda assim não couber, seguimos sem guardar: perder
+   * o histórico é chato, perder a transcrição que está na tela é inaceitável.
+   */
   useEffect(() => {
-    localStorage.setItem(CHAVE_STORAGE, JSON.stringify(fila));
+    const tentarGuardar = (itens: ItemTranscricao[]) => {
+      localStorage.setItem(CHAVE_STORAGE, JSON.stringify(itens));
+    };
+
+    try {
+      tentarGuardar(fila);
+    } catch {
+      try {
+        tentarGuardar(fila.slice(0, 5));
+      } catch {
+        try {
+          localStorage.removeItem(CHAVE_STORAGE);
+        } catch {
+          /* nada mais a fazer; a fila continua viva na memória da aba */
+        }
+      }
+    }
   }, [fila]);
 
-  // Processador de Fila em Segundo Plano
+  /**
+   * Qual item está sendo transcrito agora.
+   *
+   * Precisa ser `ref`, não estado: este efeito reage a cada mensagem de
+   * progresso, e um estado faria o próximo render chegar tarde demais.
+   *
+   * Sem esta trava a "fila" não era fila. O efeito depende de `fila` e ele
+   * mesmo altera `fila`: ao marcar o primeiro item como "processando" ele
+   * reexecutava, achava o segundo pendente e começava também. Com o Whisper
+   * local isso eram dois modelos carregando e dois áudios sendo processados
+   * ao mesmo tempo dentro do navegador.
+   */
+  const emProcessamentoRef = useRef<string | null>(null);
+
+  // Processador de Fila em Segundo Plano — um de cada vez
   useEffect(() => {
+    if (emProcessamentoRef.current) return;
+
     const pendente = fila.find((i) => i.status === "pendente");
     if (!pendente) return;
 
@@ -88,6 +145,8 @@ export default function Transcritor() {
       );
       return;
     }
+
+    emProcessamentoRef.current = pendente.id;
 
     setFila((prev) =>
       prev.map((item) =>
@@ -145,6 +204,10 @@ export default function Transcritor() {
               : item
           )
         );
+      })
+      .finally(() => {
+        // libera a vaga: o efeito reexecuta e pega o próximo da fila
+        emProcessamentoRef.current = null;
       });
   }, [fila, itemSelecionadoId, motorSelecionado]);
 

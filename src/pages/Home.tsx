@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Moon,
@@ -374,12 +374,19 @@ export default function Home() {
     }
   }, []);
 
+  /**
+   * Já houve um carregamento nesta tela? Guardado num ref porque o tamanho da
+   * lista estava nas dependências do carregador — que é justamente quem altera
+   * a lista, disparando um carregamento extra a cada item criado.
+   */
+  const jaCarregouRef = useRef(false);
+
   const carregar = useCallback(async (silencioso = false) => {
     if (!pronto) {
       setCarregando(false);
       return;
     }
-    if (!silencioso && tarefasPendentes.length === 0) {
+    if (!silencioso && !jaCarregouRef.current) {
       setCarregando(true);
     }
     setErro("");
@@ -424,9 +431,10 @@ export default function Home() {
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
+      jaCarregouRef.current = true;
       setCarregando(false);
     }
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch, tarefasPendentes.length]);
+  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
   useEffect(() => {
     carregar();
