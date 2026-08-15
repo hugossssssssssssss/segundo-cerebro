@@ -166,6 +166,7 @@ direto · `não usa` = não toca no repositório de dados.
 | `src/pages/Conversor.tsx` | não usa | na mão |
 | `src/pages/FerramentasPDF.tsx` | não usa | não usa |
 | `src/pages/Home.tsx` | na mão | na mão |
+| `src/pages/Inbox.tsx` | na mão | hook |
 | `src/pages/Lousas.tsx` | hook | hook |
 | `src/pages/Notas.tsx` | hook | hook |
 | `src/pages/PDI.tsx` | hook | hook |

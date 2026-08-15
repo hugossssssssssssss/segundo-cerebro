@@ -33,6 +33,7 @@ export const PASTAS = {
   lousas:    "lousas",
   processos: "processos",
   cardsProcesso: "processos/cards",
+  caixaEntrada: "caixa-entrada",
 } as const;
 
 export type Pasta = (typeof PASTAS)[keyof typeof PASTAS];
@@ -187,6 +188,34 @@ export interface CardProcesso extends ItemBase {
   tags: string[];
   urgente: boolean;
   atualizadoEm: string;
+}
+
+export type TipoItemInbox = "lembrete" | "tarefa_atrasada";
+
+export interface Lembrete {
+  id: string;
+  titulo: string;
+  caminhoOrigem: string;
+  tituloOrigem: string;
+  dataHora: string;
+  canais?: ("inbox" | "telegram" | "email")[];
+  recorrencia?: "unico" | "diario" | "semanal" | "mensal";
+  concluido?: boolean;
+}
+
+export interface ItemInbox {
+  id: string;
+  tipo: TipoItemInbox;
+  titulo: string;
+  descricao?: string;
+  caminhoOrigem: string;
+  tituloOrigem: string;
+  dataVencimento: string;
+  visto: boolean;
+  vistoEm?: string;
+  notificadoTelegram?: boolean;
+  notificadoEmail?: boolean;
+  lembreteBruto?: string;
 }
 
 /* ========================================================= MAPEAMENTOS */

@@ -18,6 +18,22 @@ export type Settings = {
   geminiKey: string;
   /** Modelo do Gemini */
   geminiModel: string;
+
+  /** Token do bot do Telegram para notificações */
+  telegramBotToken?: string;
+  /** Chat ID do usuário no Telegram */
+  telegramChatId?: string;
+  /** Se as notificações por Telegram estão ativas */
+  inboxTelegramAtivo?: boolean;
+  /** Modo do Telegram: "imediatamente", "inatividade" ou "ambos" */
+  inboxTelegramModo?: "imediatamente" | "inatividade" | "ambos";
+  /** Horas sem visualizar até escalar notificação (ex: 3) */
+  inboxEscalaHoras?: number;
+
+  /** URL da Webhook do Google Apps Script para e-mail */
+  googleAppsScriptUrl?: string;
+  /** Se o envio por e-mail está ativo */
+  googleEmailAtivo?: boolean;
 };
 
 const CHAVE = "segundo-cerebro:config";
@@ -29,6 +45,15 @@ export const PADRAO: Settings = {
   branch: "main",
   geminiKey: "",
   geminiModel: "gemini-2.5-flash",
+
+  telegramBotToken: "",
+  telegramChatId: "",
+  inboxTelegramAtivo: false,
+  inboxTelegramModo: "ambos",
+  inboxEscalaHoras: 3,
+
+  googleAppsScriptUrl: "",
+  googleEmailAtivo: false,
 };
 
 /**
@@ -41,7 +66,7 @@ export const PADRAO: Settings = {
  */
 function limpar(s: Settings): Settings {
   const tirarInvisiveis = (v: string) =>
-    v.replace(/[\s\u200B-\u200D\uFEFF]/g, "");
+    (v || "").replace(/[\s\u200B-\u200D\uFEFF]/g, "");
   return {
     ...s,
     githubToken: tirarInvisiveis(s.githubToken),
@@ -49,7 +74,14 @@ function limpar(s: Settings): Settings {
     repoOwner: tirarInvisiveis(s.repoOwner),
     repoName: tirarInvisiveis(s.repoName),
     branch: tirarInvisiveis(s.branch) || "main",
-    geminiModel: s.geminiModel.trim(),
+    geminiModel: (s.geminiModel || "gemini-2.5-flash").trim(),
+    telegramBotToken: tirarInvisiveis(s.telegramBotToken || ""),
+    telegramChatId: (s.telegramChatId || "").trim(),
+    inboxTelegramAtivo: Boolean(s.inboxTelegramAtivo),
+    inboxTelegramModo: s.inboxTelegramModo || "ambos",
+    inboxEscalaHoras: Number(s.inboxEscalaHoras) || 3,
+    googleAppsScriptUrl: (s.googleAppsScriptUrl || "").trim(),
+    googleEmailAtivo: Boolean(s.googleEmailAtivo),
   };
 }
 

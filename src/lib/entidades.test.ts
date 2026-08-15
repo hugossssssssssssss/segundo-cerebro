@@ -40,6 +40,7 @@ describe("PASTAS", () => {
       lousas: "lousas",
       processos: "processos",
       cardsProcesso: "processos/cards",
+      caixaEntrada: "caixa-entrada",
     });
   });
 });

@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Mic,
   GitMerge,
+  Inbox as InboxIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -40,6 +41,7 @@ export const gruposNavegacao: GrupoNavegacao[] = [
     titulo: "Dia a Dia",
     itens: [
       { para: "/home", rotulo: "Início", Icone: HomeIcon },
+      { para: "/inbox", rotulo: "Caixa de Entrada", Icone: InboxIcon },
       { para: "/tarefas", rotulo: "Tarefas", Icone: CheckSquare },
       { para: "/processos", rotulo: "Processos", Icone: GitMerge },
       { para: "/notas", rotulo: "Notas", Icone: FileText },

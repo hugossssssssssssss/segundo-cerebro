@@ -171,6 +171,110 @@ export default function Configuracoes() {
         </div>
       </Cartao>
 
+      <Cartao className="p-5 space-y-4">
+        <div>
+          <h2 className="font-medium">Caixa de Entrada & Notificações (Telegram e E-mail)</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Receba lembretes e alertas de tarefas atrasadas no seu celular Android via Telegram ou na sua caixa de entrada do Google.
+          </p>
+        </div>
+
+        <div className="space-y-3 pt-2">
+          <label className="flex items-center gap-2 cursor-pointer font-medium text-sm">
+            <input
+              type="checkbox"
+              checked={cfg.inboxTelegramAtivo}
+              onChange={(e) => setCfg((c) => ({ ...c, inboxTelegramAtivo: e.target.checked }))}
+              className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+            />
+            Ativar Notificações no Celular via Telegram Bot API
+          </label>
+
+          {cfg.inboxTelegramAtivo && (
+            <div className="space-y-3 pl-6 border-l-2 border-primary/20">
+              <div>
+                <Rotulo dica="Criado no @BotFather do Telegram. Ex: 123456789:ABCdef...">
+                  Token do Bot do Telegram
+                </Rotulo>
+                <Campo
+                  type="password"
+                  value={cfg.telegramBotToken}
+                  onChange={(e) => atualizar("telegramBotToken", e.target.value)}
+                  placeholder="123456789:ABCdef..."
+                />
+              </div>
+
+              <div>
+                <Rotulo dica="Seu ID numérico de usuário no Telegram (pode pegar com o bot @userinfobot).">
+                  Chat ID do Telegram
+                </Rotulo>
+                <Campo
+                  value={cfg.telegramChatId}
+                  onChange={(e) => atualizar("telegramChatId", e.target.value)}
+                  placeholder="123456789"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Rotulo dica="Quando enviar mensagens no Telegram.">
+                    Regra de Disparo
+                  </Rotulo>
+                  <select
+                    value={cfg.inboxTelegramModo}
+                    onChange={(e) => setCfg((c) => ({ ...c, inboxTelegramModo: e.target.value as any }))}
+                    className="flex h-11 w-full rounded-lg border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="ambos">Imediatamente e por inatividade</option>
+                    <option value="imediatamente">Apenas no momento que vencer</option>
+                    <option value="inatividade">Apenas se ficar não visto no app</option>
+                  </select>
+                </div>
+
+                <div>
+                  <Rotulo dica="Tempo sem visualização para escalonamento push.">
+                    Escala por Inatividade (Horas)
+                  </Rotulo>
+                  <Campo
+                    type="number"
+                    value={cfg.inboxEscalaHoras}
+                    onChange={(e) => setCfg((c) => ({ ...c, inboxEscalaHoras: Number(e.target.value) || 3 }))}
+                    placeholder="3"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-3 pt-3 border-t border-border/60">
+          <label className="flex items-center gap-2 cursor-pointer font-medium text-sm">
+            <input
+              type="checkbox"
+              checked={cfg.googleEmailAtivo}
+              onChange={(e) => setCfg((c) => ({ ...c, googleEmailAtivo: e.target.checked }))}
+              className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+            />
+            Ativar Envio de E-mail via Google (Apps Script)
+          </label>
+
+          {cfg.googleEmailAtivo && (
+            <div className="space-y-3 pl-6 border-l-2 border-emerald-500/20">
+              <div>
+                <Rotulo dica="URL WebApp do script.google.com configurado para disparar e-mail.">
+                  URL da Webhook do Google Apps Script
+                </Rotulo>
+                <Campo
+                  value={cfg.googleAppsScriptUrl}
+                  onChange={(e) => atualizar("googleAppsScriptUrl", e.target.value)}
+                  placeholder="https://script.google.com/macros/s/.../exec"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </Cartao>
+
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <Botao onClick={salvarETestar} disabled={testando}>
           {testando ? "Testando…" : "Salvar e testar conexão"}

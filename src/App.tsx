@@ -19,6 +19,7 @@ import {
   Plus,
   PanelLeft,
   MoreHorizontal,
+  Bell,
 } from "lucide-react";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
@@ -35,6 +36,7 @@ import { cn } from "@/lib/utils";
  * reescrever rotas para o index.html, então sem hash um F5 em /notas dá 404.
  */
 const Home = lazy(() => import("@/pages/Home"));
+const Inbox = lazy(() => import("@/pages/Inbox"));
 const Tarefas = lazy(() => import("@/pages/Tarefas"));
 const Notas = lazy(() => import("@/pages/Notas"));
 const Referencias = lazy(() => import("@/pages/Referencias"));
@@ -182,6 +184,22 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                 <Plus size={18} />
               </button>
 
+              <NavLink
+                to="/inbox"
+                className={({ isActive }) =>
+                  cn(
+                    "rounded-lg p-2 transition-colors relative",
+                    isActive
+                      ? "bg-primary/10 text-primary font-semibold"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                  )
+                }
+                title="Caixa de Entrada"
+                aria-label="Caixa de Entrada"
+              >
+                <Bell size={18} />
+              </NavLink>
+
               <button
                 onClick={() => setBuscando(true)}
                 className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -287,6 +305,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Navigate to="/home" replace />} />
                 <Route path="/home" element={<Home />} />
+                <Route path="/inbox" element={<Inbox />} />
                 <Route path="/tarefas" element={<Tarefas />} />
                 <Route path="/notas" element={<Notas />} />
                 <Route path="/referencias" element={<Referencias />} />
