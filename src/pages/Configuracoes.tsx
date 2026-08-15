@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { CheckCircle2, XCircle, ExternalLink } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
 import { Botao, Campo, Cartao, Rotulo, Aviso } from "@/components/ui";
+import { ModalPersonalizarMenu } from "@/components/ModalPersonalizarMenu";
 
 export default function Configuracoes() {
   const [cfg, setCfg] = useState<Settings>(lerConfig);
@@ -12,6 +13,7 @@ export default function Configuracoes() {
   >(null);
   const [etapas, setEtapas] = useState<Etapa[] | null>(null);
   const [diagnosticando, setDiagnosticando] = useState(false);
+  const [modalPersonalizarAberta, setModalPersonalizarAberta] = useState(false);
 
   async function rodarDiagnostico() {
     const limpa = salvarConfig(cfg);
@@ -61,6 +63,29 @@ export default function Configuracoes() {
           você revoga em um clique e nada mais é afetado.
         </p>
       </div>
+
+      {/* Seção de Personalização Visual do Menu Lateral */}
+      <Cartao className="p-5 space-y-4 border-primary/20 bg-primary/5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 font-medium text-foreground">
+              <Palette size={20} className="text-primary" />
+              <span>Personalizar Menu Lateral & Galeria de Ícones</span>
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold">
+                <Sparkles size={10} />
+                Novo
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Altere os nomes dos itens, altere títulos de categorias, troque ícones navegando na galeria visual ou adicione cores personalizadas a cada ícone do menu.
+            </p>
+          </div>
+          <Botao onClick={() => setModalPersonalizarAberta(true)} className="shrink-0">
+            <Palette size={16} />
+            Personalizar Menu
+          </Botao>
+        </div>
+      </Cartao>
 
       <Cartao className="p-5 space-y-4">
         <h2 className="font-medium">Onde suas anotações ficam guardadas</h2>
@@ -353,6 +378,11 @@ export default function Configuracoes() {
         seu navegador que fala direto com o GitHub — por isso a chave fica aqui,
         e só aqui. Se você abrir o site em outro aparelho, precisa colar de novo.
       </Aviso>
+
+      <ModalPersonalizarMenu
+        aberta={modalPersonalizarAberta}
+        aoFechar={() => setModalPersonalizarAberta(false)}
+      />
     </div>
   );
 }

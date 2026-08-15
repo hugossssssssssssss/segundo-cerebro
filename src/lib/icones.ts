@@ -1,0 +1,231 @@
+import type { ComponentType } from "react";
+import {
+  Home,
+  CheckSquare,
+  FileText,
+  Image,
+  Layout,
+  Target,
+  MessageCircle,
+  Settings,
+  Sparkles,
+  FileCheck,
+  RefreshCw,
+  Mic,
+  GitMerge,
+  Network,
+  Inbox,
+  Folder,
+  Star,
+  Zap,
+  Flame,
+  Heart,
+  Bookmark,
+  Tag,
+  Compass,
+  Palette,
+  PenTool,
+  Eye,
+  Brush,
+  Wand2,
+  Layers,
+  Grid,
+  Shapes,
+  Box,
+  Feather,
+  Calendar,
+  Clock,
+  CheckCircle2,
+  ListTodo,
+  Briefcase,
+  Archive,
+  Award,
+  Crown,
+  Flag,
+  Pin,
+  BookOpen,
+  Book,
+  FileCode,
+  FileSpreadsheet,
+  Newspaper,
+  Library,
+  Vault,
+  Key,
+  Lock,
+  Cpu,
+  Terminal,
+  Code2,
+  Database,
+  Server,
+  Smartphone,
+  Laptop,
+  Radio,
+  Bot,
+  Brain,
+  Video,
+  Camera,
+  Music,
+  Headphones,
+  Volume2,
+  Send,
+  Share2,
+  Bell,
+  Mail,
+  HelpCircle,
+  Globe,
+  Smile,
+  Shield,
+  Coffee,
+  Gift,
+  Rocket,
+  Wrench,
+  Scissors,
+  Download,
+  Upload,
+  Link,
+  Hash,
+  Activity,
+  BarChart3,
+  TrendingUp,
+  PieChart,
+} from "lucide-react";
+
+export interface ItemGaleriaIcone {
+  nome: string;
+  rotulo: string;
+  categoria: string;
+  Icone: ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>;
+}
+
+export const CATEGORIAS_ICONES = [
+  "Todos",
+  "Populares",
+  "Design & Arte",
+  "Produtividade",
+  "Arquivos & Documentos",
+  "Tecnologia & Dev",
+  "Mídia & Comunicação",
+  "Símbolos & Utilitários",
+] as const;
+
+export const CATALOGO_ICONES: ItemGaleriaIcone[] = [
+  // Populares
+  { nome: "Home", rotulo: "Início, Casa", categoria: "Populares", Icone: Home },
+  { nome: "Inbox", rotulo: "Caixa de Entrada, Mensagens", categoria: "Populares", Icone: Inbox },
+  { nome: "CheckSquare", rotulo: "Tarefas, Checklist, Seleção", categoria: "Populares", Icone: CheckSquare },
+  { nome: "FileText", rotulo: "Notas, Documentos, Texto", categoria: "Populares", Icone: FileText },
+  { nome: "Image", rotulo: "Imagens, Galeria, Pinterest", categoria: "Populares", Icone: Image },
+  { nome: "Sparkles", rotulo: "IA, Magia, Destaque", categoria: "Populares", Icone: Sparkles },
+  { nome: "Star", rotulo: "Estrela, Favoritos", categoria: "Populares", Icone: Star },
+  { nome: "Heart", rotulo: "Coração, Curtidos", categoria: "Populares", Icone: Heart },
+  { nome: "Folder", rotulo: "Pasta, Organização", categoria: "Populares", Icone: Folder },
+  { nome: "Tag", rotulo: "Etiqueta, Categoria", categoria: "Populares", Icone: Tag },
+  { nome: "Bookmark", rotulo: "Marcador, Salvo", categoria: "Populares", Icone: Bookmark },
+  { nome: "Flame", rotulo: "Fogo, Urgente, Quente", categoria: "Populares", Icone: Flame },
+  { nome: "Zap", rotulo: "Raio, Rápido, Energia", categoria: "Populares", Icone: Zap },
+  { nome: "Compass", rotulo: "Bússola, Navegação, Descobrir", categoria: "Populares", Icone: Compass },
+
+  // Design & Arte
+  { nome: "Palette", rotulo: "Paleta de Cores, Design, Arte", categoria: "Design & Arte", Icone: Palette },
+  { nome: "PenTool", rotulo: "Caneta Vetorial, Desenho, Ilustração", categoria: "Design & Arte", Icone: PenTool },
+  { nome: "Brush", rotulo: "Pincel, Pintura", categoria: "Design & Arte", Icone: Brush },
+  { nome: "Wand2", rotulo: "Varinha Mágica, Filtro, Efeito", categoria: "Design & Arte", Icone: Wand2 },
+  { nome: "Layers", rotulo: "Camadas, Camada visual", categoria: "Design & Arte", Icone: Layers },
+  { nome: "Grid", rotulo: "Grade, Alinhamento, Layout", categoria: "Design & Arte", Icone: Grid },
+  { nome: "Layout", rotulo: "Lousa, Canvas, Diagrama", categoria: "Design & Arte", Icone: Layout },
+  { nome: "Shapes", rotulo: "Formas Geométricas", categoria: "Design & Arte", Icone: Shapes },
+  { nome: "Box", rotulo: "Caixa, Objeto 3D", categoria: "Design & Arte", Icone: Box },
+  { nome: "Feather", rotulo: "Pena, Escrita, Leveza", categoria: "Design & Arte", Icone: Feather },
+  { nome: "Eye", rotulo: "Olho, Visualização, Inspiração", categoria: "Design & Arte", Icone: Eye },
+
+  // Produtividade
+  { nome: "Target", rotulo: "Alvo, Metas, PDI, Objetivos", categoria: "Produtividade", Icone: Target },
+  { nome: "Calendar", rotulo: "Calendário, Datas, Agenda", categoria: "Produtividade", Icone: Calendar },
+  { nome: "Clock", rotulo: "Relógio, Tempo, Horas", categoria: "Produtividade", Icone: Clock },
+  { nome: "CheckCircle2", rotulo: "Concluído, Sucesso", categoria: "Produtividade", Icone: CheckCircle2 },
+  { nome: "ListTodo", rotulo: "Lista de Afazeres", categoria: "Produtividade", Icone: ListTodo },
+  { nome: "Briefcase", rotulo: "Maleta, Trabalho, Projetos", categoria: "Produtividade", Icone: Briefcase },
+  { nome: "Archive", rotulo: "Arquivo, Guardado", categoria: "Produtividade", Icone: Archive },
+  { nome: "Award", rotulo: "Prêmio, Conquista", categoria: "Produtividade", Icone: Award },
+  { nome: "Crown", rotulo: "Coroa, Prioridade Máxima", categoria: "Produtividade", Icone: Crown },
+  { nome: "Flag", rotulo: "Bandeira, Marco, Milestones", categoria: "Produtividade", Icone: Flag },
+  { nome: "Pin", rotulo: "Fixado, Alfinete", categoria: "Produtividade", Icone: Pin },
+  { nome: "Activity", rotulo: "Atividade, Progresso", categoria: "Produtividade", Icone: Activity },
+  { nome: "BarChart3", rotulo: "Gráfico de Barras, Métricas", categoria: "Produtividade", Icone: BarChart3 },
+  { nome: "TrendingUp", rotulo: "Crescimento, Evolução", categoria: "Produtividade", Icone: TrendingUp },
+  { nome: "PieChart", rotulo: "Gráfico de Pizza, Estatísticas", categoria: "Produtividade", Icone: PieChart },
+
+  // Arquivos & Documentos
+  { nome: "BookOpen", rotulo: "Livro Aberto, Leitura", categoria: "Arquivos & Documentos", Icone: BookOpen },
+  { nome: "Book", rotulo: "Livro, Caderno", categoria: "Arquivos & Documentos", Icone: Book },
+  { nome: "FileCheck", rotulo: "PDF Validado, Concluído", categoria: "Arquivos & Documentos", Icone: FileCheck },
+  { nome: "FileCode", rotulo: "Arquivo de Código", categoria: "Arquivos & Documentos", Icone: FileCode },
+  { nome: "FileSpreadsheet", rotulo: "Planilha, Excel", categoria: "Arquivos & Documentos", Icone: FileSpreadsheet },
+  { nome: "Newspaper", rotulo: "Jornal, Notícias, Artigos", categoria: "Arquivos & Documentos", Icone: Newspaper },
+  { nome: "Library", rotulo: "Biblioteca, Acervo", categoria: "Arquivos & Documentos", Icone: Library },
+  { nome: "Vault", rotulo: "Cofre, Documentos Seguros", categoria: "Arquivos & Documentos", Icone: Vault },
+
+  // Tecnologia & Dev
+  { nome: "GitMerge", rotulo: "Processos, Fluxos, Git", categoria: "Tecnologia & Dev", Icone: GitMerge },
+  { nome: "Network", rotulo: "Grafo, Rede, Conexões", categoria: "Tecnologia & Dev", Icone: Network },
+  { nome: "Cpu", rotulo: "Processador, Tecnologia", categoria: "Tecnologia & Dev", Icone: Cpu },
+  { nome: "Terminal", rotulo: "Terminal, Linha de Comando", categoria: "Tecnologia & Dev", Icone: Terminal },
+  { nome: "Code2", rotulo: "Código, Programação", categoria: "Tecnologia & Dev", Icone: Code2 },
+  { nome: "Database", rotulo: "Banco de Dados, Dados", categoria: "Tecnologia & Dev", Icone: Database },
+  { nome: "Server", rotulo: "Servidor, Infraestrutura", categoria: "Tecnologia & Dev", Icone: Server },
+  { nome: "Smartphone", rotulo: "Celular, Mobile", categoria: "Tecnologia & Dev", Icone: Smartphone },
+  { nome: "Laptop", rotulo: "Notebook, Computador", categoria: "Tecnologia & Dev", Icone: Laptop },
+  { nome: "Radio", rotulo: "Sinal, Antena, Frequência", categoria: "Tecnologia & Dev", Icone: Radio },
+  { nome: "Bot", rotulo: "Robô, Automação, IA", categoria: "Tecnologia & Dev", Icone: Bot },
+  { nome: "Brain", rotulo: "Cérebro, Inteligência, Conhecimento", categoria: "Tecnologia & Dev", Icone: Brain },
+
+  // Mídia & Comunicação
+  { nome: "MessageCircle", rotulo: "Chat, Mensagem, Conversa", categoria: "Mídia & Comunicação", Icone: MessageCircle },
+  { nome: "Mic", rotulo: "Microfone, Transcrição, Áudio", categoria: "Mídia & Comunicação", Icone: Mic },
+  { nome: "Video", rotulo: "Vídeo, Gravação", categoria: "Mídia & Comunicação", Icone: Video },
+  { nome: "Camera", rotulo: "Câmera, Fotos", categoria: "Mídia & Comunicação", Icone: Camera },
+  { nome: "Music", rotulo: "Música, Sons", categoria: "Mídia & Comunicação", Icone: Music },
+  { nome: "Headphones", rotulo: "Fones de Ouvido, PodCast", categoria: "Mídia & Comunicação", Icone: Headphones },
+  { nome: "Volume2", rotulo: "Volume, Som", categoria: "Mídia & Comunicação", Icone: Volume2 },
+  { nome: "Send", rotulo: "Enviar, Envio", categoria: "Mídia & Comunicação", Icone: Send },
+  { nome: "Share2", rotulo: "Compartilhar", categoria: "Mídia & Comunicação", Icone: Share2 },
+  { nome: "Bell", rotulo: "Notificações, Alertas", categoria: "Mídia & Comunicação", Icone: Bell },
+  { nome: "Mail", rotulo: "E-mail, Correio", categoria: "Mídia & Comunicação", Icone: Mail },
+
+  // Símbolos & Utilitários
+  { nome: "RefreshCw", rotulo: "Conversor, Atualizar, Sincronizar", categoria: "Símbolos & Utilitários", Icone: RefreshCw },
+  { nome: "Settings", rotulo: "Ajustes, Engrenagem, Configurações", categoria: "Símbolos & Utilitários", Icone: Settings },
+  { nome: "Key", rotulo: "Chave, Acesso", categoria: "Símbolos & Utilitários", Icone: Key },
+  { nome: "Lock", rotulo: "Cadeado, Segurança", categoria: "Símbolos & Utilitários", Icone: Lock },
+  { nome: "Globe", rotulo: "Globo, Web, Mundo", categoria: "Símbolos & Utilitários", Icone: Globe },
+  { nome: "Smile", rotulo: "Sorriso, Emoji", categoria: "Símbolos & Utilitários", Icone: Smile },
+  { nome: "Shield", rotulo: "Escudo, Proteção", categoria: "Símbolos & Utilitários", Icone: Shield },
+  { nome: "Coffee", rotulo: "Café, Pausa", categoria: "Símbolos & Utilitários", Icone: Coffee },
+  { nome: "Gift", rotulo: "Presente", categoria: "Símbolos & Utilitários", Icone: Gift },
+  { nome: "Rocket", rotulo: "Foguete, Lançamento", categoria: "Símbolos & Utilitários", Icone: Rocket },
+  { nome: "Wrench", rotulo: "Chave Inglesa, Ferramenta", categoria: "Símbolos & Utilitários", Icone: Wrench },
+  { nome: "Scissors", rotulo: "Tesoura, Cortar", categoria: "Símbolos & Utilitários", Icone: Scissors },
+  { nome: "Download", rotulo: "Baixar, Download", categoria: "Símbolos & Utilitários", Icone: Download },
+  { nome: "Upload", rotulo: "Enviar, Upload", categoria: "Símbolos & Utilitários", Icone: Upload },
+  { nome: "Link", rotulo: "Link, Hiperlink", categoria: "Símbolos & Utilitários", Icone: Link },
+  { nome: "Hash", rotulo: "Hashtag, Número", categoria: "Símbolos & Utilitários", Icone: Hash },
+];
+
+/** Mapa rápido de ícones por nome para acesso O(1) */
+const MAPA_ICONES: Record<string, ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>> = CATALOGO_ICONES.reduce(
+  (acc, item) => {
+    acc[item.nome] = item.Icone;
+    return acc;
+  },
+  {} as Record<string, ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>>
+);
+
+/**
+ * Obtém o componente de ícone pelo nome. Se não encontrar, retorna HelpCircle como fallback.
+ */
+export function obterIconePorNome(nome: string): ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }> {
+  if (MAPA_ICONES[nome]) {
+    return MAPA_ICONES[nome];
+  }
+  return HelpCircle;
+}
