@@ -444,8 +444,20 @@ export default function Lousas() {
         <div className="flex-1 w-full min-h-[500px] rounded-2xl overflow-hidden border border-border shadow-md bg-background relative">
           <Suspense fallback={<Carregando texto="Carregando editor visual Excalidraw..." />}>
             <ExcalidrawComp
-              key="excalidraw-main-canvas"
-              excalidrawAPI={(api) => setExcalidrawAPI(api)}
+              key={aberta?.caminho ? `excalidraw-${aberta.caminho}` : "excalidraw-nova"}
+              excalidrawAPI={(api) => {
+                setExcalidrawAPI(api);
+                if (api && aberta?.dados?.elements) {
+                  try {
+                    api.updateScene({
+                      elements: aberta.dados.elements || [],
+                      appState: aberta.dados.appState || {},
+                    });
+                  } catch {
+                    // ignora
+                  }
+                }
+              }}
               theme={ehModoEscuro ? "dark" : "light"}
               onChange={(elements, appState, files) => {
                 elementsRef.current = elements as any[];

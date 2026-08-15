@@ -109,26 +109,16 @@ export function EditorNotion({
 
   /** Monta os itens do menu a partir do que já está em memória. */
   const itensDoMenu = (query: string) =>
-    filtrarAlvos(alvos, query, 35).map((s) => ({
-      title: `@${s.titulo}`,
-      subtext: s.caminho,
-      onItemClick: () => {
-        // TEXTO PURO, e não um link.
-        //
-        // Antes isto virava `[@Nome](notas/arquivo.md)`. O caminho é contado
-        // da raiz do repositório, mas o arquivo que contém a menção mora numa
-        // subpasta — então o link resolvia errado e dava 404 no GitHub.
-        //
-        // Como texto puro, o `.md` fica limpo ("Falar com @Briefing Acme."),
-        // lê bem em qualquer editor e não tem link quebrado em lugar nenhum.
-        // O app não perde nada: `extrairLinks` resolve a menção pelo TEXTO,
-        // não pelo caminho — é assim que ela já funcionava.
-        //
-        // O espaço no fim é para você continuar escrevendo sem ter que
-        // apertar a barra de espaço.
-        editor.insertInlineContent([`@${s.titulo} `]);
-      },
-    }));
+    filtrarAlvos(alvos, query, 35).map((s) => {
+      const ehLousa = s.tipo === "lousa" || s.caminho.startsWith("lousas/");
+      return {
+        title: ehLousa ? `🗺️ @${s.titulo}` : `@${s.titulo}`,
+        subtext: ehLousa ? `Mapa Mental Excalidraw (${s.caminho})` : s.caminho,
+        onItemClick: () => {
+          editor.insertInlineContent([`@${s.titulo} `]);
+        },
+      };
+    });
 
   // acompanha o botão de tema do cabeçalho
   useEffect(() => {
