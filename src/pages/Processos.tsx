@@ -37,9 +37,9 @@ import {
 } from "lucide-react";
 
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
+import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal } from "@/lib/repo";
 import { gravar, apagar } from "@/lib/github";
-import { tituloProvavel, escreverMarkdown } from "@/lib/markdown";
+import { tituloProvavel, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
 import {
   comoProcesso,
   processoParaFrontmatter,
@@ -242,7 +242,6 @@ export default function Processos() {
 
   const carregar = useCallback(async () => {
     if (!pronto) return;
-    setCarregando(true);
     setErro("");
 
     try {
@@ -253,11 +252,12 @@ export default function Processos() {
       const listaProc = arqProcessos.map((i) => comoProcesso(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)));
       const listaCards = arqCards.map((i) => comoCardProcesso(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)));
 
-      setProcessos(listaProc);
-      setCards(listaCards);
-
-      if (listaProc.length > 0 && !processoAtivoId) {
-        setProcessoAtivoId(listaProc[0].id);
+      if (listaProc.length > 0) {
+        setProcessos(listaProc);
+        setCards(listaCards);
+        if (!processoAtivoId) {
+          setProcessoAtivoId(listaProc[0].id);
+        }
       }
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -277,40 +277,44 @@ export default function Processos() {
     const mod = MODELOS_PROCESSO_PADRAO[modeloIndex];
     if (!mod) return;
 
-    setCarregando(true);
-    try {
-      const id = `proc_${Date.now()}`;
-      const caminho = `processos/${id}.md`;
-      const novoProc: Processo = {
-        caminho,
-        sha: "",
-        bruto: {},
-        id,
-        titulo: mod.titulo,
-        corpo: "",
-        descricao: mod.descricao,
-        etapas: mod.etapas,
-        regras: mod.regras,
-        atualizadoEm: new Date().toISOString(),
-      };
+    const id = `proc_${Date.now()}`;
+    const caminho = `processos/${id}.md`;
+    const novoProc: Processo = {
+      caminho,
+      sha: "",
+      bruto: {},
+      id,
+      titulo: mod.titulo,
+      corpo: "",
+      descricao: mod.descricao,
+      etapas: mod.etapas,
+      regras: mod.regras,
+      atualizadoEm: new Date().toISOString(),
+    };
 
+    // Atualização otimista local
+    setProcessos((prev) => [...prev, novoProc]);
+    setProcessoAtivoId(id);
+
+    try {
       const texto = escreverMarkdown({
         dados: processoParaFrontmatter(novoProc),
         corpo: `Processo de ${mod.titulo}`,
       });
 
-      await gravar(cfg, caminho, texto);
-      invalidarCache();
-      setProcessoAtivoId(id);
-      await carregar();
+      const sha = await gravar(cfg, caminho, texto);
+      atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
+      setProcessos((prev) => prev.map((p) => (p.id === id ? { ...p, sha } : p)));
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
-    } finally {
-      setCarregando(false);
     }
   };
 
   const salvarCard = async (cardAtualizado: CardProcesso) => {
+    // Atualização otimista local
+    setCards((prev) => prev.map((c) => (c.id === cardAtualizado.id ? cardAtualizado : c)));
+    setCardEmEdicao((prev) => (prev && prev.id === cardAtualizado.id ? cardAtualizado : prev));
+
     try {
       const texto = escreverMarkdown({
         dados: cardProcessoParaFrontmatter(cardAtualizado),
@@ -318,9 +322,10 @@ export default function Processos() {
       });
 
       const sha = await gravar(cfg, cardAtualizado.caminho, texto, cardAtualizado.sha || undefined);
-      invalidarCache();
-      setCardEmEdicao((prev) => (prev && prev.id === cardAtualizado.id ? { ...cardAtualizado, sha } : prev));
-      await carregar();
+      atualizarCacheLocal(cardAtualizado.caminho, texto, lerMarkdown(texto), sha);
+      const cardComSha = { ...cardAtualizado, sha };
+      setCards((prev) => prev.map((c) => (c.id === cardAtualizado.id ? cardComSha : c)));
+      setCardEmEdicao((prev) => (prev && prev.id === cardAtualizado.id ? cardComSha : prev));
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     }
@@ -329,55 +334,57 @@ export default function Processos() {
   const criarNovoCard = async () => {
     if (!novoCardTitulo.trim() || !processoAtivo) return;
 
+    const id = `card_${Date.now()}`;
+    const caminho = `processos/cards/${id}.md`;
+
+    // Preencher checklists padrão da etapa
+    const etapaObj = processoAtivo.etapas.find((e) => e.id === etapaNovoCard) || processoAtivo.etapas[0];
+    const checklistsIniciais: Record<string, boolean> = {};
+    etapaObj?.checklistsPadrao.forEach((chk) => {
+      checklistsIniciais[chk.id] = false;
+    });
+
+    const novoCard: CardProcesso = {
+      caminho,
+      sha: "",
+      bruto: {},
+      id,
+      processoId: processoAtivo.id,
+      etapaId: etapaObj.id,
+      titulo: novoCardTitulo.trim(),
+      cliente: novoCardCliente.trim() || undefined,
+      valor: novoCardValor ? parseFloat(novoCardValor) : undefined,
+      corpo: "",
+      checklists: checklistsIniciais,
+      comentarios: [
+        {
+          id: `com_${Date.now()}`,
+          data: new Date().toISOString(),
+          autor: "Klaus Bot",
+          texto: `Projeto criado na etapa '${etapaObj.nome}'.`,
+        },
+      ],
+      tags: [],
+      urgente: false,
+      atualizadoEm: new Date().toISOString(),
+    };
+
+    // Atualização otimista no estado local
+    setCards((prev) => [...prev, novoCard]);
+    setNovoCardTitulo("");
+    setNovoCardCliente("");
+    setNovoCardValor("");
+    setModalNovoCardAberto(false);
+
     try {
-      const id = `card_${Date.now()}`;
-      const caminho = `processos/cards/${id}.md`;
-
-      // Preencher checklists padrão da etapa
-      const etapaObj = processoAtivo.etapas.find((e) => e.id === etapaNovoCard) || processoAtivo.etapas[0];
-      const checklistsIniciais: Record<string, boolean> = {};
-      etapaObj?.checklistsPadrao.forEach((chk) => {
-        checklistsIniciais[chk.id] = false;
-      });
-
-      const novoCard: CardProcesso = {
-        caminho,
-        sha: "",
-        bruto: {},
-        id,
-        processoId: processoAtivo.id,
-        etapaId: etapaObj.id,
-        titulo: novoCardTitulo.trim(),
-        cliente: novoCardCliente.trim() || undefined,
-        valor: novoCardValor ? parseFloat(novoCardValor) : undefined,
-        corpo: "",
-        checklists: checklistsIniciais,
-        comentarios: [
-          {
-            id: `com_${Date.now()}`,
-            data: new Date().toISOString(),
-            autor: "Klaus Bot",
-            texto: `Projeto criado na etapa '${etapaObj.nome}'.`,
-          },
-        ],
-        tags: [],
-        urgente: false,
-        atualizadoEm: new Date().toISOString(),
-      };
-
       const texto = escreverMarkdown({
         dados: cardProcessoParaFrontmatter(novoCard),
         corpo: "",
       });
 
-      await gravar(cfg, caminho, texto);
-      invalidarCache();
-
-      setNovoCardTitulo("");
-      setNovoCardCliente("");
-      setNovoCardValor("");
-      setModalNovoCardAberto(false);
-      await carregar();
+      const sha = await gravar(cfg, caminho, texto);
+      atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
+      setCards((prev) => prev.map((c) => (c.id === id ? { ...c, sha } : c)));
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     }
@@ -406,18 +413,19 @@ export default function Processos() {
       comentarios: [novoComentario, ...cardEmEdicao.comentarios],
     };
 
-    setCardEmEdicao(cardAtualizado);
     setNovoComentarioTexto("");
     await salvarCard(cardAtualizado);
   };
 
   const apagarCardAtual = async () => {
     if (!cardEmEdicao) return;
+    const cardParaApagar = cardEmEdicao;
+    setCardEmEdicao(null);
+    setCards((prev) => prev.filter((c) => c.id !== cardParaApagar.id));
+
     try {
-      await apagar(cfg, cardEmEdicao.caminho, cardEmEdicao.sha);
+      await apagar(cfg, cardParaApagar.caminho, cardParaApagar.sha);
       invalidarCache();
-      setCardEmEdicao(null);
-      await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     }
