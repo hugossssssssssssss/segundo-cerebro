@@ -86,7 +86,12 @@ export function PainelNotionBase({
     if (salvo) {
       try {
         const p = JSON.parse(salvo);
-        if (typeof p.x === "number" && typeof p.y === "number") return p;
+        if (typeof p.x === "number" && typeof p.y === "number") {
+          return {
+            x: Math.max(10, Math.min(window.innerWidth - 200, p.x)),
+            y: Math.max(10, Math.min(window.innerHeight - 100, p.y)),
+          };
+        }
       } catch {}
     }
     return {
@@ -705,7 +710,7 @@ export function PainelNotionBase({
           height: `${tamanhoFlutuante.altura}px`,
           zIndex: 9999,
         }}
-        className="flex flex-col rounded-2xl border border-border/80 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.35)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.7)] overflow-hidden animate-in zoom-in-95 duration-150 relative"
+        className="fixed flex flex-col rounded-2xl border border-border/80 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.35)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.7)] overflow-hidden animate-in zoom-in-95 duration-150"
       >
         {/* Cabeçalho arrastável */}
         <div className="shrink-0">{cabecalho}</div>
