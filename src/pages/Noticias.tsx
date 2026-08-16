@@ -31,7 +31,7 @@ import {
   salvarNoticiaComoReferencia,
   criarNotaDaNoticia,
   criarTarefaDaNoticia,
-  extrairArtigoCompleto,
+  formatarHtmlEditorial,
   alternarCurtidaNoticia,
   obterModoExibicao,
   salvarModoExibicao,
@@ -69,7 +69,6 @@ export default function Noticias() {
 
   // Leitor Focado no App
   const [noticiaParaLer, setNoticiaParaLer] = useState<ItemNoticia | null>(null);
-  const [extraindoConteudo, setExtraindoConteudo] = useState(false);
 
   // Modal de Personalização e Feeds Customizados
   const [modalAssuntosAberta, setModalAssuntosAberta] = useState(false);
@@ -98,31 +97,10 @@ export default function Noticias() {
     carregar(categoria);
   }, [categoria]);
 
-  // Abrir Leitor e disparar a extração de texto integral do artigo
-  const handleAbrirLeitor = async (item: ItemNoticia) => {
+  // Abrir Leitor Instantâneo (Padrão GitHub Reader: exibe o campo `content` integral)
+  const handleAbrirLeitor = (item: ItemNoticia) => {
     setNoticiaParaLer(item);
     setResumoIa("");
-    setExtraindoConteudo(true);
-
-    try {
-      const { conteudoMarkdown, tempoLeituraMinutos } = await extrairArtigoCompleto(
-        item.link,
-        item.descricao || item.conteudoCompleto
-      );
-      setNoticiaParaLer((prev) =>
-        prev && prev.id === item.id
-          ? {
-              ...prev,
-              conteudoCompleto: conteudoMarkdown,
-              tempoLeituraMinutos,
-            }
-          : prev
-      );
-    } catch (err) {
-      console.warn("Erro ao extrair artigo no leitor:", err);
-    } finally {
-      setExtraindoConteudo(false);
-    }
   };
 
   const handleTrocarModo = (novoModo: ModoExibicao) => {
@@ -184,7 +162,6 @@ export default function Noticias() {
     );
   }, [noticias, busca]);
 
-  // Separa o item Destaque Hero das demais matérias na exibição Revista
   const noticiaHero = useMemo(() => noticiasFiltradas[0] || null, [noticiasFiltradas]);
   const noticiasSecundarias = useMemo(() => noticiasFiltradas.slice(1), [noticiasFiltradas]);
 
@@ -274,7 +251,7 @@ export default function Noticias() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-16">
-      {/* Topo / Cabeçalho da Revista Digital */}
+      {/* Topo da Revista Digital */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -286,15 +263,14 @@ export default function Noticias() {
                 Revista Digital & Radar
               </h1>
               <p className="text-xs text-muted-foreground">
-                Feed editorial em tempo real. Leia artigos na íntegra e conecte matérias ao seu Segundo Cérebro.
+                Feed editorial com matérias integrais. Leia dentro do Klaus e integre com seu Segundo Cérebro.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Controles de Formato de Exibição e Personalização */}
+        {/* Controles de Formato */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Seletor de Formato */}
           <div className="flex items-center rounded-xl border border-border bg-card p-1 shadow-xs">
             <button
               onClick={() => handleTrocarModo("revista")}
@@ -355,7 +331,7 @@ export default function Noticias() {
 
       {!pronto && (
         <Aviso>
-          Para salvar notícias no seu repositório em Markdown, configure seu token do GitHub nos <Link to="/config" className="underline font-semibold">Ajustes</Link>.
+          Para integrar notícias com suas Notas, Referências e Tarefas, configure seu token do GitHub nos <Link to="/config" className="underline font-semibold">Ajustes</Link>.
         </Aviso>
       )}
 
@@ -417,12 +393,9 @@ export default function Noticias() {
         </div>
       ) : (
         <>
-          {/* ========================================================================= */}
-          {/* MODO REVISTA (Destaque Hero Spotlight + Grade Secundária)                 */}
-          {/* ========================================================================= */}
+          {/* MODO REVISTA */}
           {modo === "revista" && (
             <div className="space-y-6">
-              {/* HERO SPOTLIGHT BANNER */}
               {noticiaHero && (
                 <div
                   onClick={() => handleAbrirLeitor(noticiaHero)}
@@ -480,7 +453,6 @@ export default function Noticias() {
                 </div>
               )}
 
-              {/* GRADE DE NOTÍCIAS SECUNDÁRIAS */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {noticiasSecundarias.map((item) => (
                   <article
@@ -566,9 +538,7 @@ export default function Noticias() {
             </div>
           )}
 
-          {/* ========================================================================= */}
-          {/* MODO CARDS (ESTILO DAILY.DEV)                                             */}
-          {/* ========================================================================= */}
+          {/* MODO CARDS */}
           {modo === "cards" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {noticiasFiltradas.map((item) => (
@@ -652,9 +622,7 @@ export default function Noticias() {
             </div>
           )}
 
-          {/* ========================================================================= */}
-          {/* MODO FEED MINIMALISTA (📰)                                                */}
-          {/* ========================================================================= */}
+          {/* MODO FEED */}
           {modo === "feed" && (
             <div className="space-y-3">
               {noticiasFiltradas.map((item) => (
@@ -756,7 +724,7 @@ export default function Noticias() {
       )}
 
       {/* ========================================================================= */}
-      {/* LEITOR DE NOTÍCIA INTEGRADO (FULL READER MODAL)                           */}
+      {/* LEITOR DE NOTÍCIA INTEGRADO (PADRÃO GITHUB RSS READER - ARTIGO COMPLETO) */}
       {/* ========================================================================= */}
       <Modal
         aberto={Boolean(noticiaParaLer)}
@@ -858,22 +826,18 @@ export default function Noticias() {
                 className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-semibold hover:bg-amber-500/20 transition-colors"
               >
                 <Sparkles size={15} />
-                <span>{gerandoResumo ? "Sintetizando matéria com IA..." : "Sintetizar Destaques com IA Gemini"}</span>
+                <span>{gerandoResumo ? "Sintetizando matéria..." : "Sintetizar Destaques com IA Gemini"}</span>
               </button>
             )}
 
-            {/* CONTEÚDO INTEGRAL EXTRAÍDO DA MATÉRIA */}
+            {/* ARTIGO COMPLETO DA MATÉRIA SEM CORTE (PADRÃO GITHUB RSS READER) */}
             <div className="p-5 rounded-2xl bg-accent/20 border border-border space-y-4">
-              {extraindoConteudo ? (
-                <div className="py-10 text-center space-y-2">
-                  <Carregando />
-                  <p className="text-xs text-muted-foreground">Extraindo matéria completa do portal jornalístico...</p>
-                </div>
-              ) : (
-                <div className="prose dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-line text-foreground/90 font-sans">
-                  {noticiaParaLer.conteudoCompleto || noticiaParaLer.descricao}
-                </div>
-              )}
+              <div
+                className="prose dark:prose-invert max-w-none text-sm leading-relaxed text-foreground/90 font-sans space-y-3"
+                dangerouslySetInnerHTML={{
+                  __html: formatarHtmlEditorial(noticiaParaLer.conteudoCompleto || noticiaParaLer.descricao || ""),
+                }}
+              />
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-border">
@@ -883,7 +847,7 @@ export default function Noticias() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
               >
-                <span>Abrir portal oficial ({noticiaParaLer.fonte})</span>
+                <span>Visitar site original ({noticiaParaLer.fonte})</span>
                 <ExternalLink size={13} />
               </a>
 
@@ -902,7 +866,6 @@ export default function Noticias() {
         titulo="⚙️ Personalizar Assuntos & Feeds"
       >
         <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
-          {/* Seção 1: Seleção de Categorias Padrão */}
           <div className="space-y-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Assuntos Principais</h3>
             <div className="space-y-2">
@@ -937,7 +900,6 @@ export default function Noticias() {
             </div>
           </div>
 
-          {/* Seção 2: Adicionar Feed Customizado */}
           <div className="space-y-3 pt-2 border-t border-border">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Adicionar RSS / Feed Próprio</h3>
             <form onSubmit={handleAdicionarFeed} className="space-y-2">

@@ -1,10 +1,9 @@
 /**
  * Módulo de Notícias & Revista Digital para o Klaus.
  *
- * Busca feeds RSS/JSON de portais jornalísticos de grande credibilidade em PT-BR (Globo Esporte, UOL,
- * Meio & Mensagem, TabNews, Tecnoblog, G1, Superinteressante), com sistema triplo de proxy CORS,
- * extração de imagens em HD, leitor de artigo completo (DOMParser), feeds customizados do usuário,
- * e integração direta com Notas, Referências e Tarefas.
+ * Adota a arquitetura comprovada de leitura dos leitores de feed open-source do GitHub (georapbox/rss-feed-reader + rss-parser).
+ * Consome os campos `content` (HTML integral da matéria) e `body` (TabNews) para exibir matérias completas
+ * e organizadas instantaneamente, com capas HD, 3 modos visuais e integrações com o repositório.
  */
 
 import type { Settings } from "./settings";
@@ -23,7 +22,7 @@ export interface ItemNoticia {
   categoria: CategoriaNoticia;
   imagemUrl: string;
   descricao?: string;
-  conteudoCompleto?: string;
+  conteudoCompleto: string;
   tempoLeituraMinutos: number;
   destaque?: boolean;
   data: string;
@@ -55,7 +54,7 @@ export const CATEGORIAS_NOTICIAS: CategoriaConfig[] = [
   { id: "personalizado", rotulo: "Meus Feeds", icone: "⭐", descricao: "Canais e blogs de sua escolha", padraoAtivo: false },
 ];
 
-/** Capas de alta definição por assunto caso a matéria não traga imagem válida */
+/** Capas em alta definição por categoria */
 const IMAGENS_ILUSTRATIVAS: Record<CategoriaNoticia, string[]> = {
   futebol: [
     "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80",
@@ -107,7 +106,7 @@ export function obterImagemIlustrativa(categoria: CategoriaNoticia, urlOpcional?
   return lista[idx];
 }
 
-/** Desescapa caracteres HTML */
+/** Limpa marcas de formatação mantendo o texto sem quebras */
 export function limparTexto(texto: string): string {
   if (!texto) return "";
   return texto
@@ -123,9 +122,43 @@ export function limparTexto(texto: string): string {
     .trim();
 }
 
-/** Calcula o tempo estimado de leitura (média de 200 palavras por minuto) */
-export function calcularTempoLeitura(texto: string): number {
-  const palavras = limparTexto(texto).split(/\s+/).filter(Boolean).length;
+/**
+ * Sanitiza e formata o HTML recebido do campo `content` do RSS,
+ * mantendo parágrafos (<p>), subtítulos (<h2>/<h3>), listas e imagens com estilo editorial limpo.
+ */
+export function formatarHtmlEditorial(html: string): string {
+  if (!html) return "";
+  
+  // Se for texto puro sem tags HTML, divide em parágrafos por quebra de linha
+  if (!/<[a-z][\s\S]*>/i.test(html)) {
+    return html
+      .split(/\n\s*\n/)
+      .map((p) => `<p class="mb-4 leading-relaxed">${p.trim()}</p>`)
+      .join("");
+  }
+
+  // Remove scripts, estilos e elementos inseguros
+  let limpo = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, "$1");
+
+  // Adiciona classes CSS elegantes para parágrafos, subtítulos e imagens
+  limpo = limpo
+    .replace(/<p[^>]*>/gi, '<p className="mb-4 text-sm sm:text-base leading-relaxed text-foreground/90 font-sans">')
+    .replace(/<h2[^>]*>/gi, '<h2 className="text-lg font-bold text-foreground mt-6 mb-3 border-b border-border/40 pb-1">')
+    .replace(/<h3[^>]*>/gi, '<h3 className="text-base font-bold text-foreground mt-4 mb-2">')
+    .replace(/<blockquote[^>]*>/gi, '<blockquote className="border-l-4 border-primary pl-4 py-1 my-4 italic text-muted-foreground bg-accent/30 rounded-r-lg">')
+    .replace(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi, '<img src="$1" className="my-4 rounded-xl shadow-xs max-h-96 w-full object-cover" />');
+
+  return limpo;
+}
+
+/** Calcula o tempo estimado de leitura (média de 180 palavras por minuto) */
+export function calcularTempoLeitura(textoOuHtml: string): number {
+  const textoLimpo = limparTexto(textoOuHtml);
+  const palavras = textoLimpo.split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.ceil(palavras / 180));
 }
 
@@ -236,35 +269,32 @@ export function removerFeedCustomizado(id: string): FeedCustomizado[] {
   }
 }
 
-// ── BUSCA DE FEEDS DE JORNALISMO REAL COM PARSER RESILIENTE ─────────────────────
+// ── BUSCA DE FEEDS DE JORNALISMO REAL (ESTRATÉGIA GITHUB RSS READER) ──────────────
 
-/** Tenta extrair a melhor imagem de um item XML */
+/** Tenta extrair a imagem principal */
 function extrairImagemDoXmlItem(item: Element, rawDesc: string): string | undefined {
-  // 1. media:content ou media:thumbnail
   const mediaContent = item.querySelector("media\\:content, content, media\\:thumbnail, thumbnail")?.getAttribute("url");
   if (mediaContent) return mediaContent;
 
-  // 2. enclosure
   const enclosure = item.querySelector("enclosure")?.getAttribute("url");
   if (enclosure) return enclosure;
 
-  // 3. regex de <img> no texto da descrição
   const match = rawDesc.match(/<img[^>]+src=["']([^"']+)["']/i);
   if (match) return match[1];
 
   return undefined;
 }
 
-/** Busca RSS oficial via proxies CORS com resiliência tripla */
+/** Busca RSS oficial consumindo o campo `content` integral (Padrão georapbox/rss-feed-reader + rss-parser) */
 export async function buscarRssJornalismo(
   urlFeed: string,
   nomeFonte: string,
   categoria: CategoriaNoticia
 ): Promise<ItemNoticia[]> {
   const proxies = [
+    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(urlFeed)}`,
     `https://api.allorigins.win/raw?url=${encodeURIComponent(urlFeed)}`,
     `https://corsproxy.io/?${encodeURIComponent(urlFeed)}`,
-    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(urlFeed)}`,
   ];
 
   const idsCurtidos = new Set(obterIdsCurtidos());
@@ -274,16 +304,18 @@ export async function buscarRssJornalismo(
       const res = await fetch(proxyUrl);
       if (!res.ok) continue;
 
-      // Se for o proxy rss2json que devolve JSON direto
+      // 1. rss2json (retorna JSON estruturado com o campo `content` integral!)
       if (proxyUrl.includes("rss2json")) {
         const json = await res.json();
         if (json && json.status === "ok" && Array.isArray(json.items)) {
-          return json.items.slice(0, 10).map((item: { title: string; link: string; pubDate: string; description?: string; content?: string; thumbnail?: string; enclosure?: { link?: string } }, idx: number) => {
+          return json.items.slice(0, 12).map((item: { title: string; link: string; pubDate: string; description?: string; content?: string; thumbnail?: string; enclosure?: { link?: string } }, idx: number) => {
             const titulo = item.title ? limparTexto(item.title) : "Manchete sem título";
             const link = item.link || urlFeed;
             const id = `rss-${nomeFonte.toLowerCase().replace(/\s+/g, "-")}-${idx}-${titulo.slice(0, 15)}`;
-            const rawDesc = item.description || item.content || "";
-            const descLimpa = limparTexto(rawDesc);
+            
+            // O campo `content` traz a matéria inteira em HTML fornecida pelo jornal!
+            const rawContent = item.content || item.description || "";
+            const descCard = item.description ? limparTexto(item.description).slice(0, 180) : limparTexto(rawContent).slice(0, 180);
             const thumb = item.thumbnail || item.enclosure?.link;
 
             return {
@@ -293,9 +325,9 @@ export async function buscarRssJornalismo(
               fonte: nomeFonte,
               categoria,
               imagemUrl: obterImagemIlustrativa(categoria, thumb),
-              descricao: descLimpa ? `${descLimpa.slice(0, 180)}...` : undefined,
-              conteudoCompleto: descLimpa || titulo,
-              tempoLeituraMinutos: calcularTempoLeitura(descLimpa || titulo),
+              descricao: descCard ? `${descCard}...` : undefined,
+              conteudoCompleto: rawContent, // Matéria integral SEM CORTE!
+              tempoLeituraMinutos: calcularTempoLeitura(rawContent),
               data: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
               curtido: idsCurtidos.has(id),
             };
@@ -303,20 +335,21 @@ export async function buscarRssJornalismo(
         }
       }
 
-      // Parse de XML puro
+      // 2. Parse de XML puro (captura <content:encoded> ou <description> completo)
       const xmlTexto = await res.text();
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(xmlTexto, "text/xml");
       const items = Array.from(xmlDoc.querySelectorAll("item"));
 
       if (items.length > 0) {
-        return items.slice(0, 10).map((item, idx) => {
+        return items.slice(0, 12).map((item, idx) => {
           const titulo = item.querySelector("title")?.textContent ? limparTexto(item.querySelector("title")!.textContent!) : "Manchete sem título";
           const link = item.querySelector("link")?.textContent?.trim() || urlFeed;
           const pubDate = item.querySelector("pubDate")?.textContent?.trim() || new Date().toISOString();
-          const rawDesc = item.querySelector("description, content\\:encoded")?.textContent || "";
-          const descLimpa = limparTexto(rawDesc);
-          const rawImg = extrairImagemDoXmlItem(item, rawDesc);
+          
+          const rawContent = item.querySelector("content\\:encoded, encoded")?.textContent || item.querySelector("description")?.textContent || "";
+          const descCard = limparTexto(rawContent).slice(0, 180);
+          const rawImg = extrairImagemDoXmlItem(item, rawContent);
           const id = `rss-${nomeFonte.toLowerCase().replace(/\s+/g, "-")}-${idx}-${titulo.slice(0, 15)}`;
 
           return {
@@ -326,9 +359,9 @@ export async function buscarRssJornalismo(
             fonte: nomeFonte,
             categoria,
             imagemUrl: obterImagemIlustrativa(categoria, rawImg),
-            descricao: descLimpa ? `${descLimpa.slice(0, 180)}...` : undefined,
-            conteudoCompleto: descLimpa || titulo,
-            tempoLeituraMinutos: calcularTempoLeitura(descLimpa || titulo),
+            descricao: descCard ? `${descCard}...` : undefined,
+            conteudoCompleto: rawContent, // Matéria integral SEM CORTE!
+            tempoLeituraMinutos: calcularTempoLeitura(rawContent),
             data: new Date(pubDate).toISOString(),
             curtido: idsCurtidos.has(id),
           };
@@ -342,10 +375,10 @@ export async function buscarRssJornalismo(
   return [];
 }
 
-/** Busca artigos do TabNews (Comunidade de Tech/Design brasileira) */
+/** Busca artigos do TabNews (Brasil / Tech) trazendo o campo `body` integral */
 export async function buscarNoticiasTabNews(): Promise<ItemNoticia[]> {
   try {
-    const res = await fetch("https://www.tabnews.com.br/api/v1/contents?page=1&per_page=10&strategy=relevant");
+    const res = await fetch("https://www.tabnews.com.br/api/v1/contents?page=1&per_page=12&strategy=relevant");
     if (!res.ok) return [];
     const dados = await res.json();
     const idsCurtidos = new Set(obterIdsCurtidos());
@@ -353,7 +386,8 @@ export async function buscarNoticiasTabNews(): Promise<ItemNoticia[]> {
     return (dados || []).map((item: { id: string; slug: string; owner_username: string; title: string; body?: string; published_at: string; tabcoins: number }) => {
       const link = `https://www.tabnews.com.br/${item.owner_username}/${item.slug}`;
       const id = `tabnews-${item.id}`;
-      const bodyClean = item.body ? limparTexto(item.body) : "";
+      const bodyRaw = item.body || "";
+      const bodyClean = limparTexto(bodyRaw);
       return {
         id,
         titulo: item.title,
@@ -362,8 +396,8 @@ export async function buscarNoticiasTabNews(): Promise<ItemNoticia[]> {
         categoria: "tech" as CategoriaNoticia,
         imagemUrl: obterImagemIlustrativa("tech"),
         descricao: bodyClean ? `${bodyClean.slice(0, 180)}...` : `Publicado por @${item.owner_username} com ${item.tabcoins} pontos.`,
-        conteudoCompleto: bodyClean || item.title,
-        tempoLeituraMinutos: calcularTempoLeitura(bodyClean || item.title),
+        conteudoCompleto: bodyRaw || item.title, // Matéria integral em Markdown!
+        tempoLeituraMinutos: calcularTempoLeitura(bodyRaw || item.title),
         data: item.published_at,
         curtido: idsCurtidos.has(id),
       };
@@ -421,7 +455,6 @@ export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): P
   const resultados = await Promise.all(promessas);
   const consolidados = resultados.flat();
 
-  // Fallback se todos os feeds falharem
   if (consolidados.length === 0) {
     const idsCurtidos = new Set(obterIdsCurtidos());
     const idDemo = `demo-${categoria}-1`;
@@ -443,7 +476,6 @@ export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): P
     ];
   }
 
-  // Eliminar duplicatas
   const vistos = new Set<string>();
   const unicos: ItemNoticia[] = [];
   for (const item of consolidados) {
@@ -454,92 +486,11 @@ export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): P
     }
   }
 
-  // Ordenar por data decrescente e marcar o primeiro como destaque
   const ordenados = unicos.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
   if (ordenados.length > 0) {
     ordenados[0].destaque = true;
   }
   return ordenados;
-}
-
-/**
- * MOTOR DE EXTRAÇÃO DE ARTIGO COMPLETO (Full Reader Engine)
- */
-export async function extrairArtigoCompleto(
-  urlNoticia: string,
-  fallbackDescricao?: string
-): Promise<{ conteudoMarkdown: string; tempoLeituraMinutos: number; sucesso: boolean }> {
-  try {
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlNoticia)}`;
-    const res = await fetch(proxyUrl);
-    if (!res.ok) throw new Error("Erro na comunicação com a página da notícia.");
-    const htmlTexto = await res.text();
-
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlTexto, "text/html");
-
-    // Remover ruídos
-    const ruídos = doc.querySelectorAll(
-      "script, style, iframe, nav, header, footer, aside, .ad, .ads, .advertising, .banner, .social-share, .comments, #comments, .menu"
-    );
-    ruídos.forEach((el) => el.remove());
-
-    const container =
-      doc.querySelector("article") ||
-      doc.querySelector('[role="main"]') ||
-      doc.querySelector(".materia-body") ||
-      doc.querySelector(".content-body") ||
-      doc.querySelector(".post-content") ||
-      doc.querySelector(".entry-content") ||
-      doc.querySelector(".materia") ||
-      doc.body;
-
-    const blocos: string[] = [];
-    const elementos = container.querySelectorAll("p, h2, h3, h4, blockquote, ul, ol");
-
-    elementos.forEach((el) => {
-      const tag = el.tagName.toLowerCase();
-      const txt = limparTexto(el.textContent || "");
-      if (txt.length < 15) return;
-
-      if (tag === "h2") {
-        blocos.push(`\n## ${txt}\n`);
-      } else if (tag === "h3" || tag === "h4") {
-        blocos.push(`\n### ${txt}\n`);
-      } else if (tag === "blockquote") {
-        blocos.push(`> ${txt}`);
-      } else if (tag === "ul" || tag === "ol") {
-        const itens = Array.from(el.querySelectorAll("li"))
-          .map((li) => `- ${limparTexto(li.textContent || "")}`)
-          .filter((i) => i.length > 3);
-        if (itens.length > 0) blocos.push(itens.join("\n"));
-      } else {
-        blocos.push(txt);
-      }
-    });
-
-    const textoFinal = blocos.join("\n\n").trim();
-    const totalPalavras = textoFinal.split(/\s+/).filter(Boolean).length;
-
-    if (totalPalavras > 60) {
-      const tempoLeituraMinutos = Math.max(1, Math.ceil(totalPalavras / 180));
-      return {
-        conteudoMarkdown: textoFinal,
-        tempoLeituraMinutos,
-        sucesso: true,
-      };
-    }
-  } catch (err) {
-    console.warn("Falha ao raspar artigo completo:", err);
-  }
-
-  const base = fallbackDescricao ? limparTexto(fallbackDescricao) : "Resumo da matéria disponível.";
-  const palavras = base.split(/\s+/).filter(Boolean).length;
-  return {
-    conteudoMarkdown: `${base}\n\n*(Este portal exige navegação direta para exibição do artigo na íntegra).*`,
-    tempoLeituraMinutos: Math.max(1, Math.ceil(palavras / 180)),
-    sucesso: false,
-  };
 }
 
 // ── INTEGRAÇÕES COM O SEGUNDO CÉREBRO ─────────────────────────────────────────────
@@ -569,7 +520,7 @@ export async function criarNotaDaNoticia(noticia: ItemNoticia, cfg: Settings): P
     corpo += `### 🤖 Resumo da IA\n${noticia.resumoIa}\n\n`;
   }
 
-  corpo += `### Conteúdo da Matéria\n${noticia.conteudoCompleto || noticia.descricao || ""}\n\n`;
+  corpo += `### Conteúdo Integral da Matéria\n${limparTexto(noticia.conteudoCompleto || noticia.descricao || "")}\n\n`;
   corpo += `---\n*Nota gerada no Klaus em ${dataHoje}.*`;
 
   const conteudoFinal = escreverMarkdown({ dados: frontmatter, corpo });
@@ -607,7 +558,7 @@ export async function salvarNoticiaComoReferencia(noticia: ItemNoticia, cfg: Set
   }
 
   if (noticia.conteudoCompleto || noticia.descricao) {
-    corpo += `### Conteúdo / Trecho\n${noticia.conteudoCompleto || noticia.descricao}\n\n`;
+    corpo += `### Conteúdo / Trecho\n${limparTexto(noticia.conteudoCompleto || noticia.descricao || "")}\n\n`;
   }
 
   corpo += `---\n*Salvo em Referências do Klaus em ${dataHoje}.*`;
