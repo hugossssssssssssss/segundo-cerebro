@@ -3,7 +3,10 @@
  *
  * Suporta busca de feeds por APIs JSON livres de CORS (Reddit JSON, TabNews, rss2json),
  * personalização dos assuntos ativos pelo usuário, 3 modos de exibição (feed, carrossel, posts),
- * imagens de capa ilustrativas garantidas e gravação de matérias curtidas em Markdown.
+ * imagens de capa ilustrativas garantidas e integração direta com o repositório em Markdown:
+ * - Criar Nota (notas/)
+ * - Salvar Referência (referencias/)
+ * - Criar Tarefa (tarefas/)
  */
 
 import type { Settings } from "./settings";
@@ -22,6 +25,7 @@ export interface ItemNoticia {
   categoria: CategoriaNoticia;
   imagemUrl: string;
   descricao?: string;
+  conteudoCompleto?: string;
   data: string;
   curtido?: boolean;
   resumoIa?: string;
@@ -43,30 +47,30 @@ export const CATEGORIAS_NOTICIAS: CategoriaConfig[] = [
   { id: "curiosidades", rotulo: "Curiosidades & Ciência", icone: "💡", descricao: "Fatos interessantes e descobertas", padraoAtivo: true },
 ];
 
-/** Imagens ilustrativas HD por categoria quando a notícia não possui thumbnail */
+/** Imagens ilustrativas HD por categoria quando a notícia não possui thumbnail válida */
 const IMAGENS_ILUSTRATIVAS: Record<CategoriaNoticia, string[]> = {
   futebol: [
-    "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1000&q=80",
+    "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=1000&q=80",
+    "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1000&q=80",
   ],
   design: [
-    "https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=1000&q=80",
+    "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1000&q=80",
+    "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?auto=format&fit=crop&w=1000&q=80",
   ],
   tech: [
-    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1000&q=80",
+    "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1000&q=80",
+    "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1000&q=80",
   ],
   brasil: [
-    "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1516306580123-e6e52b1b7b5f?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=1000&q=80",
+    "https://images.unsplash.com/photo-1516306580123-e6e52b1b7b5f?auto=format&fit=crop&w=1000&q=80",
   ],
   curiosidades: [
-    "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1507499739999-097706ad8914?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1000&q=80",
+    "https://images.unsplash.com/photo-1507499739999-097706ad8914?auto=format&fit=crop&w=1000&q=80",
   ],
 };
 
@@ -74,17 +78,25 @@ const CHAVE_CURTIDOS = "klaus_noticias_curtidas";
 const CHAVE_MODO_EXIBICAO = "klaus_noticias_modo";
 const CHAVE_CATEGORIAS_ATIVAS = "klaus_noticias_categorias_ativas";
 
-/** Retorna a imagem ilustrativa para a categoria se a thumbnail for inválida */
-export function obterImagemIlustrativa(categoria: CategoriaNoticia, urlOpicional?: string): string {
-  if (urlOpicional && urlOpicional.startsWith("http") && !urlOpicional.includes("self") && !urlOpicional.includes("default")) {
-    return urlOpicional;
+/** Retorna a imagem ilustrativa se a thumbnail for inválida ou falhar */
+export function obterImagemIlustrativa(categoria: CategoriaNoticia, urlOpcional?: string): string {
+  if (
+    urlOpcional &&
+    typeof urlOpcional === "string" &&
+    urlOpcional.startsWith("http") &&
+    !urlOpcional.includes("self") &&
+    !urlOpcional.includes("default") &&
+    !urlOpcional.includes("nsfw") &&
+    !urlOpcional.endsWith(".ico")
+  ) {
+    return urlOpcional;
   }
   const lista = IMAGENS_ILUSTRATIVAS[categoria] || IMAGENS_ILUSTRATIVAS.tech;
   const idx = Math.floor(Math.random() * lista.length);
   return lista[idx];
 }
 
-/** Retorna o modo de exibição salvo no localStorage (padrão: "feed") */
+/** Modos de exibição (feed, carrossel, posts) */
 export function obterModoExibicao(): ModoExibicao {
   try {
     const salvo = localStorage.getItem(CHAVE_MODO_EXIBICAO);
@@ -95,7 +107,6 @@ export function obterModoExibicao(): ModoExibicao {
   }
 }
 
-/** Salva a preferência de formato de exibição */
 export function salvarModoExibicao(modo: ModoExibicao): void {
   try {
     localStorage.setItem(CHAVE_MODO_EXIBICAO, modo);
@@ -104,7 +115,7 @@ export function salvarModoExibicao(modo: ModoExibicao): void {
   }
 }
 
-/** Retorna a lista de categorias ativas configuradas pelo usuário */
+/** Categorias ativas configuradas pelo usuário */
 export function obterCategoriasAtivas(): CategoriaNoticia[] {
   try {
     const salvo = localStorage.getItem(CHAVE_CATEGORIAS_ATIVAS);
@@ -116,7 +127,6 @@ export function obterCategoriasAtivas(): CategoriaNoticia[] {
   }
 }
 
-/** Salva as categorias que o usuário deseja visualizar */
 export function salvarCategoriasAtivas(categorias: CategoriaNoticia[]): void {
   try {
     localStorage.setItem(CHAVE_CATEGORIAS_ATIVAS, JSON.stringify(categorias));
@@ -125,7 +135,7 @@ export function salvarCategoriasAtivas(categorias: CategoriaNoticia[]): void {
   }
 }
 
-/** Retorna a lista de IDs de notícias curtidas no localStorage. */
+/** IDs de notícias curtidas */
 export function obterIdsCurtidos(): string[] {
   try {
     const salvo = localStorage.getItem(CHAVE_CURTIDOS);
@@ -137,7 +147,6 @@ export function obterIdsCurtidos(): string[] {
   }
 }
 
-/** Alterna o status de curtido de uma notícia e atualiza o localStorage. */
 export function alternarCurtidaNoticia(noticiaId: string): boolean {
   try {
     const curtidos = new Set(obterIdsCurtidos());
@@ -156,7 +165,7 @@ export function alternarCurtidaNoticia(noticiaId: string): boolean {
   }
 }
 
-/** Limpa marcas de formatação em resumos */
+/** Limpa texto de HTML e espaços extras */
 export function limparTexto(texto: string): string {
   if (!texto) return "";
   return texto
@@ -170,7 +179,7 @@ export function limparTexto(texto: string): string {
     .trim();
 }
 
-/** 1. Busca notícias via Reddit API JSON (100% livre de CORS) */
+/** Busca via Reddit API JSON (CORS livre) com filtro rígido por categoria */
 export async function buscarNoticiasReddit(subreddit: string, fonte: string, categoria: CategoriaNoticia): Promise<ItemNoticia[]> {
   try {
     const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=12`;
@@ -187,7 +196,7 @@ export async function buscarNoticiasReddit(subreddit: string, fonte: string, cat
         const d = p.data;
         const link = d.url && d.url.startsWith("http") ? d.url : `https://www.reddit.com${d.permalink}`;
         const id = `reddit-${subreddit}-${d.id}`;
-        const rawDesc = d.selftext ? d.selftext.slice(0, 160) : "";
+        const rawDesc = d.selftext ? limparTexto(d.selftext) : "";
 
         return {
           id,
@@ -196,7 +205,8 @@ export async function buscarNoticiasReddit(subreddit: string, fonte: string, cat
           fonte,
           categoria,
           imagemUrl: obterImagemIlustrativa(categoria, d.thumbnail),
-          descricao: rawDesc ? `${limparTexto(rawDesc)}...` : `Discussão da comunidade no /r/${subreddit}`,
+          descricao: rawDesc ? `${rawDesc.slice(0, 180)}...` : `Discussão da comunidade /r/${subreddit}`,
+          conteudoCompleto: rawDesc || d.title,
           data: new Date(d.created_utc * 1000).toISOString(),
           curtido: idsCurtidos.has(id),
         };
@@ -206,7 +216,7 @@ export async function buscarNoticiasReddit(subreddit: string, fonte: string, cat
   }
 }
 
-/** 2. Busca notícias via API rss2json (Converte RSS oficial em JSON livre de CORS) */
+/** Busca via rss2json API (converte RSS em JSON puro sem CORS) */
 export async function buscarFeedRss2Json(urlFeed: string, fonte: string, categoria: CategoriaNoticia): Promise<ItemNoticia[]> {
   try {
     const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(urlFeed)}`;
@@ -217,11 +227,12 @@ export async function buscarFeedRss2Json(urlFeed: string, fonte: string, categor
 
     const idsCurtidos = new Set(obterIdsCurtidos());
 
-    return json.items.slice(0, 10).map((item: { title: string; link: string; pubDate: string; description?: string; thumbnail?: string; enclosure?: { link?: string } }, idx: number) => {
+    return json.items.slice(0, 10).map((item: { title: string; link: string; pubDate: string; description?: string; content?: string; thumbnail?: string; enclosure?: { link?: string } }, idx: number) => {
       const titulo = item.title ? limparTexto(item.title) : "Notícia sem título";
       const link = item.link || urlFeed;
       const id = `rss-${fonte.toLowerCase().replace(/\s+/g, "-")}-${idx}-${titulo.slice(0, 15)}`;
-      const rawDesc = item.description ? limparTexto(item.description).slice(0, 180) : "";
+      const rawDesc = item.description ? limparTexto(item.description) : "";
+      const rawContent = item.content ? limparTexto(item.content) : rawDesc;
       const thumb = item.thumbnail || item.enclosure?.link;
 
       return {
@@ -231,7 +242,8 @@ export async function buscarFeedRss2Json(urlFeed: string, fonte: string, categor
         fonte,
         categoria,
         imagemUrl: obterImagemIlustrativa(categoria, thumb),
-        descricao: rawDesc ? `${rawDesc}...` : undefined,
+        descricao: rawDesc ? `${rawDesc.slice(0, 180)}...` : undefined,
+        conteudoCompleto: rawContent || titulo,
         data: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
         curtido: idsCurtidos.has(id),
       };
@@ -241,7 +253,7 @@ export async function buscarFeedRss2Json(urlFeed: string, fonte: string, categor
   }
 }
 
-/** 3. Busca notícias do TabNews (Brasil / Tech) */
+/** Busca notícias do TabNews (Brasil / Tech) */
 export async function buscarNoticiasTabNews(): Promise<ItemNoticia[]> {
   try {
     const res = await fetch("https://www.tabnews.com.br/api/v1/contents?page=1&per_page=10&strategy=relevant");
@@ -249,9 +261,10 @@ export async function buscarNoticiasTabNews(): Promise<ItemNoticia[]> {
     const dados = await res.json();
     const idsCurtidos = new Set(obterIdsCurtidos());
 
-    return (dados || []).map((item: { id: string; slug: string; owner_username: string; title: string; published_at: string; tabcoins: number }) => {
+    return (dados || []).map((item: { id: string; slug: string; owner_username: string; title: string; body?: string; published_at: string; tabcoins: number }) => {
       const link = `https://www.tabnews.com.br/${item.owner_username}/${item.slug}`;
       const id = `tabnews-${item.id}`;
+      const bodyClean = item.body ? limparTexto(item.body) : "";
       return {
         id,
         titulo: item.title,
@@ -259,7 +272,8 @@ export async function buscarNoticiasTabNews(): Promise<ItemNoticia[]> {
         fonte: "TabNews Brasil",
         categoria: "tech" as CategoriaNoticia,
         imagemUrl: obterImagemIlustrativa("tech"),
-        descricao: `Artigo publicado por @${item.owner_username} com ${item.tabcoins} pontos de relevância.`,
+        descricao: bodyClean ? `${bodyClean.slice(0, 180)}...` : `Publicado por @${item.owner_username} com ${item.tabcoins} pontos.`,
+        conteudoCompleto: bodyClean || item.title,
         data: item.published_at,
         curtido: idsCurtidos.has(id),
       };
@@ -269,7 +283,7 @@ export async function buscarNoticiasTabNews(): Promise<ItemNoticia[]> {
   }
 }
 
-/** Mapa de busca de feeds por categoria usando fontes múltiplas e redundantes */
+/** Busca consolidada e restrita por categoria */
 export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): Promise<ItemNoticia[]> {
   const promessas: Promise<ItemNoticia[]>[] = [];
 
@@ -279,6 +293,7 @@ export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): P
     promessas.push(buscarFeedRss2Json("https://www.uol.com.br/esporte/futebol/rss.xml", "UOL Esporte", "futebol"));
   } else if (categoria === "design") {
     promessas.push(buscarNoticiasReddit("Design", "Reddit Design", "design"));
+    promessas.push(buscarNoticiasReddit("UI_Design", "Reddit UI/UX", "design"));
     promessas.push(buscarFeedRss2Json("https://www.meioemensagem.com.br/feed", "Meio & Mensagem", "design"));
     promessas.push(buscarFeedRss2Json("https://www.designerd.com.br/feed/", "Designerd", "design"));
   } else if (categoria === "tech") {
@@ -297,7 +312,7 @@ export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): P
   const resultados = await Promise.all(promessas);
   const consolidados = resultados.flat();
 
-  // Se por alguma razão a rede falhar em todos, gera um item de demonstração visual
+  // Fallback se todos os feeds falharem
   if (consolidados.length === 0) {
     const idsCurtidos = new Set(obterIdsCurtidos());
     const idDemo = `demo-${categoria}-1`;
@@ -305,19 +320,20 @@ export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): P
     return [
       {
         id: idDemo,
-        titulo: `Últimas tendências e destaques de ${catCfg?.rotulo || categoria}`,
+        titulo: `Destaques de ${catCfg?.rotulo || categoria}`,
         link: "https://github.com",
         fonte: "Klaus Radar",
         categoria,
         imagemUrl: obterImagemIlustrativa(categoria),
-        descricao: `Acompanhe as principais matérias e discussões atualizadas em tempo real sobre ${catCfg?.rotulo || categoria}.`,
+        descricao: `Acompanhe novidades de ${catCfg?.rotulo || categoria} diretamente no Klaus.`,
+        conteudoCompleto: `Artigo detalhado sobre as últimas novidades de ${catCfg?.rotulo || categoria}.`,
         data: new Date().toISOString(),
         curtido: idsCurtidos.has(idDemo),
       },
     ];
   }
 
-  // Eliminar duplicados por título aproximado e ordenar por data
+  // Eliminar duplicatas
   const vistos = new Set<string>();
   const unicos: ItemNoticia[] = [];
   for (const item of consolidados) {
@@ -331,8 +347,47 @@ export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): P
   return unicos.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 }
 
+// ── INTEGRAÇÕES COM O SEGUNDO CÉREBRO (Notas, Referências, Tarefas) ───────────────
+
 /**
- * Salva uma notícia curtida como uma nota em Markdown na pasta `referencias/` do repositório privado.
+ * 1. Salva uma notícia como Nota em `notas/`
+ */
+export async function criarNotaDaNoticia(noticia: ItemNoticia, cfg: Settings): Promise<string> {
+  const dataHoje = new Date().toISOString().slice(0, 10);
+  const nomeArq = `notas/${nomeDeArquivo(`Nota - ${noticia.titulo}`)}`;
+
+  const frontmatter = {
+    tipo: "nota",
+    titulo: noticia.titulo,
+    fonte: noticia.fonte,
+    url: noticia.link,
+    tags: ["noticia", noticia.categoria, "leitura"],
+    criado_em: dataHoje,
+    atualizado_em: dataHoje,
+  };
+
+  let corpo = `# ${noticia.titulo}\n\n`;
+  corpo += `> **Fonte:** [${noticia.fonte}](${noticia.link}) | **Data:** ${new Date(noticia.data).toLocaleDateString("pt-BR")}\n\n`;
+  
+  if (noticia.imagemUrl) {
+    corpo += `![](${noticia.imagemUrl})\n\n`;
+  }
+
+  if (noticia.resumoIa) {
+    corpo += `### 🤖 Resumo da IA\n${noticia.resumoIa}\n\n`;
+  }
+
+  corpo += `### Conteúdo / Reflexão\n${noticia.conteudoCompleto || noticia.descricao || ""}\n\n`;
+  corpo += `---\n*Nota criada a partir da aba Notícias do Klaus em ${dataHoje}.*`;
+
+  const conteudoFinal = escreverMarkdown({ dados: frontmatter, corpo });
+  await gravar(cfg, nomeArq, conteudoFinal, undefined, `Criar nota para a notícia "${noticia.titulo}"`);
+  invalidarCache();
+  return nomeArq;
+}
+
+/**
+ * 2. Salva uma notícia como Referência em `referencias/`
  */
 export async function salvarNoticiaComoReferencia(noticia: ItemNoticia, cfg: Settings): Promise<string> {
   const dataHoje = new Date().toISOString().slice(0, 10);
@@ -349,35 +404,58 @@ export async function salvarNoticiaComoReferencia(noticia: ItemNoticia, cfg: Set
     atualizado_em: dataHoje,
   };
 
-  let corpoMarkdown = `## ${noticia.titulo}\n\n`;
-  corpoMarkdown += `**Fonte:** [${noticia.fonte}](${noticia.link})\n`;
-  corpoMarkdown += `**Categoria:** ${noticia.categoria.toUpperCase()}\n`;
-  corpoMarkdown += `**Data:** ${new Date(noticia.data).toLocaleDateString("pt-BR")}\n\n`;
+  let corpo = `## ${noticia.titulo}\n\n`;
+  corpo += `**Fonte:** [${noticia.fonte}](${noticia.link})\n`;
+  corpo += `**Categoria:** ${noticia.categoria.toUpperCase()}\n`;
+  corpo += `**Data:** ${new Date(noticia.data).toLocaleDateString("pt-BR")}\n\n`;
 
   if (noticia.imagemUrl) {
-    corpoMarkdown += `![](${noticia.imagemUrl})\n\n`;
+    corpo += `![](${noticia.imagemUrl})\n\n`;
   }
 
   if (noticia.resumoIa) {
-    corpoMarkdown += `### 🤖 Resumo da IA\n${noticia.resumoIa}\n\n`;
+    corpo += `### 🤖 Resumo da IA\n${noticia.resumoIa}\n\n`;
   }
 
   if (noticia.descricao) {
-    corpoMarkdown += `### Trecho\n${noticia.descricao}\n\n`;
+    corpo += `### Trecho\n${noticia.descricao}\n\n`;
   }
 
-  corpoMarkdown += `---\n*Salvo através da aba Notícias do Klaus em ${dataHoje}.*`;
+  corpo += `---\n*Salvo através da aba Notícias do Klaus em ${dataHoje}.*`;
 
-  const conteudoFinal = escreverMarkdown({ dados: frontmatter, corpo: corpoMarkdown });
+  const conteudoFinal = escreverMarkdown({ dados: frontmatter, corpo });
+  await gravar(cfg, nomeArq, conteudoFinal, undefined, `Salvar notícia "${noticia.titulo}" nas Referências`);
+  invalidarCache();
+  return nomeArq;
+}
 
-  await gravar(
-    cfg,
-    nomeArq,
-    conteudoFinal,
-    undefined,
-    `Salvar notícia "${noticia.titulo}" nas Referências`
-  );
+/**
+ * 3. Cria uma Tarefa para acompanhar/estudar a notícia em `tarefas/`
+ */
+export async function criarTarefaDaNoticia(noticia: ItemNoticia, cfg: Settings): Promise<string> {
+  const dataHoje = new Date().toISOString().slice(0, 10);
+  const tituloTarefa = `Ler e analisar: ${noticia.titulo}`;
+  const nomeArq = `tarefas/${nomeDeArquivo(tituloTarefa)}`;
 
+  const frontmatter = {
+    tipo: "tarefa",
+    titulo: tituloTarefa,
+    status: "a_fazer",
+    urgente: false,
+    prazo: dataHoje,
+    tags: ["noticia", noticia.categoria, "estudo"],
+    criado_em: dataHoje,
+    atualizado_em: dataHoje,
+  };
+
+  let corpo = `## Tarefa: ${noticia.titulo}\n\n`;
+  corpo += `- [ ] Ler artigo completo em [${noticia.fonte}](${noticia.link})\n`;
+  corpo += `- [ ] Anotar pontos principais e aplicar\n\n`;
+  corpo += `### Contexto da Notícia\n${noticia.descricao || noticia.titulo}\n\n`;
+  corpo += `---\n*Tarefa gerada automaticamente a partir da aba Notícias do Klaus.*`;
+
+  const conteudoFinal = escreverMarkdown({ dados: frontmatter, corpo });
+  await gravar(cfg, nomeArq, conteudoFinal, undefined, `Criar tarefa para a notícia "${noticia.titulo}"`);
   invalidarCache();
   return nomeArq;
 }

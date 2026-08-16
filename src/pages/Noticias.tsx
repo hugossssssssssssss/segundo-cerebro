@@ -15,6 +15,10 @@ import {
   CheckCircle2,
   Check,
   RotateCcw,
+  FileText,
+  Bookmark,
+  CheckSquare,
+  BookOpen,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { conversar } from "@/lib/gemini";
@@ -22,11 +26,14 @@ import {
   CATEGORIAS_NOTICIAS,
   buscarNoticiasPorCategoria,
   salvarNoticiaComoReferencia,
+  criarNotaDaNoticia,
+  criarTarefaDaNoticia,
   alternarCurtidaNoticia,
   obterModoExibicao,
   salvarModoExibicao,
   obterCategoriasAtivas,
   salvarCategoriasAtivas,
+  obterImagemIlustrativa,
   type CategoriaNoticia,
   type ModoExibicao,
   type ItemNoticia,
@@ -38,7 +45,7 @@ export default function Noticias() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
 
-  // Estados de Configuração e UI
+  // Estados de Formato e Assuntos
   const [modo, setModo] = useState<ModoExibicao>(obterModoExibicao);
   const [categoriasAtivas, setCategoriasAtivas] = useState<CategoriaNoticia[]>(obterCategoriasAtivas);
   const [categoria, setCategoria] = useState<CategoriaNoticia>(() => {
@@ -49,18 +56,20 @@ export default function Noticias() {
   const [noticias, setNoticias] = useState<ItemNoticia[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState("");
-  const [salvandoId, setSalvandoId] = useState<string | null>(null);
+  const [acaoId, setAcaoId] = useState<string | null>(null);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
 
-  // Modais
+  // Leitor Integrado (Modal de Leitura da Notícia)
+  const [noticiaParaLer, setNoticiaParaLer] = useState<ItemNoticia | null>(null);
+
+  // Modais de Ajuste e IA
   const [modalAssuntosAberta, setModalAssuntosAberta] = useState(false);
-  const [noticiaParaResumir, setNoticiaParaResumir] = useState<ItemNoticia | null>(null);
   const [gerandoResumo, setGerandoResumo] = useState(false);
-  const [resumoIaModal, setResumoIaModal] = useState("");
+  const [resumoIa, setResumoIa] = useState("");
 
   const carrosselRef = useRef<HTMLDivElement>(null);
 
-  // Carregar notícias da categoria selecionada
+  // Carregar matérias da categoria selecionada
   const carregar = async (cat: CategoriaNoticia) => {
     setCarregando(true);
     try {
@@ -83,11 +92,11 @@ export default function Noticias() {
     salvarModoExibicao(novoModo);
   };
 
-  // Alternar categoria ativa no modal de preferências
+  // Alternar categorias ativas no modal de preferências
   const handleToggleCategoriaAtiva = (catId: CategoriaNoticia) => {
     let novaLista: CategoriaNoticia[];
     if (categoriasAtivas.includes(catId)) {
-      if (categoriasAtivas.length === 1) return; // Mantém pelo menos uma ativa
+      if (categoriasAtivas.length === 1) return;
       novaLista = categoriasAtivas.filter((c) => c !== catId);
     } else {
       novaLista = [...categoriasAtivas, catId];
@@ -107,7 +116,7 @@ export default function Noticias() {
     setCategoria("futebol");
   };
 
-  // Filtragem ao vivo por palavra-chave
+  // Busca em tempo real
   const noticiasFiltradas = useMemo(() => {
     if (!busca.trim()) return noticias;
     const termo = busca.toLowerCase();
@@ -119,66 +128,94 @@ export default function Noticias() {
     );
   }, [noticias, busca]);
 
-  // Curtir e Salvar notícia em Markdown no repositório
-  const handleCurtirESalvar = async (noticia: ItemNoticia) => {
+  // Curtir Notícia
+  const handleCurtir = (noticia: ItemNoticia) => {
     const agoraCurtido = alternarCurtidaNoticia(noticia.id);
     setNoticias((prev) =>
       prev.map((n) => (n.id === noticia.id ? { ...n, curtido: agoraCurtido } : n))
     );
-
-    if (agoraCurtido && pronto) {
-      setSalvandoId(noticia.id);
-      try {
-        const arq = await salvarNoticiaComoReferencia(noticia, cfg);
-        setMensagemSucesso(`Notícia salva em Markdown: ${arq}`);
-        setTimeout(() => setMensagemSucesso(null), 4000);
-      } catch (err) {
-        console.error("Erro ao salvar notícia:", err);
-      } finally {
-        setSalvandoId(null);
-      }
+    if (noticiaParaLer && noticiaParaLer.id === noticia.id) {
+      setNoticiaParaLer((prev) => (prev ? { ...prev, curtido: agoraCurtido } : null));
     }
   };
 
-  // Resumo inteligente com a IA Gemini
-  const handleGerarResumoIa = async (noticia: ItemNoticia) => {
-    setNoticiaParaResumir(noticia);
-    setResumoIaModal("");
-    setGerandoResumo(true);
+  // Ação 1: Criar Nota em notas/
+  const handleCriarNota = async (noticia: ItemNoticia) => {
+    if (!pronto) return;
+    setAcaoId(noticia.id);
+    try {
+      const arq = await criarNotaDaNoticia(noticia, cfg);
+      setMensagemSucesso(`Nova Nota gerada em: ${arq}`);
+      setTimeout(() => setMensagemSucesso(null), 4000);
+    } catch (err) {
+      console.error("Erro ao criar nota:", err);
+    } finally {
+      setAcaoId(null);
+    }
+  };
 
+  // Ação 2: Salvar Referência em referencias/
+  const handleSalvarReferencia = async (noticia: ItemNoticia) => {
+    if (!pronto) return;
+    setAcaoId(noticia.id);
+    try {
+      const arq = await salvarNoticiaComoReferencia(noticia, cfg);
+      setMensagemSucesso(`Salvo em Referências: ${arq}`);
+      setTimeout(() => setMensagemSucesso(null), 4000);
+    } catch (err) {
+      console.error("Erro ao salvar referência:", err);
+    } finally {
+      setAcaoId(null);
+    }
+  };
+
+  // Ação 3: Criar Tarefa em tarefas/
+  const handleCriarTarefa = async (noticia: ItemNoticia) => {
+    if (!pronto) return;
+    setAcaoId(noticia.id);
+    try {
+      const arq = await criarTarefaDaNoticia(noticia, cfg);
+      setMensagemSucesso(`Nova Tarefa criada: ${arq}`);
+      setTimeout(() => setMensagemSucesso(null), 4000);
+    } catch (err) {
+      console.error("Erro ao criar tarefa:", err);
+    } finally {
+      setAcaoId(null);
+    }
+  };
+
+  // Gerar resumo com Gemini IA
+  const handleGerarResumoIa = async (noticia: ItemNoticia) => {
+    setResumoIa("");
+    setGerandoResumo(true);
     try {
       if (!cfg.geminiKey) {
-        setResumoIaModal("Falta configurar a chave do Gemini na tela de Ajustes.");
+        setResumoIa("Configure a chave do Gemini em Ajustes para gerar resumos.");
         return;
       }
       const resposta = await conversar(cfg, [
         {
           papel: "user",
-          texto: `Resuma a seguinte matéria em 3 pontos curtos e objetivos em português:\n\nTítulo: ${noticia.titulo}\nFonte: ${noticia.fonte}\nTexto: ${noticia.descricao || noticia.titulo}`,
+          texto: `Resuma a seguinte notícia em 3 pontos curtos e objetivos:\n\nTítulo: ${noticia.titulo}\nFonte: ${noticia.fonte}\nTexto: ${noticia.conteudoCompleto || noticia.descricao || noticia.titulo}`,
         },
       ]);
-      const resTexto = resposta.texto || "Não foi possível sintetizar a matéria.";
-      setResumoIaModal(resTexto);
-
+      const resTexto = resposta.texto || "Não foi possível resumir a matéria.";
+      setResumoIa(resTexto);
       setNoticias((prev) =>
         prev.map((n) => (n.id === noticia.id ? { ...n, resumoIa: resTexto } : n))
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao conversar com a IA.";
-      setResumoIaModal(`Falha ao gerar resumo: ${msg}`);
+      setResumoIa(`Falha ao gerar resumo: ${msg}`);
     } finally {
       setGerandoResumo(false);
     }
   };
 
-  // Scroll do Carrossel
-  const scrollCarrossel = (direcao: "esq" | "dir") => {
+  const scrollCarrossel = (dir: "esq" | "dir") => {
     if (!carrosselRef.current) return;
-    const deslocamento = carrosselRef.current.clientWidth * 0.8;
-    carrosselRef.current.scrollBy({
-      left: direcao === "dir" ? deslocamento : -deslocamento,
-      behavior: "smooth",
-    });
+    const desc = carrosselRef.current.clientWidth * 0.85;
+    carrosselRef.current.scrollBy({ left: dir === "dir" ? desc : -desc, behavior: "smooth" });
   };
 
   const categoriasExibidas = useMemo(
@@ -193,25 +230,23 @@ export default function Noticias() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Newspaper className="text-primary" size={28} />
-            Notícias & Radar Pessoal
+            Notícias & Radar
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Personalize seus assuntos, veja em feed, carrossel ou cards e salve no seu cérebro.
+            Leia notícias dentro do app e conecte matérias com suas Notas, Referências e Tarefas.
           </p>
         </div>
 
-        {/* Controles de Formato de Exibição e Personalização */}
+        {/* Barra de Controles de Exibição e Personalização */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Seletor de Formato */}
+          {/* Seletor de Modo */}
           <div className="flex items-center rounded-xl border border-border bg-card p-1 shadow-xs">
             <button
               onClick={() => handleTrocarModo("feed")}
               className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
-                modo === "feed"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
+                modo === "feed" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
-              title="Modo Feed / Lista"
+              title="Modo Feed"
             >
               <LayoutList size={14} />
               <span className="hidden sm:inline">Feed</span>
@@ -220,11 +255,9 @@ export default function Noticias() {
             <button
               onClick={() => handleTrocarModo("carrossel")}
               className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
-                modo === "carrossel"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
+                modo === "carrossel" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
-              title="Modo Carrossel Destaques"
+              title="Modo Carrossel"
             >
               <ChevronRight size={14} />
               <span className="hidden sm:inline">Carrossel</span>
@@ -233,18 +266,15 @@ export default function Noticias() {
             <button
               onClick={() => handleTrocarModo("posts")}
               className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
-                modo === "posts"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
+                modo === "posts" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
-              title="Modo Posts / Grid Visual"
+              title="Modo Posts Grid"
             >
               <LayoutGrid size={14} />
               <span className="hidden sm:inline">Posts</span>
             </button>
           </div>
 
-          {/* Botão Personalizar Assuntos */}
           <Button
             variant="outline"
             size="sm"
@@ -255,7 +285,6 @@ export default function Noticias() {
             <span>Assuntos</span>
           </Button>
 
-          {/* Atualizar Feeds */}
           <Button
             variant="ghost"
             size="sm"
@@ -269,14 +298,13 @@ export default function Noticias() {
         </div>
       </div>
 
-      {/* Alerta de Configuração pendente */}
       {!pronto && (
         <Aviso>
-          Para salvar notícias no seu repositório em Markdown e gerar resumos com a IA, configure seu token do GitHub e a chave do Gemini na tela de <Link to="/config" className="underline font-semibold">Ajustes</Link>.
+          Para integrar notícias com suas Notas, Referências e Tarefas, configure seu token do GitHub nos <Link to="/config" className="underline font-semibold">Ajustes</Link>.
         </Aviso>
       )}
 
-      {/* Banner Toast de Notícia Salva */}
+      {/* Banner de Confirmação Toast */}
       {mensagemSucesso && (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm font-medium animate-in fade-in">
           <CheckCircle2 size={18} className="shrink-0" />
@@ -284,7 +312,7 @@ export default function Noticias() {
         </div>
       )}
 
-      {/* Barra de Abas dos Assuntos Ativos & Busca */}
+      {/* Abas dos Assuntos & Busca */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-border pb-3">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar">
           {categoriasExibidas.map((cat) => {
@@ -306,7 +334,6 @@ export default function Noticias() {
           })}
         </div>
 
-        {/* Busca por Palavras-Chave */}
         <div className="relative w-full md:w-64 shrink-0">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -319,20 +346,18 @@ export default function Noticias() {
         </div>
       </div>
 
-      {/* Conteúdo da Tela: Renderiza conforme o Modo Selecionado (Feed, Carrossel ou Posts) */}
+      {/* Grid / Carrossel / Feed de Notícias */}
       {carregando ? (
         <div className="py-20 text-center">
           <Carregando />
-          <p className="text-xs text-muted-foreground mt-3">Buscando matérias atualizadas...</p>
+          <p className="text-xs text-muted-foreground mt-3">Carregando matérias de {CATEGORIAS_NOTICIAS.find(c => c.id === categoria)?.rotulo}...</p>
         </div>
       ) : noticiasFiltradas.length === 0 ? (
         <div className="py-16 text-center border border-dashed border-border rounded-2xl p-8 space-y-2">
           <Newspaper className="mx-auto text-muted-foreground/40" size={40} />
           <h3 className="text-base font-semibold">Nenhuma notícia encontrada</h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            {busca
-              ? "Tente alterar o termo da busca ou trocar de assunto nas abas acima."
-              : "Clique em 'Atualizar' ou verifique seus assuntos configurados."}
+            {busca ? "Tente alterar o termo da busca." : "Clique em 'Atualizar' para verificar matérias novas."}
           </p>
         </div>
       ) : (
@@ -341,24 +366,22 @@ export default function Noticias() {
           {/* MODO CARROSSEL (🎠)                                                       */}
           {/* ========================================================================= */}
           {modo === "carrossel" && (
-            <div className="space-y-3 relative group">
+            <div className="space-y-3 relative">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Destaques de {CATEGORIAS_NOTICIAS.find((c) => c.id === categoria)?.rotulo}
+                  Destaques: {CATEGORIAS_NOTICIAS.find((c) => c.id === categoria)?.rotulo}
                 </span>
 
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => scrollCarrossel("esq")}
-                    className="rounded-full border border-border bg-card p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                    title="Anterior"
+                    className="rounded-full border border-border bg-card p-1.5 text-muted-foreground hover:bg-accent"
                   >
                     <ChevronLeft size={16} />
                   </button>
                   <button
                     onClick={() => scrollCarrossel("dir")}
-                    className="rounded-full border border-border bg-card p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                    title="Próximo"
+                    className="rounded-full border border-border bg-card p-1.5 text-muted-foreground hover:bg-accent"
                   >
                     <ChevronRight size={16} />
                   </button>
@@ -372,70 +395,81 @@ export default function Noticias() {
                 {noticiasFiltradas.map((item) => (
                   <div
                     key={item.id}
-                    className="snap-start shrink-0 w-[85%] sm:w-[360px] rounded-2xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-lg transition-all flex flex-col justify-between"
+                    className="snap-start shrink-0 w-[88%] sm:w-[380px] rounded-2xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-lg transition-all flex flex-col justify-between group"
                   >
-                    <div className="relative h-48 w-full bg-muted overflow-hidden">
+                    <div
+                      onClick={() => setNoticiaParaLer(item)}
+                      className="relative h-52 w-full bg-muted overflow-hidden cursor-pointer"
+                    >
                       <img
                         src={item.imagemUrl}
                         alt={item.titulo}
-                        className="h-full w-full object-cover hover:scale-105 transition-transform duration-500"
+                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
+                          (e.target as HTMLImageElement).src = obterImagemIlustrativa(item.categoria);
                         }}
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                      
                       <div className="absolute top-2 left-2 rounded-md bg-black/70 backdrop-blur-xs px-2 py-0.5 text-[10px] font-semibold text-white">
                         {item.fonte}
                       </div>
-                    </div>
 
-                    <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                      <div className="space-y-1.5">
-                        <div className="text-[10px] text-muted-foreground font-medium">
+                      <div className="absolute bottom-3 left-3 right-3 text-white space-y-1">
+                        <span className="text-[10px] font-medium text-white/80">
                           {new Date(item.data).toLocaleDateString("pt-BR")}
-                        </div>
-                        <h2 className="font-bold text-sm leading-snug tracking-tight text-foreground line-clamp-2">
+                        </span>
+                        <h2 className="font-bold text-sm leading-snug line-clamp-2 drop-shadow-xs">
                           {item.titulo}
                         </h2>
-                        {item.descricao && (
-                          <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                            {item.descricao}
-                          </p>
-                        )}
                       </div>
+                    </div>
 
-                      <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5">
+                    <div className="p-3.5 space-y-3">
+                      {item.descricao && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                          {item.descricao}
+                        </p>
+                      )}
+
+                      <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-1">
+                        <button
+                          onClick={() => setNoticiaParaLer(item)}
+                          className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                        >
+                          <BookOpen size={14} />
+                          <span>Ler no App</span>
+                        </button>
+
+                        <div className="flex items-center gap-1">
                           <button
-                            onClick={() => handleCurtirESalvar(item)}
-                            disabled={salvandoId === item.id}
-                            className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
-                              item.curtido
-                                ? "bg-rose-500/15 text-rose-600 border border-rose-500/30"
-                                : "border border-border text-muted-foreground hover:bg-accent"
+                            onClick={() => handleCurtir(item)}
+                            className={`p-1.5 rounded-lg border transition-colors ${
+                              item.curtido ? "bg-rose-500/15 border-rose-500/30 text-rose-500" : "border-border text-muted-foreground hover:bg-accent"
                             }`}
+                            title="Curtir"
                           >
-                            <Heart size={14} className={item.curtido ? "fill-rose-500 text-rose-500" : ""} />
-                            <span>{item.curtido ? "Salvo" : "Curtir"}</span>
+                            <Heart size={14} className={item.curtido ? "fill-rose-500" : ""} />
                           </button>
 
                           <button
-                            onClick={() => handleGerarResumoIa(item)}
-                            className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                            onClick={() => handleCriarNota(item)}
+                            disabled={acaoId === item.id}
+                            className="p-1.5 rounded-lg border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                            title="Criar Nota"
                           >
-                            <Sparkles size={14} className="text-amber-500" />
-                            <span>IA</span>
+                            <FileText size={14} />
+                          </button>
+
+                          <button
+                            onClick={() => handleCriarTarefa(item)}
+                            disabled={acaoId === item.id}
+                            className="p-1.5 rounded-lg border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                            title="Criar Tarefa"
+                          >
+                            <CheckSquare size={14} />
                           </button>
                         </div>
-
-                        <a
-                          href={item.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                          title="Abrir matéria"
-                        >
-                          <ExternalLink size={15} />
-                        </a>
                       </div>
                     </div>
                   </div>
@@ -454,13 +488,16 @@ export default function Noticias() {
                   key={item.id}
                   className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl border border-border bg-card shadow-xs hover:border-primary/40 hover:shadow-md transition-all group"
                 >
-                  <div className="relative h-40 sm:h-32 sm:w-44 shrink-0 rounded-xl bg-muted overflow-hidden">
+                  <div
+                    onClick={() => setNoticiaParaLer(item)}
+                    className="relative h-40 sm:h-32 sm:w-44 shrink-0 rounded-xl bg-muted overflow-hidden cursor-pointer"
+                  >
                     <img
                       src={item.imagemUrl}
                       alt={item.titulo}
                       className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
+                        (e.target as HTMLImageElement).src = obterImagemIlustrativa(item.categoria);
                       }}
                     />
                     <div className="absolute top-2 left-2 rounded-md bg-black/70 backdrop-blur-xs px-2 py-0.5 text-[10px] font-semibold text-white">
@@ -469,7 +506,7 @@ export default function Noticias() {
                   </div>
 
                   <div className="flex-1 flex flex-col justify-between space-y-2 min-w-0">
-                    <div className="space-y-1">
+                    <div className="space-y-1 cursor-pointer" onClick={() => setNoticiaParaLer(item)}>
                       <div className="text-[10px] text-muted-foreground font-medium">
                         {new Date(item.data).toLocaleDateString("pt-BR")}
                       </div>
@@ -483,27 +520,20 @@ export default function Noticias() {
                       )}
                     </div>
 
-                    {item.resumoIa && (
-                      <div className="p-2.5 rounded-xl bg-primary/5 border border-primary/15 text-xs text-foreground space-y-1 animate-in fade-in">
-                        <div className="flex items-center gap-1 font-semibold text-primary text-[11px]">
-                          <Sparkles size={12} />
-                          <span>Resumo da IA:</span>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">
-                          {item.resumoIa}
-                        </p>
-                      </div>
-                    )}
+                    <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border/40">
+                      <button
+                        onClick={() => setNoticiaParaLer(item)}
+                        className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                      >
+                        <BookOpen size={14} />
+                        <span>Ler matéria no Klaus</span>
+                      </button>
 
-                    <div className="pt-2 flex items-center justify-between gap-2 border-t border-border/40">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => handleCurtirESalvar(item)}
-                          disabled={salvandoId === item.id}
-                          className={`flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                            item.curtido
-                              ? "bg-rose-500/15 text-rose-600 border border-rose-500/30"
-                              : "border border-border text-muted-foreground hover:bg-accent"
+                          onClick={() => handleCurtir(item)}
+                          className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                            item.curtido ? "bg-rose-500/15 text-rose-600 border border-rose-500/30" : "border border-border text-muted-foreground hover:bg-accent"
                           }`}
                         >
                           <Heart size={14} className={item.curtido ? "fill-rose-500 text-rose-500" : ""} />
@@ -511,23 +541,35 @@ export default function Noticias() {
                         </button>
 
                         <button
-                          onClick={() => handleGerarResumoIa(item)}
-                          className="flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                          onClick={() => handleCriarNota(item)}
+                          disabled={acaoId === item.id}
+                          className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                          title="Criar Nota"
                         >
-                          <Sparkles size={14} className="text-amber-500" />
-                          <span>Resumir com IA</span>
+                          <FileText size={14} />
+                          <span className="hidden sm:inline">Criar Nota</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleSalvarReferencia(item)}
+                          disabled={acaoId === item.id}
+                          className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                          title="Salvar em Referências"
+                        >
+                          <Bookmark size={14} />
+                          <span className="hidden sm:inline">Referência</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleCriarTarefa(item)}
+                          disabled={acaoId === item.id}
+                          className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                          title="Criar Tarefa"
+                        >
+                          <CheckSquare size={14} />
+                          <span className="hidden sm:inline">Tarefa</span>
                         </button>
                       </div>
-
-                      <a
-                        href={item.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                      >
-                        <span>Abrir</span>
-                        <ExternalLink size={14} />
-                      </a>
                     </div>
                   </div>
                 </article>
@@ -545,13 +587,16 @@ export default function Noticias() {
                   key={item.id}
                   className="flex flex-col justify-between rounded-2xl border border-border bg-card overflow-hidden shadow-xs hover:border-primary/40 hover:shadow-md transition-all group"
                 >
-                  <div className="relative h-44 w-full bg-muted overflow-hidden">
+                  <div
+                    onClick={() => setNoticiaParaLer(item)}
+                    className="relative h-44 w-full bg-muted overflow-hidden cursor-pointer"
+                  >
                     <img
                       src={item.imagemUrl}
                       alt={item.titulo}
                       className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
+                        (e.target as HTMLImageElement).src = obterImagemIlustrativa(item.categoria);
                       }}
                     />
                     <div className="absolute top-2 left-2 rounded-md bg-black/70 backdrop-blur-xs px-2 py-0.5 text-[10px] font-semibold text-white">
@@ -560,7 +605,7 @@ export default function Noticias() {
                   </div>
 
                   <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 cursor-pointer" onClick={() => setNoticiaParaLer(item)}>
                       <div className="text-[10px] text-muted-foreground font-medium">
                         {new Date(item.data).toLocaleDateString("pt-BR")}
                       </div>
@@ -574,38 +619,42 @@ export default function Noticias() {
                       )}
                     </div>
 
-                    <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-2">
+                    <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-1">
+                      <button
+                        onClick={() => setNoticiaParaLer(item)}
+                        className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                      >
+                        <BookOpen size={14} />
+                        <span>Ler</span>
+                      </button>
+
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => handleCurtirESalvar(item)}
-                          disabled={salvandoId === item.id}
-                          className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
-                            item.curtido
-                              ? "bg-rose-500/15 text-rose-600 border border-rose-500/30"
-                              : "border border-border text-muted-foreground hover:bg-accent"
+                          onClick={() => handleCurtir(item)}
+                          className={`p-1.5 rounded-lg border transition-colors ${
+                            item.curtido ? "bg-rose-500/15 border-rose-500/30 text-rose-500" : "border-border text-muted-foreground hover:bg-accent"
                           }`}
+                          title="Curtir"
                         >
-                          <Heart size={14} className={item.curtido ? "fill-rose-500 text-rose-500" : ""} />
-                          <span>{item.curtido ? "Salvo" : "Curtir"}</span>
+                          <Heart size={14} className={item.curtido ? "fill-rose-500" : ""} />
                         </button>
 
                         <button
-                          onClick={() => handleGerarResumoIa(item)}
-                          className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                          onClick={() => handleCriarNota(item)}
+                          className="p-1.5 rounded-lg border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                          title="Criar Nota"
                         >
-                          <Sparkles size={14} className="text-amber-500" />
-                          <span>IA</span>
+                          <FileText size={14} />
+                        </button>
+
+                        <button
+                          onClick={() => handleCriarTarefa(item)}
+                          className="p-1.5 rounded-lg border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                          title="Criar Tarefa"
+                        >
+                          <CheckSquare size={14} />
                         </button>
                       </div>
-
-                      <a
-                        href={item.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                      >
-                        <ExternalLink size={15} />
-                      </a>
                     </div>
                   </div>
                 </article>
@@ -616,8 +665,131 @@ export default function Noticias() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL DE PERSONALIZAÇÃO DOS ASSUNTOS                                      */}
+      {/* LEITOR DE NOTÍCIA INTEGRADO (IN-APP READER MODAL)                        */}
       {/* ========================================================================= */}
+      <Modal
+        aberto={Boolean(noticiaParaLer)}
+        aoFechar={() => {
+          setNoticiaParaLer(null);
+          setResumoIa("");
+        }}
+        titulo="📖 Leitura no Klaus"
+      >
+        {noticiaParaLer && (
+          <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+            <div className="relative h-56 w-full rounded-xl overflow-hidden bg-muted">
+              <img
+                src={noticiaParaLer.imagemUrl}
+                alt={noticiaParaLer.titulo}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = obterImagemIlustrativa(noticiaParaLer.categoria);
+                }}
+              />
+              <div className="absolute top-3 left-3 rounded-md bg-black/75 backdrop-blur-xs px-2.5 py-1 text-xs font-semibold text-white">
+                {noticiaParaLer.fonte}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="uppercase font-bold tracking-wider text-primary">{noticiaParaLer.categoria}</span>
+                <span>{new Date(noticiaParaLer.data).toLocaleDateString("pt-BR")}</span>
+              </div>
+              <h2 className="text-xl font-bold tracking-tight text-foreground leading-snug">
+                {noticiaParaLer.titulo}
+              </h2>
+            </div>
+
+            {/* Ações Diretas com o Segundo Cérebro */}
+            <div className="p-3 rounded-xl bg-card border border-border flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => handleCriarNota(noticiaParaLer)}
+                  disabled={Boolean(acaoId)}
+                  className="flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
+                >
+                  <FileText size={14} />
+                  <span>Criar Nota</span>
+                </button>
+
+                <button
+                  onClick={() => handleSalvarReferencia(noticiaParaLer)}
+                  disabled={Boolean(acaoId)}
+                  className="flex items-center gap-1.5 rounded-lg bg-accent border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-accent/80 transition-colors"
+                >
+                  <Bookmark size={14} />
+                  <span>Salvar Referência</span>
+                </button>
+
+                <button
+                  onClick={() => handleCriarTarefa(noticiaParaLer)}
+                  disabled={Boolean(acaoId)}
+                  className="flex items-center gap-1.5 rounded-lg bg-accent border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-accent/80 transition-colors"
+                >
+                  <CheckSquare size={14} />
+                  <span>Criar Tarefa</span>
+                </button>
+              </div>
+
+              <button
+                onClick={() => handleCurtir(noticiaParaLer)}
+                className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  noticiaParaLer.curtido ? "bg-rose-500/15 text-rose-600 border border-rose-500/30" : "border border-border text-muted-foreground hover:bg-accent"
+                }`}
+              >
+                <Heart size={14} className={noticiaParaLer.curtido ? "fill-rose-500 text-rose-500" : ""} />
+                <span>{noticiaParaLer.curtido ? "Curtido" : "Curtir"}</span>
+              </button>
+            </div>
+
+            {/* Resumo da IA no Leitor */}
+            {resumoIa ? (
+              <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/20 text-xs text-foreground space-y-1.5 animate-in fade-in">
+                <div className="flex items-center gap-1 font-semibold text-primary">
+                  <Sparkles size={14} />
+                  <span>Resumo da IA Gemini:</span>
+                </div>
+                <div className="whitespace-pre-line leading-relaxed text-muted-foreground">
+                  {resumoIa}
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => handleGerarResumoIa(noticiaParaLer)}
+                disabled={gerandoResumo}
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-semibold hover:bg-amber-500/20 transition-colors"
+              >
+                <Sparkles size={15} />
+                <span>{gerandoResumo ? "Sintetizando com IA..." : "Gerar Resumo Inteligente com Gemini"}</span>
+              </button>
+            )}
+
+            {/* Texto Completo / Conteúdo */}
+            <div className="p-4 rounded-xl bg-accent/30 border border-border text-sm text-foreground leading-relaxed whitespace-pre-line space-y-3">
+              <p>{noticiaParaLer.conteudoCompleto || noticiaParaLer.descricao}</p>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-border">
+              <a
+                href={noticiaParaLer.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+              >
+                <span>Abrir portal original ({noticiaParaLer.fonte})</span>
+                <ExternalLink size={13} />
+              </a>
+
+              <Botao onClick={() => setNoticiaParaLer(null)}>
+                Fechar Leitor
+              </Botao>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* MODAL DE PERSONALIZAÇÃO DOS ASSUNTOS */}
       <Modal
         aberto={modalAssuntosAberta}
         aoFechar={() => setModalAssuntosAberta(false)}
@@ -625,7 +797,7 @@ export default function Noticias() {
       >
         <div className="space-y-4">
           <p className="text-xs text-muted-foreground">
-            Escolha quais tópicos de notícias você quer visualizar nas suas abas principais.
+            Marque os tópicos que deseja visualizar no seu feed pessoal.
           </p>
 
           <div className="space-y-2">
@@ -636,9 +808,7 @@ export default function Noticias() {
                   key={cat.id}
                   onClick={() => handleToggleCategoriaAtiva(cat.id)}
                   className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                    ativa
-                      ? "bg-primary/5 border-primary/40 text-foreground"
-                      : "bg-card border-border text-muted-foreground hover:bg-accent"
+                    ativa ? "bg-primary/5 border-primary/40 text-foreground" : "bg-card border-border text-muted-foreground hover:bg-accent"
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
@@ -675,55 +845,6 @@ export default function Noticias() {
             </Botao>
           </div>
         </div>
-      </Modal>
-
-      {/* ========================================================================= */}
-      {/* MODAL DE RESUMO DA IA                                                     */}
-      {/* ========================================================================= */}
-      <Modal
-        aberto={Boolean(noticiaParaResumir)}
-        aoFechar={() => setNoticiaParaResumir(null)}
-        titulo="✨ Resumo em 3 Pontos pela IA"
-      >
-        {noticiaParaResumir && (
-          <div className="space-y-4">
-            <div>
-              <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                {noticiaParaResumir.fonte}
-              </span>
-              <h3 className="font-semibold text-sm text-foreground mt-1">
-                {noticiaParaResumir.titulo}
-              </h3>
-            </div>
-
-            {gerandoResumo ? (
-              <div className="py-8 text-center space-y-2">
-                <Carregando />
-                <p className="text-xs text-muted-foreground">Sintetizando a matéria com a IA...</p>
-              </div>
-            ) : (
-              <div className="p-3.5 rounded-xl bg-accent/40 border border-border text-xs text-foreground whitespace-pre-line leading-relaxed">
-                {resumoIaModal}
-              </div>
-            )}
-
-            <div className="flex justify-between items-center pt-2">
-              <a
-                href={noticiaParaResumir.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-              >
-                <span>Ver matéria original</span>
-                <ExternalLink size={12} />
-              </a>
-
-              <Botao onClick={() => setNoticiaParaResumir(null)}>
-                Fechar
-              </Botao>
-            </div>
-          </div>
-        )}
       </Modal>
     </div>
   );
