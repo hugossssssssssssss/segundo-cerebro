@@ -4,19 +4,23 @@ import {
   obterIdsCurtidos,
   alternarCurtidaNoticia,
   limparTexto,
+  calcularTempoLeitura,
   obterModoExibicao,
   salvarModoExibicao,
   obterCategoriasAtivas,
   salvarCategoriasAtivas,
+  obterFeedsCustomizados,
+  adicionarFeedCustomizado,
+  removerFeedCustomizado,
   obterImagemIlustrativa,
 } from "./noticias";
 
-describe("Módulo de Notícias (Integrações e Leitor)", () => {
+describe("Módulo de Notícias & Revista (Reconstruído)", () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it("deve conter as 5 categorias padrão incluindo futebol", () => {
+  it("deve conter as categorias padrão incluindo futebol", () => {
     const ids = CATEGORIAS_NOTICIAS.map((c) => c.id);
     expect(ids).toContain("futebol");
     expect(ids).toContain("design");
@@ -25,12 +29,15 @@ describe("Módulo de Notícias (Integrações e Leitor)", () => {
     expect(ids).toContain("curiosidades");
   });
 
-  it("deve gerenciar preferências de modo de exibição", () => {
-    expect(obterModoExibicao()).toBe("feed");
-    salvarModoExibicao("carrossel");
-    expect(obterModoExibicao()).toBe("carrossel");
-    salvarModoExibicao("posts");
-    expect(obterModoExibicao()).toBe("posts");
+  it("deve calcular o tempo estimado de leitura", () => {
+    const texto200Palavras = new Array(200).fill("palavra").join(" ");
+    expect(calcularTempoLeitura(texto200Palavras)).toBeGreaterThanOrEqual(1);
+  });
+
+  it("deve gerenciar modo de exibição revista/cards/feed", () => {
+    expect(obterModoExibicao()).toBe("revista");
+    salvarModoExibicao("cards");
+    expect(obterModoExibicao()).toBe("cards");
   });
 
   it("deve gerenciar categorias ativas configuradas pelo usuário", () => {
@@ -39,27 +46,37 @@ describe("Módulo de Notícias (Integrações e Leitor)", () => {
     expect(obterCategoriasAtivas()).toEqual(["futebol", "tech"]);
   });
 
-  it("deve gerar imagem de fallback ilustrativa segura", () => {
-    const imgFutebol = obterImagemIlustrativa("futebol");
-    expect(imgFutebol).toContain("images.unsplash.com");
+  it("deve retornar imagem ilustrativa para fallbacks", () => {
+    const img = obterImagemIlustrativa("futebol");
+    expect(img).toContain("images.unsplash.com");
 
-    const imgValida = obterImagemIlustrativa("design", "https://site.com/foto.jpg");
-    expect(imgValida).toBe("https://site.com/foto.jpg");
+    const imgCustom = obterImagemIlustrativa("design", "https://exemplo.com/foto.jpg");
+    expect(imgCustom).toBe("https://exemplo.com/foto.jpg");
   });
 
-  it("deve alternar curtidas no localStorage", () => {
+  it("deve gerenciar curtidas e leituras no localStorage", () => {
     expect(obterIdsCurtidos()).toEqual([]);
-    const c1 = alternarCurtidaNoticia("n1");
+    const c1 = alternarCurtidaNoticia("item-1");
     expect(c1).toBe(true);
-    expect(obterIdsCurtidos()).toEqual(["n1"]);
+    expect(obterIdsCurtidos()).toEqual(["item-1"]);
 
-    const c2 = alternarCurtidaNoticia("n1");
+    const c2 = alternarCurtidaNoticia("item-1");
     expect(c2).toBe(false);
     expect(obterIdsCurtidos()).toEqual([]);
   });
 
-  it("deve limpar código HTML de descrições", () => {
-    const limpo = limparTexto("<div>Matéria com <a href='#'>link</a> &amp; imagem</div>");
-    expect(limpo).toBe("Matéria com link & imagem");
+  it("deve gerenciar inclusão e remoção de feeds customizados", () => {
+    expect(obterFeedsCustomizados()).toEqual([]);
+    const adic = adicionarFeedCustomizado("Meu Blog", "https://meublog.com/feed.xml", "design");
+    expect(adic.length).toBe(1);
+    expect(adic[0].nome).toBe("Meu Blog");
+
+    const rem = removerFeedCustomizado(adic[0].id);
+    expect(rem.length).toBe(0);
+  });
+
+  it("deve limpar ruídos HTML de RSS", () => {
+    const limpo = limparTexto("<![CDATA[<p>Notícia com <a href='#'>link</a> &amp; imagem</p>]]>");
+    expect(limpo).toBe("Notícia com link & imagem");
   });
 });
