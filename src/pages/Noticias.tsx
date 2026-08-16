@@ -735,7 +735,7 @@ export default function Noticias() {
         titulo="📖 Leitor de Notícias do Klaus"
       >
         {noticiaParaLer && (
-          <div className="space-y-5 max-h-[78vh] overflow-y-auto pr-1">
+          <div className="space-y-5 max-h-[78dvh] overflow-y-auto pr-1">
             <div className="relative h-64 w-full rounded-2xl overflow-hidden bg-muted">
               <img
                 src={noticiaParaLer.imagemUrl}
@@ -865,7 +865,7 @@ export default function Noticias() {
         aoFechar={() => setModalAssuntosAberta(false)}
         titulo="⚙️ Personalizar Assuntos & Feeds"
       >
-        <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
+        <div className="space-y-5 max-h-[75dvh] overflow-y-auto pr-1">
           <div className="space-y-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Assuntos Principais</h3>
             <div className="space-y-2">

@@ -20,6 +20,7 @@ import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
 import {
   compilarItensInbox,
+  compilarNotasInativas,
   carregarEstadoInbox,
   gravarEstadoInbox,
   enviarNotificacaoTelegram,
@@ -206,6 +207,18 @@ export default function Inbox() {
 
         await salvarTexto(docAlvo.caminho, novoTexto, docAlvo.sha, `adiar lembrete: ${item.titulo}`);
       }
+    } else if (item.caminhoOrigem && item.caminhoOrigem.startsWith("tarefas/")) {
+      const docAlvo = acervo.find((i) => i.caminho === item.caminhoOrigem);
+      if (docAlvo && docAlvo.texto) {
+        const doc = lerMarkdown(docAlvo.texto);
+        const novaDataPrazo = novaDataHora.split(" ")[0];
+        const novoTexto = escreverMarkdown({
+          dados: { ...doc.dados, prazo: novaDataPrazo },
+          corpo: doc.corpo,
+        });
+
+        await salvarTexto(docAlvo.caminho, novoTexto, docAlvo.sha, `adiar prazo de tarefa: ${item.titulo}`);
+      }
     } else {
       // Para tarefas ou itens sem tag, atualiza o mapa de estado com visto
       const novoMapa: MapaEstadoInbox = {
@@ -330,8 +343,21 @@ export default function Inbox() {
     carregar();
   };
 
+  const notasInativas = useMemo(() => {
+    return compilarNotasInativas(acervo, mapaEstado);
+  }, [acervo, mapaEstado]);
+
   // Filtragem dos itens exibidos
   const itensExibidos = useMemo(() => {
+    if (aba === "inativas") {
+      return notasInativas.filter((item) => {
+        if (tagSelecionada && (!item.tags || !item.tags.includes(tagSelecionada))) {
+          return false;
+        }
+        return true;
+      });
+    }
+
     return itensCompilados.filter((item) => {
       // Filtro por Tag (Ideia 6)
       if (tagSelecionada && (!item.tags || !item.tags.includes(tagSelecionada))) {
@@ -341,17 +367,16 @@ export default function Inbox() {
       if (aba === "nao_vistos") return !item.visto && item.tipo !== "nota_inativa";
       if (aba === "lembretes") return item.tipo === "lembrete" && !item.visto;
       if (aba === "atrasadas") return item.tipo === "tarefa_atrasada" && !item.visto;
-      if (aba === "inativas") return item.tipo === "nota_inativa";
       if (aba === "todas") return true;
       if (aba === "arquivados") return item.visto;
       return true;
     });
-  }, [itensCompilados, aba, tagSelecionada]);
+  }, [itensCompilados, notasInativas, aba, tagSelecionada]);
 
   const contagemNaoVistos = itensCompilados.filter((i) => !i.visto && i.tipo !== "nota_inativa").length;
   const contagemAtrasadas = itensCompilados.filter((i) => i.tipo === "tarefa_atrasada" && !i.visto).length;
   const contagemLembretes = itensCompilados.filter((i) => i.tipo === "lembrete" && !i.visto).length;
-  const contagemInativas = itensCompilados.filter((i) => i.tipo === "nota_inativa").length;
+  const contagemInativas = notasInativas.length;
 
   const navegarParaOrigem = (caminho: string) => {
     let pasta = "notas";

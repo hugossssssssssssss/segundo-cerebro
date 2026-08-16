@@ -42,18 +42,37 @@ function cabecalhos(cfg: Settings): HeadersInit {
  * sem distinguir "você está sem internet" de "seu token tem uma quebra de
  * linha". Aqui a diferença é explicada.
  */
-async function buscar(url: string, init?: RequestInit): Promise<Response> {
-  try {
-    return await fetch(url, init);
-  } catch (e) {
-    const detalhe = e instanceof Error ? e.message : String(e);
-    throw new ErroGitHub(
-      navigator.onLine
-        ? `Não consegui falar com o GitHub. Se você acabou de colar o token, confira se não veio com espaço ou quebra de linha junto. (${detalhe})`
-        : "Você está sem internet. O app precisa de conexão para ler e gravar seus arquivos.",
-      0,
-    );
+async function buscar(url: string, init?: RequestInit, maxRetries = 2): Promise<Response> {
+  let tentativa = 0;
+  while (tentativa <= maxRetries) {
+    try {
+      const res = await fetch(url, init);
+      if ((res.status === 429 || res.status === 503) && tentativa < maxRetries) {
+        const retryAfterHeader = res.headers.get("retry-after");
+        const esperaMs = retryAfterHeader
+          ? parseInt(retryAfterHeader, 10) * 1000
+          : Math.pow(2, tentativa) * 1000;
+        await new Promise((r) => setTimeout(r, esperaMs));
+        tentativa++;
+        continue;
+      }
+      return res;
+    } catch (e) {
+      if (tentativa < maxRetries && navigator.onLine) {
+        await new Promise((r) => setTimeout(r, Math.pow(2, tentativa) * 1000));
+        tentativa++;
+        continue;
+      }
+      const detalhe = e instanceof Error ? e.message : String(e);
+      throw new ErroGitHub(
+        navigator.onLine
+          ? `Não consegui falar com o GitHub. Se você acabou de colar o token, confira se não veio com espaço ou quebra de linha junto. (${detalhe})`
+          : "Você está sem internet. O app precisa de conexão para ler e gravar seus arquivos.",
+        0,
+      );
+    }
   }
+  return fetch(url, init);
 }
 
 function raiz(cfg: Settings): string {

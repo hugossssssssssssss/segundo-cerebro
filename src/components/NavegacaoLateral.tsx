@@ -56,13 +56,12 @@ export function NavegacaoLateral({
     return () => window.removeEventListener(EVENTO_MENU_ATUALIZADO, atualizarMenu);
   }, [atualizarMenu]);
 
-  if (colapsada) return null;
-
   return (
     <>
       <aside
         className={cn(
-          "flex flex-col border-r border-border bg-card transition-all duration-300 ease-in-out select-none shrink-0 w-60",
+          "flex flex-col border-r border-border bg-card transition-all duration-300 ease-in-out select-none shrink-0",
+          colapsada ? "w-16" : "w-60",
           className
         )}
       >

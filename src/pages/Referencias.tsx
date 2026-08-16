@@ -362,14 +362,14 @@ export default function Referencias() {
                       }}
                     />
                   )}
-                  <div className="absolute inset-0 bg-black/30 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex flex-col justify-between p-4 pointer-events-none">
+                  <div className="absolute inset-0 bg-black/30 opacity-60 sm:opacity-0 transition-opacity duration-300 sm:group-hover:opacity-100 flex flex-col justify-between p-3 sm:p-4">
                     <div className="flex justify-end">
-                      <Button variant="secondary" size="sm" className="rounded-full h-8 font-semibold opacity-0 translate-y-[-10px] transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+                      <Button variant="secondary" size="sm" className="rounded-full h-8 font-semibold opacity-100 sm:opacity-0 sm:translate-y-[-10px] transition-all duration-300 sm:group-hover:opacity-100 sm:group-hover:translate-y-0">
                         Abrir
                       </Button>
                     </div>
                     {r.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 opacity-0 translate-y-[10px] transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+                      <div className="flex flex-wrap gap-1.5 opacity-100 sm:opacity-0 sm:translate-y-[10px] transition-all duration-300 sm:group-hover:opacity-100 sm:group-hover:translate-y-0">
                         {r.tags.slice(0, 3).map((t) => (
                           <Badge variant="secondary" className="bg-background/90 text-foreground text-[10px] rounded-full border-none" key={t}>{t}</Badge>
                         ))}

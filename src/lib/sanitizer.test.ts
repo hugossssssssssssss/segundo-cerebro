@@ -36,4 +36,12 @@ describe("sanitizarHTML", () => {
     expect(resultado).not.toContain("<iframe");
     expect(resultado).not.toContain("<embed");
   });
+
+  it("remove vetores mXSS e eventos avançados (<svg onload>, <details ontoggle>)", () => {
+    const input = '<svg onload=alert(1)><details ontoggle=alert(2)><summary>Click</summary></details></svg>';
+    const resultado = sanitizarHTML(input);
+    expect(resultado).not.toContain("onload");
+    expect(resultado).not.toContain("ontoggle");
+    expect(resultado).not.toContain("alert");
+  });
 });

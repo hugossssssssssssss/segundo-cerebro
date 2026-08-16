@@ -100,7 +100,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
 
   const [colapsada, setColapsada] = useState(() => {
     const salvo = localStorage.getItem("sidebar-colapsada");
-    return salvo ? salvo === "true" : true;
+    return salvo ? salvo === "true" : false;
   });
 
   useEffect(() => {

@@ -1104,7 +1104,7 @@ export default function Home() {
           onClick={() => setModalAdicionarAberto(false)}
         >
           <div
-            className="flex max-h-[80vh] w-full max-w-lg flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
+            className="flex max-h-[80dvh] w-full max-w-lg flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border p-4">

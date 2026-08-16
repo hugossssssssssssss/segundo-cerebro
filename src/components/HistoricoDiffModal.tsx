@@ -17,6 +17,7 @@ export function HistoricoDiffModal({
   aoFechar,
   caminho,
   conteudoAtual,
+  aoRestaurar,
 }: {
   aberto: boolean;
   aoFechar: () => void;
@@ -28,6 +29,7 @@ export function HistoricoDiffModal({
    * frontmatter. Sem este valor, o componente busca a versão salva no GitHub.
    */
   conteudoAtual?: string;
+  aoRestaurar?: (textoHistorico: string) => void;
 }) {
   const [commits, setCommits] = useState<CommitItem[]>([]);
   const [carregando, setCarregando] = useState(false);
@@ -141,15 +143,31 @@ export function HistoricoDiffModal({
             {carregandoDiff ? (
               <Carregando texto="Comparando versões…" />
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border text-xs max-h-96 bg-background">
-                <ReactDiffViewer
-                  oldValue={conteudoAntigo}
-                  newValue={textoAtual}
-                  splitView={false}
-                  useDarkTheme={ehModoEscuro}
-                  leftTitle="Versão Selecionada (Anterior)"
-                  rightTitle="Versão Atual no Editor"
-                />
+              <div className="space-y-3">
+                <div className="overflow-x-auto rounded-lg border border-border text-xs max-h-96 bg-background">
+                  <ReactDiffViewer
+                    oldValue={conteudoAntigo}
+                    newValue={textoAtual}
+                    splitView={false}
+                    useDarkTheme={ehModoEscuro}
+                    leftTitle="Versão Selecionada (Anterior)"
+                    rightTitle="Versão Atual no Editor"
+                  />
+                </div>
+                {aoRestaurar && conteudoAntigo && (
+                  <div className="flex justify-end pt-2">
+                    <Botao
+                      variante="primario"
+                      tamanho="pequeno"
+                      onClick={() => {
+                        aoRestaurar(conteudoAntigo);
+                        aoFechar();
+                      }}
+                    >
+                      Restaurar esta versão para o editor
+                    </Botao>
+                  </div>
+                )}
               </div>
             )}
           </>

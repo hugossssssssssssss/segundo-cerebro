@@ -51,6 +51,7 @@ export function Busca({
   const [acervo, setAcervo] = useState<ItemRepo[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
+  const [itemFocadoIndex, setItemFocadoIndex] = useState(0);
   const entrada = useRef<HTMLInputElement>(null);
 
   const aoSelecionarFerramenta = (f: FerramentaApp) => {
@@ -68,6 +69,7 @@ export function Busca({
     setTermo("");
     setErro("");
     setCategoria("tudo");
+    setItemFocadoIndex(0);
     setFavoritos(lerFavoritosBusca());
     entrada.current?.focus();
 
@@ -88,20 +90,16 @@ export function Busca({
     };
   }, [aberta]);
 
-  useEffect(() => {
-    if (!aberta) return;
-    const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === "Escape") aoFechar();
-    };
-    document.addEventListener("keydown", aoTeclar);
-    return () => document.removeEventListener("keydown", aoTeclar);
-  }, [aberta, aoFechar]);
+  // Itens e ferramentas favoritados para exibição inicial
+  const itensFavoritados = useMemo(() => {
+    if (favoritos.length === 0) return { ferramentas: [], repoItens: [] };
 
-  const toggleFavorito = (idOuCaminho: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const novos = alternarFavoritoBusca(idOuCaminho);
-    setFavoritos(novos);
-  };
+    const favSet = new Set(favoritos);
+    const favFerramentas = LISTA_FERRAMENTAS_APP.filter((f) => favSet.has(f.id));
+    const favRepoItens = acervo.filter((item) => favSet.has(item.caminho));
+
+    return { ferramentas: favFerramentas, repoItens: favRepoItens };
+  }, [favoritos, acervo]);
 
   // Ferramentas encontradas pela busca
   const ferramentasResultado = useMemo(
@@ -127,16 +125,65 @@ export function Busca({
 
   const totalResultados = ferramentasResultado.length + resultadosFiltrados.length;
 
-  // Itens e ferramentas favoritados para exibição inicial
-  const itensFavoritados = useMemo(() => {
-    if (favoritos.length === 0) return { ferramentas: [], repoItens: [] };
+  const flatItens = useMemo(() => {
+    if (termo.trim().length >= 2) {
+      const items: Array<{ id: string; tipo: "ferramenta" | "item"; f?: FerramentaApp; r?: any }> = [];
+      ferramentasResultado.forEach((f) => items.push({ id: f.id, tipo: "ferramenta", f }));
+      grupos.forEach(([, lista]) => {
+        lista.forEach((r) => items.push({ id: r.caminho, tipo: "item", r }));
+      });
+      return items;
+    }
+    const items: Array<{ id: string; tipo: "ferramenta" | "item"; f?: FerramentaApp; r?: any }> = [];
+    itensFavoritados.ferramentas.forEach((f) => items.push({ id: f.id, tipo: "ferramenta", f }));
+    itensFavoritados.repoItens.forEach((item) => items.push({ id: item.caminho, tipo: "item", r: { caminho: item.caminho, tipo: item.caminho.split("/")[0] } }));
+    LISTA_FERRAMENTAS_APP.slice(0, 6).forEach((f) => {
+      if (!items.some((i) => i.id === f.id)) items.push({ id: f.id, tipo: "ferramenta", f });
+    });
+    return items;
+  }, [termo, ferramentasResultado, grupos, itensFavoritados]);
 
-    const favSet = new Set(favoritos);
-    const favFerramentas = LISTA_FERRAMENTAS_APP.filter((f) => favSet.has(f.id));
-    const favRepoItens = acervo.filter((item) => favSet.has(item.caminho));
+  const toggleFavorito = (idOuCaminho: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const novos = alternarFavoritoBusca(idOuCaminho);
+    setFavoritos(novos);
+  };
 
-    return { ferramentas: favFerramentas, repoItens: favRepoItens };
-  }, [favoritos, acervo]);
+  useEffect(() => {
+    if (!aberta) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        aoFechar();
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setItemFocadoIndex((prev) => (flatItens.length === 0 ? 0 : (prev + 1) % flatItens.length));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setItemFocadoIndex((prev) => (flatItens.length === 0 ? 0 : (prev - 1 + flatItens.length) % flatItens.length));
+      } else if (e.key === "Enter") {
+        if (flatItens.length > 0 && itemFocadoIndex >= 0 && itemFocadoIndex < flatItens.length) {
+          e.preventDefault();
+          const selecionado = flatItens[itemFocadoIndex];
+          if (selecionado.tipo === "ferramenta" && selecionado.f) {
+            aoSelecionarFerramenta(selecionado.f);
+          } else if (selecionado.r) {
+            const pasta = selecionado.r.caminho.split("/")[0];
+            let rota = `/notas?abrir=${encodeURIComponent(selecionado.r.caminho)}`;
+            if (pasta === "tarefas") rota = `/tarefas?abrir=${encodeURIComponent(selecionado.r.caminho)}`;
+            if (pasta === "referencias") rota = `/referencias?abrir=${encodeURIComponent(selecionado.r.caminho)}`;
+            if (pasta === "lousas") rota = `/lousas?abrir=${encodeURIComponent(selecionado.r.caminho)}`;
+            if (selecionado.r.caminho.startsWith("pdi")) rota = `/pdi?abrir=${encodeURIComponent(selecionado.r.caminho)}`;
+            navegar(rota);
+            aoFechar();
+          }
+        }
+      }
+    };
+    document.addEventListener("keydown", aoTeclar);
+    return () => document.removeEventListener("keydown", aoTeclar);
+  }, [aberta, aoFechar, flatItens, itemFocadoIndex, navegar]);
+
+
 
   if (!aberta) return null;
 

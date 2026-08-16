@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Plus, Search, Tag, FileText } from "lucide-react";
+import { MODELOS_PADRAO, type TemplateItem } from "@/lib/templates";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
@@ -185,15 +186,15 @@ export default function Notas() {
     window.history.replaceState(null, "", `?abrir=${encodeURIComponent(nota.caminho)}`);
   }
 
-  function nova() {
+  function nova(template?: TemplateItem) {
     const notaVazia: NotaAberta = {
-      bruto: {},
+      bruto: template ? { ...template.frontmatter } : {},
       caminho: "",
       sha: "",
-      titulo: "",
-      tipo: "nota",
-      tags: [],
-      corpo: "",
+      titulo: template ? template.titulo : "",
+      tipo: (template?.frontmatter?.tipo as any) || "nota",
+      tags: template?.frontmatter?.tags || [],
+      corpo: template ? template.corpoPadrao : "",
       original: { titulo: "", corpo: "", bruto: {} },
     };
     setAberta(notaVazia);
@@ -249,10 +250,26 @@ export default function Notas() {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Notas</h1>
-        <Botao onClick={nova}>
-          <Plus size={16} />
-          Nova
-        </Botao>
+        <div className="flex items-center gap-2">
+          <select
+            onChange={(e) => {
+              const tmpl = MODELOS_PADRAO.find((m) => m.id === e.target.value);
+              if (tmpl) nova(tmpl);
+              e.target.value = "";
+            }}
+            defaultValue=""
+            className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
+          >
+            <option value="" disabled>Usar Modelo...</option>
+            {MODELOS_PADRAO.map((m) => (
+              <option key={m.id} value={m.id}>{m.titulo}</option>
+            ))}
+          </select>
+          <Botao onClick={() => nova()}>
+            <Plus size={16} />
+            Nova
+          </Botao>
+        </div>
       </div>
 
       {arquivos.length > 0 && (
@@ -286,7 +303,7 @@ export default function Notas() {
         <Vazio
           titulo="Nenhuma nota ainda"
           descricao="Crie a primeira. Ela vira um arquivo .md no seu repositório — que você pode abrir em qualquer lugar, hoje ou daqui a dez anos."
-          acao={<Botao onClick={nova}>Criar primeira nota</Botao>}
+          acao={<Botao onClick={() => nova()}>Criar primeira nota</Botao>}
         />
       ) : visiveis.length === 0 ? (
         <Vazio titulo="Nada encontrado" descricao={`Nenhuma nota com "${busca}".`} />

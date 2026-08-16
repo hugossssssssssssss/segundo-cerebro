@@ -871,7 +871,7 @@ export default function Processos() {
       {/* MODALIDADE 1: VISÃO QUADRO KANBAN */}
       {modoVisao === "kanban" && processoAtivo && (
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={aoArrastarInicio} onDragEnd={aoArrastarFim}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-start">
+          <div className="flex sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-start overflow-x-auto pb-4">
             {processoAtivo.etapas.map((etapa) => {
               const cardsDaEtapa = cardsFiltrados.filter((c) => c.etapaId === etapa.id);
               return (
@@ -970,7 +970,7 @@ export default function Processos() {
           onClick={() => setCardEmEdicao(null)}
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-3xl flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
+            className="flex max-h-[90dvh] w-full max-w-3xl flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header do Card com Botão de Fechar */}
@@ -1157,6 +1157,63 @@ export default function Processos() {
                       {cardEmEdicao.urgente ? "⚡ Urgente Marcado" : "Marcar como Urgente"}
                     </button>
                   </div>
+
+                  {/* Campos CRM & Negócios */}
+                  <div className="space-y-3 pt-2 border-t border-border/60">
+                    <h4 className="font-bold text-[11px] text-muted-foreground uppercase tracking-wider">Dados do Negócio</h4>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground font-semibold block mb-1">Cliente / Prospect</label>
+                      <input
+                        type="text"
+                        value={cardEmEdicao.cliente || ""}
+                        onChange={(e) => salvarCard({ ...cardEmEdicao, cliente: e.target.value })}
+                        placeholder="Nome do cliente..."
+                        className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground font-semibold block mb-1">Empresa</label>
+                      <input
+                        type="text"
+                        value={cardEmEdicao.empresa || ""}
+                        onChange={(e) => salvarCard({ ...cardEmEdicao, empresa: e.target.value })}
+                        placeholder="Nome da empresa..."
+                        className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-muted-foreground font-semibold block mb-1">Telefone</label>
+                        <input
+                          type="text"
+                          value={cardEmEdicao.telefone || ""}
+                          onChange={(e) => salvarCard({ ...cardEmEdicao, telefone: e.target.value })}
+                          placeholder="(00) 00000-0000"
+                          className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground font-semibold block mb-1">Valor (R$)</label>
+                        <input
+                          type="number"
+                          value={cardEmEdicao.valor || ""}
+                          onChange={(e) => salvarCard({ ...cardEmEdicao, valor: e.target.value ? Number(e.target.value) : undefined })}
+                          placeholder="0,00"
+                          className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground font-semibold block mb-1">E-mail</label>
+                      <input
+                        type="email"
+                        value={cardEmEdicao.email || ""}
+                        onChange={(e) => salvarCard({ ...cardEmEdicao, email: e.target.value })}
+                        placeholder="contato@cliente.com"
+                        className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="pt-4 border-t border-border">
@@ -1288,7 +1345,7 @@ export default function Processos() {
           onClick={() => setModalConfigProcessoAberto(false)}
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-xl flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
+            className="flex max-h-[90dvh] w-full max-w-xl flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border p-4">
@@ -1418,7 +1475,7 @@ export default function Processos() {
           onClick={() => setModalAutomacoesAberto(false)}
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-xl flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
+            className="flex max-h-[90dvh] w-full max-w-xl flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border p-4 bg-amber-500/10">
