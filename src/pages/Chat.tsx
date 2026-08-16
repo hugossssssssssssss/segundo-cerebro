@@ -9,6 +9,8 @@ import { CartaoAcao } from "@/components/CartaoAcao";
 import { Botao, Cartao, AreaTexto, Aviso, Vazio, Selo } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
+import { buscar } from "@/lib/busca";
+
 /** Uma fala da conversa, com as ações que a IA propôs junto dela. */
 type Fala = Mensagem & { acoes?: Acao[] };
 
@@ -55,11 +57,22 @@ export default function Chat() {
     }
   }
 
-  function montarContextoTexto(itens: ItemRepo[]): string {
+  function montarContextoTexto(itens: ItemRepo[], consulta?: string): string {
     const TETO = 120_000;
     let total = 0;
     const partes: string[] = [];
-    for (const i of itens) {
+
+    // 1. Busca por itens relevantes baseados na consulta do usuário
+    let itensOrdenados: ItemRepo[] = [...itens];
+    if (consulta && consulta.trim().length >= 2) {
+      const resultadosBusca = buscar(itens, consulta);
+      const caminhosRelevantes = new Set(resultadosBusca.map((r) => r.caminho));
+      const relevantes = itens.filter((i) => caminhosRelevantes.has(i.caminho));
+      const outros = itens.filter((i) => !caminhosRelevantes.has(i.caminho));
+      itensOrdenados = [...relevantes, ...outros];
+    }
+
+    for (const i of itensOrdenados) {
       const bloco = `\n### ${i.caminho}\n${i.texto}`;
       if (total + bloco.length > TETO) {
         partes.push(
@@ -87,7 +100,7 @@ export default function Chat() {
       const { texto: limpo, chamadas } = await conversar(
         cfg,
         novas.map(({ papel, texto }) => ({ papel, texto })),
-        montarContextoTexto(itens),
+        montarContextoTexto(itens, texto),
       );
 
       const acoes = acoesDeChamadas(chamadas);

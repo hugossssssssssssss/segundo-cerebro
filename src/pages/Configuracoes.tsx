@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
+import { carregarRepo } from "@/lib/repo";
+import { useSalvar } from "@/lib/useSalvar";
 import { Botao, Campo, Cartao, Rotulo, Aviso } from "@/components/ui";
 import { ModalPersonalizarMenu } from "@/components/ModalPersonalizarMenu";
 
@@ -14,6 +16,53 @@ export default function Configuracoes() {
   const [etapas, setEtapas] = useState<Etapa[] | null>(null);
   const [diagnosticando, setDiagnosticando] = useState(false);
   const [modalPersonalizarAberta, setModalPersonalizarAberta] = useState(false);
+  const { salvarTexto } = useSalvar(cfg);
+  const [exportando, setExportando] = useState(false);
+  const [importando, setImportando] = useState(false);
+  const [msgBackup, setMsgBackup] = useState("");
+
+  const exportarBackupJSON = async () => {
+    setExportando(true);
+    setMsgBackup("");
+    try {
+      const itens = await carregarRepo(cfg);
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(itens, null, 2));
+      const anchor = document.createElement("a");
+      anchor.setAttribute("href", dataStr);
+      anchor.setAttribute("download", `klaus_backup_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setMsgBackup("Backup exportado com sucesso!");
+    } catch (e) {
+      setMsgBackup("Erro ao exportar backup: " + String(e));
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const processarArquivosImportados = async (files: FileList) => {
+    setImportando(true);
+    setMsgBackup("");
+    let importados = 0;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.name.endsWith(".md") || file.name.endsWith(".txt")) {
+          const conteudo = await file.text();
+          const nomeNormalizado = file.name.endsWith(".md") ? file.name : `${file.name}.md`;
+          const caminhoFinal = `notas/${nomeNormalizado}`;
+          await salvarTexto(caminhoFinal, conteudo);
+          importados++;
+        }
+      }
+      setMsgBackup(`${importados} arquivo(s) importado(s) com sucesso para notas/!`);
+    } catch (e) {
+      setMsgBackup("Erro ao importar arquivos: " + String(e));
+    } finally {
+      setImportando(false);
+    }
+  };
 
   async function rodarDiagnostico() {
     const limpa = salvarConfig(cfg);
@@ -369,6 +418,42 @@ export default function Configuracoes() {
           </button>
         </Cartao>
       )}
+
+      {/* Seção de Backup & Importação de Arquivos */}
+      <Cartao className="p-5 space-y-4">
+        <div>
+          <h2 className="font-medium text-foreground flex items-center gap-2">
+            <FileUp size={18} className="text-primary" />
+            Backup, Exportação & Importação (Obsidian / Markdown)
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Exporte uma cópia completa de segurança do acervo em JSON ou importe arquivos Markdown / cofres do Obsidian diretamente para o seu repositório.
+          </p>
+        </div>
+
+        {msgBackup && <Aviso tom="sucesso">{msgBackup}</Aviso>}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <Botao variante="neutro" onClick={exportarBackupJSON} disabled={exportando}>
+            <Download size={16} />
+            {exportando ? "Exportando..." : "Exportar Backup (JSON)"}
+          </Botao>
+
+          <label className="cursor-pointer">
+            <input
+              type="file"
+              multiple
+              accept=".md,.txt"
+              onChange={(e) => e.target.files && processarArquivosImportados(e.target.files)}
+              className="hidden"
+            />
+            <div className="flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-accent transition-colors">
+              <Upload size={16} />
+              <span>{importando ? "Importando..." : "Importar .md / Obsidian"}</span>
+            </div>
+          </label>
+        </div>
+      </Cartao>
 
       <Aviso>
         <strong>Por que um token?</strong> Ele é a chave que deixa este site

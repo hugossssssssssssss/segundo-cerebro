@@ -162,7 +162,7 @@ direto · `não usa` = não toca no repositório de dados.
 | Tela | Carregar | Gravar |
 |---|---|---|
 | `src/pages/Chat.tsx` | na mão | não usa |
-| `src/pages/Configuracoes.tsx` | não usa | não usa |
+| `src/pages/Configuracoes.tsx` | na mão | hook |
 | `src/pages/Conversor.tsx` | não usa | na mão |
 | `src/pages/FerramentasPDF.tsx` | não usa | não usa |
 | `src/pages/GrafoNeural.tsx` | na mão | hook |

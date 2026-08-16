@@ -89,6 +89,13 @@ export interface InfoGadgetDisponivel {
 const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
   // --- MÓDULOS DE CONTEÚDO ---
   {
+    id: "hoje",
+    titulo: "Revisão Diária (Visão 'Hoje' — 2 Minutos)",
+    descricao: "Painel de foco diário: tarefas do dia, entregas do PDI e notas rápidas",
+    icone: Sun,
+    colunasPadrao: 2,
+  },
+  {
     id: "kpis",
     titulo: "Resumo dos KPIs",
     descricao: "Indicadores gerais de Tarefas, Notas, Referências e PDI",
@@ -1029,6 +1036,48 @@ export default function Home() {
                 </CardHeader>
               </Card>
             </Link>
+          </GadgetWrapper>
+        );
+
+      case "hoje":
+        return (
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
+            <Card className="shadow-sm h-full flex flex-col border border-amber-500/30 bg-amber-500/5">
+              <CardHeader className="flex flex-row items-center justify-between p-5 pb-3">
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-bold flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                    <Sun size={18} />
+                    Revisão Diária (Visão "Hoje" — 2 Minutos)
+                  </CardTitle>
+                  <CardDescription className="text-xs">Foco diário: prioridades do dia e tarefas pendentes.</CardDescription>
+                </div>
+                <Link to="/inbox">
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 cursor-pointer">
+                    Abrir Inbox
+                  </Badge>
+                </Link>
+              </CardHeader>
+              <CardContent className="p-5 pt-0 space-y-3 flex-1 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <ListTodo size={14} className="text-amber-500" />
+                    <span>Tarefas para Hoje ({tarefasPendentes.filter((t: Tarefa) => t.status !== "feito").length})</span>
+                  </p>
+                  {tarefasPendentes.filter((t: Tarefa) => t.status !== "feito").slice(0, 3).map((t: Tarefa) => (
+                    <div key={t.caminho} className="flex items-center justify-between p-2 rounded-lg border border-border/60 bg-card text-xs">
+                      <span className="truncate font-medium">{t.titulo}</span>
+                      <Badge variant="secondary" className="text-[10px]">{t.prazo || "Sem prazo"}</Badge>
+                    </div>
+                  ))}
+                  {tarefasPendentes.filter((t: Tarefa) => t.status !== "feito").length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">Nenhuma tarefa pendente para hoje! 🎉</p>
+                  )}
+                </div>
+                <div className="pt-2 border-t border-amber-500/20 flex items-center justify-between text-xs text-amber-700 dark:text-amber-300">
+                  <span>💡 Dica de 2 min: Revise seu Kanban de Processos e confirme os prazos da Inbox.</span>
+                </div>
+              </CardContent>
+            </Card>
           </GadgetWrapper>
         );
 

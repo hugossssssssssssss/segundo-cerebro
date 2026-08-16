@@ -194,34 +194,8 @@ export default function Lousas() {
         : [];
 
       const tituloLimpo = aberta.titulo.trim() || "Lousa Sem Título";
-      const ehModoEscuro = document.documentElement.classList.contains("dark");
 
-      // Gera preview SVG
-      let svgHtmlString = "";
-      try {
-        if (elementosValidos.length > 0) {
-          const { exportToSvg } = await import("@excalidraw/excalidraw");
-          const svgEl = await exportToSvg({
-            elements: elementosValidos,
-            appState: {
-              ...currentAppState,
-              exportWithDarkMode: ehModoEscuro,
-              exportBackground: true,
-              viewBackgroundColor: (currentAppState?.viewBackgroundColor as string) || (ehModoEscuro ? "#121212" : "#ffffff"),
-            },
-            files,
-          });
-          if (svgEl) {
-            svgEl.setAttribute("width", "100%");
-            svgEl.setAttribute("height", "100%");
-            svgEl.style.maxWidth = "100%";
-            svgEl.style.maxHeight = "100%";
-            svgHtmlString = svgEl.outerHTML;
-          }
-        }
-      } catch {
-        // ignora erro ao gerar SVG
-      }
+
 
       const dadosParaSalvar = {
         title: tituloLimpo,
@@ -238,7 +212,6 @@ export default function Lousas() {
         dados: {
           titulo: tituloLimpo,
           tipo: "lousa",
-          svg: svgHtmlString,
         },
         corpo: textoCena,
       });
