@@ -35,6 +35,7 @@ import { Botao, Cartao, Selo, Aviso, Vazio, Carregando } from "@/components/ui";
 import { ModalLembrete } from "@/components/ModalLembrete";
 import { useSalvar } from "@/lib/useSalvar";
 import { lerMarkdown, escreverMarkdown } from "@/lib/markdown";
+import { toast } from "@/lib/toast";
 
 type AbaFiltro = "nao_vistos" | "lembretes" | "atrasadas" | "inativas" | "todas" | "arquivados";
 
@@ -125,7 +126,7 @@ export default function Inbox() {
 
   // Checagem automática de regras de escalonamento Telegram / Email
   useEffect(() => {
-    if (!itensCompilados.length || !cfg.inboxTelegramAtivo) return;
+    if (!itensCompilados.length || (!cfg.inboxTelegramAtivo && !cfg.googleEmailAtivo)) return;
 
     const verificarEscalation = async () => {
       let alterado = false;
@@ -261,7 +262,7 @@ export default function Inbox() {
   // Extrair lembretes com a IA Gemini (Ideia 7)
   const executarExtracaoIA = async () => {
     if (!cfg.geminiKey) {
-      alert("Configure a chave do Gemini na tela de Ajustes para usar esta função!");
+      toast("Configure a chave do Gemini na tela de Ajustes para usar esta função!", { tipo: "aviso" });
       return;
     }
     setExtraindoIA(true);

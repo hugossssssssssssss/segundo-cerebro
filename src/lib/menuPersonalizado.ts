@@ -52,9 +52,9 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
     titulo: "Criação & Ferramentas",
     itens: [
       { id: "grafo", para: "/grafo", rotulo: "Grafo de Links", iconeNome: "Network", destaque: true },
-      { id: "lousas", para: "/lousas", rotulo: "Excalidraw", iconeNome: "Layout" },
-      { id: "referencias", para: "/referencias", rotulo: "Pinterest", iconeNome: "Image" },
-      { id: "pdf", para: "/pdf", rotulo: "iLovePDF", iconeNome: "FileCheck" },
+      { id: "lousas", para: "/lousas", rotulo: "Lousas Visuais", iconeNome: "Layout" },
+      { id: "referencias", para: "/referencias", rotulo: "Referências Visuais", iconeNome: "Image" },
+      { id: "pdf", para: "/pdf", rotulo: "Ferramentas PDF", iconeNome: "FileCheck" },
       { id: "conversor", para: "/conversor", rotulo: "Conversor", iconeNome: "RefreshCw" },
     ],
   },

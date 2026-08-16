@@ -6,6 +6,7 @@
  * e organizadas instantaneamente, com capas HD, 3 modos visuais e integrações com o repositório.
  */
 
+import DOMPurify from "dompurify";
 import type { Settings } from "./settings";
 import { escreverMarkdown, nomeDeArquivo } from "./markdown";
 import { gravar } from "./github";
@@ -128,7 +129,7 @@ export function limparTexto(texto: string): string {
  */
 export function formatarHtmlEditorial(html: string): string {
   if (!html) return "";
-  
+
   // Se for texto puro sem tags HTML, divide em parágrafos por quebra de linha
   if (!/<[a-z][\s\S]*>/i.test(html)) {
     return html
@@ -137,22 +138,22 @@ export function formatarHtmlEditorial(html: string): string {
       .join("");
   }
 
-  // Remove scripts, estilos e elementos inseguros
-  let limpo = html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, "$1");
+  // Sanitização rigorosa via DOMPurify contra XSS, script tags e URIs perigosos
+  const htmlSanitizado = DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ["script", "iframe", "object", "embed", "link", "style", "meta", "base", "form"],
+    FORBID_ATTR: ["on*", "action"],
+  });
 
-  // Adiciona classes CSS elegantes para parágrafos, subtítulos e imagens
-  limpo = limpo
-    .replace(/<p[^>]*>/gi, '<p className="mb-4 text-sm sm:text-base leading-relaxed text-foreground/90 font-sans">')
-    .replace(/<h2[^>]*>/gi, '<h2 className="text-lg font-bold text-foreground mt-6 mb-3 border-b border-border/40 pb-1">')
-    .replace(/<h3[^>]*>/gi, '<h3 className="text-base font-bold text-foreground mt-4 mb-2">')
-    .replace(/<blockquote[^>]*>/gi, '<blockquote className="border-l-4 border-primary pl-4 py-1 my-4 italic text-muted-foreground bg-accent/30 rounded-r-lg">')
-    .replace(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi, '<img src="$1" className="my-4 rounded-xl shadow-xs max-h-96 w-full object-cover" />');
+  // Adiciona classes CSS elegantes usando o atributo HTML 'class' válido (não 'className')
+  const formatado = htmlSanitizado
+    .replace(/<p[^>]*>/gi, '<p class="mb-4 text-sm sm:text-base leading-relaxed text-foreground/90 font-sans">')
+    .replace(/<h2[^>]*>/gi, '<h2 class="text-lg font-bold text-foreground mt-6 mb-3 border-b border-border/40 pb-1">')
+    .replace(/<h3[^>]*>/gi, '<h3 class="text-base font-bold text-foreground mt-4 mb-2">')
+    .replace(/<blockquote[^>]*>/gi, '<blockquote class="border-l-4 border-primary pl-4 py-1 my-4 italic text-muted-foreground bg-accent/30 rounded-r-lg">')
+    .replace(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi, '<img src="$1" class="my-4 rounded-xl shadow-xs max-h-96 w-full object-cover" />');
 
-  return limpo;
+  return formatado;
 }
 
 /** Calcula o tempo estimado de leitura (média de 180 palavras por minuto) */
@@ -243,18 +244,23 @@ export function obterFeedsCustomizados(): FeedCustomizado[] {
 
 export function adicionarFeedCustomizado(nome: string, url: string, categoria: CategoriaNoticia): FeedCustomizado[] {
   try {
+    const urlLimpa = url.trim();
+    if (!/^https?:\/\//i.test(urlLimpa)) {
+      throw new Error("URL de feed inválida. Deve iniciar com http:// ou https://");
+    }
+
     const atuais = obterFeedsCustomizados();
     const novo: FeedCustomizado = {
       id: `custom-${Date.now()}`,
       nome: nome.trim() || "Feed Personalizado",
-      url: url.trim(),
+      url: urlLimpa,
       categoria,
     };
     const atualizados = [...atuais, novo];
     localStorage.setItem(CHAVE_FEEDS_CUSTOM, JSON.stringify(atualizados));
     return atualizados;
-  } catch {
-    return [];
+  } catch (e) {
+    throw e;
   }
 }
 

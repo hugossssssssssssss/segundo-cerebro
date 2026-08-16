@@ -25,6 +25,8 @@ import {
 } from "@/lib/menuPersonalizado";
 import { obterIconePorNome } from "@/lib/icones";
 import { GaleriaIconesModal } from "./GaleriaIconesModal";
+import { ModalConfirmacao } from "./ui";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
 
@@ -79,22 +81,25 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
     setGrupos([...grupos, nova]);
   };
 
+  const [confirmarReset, setConfirmarReset] = useState(false);
+  const [categoriaParaRemoverIdx, setCategoriaParaRemoverIdx] = useState<number | null>(null);
+
   const removerCategoria = (idxGrupo: number) => {
     if (grupos.length <= 1) {
-      alert("Você precisa ter pelo menos uma categoria no menu.");
+      toast("Você precisa ter pelo menos uma categoria no menu.", { tipo: "aviso" });
       return;
     }
 
     const grupoARemover = grupos[idxGrupo];
-    if (
-      grupoARemover.itens.length > 0 &&
-      !window.confirm(
-        `A categoria "${grupoARemover.titulo}" possui ${grupoARemover.itens.length} itens. Os itens serão movidos para a primeira categoria.`
-      )
-    ) {
+    if (grupoARemover.itens.length > 0) {
+      setCategoriaParaRemoverIdx(idxGrupo);
       return;
     }
 
+    executarRemocaoCategoria(idxGrupo);
+  };
+
+  const executarRemocaoCategoria = (idxGrupo: number) => {
     const copia = [...grupos];
     const [removida] = copia.splice(idxGrupo, 1);
 
@@ -107,6 +112,7 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
     }
 
     setGrupos(copia);
+    setCategoriaParaRemoverIdx(null);
   };
 
   const moverGrupo = (idxGrupo: number, direcao: "cima" | "baixo") => {
@@ -189,12 +195,15 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
   };
 
   const resetar = () => {
-    if (window.confirm("Deseja restaurar as categorias, nomes, cores e ícones padrões do menu?")) {
-      restaurarMenuPadrao();
-      setGrupos(carregarMenuPersonalizado());
-      setSucessoMsg("Padrões restaurados!");
-      setTimeout(() => setSucessoMsg(""), 1500);
-    }
+    setConfirmarReset(true);
+  };
+
+  const executarReset = () => {
+    restaurarMenuPadrao();
+    setGrupos(carregarMenuPersonalizado());
+    setSucessoMsg("Padrões restaurados!");
+    setConfirmarReset(false);
+    setTimeout(() => setSucessoMsg(""), 1500);
   };
 
   // Handlers para Drag & Drop (HTML5 Native)
@@ -573,6 +582,30 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
           }}
         />
       )}
+
+      <ModalConfirmacao
+        aberto={categoriaParaRemoverIdx !== null}
+        titulo={`Remover categoria "${categoriaParaRemoverIdx !== null ? grupos[categoriaParaRemoverIdx]?.titulo : ""}"?`}
+        descricao={
+          categoriaParaRemoverIdx !== null && grupos[categoriaParaRemoverIdx]?.itens.length > 0
+            ? `Esta categoria possui ${grupos[categoriaParaRemoverIdx].itens.length} itens. Todos os itens serão movidos para a primeira categoria.`
+            : "A categoria será removida do menu."
+        }
+        textoConfirmar="Remover Categoria"
+        varianteConfirmar="perigo"
+        aoConfirmar={() => categoriaParaRemoverIdx !== null && executarRemocaoCategoria(categoriaParaRemoverIdx)}
+        aoCancelar={() => setCategoriaParaRemoverIdx(null)}
+      />
+
+      <ModalConfirmacao
+        aberto={confirmarReset}
+        titulo="Restaurar Menu Padrão?"
+        descricao="Deseja restaurar as categorias, nomes, cores e ícones padrões do menu original?"
+        textoConfirmar="Restaurar Padrão"
+        varianteConfirmar="perigo"
+        aoConfirmar={executarReset}
+        aoCancelar={() => setConfirmarReset(false)}
+      />
     </div>
   );
 }

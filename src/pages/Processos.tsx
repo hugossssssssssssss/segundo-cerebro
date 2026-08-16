@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   DndContext,
@@ -210,7 +210,7 @@ function ColunaEtapa({
 }
 
 export default function Processos() {
-  const cfg = lerConfig();
+  const cfg = useMemo(() => lerConfig(), []);
   const pronto = configCompleta(cfg);
 
   const [carregando, setCarregando] = useState(true);
@@ -316,7 +316,7 @@ export default function Processos() {
     } finally {
       setCarregando(false);
     }
-  }, [pronto, cfg, processoAtivoId]);
+  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch, processoAtivoId]);
 
   useEffect(() => {
     carregar();
@@ -335,8 +335,32 @@ export default function Processos() {
       return c.titulo.toLowerCase().includes(q) || c.corpo?.toLowerCase().includes(q);
     });
 
-  const salvarProcessoAtivo = async (procAtualizado: Processo) => {
+  const timerDebounceCardRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const timerDebounceProcRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const salvarProcessoAtivo = async (procAtualizado: Processo, debounced = false) => {
     setProcessos((prev) => prev.map((p) => (p.id === procAtualizado.id ? procAtualizado : p)));
+
+    if (debounced) {
+      if (timerDebounceProcRef.current[procAtualizado.id]) {
+        clearTimeout(timerDebounceProcRef.current[procAtualizado.id]);
+      }
+      timerDebounceProcRef.current[procAtualizado.id] = setTimeout(async () => {
+        try {
+          const texto = escreverMarkdown({
+            dados: processoParaFrontmatter(procAtualizado),
+            corpo: procAtualizado.corpo || `Processo de ${procAtualizado.titulo}`,
+          });
+
+          const sha = await gravar(cfg, procAtualizado.caminho, texto, procAtualizado.sha || undefined);
+          atualizarCacheLocal(procAtualizado.caminho, texto, lerMarkdown(texto), sha);
+          setProcessos((prev) => prev.map((p) => (p.id === procAtualizado.id ? { ...procAtualizado, sha } : p)));
+        } catch (e) {
+          setErro(e instanceof Error ? e.message : String(e));
+        }
+      }, 2500);
+      return;
+    }
 
     try {
       const texto = escreverMarkdown({
@@ -430,9 +454,32 @@ export default function Processos() {
     }
   };
 
-  const salvarCard = async (cardAtualizado: CardProcesso) => {
+  const salvarCard = async (cardAtualizado: CardProcesso, debounced = false) => {
     setCards((prev) => prev.map((c) => (c.id === cardAtualizado.id ? cardAtualizado : c)));
     setCardEmEdicao((prev) => (prev && prev.id === cardAtualizado.id ? cardAtualizado : prev));
+
+    if (debounced) {
+      if (timerDebounceCardRef.current[cardAtualizado.id]) {
+        clearTimeout(timerDebounceCardRef.current[cardAtualizado.id]);
+      }
+      timerDebounceCardRef.current[cardAtualizado.id] = setTimeout(async () => {
+        try {
+          const texto = escreverMarkdown({
+            dados: cardProcessoParaFrontmatter(cardAtualizado),
+            corpo: cardAtualizado.corpo,
+          });
+
+          const sha = await gravar(cfg, cardAtualizado.caminho, texto, cardAtualizado.sha || undefined);
+          atualizarCacheLocal(cardAtualizado.caminho, texto, lerMarkdown(texto), sha);
+          const cardComSha = { ...cardAtualizado, sha };
+          setCards((prev) => prev.map((c) => (c.id === cardAtualizado.id ? cardComSha : c)));
+          setCardEmEdicao((prev) => (prev && prev.id === cardAtualizado.id ? cardComSha : prev));
+        } catch (e) {
+          setErro(e instanceof Error ? e.message : String(e));
+        }
+      }, 2500);
+      return;
+    }
 
     try {
       const texto = escreverMarkdown({
@@ -982,7 +1029,7 @@ export default function Processos() {
                   <input
                     type="text"
                     value={cardEmEdicao.titulo}
-                    onChange={(e) => salvarCard({ ...cardEmEdicao, titulo: e.target.value })}
+                    onChange={(e) => salvarCard({ ...cardEmEdicao, titulo: e.target.value }, true)}
                     className="w-full text-base sm:text-lg font-bold text-foreground bg-background border border-border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="Título do Card..."
                   />
@@ -995,7 +1042,7 @@ export default function Processos() {
                   </label>
                   <textarea
                     value={cardEmEdicao.corpo}
-                    onChange={(e) => salvarCard({ ...cardEmEdicao, corpo: e.target.value })}
+                    onChange={(e) => salvarCard({ ...cardEmEdicao, corpo: e.target.value }, true)}
                     placeholder="Adicione detalhes, rascunhos ou anotações desta tarefa..."
                     rows={4}
                     className="w-full rounded-xl border border-border bg-background p-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary leading-relaxed resize-y"
@@ -1259,7 +1306,7 @@ export default function Processos() {
                 <input
                   type="text"
                   value={processoAtivo.titulo}
-                  onChange={(e) => salvarProcessoAtivo({ ...processoAtivo, titulo: e.target.value })}
+                  onChange={(e) => salvarProcessoAtivo({ ...processoAtivo, titulo: e.target.value }, true)}
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
@@ -1275,10 +1322,13 @@ export default function Processos() {
                           type="text"
                           value={etapa.nome}
                           onChange={(e) =>
-                            salvarProcessoAtivo({
-                              ...processoAtivo,
-                              etapas: processoAtivo.etapas.map((et) => (et.id === etapa.id ? { ...et, nome: e.target.value } : et)),
-                            })
+                            salvarProcessoAtivo(
+                              {
+                                ...processoAtivo,
+                                etapas: processoAtivo.etapas.map((et) => (et.id === etapa.id ? { ...et, nome: e.target.value } : et)),
+                              },
+                              true
+                            )
                           }
                           className="font-bold text-xs bg-transparent border-b border-border focus:outline-none focus:border-primary px-1 py-0.5 flex-1"
                         />

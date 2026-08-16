@@ -381,8 +381,8 @@ export default function Home() {
       setOrigTarefa(fechar ? null : tSalva);
       await carregar(true);
     } catch (e) {
+      setOrigTarefa(t);
       setErro(e instanceof Error ? e.message : String(e));
-      throw e;
     } finally {
       setSalvandoItem(false);
     }
@@ -428,8 +428,8 @@ export default function Home() {
       setOrigNota(fechar ? null : { titulo: nSalva.titulo, corpo: nSalva.corpo, bruto: nSalva.bruto });
       await carregar(true);
     } catch (e) {
+      setOrigNota({ titulo: editandoNota.titulo, corpo: editandoNota.corpo, bruto: editandoNota.bruto });
       setErro(e instanceof Error ? e.message : String(e));
-      throw e;
     } finally {
       setSalvandoItem(false);
     }
@@ -449,8 +449,8 @@ export default function Home() {
       setOrigMeta(fechar ? null : mSalva);
       await carregar(true);
     } catch (e) {
+      setOrigMeta(m);
       setErro(e instanceof Error ? e.message : String(e));
-      throw e;
     } finally {
       setSalvandoItem(false);
     }
@@ -1049,7 +1049,7 @@ export default function Home() {
           <div className="flex items-center gap-2.5">
             <IconeTempo className="h-7 w-7 text-amber-500" />
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              {saudacao}, Hugo!
+              {saudacao}!
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">

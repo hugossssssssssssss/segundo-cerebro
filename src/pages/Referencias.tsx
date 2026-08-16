@@ -27,6 +27,7 @@ import {
   Vazio,
   Carregando,
   Modal,
+  ModalConfirmacao,
   Rotulo,
   AreaTexto,
   TagInput,
@@ -204,10 +205,16 @@ export default function Referencias() {
     }
   }
 
+  const [referenciaParaExcluir, setReferenciaParaExcluir] = useState<Referencia | null>(null);
+
   async function remover(r: Referencia) {
-    if (!confirm(`Apagar "${r.titulo}"?\n\nA imagem continua no repositório.`))
-      return;
-    await apagarItem(r.caminho, r.sha);
+    setReferenciaParaExcluir(r);
+  }
+
+  async function confirmarRemocao() {
+    if (!referenciaParaExcluir) return;
+    await apagarItem(referenciaParaExcluir.caminho, referenciaParaExcluir.sha);
+    setReferenciaParaExcluir(null);
     fecharModal();
     recarregar();
   }
@@ -568,6 +575,16 @@ export default function Referencias() {
           </div>
         )}
       </Modal>
+
+      <ModalConfirmacao
+        aberto={referenciaParaExcluir !== null}
+        titulo={`Apagar "${referenciaParaExcluir?.titulo || ""}"?`}
+        descricao="Esta referência será removida da lista. A imagem associada continua no repositório."
+        textoConfirmar="Apagar Referência"
+        varianteConfirmar="perigo"
+        aoConfirmar={confirmarRemocao}
+        aoCancelar={() => setReferenciaParaExcluir(null)}
+      />
     </div>
   );
 }

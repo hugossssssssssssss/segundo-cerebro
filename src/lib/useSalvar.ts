@@ -29,6 +29,7 @@ import { atualizarCacheLocal, invalidarCache } from "./repo";
 import { lerMarkdown } from "./markdown";
 import { notificarOutrasAbas } from "./syncChannel";
 import { toast } from "./toast";
+import { salvarRascunhoLocal } from "./offlineQueue";
 import type { Settings } from "./settings";
 
 export type EstadoSalvar = {
@@ -87,8 +88,11 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
       setErro(mensagem);
-      toast(mensagem, { tipo: "erro" });
-      throw e; // repassa para quem chamou decidir o que fazer com a UI
+
+      // Salva rascunho local em caso de falha de conexão/gravação no GitHub
+      salvarRascunhoLocal(caminho, texto, sha, mensagemCommit, false);
+      toast(`Sem conexão: "${caminho.split("/").pop()}" salvo localmente como rascunho.`, { tipo: "aviso" });
+      throw e;
     } finally {
       setSalvando(false);
     }

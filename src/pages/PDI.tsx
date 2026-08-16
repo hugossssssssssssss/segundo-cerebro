@@ -44,6 +44,7 @@ import {
   Vazio,
   Carregando,
   Modal,
+  ModalConfirmacao,
   Rotulo,
   AreaTexto,
 } from "@/components/ui";
@@ -264,21 +265,29 @@ export default function PDI() {
     }
   }
 
+  const [metaParaExcluir, setMetaParaExcluir] = useState<Meta | null>(null);
+  const [entregaParaExcluir, setEntregaParaExcluir] = useState<Entrega | null>(null);
+
   async function removerMeta(m: Meta) {
-    const ligadas = entregas.filter((e) => e.metas.includes(m.id)).length;
-    const aviso = ligadas
-      ? `\n\n${ligadas} entrega(s) apontam para ela e vão ficar sem meta.`
-      : "";
-    if (!confirm(`Apagar a meta "${m.titulo}"?${aviso}\n\nDá para recuperar pelo histórico do GitHub.`))
-      return;
-    await apagarItem(m.caminho, m.sha);
+    setMetaParaExcluir(m);
+  }
+
+  async function confirmarRemocaoMeta() {
+    if (!metaParaExcluir) return;
+    await apagarItem(metaParaExcluir.caminho, metaParaExcluir.sha);
+    setMetaParaExcluir(null);
     fecharMeta();
     recarregar();
   }
 
   async function removerEntrega(e: Entrega) {
-    if (!confirm(`Apagar "${e.titulo}"?`)) return;
-    await apagarItem(e.caminho, e.sha);
+    setEntregaParaExcluir(e);
+  }
+
+  async function confirmarRemocaoEntrega() {
+    if (!entregaParaExcluir) return;
+    await apagarItem(entregaParaExcluir.caminho, entregaParaExcluir.sha);
+    setEntregaParaExcluir(null);
     fecharEntrega();
     recarregar();
   }
@@ -715,6 +724,32 @@ export default function PDI() {
           </div>
         )}
       </Modal>
+
+      <ModalConfirmacao
+        aberto={metaParaExcluir !== null}
+        titulo={`Apagar meta "${metaParaExcluir?.titulo || ""}"?`}
+        descricao={
+          metaParaExcluir
+            ? `Esta meta será removida. ${
+                entregas.filter((e) => e.metas.includes(metaParaExcluir.id)).length
+              } entrega(s) estão associadas a ela.`
+            : ""
+        }
+        textoConfirmar="Apagar Meta"
+        varianteConfirmar="perigo"
+        aoConfirmar={confirmarRemocaoMeta}
+        aoCancelar={() => setMetaParaExcluir(null)}
+      />
+
+      <ModalConfirmacao
+        aberto={entregaParaExcluir !== null}
+        titulo={`Apagar entrega "${entregaParaExcluir?.titulo || ""}"?`}
+        descricao="Esta entrega será removida do seu registro de PDI."
+        textoConfirmar="Apagar Entrega"
+        varianteConfirmar="perigo"
+        aoConfirmar={confirmarRemocaoEntrega}
+        aoCancelar={() => setEntregaParaExcluir(null)}
+      />
     </div>
   );
 }

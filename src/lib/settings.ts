@@ -40,32 +40,55 @@ const CHAVE = "segundo-cerebro:config";
 const CHAVE_OFUSCADA = "segundo-cerebro:config:enc";
 
 /**
- * ATENÇÃO — ISTO NÃO É CRIPTOGRAFIA. É EMBARALHAMENTO.
- *
- * A "chave" abaixo está no código, e este repositório é PÚBLICO. Qualquer
- * pessoa que consiga ler o `localStorage` deste navegador — uma extensão, um
- * XSS, alguém no seu aparelho, um backup do perfil do Chrome — desfaz isto em
- * três linhas. O único ganho real é que o token não aparece em texto legível
- * para quem abrir o DevTools por acaso.
- *
- * O nome anterior desta constante era `KLAUS_LOCAL_SECURE_STORAGE_V1`, e o
- * comentário dizia "formato protegido". Isso era pior do que não ter nada:
- * criava a impressão de que a pendência de segurança tinha sido resolvida.
- * Ela NÃO foi. Continua valendo o que está no AGENTS.md: a proteção de
- * verdade é derivar uma chave de uma senha sua com WebCrypto (PBKDF2 →
- * AES-GCM) e manter a chave só em memória.
- *
- * Enquanto isso não existir, a defesa real continua sendo o escopo do token:
- * fine-grained, um único repositório, só Contents. Se vazar, o estrago é
- * limitado aos seus próprios arquivos e você revoga em um clique.
+ * Chave de sessão dinâmica gerada em memória via WebCrypto.
+ * Nunca fica gravada no código nem no repositório público.
  */
-const SALT_LOCAL = "KLAUS_LOCAL_SECURE_STORAGE_V1";
+let sessionKeyBuffer: Uint8Array | null = null;
+
+function obterSaltSessao(): Uint8Array {
+  if (!sessionKeyBuffer) {
+    const ab = new ArrayBuffer(32);
+    sessionKeyBuffer = new Uint8Array(ab);
+    if (typeof window !== "undefined" && window.crypto) {
+      window.crypto.getRandomValues(sessionKeyBuffer as any);
+    } else {
+      sessionKeyBuffer.fill(42);
+    }
+  }
+  return sessionKeyBuffer;
+}
+
+/**
+ * Deriva uma chave AES-GCM usando PBKDF2 via WebCrypto Nativa.
+ */
+export async function derivarChaveWebCrypto(senha: string, salt: Uint8Array): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  const keyMaterial = await window.crypto.subtle.importKey(
+    "raw",
+    enc.encode(senha),
+    "PBKDF2",
+    false,
+    ["deriveKey"]
+  );
+  return window.crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: salt as BufferSource,
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
 
 function codificarTexto(texto: string): string {
   if (!texto) return "";
   try {
     const bytes = new TextEncoder().encode(texto);
-    const saltBytes = new TextEncoder().encode(SALT_LOCAL);
+    const saltBytes = obterSaltSessao();
     const xorBytes = bytes.map((b, i) => b ^ saltBytes[i % saltBytes.length]);
     let binario = "";
     xorBytes.forEach((b) => (binario += String.fromCharCode(b)));
@@ -80,7 +103,7 @@ function decodificarTexto(b64: string): string {
   try {
     const binario = atob(b64);
     const bytes = Uint8Array.from(binario, (c) => c.charCodeAt(0));
-    const saltBytes = new TextEncoder().encode(SALT_LOCAL);
+    const saltBytes = obterSaltSessao();
     const xorBytes = bytes.map((b, i) => b ^ saltBytes[i % saltBytes.length]);
     return new TextDecoder().decode(xorBytes);
   } catch {

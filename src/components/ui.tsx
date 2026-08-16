@@ -439,19 +439,34 @@ export function ModalConfirmacao({
   aoConfirmar: () => void;
   aoCancelar: () => void;
 }) {
+  useEffect(() => {
+    if (!aberto) return;
+    const aoTecla = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        aoCancelar();
+      }
+    };
+    window.addEventListener("keydown", aoTecla);
+    return () => window.removeEventListener("keydown", aoTecla);
+  }, [aberto, aoCancelar]);
+
   if (!aberto) return null;
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150"
       onClick={aoCancelar}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-confirmacao-titulo"
     >
       <div
         className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="space-y-1.5">
-          <h3 className="text-base font-semibold text-foreground">{titulo}</h3>
+          <h3 id="modal-confirmacao-titulo" className="text-base font-semibold text-foreground">{titulo}</h3>
           <p className="text-xs text-muted-foreground leading-relaxed">{descricao}</p>
         </div>
         <div className="flex items-center justify-end gap-2 pt-2">

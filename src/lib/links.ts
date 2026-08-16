@@ -359,9 +359,13 @@ export function sincronizarRelacionamentos(
   };
 }
 
+function escaparRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
  * Propaga a alteração de um título para todos os arquivos que mencionavam o título antigo.
- * Atualiza @TituloAntigo -> @TituloNovo e [[TituloAntigo]] -> [[TituloNovo]].
+ * Atualiza @TituloAntigo -> @TituloNovo e [[TituloAntigo]] -> [[TituloNovo]] com limite de palavra.
  */
 export async function propagarRenomeacao(
   cfg: any,
@@ -371,32 +375,30 @@ export async function propagarRenomeacao(
 ): Promise<number> {
   if (!tituloAntigo || !tituloNovo || tituloAntigo.trim() === tituloNovo.trim()) return 0;
 
-  const termoAntigoArroba = `@${tituloAntigo.trim()}`;
-  const termoNovoArroba = `@${tituloNovo.trim()}`;
-  const termoAntigoColchetes = `[[${tituloAntigo.trim()}]]`;
-  const termoNovoColchetes = `[[${tituloNovo.trim()}]]`;
+  const antigoLimpo = tituloAntigo.trim();
+  const novoLimpo = tituloNovo.trim();
 
-  let contagem = 0;
+  // Exige limite de caractere/palavra para não alterar substrings como @Reunião em @Reunião Semanal
+  const regArroba = new RegExp(`@${escaparRegex(antigoLimpo)}(?![\\w\\u00C0-\\u024F])`, "g");
+  const regColchetes = new RegExp(`\\[\\[${escaparRegex(antigoLimpo)}\\]\\]`, "g");
+
+  let sucessoContagem = 0;
 
   for (const item of todos) {
     if (!item.texto) continue;
     let textoNovo = item.texto;
-    if (textoNovo.includes(termoAntigoArroba)) {
-      textoNovo = textoNovo.split(termoAntigoArroba).join(termoNovoArroba);
-    }
-    if (textoNovo.includes(termoAntigoColchetes)) {
-      textoNovo = textoNovo.split(termoAntigoColchetes).join(termoNovoColchetes);
-    }
+    textoNovo = textoNovo.replace(regArroba, `@${novoLimpo}`);
+    textoNovo = textoNovo.replace(regColchetes, `[[${novoLimpo}]]`);
 
     if (textoNovo !== item.texto) {
-      contagem++;
       try {
-        await gravar(cfg, item.caminho, textoNovo, item.sha, `refatorar: renomear menção de ${tituloAntigo} para ${tituloNovo}`);
+        await gravar(cfg, item.caminho, textoNovo, item.sha, `refatorar: renomear menção de ${antigoLimpo} para ${novoLimpo}`);
+        sucessoContagem++;
       } catch {
-        // ignora falha individual
+        // Ignora falha em arquivo individual mas não incrementa contagem de sucesso
       }
     }
   }
 
-  return contagem;
+  return sucessoContagem;
 }

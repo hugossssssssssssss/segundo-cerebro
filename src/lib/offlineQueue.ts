@@ -34,7 +34,8 @@ export function salvarRascunhoLocal(
   caminho: string,
   texto: string,
   sha?: string,
-  mensagemCommit?: string
+  mensagemCommit?: string,
+  notificarEvent = true
 ): RascunhoOffline {
   const rascunhos = obterRascunhosLocais();
   const id = `draft_${caminho}_${Date.now()}`;
@@ -53,7 +54,9 @@ export function salvarRascunhoLocal(
   filtrados.push(novo);
 
   localStorage.setItem(CHAVE_RASCUNHOS, JSON.stringify(filtrados));
-  window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+  if (notificarEvent) {
+    window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+  }
   return novo;
 }
 

@@ -354,7 +354,7 @@ export default function FerramentasPDF() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-500/10 text-red-600 dark:text-red-400">
             <FileText size={20} />
           </div>
-          iLovePDF
+          Ferramentas PDF
         </h1>
         <p className="text-sm text-muted-foreground mt-1">{abaInfo.descricao}</p>
       </div>

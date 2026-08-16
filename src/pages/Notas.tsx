@@ -21,6 +21,7 @@ import {
   Aviso,
   Vazio,
   Carregando,
+  ModalConfirmacao,
 } from "@/components/ui";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
@@ -91,11 +92,14 @@ export default function Notas() {
       JSON.stringify(aberta.bruto) !== JSON.stringify(aberta.original.bruto)
     : false;
 
+  const [mostrarConfirmacaoDescarte, setMostrarConfirmacaoDescarte] = useState(false);
+
   useEffect(() => {
     if (!aberta) return;
     history.pushState({ editor: true }, "");
     const aoVoltar = () => {
-      if (mudou && !confirm("Você tem alterações não salvas. Descartar?")) {
+      if (mudou) {
+        setMostrarConfirmacaoDescarte(true);
         history.pushState({ editor: true }, "");
         return;
       }
@@ -103,7 +107,7 @@ export default function Notas() {
     };
     addEventListener("popstate", aoVoltar);
     return () => removeEventListener("popstate", aoVoltar);
-  }, [aberta !== null]);
+  }, [aberta !== null, mudou]);
 
   useEffect(() => {
     if (!mudou) return;
@@ -332,6 +336,19 @@ export default function Notas() {
           opcoesRelacionamento={opcoesRelacionamento}
         />
       )}
+
+      <ModalConfirmacao
+        aberto={mostrarConfirmacaoDescarte}
+        titulo="Descartar alterações não salvas?"
+        descricao="Você possui edições nesta nota que ainda não foram salvas. Deseja descartar as alterações?"
+        textoConfirmar="Descartar Alterações"
+        varianteConfirmar="perigo"
+        aoConfirmar={() => {
+          setMostrarConfirmacaoDescarte(false);
+          fecharNota();
+        }}
+        aoCancelar={() => setMostrarConfirmacaoDescarte(false)}
+      />
     </div>
   );
 }
