@@ -67,42 +67,38 @@ export function NavegacaoLateral({
       >
         {/* Topo da Sidebar: Marca e Toggle */}
         <div className="flex h-14 items-center justify-between px-3 border-b border-border/60">
-          {!colapsada && (
-            <NavLink
-              to="/home"
-              onClick={aoNavegar}
-              className="flex items-center gap-2 font-semibold tracking-tight text-foreground truncate min-w-0"
+          {!colapsada ? (
+            <>
+              <NavLink
+                to="/home"
+                onClick={aoNavegar}
+                className="flex items-center gap-2 font-semibold tracking-tight text-foreground truncate min-w-0"
+              >
+                <LogoKlaus tamanho={28} />
+                <span className="truncate text-base font-bold tracking-tight">Klaus</span>
+                <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-primary border border-primary/20">
+                  v{VERSAO_APP}
+                </span>
+              </NavLink>
+              <button
+                onClick={() => setColapsada(true)}
+                className="hidden sm:flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                title="Recolher barra lateral (⌘B)"
+                aria-label="Recolher barra lateral"
+              >
+                <ChevronLeft size={18} />
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setColapsada(false)}
+              className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              title={`Expandir barra lateral (Klaus v${VERSAO_APP})`}
+              aria-label="Expandir barra lateral"
             >
-              <LogoKlaus tamanho={28} />
-              <span className="truncate text-base font-bold tracking-tight">Klaus</span>
-              <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-primary border border-primary/20">
-                v{VERSAO_APP}
-              </span>
-            </NavLink>
+              <ChevronRight size={18} />
+            </button>
           )}
-
-          {colapsada && (
-            <NavLink
-              to="/home"
-              onClick={aoNavegar}
-              className="mx-auto flex items-center justify-center p-1 rounded-xl hover:opacity-80 transition-opacity"
-              title={`Klaus v${VERSAO_APP}`}
-            >
-              <LogoKlaus tamanho={28} />
-            </NavLink>
-          )}
-
-          <button
-            onClick={() => setColapsada((v) => !v)}
-            className={cn(
-              "hidden sm:flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors",
-              colapsada && "mx-auto"
-            )}
-            title={colapsada ? "Expandir barra lateral (⌘B)" : "Recolher barra lateral (⌘B)"}
-            aria-label={colapsada ? "Expandir barra lateral" : "Recolher barra lateral"}
-          >
-            {colapsada ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </button>
         </div>
 
         {/* Corpo da Navegação */}

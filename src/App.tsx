@@ -265,7 +265,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                 <PanelLeft size={18} />
               </button>
 
-              <NavLink to="/home" className="flex items-center gap-2 font-bold tracking-tight text-sm sm:text-base hover:opacity-90 transition-opacity">
+              <NavLink to="/home" className="flex sm:hidden items-center gap-2 font-bold tracking-tight text-sm hover:opacity-90 transition-opacity">
                 <LogoKlaus tamanho={24} />
                 <span>Klaus</span>
               </NavLink>
