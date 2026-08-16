@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import {
   Mic,
   Upload,
@@ -15,9 +16,9 @@ import {
   Sparkles,
   Volume2,
 } from "lucide-react";
-import { Botao, Cartao, Aviso } from "@/components/ui";
+import { Botao, Cartao, Aviso, Vazio } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { lerConfig } from "@/lib/settings";
+import { lerConfig, configCompleta } from "@/lib/settings";
 import {
   transcreverAudioLocalWhisper,
   transcreverComWebSpeechAPI,
@@ -39,23 +40,22 @@ interface ItemTranscricao {
   dataCriacao: string;
 }
 
-const CHAVE_STORAGE = "sc_transcricoes_queue";
-
 export default function Transcritor() {
+  const cfg = lerConfig();
+  const pronto = configCompleta(cfg);
+  const chaveStorage = pronto ? `sc_transcricoes_${cfg.repoOwner}_${cfg.repoName}` : null;
+
   const [motorSelecionado, setMotorSelecionado] = useState<MotorTranscricao>("whisper_base");
 
   const [fila, setFila] = useState<ItemTranscricao[]>(() => {
-    const salvo = localStorage.getItem(CHAVE_STORAGE);
+    // Purga chave global antiga não segura por privacidade
+    try { localStorage.removeItem("sc_transcricoes_queue"); } catch {}
+
+    if (!chaveStorage) return [];
+    const salvo = localStorage.getItem(chaveStorage);
     if (!salvo) return [];
     try {
       const lido: ItemTranscricao[] = JSON.parse(salvo);
-
-      /**
-       * Item que ficou "processando" quando a página foi recarregada não tem
-       * como continuar: o áudio vive na memória da aba, e a aba se foi. Antes
-       * ele voltava com a rodinha girando para sempre, sem nenhuma saída.
-       * Vira erro com instrução do que fazer.
-       */
       return lido.map((item) =>
         item.status === "processando" || item.status === "pendente"
           ? {
@@ -80,18 +80,10 @@ export default function Transcritor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const arquivosCacheRef = useRef<Map<string, File>>(new Map());
 
-  /**
-   * Guarda a fila entre visitas — sem derrubar a página quando não couber.
-   *
-   * O `localStorage` tem cerca de 5 MB e as transcrições inteiras iam para lá.
-   * Estourar a cota lança uma exceção, e como isto roda dentro de um efeito
-   * sem `try`, a exceção subia e levava a tela junto. Agora guardamos só as
-   * mais recentes e, se ainda assim não couber, seguimos sem guardar: perder
-   * o histórico é chato, perder a transcrição que está na tela é inaceitável.
-   */
   useEffect(() => {
+    if (!chaveStorage) return;
     const tentarGuardar = (itens: ItemTranscricao[]) => {
-      localStorage.setItem(CHAVE_STORAGE, JSON.stringify(itens));
+      localStorage.setItem(chaveStorage, JSON.stringify(itens));
     };
 
     try {
@@ -101,13 +93,13 @@ export default function Transcritor() {
         tentarGuardar(fila.slice(0, 5));
       } catch {
         try {
-          localStorage.removeItem(CHAVE_STORAGE);
+          localStorage.removeItem(chaveStorage);
         } catch {
           /* nada mais a fazer; a fila continua viva na memória da aba */
         }
       }
     }
-  }, [fila]);
+  }, [fila, chaveStorage]);
 
   /**
    * Qual item está sendo transcrito agora.
@@ -286,6 +278,22 @@ export default function Transcritor() {
     } finally {
       setSalvandoNota(false);
     }
+  }
+
+  if (!pronto) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-6">
+        <Vazio
+          titulo="Falta conectar sua conta"
+          descricao="Para utilizar o Transcritor de Áudio e proteger suas transcrições, preencha sua conta do GitHub e o token na aba de Ajustes."
+          acao={
+            <Link to="/config">
+              <Botao>Ir para Ajustes</Botao>
+            </Link>
+          }
+        />
+      </div>
+    );
   }
 
   const itemAtivo = fila.find((i) => i.id === itemSelecionadoId) || fila[0];
