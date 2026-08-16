@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { lerMarkdown } from "./markdown";
 import {
   montarIndice,
@@ -327,5 +327,78 @@ describe("sincronizarRelacionamentos", () => {
     );
     expect(r.relacionamentos).toBeUndefined();
     expect(r.titulo).toBe("X");
+  });
+});
+
+// ── propagarRenomeacao ──────────────────────────────────────────────────────
+// Esta função reescreve N arquivos do repositório de uma vez. Os dois riscos
+// que ela já materializou estão fixados aqui: apagar o título errado por casar
+// substring, e esconder falhas de gravação atrás de uma contagem otimista.
+describe("propagarRenomeacao", () => {
+  const cfg = { repoOwner: "x", repoName: "y", branch: "main", githubToken: "t" };
+
+  it("não toca em títulos que apenas COMEÇAM com o nome antigo", async () => {
+    vi.resetModules();
+    const gravados: string[] = [];
+    vi.doMock("./github", () => ({
+      gravar: async (_c: unknown, caminho: string, texto: string) => {
+        gravados.push(`${caminho}::${texto}`);
+        return "sha-novo";
+      },
+    }));
+    const { propagarRenomeacao } = await import("./links");
+
+    const acervoLocal = [
+      // Os dois itens que dão nome às menções precisam existir no acervo:
+      // é a lista de títulos que permite saber onde "@Reunião" termina.
+      item("notas/reuniao.md", "---\ntitulo: Reunião\n---\n"),
+      item("notas/reuniao-semanal.md", "---\ntitulo: Reunião Semanal\n---\n"),
+      item("notas/a.md", "Falar com @Reunião Semanal antes"),
+      item("notas/b.md", "Ata da @Reunião hoje"),
+    ];
+
+    const r = await propagarRenomeacao(cfg, acervoLocal, "Reunião", "Sync");
+
+    // Só b.md muda. a.md menciona "@Reunião Semanal", que é OUTRO item.
+    expect(r.atualizados).toBe(1);
+    expect(r.falhas).toEqual([]);
+    expect(gravados).toHaveLength(1);
+    expect(gravados[0]).toContain("notas/b.md");
+    expect(gravados[0]).toContain("@Sync hoje");
+    expect(gravados[0]).not.toContain("@Sync Semanal");
+  });
+
+  it("devolve os caminhos que falharam em vez de contá-los como sucesso", async () => {
+    vi.resetModules();
+    vi.doMock("./github", () => ({
+      gravar: async (_c: unknown, caminho: string) => {
+        if (caminho === "notas/b.md") throw new Error("409 conflito");
+        return "sha-novo";
+      },
+    }));
+    const { propagarRenomeacao } = await import("./links");
+
+    const acervoLocal = [
+      item("notas/a.md", "vai para @Antigo"),
+      item("notas/b.md", "também tem @Antigo"),
+    ];
+
+    const r = await propagarRenomeacao(cfg, acervoLocal, "Antigo", "Novo");
+
+    expect(r.atualizados).toBe(1);
+    expect(r.falhas).toEqual(["notas/b.md"]);
+  });
+
+  it("não faz nada quando o título não muda", async () => {
+    vi.resetModules();
+    vi.doMock("./github", () => ({
+      gravar: async () => {
+        throw new Error("não deveria gravar");
+      },
+    }));
+    const { propagarRenomeacao } = await import("./links");
+
+    const r = await propagarRenomeacao(cfg, [item("notas/a.md", "@X")], "X", "  X  ");
+    expect(r).toEqual({ atualizados: 0, falhas: [] });
   });
 });

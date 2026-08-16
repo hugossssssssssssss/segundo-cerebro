@@ -63,6 +63,9 @@ export default function Lousas() {
   // ── Estado da UI ──────────────────────────────────────────────────────────
   const [erroLocal, setErroLocal] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState("");
+  /** Falha ao propagar um renomeio pelo repositório — separada do erro de salvar,
+   *  porque aqui a lousa FOI salva e só as menções nos outros arquivos ficaram para trás. */
+  const [erroRenomeacao, setErroRenomeacao] = useState("");
   const erro = erroLocal || erroCarregar || erroSalvar;
 
   const [aberta, setAberta] = useState<LousaAberta | null>(null);
@@ -79,6 +82,7 @@ export default function Lousas() {
   async function abrir(item: ItemRepo) {
     setErroLocal("");
     setMensagemSucesso("");
+    setErroRenomeacao("");
     try {
       let conteudo = item.texto || "";
       if (!conteudo) {
@@ -171,6 +175,7 @@ export default function Lousas() {
     if (!aberta) return;
     setErroLocal("");
     setMensagemSucesso("");
+    setErroRenomeacao("");
 
     try {
       const apiElements = excalidrawAPI ? excalidrawAPI.getSceneElements() : null;
@@ -234,11 +239,42 @@ export default function Lousas() {
         dados: dadosParaSalvar,
       });
 
+      const baseSucesso = `Lousa "${tituloLimpo}" salva com sucesso! (${elementosValidos.length} elementos gravados)`;
+      setMensagemSucesso(baseSucesso);
+
+      // Renomear uma lousa reescreve as menções dela em TODO o repositório. Se
+      // parte dessas gravações falhar, o acervo fica misto — metade dos links
+      // apontando para o nome novo, metade para o antigo. O usuário precisa
+      // saber disso na hora, senão fica com links quebrados sem sinal nenhum.
       if (aberta.tituloOriginal && aberta.tituloOriginal !== tituloLimpo) {
-        propagarRenomeacao(cfg, lousas, aberta.tituloOriginal, tituloLimpo).catch(() => {});
+        try {
+          const { atualizados, falhas } = await propagarRenomeacao(
+            cfg,
+            lousas,
+            aberta.tituloOriginal,
+            tituloLimpo,
+          );
+
+          if (falhas.length > 0) {
+            setErroRenomeacao(
+              `As menções a "${aberta.tituloOriginal}" foram atualizadas em ${atualizados} ` +
+                `arquivo(s), mas ${falhas.length} falhou(aram): ${falhas.join(", ")}. ` +
+                `Esses arquivos ainda apontam para o nome antigo — renomeie de novo para tentar outra vez.`,
+            );
+          } else if (atualizados > 0) {
+            setMensagemSucesso(
+              `${baseSucesso} Menções atualizadas em ${atualizados} arquivo(s).`,
+            );
+          }
+        } catch (e) {
+          setErroRenomeacao(
+            `A lousa foi salva, mas não foi possível atualizar as menções a ` +
+              `"${aberta.tituloOriginal}" nos outros arquivos: ` +
+              `${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
       }
 
-      setMensagemSucesso(`Lousa "${tituloLimpo}" salva com sucesso! (${elementosValidos.length} elementos gravados)`);
       recarregar();
     } catch {
       // erro já está em erroSalvar
@@ -355,6 +391,7 @@ export default function Lousas() {
 
         {erro && <Aviso tom="erro">{erro}</Aviso>}
         {mensagemSucesso && <Aviso tom="sucesso">{mensagemSucesso}</Aviso>}
+        {erroRenomeacao && <Aviso tom="erro">{erroRenomeacao}</Aviso>}
 
         {/* Canvas do Excalidraw */}
         <div className="flex-1 w-full min-h-[500px] rounded-2xl overflow-hidden border border-border shadow-md bg-background relative">
@@ -439,6 +476,7 @@ export default function Lousas() {
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
       {mensagemSucesso && <Aviso tom="sucesso">{mensagemSucesso}</Aviso>}
+        {erroRenomeacao && <Aviso tom="erro">{erroRenomeacao}</Aviso>}
 
       {carregando ? (
         <Carregando texto="Carregando suas lousas e mapas mentais..." />

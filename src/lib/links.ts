@@ -363,31 +363,71 @@ function escaparRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Resultado da propagação de um renomeio. */
+export type ResultadoRenomeacao = {
+  /** Arquivos regravados com sucesso. */
+  atualizados: number;
+  /** Caminhos que precisavam ser atualizados e falharam ao gravar. */
+  falhas: string[];
+};
+
 /**
  * Propaga a alteração de um título para todos os arquivos que mencionavam o título antigo.
  * Atualiza @TituloAntigo -> @TituloNovo e [[TituloAntigo]] -> [[TituloNovo]] com limite de palavra.
+ *
+ * **Devolve as falhas em vez de engolí-las.** Esta função reescreve N arquivos do
+ * repositório de uma vez; quando uma parte falha, o acervo fica num estado
+ * misto — metade dos links apontando para o título novo, metade para o antigo.
+ * Quem chama PRECISA conseguir contar isso para o usuário, senão ele fica com
+ * links quebrados sem nunca saber que quebraram. Já foi assim: a tela dizia
+ * "12 arquivos atualizados" mesmo quando os 12 falhavam.
  */
 export async function propagarRenomeacao(
   cfg: any,
   todos: ItemRepo[],
   tituloAntigo: string,
   tituloNovo: string,
-): Promise<number> {
-  if (!tituloAntigo || !tituloNovo || tituloAntigo.trim() === tituloNovo.trim()) return 0;
+): Promise<ResultadoRenomeacao> {
+  const vazio: ResultadoRenomeacao = { atualizados: 0, falhas: [] };
+  if (!tituloAntigo || !tituloNovo || tituloAntigo.trim() === tituloNovo.trim()) return vazio;
 
   const antigoLimpo = tituloAntigo.trim();
   const novoLimpo = tituloNovo.trim();
 
-  // Exige limite de caractere/palavra para não alterar substrings como @Reunião em @Reunião Semanal
+  /**
+   * Títulos existentes que COMEÇAM com o título antigo seguido de espaço.
+   *
+   * Só a fronteira de caractere não basta, e isso já custou caro: em
+   * `@Reunião Semanal`, o que vem depois de "Reunião" é um espaço — que não é
+   * `\w` — então o lookahead passava e a menção a "Reunião Semanal" (outro
+   * item!) era reescrita como "@Sync Semanal", apontando para lugar nenhum.
+   *
+   * Menção é texto puro e título tem espaço, então a única forma de saber onde
+   * um título termina é saber quais títulos existem — a mesma razão pela qual
+   * `sincronizarRelacionamentos` exige a lista e se recusa a agir sem ela.
+   */
+  const titulosMaisLongos = todos
+    .map((i) => tituloProvavel(i.doc, i.nome))
+    .filter((t) => t && t.length > antigoLimpo.length && t.startsWith(`${antigoLimpo} `));
+
+  /** O texto a partir de `pos` começa com um título mais específico que o antigo? */
+  function ehPrefixoDeOutroTitulo(texto: string, pos: number): boolean {
+    return titulosMaisLongos.some((t) => texto.startsWith(t, pos));
+  }
+
   const regArroba = new RegExp(`@${escaparRegex(antigoLimpo)}(?![\\w\\u00C0-\\u024F])`, "g");
   const regColchetes = new RegExp(`\\[\\[${escaparRegex(antigoLimpo)}\\]\\]`, "g");
 
   let sucessoContagem = 0;
+  const falhas: string[] = [];
 
   for (const item of todos) {
     if (!item.texto) continue;
     let textoNovo = item.texto;
-    textoNovo = textoNovo.replace(regArroba, `@${novoLimpo}`);
+    textoNovo = textoNovo.replace(regArroba, (casado, deslocamento: number, textoInteiro: string) =>
+      // +1 pula o "@" — a comparação é contra o título, que não o inclui.
+      ehPrefixoDeOutroTitulo(textoInteiro, deslocamento + 1) ? casado : `@${novoLimpo}`,
+    );
     textoNovo = textoNovo.replace(regColchetes, `[[${novoLimpo}]]`);
 
     if (textoNovo !== item.texto) {
@@ -395,10 +435,10 @@ export async function propagarRenomeacao(
         await gravar(cfg, item.caminho, textoNovo, item.sha, `refatorar: renomear menção de ${antigoLimpo} para ${novoLimpo}`);
         sucessoContagem++;
       } catch {
-        // Ignora falha em arquivo individual mas não incrementa contagem de sucesso
+        falhas.push(item.caminho);
       }
     }
   }
 
-  return sucessoContagem;
+  return { atualizados: sucessoContagem, falhas };
 }

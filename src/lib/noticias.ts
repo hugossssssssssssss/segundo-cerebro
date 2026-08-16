@@ -138,22 +138,30 @@ export function formatarHtmlEditorial(html: string): string {
       .join("");
   }
 
-  // Sanitização rigorosa via DOMPurify contra XSS, script tags e URIs perigosos
-  const htmlSanitizado = DOMPurify.sanitize(html, {
-    USE_PROFILES: { html: true },
-    FORBID_TAGS: ["script", "iframe", "object", "embed", "link", "style", "meta", "base", "form"],
-    FORBID_ATTR: ["on*", "action"],
-  });
-
   // Adiciona classes CSS elegantes usando o atributo HTML 'class' válido (não 'className')
-  const formatado = htmlSanitizado
+  const formatado = html
     .replace(/<p[^>]*>/gi, '<p class="mb-4 text-sm sm:text-base leading-relaxed text-foreground/90 font-sans">')
     .replace(/<h2[^>]*>/gi, '<h2 class="text-lg font-bold text-foreground mt-6 mb-3 border-b border-border/40 pb-1">')
     .replace(/<h3[^>]*>/gi, '<h3 class="text-base font-bold text-foreground mt-4 mb-2">')
     .replace(/<blockquote[^>]*>/gi, '<blockquote class="border-l-4 border-primary pl-4 py-1 my-4 italic text-muted-foreground bg-accent/30 rounded-r-lg">')
     .replace(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi, '<img src="$1" class="my-4 rounded-xl shadow-xs max-h-96 w-full object-cover" />');
 
-  return formatado;
+  /**
+   * Sanitizar é o ÚLTIMO passo, sempre.
+   *
+   * As substituições acima são regex sobre HTML vindo de um feed RSS de
+   * terceiro, e uma delas reinjeta um trecho capturado do original
+   * (o `src` da imagem). Sanitizar antes e formatar depois deixava a
+   * segurança dependendo de nenhuma dessas regex reintroduzir nada
+   * perigoso — uma garantia que ninguém consegue manter olhando só para
+   * esta função. Com o DOMPurify por último, o que sai daqui está limpo
+   * independentemente do que as regex fizerem.
+   */
+  return DOMPurify.sanitize(formatado, {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ["script", "iframe", "object", "embed", "link", "style", "meta", "base", "form"],
+    FORBID_ATTR: ["on*", "action"],
+  });
 }
 
 /** Calcula o tempo estimado de leitura (média de 180 palavras por minuto) */

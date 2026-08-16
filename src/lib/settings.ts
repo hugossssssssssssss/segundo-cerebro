@@ -41,8 +41,25 @@ const CHAVE_OFUSCADA = "segundo-cerebro:config:enc";
 const CHAVE_SALT = "segundo-cerebro:device-salt";
 
 /**
- * Chave de ofuscação persistida no localStorage do navegador/dispositivo.
- * Permite que a configuração decodifique com sucesso após recarregar a página (F5).
+ * ⚠️ ISTO NÃO É CRIPTOGRAFIA. É OFUSCAÇÃO. ⚠️
+ *
+ * O token e as chaves são embaralhados com um XOR cujo salt fica no
+ * `localStorage`, ao lado do próprio dado embaralhado. Quem conseguir executar
+ * JavaScript nesta origem lê os dois e desfaz o XOR em três linhas — e o mesmo
+ * valeria para AES-GCM, porque a chave também estaria ali do lado. Trocar o
+ * algoritmo sem tirar a chave do alcance do atacante só deixaria isto com
+ * cara de seguro sem ser.
+ *
+ * O que isto protege: olho desatento no DevTools, extensão bisbilhoteira que
+ * varre `localStorage` procurando algo com cara de token.
+ * O que isto NÃO protege: absolutamente nada contra XSS.
+ *
+ * A proteção de verdade continua pendente e exige uma senha que o usuário
+ * digita e que nunca é persistida (PBKDF2 → AES-GCM, chave só em memória).
+ *
+ * **Não chame isto de "protegido" ou "seguro" em código, comentário ou
+ * interface.** Já houve uma rodada em que o nome de uma constante fez a
+ * pendência parecer resolvida.
  */
 let sessionKeyBuffer: Uint8Array | null = null;
 
@@ -89,7 +106,14 @@ function obterSaltSessao(): Uint8Array {
 }
 
 /**
- * Deriva uma chave AES-GCM usando PBKDF2 via WebCrypto Nativa.
+ * Deriva uma chave AES-GCM usando PBKDF2 via WebCrypto nativa.
+ *
+ * ⚠️ ESCRITA E AINDA NÃO LIGADA EM LUGAR NENHUM. Nada no app chama esta função
+ * hoje — o que roda de fato é o XOR de `codificarTexto`. Ela existe porque é a
+ * metade fácil da solução; a metade que falta é decidir de onde vem a `senha`,
+ * e isso muda a experiência de uso (passa a ter uma tela de destravar ao abrir
+ * o app). Enquanto essa decisão não for tomada, **a presença desta função não
+ * significa que a configuração esteja criptografada.**
  */
 export async function derivarChaveWebCrypto(senha: string, salt: Uint8Array): Promise<CryptoKey> {
   const enc = new TextEncoder();
@@ -190,7 +214,8 @@ function limpar(s: Settings): Settings {
 
 export function lerConfig(): Settings {
   try {
-    // 1. Tenta ler o formato protegido
+    // 1. Tenta ler o formato ofuscado (ver o aviso em sessionKeyBuffer:
+    //    ofuscado ≠ protegido)
     const enc = localStorage.getItem(CHAVE_OFUSCADA);
     if (enc) {
       const decodificado = decodificarTexto(enc);
@@ -205,7 +230,7 @@ export function lerConfig(): Settings {
     const parsedLegacy = JSON.parse(bruto);
     const configLimpa = limpar({ ...PADRAO, ...parsedLegacy });
 
-    // Migra automaticamente para o formato protegido e remove o antigo
+    // Migra automaticamente para o formato ofuscado e remove o texto puro
     salvarConfig(configLimpa);
     localStorage.removeItem(CHAVE);
 
@@ -221,7 +246,7 @@ export function salvarConfig(s: Settings): Settings {
   const encStr = codificarTexto(jsonStr);
 
   localStorage.setItem(CHAVE_OFUSCADA, encStr);
-  // Remove o armazenamento legado sem proteção
+  // Remove a versão em texto puro, que era pior ainda
   localStorage.removeItem(CHAVE);
 
   return limpo;

