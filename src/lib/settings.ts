@@ -38,24 +38,54 @@ export type Settings = {
 
 const CHAVE = "segundo-cerebro:config";
 const CHAVE_OFUSCADA = "segundo-cerebro:config:enc";
+const CHAVE_SALT = "segundo-cerebro:device-salt";
 
 /**
- * Chave de sessão dinâmica gerada em memória via WebCrypto.
- * Nunca fica gravada no código nem no repositório público.
+ * Chave de ofuscação persistida no localStorage do navegador/dispositivo.
+ * Permite que a configuração decodifique com sucesso após recarregar a página (F5).
  */
 let sessionKeyBuffer: Uint8Array | null = null;
 
 function obterSaltSessao(): Uint8Array {
-  if (!sessionKeyBuffer) {
-    const ab = new ArrayBuffer(32);
-    sessionKeyBuffer = new Uint8Array(ab);
-    if (typeof window !== "undefined" && window.crypto) {
-      window.crypto.getRandomValues(sessionKeyBuffer as any);
-    } else {
-      sessionKeyBuffer.fill(42);
+  if (sessionKeyBuffer) return sessionKeyBuffer;
+
+  // 1. Tenta carregar o salt persistido do localStorage
+  try {
+    const salvo = typeof window !== "undefined" ? localStorage.getItem(CHAVE_SALT) : null;
+    if (salvo) {
+      const binStr = atob(salvo);
+      const arr = new Uint8Array(binStr.length);
+      for (let i = 0; i < binStr.length; i++) {
+        arr[i] = binStr.charCodeAt(i);
+      }
+      sessionKeyBuffer = arr;
+      return arr;
     }
+  } catch {
+    // se falhar ao ler do localStorage, gera novo
   }
-  return sessionKeyBuffer;
+
+  // 2. Se não existir salt salvo, gera novo salt de 32 bytes
+  const arr = new Uint8Array(32);
+  if (typeof window !== "undefined" && window.crypto) {
+    window.crypto.getRandomValues(arr as any);
+  } else {
+    arr.fill(42);
+  }
+
+  // 3. Salva o novo salt no localStorage para futuras leituras nesta origem/dispositivo
+  try {
+    let binStr = "";
+    arr.forEach((b) => (binStr += String.fromCharCode(b)));
+    if (typeof window !== "undefined") {
+      localStorage.setItem(CHAVE_SALT, btoa(binStr));
+    }
+  } catch {
+    // ignora se localStorage estiver desativado
+  }
+
+  sessionKeyBuffer = arr;
+  return arr;
 }
 
 /**
