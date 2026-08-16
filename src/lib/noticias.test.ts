@@ -3,16 +3,20 @@ import {
   CATEGORIAS_NOTICIAS,
   obterIdsCurtidos,
   alternarCurtidaNoticia,
-  limparHtml,
-  extrairImagemDoHtml,
+  limparTexto,
+  obterModoExibicao,
+  salvarModoExibicao,
+  obterCategoriasAtivas,
+  salvarCategoriasAtivas,
+  obterImagemIlustrativa,
 } from "./noticias";
 
-describe("Módulo de Notícias", () => {
+describe("Módulo de Notícias (Refatorado)", () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it("deve conter as categorias básicas incluindo futebol", () => {
+  it("deve conter as categorias padrão incluindo futebol", () => {
     const ids = CATEGORIAS_NOTICIAS.map((c) => c.id);
     expect(ids).toContain("futebol");
     expect(ids).toContain("design");
@@ -21,9 +25,30 @@ describe("Módulo de Notícias", () => {
     expect(ids).toContain("curiosidades");
   });
 
+  it("deve gerenciar preferências de modo de exibição (feed, carrossel, posts)", () => {
+    expect(obterModoExibicao()).toBe("feed");
+    salvarModoExibicao("carrossel");
+    expect(obterModoExibicao()).toBe("carrossel");
+    salvarModoExibicao("posts");
+    expect(obterModoExibicao()).toBe("posts");
+  });
+
+  it("deve gerenciar seleção de categorias ativas do usuário", () => {
+    expect(obterCategoriasAtivas()).toEqual(["futebol", "design", "tech", "brasil", "curiosidades"]);
+    salvarCategoriasAtivas(["futebol", "design"]);
+    expect(obterCategoriasAtivas()).toEqual(["futebol", "design"]);
+  });
+
+  it("deve retornar imagens ilustrativas válidas como fallback", () => {
+    const imgFutebol = obterImagemIlustrativa("futebol");
+    expect(imgFutebol).toContain("images.unsplash.com");
+
+    const imgCustom = obterImagemIlustrativa("design", "https://exemplo.com/foto.jpg");
+    expect(imgCustom).toBe("https://exemplo.com/foto.jpg");
+  });
+
   it("deve gerenciar curtidas no localStorage", () => {
     expect(obterIdsCurtidos()).toEqual([]);
-
     const curtido1 = alternarCurtidaNoticia("noticia-1");
     expect(curtido1).toBe(true);
     expect(obterIdsCurtidos()).toEqual(["noticia-1"]);
@@ -33,15 +58,8 @@ describe("Módulo de Notícias", () => {
     expect(obterIdsCurtidos()).toEqual([]);
   });
 
-  it("deve limpar HTML de descrições RSS", () => {
-    const htmlSujeito = "<p>Texto da notícia com <a href='#'>link</a> e <img src='foto.jpg'/> &nbsp; teste &amp; teste</p>";
-    const limpo = limparHtml(htmlSujeito);
-    expect(limpo).toBe("Texto da notícia com link e teste & teste");
-  });
-
-  it("deve extrair URL da imagem do HTML da descrição", () => {
-    const htmlComImg = '<div><p>Resumo</p><img src="https://exemplo.com/foto.jpg" alt="foto" /></div>';
-    const imgUrl = extrairImagemDoHtml(htmlComImg);
-    expect(imgUrl).toBe("https://exemplo.com/foto.jpg");
+  it("deve limpar textos e resumos de marcas HTML", () => {
+    const limpo = limparTexto("<p>Notícia em <b>destaque</b> com &nbsp; espaços &amp; teste</p>");
+    expect(limpo).toBe("Notícia em destaque com espaços & teste");
   });
 });

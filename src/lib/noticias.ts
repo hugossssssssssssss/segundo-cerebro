@@ -1,9 +1,9 @@
 /**
  * Módulo de Notícias & Entretenimento para o Klaus.
  *
- * Busca feeds abertos (TabNews, HackerNews, RSS de Esportes, Design, IA e Brasil),
- * permite filtrar por categoria, alternar curtidas e gravar matérias curtidas
- * como notas em Markdown no repositório de dados.
+ * Suporta busca de feeds por APIs JSON livres de CORS (Reddit JSON, TabNews, rss2json),
+ * personalização dos assuntos ativos pelo usuário, 3 modos de exibição (feed, carrossel, posts),
+ * imagens de capa ilustrativas garantidas e gravação de matérias curtidas em Markdown.
  */
 
 import type { Settings } from "./settings";
@@ -12,6 +12,7 @@ import { gravar } from "./github";
 import { invalidarCache } from "./repo";
 
 export type CategoriaNoticia = "futebol" | "design" | "tech" | "brasil" | "curiosidades";
+export type ModoExibicao = "feed" | "carrossel" | "posts";
 
 export interface ItemNoticia {
   id: string;
@@ -19,7 +20,7 @@ export interface ItemNoticia {
   link: string;
   fonte: string;
   categoria: CategoriaNoticia;
-  imagemUrl?: string;
+  imagemUrl: string;
   descricao?: string;
   data: string;
   curtido?: boolean;
@@ -31,18 +32,98 @@ export interface CategoriaConfig {
   rotulo: string;
   icone: string;
   descricao: string;
+  padraoAtivo: boolean;
 }
 
 export const CATEGORIAS_NOTICIAS: CategoriaConfig[] = [
-  { id: "futebol", rotulo: "Futebol", icone: "⚽", descricao: "Notícias de clubes, jogos e campeonatos" },
-  { id: "design", rotulo: "Design & Arte", icone: "🎨", descricao: "UI/UX, ilustração, branding e inspiração" },
-  { id: "tech", rotulo: "Tecnologia & IA", icone: "🤖", descricao: "Desenvolvimento, IA, gadgets e novidades" },
-  { id: "brasil", rotulo: "Brasil & Mundo", icone: "🇧🇷", descricao: "Manchetes principais dos grandes portais" },
-  { id: "curiosidades", rotulo: "Curiosidades", icone: "💡", descricao: "Ciência, inovação e fatos interessantes" },
+  { id: "futebol", rotulo: "Futebol & Esportes", icone: "⚽", descricao: "Jogos, contratações e campeonatos", padraoAtivo: true },
+  { id: "design", rotulo: "Design & Arte", icone: "🎨", descricao: "UI/UX, branding, tendências e inspiração", padraoAtivo: true },
+  { id: "tech", rotulo: "Tecnologia & IA", icone: "🤖", descricao: "Inteligência Artificial, gadgets e software", padraoAtivo: true },
+  { id: "brasil", rotulo: "Brasil & Notícias", icone: "🇧🇷", descricao: "Principais manchetes e acontecimentos", padraoAtivo: true },
+  { id: "curiosidades", rotulo: "Curiosidades & Ciência", icone: "💡", descricao: "Fatos interessantes e descobertas", padraoAtivo: true },
 ];
 
+/** Imagens ilustrativas HD por categoria quando a notícia não possui thumbnail */
+const IMAGENS_ILUSTRATIVAS: Record<CategoriaNoticia, string[]> = {
+  futebol: [
+    "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=800&q=80",
+  ],
+  design: [
+    "https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?auto=format&fit=crop&w=800&q=80",
+  ],
+  tech: [
+    "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80",
+  ],
+  brasil: [
+    "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1516306580123-e6e52b1b7b5f?auto=format&fit=crop&w=800&q=80",
+  ],
+  curiosidades: [
+    "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1507499739999-097706ad8914?auto=format&fit=crop&w=800&q=80",
+  ],
+};
+
 const CHAVE_CURTIDOS = "klaus_noticias_curtidas";
-const PROXY_CORS = "https://api.allorigins.win/raw?url=";
+const CHAVE_MODO_EXIBICAO = "klaus_noticias_modo";
+const CHAVE_CATEGORIAS_ATIVAS = "klaus_noticias_categorias_ativas";
+
+/** Retorna a imagem ilustrativa para a categoria se a thumbnail for inválida */
+export function obterImagemIlustrativa(categoria: CategoriaNoticia, urlOpicional?: string): string {
+  if (urlOpicional && urlOpicional.startsWith("http") && !urlOpicional.includes("self") && !urlOpicional.includes("default")) {
+    return urlOpicional;
+  }
+  const lista = IMAGENS_ILUSTRATIVAS[categoria] || IMAGENS_ILUSTRATIVAS.tech;
+  const idx = Math.floor(Math.random() * lista.length);
+  return lista[idx];
+}
+
+/** Retorna o modo de exibição salvo no localStorage (padrão: "feed") */
+export function obterModoExibicao(): ModoExibicao {
+  try {
+    const salvo = localStorage.getItem(CHAVE_MODO_EXIBICAO);
+    if (salvo === "carrossel" || salvo === "posts" || salvo === "feed") return salvo;
+    return "feed";
+  } catch {
+    return "feed";
+  }
+}
+
+/** Salva a preferência de formato de exibição */
+export function salvarModoExibicao(modo: ModoExibicao): void {
+  try {
+    localStorage.setItem(CHAVE_MODO_EXIBICAO, modo);
+  } catch {
+    // ignora
+  }
+}
+
+/** Retorna a lista de categorias ativas configuradas pelo usuário */
+export function obterCategoriasAtivas(): CategoriaNoticia[] {
+  try {
+    const salvo = localStorage.getItem(CHAVE_CATEGORIAS_ATIVAS);
+    if (!salvo) return CATEGORIAS_NOTICIAS.map((c) => c.id);
+    const parsed = JSON.parse(salvo);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : CATEGORIAS_NOTICIAS.map((c) => c.id);
+  } catch {
+    return CATEGORIAS_NOTICIAS.map((c) => c.id);
+  }
+}
+
+/** Salva as categorias que o usuário deseja visualizar */
+export function salvarCategoriasAtivas(categorias: CategoriaNoticia[]): void {
+  try {
+    localStorage.setItem(CHAVE_CATEGORIAS_ATIVAS, JSON.stringify(categorias));
+  } catch {
+    // ignora
+  }
+}
 
 /** Retorna a lista de IDs de notícias curtidas no localStorage. */
 export function obterIdsCurtidos(): string[] {
@@ -56,7 +137,7 @@ export function obterIdsCurtidos(): string[] {
   }
 }
 
-/** Alterna o status de curtido de uma notícia e atualiza o localStorage. Retorna true se agora está curtido. */
+/** Alterna o status de curtido de uma notícia e atualiza o localStorage. */
 export function alternarCurtidaNoticia(noticiaId: string): boolean {
   try {
     const curtidos = new Set(obterIdsCurtidos());
@@ -75,11 +156,10 @@ export function alternarCurtidaNoticia(noticiaId: string): boolean {
   }
 }
 
-/** Limpa tags HTML simples de resumos de RSS */
-export function limparHtml(html: string): string {
-  if (!html) return "";
-  return html
-    .replace(/<img[^>]*>/gi, "")
+/** Limpa marcas de formatação em resumos */
+export function limparTexto(texto: string): string {
+  if (!texto) return "";
+  return texto
     .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
@@ -90,67 +170,81 @@ export function limparHtml(html: string): string {
     .trim();
 }
 
-/** Tenta extrair a primeira imagem de uma tag HTML */
-export function extrairImagemDoHtml(html: string): string | undefined {
-  if (!html) return undefined;
-  const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
-  return match ? match[1] : undefined;
+/** 1. Busca notícias via Reddit API JSON (100% livre de CORS) */
+export async function buscarNoticiasReddit(subreddit: string, fonte: string, categoria: CategoriaNoticia): Promise<ItemNoticia[]> {
+  try {
+    const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=12`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const json = await res.json();
+    const posts = json?.data?.children || [];
+    const idsCurtidos = new Set(obterIdsCurtidos());
+
+    return posts
+      .filter((p: { data: { title?: string; over_18?: boolean } }) => p.data?.title && !p.data?.over_18)
+      .slice(0, 10)
+      .map((p: { data: { id: string; title: string; permalink: string; thumbnail?: string; created_utc: number; selftext?: string; url?: string } }) => {
+        const d = p.data;
+        const link = d.url && d.url.startsWith("http") ? d.url : `https://www.reddit.com${d.permalink}`;
+        const id = `reddit-${subreddit}-${d.id}`;
+        const rawDesc = d.selftext ? d.selftext.slice(0, 160) : "";
+
+        return {
+          id,
+          titulo: d.title,
+          link,
+          fonte,
+          categoria,
+          imagemUrl: obterImagemIlustrativa(categoria, d.thumbnail),
+          descricao: rawDesc ? `${limparTexto(rawDesc)}...` : `Discussão da comunidade no /r/${subreddit}`,
+          data: new Date(d.created_utc * 1000).toISOString(),
+          curtido: idsCurtidos.has(id),
+        };
+      });
+  } catch {
+    return [];
+  }
 }
 
-/** Busca RSS genérico usando o proxy AllOrigins */
-export async function buscarFeedRss(
-  urlFeed: string,
-  nomeFonte: string,
-  categoria: CategoriaNoticia
-): Promise<ItemNoticia[]> {
+/** 2. Busca notícias via API rss2json (Converte RSS oficial em JSON livre de CORS) */
+export async function buscarFeedRss2Json(urlFeed: string, fonte: string, categoria: CategoriaNoticia): Promise<ItemNoticia[]> {
   try {
-    const urlFinal = `${PROXY_CORS}${encodeURIComponent(urlFeed)}`;
-    const res = await fetch(urlFinal);
+    const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(urlFeed)}`;
+    const res = await fetch(url);
     if (!res.ok) return [];
-    const xmlTexto = await res.text();
-    
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlTexto, "text/xml");
-    const items = Array.from(xmlDoc.querySelectorAll("item"));
+    const json = await res.json();
+    if (json.status !== "ok" || !Array.isArray(json.items)) return [];
 
     const idsCurtidos = new Set(obterIdsCurtidos());
 
-    return items.slice(0, 12).map((item, idx) => {
-      const titulo = item.querySelector("title")?.textContent?.trim() || "Notícia sem título";
-      const link = item.querySelector("link")?.textContent?.trim() || urlFeed;
-      const pubDate = item.querySelector("pubDate")?.textContent?.trim() || new Date().toISOString();
-      const rawDesc = item.querySelector("description")?.textContent || "";
-      const descricao = limparHtml(rawDesc).slice(0, 180);
-      
-      const mediaContent = item.querySelector("media\\:content, content")?.getAttribute("url");
-      const enclosure = item.querySelector("enclosure")?.getAttribute("url");
-      const imgInDesc = extrairImagemDoHtml(rawDesc);
-
-      const imagemUrl = mediaContent || enclosure || imgInDesc;
-      const id = `${nomeFonte.toLowerCase().replace(/\s+/g, "-")}-${idx}-${titulo.slice(0, 20)}`;
+    return json.items.slice(0, 10).map((item: { title: string; link: string; pubDate: string; description?: string; thumbnail?: string; enclosure?: { link?: string } }, idx: number) => {
+      const titulo = item.title ? limparTexto(item.title) : "Notícia sem título";
+      const link = item.link || urlFeed;
+      const id = `rss-${fonte.toLowerCase().replace(/\s+/g, "-")}-${idx}-${titulo.slice(0, 15)}`;
+      const rawDesc = item.description ? limparTexto(item.description).slice(0, 180) : "";
+      const thumb = item.thumbnail || item.enclosure?.link;
 
       return {
         id,
         titulo,
         link,
-        fonte: nomeFonte,
+        fonte,
         categoria,
-        imagemUrl,
-        descricao: descricao ? `${descricao}...` : undefined,
-        data: pubDate,
+        imagemUrl: obterImagemIlustrativa(categoria, thumb),
+        descricao: rawDesc ? `${rawDesc}...` : undefined,
+        data: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
         curtido: idsCurtidos.has(id),
       };
     });
-  } catch (err) {
-    console.warn(`Falha ao carregar feed ${nomeFonte}:`, err);
+  } catch {
     return [];
   }
 }
 
-/** Busca artigos do TabNews (Tecnologia & IA em português) */
+/** 3. Busca notícias do TabNews (Brasil / Tech) */
 export async function buscarNoticiasTabNews(): Promise<ItemNoticia[]> {
   try {
-    const res = await fetch("https://www.tabnews.com.br/api/v1/contents?page=1&per_page=12&strategy=relevant");
+    const res = await fetch("https://www.tabnews.com.br/api/v1/contents?page=1&per_page=10&strategy=relevant");
     if (!res.ok) return [];
     const dados = await res.json();
     const idsCurtidos = new Set(obterIdsCurtidos());
@@ -162,9 +256,10 @@ export async function buscarNoticiasTabNews(): Promise<ItemNoticia[]> {
         id,
         titulo: item.title,
         link,
-        fonte: "TabNews",
+        fonte: "TabNews Brasil",
         categoria: "tech" as CategoriaNoticia,
-        descricao: `Publicado por @${item.owner_username} com ${item.tabcoins} tabcoins de relevância.`,
+        imagemUrl: obterImagemIlustrativa("tech"),
+        descricao: `Artigo publicado por @${item.owner_username} com ${item.tabcoins} pontos de relevância.`,
         data: item.published_at,
         curtido: idsCurtidos.has(id),
       };
@@ -174,48 +269,66 @@ export async function buscarNoticiasTabNews(): Promise<ItemNoticia[]> {
   }
 }
 
-/** Lista de feeds RSS por categoria */
-const FEEDS_POR_CATEGORIA: Record<CategoriaNoticia, Array<{ url: string; fonte: string }>> = {
-  futebol: [
-    { url: "https://ge.globo.com/rss/ge/", fonte: "Globo Esporte" },
-    { url: "https://www.uol.com.br/esporte/futebol/rss.xml", fonte: "UOL Esporte" },
-  ],
-  design: [
-    { url: "https://www.meioemensagem.com.br/feed", fonte: "Meio & Mensagem" },
-    { url: "https://www.designerd.com.br/feed/", fonte: "Designerd" },
-  ],
-  tech: [
-    { url: "https://tecnoblog.net/feed/", fonte: "Tecnoblog" },
-    { url: "https://canaltech.com.br/rss/", fonte: "Canaltech" },
-  ],
-  brasil: [
-    { url: "https://g1.globo.com/rss/g1/", fonte: "G1" },
-    { url: "https://noticias.uol.com.br/rss.xml", fonte: "UOL Notícias" },
-  ],
-  curiosidades: [
-    { url: "https://super.abril.com.br/feed/", fonte: "Superinteressante" },
-    { url: "https://www.tecmundo.com.br/rss", fonte: "TecMundo" },
-  ],
-};
-
-/** Busca notícias consolidadas para a categoria selecionada */
+/** Mapa de busca de feeds por categoria usando fontes múltiplas e redundantes */
 export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): Promise<ItemNoticia[]> {
-  const listaFeeds = FEEDS_POR_CATEGORIA[categoria] || [];
-  const promessas = listaFeeds.map((f) => buscarFeedRss(f.url, f.fonte, categoria));
-  
-  if (categoria === "tech") {
+  const promessas: Promise<ItemNoticia[]>[] = [];
+
+  if (categoria === "futebol") {
+    promessas.push(buscarNoticiasReddit("futebol", "Reddit Futebol", "futebol"));
+    promessas.push(buscarFeedRss2Json("https://ge.globo.com/rss/ge/", "Globo Esporte", "futebol"));
+    promessas.push(buscarFeedRss2Json("https://www.uol.com.br/esporte/futebol/rss.xml", "UOL Esporte", "futebol"));
+  } else if (categoria === "design") {
+    promessas.push(buscarNoticiasReddit("Design", "Reddit Design", "design"));
+    promessas.push(buscarFeedRss2Json("https://www.meioemensagem.com.br/feed", "Meio & Mensagem", "design"));
+    promessas.push(buscarFeedRss2Json("https://www.designerd.com.br/feed/", "Designerd", "design"));
+  } else if (categoria === "tech") {
     promessas.push(buscarNoticiasTabNews());
+    promessas.push(buscarNoticiasReddit("technology", "Reddit Tech", "tech"));
+    promessas.push(buscarFeedRss2Json("https://tecnoblog.net/feed/", "Tecnoblog", "tech"));
+  } else if (categoria === "brasil") {
+    promessas.push(buscarNoticiasReddit("brasil", "Reddit Brasil", "brasil"));
+    promessas.push(buscarFeedRss2Json("https://g1.globo.com/rss/g1/", "G1 Notícias", "brasil"));
+    promessas.push(buscarFeedRss2Json("https://noticias.uol.com.br/rss.xml", "UOL Notícias", "brasil"));
+  } else if (categoria === "curiosidades") {
+    promessas.push(buscarNoticiasReddit("todayilearned", "Fatos do Dia", "curiosidades"));
+    promessas.push(buscarFeedRss2Json("https://super.abril.com.br/feed/", "Superinteressante", "curiosidades"));
   }
 
   const resultados = await Promise.all(promessas);
   const consolidados = resultados.flat();
 
-  // Ordenar por data decrescente
-  return consolidados.sort((a, b) => {
-    const tA = new Date(a.data).getTime() || 0;
-    const tB = new Date(b.data).getTime() || 0;
-    return tB - tA;
-  });
+  // Se por alguma razão a rede falhar em todos, gera um item de demonstração visual
+  if (consolidados.length === 0) {
+    const idsCurtidos = new Set(obterIdsCurtidos());
+    const idDemo = `demo-${categoria}-1`;
+    const catCfg = CATEGORIAS_NOTICIAS.find((c) => c.id === categoria);
+    return [
+      {
+        id: idDemo,
+        titulo: `Últimas tendências e destaques de ${catCfg?.rotulo || categoria}`,
+        link: "https://github.com",
+        fonte: "Klaus Radar",
+        categoria,
+        imagemUrl: obterImagemIlustrativa(categoria),
+        descricao: `Acompanhe as principais matérias e discussões atualizadas em tempo real sobre ${catCfg?.rotulo || categoria}.`,
+        data: new Date().toISOString(),
+        curtido: idsCurtidos.has(idDemo),
+      },
+    ];
+  }
+
+  // Eliminar duplicados por título aproximado e ordenar por data
+  const vistos = new Set<string>();
+  const unicos: ItemNoticia[] = [];
+  for (const item of consolidados) {
+    const chave = item.titulo.toLowerCase().slice(0, 30);
+    if (!vistos.has(chave)) {
+      vistos.add(chave);
+      unicos.push(item);
+    }
+  }
+
+  return unicos.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 }
 
 /**
