@@ -2,6 +2,7 @@
  * Módulo de Notícias & Entretenimento para o Klaus.
  *
  * Suporta busca de feeds por APIs JSON livres de CORS (Reddit JSON, TabNews, rss2json),
+ * extração de artigo completo via DOMParser (Full Reader Engine),
  * personalização dos assuntos ativos pelo usuário, 3 modos de exibição (feed, carrossel, posts),
  * imagens de capa ilustrativas garantidas e integração direta com o repositório em Markdown:
  * - Criar Nota (notas/)
@@ -26,6 +27,7 @@ export interface ItemNoticia {
   imagemUrl: string;
   descricao?: string;
   conteudoCompleto?: string;
+  tempoLeituraMinutos?: number;
   data: string;
   curtido?: boolean;
   resumoIa?: string;
@@ -179,7 +181,92 @@ export function limparTexto(texto: string): string {
     .trim();
 }
 
-/** Busca via Reddit API JSON (CORS livre) com filtro rígido por categoria */
+/**
+ * MOTOR DE EXTRAÇÃO DE ARTIGO COMPLETO (Full Reader Engine)
+ *
+ * Busca a página HTML original da notícia via proxy e extrai o texto integral
+ * da matéria, separando parágrafos, subtítulos e citados sem propagandas ou menus.
+ */
+export async function extrairArtigoCompleto(
+  urlNoticia: string,
+  fallbackDescricao?: string
+): Promise<{ conteudoMarkdown: string; tempoLeituraMinutos: number; sucesso: boolean }> {
+  try {
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlNoticia)}`;
+    const res = await fetch(proxyUrl);
+    if (!res.ok) throw new Error("Erro na comunicação com a página da notícia.");
+    const htmlTexto = await res.text();
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlTexto, "text/html");
+
+    // Remover ruídos do portal (anúncios, scripts, menus, comentários)
+    const ruídos = doc.querySelectorAll(
+      "script, style, iframe, nav, header, footer, aside, .ad, .ads, .advertising, .banner, .social-share, .comments, #comments, .menu"
+    );
+    ruídos.forEach((el) => el.remove());
+
+    // Isolar o container da matéria
+    const container =
+      doc.querySelector("article") ||
+      doc.querySelector('[role="main"]') ||
+      doc.querySelector(".materia-body") ||
+      doc.querySelector(".content-body") ||
+      doc.querySelector(".post-content") ||
+      doc.querySelector(".entry-content") ||
+      doc.querySelector(".materia") ||
+      doc.body;
+
+    const blocos: string[] = [];
+    const elementos = container.querySelectorAll("p, h2, h3, h4, blockquote, ul, ol");
+
+    elementos.forEach((el) => {
+      const tag = el.tagName.toLowerCase();
+      const txt = limparTexto(el.textContent || "");
+      if (txt.length < 15) return;
+
+      if (tag === "h2") {
+        blocos.push(`\n## ${txt}\n`);
+      } else if (tag === "h3" || tag === "h4") {
+        blocos.push(`\n### ${txt}\n`);
+      } else if (tag === "blockquote") {
+        blocos.push(`> ${txt}`);
+      } else if (tag === "ul" || tag === "ol") {
+        const itens = Array.from(el.querySelectorAll("li"))
+          .map((li) => `- ${limparTexto(li.textContent || "")}`)
+          .filter((i) => i.length > 3);
+        if (itens.length > 0) blocos.push(itens.join("\n"));
+      } else {
+        blocos.push(txt);
+      }
+    });
+
+    const textoFinal = blocos.join("\n\n").trim();
+    const totalPalavras = textoFinal.split(/\s+/).filter(Boolean).length;
+
+    if (totalPalavras > 60) {
+      const tempoLeituraMinutos = Math.max(1, Math.ceil(totalPalavras / 200));
+      return {
+        conteudoMarkdown: textoFinal,
+        tempoLeituraMinutos,
+        sucesso: true,
+      };
+    }
+  } catch (err) {
+    console.warn("Falha ao raspar artigo completo:", err);
+  }
+
+  // Fallback caso a raspagem seja bloqueada por paywall
+  const base = fallbackDescricao ? limparTexto(fallbackDescricao) : "Resumo da matéria disponível.";
+  const palavras = base.split(/\s+/).filter(Boolean).length;
+  return {
+    conteudoMarkdown: `${base}\n\n*(Este portal exige navegação direta para exibição do artigo na íntegra).*`,
+    tempoLeituraMinutos: Math.max(1, Math.ceil(palavras / 200)),
+    sucesso: false,
+  };
+}
+
+/** Busca via Reddit API JSON (CORS livre) com filtro por categoria */
 export async function buscarNoticiasReddit(subreddit: string, fonte: string, categoria: CategoriaNoticia): Promise<ItemNoticia[]> {
   try {
     const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=12`;
@@ -312,7 +399,6 @@ export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): P
   const resultados = await Promise.all(promessas);
   const consolidados = resultados.flat();
 
-  // Fallback se todos os feeds falharem
   if (consolidados.length === 0) {
     const idsCurtidos = new Set(obterIdsCurtidos());
     const idDemo = `demo-${categoria}-1`;
@@ -333,7 +419,6 @@ export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): P
     ];
   }
 
-  // Eliminar duplicatas
   const vistos = new Set<string>();
   const unicos: ItemNoticia[] = [];
   for (const item of consolidados) {
@@ -349,9 +434,7 @@ export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): P
 
 // ── INTEGRAÇÕES COM O SEGUNDO CÉREBRO (Notas, Referências, Tarefas) ───────────────
 
-/**
- * 1. Salva uma notícia como Nota em `notas/`
- */
+/** 1. Salva uma notícia como Nota em notas/ com artigo integral se disponível */
 export async function criarNotaDaNoticia(noticia: ItemNoticia, cfg: Settings): Promise<string> {
   const dataHoje = new Date().toISOString().slice(0, 10);
   const nomeArq = `notas/${nomeDeArquivo(`Nota - ${noticia.titulo}`)}`;
@@ -377,8 +460,8 @@ export async function criarNotaDaNoticia(noticia: ItemNoticia, cfg: Settings): P
     corpo += `### 🤖 Resumo da IA\n${noticia.resumoIa}\n\n`;
   }
 
-  corpo += `### Conteúdo / Reflexão\n${noticia.conteudoCompleto || noticia.descricao || ""}\n\n`;
-  corpo += `---\n*Nota criada a partir da aba Notícias do Klaus em ${dataHoje}.*`;
+  corpo += `### Conteúdo Integral da Matéria\n${noticia.conteudoCompleto || noticia.descricao || ""}\n\n`;
+  corpo += `---\n*Nota gerada no Klaus em ${dataHoje}.*`;
 
   const conteudoFinal = escreverMarkdown({ dados: frontmatter, corpo });
   await gravar(cfg, nomeArq, conteudoFinal, undefined, `Criar nota para a notícia "${noticia.titulo}"`);
@@ -386,9 +469,7 @@ export async function criarNotaDaNoticia(noticia: ItemNoticia, cfg: Settings): P
   return nomeArq;
 }
 
-/**
- * 2. Salva uma notícia como Referência em `referencias/`
- */
+/** 2. Salva uma notícia como Referência em referencias/ */
 export async function salvarNoticiaComoReferencia(noticia: ItemNoticia, cfg: Settings): Promise<string> {
   const dataHoje = new Date().toISOString().slice(0, 10);
   const nomeArq = `referencias/${nomeDeArquivo(noticia.titulo)}`;
@@ -417,11 +498,11 @@ export async function salvarNoticiaComoReferencia(noticia: ItemNoticia, cfg: Set
     corpo += `### 🤖 Resumo da IA\n${noticia.resumoIa}\n\n`;
   }
 
-  if (noticia.descricao) {
-    corpo += `### Trecho\n${noticia.descricao}\n\n`;
+  if (noticia.conteudoCompleto || noticia.descricao) {
+    corpo += `### Conteúdo / Trecho\n${noticia.conteudoCompleto || noticia.descricao}\n\n`;
   }
 
-  corpo += `---\n*Salvo através da aba Notícias do Klaus em ${dataHoje}.*`;
+  corpo += `---\n*Salvo em Referências do Klaus em ${dataHoje}.*`;
 
   const conteudoFinal = escreverMarkdown({ dados: frontmatter, corpo });
   await gravar(cfg, nomeArq, conteudoFinal, undefined, `Salvar notícia "${noticia.titulo}" nas Referências`);
@@ -429,9 +510,7 @@ export async function salvarNoticiaComoReferencia(noticia: ItemNoticia, cfg: Set
   return nomeArq;
 }
 
-/**
- * 3. Cria uma Tarefa para acompanhar/estudar a notícia em `tarefas/`
- */
+/** 3. Cria uma Tarefa para acompanhar/estudar a notícia em tarefas/ */
 export async function criarTarefaDaNoticia(noticia: ItemNoticia, cfg: Settings): Promise<string> {
   const dataHoje = new Date().toISOString().slice(0, 10);
   const tituloTarefa = `Ler e analisar: ${noticia.titulo}`;
@@ -449,9 +528,9 @@ export async function criarTarefaDaNoticia(noticia: ItemNoticia, cfg: Settings):
   };
 
   let corpo = `## Tarefa: ${noticia.titulo}\n\n`;
-  corpo += `- [ ] Ler artigo completo em [${noticia.fonte}](${noticia.link})\n`;
-  corpo += `- [ ] Anotar pontos principais e aplicar\n\n`;
-  corpo += `### Contexto da Notícia\n${noticia.descricao || noticia.titulo}\n\n`;
+  corpo += `- [ ] Ler artigo completo no [${noticia.fonte}](${noticia.link})\n`;
+  corpo += `- [ ] Registrar anotações no Klaus\n\n`;
+  corpo += `### Matéria\n${noticia.descricao || noticia.titulo}\n\n`;
   corpo += `---\n*Tarefa gerada automaticamente a partir da aba Notícias do Klaus.*`;
 
   const conteudoFinal = escreverMarkdown({ dados: frontmatter, corpo });

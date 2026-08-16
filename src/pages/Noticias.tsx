@@ -19,6 +19,7 @@ import {
   Bookmark,
   CheckSquare,
   BookOpen,
+  Clock,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { conversar } from "@/lib/gemini";
@@ -28,6 +29,7 @@ import {
   salvarNoticiaComoReferencia,
   criarNotaDaNoticia,
   criarTarefaDaNoticia,
+  extrairArtigoCompleto,
   alternarCurtidaNoticia,
   obterModoExibicao,
   salvarModoExibicao,
@@ -59,8 +61,9 @@ export default function Noticias() {
   const [acaoId, setAcaoId] = useState<string | null>(null);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
 
-  // Leitor Integrado (Modal de Leitura da Notícia)
+  // Leitor Integrado (In-App Reader)
   const [noticiaParaLer, setNoticiaParaLer] = useState<ItemNoticia | null>(null);
+  const [extraindoConteudo, setExtraindoConteudo] = useState(false);
 
   // Modais de Ajuste e IA
   const [modalAssuntosAberta, setModalAssuntosAberta] = useState(false);
@@ -69,7 +72,7 @@ export default function Noticias() {
 
   const carrosselRef = useRef<HTMLDivElement>(null);
 
-  // Carregar matérias da categoria selecionada
+  // Carregar matérias da categoria
   const carregar = async (cat: CategoriaNoticia) => {
     setCarregando(true);
     try {
@@ -86,13 +89,38 @@ export default function Noticias() {
     carregar(categoria);
   }, [categoria]);
 
-  // Alterar modo de exibição (feed, carrossel, posts)
+  // Ao abrir uma notícia para ler no Klaus, dispara o Full Reader Engine (extração completa)
+  const handleAbrirLeitor = async (item: ItemNoticia) => {
+    setNoticiaParaLer(item);
+    setResumoIa("");
+    setExtraindoConteudo(true);
+
+    try {
+      const { conteudoMarkdown, tempoLeituraMinutos } = await extrairArtigoCompleto(
+        item.link,
+        item.descricao || item.conteudoCompleto
+      );
+      setNoticiaParaLer((prev) =>
+        prev && prev.id === item.id
+          ? {
+              ...prev,
+              conteudoCompleto: conteudoMarkdown,
+              tempoLeituraMinutos,
+            }
+          : prev
+      );
+    } catch (err) {
+      console.warn("Erro ao extrair artigo no leitor:", err);
+    } finally {
+      setExtraindoConteudo(false);
+    }
+  };
+
   const handleTrocarModo = (novoModo: ModoExibicao) => {
     setModo(novoModo);
     salvarModoExibicao(novoModo);
   };
 
-  // Alternar categorias ativas no modal de preferências
   const handleToggleCategoriaAtiva = (catId: CategoriaNoticia) => {
     let novaLista: CategoriaNoticia[];
     if (categoriasAtivas.includes(catId)) {
@@ -116,7 +144,6 @@ export default function Noticias() {
     setCategoria("futebol");
   };
 
-  // Busca em tempo real
   const noticiasFiltradas = useMemo(() => {
     if (!busca.trim()) return noticias;
     const termo = busca.toLowerCase();
@@ -128,7 +155,6 @@ export default function Noticias() {
     );
   }, [noticias, busca]);
 
-  // Curtir Notícia
   const handleCurtir = (noticia: ItemNoticia) => {
     const agoraCurtido = alternarCurtidaNoticia(noticia.id);
     setNoticias((prev) =>
@@ -139,13 +165,12 @@ export default function Noticias() {
     }
   };
 
-  // Ação 1: Criar Nota em notas/
   const handleCriarNota = async (noticia: ItemNoticia) => {
     if (!pronto) return;
     setAcaoId(noticia.id);
     try {
       const arq = await criarNotaDaNoticia(noticia, cfg);
-      setMensagemSucesso(`Nova Nota gerada em: ${arq}`);
+      setMensagemSucesso(`Nova Nota criada: ${arq}`);
       setTimeout(() => setMensagemSucesso(null), 4000);
     } catch (err) {
       console.error("Erro ao criar nota:", err);
@@ -154,7 +179,6 @@ export default function Noticias() {
     }
   };
 
-  // Ação 2: Salvar Referência em referencias/
   const handleSalvarReferencia = async (noticia: ItemNoticia) => {
     if (!pronto) return;
     setAcaoId(noticia.id);
@@ -169,13 +193,12 @@ export default function Noticias() {
     }
   };
 
-  // Ação 3: Criar Tarefa em tarefas/
   const handleCriarTarefa = async (noticia: ItemNoticia) => {
     if (!pronto) return;
     setAcaoId(noticia.id);
     try {
       const arq = await criarTarefaDaNoticia(noticia, cfg);
-      setMensagemSucesso(`Nova Tarefa criada: ${arq}`);
+      setMensagemSucesso(`Nova Tarefa gerada: ${arq}`);
       setTimeout(() => setMensagemSucesso(null), 4000);
     } catch (err) {
       console.error("Erro ao criar tarefa:", err);
@@ -184,7 +207,6 @@ export default function Noticias() {
     }
   };
 
-  // Gerar resumo com Gemini IA
   const handleGerarResumoIa = async (noticia: ItemNoticia) => {
     setResumoIa("");
     setGerandoResumo(true);
@@ -196,7 +218,7 @@ export default function Noticias() {
       const resposta = await conversar(cfg, [
         {
           papel: "user",
-          texto: `Resuma a seguinte notícia em 3 pontos curtos e objetivos:\n\nTítulo: ${noticia.titulo}\nFonte: ${noticia.fonte}\nTexto: ${noticia.conteudoCompleto || noticia.descricao || noticia.titulo}`,
+          texto: `Resuma e analise a matéria em 3 pontos curtos e diretos em português:\n\nTítulo: ${noticia.titulo}\nFonte: ${noticia.fonte}\nTexto Completo: ${noticia.conteudoCompleto || noticia.descricao || noticia.titulo}`,
         },
       ]);
       const resTexto = resposta.texto || "Não foi possível resumir a matéria.";
@@ -233,11 +255,10 @@ export default function Noticias() {
             Notícias & Radar
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Leia notícias dentro do app e conecte matérias com suas Notas, Referências e Tarefas.
+            Leitura integral no app, 3 formatos visuais e integração direta com o seu Segundo Cérebro.
           </p>
         </div>
 
-        {/* Barra de Controles de Exibição e Personalização */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Seletor de Modo */}
           <div className="flex items-center rounded-xl border border-border bg-card p-1 shadow-xs">
@@ -304,7 +325,7 @@ export default function Noticias() {
         </Aviso>
       )}
 
-      {/* Banner de Confirmação Toast */}
+      {/* Toast de Confirmação */}
       {mensagemSucesso && (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm font-medium animate-in fade-in">
           <CheckCircle2 size={18} className="shrink-0" />
@@ -357,7 +378,7 @@ export default function Noticias() {
           <Newspaper className="mx-auto text-muted-foreground/40" size={40} />
           <h3 className="text-base font-semibold">Nenhuma notícia encontrada</h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            {busca ? "Tente alterar o termo da busca." : "Clique em 'Atualizar' para verificar matérias novas."}
+            {busca ? "Tente alterar o termo da busca." : "Clique em 'Atualizar' para buscar matérias novas."}
           </p>
         </div>
       ) : (
@@ -369,7 +390,7 @@ export default function Noticias() {
             <div className="space-y-3 relative">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Destaques: {CATEGORIAS_NOTICIAS.find((c) => c.id === categoria)?.rotulo}
+                  Destaques de {CATEGORIAS_NOTICIAS.find((c) => c.id === categoria)?.rotulo}
                 </span>
 
                 <div className="flex items-center gap-1">
@@ -398,7 +419,7 @@ export default function Noticias() {
                     className="snap-start shrink-0 w-[88%] sm:w-[380px] rounded-2xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-lg transition-all flex flex-col justify-between group"
                   >
                     <div
-                      onClick={() => setNoticiaParaLer(item)}
+                      onClick={() => handleAbrirLeitor(item)}
                       className="relative h-52 w-full bg-muted overflow-hidden cursor-pointer"
                     >
                       <img
@@ -409,7 +430,7 @@ export default function Noticias() {
                           (e.target as HTMLImageElement).src = obterImagemIlustrativa(item.categoria);
                         }}
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
                       
                       <div className="absolute top-2 left-2 rounded-md bg-black/70 backdrop-blur-xs px-2 py-0.5 text-[10px] font-semibold text-white">
                         {item.fonte}
@@ -434,11 +455,11 @@ export default function Noticias() {
 
                       <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-1">
                         <button
-                          onClick={() => setNoticiaParaLer(item)}
+                          onClick={() => handleAbrirLeitor(item)}
                           className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
                         >
                           <BookOpen size={14} />
-                          <span>Ler no App</span>
+                          <span>Ler Matéria</span>
                         </button>
 
                         <div className="flex items-center gap-1">
@@ -489,7 +510,7 @@ export default function Noticias() {
                   className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl border border-border bg-card shadow-xs hover:border-primary/40 hover:shadow-md transition-all group"
                 >
                   <div
-                    onClick={() => setNoticiaParaLer(item)}
+                    onClick={() => handleAbrirLeitor(item)}
                     className="relative h-40 sm:h-32 sm:w-44 shrink-0 rounded-xl bg-muted overflow-hidden cursor-pointer"
                   >
                     <img
@@ -506,7 +527,7 @@ export default function Noticias() {
                   </div>
 
                   <div className="flex-1 flex flex-col justify-between space-y-2 min-w-0">
-                    <div className="space-y-1 cursor-pointer" onClick={() => setNoticiaParaLer(item)}>
+                    <div className="space-y-1 cursor-pointer" onClick={() => handleAbrirLeitor(item)}>
                       <div className="text-[10px] text-muted-foreground font-medium">
                         {new Date(item.data).toLocaleDateString("pt-BR")}
                       </div>
@@ -522,11 +543,11 @@ export default function Noticias() {
 
                     <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border/40">
                       <button
-                        onClick={() => setNoticiaParaLer(item)}
+                        onClick={() => handleAbrirLeitor(item)}
                         className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
                       >
                         <BookOpen size={14} />
-                        <span>Ler matéria no Klaus</span>
+                        <span>Ler matéria completa no Klaus</span>
                       </button>
 
                       <div className="flex items-center gap-1.5">
@@ -547,14 +568,14 @@ export default function Noticias() {
                           title="Criar Nota"
                         >
                           <FileText size={14} />
-                          <span className="hidden sm:inline">Criar Nota</span>
+                          <span className="hidden sm:inline">Nota</span>
                         </button>
 
                         <button
                           onClick={() => handleSalvarReferencia(item)}
                           disabled={acaoId === item.id}
                           className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                          title="Salvar em Referências"
+                          title="Salvar Referência"
                         >
                           <Bookmark size={14} />
                           <span className="hidden sm:inline">Referência</span>
@@ -588,7 +609,7 @@ export default function Noticias() {
                   className="flex flex-col justify-between rounded-2xl border border-border bg-card overflow-hidden shadow-xs hover:border-primary/40 hover:shadow-md transition-all group"
                 >
                   <div
-                    onClick={() => setNoticiaParaLer(item)}
+                    onClick={() => handleAbrirLeitor(item)}
                     className="relative h-44 w-full bg-muted overflow-hidden cursor-pointer"
                   >
                     <img
@@ -605,7 +626,7 @@ export default function Noticias() {
                   </div>
 
                   <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                    <div className="space-y-1.5 cursor-pointer" onClick={() => setNoticiaParaLer(item)}>
+                    <div className="space-y-1.5 cursor-pointer" onClick={() => handleAbrirLeitor(item)}>
                       <div className="text-[10px] text-muted-foreground font-medium">
                         {new Date(item.data).toLocaleDateString("pt-BR")}
                       </div>
@@ -621,7 +642,7 @@ export default function Noticias() {
 
                     <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-1">
                       <button
-                        onClick={() => setNoticiaParaLer(item)}
+                        onClick={() => handleAbrirLeitor(item)}
                         className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
                       >
                         <BookOpen size={14} />
@@ -665,7 +686,7 @@ export default function Noticias() {
       )}
 
       {/* ========================================================================= */}
-      {/* LEITOR DE NOTÍCIA INTEGRADO (IN-APP READER MODAL)                        */}
+      {/* LEITOR DE NOTÍCIA INTEGRADO (FULL READER MODAL)                           */}
       {/* ========================================================================= */}
       <Modal
         aberto={Boolean(noticiaParaLer)}
@@ -673,11 +694,11 @@ export default function Noticias() {
           setNoticiaParaLer(null);
           setResumoIa("");
         }}
-        titulo="📖 Leitura no Klaus"
+        titulo="📖 Leitor de Notícias do Klaus"
       >
         {noticiaParaLer && (
-          <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
-            <div className="relative h-56 w-full rounded-xl overflow-hidden bg-muted">
+          <div className="space-y-5 max-h-[78vh] overflow-y-auto pr-1">
+            <div className="relative h-60 w-full rounded-2xl overflow-hidden bg-muted">
               <img
                 src={noticiaParaLer.imagemUrl}
                 alt={noticiaParaLer.titulo}
@@ -686,23 +707,31 @@ export default function Noticias() {
                   (e.target as HTMLImageElement).src = obterImagemIlustrativa(noticiaParaLer.categoria);
                 }}
               />
-              <div className="absolute top-3 left-3 rounded-md bg-black/75 backdrop-blur-xs px-2.5 py-1 text-xs font-semibold text-white">
+              <div className="absolute top-3 left-3 rounded-md bg-black/80 backdrop-blur-xs px-3 py-1 text-xs font-semibold text-white">
                 {noticiaParaLer.fonte}
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="uppercase font-bold tracking-wider text-primary">{noticiaParaLer.categoria}</span>
-                <span>{new Date(noticiaParaLer.data).toLocaleDateString("pt-BR")}</span>
+                <div className="flex items-center gap-2">
+                  {noticiaParaLer.tempoLeituraMinutos && (
+                    <span className="flex items-center gap-1 font-medium text-foreground bg-accent px-2 py-0.5 rounded-md">
+                      <Clock size={12} />
+                      {noticiaParaLer.tempoLeituraMinutos} min de leitura
+                    </span>
+                  )}
+                  <span>{new Date(noticiaParaLer.data).toLocaleDateString("pt-BR")}</span>
+                </div>
               </div>
-              <h2 className="text-xl font-bold tracking-tight text-foreground leading-snug">
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-snug">
                 {noticiaParaLer.titulo}
               </h2>
             </div>
 
-            {/* Ações Diretas com o Segundo Cérebro */}
-            <div className="p-3 rounded-xl bg-card border border-border flex flex-wrap items-center justify-between gap-2">
+            {/* Barra de Ações Rápidas com o Segundo Cérebro */}
+            <div className="p-3 rounded-xl bg-card border border-border flex flex-wrap items-center justify-between gap-2 shadow-xs">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   onClick={() => handleCriarNota(noticiaParaLer)}
@@ -743,12 +772,12 @@ export default function Noticias() {
               </button>
             </div>
 
-            {/* Resumo da IA no Leitor */}
+            {/* Resumo ou Aprofundamento por IA */}
             {resumoIa ? (
-              <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/20 text-xs text-foreground space-y-1.5 animate-in fade-in">
+              <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-xs text-foreground space-y-1.5 animate-in fade-in">
                 <div className="flex items-center gap-1 font-semibold text-primary">
                   <Sparkles size={14} />
-                  <span>Resumo da IA Gemini:</span>
+                  <span>Análise da IA Gemini:</span>
                 </div>
                 <div className="whitespace-pre-line leading-relaxed text-muted-foreground">
                   {resumoIa}
@@ -761,13 +790,22 @@ export default function Noticias() {
                 className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-semibold hover:bg-amber-500/20 transition-colors"
               >
                 <Sparkles size={15} />
-                <span>{gerandoResumo ? "Sintetizando com IA..." : "Gerar Resumo Inteligente com Gemini"}</span>
+                <span>{gerandoResumo ? "Sintetizando matéria com IA..." : "Resumir & Analisar Matéria com IA"}</span>
               </button>
             )}
 
-            {/* Texto Completo / Conteúdo */}
-            <div className="p-4 rounded-xl bg-accent/30 border border-border text-sm text-foreground leading-relaxed whitespace-pre-line space-y-3">
-              <p>{noticiaParaLer.conteudoCompleto || noticiaParaLer.descricao}</p>
+            {/* CONTEÚDO INTEGRAL EXTRAÍDO DA MATÉRIA */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-accent/20 border border-border space-y-4">
+              {extraindoConteudo ? (
+                <div className="py-10 text-center space-y-2">
+                  <Carregando />
+                  <p className="text-xs text-muted-foreground">Buscando artigo completo do portal oficial...</p>
+                </div>
+              ) : (
+                <div className="prose dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-line text-foreground/90">
+                  {noticiaParaLer.conteudoCompleto || noticiaParaLer.descricao}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-border">
@@ -777,7 +815,7 @@ export default function Noticias() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
               >
-                <span>Abrir portal original ({noticiaParaLer.fonte})</span>
+                <span>Visitar site original ({noticiaParaLer.fonte})</span>
                 <ExternalLink size={13} />
               </a>
 
@@ -797,7 +835,7 @@ export default function Noticias() {
       >
         <div className="space-y-4">
           <p className="text-xs text-muted-foreground">
-            Marque os tópicos que deseja visualizar no seu feed pessoal.
+            Escolha os assuntos que deseja acompanhar no seu radar pessoal.
           </p>
 
           <div className="space-y-2">
