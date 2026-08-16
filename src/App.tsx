@@ -55,6 +55,7 @@ const Conversor = lazy(() => import("@/pages/Conversor"));
 const Transcritor = lazy(() => import("@/pages/Transcritor"));
 const GrafoNeural = lazy(() => import("@/pages/GrafoNeural"));
 const Processos = lazy(() => import("@/pages/Processos"));
+const Noticias = lazy(() => import("@/pages/Noticias"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 
 
@@ -430,6 +431,7 @@ export default function App() {
                 <Route path="/conversor" element={<Conversor />} />
                 <Route path="/transcritor" element={<Transcritor />} />
                 <Route path="/processos" element={<Processos />} />
+                <Route path="/noticias" element={<Noticias />} />
                 <Route path="/config" element={<Configuracoes />} />
                 <Route path="*" element={<Navigate to="/home" replace />} />
               </Routes>

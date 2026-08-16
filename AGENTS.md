@@ -36,6 +36,7 @@ Publicado em https://hugossssssssssssss.github.io/segundo-cerebro/ pelo workflow
 4. **Não adicione backend.** É o que mantém o custo em R$ 0 e o que o Hugo consegue manter sozinho.
 5. **Tudo que a IA preencher fica marcado** com `ia_sugeriu: true` no frontmatter, até o Hugo conferir. Sem essa marca ele deixa de confiar no próprio material.
 6. **Incrementar versão a cada alteração/entrega.** Toda IA que realizar modificações ou novas funcionalidades DEVE incrementar a versão em `package.json` e em `src/lib/versao.ts` (ex: `1.1.0` -> `1.1.1` ou `1.2.0`). A versão é exibida no menu lateral ao lado do logo do Klaus.
+7. **Fazer commit e push ao finalizar qualquer entrega.** Sempre execute `git add .`, `git commit -m "..."` e `git push` após concluir as alterações e passar nos testes e no build (`npm test` e `npm run build`).
 
 ## Mapa do código
 

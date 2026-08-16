@@ -44,6 +44,7 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
       { id: "tarefas", para: "/tarefas", rotulo: "Tarefas", iconeNome: "CheckSquare" },
       { id: "processos", para: "/processos", rotulo: "Processos", iconeNome: "GitMerge" },
       { id: "notas", para: "/notas", rotulo: "Notas", iconeNome: "FileText" },
+      { id: "noticias", para: "/noticias", rotulo: "Notícias", iconeNome: "Newspaper" },
     ],
   },
   {
