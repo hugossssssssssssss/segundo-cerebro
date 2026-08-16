@@ -20,6 +20,7 @@ import { MencionadoEm } from "@/components/Links";
 import { MapaMentalEmbed } from "@/components/MapaMentalEmbed";
 import { sincronizarRelacionamentos } from "@/lib/links";
 import { cn } from "@/lib/utils";
+import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
 
 const HistoricoDiffModal = lazy(() =>
   import("@/components/HistoricoDiffModal").then((m) => ({
@@ -329,6 +330,18 @@ export function PainelNotionBase({
       setFechandoESalvando(false);
     }
   }, [aoSalvar, aoFechar]);
+
+  // Registro centralizado no gerenciador de camadas do Klaus
+  useEffect(() => {
+    const ehFlutuante = modoVisao === "flutuante";
+    const limpar = gerenciadorCamadas.registrar({
+      id: `painel-notion-${caminhoItem || titulo || "editor"}`,
+      nivel: ehFlutuante ? NIVEIS_CAMADAS.JANELA_FLUTUANTE : NIVEIS_CAMADAS.PAINEL_NOTION_BASE,
+      temBackdrop: !ehFlutuante,
+      aoFechar: tentarFechar,
+    });
+    return () => limpar();
+  }, [modoVisao, caminhoItem, titulo, tentarFechar]);
 
   // Tecla Escape para fechar
   useEffect(() => {

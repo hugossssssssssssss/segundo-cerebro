@@ -26,6 +26,7 @@ import {
 import { obterIconePorNome } from "@/lib/icones";
 import { GaleriaIconesModal } from "./GaleriaIconesModal";
 import { cn } from "@/lib/utils";
+import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
 
 interface ModalPersonalizarMenuProps {
   aberta: boolean;
@@ -49,6 +50,17 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
       setGrupos(carregarMenuPersonalizado());
     }
   }, [aberta]);
+
+  useEffect(() => {
+    if (!aberta) return;
+    const limpar = gerenciadorCamadas.registrar({
+      id: "modal-personalizar-menu",
+      nivel: NIVEIS_CAMADAS.MODAIS_GLOBAIS,
+      temBackdrop: true,
+      aoFechar: aoFechar,
+    });
+    return () => limpar();
+  }, [aberta, aoFechar]);
 
   if (!aberta) return null;
 

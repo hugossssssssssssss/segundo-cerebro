@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, Suspense, lazy, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, Suspense, lazy, type ReactNode } from "react";
 import { X, Wrench, Loader2 } from "lucide-react";
 import { LISTA_FERRAMENTAS_APP } from "@/lib/ferramentasApp";
+import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
 
 const Conversor = lazy(() => import("@/pages/Conversor"));
 const Transcritor = lazy(() => import("@/pages/Transcritor"));
@@ -30,6 +31,18 @@ export function ProvedorFerramentasFlutuantes({ children }: { children: ReactNod
     setFerramentaAtiva(null);
   };
 
+  // Registro da camada no gerenciador central do Klaus
+  useEffect(() => {
+    if (!ferramentaAtiva) return;
+    const limpar = gerenciadorCamadas.registrar({
+      id: `ferramenta-${ferramentaAtiva}`,
+      nivel: NIVEIS_CAMADAS.FERRAMENTAS_APP,
+      temBackdrop: true,
+      aoFechar: fecharFerramentaFlutuante,
+    });
+    return () => limpar();
+  }, [ferramentaAtiva]);
+
   const infoFerramenta = LISTA_FERRAMENTAS_APP.find((f) => f.id === ferramentaAtiva);
   const IconeComp = infoFerramenta?.icone || Wrench;
 
@@ -41,7 +54,8 @@ export function ProvedorFerramentasFlutuantes({ children }: { children: ReactNod
 
       {ferramentaAtiva && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          style={{ zIndex: 300 }}
+          className="fixed inset-0 flex items-center justify-center bg-black/70 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150"
           onClick={fecharFerramentaFlutuante}
         >
           <div

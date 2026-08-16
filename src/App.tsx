@@ -36,6 +36,7 @@ import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo } from "@/lib/repo";
 import { carregarEstadoInbox, compilarItensInbox } from "@/lib/inbox";
 import { sincronizarFilaOffline as syncOffline } from "@/lib/offlineQueue";
+import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
 
 /**
  * HashRouter (URLs com #) em vez de BrowserRouter: o GitHub Pages não sabe
@@ -105,20 +106,20 @@ function Estrutura({ children }: { children: React.ReactNode }) {
     localStorage.setItem("sidebar-colapsada", String(colapsada));
   }, [colapsada]);
 
-  // ⌘K busca, ⌘J captura, ⌘B toggle da barra lateral
+  // ⌘K busca, ⌘J captura, ⌘B toggle da barra lateral (Com exclusividade mútua)
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
       const tecla = e.key.toLowerCase();
       if (tecla === "k") {
         e.preventDefault();
+        setCapturando(false);
         setBuscando(true);
       } else if (tecla === "j") {
         e.preventDefault();
+        setBuscando(false);
         setCapturando(true);
       } else if (tecla === "b") {
-        // Antes isto só chamava preventDefault e não fazia nada: o app roubava
-        // o atalho do navegador em troca de coisa nenhuma.
         e.preventDefault();
         setColapsada((v) => !v);
       }
@@ -126,6 +127,40 @@ function Estrutura({ children }: { children: React.ReactNode }) {
     document.addEventListener("keydown", aoTeclar);
     return () => document.removeEventListener("keydown", aoTeclar);
   }, []);
+
+  // Registro das camadas no gerenciador do Klaus
+  useEffect(() => {
+    if (!buscando) return;
+    const limpar = gerenciadorCamadas.registrar({
+      id: "busca-global",
+      nivel: NIVEIS_CAMADAS.MODAIS_GLOBAIS,
+      temBackdrop: true,
+      aoFechar: () => setBuscando(false),
+    });
+    return () => limpar();
+  }, [buscando]);
+
+  useEffect(() => {
+    if (!capturando) return;
+    const limpar = gerenciadorCamadas.registrar({
+      id: "captura-rapida",
+      nivel: NIVEIS_CAMADAS.MODAIS_GLOBAIS,
+      temBackdrop: true,
+      aoFechar: () => setCapturando(false),
+    });
+    return () => limpar();
+  }, [capturando]);
+
+  useEffect(() => {
+    if (!gavetaAberta) return;
+    const limpar = gerenciadorCamadas.registrar({
+      id: "gaveta-mobile",
+      nivel: NIVEIS_CAMADAS.GAVETA_MOBILE,
+      temBackdrop: true,
+      aoFechar: () => setGavetaAberta(false),
+    });
+    return () => limpar();
+  }, [gavetaAberta]);
 
   // Sincronização automática de rascunhos offline ao reconectar à internet
   useEffect(() => {

@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { X, Search, Check, Sparkles } from "lucide-react";
 import { CATALOGO_ICONES, CATEGORIAS_ICONES, obterIconePorNome } from "@/lib/icones";
 import { cn } from "@/lib/utils";
+import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
 
 interface GaleriaIconesModalProps {
   aberta: boolean;
@@ -20,6 +21,18 @@ export function GaleriaIconesModal({
 }: GaleriaIconesModalProps) {
   const [busca, setBusca] = useState("");
   const [categoriaAtiva, setCategoriaAtiva] = useState<string>("Todos");
+
+  useEffect(() => {
+    if (!aberta) return;
+    const limpar = gerenciadorCamadas.registrar({
+      id: "galeria-icones-modal",
+      nivel: NIVEIS_CAMADAS.MODAIS_GLOBAIS + 10,
+      temBackdrop: true,
+      aoFechar: aoFechar,
+    });
+    return () => limpar();
+  }, [aberta, aoFechar]);
+
   const [selecionadoTemporario, setSelecionadoTemporario] = useState(iconeAtual);
 
   const iconesFiltrados = useMemo(() => {

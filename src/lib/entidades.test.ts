@@ -333,7 +333,10 @@ describe("textoPrazoTarefa", () => {
   const emDias = (n: number) => {
     const d = new Date();
     d.setDate(d.getDate() + n);
-    return d.toISOString().slice(0, 10);
+    const ano = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, "0");
+    const dia = String(d.getDate()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
   };
 
   it("sem prazo devolve string vazia", () => {
@@ -365,25 +368,28 @@ describe("textoPrazoMeta", () => {
   const metaCom = (prazo: string, status = "a-fazer") =>
     comoMeta(doc(`---\nprazo: ${prazo}\nstatus: ${status}\n---\n`), "pdi/metas/a.md", "s", "t");
 
-  const emDias = (n: number) => {
+  const emDiasMeta = (n: number) => {
     const d = new Date();
     d.setDate(d.getDate() + n);
-    return d.toISOString().slice(0, 10);
+    const ano = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, "0");
+    const dia = String(d.getDate()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
   };
 
   it("meta concluída não mostra prazo, mesmo vencido", () => {
-    expect(textoPrazoMeta(metaCom(emDias(-10), "concluida"))).toBe("");
+    expect(textoPrazoMeta(metaCom(emDiasMeta(-10), "concluida"))).toBe("");
   });
 
   it("vencida mostra há quantos dias", () => {
-    expect(textoPrazoMeta(metaCom(emDias(-2)))).toBe("venceu há 2 dias");
+    expect(textoPrazoMeta(metaCom(emDiasMeta(-2)))).toBe("venceu há 2 dias");
   });
 
   it("vencida ontem usa o singular", () => {
-    expect(textoPrazoMeta(metaCom(emDias(-1)))).toBe("venceu há 1 dia");
+    expect(textoPrazoMeta(metaCom(emDiasMeta(-1)))).toBe("venceu há 1 dia");
   });
 
   it("prazo longo é mostrado em meses", () => {
-    expect(textoPrazoMeta(metaCom(emDias(60)))).toBe("2 meses");
+    expect(textoPrazoMeta(metaCom(emDiasMeta(60)))).toBe("2 meses");
   });
 });
