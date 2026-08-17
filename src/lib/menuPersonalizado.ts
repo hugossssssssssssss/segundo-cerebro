@@ -115,10 +115,15 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
       };
     });
 
+    if (gruposResultantes.length === 0) return GRUPOS_MENU_PADRAO;
+
     // Se houver algum item do padrão que não está nos salvos, adiciona no final do primeiro grupo
     for (const gPadrao of GRUPOS_MENU_PADRAO) {
       for (const itemPadrao of gPadrao.itens) {
         if (!mapaItensSalvos.has(itemPadrao.para)) {
+          if (!Array.isArray(gruposResultantes[0].itens)) {
+            gruposResultantes[0].itens = [];
+          }
           gruposResultantes[0].itens.push({ ...itemPadrao });
         }
       }

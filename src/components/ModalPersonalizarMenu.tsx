@@ -567,27 +567,31 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
       </div>
 
       {/* Modal da Galeria de Ícones se algum item estiver em edição de ícone */}
-      {itemEmEdicaoIcone && (
+      {itemEmEdicaoIcone &&
+        grupos[itemEmEdicaoIcone.idxGrupo] &&
+        grupos[itemEmEdicaoIcone.idxGrupo].itens[itemEmEdicaoIcone.idxItem] && (
         <GaleriaIconesModal
           aberta={Boolean(itemEmEdicaoIcone)}
           aoFechar={() => setItemEmEdicaoIcone(null)}
           iconeAtual={
-            grupos[itemEmEdicaoIcone.idxGrupo].itens[itemEmEdicaoIcone.idxItem].iconeNome
+            grupos[itemEmEdicaoIcone.idxGrupo]?.itens?.[itemEmEdicaoIcone.idxItem]?.iconeNome || "HelpCircle"
           }
-          corAtual={grupos[itemEmEdicaoIcone.idxGrupo].itens[itemEmEdicaoIcone.idxItem].cor}
+          corAtual={grupos[itemEmEdicaoIcone.idxGrupo]?.itens?.[itemEmEdicaoIcone.idxItem]?.cor}
           aoSelecionarIcone={(novoIcone) => {
-            atualizarItem(itemEmEdicaoIcone.idxGrupo, itemEmEdicaoIcone.idxItem, {
-              iconeNome: novoIcone,
-            });
+            if (itemEmEdicaoIcone) {
+              atualizarItem(itemEmEdicaoIcone.idxGrupo, itemEmEdicaoIcone.idxItem, {
+                iconeNome: novoIcone,
+              });
+            }
           }}
         />
       )}
 
       <ModalConfirmacao
-        aberto={categoriaParaRemoverIdx !== null}
-        titulo={`Remover categoria "${categoriaParaRemoverIdx !== null ? grupos[categoriaParaRemoverIdx]?.titulo : ""}"?`}
+        aberto={categoriaParaRemoverIdx !== null && Boolean(grupos[categoriaParaRemoverIdx])}
+        titulo={`Remover categoria "${categoriaParaRemoverIdx !== null && grupos[categoriaParaRemoverIdx] ? grupos[categoriaParaRemoverIdx].titulo : ""}"?`}
         descricao={
-          categoriaParaRemoverIdx !== null && grupos[categoriaParaRemoverIdx]?.itens.length > 0
+          categoriaParaRemoverIdx !== null && grupos[categoriaParaRemoverIdx] && (grupos[categoriaParaRemoverIdx].itens?.length || 0) > 0
             ? `Esta categoria possui ${grupos[categoriaParaRemoverIdx].itens.length} itens. Todos os itens serão movidos para a primeira categoria.`
             : "A categoria será removida do menu."
         }
