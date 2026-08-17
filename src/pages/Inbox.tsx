@@ -648,11 +648,12 @@ export default function Inbox() {
         <Carregando texto="Buscando lembretes e tarefas..." />
       ) : itensExibidos.length === 0 ? (
         <Vazio
+          icone={<Bell size={24} />}
           titulo="Nenhum item nesta caixa de entrada"
           descricao={
             aba === "nao_vistos"
-              ? "Você está em dia! Todos os lembretes e tarefas atrasadas foram lidos."
-              : "Não há itens correspondentes a este filtro."
+              ? "Você está em dia! Todos os lembretes e tarefas atrasadas foram visualizados."
+              : "Não há lembretes ou pendências correspondentes a este filtro."
           }
           acao={
             <Botao variante="primario" tamanho="pequeno" onClick={() => setModalNovoAberto(true)}>

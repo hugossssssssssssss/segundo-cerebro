@@ -221,17 +221,24 @@ export function Aviso({
 export function Vazio({
   titulo,
   descricao,
+  icone,
   acao,
 }: {
   titulo: string;
   descricao?: string;
+  icone?: ReactNode;
   acao?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 px-6 text-center">
-      <p className="font-medium">{titulo}</p>
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/80 bg-card/40 py-12 px-6 text-center animate-in fade-in duration-200">
+      {icone && (
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/60 text-muted-foreground shadow-2xs">
+          {icone}
+        </div>
+      )}
+      <p className="font-semibold text-base text-foreground">{titulo}</p>
       {descricao && (
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+        <p className="mt-1 max-w-md text-xs sm:text-sm text-muted-foreground leading-relaxed">
           {descricao}
         </p>
       )}

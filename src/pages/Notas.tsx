@@ -17,7 +17,6 @@ import {
 import { lerParametroAbrir } from "@/lib/utils";
 import {
   Botao,
-  Cartao,
   Aviso,
   Vazio,
   Carregando,
@@ -25,6 +24,7 @@ import {
 } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
+import { CartaoItem } from "@/components/CartaoItem";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { toast } from "@/lib/toast";
@@ -303,27 +303,31 @@ export default function Notas() {
         <Carregando texto="Buscando suas notas…" />
       ) : arquivos.length === 0 ? (
         <Vazio
-          titulo="Nenhuma nota ainda"
-          descricao="Crie a primeira. Ela vira um arquivo .md no seu repositório — que você pode abrir em qualquer lugar, hoje ou daqui a dez anos."
+          icone={<FileText size={24} />}
+          titulo="Nenhuma nota criada ainda"
+          descricao="Crie a primeira nota. Ela vira um arquivo .md no seu repositório — que você pode abrir em qualquer lugar."
           acao={<Botao onClick={() => nova()}>Criar primeira nota</Botao>}
         />
       ) : visiveis.length === 0 ? (
-        <Vazio titulo="Nada encontrado" descricao={`Nenhuma nota com "${busca}".`} />
+        <Vazio
+          icone={<FileText size={24} />}
+          titulo="Nenhuma nota encontrada"
+          descricao={`Nenhum resultado corresponde à busca por "${busca}".`}
+        />
       ) : (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {visiveis.map((nota) => {
             const tituloNota = titulos[nota.caminho] ?? nota.titulo ?? nota.caminho;
+            const nomeArquivo = nota.caminho.split("/").pop();
             return (
-              <Cartao
+              <CartaoItem
                 key={nota.caminho}
-                className="cursor-pointer p-4 transition-colors hover:bg-accent flex items-center justify-between group"
+                icone={<FileText size={18} />}
+                titulo={tituloNota}
+                subtitulo={nomeArquivo}
+                tags={nota.tags}
                 onClick={() => abrir(nota)}
-              >
-                <div className="min-w-0 flex-1 pr-3">
-                  <p className="font-medium">{tituloNota}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{nota.caminho.split("/").pop()}</p>
-                </div>
-              </Cartao>
+              />
             );
           })}
         </div>

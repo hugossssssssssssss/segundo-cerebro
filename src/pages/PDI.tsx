@@ -50,6 +50,7 @@ import {
 } from "@/components/ui";
 import { hojeISO, dataCurta, lerParametroAbrir } from "@/lib/utils";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { CabecalhoSecao } from "@/components/CabecalhoSecao";
 import { cn } from "@/lib/utils";
 
 /**
@@ -384,15 +385,16 @@ export default function PDI() {
         <Carregando texto="Carregando seu plano…" />
       ) : metas.length === 0 && entregas.length === 0 ? (
         <Vazio
-          titulo="Seu plano ainda está em branco"
-          descricao="É esperado: você entra na empresa em breve. Comece com 3 a 5 metas, uma frase cada. Não precisa estar bonito — precisa existir antes da conversa com seu gestor."
+          icone={<Target size={24} />}
+          titulo="Seu Plano de Desenvolvimento ainda está em branco"
+          descricao="Comece cadastrando 3 a 5 metas profissionais. Elas servirão de guia para o seu crescimento e conversas de alinhamento."
           acao={<Botao onClick={novaMeta}>Criar primeira meta</Botao>}
         />
       ) : (
         <>
           {/* ------------------------------------------ o que pede atenção */}
           {(semAtencao.length > 0 || soltas.length > 0 || conferir.length > 0) && (
-            <div className="grid gap-2">
+            <div className="grid gap-2.5">
               {semAtencao.map((r) => (
                 <Cartao
                   key={r.meta.id}
@@ -438,10 +440,8 @@ export default function PDI() {
 
           {/* ----------------------------------------------------- metas */}
           {resumos.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="text-sm font-medium text-muted-foreground">
-                Metas
-              </h2>
+            <section className="space-y-4">
+              <CabecalhoSecao titulo="Metas Profissionais" contador={resumos.length} />
               <div className="grid gap-3">
                 {resumos.map(({ meta: m, entregas: ligadas }) => (
                   <Cartao key={m.id} className="p-4">

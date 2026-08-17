@@ -41,8 +41,6 @@ import { Calendario } from "@/components/Calendario";
 import { Quadro } from "@/components/Quadro";
 import {
   Botao,
-  Cartao,
-  Selo,
   Aviso,
   Vazio,
   Carregando,
@@ -50,6 +48,8 @@ import {
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
+import { SeloStatus } from "@/components/SeloStatus";
+import { CartaoItem } from "@/components/CartaoItem";
 import { cn, lerParametroAbrir } from "@/lib/utils";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { toast } from "@/lib/toast";
@@ -408,68 +408,70 @@ export default function Tarefas() {
         <Calendario tarefas={tarefas} aoAbrir={abrir} />
       ) : visiveis.length === 0 ? (
         <Vazio
-          titulo={filtro === "todas" ? "Nenhuma tarefa ainda" : "Nada por aqui"}
+          icone={<ListTodo size={24} />}
+          titulo={filtro === "todas" ? "Nenhuma tarefa criada ainda" : "Nenhuma tarefa encontrada"}
           descricao={
             filtro === "todas"
-              ? "Cada tarefa vira um arquivo .md no seu repositório."
-              : undefined
+              ? "Cada tarefa vira um arquivo .md no seu repositório — com suporte a prazos e Pomodoro."
+              : `Nenhuma tarefa com o filtro atual "${ROTULO_STATUS[filtro as Status]}".`
           }
         />
       ) : (
-        <div className="grid gap-2">
+        <div className="grid gap-2.5">
           {visiveis.map((t) => {
             const u = urgencia(t);
             const min = minutosRegistrados(t.corpo);
             const passos = progressoSubtarefas(t.corpo);
+            const tomUrgencia = CORES_URGENCIA[u];
 
             return (
-              <Cartao key={t.caminho} className="p-3.5 group cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => abrir(t)}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1 text-left">
-                    <p
-                      className={cn(
-                        "font-medium",
-                        t.status === "feito" && "text-muted-foreground line-through",
-                      )}
-                    >
-                      {t.titulo}
-                    </p>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      {t.status === "fazendo" && (
-                        <Selo tom="primario">Fazendo</Selo>
-                      )}
-                      {u !== "nenhuma" && (
-                        <Selo tom={CORES_URGENCIA[u]}>{textoPrazo(t)}</Selo>
-                      )}
-                      {min > 0 && <Selo>🍅 {min}min</Selo>}
-                      {passos.total > 0 && (
-                        <Selo tom={passos.porcento === 100 ? "sucesso" : "neutro"}>
-                          {passos.feitas}/{passos.total} passos
-                        </Selo>
-                      )}
-                      {t.tags.map((tag) => (
-                        <Selo key={tag}>#{tag}</Selo>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    {t.status !== "feito" && (
-                      <Botao
-                        variante="fantasma"
-                        tamanho="icone"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCronometrando(t);
-                        }}
-                        title="Iniciar pomodoro"
-                      >
-                        <Timer size={17} />
-                      </Botao>
+              <CartaoItem
+                key={t.caminho}
+                icone={<ListTodo size={18} />}
+                titulo={
+                  <span className={cn(t.status === "feito" && "line-through text-muted-foreground")}>
+                    {t.titulo}
+                  </span>
+                }
+                badge={
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {t.status === "fazendo" && (
+                      <SeloStatus rotulo="Fazendo" tom="primario" />
+                    )}
+                    {t.status === "feito" && (
+                      <SeloStatus rotulo="Concluída" tom="sucesso" />
+                    )}
+                    {u !== "nenhuma" && (
+                      <SeloStatus rotulo={textoPrazo(t)} tom={tomUrgencia as any} />
+                    )}
+                    {min > 0 && <SeloStatus rotulo={`🍅 ${min}min`} tom="neutro" comPonto={false} />}
+                    {passos.total > 0 && (
+                      <SeloStatus
+                        rotulo={`${passos.feitas}/${passos.total} passos`}
+                        tom={passos.porcento === 100 ? "sucesso" : "neutro"}
+                        comPonto={false}
+                      />
                     )}
                   </div>
-                </div>
-              </Cartao>
+                }
+                tags={t.tags}
+                acoes={
+                  t.status !== "feito" ? (
+                    <Botao
+                      variante="fantasma"
+                      tamanho="icone"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCronometrando(t);
+                      }}
+                      title="Iniciar Pomodoro"
+                    >
+                      <Timer size={17} />
+                    </Botao>
+                  ) : undefined
+                }
+                onClick={() => abrir(t)}
+              />
             );
           })}
         </div>

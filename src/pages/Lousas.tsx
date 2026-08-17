@@ -22,8 +22,9 @@ import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
 import { tituloProvavel, nomeLivre, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
 import { propagarRenomeacao } from "@/lib/links";
-import { Botao, Campo, Cartao, Aviso, Vazio, Carregando, ModalConfirmacao } from "@/components/ui";
+import { Botao, Campo, Aviso, Vazio, Carregando, ModalConfirmacao } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { CartaoItem } from "@/components/CartaoItem";
 import { toast } from "@/lib/toast";
 
 const PASTA = PASTAS.lousas;
@@ -478,55 +479,47 @@ export default function Lousas() {
         <Carregando texto="Carregando suas lousas e mapas mentais..." />
       ) : lousas.length === 0 ? (
         <Vazio
+          icone={<Layout size={24} />}
           titulo="Nenhuma lousa criada ainda"
-          descricao="Crie seu primeiro mapa mental ou diagrama visual."
+          descricao="Crie seu primeiro mapa mental, fluxo ou diagrama visual no Excalidraw."
           acao={<Botao onClick={novaLousa}>Criar Primeira Lousa</Botao>}
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {lousas.map((item) => {
             const titulo = (item.doc.dados.titulo as string) || tituloProvavel(item.doc, item.nome);
             return (
-              <Cartao
+              <CartaoItem
                 key={item.caminho}
+                icone={<Layout size={18} />}
+                titulo={titulo}
+                subtitulo={`Excalidraw • ${item.caminho.split("/").pop()}`}
                 onClick={() => abrir(item)}
-                className="group cursor-pointer p-4 hover:border-primary/50 transition-colors flex items-center justify-between gap-3 bg-card"
-              >
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="rounded-xl bg-primary/10 p-3 text-primary shrink-0">
-                    <Layout size={22} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-sm text-foreground truncate">{titulo}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      Excalidraw • {item.caminho}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
-                  <Botao
-                    variante="neutro"
-                    tamanho="icone"
-                    onClick={(e) => copiarWikilink(item.caminho, titulo, e)}
-                    title="Copiar @nome para vincular em notas e metas"
-                  >
-                    {copiadoId === item.caminho ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-                  </Botao>
-                  <Botao
-                    variante="fantasma"
-                    tamanho="icone"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLousaParaDeletar({ caminho: item.caminho, sha: item.sha, titulo });
-                    }}
-                    title="Apagar lousa"
-                    className="hover:bg-red-500/10 text-muted-foreground hover:text-red-500"
-                  >
-                    <Trash2 size={14} />
-                  </Botao>
-                </div>
-              </Cartao>
+                acoes={
+                  <>
+                    <Botao
+                      variante="neutro"
+                      tamanho="icone"
+                      onClick={(e) => copiarWikilink(item.caminho, titulo, e)}
+                      title="Copiar @nome para vincular em notas e metas"
+                    >
+                      {copiadoId === item.caminho ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                    </Botao>
+                    <Botao
+                      variante="fantasma"
+                      tamanho="icone"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLousaParaDeletar({ caminho: item.caminho, sha: item.sha, titulo });
+                      }}
+                      title="Apagar lousa"
+                      className="hover:bg-red-500/10 text-muted-foreground hover:text-red-500"
+                    >
+                      <Trash2 size={14} />
+                    </Botao>
+                  </>
+                }
+              />
             );
           })}
         </div>
