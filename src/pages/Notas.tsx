@@ -14,7 +14,7 @@ import {
   nomeLivre,
   type Frontmatter,
 } from "@/lib/markdown";
-import { lerParametroAbrir } from "@/lib/utils";
+import { lerParametroAbrir, correspondeBusca } from "@/lib/utils";
 import {
   Botao,
   Aviso,
@@ -245,9 +245,9 @@ export default function Notas() {
     );
   }
 
-  // ── Lista ───────────────────────────────────────────────────────────────────
   const visiveis = arquivos.filter((a) =>
-    (titulos[a.caminho] ?? a.caminho).toLowerCase().includes(busca.toLowerCase()),
+    correspondeBusca(titulos[a.caminho] ?? a.titulo ?? a.caminho, busca) ||
+    correspondeBusca(a.corpo, busca),
   );
 
   return (

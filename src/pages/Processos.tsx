@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 
 import { lerConfig, configCompleta, nomeExibido } from "@/lib/settings";
+import { correspondeBusca } from "@/lib/utils";
 import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal } from "@/lib/repo";
 import { gravar, apagar } from "@/lib/github";
 import { tituloProvavel, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
@@ -336,8 +337,7 @@ export default function Processos() {
     .filter((c) => c.processoId === (processoAtivo?.id || ""))
     .filter((c) => {
       if (!pesquisaCard) return true;
-      const q = pesquisaCard.toLowerCase();
-      return c.titulo.toLowerCase().includes(q) || c.corpo?.toLowerCase().includes(q);
+      return correspondeBusca(c.titulo, pesquisaCard) || correspondeBusca(c.corpo, pesquisaCard);
     });
 
   const timerDebounceCardRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});

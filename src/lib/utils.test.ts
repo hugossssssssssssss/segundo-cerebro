@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { hojeISO, dataISO, diasAte, dataCurta } from "./utils";
+import { hojeISO, dataISO, diasAte, dataCurta, correspondeBusca } from "./utils";
 import { nomeLivre, nomeDeArquivo } from "./markdown";
 import { dataDoNome } from "./pdi";
 
@@ -84,5 +84,22 @@ describe("nomeLivre", () => {
 
   it("primeiro nome não ganha sufixo à toa", () => {
     expect(nomeLivre("notas", "Única", [])).not.toMatch(/-2\.md$/);
+  });
+});
+
+describe("correspondeBusca", () => {
+  it("encontra trechos internos de palavras (ex: uinho em Huguinho)", () => {
+    expect(correspondeBusca("Huguinho", "uinho")).toBe(true);
+    expect(correspondeBusca("Huguinho (CEO)", "uinho")).toBe(true);
+  });
+
+  it("é insensível a acentos e maiúsculas", () => {
+    expect(correspondeBusca("Reunião de alinhamento", "reuniao")).toBe(true);
+    expect(correspondeBusca("Grade suíça", "SUICA")).toBe(true);
+  });
+
+  it("retorna false quando não encontra", () => {
+    expect(correspondeBusca("Huguinho", "marcelo")).toBe(false);
+    expect(correspondeBusca(null, "teste")).toBe(false);
   });
 });

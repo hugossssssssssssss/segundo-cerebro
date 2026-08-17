@@ -50,7 +50,7 @@ import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { SeloStatus } from "@/components/SeloStatus";
 import { CartaoItem } from "@/components/CartaoItem";
-import { cn, lerParametroAbrir } from "@/lib/utils";
+import { cn, lerParametroAbrir, correspondeBusca } from "@/lib/utils";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { toast } from "@/lib/toast";
 
@@ -323,7 +323,11 @@ export default function Tarefas() {
 
   const visiveis = ordenar(
     (filtro === "todas" ? tarefas : tarefas.filter((t) => t.status === filtro))
-      .filter((t) => t.titulo.toLowerCase().includes(busca.toLowerCase()))
+      .filter((t) =>
+        correspondeBusca(t.titulo, busca) ||
+        correspondeBusca(t.corpo, busca) ||
+        t.tags.some((tag) => correspondeBusca(tag, busca))
+      )
   );
   const pendentes = tarefas.filter((t) => t.status !== "feito").length;
 

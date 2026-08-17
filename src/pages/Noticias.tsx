@@ -24,6 +24,7 @@ import {
   LayoutTemplate,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
+import { correspondeBusca } from "@/lib/utils";
 import { conversar } from "@/lib/gemini";
 import {
   CATEGORIAS_NOTICIAS,
@@ -155,12 +156,11 @@ export default function Noticias() {
 
   const noticiasFiltradas = useMemo(() => {
     if (!busca.trim()) return noticias;
-    const termo = busca.toLowerCase();
     return noticias.filter(
       (n) =>
-        n.titulo.toLowerCase().includes(termo) ||
-        (n.descricao && n.descricao.toLowerCase().includes(termo)) ||
-        n.fonte.toLowerCase().includes(termo)
+        correspondeBusca(n.titulo, busca) ||
+        correspondeBusca(n.descricao, busca) ||
+        correspondeBusca(n.fonte, busca)
     );
   }, [noticias, busca]);
 

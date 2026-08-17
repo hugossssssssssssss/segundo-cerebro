@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Masonry } from "react-plock";
 import { Plus, Trash2, ImagePlus, ExternalLink, ScanText } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
+import { correspondeBusca } from "@/lib/utils";
 import { gravarBinario } from "@/lib/github";
 import { invalidarCache } from "@/lib/repo";
 import { useItemRepo } from "@/lib/useItemRepo";
@@ -267,7 +268,11 @@ export default function Referencias() {
   const tags = todasAsTags(refs);
   const visiveis = refs
     .filter((r) => !filtro || r.tags.includes(filtro))
-    .filter((r) => (r.titulo || "").toLowerCase().includes(busca.toLowerCase()));
+    .filter((r) =>
+      correspondeBusca(r.titulo, busca) ||
+      correspondeBusca(r.corpo, busca) ||
+      r.tags.some((t) => correspondeBusca(t, busca))
+    );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">

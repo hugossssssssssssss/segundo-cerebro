@@ -161,7 +161,8 @@ function indiceDe(itens: ItemRepo[]): MiniSearch<Fichado> {
 
 export function buscar(itens: ItemRepo[], termo: string): Resultado[] {
   const limpo = termo.trim();
-  if (normalizar(limpo).length < 2) return [];
+  const termoNorm = normalizar(limpo);
+  if (termoNorm.length < 2) return [];
 
   const porCaminho = new Map(itens.map((i) => [i.caminho, i]));
 
@@ -172,12 +173,14 @@ export function buscar(itens: ItemRepo[], termo: string): Resultado[] {
     combineWith: "AND",
   });
 
+  const idsJaIncluidos = new Set<string>();
   const saida: Resultado[] = [];
 
   for (const achado of achados) {
     const item = porCaminho.get(String(achado.id));
     if (!item) continue;
 
+    idsJaIncluidos.add(item.caminho);
     saida.push({
       caminho: item.caminho,
       titulo: tituloProvavel(item.doc, item.nome),
@@ -185,6 +188,38 @@ export function buscar(itens: ItemRepo[], termo: string): Resultado[] {
       trecho: recortar(item.doc.corpo, achado.terms),
       peso: achado.score,
     });
+  }
+
+  // Complementa com busca por substring interna (ex: "uinho" -> "Huguinho")
+  for (const item of itens) {
+    if (idsJaIncluidos.has(item.caminho)) continue;
+
+    const titNorm = normalizar(tituloProvavel(item.doc, item.nome));
+    const tagsNorm = normalizar(comoLista(item.doc.dados.tags).join(" "));
+    const d = item.doc.dados;
+    const extrasContatoNorm = normalizar([
+      typeof d.cargo === "string" ? d.cargo : "",
+      typeof d.empresa === "string" ? d.empresa : "",
+      typeof d.email === "string" ? d.email : "",
+      typeof d.telefone === "string" ? d.telefone : "",
+    ].join(" "));
+    const corpoNorm = normalizar(item.doc.corpo || "");
+
+    if (
+      titNorm.includes(termoNorm) ||
+      tagsNorm.includes(termoNorm) ||
+      extrasContatoNorm.includes(termoNorm) ||
+      corpoNorm.includes(termoNorm)
+    ) {
+      const pesoSubstring = titNorm.includes(termoNorm) ? 3 : 1;
+      saida.push({
+        caminho: item.caminho,
+        titulo: tituloProvavel(item.doc, item.nome),
+        tipo: tipoDoItem(item),
+        trecho: recortar(item.doc.corpo, [termoNorm]),
+        peso: pesoSubstring,
+      });
+    }
   }
 
   return saida.sort((a, b) => b.peso - a.peso || a.titulo.localeCompare(b.titulo));

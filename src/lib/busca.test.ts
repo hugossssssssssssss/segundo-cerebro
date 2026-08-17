@@ -39,6 +39,10 @@ const acervo: ItemRepo[] = [
     "pdi/metas/branding.md",
     "---\ntitulo: Domínio em branding\ntipo: meta\n---\n\nConduzir projetos sozinho.",
   ),
+  item(
+    "contatos/huguinho.md",
+    "---\ntitulo: Huguinho\ntipo: contato\ncargo: Designer\n---\n\nContato de teste.",
+  ),
 ];
 
 describe("buscar", () => {
@@ -52,6 +56,12 @@ describe("buscar", () => {
     expect(buscar(acervo, "SUICA")[0].titulo).toBe("Grade suíça");
     expect(buscar(acervo, "suíça")[0].titulo).toBe("Grade suíça");
     expect(buscar(acervo, "dominio")[0].titulo).toBe("Domínio em branding");
+  });
+
+  it("encontra contato por trecho interno do nome (ex: uinho acha Huguinho)", () => {
+    const r = buscar(acervo, "uinho");
+    expect(r).toHaveLength(1);
+    expect(r[0].titulo).toBe("Huguinho");
   });
 
   it("acha por tag", () => {
