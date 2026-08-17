@@ -80,3 +80,39 @@ Mencione referências ou salve em @referencias.
 `,
   },
 ];
+
+const CHAVE_MODELOS_CUSTOM = "klaus_modelos_personalizados";
+const CHAVE_MODELO_PADRAO = "klaus_modelo_padrao_id";
+
+export function obterTodosModelos(): TemplateItem[] {
+  try {
+    const salvo = localStorage.getItem(CHAVE_MODELOS_CUSTOM);
+    if (!salvo) return MODELOS_PADRAO;
+    const custom = JSON.parse(salvo) as TemplateItem[];
+    return [...MODELOS_PADRAO, ...custom];
+  } catch {
+    return MODELOS_PADRAO;
+  }
+}
+
+export function salvarModelosPersonalizados(custom: TemplateItem[]): void {
+  localStorage.setItem(CHAVE_MODELOS_CUSTOM, JSON.stringify(custom));
+}
+
+export function obterModeloPadraoId(): string | null {
+  return localStorage.getItem(CHAVE_MODELO_PADRAO);
+}
+
+export function definirModeloPadraoId(id: string | null): void {
+  if (!id) {
+    localStorage.removeItem(CHAVE_MODELO_PADRAO);
+  } else {
+    localStorage.setItem(CHAVE_MODELO_PADRAO, id);
+  }
+}
+
+export function obterModeloPadrao(): TemplateItem | undefined {
+  const id = obterModeloPadraoId();
+  if (!id) return undefined;
+  return obterTodosModelos().find((m) => m.id === id);
+}
