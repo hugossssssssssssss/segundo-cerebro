@@ -6,7 +6,7 @@
  */
 
 import type { Settings } from "./settings";
-import { gravar, ErroGitHub } from "./github";
+import { gravar, ler, ErroGitHub } from "./github";
 import { invalidarCache } from "./repo";
 import { notificarOutrasAbas } from "./syncChannel";
 import { toast } from "./toast";
@@ -152,7 +152,17 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
         }
 
         if (status === 409 || msg.includes("409") || msg.includes("conflito")) {
-          // Conflito no GitHub (arquivo mudou lá)
+          // Tenta auto-resolver buscando o SHA atualizado no GitHub
+          try {
+            const { sha: remoteSha } = await ler(cfg, item.caminho);
+            await gravar(cfg, item.caminho, item.texto, remoteSha, item.mensagemCommit);
+            removerRascunhoLocal(item.id);
+            concluidos++;
+            continue;
+          } catch {
+            // Se falhar a leitura/recuperação, marca como conflito para o usuário revisar
+          }
+
           atualizarRascunhoLocal({
             ...item,
             tentativas: tent,

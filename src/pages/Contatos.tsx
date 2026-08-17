@@ -175,13 +175,16 @@ export default function Contatos() {
       JSON.stringify(aberto.bruto) !== JSON.stringify(aberto.original.bruto)
     : false;
 
+  const mudouRef = useRef(mudou);
+  mudouRef.current = mudou;
+
   const [mostrarConfirmacaoDescarte, setMostrarConfirmacaoDescarte] = useState(false);
 
   useEffect(() => {
     if (!aberto) return;
     history.pushState({ editor: true }, "");
     const aoVoltar = () => {
-      if (mudou) {
+      if (mudouRef.current) {
         setMostrarConfirmacaoDescarte(true);
         history.pushState({ editor: true }, "");
         return;
@@ -190,7 +193,7 @@ export default function Contatos() {
     };
     addEventListener("popstate", aoVoltar);
     return () => removeEventListener("popstate", aoVoltar);
-  }, [aberto !== null, mudou]);
+  }, [aberto !== null]);
 
   // Modo flutuante
   useEffect(() => {

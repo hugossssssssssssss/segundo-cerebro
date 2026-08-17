@@ -208,30 +208,47 @@ export function compilarItensInbox(
     const tituloDoc = tituloProvavel(doc, item.nome);
     const tagsDoc = Array.isArray(doc.dados.tags) ? (doc.dados.tags as string[]) : [];
 
-    // 1. Tarefas Atrasadas (em tarefas/)
+    // 1. Tarefas com Prazo/Data (em tarefas/)
     if (item.caminho.startsWith("tarefas/")) {
       const status = doc.dados.status;
       const prazo = doc.dados.prazo;
 
-      if (status !== "feito" && prazo && String(prazo) < hojeIso) {
-        const id = `tarefa-atrasada-${item.caminho}`;
-        const estado = mapaEstado[id];
+      if (status !== "feito" && prazo) {
+        const prazoStr = String(prazo).trim();
+        if (prazoStr) {
+          const id = `tarefa-atrasada-${item.caminho}`;
+          const estado = mapaEstado[id];
 
-        if (!estado?.descartado) {
-          resultado.push({
-            id,
-            tipo: "tarefa_atrasada",
-            titulo: `Tarefa Atrasada: ${tituloDoc}`,
-            descricao: `Prazo venceu em ${prazo}. Status atual: ${status || "A fazer"}.`,
-            caminhoOrigem: item.caminho,
-            tituloOrigem: tituloDoc,
-            dataVencimento: String(prazo),
-            visto: Boolean(estado?.visto),
-            vistoEm: estado?.vistoEm,
-            notificadoTelegram: estado?.notificadoTelegram,
-            notificadoEmail: estado?.notificadoEmail,
-            tags: tagsDoc,
-          });
+          if (!estado?.descartado) {
+            const ehAtrasada = prazoStr < hojeIso;
+            const ehHoje = prazoStr === hojeIso;
+            const tituloPrefixo = ehAtrasada
+              ? "Tarefa Atrasada"
+              : ehHoje
+              ? "Tarefa para Hoje"
+              : "Tarefa Agendada";
+
+            const descricao = ehAtrasada
+              ? `Prazo venceu em ${prazoStr}. Status atual: ${status || "A fazer"}.`
+              : ehHoje
+              ? `Prazo vence HOJE (${prazoStr}). Status atual: ${status || "A fazer"}.`
+              : `Prazo agendado para ${prazoStr}. Status atual: ${status || "A fazer"}.`;
+
+            resultado.push({
+              id,
+              tipo: "tarefa_atrasada",
+              titulo: `${tituloPrefixo}: ${tituloDoc}`,
+              descricao,
+              caminhoOrigem: item.caminho,
+              tituloOrigem: tituloDoc,
+              dataVencimento: prazoStr,
+              visto: Boolean(estado?.visto),
+              vistoEm: estado?.vistoEm,
+              notificadoTelegram: estado?.notificadoTelegram,
+              notificadoEmail: estado?.notificadoEmail,
+              tags: tagsDoc,
+            });
+          }
         }
       }
     }

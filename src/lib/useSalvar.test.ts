@@ -25,6 +25,7 @@ vi.mock("./github", () => {
   }
   return {
     gravar: vi.fn(),
+    ler: vi.fn(),
     apagar: vi.fn(),
     ErroGitHub,
   };
@@ -35,7 +36,7 @@ vi.mock("./repo", () => ({
   invalidarCache: vi.fn(),
 }));
 
-import { gravar, apagar } from "./github";
+import { gravar, ler, apagar } from "./github";
 import { atualizarCacheLocal, invalidarCache } from "./repo";
 
 const cfg: Settings = {
@@ -134,17 +135,35 @@ describe("useSalvar — salvarTexto", () => {
 });
 
 describe("useSalvar — falhas", () => {
-  it("guarda o erro no estado e repassa a exceção para quem chamou", async () => {
-    vi.mocked(gravar).mockRejectedValue(new Error("409 conflito"));
+  it("guarda o erro no estado e repassa a exceção para quem chamou quando recuperação falha", async () => {
+    vi.mocked(gravar).mockRejectedValue(new Error("500 Erro Interno"));
     const { result } = renderHook(() => useSalvar(cfg));
 
     await act(async () => {
       await expect(
         result.current.salvarTexto("notas/a.md", "texto", "sha"),
-      ).rejects.toThrow("409 conflito");
+      ).rejects.toThrow("500 Erro Interno");
     });
 
-    await waitFor(() => expect(result.current.erro).toBe("409 conflito"));
+    await waitFor(() => expect(result.current.erro).toBe("500 Erro Interno"));
+  });
+
+  it("recupera automaticamente de conflito 409 buscando a sha mais recente", async () => {
+    vi.mocked(gravar)
+      .mockRejectedValueOnce(new Error("409 conflito"))
+      .mockResolvedValueOnce("sha_novo_recuperado");
+    vi.mocked(ler).mockResolvedValueOnce({ sha: "sha_remote", texto: "antigo" } as any);
+
+    const { result } = renderHook(() => useSalvar(cfg));
+
+    let shaRetornado = "";
+    await act(async () => {
+      shaRetornado = await result.current.salvarTexto("notas/a.md", "texto", "sha_antigo");
+    });
+
+    expect(shaRetornado).toBe("sha_novo_recuperado");
+    expect(ler).toHaveBeenCalledWith(cfg, "notas/a.md");
+    expect(gravar).toHaveBeenLastCalledWith(cfg, "notas/a.md", "texto", "sha_remote", undefined);
   });
 
   it("NÃO envenena o cache quando a gravação falha", async () => {

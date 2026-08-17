@@ -24,7 +24,7 @@
  */
 
 import { useState } from "react";
-import { gravar, apagar, ErroGitHub } from "./github";
+import { gravar, ler, apagar, ErroGitHub } from "./github";
 import { atualizarCacheLocal, invalidarCache } from "./repo";
 import { lerMarkdown } from "./markdown";
 import { notificarOutrasAbas } from "./syncChannel";
@@ -70,7 +70,20 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
     setSalvando(true);
     setErro("");
     try {
-      const novaSha = await gravar(cfg, caminho, texto, sha, mensagemCommit);
+      let novaSha: string;
+      try {
+        novaSha = await gravar(cfg, caminho, texto, sha, mensagemCommit);
+      } catch (err: any) {
+        const status = err instanceof ErroGitHub ? err.status : err?.status;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (status === 409 || msg.includes("409") || msg.includes("conflito")) {
+          // Em caso de descompasso de SHA (409), recupera o SHA atual no GitHub e tenta salvar novamente
+          const { sha: remoteSha } = await ler(cfg, caminho);
+          novaSha = await gravar(cfg, caminho, texto, remoteSha, mensagemCommit);
+        } else {
+          throw err;
+        }
+      }
 
       // Atualiza DEPOIS de gravar, com o sha REAL. Nunca antes.
       const doc = lerMarkdown(texto);

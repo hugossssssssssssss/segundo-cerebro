@@ -104,13 +104,16 @@ export default function Notas() {
       JSON.stringify(aberta.bruto) !== JSON.stringify(aberta.original.bruto)
     : false;
 
+  const mudouRef = useRef(mudou);
+  mudouRef.current = mudou;
+
   const [mostrarConfirmacaoDescarte, setMostrarConfirmacaoDescarte] = useState(false);
 
   useEffect(() => {
     if (!aberta) return;
     history.pushState({ editor: true }, "");
     const aoVoltar = () => {
-      if (mudou) {
+      if (mudouRef.current) {
         setMostrarConfirmacaoDescarte(true);
         history.pushState({ editor: true }, "");
         return;
@@ -119,7 +122,7 @@ export default function Notas() {
     };
     addEventListener("popstate", aoVoltar);
     return () => removeEventListener("popstate", aoVoltar);
-  }, [aberta !== null, mudou]);
+  }, [aberta !== null]);
 
   useEffect(() => {
     if (!mudou) return;
