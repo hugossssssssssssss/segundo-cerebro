@@ -11,13 +11,9 @@ import {
   CheckSquare,
   FileText,
   MessageCircle,
-  Settings,
   Search,
-  Moon,
-  Sun,
   Home as HomeIcon,
   Plus,
-  PanelLeft,
   MoreHorizontal,
   Bell,
 } from "lucide-react";
@@ -29,7 +25,6 @@ import { ToastsContainer } from "@/components/ToastsContainer";
 import { NavegacaoLateral } from "@/components/NavegacaoLateral";
 import { LimiteDeErro } from "@/components/LimiteDeErro";
 import { toast } from "@/lib/toast";
-import { alternarTema, lerTemaSalvo, type Tema } from "@/lib/tema";
 import { GavetaMais } from "@/components/GavetaMais";
 import { LogoKlaus } from "@/components/LogoKlaus";
 import { Carregando } from "@/components/ui";
@@ -70,32 +65,6 @@ const abasMobile = [
   { para: "/notas", rotulo: "Notas", Icone: FileText },
   { para: "/chat", rotulo: "Conversar", Icone: MessageCircle },
 ];
-
-function BotaoTema() {
-  const [tema, setTema] = useState<Tema>(lerTemaSalvo());
-
-  useEffect(() => {
-    const aoMudar = () => setTema(lerTemaSalvo());
-    window.addEventListener("tema-alterado", aoMudar);
-    return () => window.removeEventListener("tema-alterado", aoMudar);
-  }, []);
-
-  const escuro = tema === "escuro";
-
-  return (
-    <button
-      onClick={() => {
-        const novo = alternarTema();
-        setTema(novo);
-      }}
-      className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-      title={escuro ? "Modo claro" : "Modo escuro"}
-      aria-label={escuro ? "Mudar para modo claro" : "Mudar para modo escuro"}
-    >
-      {escuro ? <Sun size={18} /> : <Moon size={18} />}
-    </button>
-  );
-}
 
 function Estrutura({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
@@ -262,32 +231,15 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         {/* Cabeçalho Principal (Topbar Limpa) */}
         <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 h-14">
-            {/* Lado Esquerdo: Toggle e Logo */}
+            {/* Lado Esquerdo: Logo no Mobile */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  if (window.innerWidth < 640) {
-                    setGavetaAberta(true);
-                  } else {
-                    setColapsada((v) => !v);
-                  }
-                }}
-                className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                title="Alternar navegação (⌘B)"
-                aria-label="Alternar barra lateral"
-              >
-                <PanelLeft size={18} />
-              </button>
-
               <NavLink to="/home" className="flex sm:hidden items-center gap-2 font-bold tracking-tight text-sm hover:opacity-90 transition-opacity">
                 <LogoKlaus tamanho={24} />
                 <span>Klaus</span>
               </NavLink>
             </div>
 
-
-
-            {/* Lado Direito: Ações Rápida e Configurações */}
+            {/* Lado Direito: Captura Rápida, Inbox e Busca */}
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setCapturando(true)}
@@ -322,26 +274,6 @@ function Estrutura({ children }: { children: React.ReactNode }) {
               >
                 <Search size={18} />
               </button>
-
-              <NavLink
-                to="/config"
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-lg p-2 transition-colors hidden sm:block",
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                  )
-                }
-                title="Ajustes"
-                aria-label="Ajustes"
-              >
-                <Settings size={18} />
-              </NavLink>
-
-              <div className="hidden sm:block">
-                <BotaoTema />
-              </div>
             </div>
           </div>
         </header>

@@ -192,6 +192,17 @@ export function EditorNotion({
     }
   };
 
+  const aoCopiar = (e: React.ClipboardEvent) => {
+    const sel = window.getSelection()?.toString();
+    if (sel) {
+      const limpo = sel.replace(/\\+\s*(\n|$)/g, "$1");
+      if (limpo !== sel) {
+        e.clipboardData.setData("text/plain", limpo);
+        e.preventDefault();
+      }
+    }
+  };
+
   const onChangeRef = useRef(onChange);
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -331,7 +342,7 @@ export function EditorNotion({
   }, [pronto, alvos]);
 
   return (
-    <div className="notion-editor-wrapper min-h-[300px] relative" onPaste={aoColar}>
+    <div className="notion-editor-wrapper min-h-[300px] relative" onPaste={aoColar} onCopy={aoCopiar}>
       {!pronto && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/60 backdrop-blur-xs text-xs text-muted-foreground animate-pulse">
           Carregando editor…

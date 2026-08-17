@@ -14,6 +14,42 @@ export function dataCurta(iso?: string): string {
   return d.toLocaleDateString("pt-BR", { day: "numeric", month: "long" });
 }
 
+/**
+ * Converte data ISO ("2026-08-17") ou com hora ("2026-08-17 15:00") para o formato pt-BR
+ * ("17/08/26" ou "17/08/26 às 15:00").
+ */
+export function formatarDataPtBR(iso?: string): string {
+  if (!iso) return "";
+  const partes = iso.trim().split(" ");
+  const dataParte = partes[0];
+  const horaParte = partes[1];
+
+  const m = dataParte.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return iso;
+
+  const ano = m[1].slice(2);
+  const mes = m[2];
+  const dia = m[3];
+  const dataFormatada = `${dia}/${mes}/${ano}`;
+
+  if (horaParte) {
+    const hm = horaParte.slice(0, 5);
+    return `${dataFormatada} às ${hm}`;
+  }
+
+  return dataFormatada;
+}
+
+/** Traduz status técnicos (ex: "a-fazer" -> "Pendente"). */
+export function rotuloStatusAmigavel(status?: string): string {
+  if (!status) return "Pendente";
+  const s = status.toLowerCase().trim();
+  if (s === "a-fazer" || s === "afazer" || s === "a fazer") return "Pendente";
+  if (s === "fazendo" || s === "em-andamento") return "Em andamento";
+  if (s === "feito" || s === "concluido" || s === "concluida") return "Concluída";
+  return status;
+}
+
 /** Quantos dias faltam (negativo = atrasado). */
 export function diasAte(iso?: string): number | null {
   if (!iso) return null;

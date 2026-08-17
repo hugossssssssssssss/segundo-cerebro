@@ -13,6 +13,7 @@ import type { ItemInbox, Lembrete } from "./tipos";
 import type { Settings } from "./settings";
 import { lerMarkdown, tituloProvavel } from "./markdown";
 import { ler, gravar } from "./github";
+import { formatarDataPtBR, rotuloStatusAmigavel } from "./utils";
 
 export const CAMINHO_ESTADO_INBOX = "caixa-entrada/estado.json";
 const CHAVE_LOCAL_INBOX = "segundo-cerebro:inbox-estado";
@@ -222,22 +223,19 @@ export function compilarItensInbox(
           if (!estado?.descartado) {
             const ehAtrasada = prazoStr < hojeIso;
             const ehHoje = prazoStr === hojeIso;
-            const tituloPrefixo = ehAtrasada
-              ? "Tarefa Atrasada"
-              : ehHoje
-              ? "Tarefa para Hoje"
-              : "Tarefa Agendada";
+            const dataPt = formatarDataPtBR(prazoStr);
+            const statusAmigavel = rotuloStatusAmigavel(typeof status === "string" ? status : undefined);
 
             const descricao = ehAtrasada
-              ? `Prazo venceu em ${prazoStr}. Status atual: ${status || "A fazer"}.`
+              ? `Prazo venceu em ${dataPt} • Status: ${statusAmigavel}`
               : ehHoje
-              ? `Prazo vence HOJE (${prazoStr}). Status atual: ${status || "A fazer"}.`
-              : `Prazo agendado para ${prazoStr}. Status atual: ${status || "A fazer"}.`;
+              ? `Prazo vence HOJE (${dataPt}) • Status: ${statusAmigavel}`
+              : `Prazo agendado para ${dataPt} • Status: ${statusAmigavel}`;
 
             resultado.push({
               id,
               tipo: "tarefa_atrasada",
-              titulo: `${tituloPrefixo}: ${tituloDoc}`,
+              titulo: tituloDoc,
               descricao,
               caminhoOrigem: item.caminho,
               tituloOrigem: tituloDoc,

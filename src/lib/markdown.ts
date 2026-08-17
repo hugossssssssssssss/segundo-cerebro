@@ -177,5 +177,8 @@ export function restaurarWikilinks(markdown: string): string {
     }
   );
 
+  // Remove barras invertidas residuais no final das linhas (\\ + quebra de linha)
+  limpo = limpo.replace(/\\+\s*(\n|$)/g, "$1");
+
   return limpo;
 }

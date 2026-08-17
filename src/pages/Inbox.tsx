@@ -10,7 +10,6 @@ import {
   Check,
   Filter,
   Plus,
-  RefreshCw,
   Sparkles,
   Clock,
   Tag,
@@ -35,15 +34,17 @@ import {
 } from "@/lib/inbox";
 import { extrairLembretesComIA } from "@/lib/gemini";
 import type { ItemInbox } from "@/lib/tipos";
-import { Botao, Cartao, Selo, Aviso, Vazio, Carregando } from "@/components/ui";
+import { Botao, Cartao, Selo, Aviso, Vazio, Carregando, Modal } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { CartaoItem } from "@/components/CartaoItem";
 import { SeloStatus } from "@/components/SeloStatus";
 import { ModalLembrete } from "@/components/ModalLembrete";
+import { Calendario } from "@/components/Calendario";
 import { useSalvar } from "@/lib/useSalvar";
 import { lerMarkdown, escreverMarkdown } from "@/lib/markdown";
+import { comoTarefa } from "@/lib/entidades";
 import { toast } from "@/lib/toast";
-import { lerParametroCriar } from "@/lib/utils";
+import { lerParametroCriar, formatarDataPtBR } from "@/lib/utils";
 import {
   obterRascunhosLocais,
   removerRascunhoLocal,
@@ -65,6 +66,8 @@ export default function Inbox() {
   const [shaEstado, setShaEstado] = useState<string | undefined>(undefined);
   const [aba, setAba] = useState<AbaFiltro>("nao_vistos");
   const [tagSelecionada, setTagSelecionada] = useState<string | null>(null);
+  const [diaFiltro, setDiaFiltro] = useState<string | null>(null);
+  const [modalCalendarioAberto, setModalCalendarioAberto] = useState(false);
   const [modalNovoAberto, setModalNovoAberto] = useState(false);
   const [extraindoIA, setExtraindoIA] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
@@ -436,6 +439,11 @@ export default function Inbox() {
         return false;
       }
 
+      // Filtro por dia selecionado no painel semanal
+      if (diaFiltro && item.dataVencimento.slice(0, 10) !== diaFiltro) {
+        return false;
+      }
+
       if (aba === "nao_vistos") return !item.visto && item.tipo !== "nota_inativa";
       if (aba === "lembretes") return item.tipo === "lembrete" && !item.visto;
       if (aba === "atrasadas") return item.tipo === "tarefa_atrasada" && !item.visto;
@@ -443,7 +451,7 @@ export default function Inbox() {
       if (aba === "arquivados") return item.visto;
       return true;
     });
-  }, [itensCompilados, notasInativas, aba, tagSelecionada]);
+  }, [itensCompilados, notasInativas, aba, tagSelecionada, diaFiltro]);
 
   const contagemNaoVistos = itensCompilados.filter((i) => !i.visto && i.tipo !== "nota_inativa").length;
   const contagemAtrasadas = itensCompilados.filter((i) => i.tipo === "tarefa_atrasada" && !i.visto).length;
@@ -495,11 +503,6 @@ export default function Inbox() {
               {extraindoIA ? "Analisando..." : "IA Extrair Prazos"}
             </Botao>
 
-            <Botao variante="neutro" tamanho="pequeno" onClick={() => carregar()}>
-              <RefreshCw size={14} className={carregando ? "animate-spin" : ""} />
-              Atualizar
-            </Botao>
-
             <Botao variante="primario" tamanho="pequeno" onClick={() => setModalNovoAberto(true)}>
               <Plus size={16} />
               Novo Lembrete
@@ -511,39 +514,66 @@ export default function Inbox() {
       {mensagemSucesso && <Aviso tom="sucesso">{mensagemSucesso}</Aviso>}
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 
-      {/* Visão Semanal / Linha do Tempo (Ideia 8) */}
+      {/* Visão Semanal / Linha do Tempo */}
       <div className="rounded-xl border border-border/80 bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
             <Calendar size={14} /> Próximos 7 Dias
           </h2>
-          <span className="text-[11px] text-muted-foreground">Visão Geral</span>
+          <button
+            onClick={() => setModalCalendarioAberto(true)}
+            className="text-[11px] font-medium text-primary hover:underline flex items-center gap-1 cursor-pointer"
+            title="Abrir mapa de tarefas do mês em formato calendário"
+          >
+            <Calendar size={13} /> Visão Geral (Calendário Mês)
+          </button>
         </div>
 
         <div className="grid grid-cols-7 gap-1.5 text-center">
-          {visaoSemanal.map((d) => (
-            <div
-              key={d.dataIso}
-              className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-colors ${
-                d.ehHoje
-                  ? "border-primary bg-primary/10 font-bold"
-                  : "border-border/60 bg-secondary/40 hover:bg-accent"
-              }`}
-            >
-              <span className="text-[10px] uppercase font-mono text-muted-foreground">
-                {d.diaDaSemana}
-              </span>
-              <span className="text-sm font-semibold">{d.diaNumero}</span>
-              {d.total > 0 ? (
-                <span className="mt-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
-                  {d.total}
+          {visaoSemanal.map((d) => {
+            const estaAtivo = diaFiltro === d.dataIso;
+            return (
+              <button
+                key={d.dataIso}
+                onClick={() => setDiaFiltro(estaAtivo ? null : d.dataIso)}
+                className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all cursor-pointer ${
+                  estaAtivo
+                    ? "border-primary bg-primary text-primary-foreground font-bold shadow-xs scale-102"
+                    : d.ehHoje
+                    ? "border-primary/60 bg-primary/10 font-bold hover:bg-primary/20"
+                    : "border-border/60 bg-secondary/40 hover:bg-accent"
+                }`}
+                title={`Ver pendências do dia ${formatarDataPtBR(d.dataIso)}`}
+              >
+                <span className={`text-[10px] uppercase font-mono ${estaAtivo ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                  {d.diaDaSemana}
                 </span>
-              ) : (
-                <span className="mt-1 text-[10px] text-muted-foreground/50">-</span>
-              )}
-            </div>
-          ))}
+                <span className="text-sm font-semibold">{d.diaNumero}</span>
+                {d.total > 0 ? (
+                  <span className={`mt-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${estaAtivo ? "bg-background text-foreground" : "bg-primary text-primary-foreground"}`}>
+                    {d.total}
+                  </span>
+                ) : (
+                  <span className="mt-1 text-[10px] opacity-40">-</span>
+                )}
+              </button>
+            );
+          })}
         </div>
+
+        {diaFiltro && (
+          <div className="mt-3 pt-2 border-t border-border/40 flex items-center justify-between text-xs">
+            <span className="text-muted-foreground font-medium">
+              Filtrando tarefas do dia <strong className="text-foreground">{formatarDataPtBR(diaFiltro)}</strong>
+            </span>
+            <button
+              onClick={() => setDiaFiltro(null)}
+              className="text-primary hover:underline font-semibold text-xs"
+            >
+              Limpar filtro de data
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Abas Principais */}
@@ -778,18 +808,20 @@ export default function Inbox() {
           {itensExibidos.map((item) => {
             const ehAtrasada = item.tipo === "tarefa_atrasada";
             const ehInativa = item.tipo === "nota_inativa";
+            const dataExibicao = formatarDataPtBR(item.dataVencimento);
 
             return (
               <Cartao
                 key={item.id}
-                className={`p-4 transition-all hover:shadow-md ${
+                onClick={() => navegarParaOrigem(item.caminhoOrigem)}
+                className={`p-4 transition-all hover:shadow-md cursor-pointer group ${
                   !item.visto
                     ? ehAtrasada
-                      ? "border-destructive/40 bg-destructive/5"
+                      ? "border-destructive/40 bg-destructive/5 hover:border-destructive/60"
                       : ehInativa
-                      ? "border-amber-500/40 bg-amber-500/5"
-                      : "border-primary/40 bg-primary/5"
-                    : "opacity-75"
+                      ? "border-amber-500/40 bg-amber-500/5 hover:border-amber-500/60"
+                      : "border-primary/40 bg-primary/5 hover:border-primary/60"
+                    : "opacity-75 hover:opacity-100"
                 }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -814,7 +846,7 @@ export default function Inbox() {
 
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-semibold text-base text-foreground leading-snug">
+                        <h3 className="font-semibold text-base text-foreground leading-snug group-hover:text-primary transition-colors">
                           {item.titulo}
                         </h3>
                         <Selo tom={ehAtrasada ? "perigo" : ehInativa ? "aviso" : "primario"}>
@@ -837,45 +869,54 @@ export default function Inbox() {
                       )}
 
                       <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground pt-1">
-                        <span className="flex items-center gap-1 font-mono">
-                          <Calendar size={12} /> {item.dataVencimento}
+                        <span className="flex items-center gap-1 font-mono font-medium">
+                          <Calendar size={12} /> {dataExibicao}
                         </span>
                         <span>•</span>
-                        <button
-                          onClick={() => navegarParaOrigem(item.caminhoOrigem)}
-                          className="flex items-center gap-1 font-medium text-primary hover:underline"
-                        >
+                        <span className="flex items-center gap-1 font-medium text-primary">
                           <ExternalLink size={12} /> {item.tituloOrigem}
-                        </button>
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Ações e Snooze em 1 Clique (Ideia 1) */}
-                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40 w-full sm:w-auto justify-end flex-wrap">
+                  {/* Ações e Snooze em 1 Clique */}
+                  <div
+                    className="flex items-center gap-1.5 shrink-0 self-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40 w-full sm:w-auto justify-end flex-wrap"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {/* Botões rápidos de Snooze para lembretes */}
                     {!item.visto && !ehInativa && (
-                      <div className="flex items-center gap-1 border-r border-border/60 pr-2 mr-1">
+                      <div className="flex items-center gap-1.5 border-r border-border/60 pr-2 mr-1">
                         <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-0.5">
                           <Clock size={11} /> Adiar:
                         </span>
                         <button
-                          onClick={() => adiarItem(item, "1h")}
-                          className="px-2 py-1 rounded bg-secondary text-[11px] font-medium hover:bg-accent transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            adiarItem(item, "1h");
+                          }}
+                          className="px-2 py-1 rounded bg-secondary text-[11px] font-semibold hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
                           title="Adiar 1 hora"
                         >
                           +1h
                         </button>
                         <button
-                          onClick={() => adiarItem(item, "amanha")}
-                          className="px-2 py-1 rounded bg-secondary text-[11px] font-medium hover:bg-accent transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            adiarItem(item, "amanha");
+                          }}
+                          className="px-2 py-1 rounded bg-secondary text-[11px] font-semibold hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
                           title="Adiar para Amanhã às 09:00"
                         >
                           Amanhã
                         </button>
                         <button
-                          onClick={() => adiarItem(item, "3dias")}
-                          className="px-2 py-1 rounded bg-secondary text-[11px] font-medium hover:bg-accent transition-colors hidden sm:inline-block"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            adiarItem(item, "3dias");
+                          }}
+                          className="px-2 py-1 rounded bg-secondary text-[11px] font-semibold hover:bg-primary hover:text-primary-foreground transition-colors hidden sm:inline-block cursor-pointer"
                           title="Adiar 3 dias"
                         >
                           +3d
@@ -886,27 +927,24 @@ export default function Inbox() {
                     <Botao
                       variante={item.visto ? "neutro" : "primario"}
                       tamanho="pequeno"
-                      onClick={() => alternarVisto(item.id)}
-                      title={item.visto ? "Marcar como não visto" : "Marcar como visto"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        alternarVisto(item.id);
+                      }}
+                      title={item.visto ? "Restaurar como não visto" : "Marcar pendência como concluída"}
                     >
                       <Check size={14} />
-                      {item.visto ? "Lido" : "Marcar Lido"}
-                    </Botao>
-
-                    <Botao
-                      variante="neutro"
-                      tamanho="pequeno"
-                      onClick={() => navegarParaOrigem(item.caminhoOrigem)}
-                    >
-                      <ExternalLink size={14} />
-                      Abrir
+                      {item.visto ? "Concluído" : "Marcar Concluído"}
                     </Botao>
 
                     <Botao
                       variante="fantasma"
                       tamanho="icone"
-                      onClick={() => descartarItem(item.id)}
-                      title="Arquivar / Descartar"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        descartarItem(item.id);
+                      }}
+                      title="Arquivar alerta"
                     >
                       <Trash2 size={16} className="text-muted-foreground hover:text-destructive" />
                     </Botao>
@@ -917,6 +955,23 @@ export default function Inbox() {
           })}
         </div>
       )}
+
+      {/* Modal do Calendário Completo do Mês */}
+      <Modal
+        aberto={modalCalendarioAberto}
+        aoFechar={() => setModalCalendarioAberto(false)}
+        titulo="Visão Geral do Calendário (Tarefas e Prazos do Mês)"
+      >
+        <div className="p-2 space-y-4">
+          <Calendario
+            tarefas={acervo.filter((i) => i.caminho.startsWith("tarefas/")).map((i) => comoTarefa(lerMarkdown(i.texto), i.caminho, i.sha, i.nome))}
+            aoAbrir={(t) => {
+              setModalCalendarioAberto(false);
+              navegarParaOrigem(t.caminho);
+            }}
+          />
+        </div>
+      </Modal>
 
       {/* Modal de criação */}
       <ModalLembrete

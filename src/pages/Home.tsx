@@ -97,9 +97,41 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
     colunasPadrao: 2,
   },
   {
+    id: "kpi_tarefas",
+    titulo: "KPI: Tarefas Pendentes",
+    descricao: "Métrica rápida de tarefas pendentes e urgentes",
+    icone: CheckSquare,
+    colunasPadrao: 1,
+    corIcone: "text-primary bg-primary/10",
+  },
+  {
+    id: "kpi_notas",
+    titulo: "KPI: Notas Criadas",
+    descricao: "Métrica de notas e acervo de conhecimento",
+    icone: FileText,
+    colunasPadrao: 1,
+    corIcone: "text-blue-500 bg-blue-500/10",
+  },
+  {
+    id: "kpi_referencias",
+    titulo: "KPI: Referências",
+    descricao: "Métrica de galeria visual e inspirações",
+    icone: ImageIcon,
+    colunasPadrao: 1,
+    corIcone: "text-purple-500 bg-purple-500/10",
+  },
+  {
+    id: "kpi_pdi",
+    titulo: "KPI: Carreira / PDI",
+    descricao: "Métrica de metas e entregas ativas de carreira",
+    icone: Target,
+    colunasPadrao: 1,
+    corIcone: "text-emerald-500 bg-emerald-500/10",
+  },
+  {
     id: "kpis",
-    titulo: "Resumo dos KPIs",
-    descricao: "Indicadores gerais de Tarefas, Notas, Referências e PDI",
+    titulo: "Resumo Geral dos 4 KPIs (Bloco Grupal)",
+    descricao: "Indicadores gerais agrupados de Tarefas, Notas, Referências e PDI",
     icone: Layout,
     colunasPadrao: 3,
   },
@@ -230,7 +262,10 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
 ];
 
 const GADGETS_PADRAO: Gadget[] = [
-  { id: "kpis", colunas: 3 },
+  { id: "kpi_tarefas", colunas: 1 },
+  { id: "kpi_notas", colunas: 1 },
+  { id: "kpi_referencias", colunas: 1 },
+  { id: "kpi_pdi", colunas: 1 },
   { id: "tarefas", colunas: 2 },
   { id: "notas", colunas: 1 },
   { id: "referencias", colunas: 2 },
@@ -686,6 +721,84 @@ export default function Home() {
 
     // 2. Módulos de Conteúdo (KPIs, Tarefas, Notas, Referências, PDI, Lousas)
     switch (gadget.id) {
+      case "kpi_tarefas":
+        return (
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
+            <Link to="/tarefas" className="block group h-full">
+              <Card className="hover:border-primary/50 transition-all hover:shadow-md cursor-pointer h-full border border-border/80">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 sm:p-6 pb-2 sm:pb-3">
+                  <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tarefas Pendentes</CardTitle>
+                  <CheckSquare className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent className="p-5 sm:p-6 pt-0 sm:pt-0">
+                  <div className="text-2xl sm:text-3xl font-bold tracking-tight">{totalTarefas}</div>
+                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                    {tarefasUrgentesCount > 0 ? (
+                      <span className="text-amber-600 font-semibold">{tarefasUrgentesCount} urgentes</span>
+                    ) : (
+                      "Tudo sob controle"
+                    )}
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          </GadgetWrapper>
+        );
+
+      case "kpi_notas":
+        return (
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
+            <Link to="/notas" className="block group h-full">
+              <Card className="hover:border-blue-500/50 transition-all hover:shadow-md cursor-pointer h-full border border-border/80">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 sm:p-6 pb-2 sm:pb-3">
+                  <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Notas Criadas</CardTitle>
+                  <FileText className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent className="p-5 sm:p-6 pt-0 sm:pt-0">
+                  <div className="text-2xl sm:text-3xl font-bold tracking-tight">{totalNotas}</div>
+                  <p className="text-xs text-muted-foreground mt-2">Conhecimento salvo</p>
+                </CardContent>
+              </Card>
+            </Link>
+          </GadgetWrapper>
+        );
+
+      case "kpi_referencias":
+        return (
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
+            <Link to="/referencias" className="block group h-full">
+              <Card className="hover:border-purple-500/50 transition-all hover:shadow-md cursor-pointer h-full border border-border/80">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 sm:p-6 pb-2 sm:pb-3">
+                  <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Referências</CardTitle>
+                  <ImageIcon className="h-4 w-4 text-purple-500" />
+                </CardHeader>
+                <CardContent className="p-5 sm:p-6 pt-0 sm:pt-0">
+                  <div className="text-2xl sm:text-3xl font-bold tracking-tight">{totalRefs}</div>
+                  <p className="text-xs text-muted-foreground mt-2">Galeria de inspirações</p>
+                </CardContent>
+              </Card>
+            </Link>
+          </GadgetWrapper>
+        );
+
+      case "kpi_pdi":
+        return (
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
+            <Link to="/pdi" className="block group h-full">
+              <Card className="hover:border-emerald-500/50 transition-all hover:shadow-md cursor-pointer h-full border border-border/80">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 sm:p-6 pb-2 sm:pb-3">
+                  <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Carreira & PDI</CardTitle>
+                  <Target className="h-4 w-4 text-emerald-500" />
+                </CardHeader>
+                <CardContent className="p-5 sm:p-6 pt-0 sm:pt-0">
+                  <div className="text-2xl sm:text-3xl font-bold tracking-tight">{resumoPdi.length}</div>
+                  <p className="text-xs text-muted-foreground mt-2">Metas ativas</p>
+                </CardContent>
+              </Card>
+            </Link>
+          </GadgetWrapper>
+        );
+
       case "kpis": {
         const gridKpisClass =
           gadget.colunas === 3
