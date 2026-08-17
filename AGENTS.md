@@ -58,9 +58,11 @@ Publicado em https://hugossssssssssssss.github.io/segundo-cerebro/ pelo workflow
 | `src/components/EditorNotion.tsx` | Editor BlockNote. Converte `[[links]]` em `@menções` na saída, autocompleta com `@` e re-sincroniza quando o corpo muda por fora |
 | `src/pages/*.tsx` | Uma tela por área |
 
-## Padrão de uma tela
+## Padrão de uma tela e Design System
 
-Todas seguem a mesma forma. Copie a mais parecida em vez de inventar outra:
+**Siga obrigatoriamente o [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) para a criação ou alteração de qualquer tela.** Todas as telas utilizam a suíte de componentes em `src/components/` (`CabecalhoPagina`, `BarraFerramentas`, `AlternadorVisao`, `CabecalhoSecao`, `CartaoItem`, `SeloStatus`, `TagChip`, `Vazio`, `Carregando`).
+
+Todas seguem o mesmo ciclo de dados. Copie a mais parecida em vez de inventar outra:
 
 ```tsx
 const cfg = lerConfig();
