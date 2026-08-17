@@ -1012,8 +1012,9 @@ export default function Inbox() {
         aberto={modalCalendarioAberto}
         aoFechar={() => setModalCalendarioAberto(false)}
         titulo="Visão Geral do Calendário (Tarefas e Prazos do Mês)"
+        tamanho="extra-largo"
       >
-        <div className="p-2 space-y-4">
+        <div className="p-2 sm:p-4 overflow-y-auto max-h-[80dvh]">
           <Calendario
             tarefas={acervo.filter((i) => i.caminho.startsWith("tarefas/")).map((i) => comoTarefa(lerMarkdown(i.texto), i.caminho, i.sha, i.nome))}
             aoAbrir={(t) => {

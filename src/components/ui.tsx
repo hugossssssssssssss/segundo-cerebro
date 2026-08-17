@@ -265,6 +265,7 @@ export function Modal({
   children,
   rodape,
   temMudancas,
+  tamanho = "padrao",
 }: {
   aberto: boolean;
   aoFechar: () => void;
@@ -273,6 +274,7 @@ export function Modal({
   rodape?: ReactNode;
   /** Quando true, fechar sem salvar pede confirmação */
   temMudancas?: boolean;
+  tamanho?: "padrao" | "largo" | "extra-largo";
 }) {
   const [confirmandoDescarte, setConfirmandoDescarte] = useState(false);
 
@@ -304,6 +306,13 @@ export function Modal({
 
   if (!aberto) return null;
 
+  const maxLargura =
+    tamanho === "extra-largo"
+      ? "sm:max-w-5xl"
+      : tamanho === "largo"
+      ? "sm:max-w-3xl"
+      : "sm:max-w-2xl";
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
@@ -312,13 +321,11 @@ export function Modal({
       aria-modal="true"
       aria-label={titulo}
     >
-      {/*
-        max-h-[92dvh] e não 92vh: no Android, `vh` ignora o teclado virtual,
-        então o rodapé com o botão Salvar ficava empurrado para fora da tela
-        enquanto se digitava. `dvh` acompanha a área realmente visível.
-      */}
       <div
-        className="flex max-h-[92dvh] w-full flex-col rounded-t-2xl border border-border bg-card shadow-xl sm:max-w-2xl sm:rounded-2xl"
+        className={cn(
+          "flex max-h-[92dvh] w-full flex-col rounded-t-2xl border border-border bg-card shadow-xl sm:rounded-2xl overflow-hidden",
+          maxLargura,
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
