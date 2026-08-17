@@ -11,6 +11,14 @@ import {
   Settings,
   GitMerge,
   FolderTree,
+  FilePlus,
+  Scissors,
+  Crop,
+  Lock,
+  Layers,
+  Minimize2,
+  ScanText,
+  PenTool,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -25,6 +33,91 @@ export interface FerramentaApp {
 }
 
 export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
+  // --- FERRAMENTAS ILOVEPDF / PDF ---
+  {
+    id: "pdf_juntar",
+    titulo: "Juntar e Mesclar PDFs (iLovePDF)",
+    descricao: "Combine múltiplos arquivos PDF em um único documento organizado",
+    categoria: "ferramenta",
+    rota: "/pdf?aba=juntar",
+    icone: FilePlus,
+    palavrasChave: ["pdf", "juntar", "mesclar", "combinar", "unir", "ilovepdf", "documentos"],
+  },
+  {
+    id: "pdf_dividir",
+    titulo: "Dividir PDF / Extrair Páginas (iLovePDF)",
+    descricao: "Separe páginas de um PDF ou escolha intervalos específicos para extrair",
+    categoria: "ferramenta",
+    rota: "/pdf?aba=dividir",
+    icone: Scissors,
+    palavrasChave: ["pdf", "dividir", "extrair", "separar", "páginas", "intervalo", "ilovepdf"],
+  },
+  {
+    id: "pdf_comprimir",
+    titulo: "Comprimir e Reduzir PDF (iLovePDF)",
+    descricao: "Reduza o tamanho de arquivos PDF pesados sem perder qualidade visual",
+    categoria: "ferramenta",
+    rota: "/pdf?aba=comprimir",
+    icone: Minimize2,
+    palavrasChave: ["pdf", "comprimir", "reduzir", "tamanho", "peso", "otimizar", "ilovepdf"],
+  },
+  {
+    id: "pdf_recortar",
+    titulo: "Recortar Margens de PDF (iLovePDF)",
+    descricao: "Ajuste e corte as margens em branco de páginas de um arquivo PDF",
+    categoria: "ferramenta",
+    rota: "/pdf?aba=recortar",
+    icone: Crop,
+    palavrasChave: ["pdf", "recortar", "margens", "cortar", "ajustar", "ilovepdf"],
+  },
+  {
+    id: "pdf_desbloquear",
+    titulo: "Desbloquear PDF (iLovePDF)",
+    descricao: "Remova senhas e restrições de proteção contra cópia ou impressão",
+    categoria: "ferramenta",
+    rota: "/pdf?aba=desbloquear",
+    icone: Lock,
+    palavrasChave: ["pdf", "desbloquear", "senha", "proteger", "remover senha", "ilovepdf"],
+  },
+  {
+    id: "pdf_organizar",
+    titulo: "Organizar e Reordenar Páginas PDF",
+    descricao: "Mude a ordem, gire e organize páginas de um documento PDF livremente",
+    categoria: "ferramenta",
+    rota: "/pdf?aba=organizar",
+    icone: Layers,
+    palavrasChave: ["pdf", "organizar", "reordenar", "ordenar", "mover páginas", "ilovepdf"],
+  },
+  {
+    id: "pdf_ocr",
+    titulo: "Reconhecimento OCR de PDF e Imagem",
+    descricao: "Extraia texto pesquisável e legível de PDFs digitalizados e fotos",
+    categoria: "ferramenta",
+    rota: "/conversor?ferramenta=ocr",
+    icone: ScanText,
+    palavrasChave: ["pdf", "ocr", "texto", "reconhecer", "digitalizado", "extrair texto", "tesseract"],
+  },
+
+  // --- LOUSAS E EXCALIDRAW ---
+  {
+    id: "excalidraw_nova",
+    titulo: "Nova Lousa / Canvas Excalidraw",
+    descricao: "Abra um quadro em branco para desenhar, rascunhar e criar mapas mentais",
+    categoria: "ferramenta",
+    rota: "/lousas?nova=true",
+    icone: PenTool,
+    palavrasChave: ["lousa", "excalidraw", "desenho", "canvas", "novo", "esboço", "mapa mental", "diagrama"],
+  },
+  {
+    id: "lousas",
+    titulo: "Lousas Visuais (Excalidraw)",
+    descricao: "Galeria de quadros Excalidraw, diagramas e mapas mentais salvos",
+    categoria: "modulo",
+    rota: "/lousas",
+    icone: Layout,
+    palavrasChave: ["lousa", "excalidraw", "canvas", "diagrama", "mapas mentais", "desenhos"],
+  },
+
   // --- CONVERSÕES ---
   {
     id: "pdf_para_png",
@@ -92,8 +185,17 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
 
   // --- MÓDULOS E FERRAMENTAS DO KLAUS ---
   {
+    id: "contatos",
+    titulo: "Árvore de Contatos & Pessoas",
+    descricao: "Gerencie contatos, rede de relacionamentos, hierarquias (chefe/equipe) e propriedades editáveis",
+    categoria: "modulo",
+    rota: "/contatos",
+    icone: FolderTree,
+    palavrasChave: ["contatos", "árvore", "pessoas", "equipe", "chefe", "hierarquia", "rede", "relacionamentos", "csv"],
+  },
+  {
     id: "transcritor",
-    titulo: "Transcritor de Áudio",
+    titulo: "Transcritor de Áudio & Voz",
     descricao: "Grave voz ou envie arquivos de áudio para transcrição e resumo com IA",
     categoria: "ferramenta",
     rota: "/transcritor",
@@ -108,15 +210,6 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
     rota: "/processos",
     icone: GitMerge,
     palavrasChave: ["processo", "pipeline", "crm", "funil", "automação", "pipefy", "etapas"],
-  },
-  {
-    id: "contatos",
-    titulo: "Árvore de Contatos",
-    descricao: "Gerencie contatos, rede de relacionamentos, hierarquias (chefe/equipe) e propriedades editáveis",
-    categoria: "modulo",
-    rota: "/contatos",
-    icone: FolderTree,
-    palavrasChave: ["contatos", "árvore", "pessoas", "equipe", "chefe", "hierarquia", "rede", "relacionamentos", "csv"],
   },
   {
     id: "tarefas",
@@ -138,21 +231,12 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
   },
   {
     id: "referencias",
-    titulo: "Referências Visuais",
+    titulo: "Referências Visuais (Pinterest)",
     descricao: "Galeria de imagens, inspirações visuais e upload de referências",
     categoria: "modulo",
     rota: "/referencias",
     icone: ImageIcon,
-    palavrasChave: ["referências", "fotos", "galeria", "inspirações", "design", "imagens"],
-  },
-  {
-    id: "lousas",
-    titulo: "Lousas Visuais (Excalidraw)",
-    descricao: "Quadros em branco para desenhar, planejar e esquematizar ideias",
-    categoria: "modulo",
-    rota: "/lousas",
-    icone: Layout,
-    palavrasChave: ["lousa", "desenho", "canvas", "esboço", "excalidraw", "mindmap"],
+    palavrasChave: ["referências", "fotos", "galeria", "inspirações", "design", "imagens", "pinterest"],
   },
   {
     id: "chat_ia",

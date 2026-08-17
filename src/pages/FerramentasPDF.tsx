@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PDFDocument } from "pdf-lib";
 import {
   FileText,
@@ -25,7 +26,21 @@ interface InfoPagina {
 }
 
 export default function FerramentasPDF() {
-  const [abaAtiva, setAbaAtiva] = useState<AbaILovePDF>("juntar");
+  const [searchParams] = useSearchParams();
+  const abaParam = searchParams.get("aba") as AbaILovePDF | null;
+
+  const [abaAtiva, setAbaAtiva] = useState<AbaILovePDF>(() => {
+    if (abaParam && ["juntar", "dividir", "comprimir", "recortar", "desbloquear", "organizar"].includes(abaParam)) {
+      return abaParam;
+    }
+    return "juntar";
+  });
+
+  useEffect(() => {
+    if (abaParam && ["juntar", "dividir", "comprimir", "recortar", "desbloquear", "organizar"].includes(abaParam)) {
+      setAbaAtiva(abaParam);
+    }
+  }, [abaParam]);
 
   // Estados
   const [arquivos, setArquivos] = useState<File[]>([]);

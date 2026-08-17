@@ -24,6 +24,7 @@ import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutua
 const OPCOES_FILTRO: Array<{ id: CategoriaFiltroBusca; rotulo: string }> = [
   { id: "tudo", rotulo: "Tudo" },
   { id: "ferramentas", rotulo: "Ferramentas" },
+  { id: "contatos", rotulo: "Contatos" },
   { id: "notas", rotulo: "Notas" },
   { id: "tarefas", rotulo: "Tarefas" },
   { id: "pdi", rotulo: "PDI" },
@@ -298,6 +299,7 @@ export function Busca({
                           const pasta = item.caminho.split("/")[0];
                           let rota = `/notas?abrir=${encodeURIComponent(item.caminho)}`;
                           if (pasta === "tarefas") rota = `/tarefas?abrir=${encodeURIComponent(item.caminho)}`;
+                          if (pasta === "contatos") rota = `/contatos?abrir=${encodeURIComponent(item.caminho)}`;
                           if (pasta === "referencias") rota = `/referencias?abrir=${encodeURIComponent(item.caminho)}`;
                           if (pasta === "lousas") rota = `/lousas?abrir=${encodeURIComponent(item.caminho)}`;
                           if (item.caminho.startsWith("pdi")) rota = `/pdi?abrir=${encodeURIComponent(item.caminho)}`;

@@ -40,6 +40,7 @@ export type Resultado = {
 export type CategoriaFiltroBusca =
   | "tudo"
   | "ferramentas"
+  | "contatos"
   | "notas"
   | "tarefas"
   | "pdi"
@@ -121,12 +122,24 @@ function novoIndice(itens: ItemRepo[]): MiniSearch<Fichado> {
   });
 
   mini.addAll(
-    itens.map((item) => ({
-      id: item.caminho,
-      titulo: tituloProvavel(item.doc, item.nome),
-      tags: comoLista(item.doc.dados.tags).join(" "),
-      corpo: item.doc.corpo,
-    })),
+    itens.map((item) => {
+      const d = item.doc.dados;
+      const extrasContato = [
+        typeof d.cargo === "string" ? d.cargo : "",
+        typeof d.empresa === "string" ? d.empresa : "",
+        typeof d.email === "string" ? d.email : "",
+        typeof d.telefone === "string" ? d.telefone : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      return {
+        id: item.caminho,
+        titulo: tituloProvavel(item.doc, item.nome),
+        tags: comoLista(item.doc.dados.tags).join(" "),
+        corpo: ((item.doc.corpo || "") + " " + extrasContato).trim(),
+      };
+    }),
   );
 
   return mini;
@@ -211,7 +224,8 @@ export function filtrarPorCategoria(
 ): Resultado[] {
   if (categoria === "tudo") return resultados;
   if (categoria === "ferramentas") return [];
-  if (categoria === "notas") return resultados.filter((r) => r.tipo === "nota");
+  if (categoria === "contatos") return resultados.filter((r) => r.tipo === "contato");
+  if (categoria === "notas") return resultados.filter((r) => r.tipo === "nota" || r.tipo === "reuniao");
   if (categoria === "tarefas") return resultados.filter((r) => r.tipo === "tarefa");
   if (categoria === "pdi") return resultados.filter((r) => r.tipo === "meta" || r.tipo === "entrega");
   if (categoria === "referencias") return resultados.filter((r) => r.tipo === "referencia");
