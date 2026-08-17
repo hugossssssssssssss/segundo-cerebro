@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   FolderTree,
   Plus,
@@ -21,6 +21,8 @@ import {
   FileSpreadsheet,
   Sparkles,
   User,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { PASTAS, type Contato } from "@/lib/tipos";
@@ -42,12 +44,19 @@ import { cn } from "@/lib/utils";
 
 type VisaoContatos = "arvore" | "cartoes" | "tabela";
 
+interface PropriedadeItem {
+  id: string;
+  chave: string;
+  valor: string;
+  nativa?: boolean; // Se true, é um campo nativo (ex: Cargo, Empresa, Email, Telefone)
+}
+
 export default function Contatos() {
   const [cfg] = useState(lerConfig);
   const pronto = configCompleta(cfg);
 
   // Hook padrão de carregamento do repo
-  const { itens: contatos, carregando, erro, recarregar } = useItemRepo(
+  const { itens: contatosRepo, carregando, erro: erroCarregar, recarregar } = useItemRepo(
     cfg,
     PASTAS.contatos,
     (item) => comoContato(item.doc, item.caminho, item.sha, item.nome.replace(/\.md$/, "")),
@@ -55,6 +64,14 @@ export default function Contatos() {
 
   // Hook padrão de salvamento
   const { salvarTexto, apagarItem, salvando, erro: erroSalvar } = useSalvar(cfg);
+
+  // Estado local para atualização otimista (instantânea no salvamento/exclusão)
+  const [contatosLocais, setContatosLocais] = useState<Contato[]>([]);
+
+  // Sincroniza estado local quando o repositório é recarregado
+  useEffect(() => {
+    setContatosLocais(contatosRepo);
+  }, [contatosRepo]);
 
   // Estado da UI
   const [visao, setVisao] = useState<VisaoContatos>("arvore");
@@ -78,34 +95,32 @@ export default function Contatos() {
   const [modalExcluirAberta, setModalExcluirAberta] = useState(false);
   const [contatoExcluir, setContatoExcluir] = useState<Contato | null>(null);
 
-  // Propriedades dinâmicas em edição
-  const [novasPropriedades, setNovasPropriedades] = useState<Array<{ chave: string; valor: string }>>(
-    [],
-  );
+  // Lista unificada de propriedades (nativas + personalizadas) em edição
+  const [listaPropriedades, setListaPropriedades] = useState<PropriedadeItem[]>([]);
 
   // Listas derivadas de empresas e tags para os seletores de filtro
   const empresasDisponiveis = useMemo(() => {
     const set = new Set<string>();
-    for (const c of contatos) {
+    for (const c of contatosLocais) {
       if (c.empresa?.trim()) set.add(c.empresa.trim());
     }
     return Array.from(set).sort();
-  }, [contatos]);
+  }, [contatosLocais]);
 
   const tagsDisponiveis = useMemo(() => {
     const set = new Set<string>();
-    for (const c of contatos) {
+    for (const c of contatosLocais) {
       for (const t of c.tags) {
         if (t.trim()) set.add(t.trim());
       }
     }
     return Array.from(set).sort();
-  }, [contatos]);
+  }, [contatosLocais]);
 
   // Contatos filtrados
   const contatosFiltrados = useMemo(() => {
-    return filtrarContatos(contatos, termoBusca, empresaFiltro, tagFiltro);
-  }, [contatos, termoBusca, empresaFiltro, tagFiltro]);
+    return filtrarContatos(contatosLocais, termoBusca, empresaFiltro, tagFiltro);
+  }, [contatosLocais, termoBusca, empresaFiltro, tagFiltro]);
 
   // Estrutura em Árvore Hierárquica
   const arvoreContatos = useMemo(() => {
@@ -130,30 +145,70 @@ export default function Contatos() {
       propriedades: {},
       corpo: "",
     });
-    setNovasPropriedades([]);
+
+    setListaPropriedades([
+      { id: "cargo", chave: "Cargo", valor: "", nativa: true },
+      { id: "empresa", chave: "Empresa", valor: "", nativa: true },
+      { id: "email", chave: "E-mail", valor: "", nativa: true },
+      { id: "telefone", chave: "Telefone", valor: "", nativa: true },
+    ]);
+
     setModalEdicaoAberta(true);
   };
 
   // Abrir modal de edição
   const editarContato = (c: Contato) => {
     setContatoEdicao(c);
-    const propsArr = Object.entries(c.propriedades || {}).map(([chave, valor]) => ({
-      chave,
-      valor,
-    }));
-    setNovasPropriedades(propsArr);
+
+    // Converte campos nativos e personalizados para a lista unificada de propriedades
+    const propsList: PropriedadeItem[] = [
+      { id: "cargo", chave: "Cargo", valor: c.cargo || "", nativa: true },
+      { id: "empresa", chave: "Empresa", valor: c.empresa || "", nativa: true },
+      { id: "email", chave: "E-mail", valor: c.email || "", nativa: true },
+      { id: "telefone", chave: "Telefone", valor: c.telefone || "", nativa: true },
+    ];
+
+    // Adiciona propriedades personalizadas
+    Object.entries(c.propriedades || {}).forEach(([chave, valor]) => {
+      propsList.push({
+        id: `custom-${chave}`,
+        chave,
+        valor: String(valor),
+        nativa: false,
+      });
+    });
+
+    setListaPropriedades(propsList);
     setModalEdicaoAberta(true);
   };
 
-  // Salvar contato (Criar / Atualizar)
+  // Salvar contato (Criar / Atualizar) com Atualização Otimista Instantânea
   const handleSalvarContato = async () => {
     if (!contatoEdicao || !contatoEdicao.titulo?.trim()) return;
 
-    // Converte lista de propriedades de volta para Record
-    const propriedadesObj: Record<string, string> = {};
-    for (const item of novasPropriedades) {
-      if (item.chave.trim()) {
-        propriedadesObj[item.chave.trim()] = item.valor.trim();
+    // Extrai valores das propriedades nativas e personalizadas da lista unificada
+    let cargoVal: string | undefined = undefined;
+    let empresaVal: string | undefined = undefined;
+    let emailVal: string | undefined = undefined;
+    let telefoneVal: string | undefined = undefined;
+    const propriedadesCustom: Record<string, string> = {};
+
+    for (const prop of listaPropriedades) {
+      const kNorm = prop.chave.trim().toLowerCase();
+      const v = prop.valor.trim();
+
+      if (!v) continue; // Propriedade sem valor é omitida/excluída
+
+      if (kNorm === "cargo") {
+        cargoVal = v;
+      } else if (kNorm === "empresa" || kNorm === "organização" || kNorm === "organizacao") {
+        empresaVal = v;
+      } else if (kNorm === "e-mail" || kNorm === "email") {
+        emailVal = v;
+      } else if (kNorm === "telefone" || kNorm === "celular" || kNorm === "whatsapp") {
+        telefoneVal = v;
+      } else {
+        propriedadesCustom[prop.chave.trim()] = v;
       }
     }
 
@@ -167,37 +222,58 @@ export default function Contatos() {
       id: idSlug,
       bruto: contatoEdicao.bruto || {},
       titulo: contatoEdicao.titulo.trim(),
-      cargo: contatoEdicao.cargo?.trim() || undefined,
-      empresa: contatoEdicao.empresa?.trim() || undefined,
-      email: contatoEdicao.email?.trim() || undefined,
-      telefone: contatoEdicao.telefone?.trim() || undefined,
+      cargo: cargoVal,
+      empresa: empresaVal,
+      email: emailVal,
+      telefone: telefoneVal,
       paiId: contatoEdicao.paiId?.trim() || undefined,
       tags: contatoEdicao.tags || [],
-      propriedades: propriedadesObj,
+      propriedades: propriedadesCustom,
       corpo: contatoEdicao.corpo || "",
     };
 
-    const doc = contatoParaArquivo(objetoContato);
-    const texto = escreverMarkdown(doc);
+    // 1. ATUALIZAÇÃO OTIMISTA INSTANTÂNEA NA TELA
+    setContatosLocais((prev) => {
+      const idx = prev.findIndex((c) => c.id === idSlug);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = objetoContato;
+        return copy;
+      }
+      return [objetoContato, ...prev];
+    });
 
+    setModalEdicaoAberta(false);
+    setContatoEdicao(null);
+
+    // 2. GRAVAÇÃO NO GITHUB EM SEGUNDO PLANO
     try {
+      const doc = contatoParaArquivo(objetoContato);
+      const texto = escreverMarkdown(doc);
       await salvarTexto(caminho, texto, contatoEdicao.sha);
-      setModalEdicaoAberta(false);
-      setContatoEdicao(null);
-    } catch {
-      // Erro é tratado pelo useSalvar
+      recarregar();
+    } catch (e) {
+      // Em caso de erro, re-sincroniza o estado do repositório
+      recarregar();
     }
   };
 
-  // Confirmar exclusão
+  // Excluir Contato com Atualização Otimista Instantânea
   const handleExcluirContato = async () => {
     if (!contatoExcluir) return;
+    const itemTarget = contatoExcluir;
+
+    // 1. ATUALIZAÇÃO OTIMISTA NA TELA
+    setContatosLocais((prev) => prev.filter((c) => c.id !== itemTarget.id));
+    setModalExcluirAberta(false);
+    setContatoExcluir(null);
+
+    // 2. GRAVAÇÃO DA REMOÇÃO NO GITHUB
     try {
-      await apagarItem(contatoExcluir.caminho, contatoExcluir.sha);
-      setModalExcluirAberta(false);
-      setContatoExcluir(null);
-    } catch {
-      // Erro é tratado pelo useSalvar
+      await apagarItem(itemTarget.caminho, itemTarget.sha);
+      recarregar();
+    } catch (e) {
+      recarregar();
     }
   };
 
@@ -237,6 +313,8 @@ export default function Contatos() {
   const handleImportarCSV = async () => {
     setImportandoCSV(true);
     try {
+      const novosAdicionados: Contato[] = [];
+
       for (let i = 0; i < previewCSV.length; i++) {
         if (!selecionadosCSV[i]) continue;
         const item = previewCSV[i];
@@ -259,10 +337,14 @@ export default function Contatos() {
           corpo: item.corpo,
         };
 
+        novosAdicionados.push(novo);
+
         const doc = contatoParaArquivo(novo);
         const texto = escreverMarkdown(doc);
         await salvarTexto(caminho, texto);
       }
+
+      setContatosLocais((prev) => [...novosAdicionados, ...prev]);
       setModalCSVAberta(false);
       setTextoCSV("");
       setPreviewCSV([]);
@@ -274,7 +356,7 @@ export default function Contatos() {
 
   // Exportar para CSV
   const handleExportarCSV = () => {
-    const csvContent = exportarCSVContatos(contatos);
+    const csvContent = exportarCSVContatos(contatosLocais);
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -299,7 +381,7 @@ export default function Contatos() {
 
   return (
     <div className="space-y-6">
-      {/* Topo / Cabeçalho */}
+      {/* Topo / Cabeçalho alinhado ao padrão Klaus */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/60 pb-5">
         <div>
           <div className="flex items-center gap-2.5">
@@ -330,7 +412,7 @@ export default function Contatos() {
             Importar CSV
           </Botao>
 
-          {contatos.length > 0 && (
+          {contatosLocais.length > 0 && (
             <Botao
               variante="neutro"
               onClick={handleExportarCSV}
@@ -442,19 +524,19 @@ export default function Contatos() {
       </div>
 
       {/* Feedback de Carga / Erro */}
-      {carregando && (
+      {carregando && contatosLocais.length === 0 && (
         <div className="py-12 flex justify-center">
           <Carregando texto="Carregando contatos..." />
         </div>
       )}
 
-      {erro && (
+      {(erroCarregar || erroSalvar) && (
         <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm">
-          {erro}
+          {erroCarregar || erroSalvar}
         </div>
       )}
 
-      {!carregando && contatosFiltrados.length === 0 && (
+      {contatosFiltrados.length === 0 && (
         <div className="py-16 text-center border-2 border-dashed border-border rounded-2xl p-8 bg-card/40">
           <Users size={40} className="mx-auto text-muted-foreground/60 mb-3" />
           <h3 className="text-base font-semibold">Nenhum contato encontrado</h3>
@@ -473,7 +555,7 @@ export default function Contatos() {
       )}
 
       {/* CONTEÚDO DA TELA POR VISÃO */}
-      {!carregando && contatosFiltrados.length > 0 && (
+      {contatosFiltrados.length > 0 && (
         <>
           {/* 1. VISÃO EM ÁRVORE HIERÁRQUICA */}
           {visao === "arvore" && (
@@ -502,7 +584,7 @@ export default function Contatos() {
                 <CartaoContato
                   key={c.id}
                   contato={c}
-                  todosContatos={contatos}
+                  todosContatos={contatosLocais}
                   aoNovoFilho={(paiId) => novoContato(paiId)}
                   aoEditar={(c) => editarContato(c)}
                   aoExcluir={(c) => {
@@ -530,7 +612,7 @@ export default function Contatos() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {contatosFiltrados.map((c) => {
-                    const paiObj = contatos.find((p) => p.id === c.paiId);
+                    const paiObj = contatosLocais.find((p) => p.id === c.paiId);
                     return (
                       <tr key={c.id} className="hover:bg-accent/40 transition-colors">
                         <td className="px-4 py-3 font-semibold text-foreground">
@@ -609,14 +691,14 @@ export default function Contatos() {
         </>
       )}
 
-      {/* MODAL DE CRIAÇÃO / EDIÇÃO DE CONTATO */}
+      {/* MODAL DE CRIAÇÃO / EDIÇÃO DE CONTATO COM PROPRIEDADES UNIFICADAS E COMBOBOX BUSCÁVEL */}
       <Modal
         aberto={modalEdicaoAberta}
         aoFechar={() => setModalEdicaoAberta(false)}
         titulo={contatoEdicao?.id ? "Editar Contato" : "Novo Contato"}
       >
         <div className="space-y-4 text-xs max-h-[75dvh] overflow-y-auto pr-1">
-          {/* Nome */}
+          {/* Nome Completo */}
           <div>
             <label className="block font-medium mb-1 text-foreground">
               Nome Completo <span className="text-destructive">*</span>
@@ -628,91 +710,100 @@ export default function Contatos() {
               onChange={(e) =>
                 setContatoEdicao((prev) => ({ ...prev, titulo: e.target.value }))
               }
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary font-semibold text-sm"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Cargo */}
-            <div>
-              <label className="block font-medium mb-1 text-foreground">Cargo / Função</label>
-              <input
-                type="text"
-                placeholder="Ex: Diretor de Design"
-                value={contatoEdicao?.cargo || ""}
-                onChange={(e) =>
-                  setContatoEdicao((prev) => ({ ...prev, cargo: e.target.value }))
-                }
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
-              />
-            </div>
-
-            {/* Empresa */}
-            <div>
-              <label className="block font-medium mb-1 text-foreground">Empresa / Organização</label>
-              <input
-                type="text"
-                placeholder="Ex: Studio Klaus"
-                value={contatoEdicao?.empresa || ""}
-                onChange={(e) =>
-                  setContatoEdicao((prev) => ({ ...prev, empresa: e.target.value }))
-                }
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* E-mail */}
-            <div>
-              <label className="block font-medium mb-1 text-foreground">E-mail</label>
-              <input
-                type="email"
-                placeholder="roberto@empresa.com"
-                value={contatoEdicao?.email || ""}
-                onChange={(e) =>
-                  setContatoEdicao((prev) => ({ ...prev, email: e.target.value }))
-                }
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
-              />
-            </div>
-
-            {/* Telefone */}
-            <div>
-              <label className="block font-medium mb-1 text-foreground">Telefone / Whatsapp</label>
-              <input
-                type="text"
-                placeholder="+55 11 99999-9999"
-                value={contatoEdicao?.telefone || ""}
-                onChange={(e) =>
-                  setContatoEdicao((prev) => ({ ...prev, telefone: e.target.value }))
-                }
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
-              />
-            </div>
-          </div>
-
-          {/* Vínculo Hierárquico (Pai) */}
+          {/* Vínculo Hierárquico Buscável (Combobox para escalabilidade com +100 contatos) */}
           <div>
             <label className="block font-medium mb-1 text-foreground">
               Vínculo Hierárquico (Responde a / Chefe / Contato Pai)
             </label>
-            <select
-              value={contatoEdicao?.paiId || ""}
-              onChange={(e) =>
-                setContatoEdicao((prev) => ({ ...prev, paiId: e.target.value || undefined }))
+            <SeletorContatoPaiBuscavel
+              contatos={contatosLocais}
+              contatoAtualId={contatoEdicao?.id}
+              paiIdSelecionado={contatoEdicao?.paiId}
+              aoSelecionar={(novoPaiId) =>
+                setContatoEdicao((prev) => ({ ...prev, paiId: novoPaiId }))
               }
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
-            >
-              <option value="">Nenhum (Contato Raiz)</option>
-              {contatos
-                .filter((c) => c.id !== contatoEdicao?.id)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.titulo} {c.cargo ? `(${c.cargo})` : ""} {c.empresa ? `- ${c.empresa}` : ""}
-                  </option>
-                ))}
-            </select>
+            />
+          </div>
+
+          {/* TABELA UNIFICADA DE PROPRIEDADES (Cargo, Empresa, Email, Telefone + Customizadas) */}
+          <div className="border-t border-border pt-3 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                <Sparkles size={14} className="text-primary" />
+                Propriedades do Contato
+              </label>
+              <button
+                type="button"
+                onClick={() =>
+                  setListaPropriedades((prev) => [
+                    ...prev,
+                    { id: `custom-${Date.now()}`, chave: "", valor: "", nativa: false },
+                  ])
+                }
+                className="text-primary hover:underline text-[11px] font-medium flex items-center gap-1"
+              >
+                <Plus size={13} /> Add Nova Propriedade
+              </button>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground">
+              Todas as informações (E-mail, Telefone, Cargo, etc.) são propriedades editáveis e podem ser removidas clicando no ícone da lixeira.
+            </p>
+
+            <div className="space-y-2 bg-muted/30 p-2.5 rounded-xl border border-border/60">
+              {listaPropriedades.map((prop, idx) => (
+                <div key={prop.id || idx} className="flex items-center gap-2">
+                  {/* Nome da Propriedade */}
+                  <input
+                    type="text"
+                    placeholder="Propriedade (ex: LinkedIn)"
+                    value={prop.chave}
+                    readOnly={prop.nativa}
+                    onChange={(e) => {
+                      if (prop.nativa) return;
+                      const copy = [...listaPropriedades];
+                      copy[idx].chave = e.target.value;
+                      setListaPropriedades(copy);
+                    }}
+                    className={cn(
+                      "w-32 sm:w-36 shrink-0 rounded-lg border border-input px-2.5 py-1.5 text-xs font-medium focus:ring-1 focus:ring-primary",
+                      prop.nativa
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "bg-background text-foreground",
+                    )}
+                  />
+
+                  {/* Valor da Propriedade */}
+                  <input
+                    type="text"
+                    placeholder={`Valor ${prop.chave ? `de ${prop.chave}` : ""}`}
+                    value={prop.valor}
+                    onChange={(e) => {
+                      const copy = [...listaPropriedades];
+                      copy[idx].valor = e.target.value;
+                      setListaPropriedades(copy);
+                    }}
+                    className="flex-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs text-foreground focus:ring-1 focus:ring-primary"
+                  />
+
+                  {/* Botão de Excluir Propriedade */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setListaPropriedades((prev) => prev.filter((_, i) => i !== idx))
+                    }
+                    className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg hover:bg-destructive/10 transition-colors shrink-0"
+                    title={`Remover propriedade "${prop.chave}"`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Tags */}
@@ -733,69 +824,6 @@ export default function Contatos() {
               }}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
             />
-          </div>
-
-          {/* PROPRIEDADES PERSONALIZADAS DINÂMICAS */}
-          <div className="border-t border-border pt-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="font-semibold text-foreground text-xs flex items-center gap-1">
-                <Sparkles size={13} className="text-primary" />
-                Propriedades Personalizadas
-              </label>
-              <button
-                type="button"
-                onClick={() =>
-                  setNovasPropriedades((prev) => [...prev, { chave: "", valor: "" }])
-                }
-                className="text-primary hover:underline text-[11px] font-medium flex items-center gap-1"
-              >
-                <Plus size={12} /> Add Campo
-              </button>
-            </div>
-
-            {novasPropriedades.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground italic">
-                Nenhum campo personalizado adicionado. (Ex: LinkedIn, Aniversário, Departamento).
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {novasPropriedades.map((prop, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Nome do campo (ex: LinkedIn)"
-                      value={prop.chave}
-                      onChange={(e) => {
-                        const copy = [...novasPropriedades];
-                        copy[idx].chave = e.target.value;
-                        setNovasPropriedades(copy);
-                      }}
-                      className="flex-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Valor"
-                      value={prop.valor}
-                      onChange={(e) => {
-                        const copy = [...novasPropriedades];
-                        copy[idx].valor = e.target.value;
-                        setNovasPropriedades(copy);
-                      }}
-                      className="flex-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setNovasPropriedades((prev) => prev.filter((_, i) => i !== idx))
-                      }
-                      className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg hover:bg-destructive/10"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Notas / Corpo Markdown */}
@@ -944,6 +972,152 @@ export default function Contatos() {
           </div>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+/**
+ * Componente Seletor de Contato Pai Buscável (Combobox).
+ * Permite filtrar facilmente centenas de contatos digitando partes do nome, cargo ou empresa.
+ */
+function SeletorContatoPaiBuscavel({
+  contatos,
+  contatoAtualId,
+  paiIdSelecionado,
+  aoSelecionar,
+}: {
+  contatos: Contato[];
+  contatoAtualId?: string;
+  paiIdSelecionado?: string;
+  aoSelecionar: (id?: string) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [termoBusca, setTermoBusca] = useState("");
+
+  const contatoPaiAtual = useMemo(() => {
+    return contatos.find((c) => c.id === paiIdSelecionado);
+  }, [contatos, paiIdSelecionado]);
+
+  const contatosFiltrados = useMemo(() => {
+    return contatos.filter((c) => {
+      if (contatoAtualId && c.id === contatoAtualId) return false;
+      if (!termoBusca.trim()) return true;
+      const b = termoBusca.toLowerCase();
+      return (
+        c.titulo.toLowerCase().includes(b) ||
+        (c.cargo || "").toLowerCase().includes(b) ||
+        (c.empresa || "").toLowerCase().includes(b)
+      );
+    });
+  }, [contatos, contatoAtualId, termoBusca]);
+
+  return (
+    <div className="relative">
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setAberto((v) => !v)}
+          className="flex-1 flex items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 py-2 text-xs text-left text-foreground hover:bg-accent/40 focus:outline-hidden focus:ring-1 focus:ring-primary"
+        >
+          {contatoPaiAtual ? (
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                {contatoPaiAtual.titulo.charAt(0).toUpperCase()}
+              </div>
+              <span className="font-medium truncate">{contatoPaiAtual.titulo}</span>
+              {contatoPaiAtual.cargo && (
+                <span className="text-muted-foreground truncate text-[11px]">
+                  ({contatoPaiAtual.cargo})
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-muted-foreground">Nenhum (Contato Raiz)</span>
+          )}
+          <ChevronsUpDown size={14} className="text-muted-foreground shrink-0" />
+        </button>
+
+        {paiIdSelecionado && (
+          <button
+            type="button"
+            onClick={() => aoSelecionar(undefined)}
+            className="p-2 rounded-lg border border-input text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            title="Remover vínculo hierárquico"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {aberto && (
+        <div className="absolute z-50 left-0 right-0 mt-1 rounded-xl border border-border bg-card shadow-xl p-2 space-y-2 max-h-60 flex flex-col">
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Digitar para buscar contato..."
+              value={termoBusca}
+              onChange={(e) => setTermoBusca(e.target.value)}
+              autoFocus
+              className="w-full rounded-md border border-input bg-background pl-8 pr-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <div className="overflow-y-auto flex-1 divide-y divide-border/50">
+            <button
+              type="button"
+              onClick={() => {
+                aoSelecionar(undefined);
+                setAberto(false);
+              }}
+              className="w-full text-left p-2 text-xs font-medium hover:bg-accent rounded-md flex items-center justify-between text-muted-foreground"
+            >
+              <span>Nenhum (Contato Raiz)</span>
+              {!paiIdSelecionado && <Check size={14} className="text-primary" />}
+            </button>
+
+            {contatosFiltrados.length === 0 ? (
+              <div className="p-3 text-center text-xs text-muted-foreground">
+                Nenhum contato encontrado.
+              </div>
+            ) : (
+              contatosFiltrados.map((c) => {
+                const selecionado = c.id === paiIdSelecionado;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      aoSelecionar(c.id);
+                      setAberto(false);
+                    }}
+                    className={cn(
+                      "w-full text-left p-2 text-xs hover:bg-accent rounded-md flex items-center justify-between gap-2 transition-colors",
+                      selecionado && "bg-primary/10 text-primary font-semibold",
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                        {c.titulo.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground">{c.titulo}</p>
+                        {(c.cargo || c.empresa) && (
+                          <p className="truncate text-[10px] text-muted-foreground">
+                            {c.cargo} {c.empresa ? `• ${c.empresa}` : ""}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {selecionado && <Check size={14} className="text-primary shrink-0" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
