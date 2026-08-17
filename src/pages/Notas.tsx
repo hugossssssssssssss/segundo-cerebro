@@ -54,7 +54,15 @@ export default function Notas() {
 
   // ── Estado da UI ──────────────────────────────────────────────────────────
   const [busca, setBusca] = useState("");
-  const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>("popup");
+  const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>(() => {
+  const salvo = localStorage.getItem('klaus_modo_visao_notas');
+  return (salvo as ModoVisaoNotion) || 'popup';
+});
+useEffect(() => {
+  localStorage.setItem('klaus_modo_visao_notas', modoVisao);
+}, [modoVisao]);
+
+const [aberta, setAberta] = useState<NotaAberta | null>(null);
   const [aberta, setAberta] = useState<NotaAberta | null>(null);
 
   // ── Relacionamentos ────────────────────────────────────────────────────────
