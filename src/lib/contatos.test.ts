@@ -50,6 +50,7 @@ describe("lib/contatos", () => {
     expect(contato.propriedades).toEqual({
       LinkedIn: "https://linkedin.com/in/hugo",
       Aniversario: "15/08",
+      campo_desconhecido: "preservar",
     });
 
     const arquivo = contatoParaArquivo(contato);

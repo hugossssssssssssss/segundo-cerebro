@@ -29,7 +29,7 @@ dados e um par de funções de conversão em `src/lib/entidades.ts`.
 | Entrega | `Entrega` | `PASTAS.entregas` → `pdi/entregas/` | `entrega` | `comoEntrega()` | `entregaParaArquivo()` |
 | Referencia | `Referencia` | `PASTAS.referencias` → `referencias/` | `referencia` | `comoReferencia()` | `referenciaParaArquivo()` |
 | Lousa | `Lousa` | `PASTAS.lousas` → `lousas/` | — | — | — |
-| Contato | `Contato` | `PASTAS.contatos` → `contatos/` | `contato` | `comoContato()` | `contatoParaArquivo()` |
+| Contato | `Contato` | `PASTAS.contatos` → `contatos/` | — | `comoContato()` | `contatoParaArquivo()` |
 
 ## Campos de cada entidade
 

@@ -261,13 +261,33 @@ export function comoContato(
   tituloFallback: string,
 ): Contato {
   const d = doc.dados;
-  const propsRaw =
-    typeof d.propriedades === "object" && d.propriedades !== null
-      ? (d.propriedades as Record<string, unknown>)
-      : {};
+
   const propriedades: Record<string, string> = {};
-  for (const [k, v] of Object.entries(propsRaw)) {
-    if (v !== undefined && v !== null) {
+  if (typeof d.propriedades === "object" && d.propriedades !== null) {
+    for (const [k, v] of Object.entries(d.propriedades as Record<string, unknown>)) {
+      if (v !== undefined && v !== null && v !== "") {
+        propriedades[k] = String(v);
+      }
+    }
+  }
+
+  const reserved = new Set([
+    "titulo",
+    "nome",
+    "tipo",
+    "cargo",
+    "empresa",
+    "email",
+    "telefone",
+    "pai_id",
+    "pai",
+    "tags",
+    "propriedades",
+    "atualizado",
+    "icone",
+  ]);
+  for (const [k, v] of Object.entries(d)) {
+    if (!reserved.has(k) && !k.startsWith("_") && v !== undefined && v !== null && v !== "") {
       propriedades[k] = String(v);
     }
   }
@@ -303,17 +323,29 @@ export function comoContato(
 }
 
 export function contatoParaArquivo(c: Contato): { dados: Frontmatter; corpo: string } {
+  const d = c.bruto || {};
+  const cargo = typeof d.cargo === "string" && d.cargo.trim() ? d.cargo.trim() : c.cargo;
+  const empresa = typeof d.empresa === "string" && d.empresa.trim() ? d.empresa.trim() : c.empresa;
+  const email = typeof d.email === "string" && d.email.trim() ? d.email.trim() : c.email;
+  const telefone = typeof d.telefone === "string" && d.telefone.trim() ? d.telefone.trim() : c.telefone;
+  const paiId =
+    typeof d.pai_id === "string" && d.pai_id.trim()
+      ? d.pai_id.trim()
+      : typeof d.pai === "string" && d.pai.trim()
+      ? d.pai.trim()
+      : c.paiId;
+  const tags = Array.isArray(d.tags) ? (d.tags as string[]) : c.tags;
+
   return {
     dados: mesclarFrontmatter(c.bruto, {
       titulo: c.titulo,
       tipo: "contato",
-      cargo: c.cargo || undefined,
-      empresa: c.empresa || undefined,
-      email: c.email || undefined,
-      telefone: c.telefone || undefined,
-      pai_id: c.paiId || undefined,
-      tags: c.tags.length ? c.tags : undefined,
-      propriedades: Object.keys(c.propriedades).length ? c.propriedades : undefined,
+      cargo: cargo || undefined,
+      empresa: empresa || undefined,
+      email: email || undefined,
+      telefone: telefone || undefined,
+      pai_id: paiId || undefined,
+      tags: tags && tags.length ? tags : undefined,
       atualizado: new Date().toISOString().slice(0, 10),
     }),
     corpo: c.corpo,
