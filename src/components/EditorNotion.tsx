@@ -302,16 +302,13 @@ export function EditorNotion({
     };
   }, [pronto, alvos]);
 
-  if (!pronto) {
-    return (
-      <div className="animate-pulse p-4 text-sm text-muted-foreground">
-        Carregando editor…
-      </div>
-    );
-  }
-
   return (
-    <div className="notion-editor-wrapper min-h-[300px]" onPaste={aoColar}>
+    <div className="notion-editor-wrapper min-h-[300px] relative" onPaste={aoColar}>
+      {!pronto && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/60 backdrop-blur-xs text-xs text-muted-foreground animate-pulse">
+          Carregando editor…
+        </div>
+      )}
       <BlockNoteView
         editor={editor}
         editable={editable}
