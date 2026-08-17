@@ -766,8 +766,8 @@ export default function Inbox() {
                         tamanho="pequeno"
                         onClick={async () => {
                           const res = await sincronizarFilaOffline(cfg);
-                          if (res.concluidos > 0) toast(`${res.concluidos} rascunho(s) sincronizados!`, { tipo: "sucesso" });
-                          else if (res.falhas > 0) toast(`${res.falhas} rascunho(s) pendentes com falha ou conflito.`, { tipo: "erro" });
+                          if (res.concluidos > 0) toast(`${res.concluidos} rascunho(s) sincronizados com sucesso!`, { tipo: "sucesso" });
+                          else if (res.falhas > 0) toast(`${res.falhas} rascunho(s) com falha ou conflito: clique para ver`, { tipo: "erro", detalhes: "Rascunhos offline não puderam ser gravados no GitHub porque o arquivo mudou no repositório remoto (Conflito 409) ou ocorreu uma falha de conexão.\n\nUse os botões de ação do rascunho para regravar ou descartar." });
                           else toast("Nenhum rascunho para enviar.", { tipo: "info" });
                           carregar();
                         }}

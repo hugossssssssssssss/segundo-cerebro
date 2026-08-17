@@ -10,6 +10,7 @@ import { gravar, ler, ErroGitHub } from "./github";
 import { invalidarCache } from "./repo";
 import { notificarOutrasAbas } from "./syncChannel";
 import { toast } from "./toast";
+import { formatarNomeAmigavel } from "./utils";
 
 export type StatusRascunho = "pendente" | "conflito" | "erro";
 
@@ -147,10 +148,14 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
         const tent = (item.tentativas || 0) + 1;
 
         if (status === 401 || status === 403) {
-          toast("Sincronização offline interrompida: Token do GitHub inválido ou sem permissão.", { tipo: "erro" });
+          toast("Sincronização offline interrompida: Token do GitHub inválido ou sem permissão", {
+            tipo: "erro",
+            detalhes: `A API do GitHub retornou erro de permissão (HTTP ${status}). Acesse a aba de Ajustes para renovar seu token.`,
+          });
           break;
         }
 
+        const nomeAmigavel = formatarNomeAmigavel(item.caminho);
         if (status === 409 || msg.includes("409") || msg.includes("conflito")) {
           // Tenta auto-resolver buscando o SHA atualizado no GitHub
           try {
@@ -163,13 +168,17 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
             // Se falhar a leitura/recuperação, marca como conflito para o usuário revisar
           }
 
+          const erroTxt = "Conflito de edição no GitHub (HTTP 409). O arquivo foi modificado diretamente no repositório.";
           atualizarRascunhoLocal({
             ...item,
             tentativas: tent,
             status: "conflito",
-            ultimoErro: "Conflito de edição no GitHub (HTTP 409). O arquivo mudou no repositório.",
+            ultimoErro: erroTxt,
           });
-          toast(`Conflito de edição no rascunho de "${item.caminho.split("/").pop()}". Acesse a Caixa de Entrada para revisar.`, { tipo: "aviso" });
+          toast(`Conflito no rascunho de "${nomeAmigavel}": clique para ver o erro`, {
+            tipo: "erro",
+            detalhes: `${erroTxt}\n\nAcesse a Caixa de Entrada > Rascunhos Offline para aceitar a versão local ou descartar.`,
+          });
         } else {
           atualizarRascunhoLocal({
             ...item,

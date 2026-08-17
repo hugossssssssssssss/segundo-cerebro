@@ -148,7 +148,10 @@ function Estrutura({ children }: { children: React.ReactNode }) {
           toast(`${res.concluidos} rascunho(s) offline sincronizado(s) com o GitHub!`, { tipo: "sucesso" });
         }
         if (res.falhas > 0) {
-          toast(`${res.falhas} rascunho(s) pendente(s) por falha ou conflito. Acesse a Caixa de Entrada.`, { tipo: "aviso" });
+          toast(`${res.falhas} rascunho(s) pendente(s) por falha ou conflito: clique para ver`, {
+            tipo: "erro",
+            detalhes: "Um ou mais rascunhos offline falharam ao tentar sincronizar com o GitHub (conflito 409 ou erro de rede).\n\nAcesse a Caixa de Entrada > Rascunhos Offline para aceitar a versão local ou descartar.",
+          });
         }
       }
     };
