@@ -29,6 +29,7 @@ import { atualizarCacheLocal, invalidarCache } from "./repo";
 import { lerMarkdown } from "./markdown";
 import { notificarOutrasAbas } from "./syncChannel";
 import { toast } from "./toast";
+import { formatarNomeAmigavel } from "./utils";
 import { salvarRascunhoLocal } from "./offlineQueue";
 import type { Settings } from "./settings";
 
@@ -94,8 +95,8 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
       window.dispatchEvent(new CustomEvent("acervo-atualizado"));
       notificarOutrasAbas(caminho);
 
-      const nomeItem = caminho.split("/").pop() || "Item";
-      toast(`"${nomeItem}" salvo no GitHub!`, { tipo: "sucesso" });
+      const nomeItem = formatarNomeAmigavel(caminho);
+      toast(`"${nomeItem}" salvo`, { tipo: "sucesso" });
 
       return novaSha;
     } catch (e) {
@@ -109,17 +110,18 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
         mensagem.includes("sem internet") ||
         mensagem.includes("Não consegui falar");
 
+      const nomeItem = formatarNomeAmigavel(caminho);
       if (ehRede) {
         // Salva rascunho local apenas em caso de falha real de conexão
         const res = salvarRascunhoLocal(caminho, texto, sha, mensagemCommit, false);
         if (res.ok) {
-          toast(`Sem conexão: "${caminho.split("/").pop()}" salvo localmente como rascunho.`, { tipo: "aviso" });
+          toast(`Sem conexão: "${nomeItem}" salvo localmente como rascunho.`, { tipo: "aviso" });
         } else {
-          toast(`Sem conexão e espaço local cheio: não foi possível guardar o rascunho. COPIE SEU TEXTO antes de sair!`, { tipo: "erro" });
+          toast(`Sem conexão e espaço local cheio: não foi possível guardar o rascunho. COPIE SEU TEXTO antes de sair!`, { tipo: "erro", detalhes: mensagem });
         }
       } else {
         // Para erros de autenticação (401/403), conflito (409) ou dados (422), reporta a falha real
-        toast(`Erro no GitHub: ${mensagem}`, { tipo: "erro" });
+        toast(`Erro ao salvar "${nomeItem}": clique para ver o erro`, { tipo: "erro", detalhes: mensagem });
       }
       throw e;
     } finally {
@@ -136,12 +138,12 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
       window.dispatchEvent(new CustomEvent("acervo-atualizado"));
       notificarOutrasAbas(caminho);
 
-      const nomeItem = caminho.split("/").pop() || "Item";
-      toast(`"${nomeItem}" removido.`, { tipo: "info" });
+      const nomeItem = formatarNomeAmigavel(caminho);
+      toast(`"${nomeItem}" removido`, { tipo: "info" });
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
       setErro(mensagem);
-      toast(mensagem, { tipo: "erro" });
+      toast(`Erro ao excluir: clique para ver o erro`, { tipo: "erro", detalhes: mensagem });
       throw e;
     } finally {
       setSalvando(false);

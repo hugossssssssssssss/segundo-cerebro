@@ -8,6 +8,7 @@ export type ItemToast = {
   id: string;
   mensagem: string;
   tipo: TipoToast;
+  detalhes?: string;
   aoDesfazer?: () => void;
   duracaoMs?: number;
 };
@@ -23,28 +24,23 @@ function notificar() {
 
 export function toast(
   mensagem: string,
-  opcoes?: { tipo?: TipoToast; aoDesfazer?: () => void; duracaoMs?: number }
+  opcoes?: { tipo?: TipoToast; detalhes?: string; aoDesfazer?: () => void; duracaoMs?: number }
 ) {
   const id = `toast_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const tipo = opcoes?.tipo || "sucesso";
-  const duracao = opcoes?.duracaoMs || 4000;
+  const duracao = opcoes?.duracaoMs ?? (tipo === "erro" ? 8000 : 4500);
 
   const novo: ItemToast = {
     id,
     mensagem,
     tipo,
+    detalhes: opcoes?.detalhes,
     aoDesfazer: opcoes?.aoDesfazer,
     duracaoMs: duracao,
   };
 
   listaToasts = [novo, ...listaToasts.slice(0, 4)]; // mantém no máximo 5 no topo
   notificar();
-
-  if (duracao > 0) {
-    setTimeout(() => {
-      removerToast(id);
-    }, duracao);
-  }
 
   return id;
 }

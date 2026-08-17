@@ -134,3 +134,17 @@ export function correspondeBusca(texto: string | undefined | null, termo: string
   return textoNorm.includes(termoNorm);
 }
 
+/**
+ * Converte um caminho de arquivo técnico (ex: "tarefas/2026-08-13-fazer-a-capa.md")
+ * em um título legível e amigável para notificações (ex: "Fazer a capa").
+ */
+export function formatarNomeAmigavel(caminhoOuNome: string): string {
+  if (!caminhoOuNome) return "Item";
+  const base = caminhoOuNome.split("/").pop() || caminhoOuNome;
+  let limpo = base.replace(/\.md$/i, "");
+  limpo = limpo.replace(/^\d{4}-\d{2}-\d{2}-/, "");
+  limpo = limpo.replace(/[-_]/g, " ").trim();
+  if (!limpo) return "Item";
+  return limpo.charAt(0).toUpperCase() + limpo.slice(1);
+}
+
