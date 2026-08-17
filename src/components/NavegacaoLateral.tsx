@@ -20,6 +20,8 @@ import {
 import { obterIconePorNome } from "@/lib/icones";
 import { ModalPersonalizarMenu } from "./ModalPersonalizarMenu";
 
+import { alternarTema, lerTemaSalvo, type Tema } from "@/lib/tema";
+
 interface NavegacaoLateralProps {
   colapsada: boolean;
   setColapsada: React.Dispatch<React.SetStateAction<boolean>>;
@@ -33,11 +35,19 @@ export function NavegacaoLateral({
   aoNavegar,
   className,
 }: NavegacaoLateralProps) {
-  const [escuro, setEscuro] = useState(() => {
-    const salvo = localStorage.getItem("tema");
-    if (salvo) return salvo === "escuro";
-    return matchMedia("(prefers-color-scheme: dark)").matches;
-  });
+  const [tema, setTema] = useState<Tema>(lerTemaSalvo);
+
+  useEffect(() => {
+    const aoMudar = () => setTema(lerTemaSalvo());
+    window.addEventListener("tema-alterado", aoMudar);
+    return () => window.removeEventListener("tema-alterado", aoMudar);
+  }, []);
+
+  const escuro = tema === "escuro";
+  const toggleTema = () => {
+    const novo = alternarTema();
+    setTema(novo);
+  };
 
   const [grupos, setGrupos] = useState<GrupoMenuPersonalizado[]>(carregarMenuPersonalizado);
   const [modalPersonalizarAberta, setModalPersonalizarAberta] = useState(false);
@@ -49,11 +59,6 @@ export function NavegacaoLateral({
       // silencioso
     }
   }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", escuro);
-    localStorage.setItem("tema", escuro ? "escuro" : "claro");
-  }, [escuro]);
 
   useEffect(() => {
     window.addEventListener(EVENTO_MENU_ATUALIZADO, atualizarMenu);
@@ -194,7 +199,7 @@ export function NavegacaoLateral({
           </NavLink>
 
           <button
-            onClick={() => setEscuro((v) => !v)}
+            onClick={toggleTema}
             className={cn(
               "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors",
               colapsada && "justify-center px-0"

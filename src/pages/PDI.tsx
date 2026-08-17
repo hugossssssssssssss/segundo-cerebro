@@ -48,7 +48,7 @@ import {
   Rotulo,
   AreaTexto,
 } from "@/components/ui";
-import { hojeISO, dataCurta, lerParametroAbrir } from "@/lib/utils";
+import { hojeISO, dataCurta, lerParametroAbrir, lerParametroCriar } from "@/lib/utils";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { CabecalhoSecao } from "@/components/CabecalhoSecao";
 import { cn } from "@/lib/utils";
@@ -116,9 +116,27 @@ export default function PDI() {
   const processouUrlRef = useRef<string | null>(null);
   useEffect(() => {
     const urlAtual = `${location.pathname}${location.search}${location.hash}`;
+    if (processouUrlRef.current === urlAtual) return;
+
+    if (lerParametroCriar(location, ["nova_meta", "nova", "novo"])) {
+      processouUrlRef.current = urlAtual;
+      const vazia: Meta = {
+        bruto: {},
+        caminho: "",
+        id: "",
+        sha: "",
+        titulo: "",
+        status: "a-fazer",
+        indicador: "",
+        corpo: "",
+      };
+      setEditandoMeta(vazia);
+      setOrigMeta(vazia);
+      return;
+    }
+
     const abrirCaminho = lerParametroAbrir(location);
     if (!abrirCaminho) return;
-    if (processouUrlRef.current === urlAtual) return;
 
     if (metas.length > 0 || entregas.length > 0) {
       if (focarFlutuante(abrirCaminho)) return;

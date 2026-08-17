@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   DndContext,
   DragOverlay,
@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 
 import { lerConfig, configCompleta, nomeExibido } from "@/lib/settings";
-import { correspondeBusca } from "@/lib/utils";
+import { correspondeBusca, lerParametroCriar } from "@/lib/utils";
 import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal } from "@/lib/repo";
 import { gravar, apagar } from "@/lib/github";
 import { tituloProvavel, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
@@ -330,6 +330,18 @@ export default function Processos() {
     window.addEventListener("acervo-atualizado", aoAtualizar);
     return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
   }, [carregar]);
+
+  const location = useLocation();
+  const processouUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const urlAtual = `${location.pathname}${location.search}${location.hash}`;
+    if (processouUrlRef.current === urlAtual) return;
+    if (lerParametroCriar(location, ["novo", "nova"])) {
+      processouUrlRef.current = urlAtual;
+      setModalNovoProcessoAberto(true);
+    }
+  }, [location.pathname, location.search, location.hash]);
 
   const processoAtivo = processos.find((p) => p.id === processoAtivoId) || processos[0];
 

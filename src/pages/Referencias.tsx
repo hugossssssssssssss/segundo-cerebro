@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Masonry } from "react-plock";
 import { Plus, Trash2, ImagePlus, ExternalLink, ScanText } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { correspondeBusca } from "@/lib/utils";
+import { correspondeBusca, lerParametroAbrir, lerParametroCriar } from "@/lib/utils";
 import { gravarBinario } from "@/lib/github";
 import { invalidarCache } from "@/lib/repo";
 import { useItemRepo } from "@/lib/useItemRepo";
@@ -38,13 +38,15 @@ import { Badge } from "@/components/ui/badge";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
-import { cn, lerParametroAbrir } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 
 export default function Referencias() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
   const location = useLocation();
   const navegar = useNavigate();
+  const { focarFlutuante } = useItemFlutuante();
 
   // ── Carregamento ──────────────────────────────────────────────────────────
   const { itens: refs, carregando, erro: erroCarregar, recarregar } =
@@ -249,6 +251,32 @@ export default function Referencias() {
     setEditando(vazia);
     setOriginal(vazia);
   };
+
+  const processouUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const urlAtual = `${location.pathname}${location.search}${location.hash}`;
+    if (processouUrlRef.current === urlAtual) return;
+
+    if (lerParametroCriar(location, ["upload", "nova", "novo"])) {
+      processouUrlRef.current = urlAtual;
+      nova();
+      return;
+    }
+
+    const abrirCaminho = lerParametroAbrir(location);
+    if (!abrirCaminho) return;
+
+    if (refs.length > 0) {
+      if (focarFlutuante(abrirCaminho)) return;
+      const refAlvo = refs.find((r) => r.caminho === abrirCaminho);
+      if (refAlvo) {
+        processouUrlRef.current = urlAtual;
+        setEditando(refAlvo);
+        setOriginal(refAlvo);
+      }
+    }
+  }, [location.pathname, location.search, location.hash, refs.length > 0]);
 
   // ── Sem configuração ────────────────────────────────────────────────────────
   if (!pronto) {

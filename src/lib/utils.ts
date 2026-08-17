@@ -65,6 +65,22 @@ export function lerParametroAbrir(loc: { search: string; hash: string }): string
   return null;
 }
 
+/** Lê parâmetros de criação rápida (?nova=true, ?novo=true, ?nova_meta=true, ?upload=true) da URL ou hash. */
+export function lerParametroCriar(
+  loc: { search: string; hash: string },
+  chaves: string[] = ["nova", "novo", "nova_meta", "upload", "pomodoro"]
+): boolean {
+  const paramsSearch = new URLSearchParams(loc.search);
+  for (const c of chaves) {
+    if (paramsSearch.get(c) === "true" || paramsSearch.has(c)) return true;
+  }
+  const href = window.location.href;
+  for (const c of chaves) {
+    if (loc.hash.includes(`${c}=true`) || href.includes(`${c}=true`)) return true;
+  }
+  return false;
+}
+
 /** Tira acentos de uma string para buscas e slugs. */
 export function removerAcentos(s: string): string {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");

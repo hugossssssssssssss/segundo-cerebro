@@ -11,17 +11,27 @@ import { useEffect, useState, useCallback } from "react";
 import { LogoKlaus } from "./LogoKlaus";
 import { ModalPersonalizarMenu } from "./ModalPersonalizarMenu";
 
+import { alternarTema, lerTemaSalvo, type Tema } from "@/lib/tema";
+
 interface GavetaMaisProps {
   aberta: boolean;
   aoFechar: () => void;
 }
 
 export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
-  const [escuro, setEscuro] = useState(() => {
-    const salvo = localStorage.getItem("tema");
-    if (salvo) return salvo === "escuro";
-    return matchMedia("(prefers-color-scheme: dark)").matches;
-  });
+  const [tema, setTema] = useState<Tema>(lerTemaSalvo);
+
+  useEffect(() => {
+    const aoMudar = () => setTema(lerTemaSalvo());
+    window.addEventListener("tema-alterado", aoMudar);
+    return () => window.removeEventListener("tema-alterado", aoMudar);
+  }, []);
+
+  const escuro = tema === "escuro";
+  const toggleTema = () => {
+    const novo = alternarTema();
+    setTema(novo);
+  };
 
   const [grupos, setGrupos] = useState<GrupoMenuPersonalizado[]>(carregarMenuPersonalizado);
   const [modalPersonalizarAberta, setModalPersonalizarAberta] = useState(false);
@@ -33,11 +43,6 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
       // silencioso
     }
   }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", escuro);
-    localStorage.setItem("tema", escuro ? "escuro" : "claro");
-  }, [escuro]);
 
   useEffect(() => {
     window.addEventListener(EVENTO_MENU_ATUALIZADO, atualizarMenu);
@@ -144,7 +149,7 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
             </NavLink>
 
             <button
-              onClick={() => setEscuro((v) => !v)}
+              onClick={toggleTema}
               className="flex items-center justify-center gap-1.5 rounded-xl p-2.5 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent transition-colors"
             >
               {escuro ? <Sun size={16} /> : <Moon size={16} />}

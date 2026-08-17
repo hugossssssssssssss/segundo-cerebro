@@ -135,6 +135,13 @@ export default function Lousas() {
   useEffect(() => {
     function checarParametros() {
       const hash = window.location.hash;
+      const href = window.location.href;
+      if (hash.includes("nova=true") || hash.includes("novo=true") || href.includes("nova=true") || href.includes("novo=true")) {
+        window.history.replaceState(null, "", window.location.pathname + "#/lousas");
+        novaLousa();
+        return;
+      }
+
       if (hash.includes("abrir=") && lousas.length > 0) {
         const urlParams = new URLSearchParams(hash.split("?")[1] || "");
         const caminhoAbrir = urlParams.get("abrir");

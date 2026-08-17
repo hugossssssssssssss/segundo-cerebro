@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Bell,
   CheckCheck,
@@ -43,6 +43,7 @@ import { ModalLembrete } from "@/components/ModalLembrete";
 import { useSalvar } from "@/lib/useSalvar";
 import { lerMarkdown, escreverMarkdown } from "@/lib/markdown";
 import { toast } from "@/lib/toast";
+import { lerParametroCriar } from "@/lib/utils";
 import {
   obterRascunhosLocais,
   removerRascunhoLocal,
@@ -95,6 +96,18 @@ export default function Inbox() {
     window.addEventListener("acervo-atualizado", aoAtualizar);
     return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
   }, [carregar]);
+
+  const location = useLocation();
+  const processouUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const urlAtual = `${location.pathname}${location.search}${location.hash}`;
+    if (processouUrlRef.current === urlAtual) return;
+    if (lerParametroCriar(location, ["novo", "nova"])) {
+      processouUrlRef.current = urlAtual;
+      setModalNovoAberto(true);
+    }
+  }, [location.pathname, location.search, location.hash]);
 
   // Lista compilada de itens da Inbox
   const itensCompilados = useMemo(() => {

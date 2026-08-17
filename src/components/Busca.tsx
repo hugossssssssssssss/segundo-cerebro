@@ -19,6 +19,7 @@ import { LISTA_FERRAMENTAS_APP, type FerramentaApp } from "@/lib/ferramentasApp"
 import { Campo, Selo } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import { alternarTema } from "@/lib/tema";
 import { tituloProvavel } from "@/lib/markdown";
 import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 
@@ -60,20 +61,13 @@ export function Busca({
   const aoSelecionarFerramenta = (f: FerramentaApp) => {
     aoFechar();
     if (f.rota === "acao:alternar_tema") {
-      const ehEscuro = document.documentElement.classList.contains("dark");
-      if (ehEscuro) {
-        document.documentElement.classList.remove("dark");
-        localStorage.setItem("tema", "claro");
-      } else {
-        document.documentElement.classList.add("dark");
-        localStorage.setItem("tema", "escuro");
-      }
+      alternarTema();
       return;
     }
 
     if (f.rota === "acao:iniciar_pomodoro") {
-      navegar("/tarefas");
-      toast("Abra o cronometro Pomodoro no painel de uma tarefa.");
+      navegar("/tarefas?pomodoro=true");
+      toast("Redirecionando para o painel de Pomodoro em Tarefas.", { tipo: "info" });
       return;
     }
 

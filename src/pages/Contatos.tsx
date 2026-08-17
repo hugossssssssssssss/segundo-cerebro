@@ -29,7 +29,7 @@ import {
   nomeLivre,
   type Frontmatter,
 } from "@/lib/markdown";
-import { lerParametroAbrir } from "@/lib/utils";
+import { lerParametroAbrir, lerParametroCriar } from "@/lib/utils";
 import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
 import {
@@ -145,9 +145,18 @@ export default function Contatos() {
   const processouUrlRef = useRef<string | null>(null);
   useEffect(() => {
     const urlAtual = `${location.pathname}${location.search}${location.hash}`;
+    if (processouUrlRef.current === urlAtual) return;
+
+    if (lerParametroCriar(location, ["novo", "nova"])) {
+      processouUrlRef.current = urlAtual;
+      const caminhoNovo = nomeLivre(PASTAS.contatos, "Novo Contato", contatosLocais.map((c) => c.caminho));
+      const c = comoContato({ dados: { titulo: "Novo Contato", tipo: "contato" }, corpo: "" }, caminhoNovo, "", "Novo Contato");
+      setAberta({ ...c, original: { titulo: c.titulo, corpo: c.corpo, bruto: c.bruto } });
+      return;
+    }
+
     const abrirCaminho = lerParametroAbrir(location);
     if (!abrirCaminho) return;
-    if (processouUrlRef.current === urlAtual) return;
     if (acervo.length > 0) {
       if (focarFlutuante(abrirCaminho)) return;
       const alvo = acervo.find((a) => a.caminho === abrirCaminho);

@@ -14,7 +14,7 @@ import {
   nomeLivre,
   type Frontmatter,
 } from "@/lib/markdown";
-import { lerParametroAbrir, correspondeBusca } from "@/lib/utils";
+import { lerParametroAbrir, lerParametroCriar, correspondeBusca } from "@/lib/utils";
 import {
   Botao,
   Aviso,
@@ -74,9 +74,18 @@ export default function Notas() {
   const processouUrlRef = useRef<string | null>(null);
   useEffect(() => {
     const urlAtual = `${location.pathname}${location.search}${location.hash}`;
+    if (processouUrlRef.current === urlAtual) return;
+
+    if (lerParametroCriar(location, ["nova", "novo"])) {
+      processouUrlRef.current = urlAtual;
+      const caminhoNovo = nomeLivre(PASTAS.notas, "Nova Nota", arquivos.map((a) => a.caminho));
+      const n = comoNota({ dados: { titulo: "Nova Nota", tipo: "nota" }, corpo: "" }, caminhoNovo, "", "Nova Nota");
+      setAberta({ ...n, original: { titulo: n.titulo, corpo: n.corpo, bruto: n.bruto } });
+      return;
+    }
+
     const abrirCaminho = lerParametroAbrir(location);
     if (!abrirCaminho) return;
-    if (processouUrlRef.current === urlAtual) return;
     if (acervo.length > 0) {
       if (focarFlutuante(abrirCaminho)) return;
       const alvo = acervo.find((a) => a.caminho === abrirCaminho);

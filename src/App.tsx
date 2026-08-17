@@ -29,6 +29,7 @@ import { ToastsContainer } from "@/components/ToastsContainer";
 import { NavegacaoLateral } from "@/components/NavegacaoLateral";
 import { LimiteDeErro } from "@/components/LimiteDeErro";
 import { toast } from "@/lib/toast";
+import { alternarTema, lerTemaSalvo, type Tema } from "@/lib/tema";
 import { GavetaMais } from "@/components/GavetaMais";
 import { LogoKlaus } from "@/components/LogoKlaus";
 import { Carregando } from "@/components/ui";
@@ -71,20 +72,22 @@ const abasMobile = [
 ];
 
 function BotaoTema() {
-  const [escuro, setEscuro] = useState(() => {
-    const salvo = localStorage.getItem("tema");
-    if (salvo) return salvo === "escuro";
-    return matchMedia("(prefers-color-scheme: dark)").matches;
-  });
+  const [tema, setTema] = useState<Tema>(lerTemaSalvo());
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", escuro);
-    localStorage.setItem("tema", escuro ? "escuro" : "claro");
-  }, [escuro]);
+    const aoMudar = () => setTema(lerTemaSalvo());
+    window.addEventListener("tema-alterado", aoMudar);
+    return () => window.removeEventListener("tema-alterado", aoMudar);
+  }, []);
+
+  const escuro = tema === "escuro";
 
   return (
     <button
-      onClick={() => setEscuro((v) => !v)}
+      onClick={() => {
+        const novo = alternarTema();
+        setTema(novo);
+      }}
       className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
       title={escuro ? "Modo claro" : "Modo escuro"}
       aria-label={escuro ? "Mudar para modo claro" : "Mudar para modo escuro"}
