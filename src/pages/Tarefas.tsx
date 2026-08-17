@@ -49,6 +49,7 @@ import {
 } from "@/components/ui";
 import { cn, lerParametroAbrir } from "@/lib/utils";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
+import { toast } from "@/lib/toast";
 
 const CORES_URGENCIA = {
   atrasada: "perigo",
@@ -209,7 +210,11 @@ export default function Tarefas() {
     }
     if (editando && editando.caminho !== t.caminho) {
       const mudou = original !== null && JSON.stringify(editando) !== JSON.stringify(original);
-      if (mudou) salvar(editando).catch(() => {});
+      if (mudou) {
+        salvar(editando).catch((err) => {
+          toast(`Erro ao salvar alterações da tarefa anterior: ${err?.message || "Falha na gravação"}`, { tipo: "erro" });
+        });
+      }
     }
     setEditando(t);
     setOriginal(t);

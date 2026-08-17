@@ -292,17 +292,19 @@ export default function Processos() {
           atualizadoEm: new Date().toISOString(),
         };
 
-        listaProc = [novoProc];
-        setProcessos([novoProc]);
-        setProcessoAtivoId(id);
-
         const texto = escreverMarkdown({
           dados: processoParaFrontmatter(novoProc),
           corpo: `Processo de ${mod.titulo}`,
         });
-        gravar(cfg, caminho, texto).then((sha) => {
-          atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
-        });
+
+        const sha = await gravar(cfg, caminho, texto, undefined, `Criar processo inicial: ${mod.titulo}`);
+        const doc = lerMarkdown(texto);
+        atualizarCacheLocal(caminho, texto, doc, sha);
+        invalidarCache();
+        const novoProcComSha = { ...novoProc, sha };
+        listaProc = [novoProcComSha];
+        setProcessos([novoProcComSha]);
+        setProcessoAtivoId(id);
       } else {
         setProcessos(listaProc);
         if (!processoAtivoId) {

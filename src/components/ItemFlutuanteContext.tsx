@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from "react";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
+import { toast } from "@/lib/toast";
 
 export interface ItemFlutuanteGlobal {
   id: string;
@@ -51,9 +52,13 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
     setModoVisao("flutuante");
   };
 
-  const fecharFlutuante = () => {
+  const fecharFlutuante = async () => {
     if (itemFlutuante) {
-      itemFlutuante.aoSalvar(itemFlutuante, true).catch(() => {});
+      try {
+        await itemFlutuante.aoSalvar(itemFlutuante, true);
+      } catch (err: any) {
+        toast(`Erro ao salvar "${itemFlutuante.titulo || "item"}" no GitHub: ${err?.message || "Falha na gravação"}`, { tipo: "erro" });
+      }
     }
     setItemFlutuante(null);
   };

@@ -26,6 +26,7 @@ import {
 } from "@/components/ui";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
+import { toast } from "@/lib/toast";
 import type { Nota } from "@/lib/tipos";
 
 // Nota com rastreamento de mudanças para o painel de edição
@@ -180,7 +181,9 @@ export default function Notas() {
       fecharFlutuante();
     }
     if (aberta && aberta.caminho !== nota.caminho && mudou) {
-      salvar(aberta).catch(() => {});
+      salvar(aberta).catch((err) => {
+        toast(`Erro ao salvar alterações da nota anterior: ${err?.message || "Falha na gravação"}`, { tipo: "erro" });
+      });
     }
     setAberta({ ...nota, original: { titulo: nota.titulo, corpo: nota.corpo, bruto: nota.bruto } });
     window.history.replaceState(null, "", `?abrir=${encodeURIComponent(nota.caminho)}`);

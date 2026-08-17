@@ -45,6 +45,7 @@ import {
 import { Botao, Cartao, Selo, Modal, Carregando, ModalConfirmacao, Vazio } from "@/components/ui";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 type VisaoContatos = "arvore" | "cartoes" | "tabela";
@@ -247,7 +248,9 @@ export default function Contatos() {
       fecharFlutuante();
     }
     if (aberto && aberto.caminho !== c.caminho && mudou) {
-      salvarContato(aberto).catch(() => {});
+      salvarContato(aberto).catch((err) => {
+        toast(`Erro ao salvar alterações do contato anterior: ${err?.message || "Falha na gravação"}`, { tipo: "erro" });
+      });
     }
     setAberta({ ...c, original: { titulo: c.titulo, corpo: c.corpo, bruto: c.bruto } });
     window.history.replaceState(null, "", `?abrir=${encodeURIComponent(c.caminho)}`);
