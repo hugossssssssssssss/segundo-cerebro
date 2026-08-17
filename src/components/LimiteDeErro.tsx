@@ -64,6 +64,13 @@ export class LimiteDeErro extends Component<Props, Estado> {
   };
 
   private recarregar = () => {
+    if (typeof window !== "undefined" && "caches" in window) {
+      try {
+        caches.keys().then((names) => {
+          names.forEach((name) => caches.delete(name));
+        });
+      } catch {}
+    }
     window.location.reload();
   };
 
