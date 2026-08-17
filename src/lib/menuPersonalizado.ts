@@ -71,9 +71,7 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
 ];
 
 /**
- * Carrega a configuração do menu salva no localStorage.
- * Faz merge com a estrutura padrão para garantir que nenhuma rota do sistema
- * seja perdida se o app for atualizado com novos itens no futuro.
+ * Carrega a configuração do menu salva no localStorage com tolerância total a dados corrompidos.
  */
 export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
   try {
@@ -83,12 +81,15 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
     const parsed = JSON.parse(salvo);
     if (!Array.isArray(parsed) || parsed.length === 0) return GRUPOS_MENU_PADRAO;
 
+    const gruposValidos = parsed.filter((g) => g && typeof g === "object");
+    if (gruposValidos.length === 0) return GRUPOS_MENU_PADRAO;
+
     // Garantir que todos os itens das rotas padrões existam
     const mapaItensSalvos = new Map<string, ItemMenuPersonalizado>();
-    for (const g of parsed) {
+    for (const g of gruposValidos) {
       if (Array.isArray(g.itens)) {
         for (const item of g.itens) {
-          if (item && item.para) {
+          if (item && typeof item === "object" && typeof item.para === "string" && item.para) {
             mapaItensSalvos.set(item.para, item);
           }
         }
@@ -96,19 +97,20 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
     }
 
     // Recriar ou atualizar os grupos salvos
-    const gruposResultantes: GrupoMenuPersonalizado[] = parsed.map((g, idxGrupo) => {
+    const gruposResultantes: GrupoMenuPersonalizado[] = gruposValidos.map((g: any, idxGrupo: number) => {
       const padraoEquiv = GRUPOS_MENU_PADRAO[idxGrupo] || GRUPOS_MENU_PADRAO[0];
+      const itensArray = Array.isArray(g.itens) ? g.itens : [];
       return {
-        id: g.id || `grupo-${idxGrupo}`,
-        titulo: typeof g.titulo === "string" && g.titulo.trim() ? g.titulo : padraoEquiv.titulo,
-        itens: (g.itens || [])
-          .filter((it: ItemMenuPersonalizado) => it && it.para)
-          .map((it: ItemMenuPersonalizado) => ({
-            id: it.id || it.para.replace("/", ""),
-            para: it.para,
-            rotulo: it.rotulo || "Sem Nome",
-            iconeNome: it.iconeNome || "HelpCircle",
-            cor: it.cor || undefined,
+        id: typeof g.id === "string" && g.id ? g.id : `grupo-${idxGrupo}`,
+        titulo: typeof g.titulo === "string" && g.titulo.trim() ? g.titulo.trim() : padraoEquiv.titulo,
+        itens: itensArray
+          .filter((it: any) => it && typeof it === "object" && typeof it.para === "string" && it.para)
+          .map((it: any) => ({
+            id: typeof it.id === "string" && it.id ? it.id : String(it.para).replace("/", ""),
+            para: String(it.para),
+            rotulo: typeof it.rotulo === "string" && it.rotulo.trim() ? it.rotulo.trim() : "Sem Nome",
+            iconeNome: typeof it.iconeNome === "string" && it.iconeNome.trim() ? it.iconeNome.trim() : "HelpCircle",
+            cor: typeof it.cor === "string" ? it.cor : undefined,
             destaque: Boolean(it.destaque),
             oculto: Boolean(it.oculto),
           })),
@@ -140,7 +142,14 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
  */
 export function salvarMenuPersonalizado(grupos: GrupoMenuPersonalizado[]): void {
   try {
-    localStorage.setItem(CHAVE_STORAGE_MENU, JSON.stringify(grupos));
+    const gruposLimpos = (grupos || [])
+      .filter((g) => g && typeof g === "object")
+      .map((g) => ({
+        ...g,
+        itens: (g.itens || []).filter((it) => it && typeof it === "object" && it.para),
+      }));
+
+    localStorage.setItem(CHAVE_STORAGE_MENU, JSON.stringify(gruposLimpos));
     window.dispatchEvent(new CustomEvent(EVENTO_MENU_ATUALIZADO));
   } catch (err) {
     console.error("Erro ao salvar menu personalizado:", err);

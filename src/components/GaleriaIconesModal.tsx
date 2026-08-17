@@ -33,7 +33,13 @@ export function GaleriaIconesModal({
     return () => limpar();
   }, [aberta, aoFechar]);
 
-  const [selecionadoTemporario, setSelecionadoTemporario] = useState(iconeAtual);
+  const [selecionadoTemporario, setSelecionadoTemporario] = useState(iconeAtual || "HelpCircle");
+
+  useEffect(() => {
+    if (aberta) {
+      setSelecionadoTemporario(iconeAtual || "HelpCircle");
+    }
+  }, [aberta, iconeAtual]);
 
   const iconesFiltrados = useMemo(() => {
     const termo = busca.toLowerCase().trim();
