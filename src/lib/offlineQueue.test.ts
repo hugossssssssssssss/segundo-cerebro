@@ -31,23 +31,23 @@ describe("offlineQueue", () => {
   });
 
   it("remove rascunho salvo por ID único ou caminho", () => {
-    const item = salvarRascunhoLocal("notas/teste.md", "Conteúdo");
+    const res = salvarRascunhoLocal("notas/teste.md", "Conteúdo");
+    expect(res.ok).toBe(true);
     expect(obterRascunhosLocais()).toHaveLength(1);
 
-    removerRascunhoLocal(item.id);
+    removerRascunhoLocal(res.rascunho.id);
     expect(obterRascunhosLocais()).toHaveLength(0);
   });
 
-  it("lança erro amigável ao atingir limite de cota do localStorage (QuotaExceededError)", () => {
+  it("retorna ok: false gracioso ao atingir limite de cota do localStorage (QuotaExceededError)", () => {
     const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       const err = new Error("QuotaExceededError");
       err.name = "QuotaExceededError";
       throw err;
     });
 
-    expect(() => salvarRascunhoLocal("notas/teste.md", "Muito grande")).toThrow(
-      "Espaço de armazenamento local (localStorage) cheio",
-    );
+    const res = salvarRascunhoLocal("notas/teste.md", "Muito grande");
+    expect(res.ok).toBe(false);
 
     spy.mockRestore();
   });

@@ -42,7 +42,7 @@ export function salvarRascunhoLocal(
   sha?: string,
   mensagemCommit?: string,
   notificarEvent = true
-): RascunhoOffline {
+): { ok: boolean; rascunho: RascunhoOffline } {
   const rascunhos = obterRascunhosLocais();
   const id = `draft_${caminho.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}`;
 
@@ -57,23 +57,33 @@ export function salvarRascunhoLocal(
     status: "pendente",
   };
 
-  // Substitui rascunho anterior para o mesmo caminho, se existir
   const filtrados = rascunhos.filter((r) => r.caminho !== caminho);
   filtrados.push(novo);
 
+  let gravado = false;
   try {
     localStorage.setItem(CHAVE_RASCUNHOS, JSON.stringify(filtrados));
+    gravado = true;
   } catch (err: any) {
-    if (err?.name === "QuotaExceededError" || err?.code === 22) {
-      throw new Error("Espaço de armazenamento local (localStorage) cheio no seu navegador. Libere espaço para guardar rascunhos offline.");
+    if (err?.name === "QuotaExceededError" || err?.code === 22 || String(err).includes("Quota")) {
+      // Tenta podar os rascunhos mais antigos para dar espaço ao novo rascunho
+      while (filtrados.length > 1 && !gravado) {
+        filtrados.shift();
+        try {
+          localStorage.setItem(CHAVE_RASCUNHOS, JSON.stringify(filtrados));
+          gravado = true;
+        } catch {
+          // Tenta podar mais um se ainda falhar
+        }
+      }
     }
-    throw new Error(`Falha ao salvar rascunho localmente: ${err?.message || "Erro desconhecido"}`);
   }
 
-  if (notificarEvent) {
+  if (gravado && notificarEvent) {
     window.dispatchEvent(new CustomEvent("acervo-atualizado"));
   }
-  return novo;
+
+  return { ok: gravado, rascunho: novo };
 }
 
 export function atualizarRascunhoLocal(rascunho: RascunhoOffline): void {

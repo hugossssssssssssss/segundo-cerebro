@@ -98,11 +98,11 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
 
       if (ehRede) {
         // Salva rascunho local apenas em caso de falha real de conexão
-        try {
-          salvarRascunhoLocal(caminho, texto, sha, mensagemCommit, false);
+        const res = salvarRascunhoLocal(caminho, texto, sha, mensagemCommit, false);
+        if (res.ok) {
           toast(`Sem conexão: "${caminho.split("/").pop()}" salvo localmente como rascunho.`, { tipo: "aviso" });
-        } catch (errQuota: any) {
-          toast(errQuota?.message || "Espaço local cheio. Libere espaço no navegador para guardar rascunhos.", { tipo: "erro" });
+        } else {
+          toast(`Sem conexão e espaço local cheio: não foi possível guardar o rascunho. COPIE SEU TEXTO antes de sair!`, { tipo: "erro" });
         }
       } else {
         // Para erros de autenticação (401/403), conflito (409) ou dados (422), reporta a falha real
