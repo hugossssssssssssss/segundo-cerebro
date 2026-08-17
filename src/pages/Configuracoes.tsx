@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp, Settings as SettingsIcon } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
 import { carregarRepo } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
 import { Botao, Campo, Cartao, Rotulo, Aviso } from "@/components/ui";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { ModalPersonalizarMenu } from "@/components/ModalPersonalizarMenu";
 
 export default function Configuracoes() {
@@ -97,21 +98,17 @@ export default function Configuracoes() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Ajustes</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Estes dados ficam guardados só no navegador deste aparelho. Nunca vão
-          para o código nem para a internet.
-        </p>
-        <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-          <strong className="text-foreground">Sendo honesto sobre a proteção:</strong>{" "}
-          suas chaves ficam embaralhadas no navegador, o que evita que apareçam
-          em texto legível — mas isso <em>não</em> é criptografia. Quem tiver
-          acesso a este aparelho consegue lê-las. Por isso o token do GitHub
-          deve valer só para o repositório dos seus dados: se algum dia vazar,
-          você revoga em um clique e nada mais é afetado.
-        </p>
+    <div className="space-y-6 animate-in fade-in duration-200">
+      <CabecalhoPagina
+        titulo="Ajustes e Conexões"
+        descricao="Configuração de tokens do GitHub, chave da API Gemini e preferências do navegador."
+        icone={<SettingsIcon size={20} />}
+        corIcone="bg-slate-500/10 text-slate-600 dark:text-slate-400"
+      />
+
+      <div className="rounded-xl border border-border bg-card/60 p-4 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+        <strong className="text-foreground font-semibold">Transparência sobre a proteção:</strong>{" "}
+        seus tokens ficam armazenados localmente no navegador deste dispositivo. Por segurança, utilize um token do GitHub com escopo restrito exclusivamente ao repositório dos seus dados.
       </div>
 
       {/* Seção de Personalização Visual do Menu Lateral */}

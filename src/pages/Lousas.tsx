@@ -23,6 +23,7 @@ import { PASTAS } from "@/lib/tipos";
 import { tituloProvavel, nomeLivre, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
 import { propagarRenomeacao } from "@/lib/links";
 import { Botao, Campo, Cartao, Aviso, Vazio, Carregando, ModalConfirmacao } from "@/components/ui";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { toast } from "@/lib/toast";
 
 const PASTA = PASTAS.lousas;
@@ -455,25 +456,19 @@ export default function Lousas() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Layout size={20} />
-            </div>
-            Excalidraw (Mapas Mentais &amp; Lousas)
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Desenhe diagramas, mapas mentais e conecte aos seus projetos, notas e metas.
-          </p>
-        </div>
-        <Botao variante="primario" onClick={novaLousa}>
-          <Plus size={16} />
-          <span>Nova Lousa</span>
-        </Botao>
-      </div>
+    <div className="space-y-6 animate-in fade-in duration-200">
+      <CabecalhoPagina
+        titulo="Excalidraw (Mapas Mentais & Lousas)"
+        descricao="Desenhe diagramas, mapas mentais e conecte aos seus projetos, notas e metas."
+        icone={<Layout size={20} />}
+        corIcone="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
+        acoes={
+          <Botao variante="primario" onClick={novaLousa}>
+            <Plus size={16} />
+            <span>Nova Lousa</span>
+          </Botao>
+        }
+      />
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
       {mensagemSucesso && <Aviso tom="sucesso">{mensagemSucesso}</Aviso>}

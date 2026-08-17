@@ -48,6 +48,8 @@ import {
 } from "@/lib/noticias";
 import { Aviso, Carregando, Modal, Botao } from "@/components/ui";
 import { Button } from "@/components/ui/button";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { AlternadorVisao } from "@/components/AlternadorVisao";
 
 export default function Noticias() {
   const cfg = lerConfig();
@@ -250,84 +252,47 @@ export default function Noticias() {
   );
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-16">
-      {/* Topo da Revista Digital */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-lg bg-primary/10 p-2 text-primary">
-              <Newspaper size={26} />
-            </span>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                Revista Digital & Radar
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                Feed editorial com matérias integrais. Leia dentro do Klaus e integre com seu Segundo Cérebro.
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-6 max-w-6xl mx-auto pb-16 animate-in fade-in duration-200">
+      <CabecalhoPagina
+        titulo="Revista Digital & Radar"
+        descricao="Feed editorial com matérias integrais integradas ao seu Segundo Cérebro."
+        icone={<Newspaper size={20} />}
+        corIcone="bg-red-500/10 text-red-600 dark:text-red-400"
+        acoes={
+          <>
+            <AlternadorVisao
+              valorAtivo={modo}
+              aoAlternar={(m) => handleTrocarModo(m as ModoExibicao)}
+              opcoes={[
+                { id: "revista", rotulo: "Revista", icone: <LayoutTemplate size={14} /> },
+                { id: "cards", rotulo: "Cards", icone: <LayoutGrid size={14} /> },
+                { id: "feed", rotulo: "Feed", icone: <LayoutList size={14} /> },
+              ]}
+            />
 
-        {/* Controles de Formato */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center rounded-xl border border-border bg-card p-1 shadow-xs">
-            <button
-              onClick={() => handleTrocarModo("revista")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                modo === "revista" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-              }`}
-              title="Modo Capa de Revista"
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setModalAssuntosAberta(true)}
+              className="gap-1.5 text-xs rounded-xl h-9"
             >
-              <LayoutTemplate size={14} />
-              <span>Revista</span>
-            </button>
+              <SlidersHorizontal size={14} />
+              <span>Assuntos</span>
+            </Button>
 
-            <button
-              onClick={() => handleTrocarModo("cards")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                modo === "cards" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-              }`}
-              title="Modo Cards Visuais (Daily.dev)"
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => carregar(categoria)}
+              disabled={carregando}
+              className="rounded-xl h-9 w-9 p-0 text-muted-foreground cursor-pointer"
+              title="Atualizar Notícias"
             >
-              <LayoutGrid size={14} />
-              <span>Cards</span>
-            </button>
-
-            <button
-              onClick={() => handleTrocarModo("feed")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                modo === "feed" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-              }`}
-              title="Modo Feed Minimalista"
-            >
-              <LayoutList size={14} />
-              <span>Feed</span>
-            </button>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setModalAssuntosAberta(true)}
-            className="gap-1.5 text-xs rounded-xl h-9"
-          >
-            <SlidersHorizontal size={14} />
-            <span>Assuntos</span>
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => carregar(categoria)}
-            disabled={carregando}
-            className="rounded-xl h-9 w-9 p-0 text-muted-foreground"
-            title="Atualizar Notícias"
-          >
-            <RefreshCw size={16} className={carregando ? "animate-spin" : ""} />
-          </Button>
-        </div>
-      </div>
+              <RefreshCw size={16} className={carregando ? "animate-spin" : ""} />
+            </Button>
+          </>
+        }
+      />
 
       {!pronto && (
         <Aviso>

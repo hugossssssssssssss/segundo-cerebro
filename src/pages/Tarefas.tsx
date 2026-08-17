@@ -47,6 +47,9 @@ import {
   Vazio,
   Carregando,
 } from "@/components/ui";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { BarraFerramentas } from "@/components/BarraFerramentas";
+import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { cn, lerParametroAbrir } from "@/lib/utils";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { toast } from "@/lib/toast";
@@ -78,6 +81,7 @@ export default function Tarefas() {
   const erro = erroLocal || erroCarregar || erroSalvar;
 
   // ── Estado da UI ──────────────────────────────────────────────────────────
+  const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<Status | "todas">("todas");
   const [editando, setEditando] = useState<Tarefa | null>(null);
   const [original, setOriginal] = useState<Tarefa | null>(null);
@@ -318,56 +322,52 @@ export default function Tarefas() {
   }
 
   const visiveis = ordenar(
-    filtro === "todas" ? tarefas : tarefas.filter((t) => t.status === filtro),
+    (filtro === "todas" ? tarefas : tarefas.filter((t) => t.status === filtro))
+      .filter((t) => t.titulo.toLowerCase().includes(busca.toLowerCase()))
   );
   const pendentes = tarefas.filter((t) => t.status !== "feito").length;
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tarefas</h1>
-          {pendentes > 0 && (
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {pendentes} pendente{pendentes > 1 ? "s" : ""}
-            </p>
-          )}
-        </div>
-        <Botao onClick={abrirNova}>
-          <Plus size={16} />
-          Nova
-        </Botao>
-      </div>
+    <div className="space-y-6 animate-in fade-in duration-200">
+      <CabecalhoPagina
+        titulo="Tarefas"
+        descricao="Organize suas pendências, prazos e prioridades do dia a dia."
+        icone={<ListTodo size={20} />}
+        corIcone="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+        badge={
+          pendentes > 0 ? (
+            <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+              {pendentes} {pendentes === 1 ? "pendente" : "pendentes"}
+            </span>
+          ) : undefined
+        }
+        acoes={
+          <Botao onClick={abrirNova}>
+            <Plus size={16} />
+            Nova Tarefa
+          </Botao>
+        }
+      />
 
-      {/* alterna lista / quadro / calendário */}
-      <div className="flex gap-2">
-        {(
-          [
-            ["lista", "Lista", List],
-            ["quadro", "Quadro", Columns3],
-            ["calendario", "Calendário", CalendarDays],
-          ] as const
-        ).map(
-          ([v, rotulo, Icone]) => (
-            <button
-              key={v}
-              onClick={() => {
-                setVisao(v);
-                localStorage.setItem("tarefa-visao", v);
-              }}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-                visao === v
-                  ? "bg-secondary text-secondary-foreground"
-                  : "text-muted-foreground hover:bg-accent",
-              )}
-            >
-              <Icone size={15} />
-              {rotulo}
-            </button>
-          ),
-        )}
-      </div>
+      <BarraFerramentas
+        busca={busca}
+        aoMudarBusca={setBusca}
+        placeholderBusca="Buscar tarefa por título..."
+        acoes={
+          <AlternadorVisao
+            valorAtivo={visao}
+            aoAlternar={(v) => {
+              setVisao(v);
+              localStorage.setItem("tarefa-visao", v);
+            }}
+            opcoes={[
+              { id: "lista", rotulo: "Lista", icone: <List size={15} /> },
+              { id: "quadro", rotulo: "Quadro", icone: <Columns3 size={15} /> },
+              { id: "calendario", rotulo: "Calendário", icone: <CalendarDays size={15} /> },
+            ]}
+          />
+        }
+      />
 
       {/* filtros — no quadro não fazem sentido: as colunas JÁ são o filtro */}
       <div

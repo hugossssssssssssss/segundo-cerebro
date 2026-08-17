@@ -20,6 +20,7 @@ import {
   FileImage,
 } from "lucide-react";
 import { Botao, Cartao, Aviso } from "@/components/ui";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
 import { lerConfig } from "@/lib/settings";
 import { gravar } from "@/lib/github";
@@ -530,19 +531,13 @@ export default function Conversor() {
   const ferramentaAtualInfo = FERRAMENTAS_CONVERSOR.find((f) => f.id === ferramentaAtiva)!;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 space-y-6">
-      {/* Cabeçalho */}
-      <div className="border-b border-border/60 pb-4">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-            <RefreshCw size={20} />
-          </div>
-          Conversor de Arquivos
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Ferramentas rápidas de conversão presencial no seu navegador, sem enviar dados para servidores externos.
-        </p>
-      </div>
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200">
+      <CabecalhoPagina
+        titulo="Conversor de Arquivos"
+        descricao="Ferramentas rápidas de conversão presencial no seu navegador, sem enviar dados para servidores externos."
+        icone={<RefreshCw size={20} />}
+        corIcone="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+      />
 
       {/* Grid de Ferramentas Estilo iLovePDF */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Plus, Search, Tag, FileText } from "lucide-react";
+import { Plus, Tag, FileText } from "lucide-react";
 import { MODELOS_PADRAO, type TemplateItem } from "@/lib/templates";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
@@ -17,13 +17,14 @@ import {
 import { lerParametroAbrir } from "@/lib/utils";
 import {
   Botao,
-  Campo,
   Cartao,
   Aviso,
   Vazio,
   Carregando,
   ModalConfirmacao,
 } from "@/components/ui";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { toast } from "@/lib/toast";
@@ -250,44 +251,42 @@ export default function Notas() {
   );
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Notas</h1>
-        <div className="flex items-center gap-2">
-          <select
-            onChange={(e) => {
-              const tmpl = MODELOS_PADRAO.find((m) => m.id === e.target.value);
-              if (tmpl) nova(tmpl);
-              e.target.value = "";
-            }}
-            defaultValue=""
-            className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
-          >
-            <option value="" disabled>Usar Modelo...</option>
-            {MODELOS_PADRAO.map((m) => (
-              <option key={m.id} value={m.id}>{m.titulo}</option>
-            ))}
-          </select>
-          <Botao onClick={() => nova()}>
-            <Plus size={16} />
-            Nova
-          </Botao>
-        </div>
-      </div>
+    <div className="space-y-6 animate-in fade-in duration-200">
+      <CabecalhoPagina
+        titulo="Notas"
+        descricao="Anotações e rascunhos em Markdown armazenados no seu repositório."
+        icone={<FileText size={20} />}
+        corIcone="bg-amber-500/10 text-amber-600 dark:text-amber-400"
+        acoes={
+          <>
+            <select
+              onChange={(e) => {
+                const tmpl = MODELOS_PADRAO.find((m) => m.id === e.target.value);
+                if (tmpl) nova(tmpl);
+                e.target.value = "";
+              }}
+              defaultValue=""
+              className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer shadow-2xs"
+            >
+              <option value="" disabled>Usar Modelo...</option>
+              {MODELOS_PADRAO.map((m) => (
+                <option key={m.id} value={m.id}>{m.titulo}</option>
+              ))}
+            </select>
+            <Botao onClick={() => nova()}>
+              <Plus size={16} />
+              Nova Nota
+            </Botao>
+          </>
+        }
+      />
 
       {arquivos.length > 0 && (
-        <div className="relative">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <Campo
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar por título"
-            className="pl-9"
-          />
-        </div>
+        <BarraFerramentas
+          busca={busca}
+          aoMudarBusca={setBusca}
+          placeholderBusca="Buscar nota por título..."
+        />
       )}
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}

@@ -7,6 +7,7 @@ import { useSalvar } from "@/lib/useSalvar";
 import { escreverMarkdown, tituloProvavel, mesclarFrontmatter } from "@/lib/markdown";
 import { montarIndice, alvosUnicos, mencoesA } from "@/lib/links";
 import { Botao, Vazio, Carregando, Aviso } from "@/components/ui";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { NavegadorGrafo3D } from "@/components/NavegadorGrafo3D";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 
@@ -130,19 +131,13 @@ export default function GrafoNeural() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Cabeçalho da Tela */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Network size={22} className="text-primary shrink-0" />
-            <h1 className="text-2xl font-bold tracking-tight">Grafo de Relacionamentos</h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Visualização limpa e interativa de todas as conexões entre notas, tarefas, metas e ideias do seu segundo cérebro.
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6 animate-in fade-in duration-200">
+      <CabecalhoPagina
+        titulo="Grafo de Relacionamentos"
+        descricao="Visualização interativa das conexões entre notas, tarefas, metas e ideias do seu Segundo Cérebro."
+        icone={<Network size={20} />}
+        corIcone="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+      />
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 

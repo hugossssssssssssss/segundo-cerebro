@@ -49,6 +49,7 @@ import {
   AreaTexto,
 } from "@/components/ui";
 import { hojeISO, dataCurta, lerParametroAbrir } from "@/lib/utils";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
 
 /**
@@ -344,42 +345,38 @@ export default function PDI() {
   };
 
   return (
-    <div id="conteudo-pdi-pdf" className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Meu desenvolvimento
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Onde você quer chegar, e o que já fez nessa direção.
-          </p>
-        </div>
-        <Botao
-          variante="neutro"
-          tamanho="pequeno"
-          onClick={() => {
-            const elem = document.getElementById("conteudo-pdi-pdf");
-            if (elem) {
-              import("@/lib/pdf").then(({ exportarElementoParaPdf }) => {
-                exportarElementoParaPdf(elem, "meu-pdi-carreira");
-              });
-            }
-          }}
-        >
-          Exportar PDF
-        </Botao>
-      </div>
-
-      <div className="flex gap-2">
-        <Botao onClick={novaMeta} variante="neutro" tamanho="pequeno">
-          <Target size={15} />
-          Nova meta
-        </Botao>
-        <Botao onClick={novaEntrega} tamanho="pequeno">
-          <Package size={15} />
-          Registrar entrega
-        </Botao>
-      </div>
+    <div id="conteudo-pdi-pdf" className="space-y-6 animate-in fade-in duration-200">
+      <CabecalhoPagina
+        titulo="Plano de Desenvolvimento (PDI)"
+        descricao="Onde você quer chegar na sua carreira e as conquistas realizadas."
+        icone={<Target size={20} />}
+        corIcone="bg-teal-500/10 text-teal-600 dark:text-teal-400"
+        acoes={
+          <>
+            <Botao onClick={novaMeta} variante="neutro">
+              <Target size={15} />
+              Nova Meta
+            </Botao>
+            <Botao onClick={novaEntrega}>
+              <Package size={15} />
+              Registrar Entrega
+            </Botao>
+            <Botao
+              variante="neutro"
+              onClick={() => {
+                const elem = document.getElementById("conteudo-pdi-pdf");
+                if (elem) {
+                  import("@/lib/pdf").then(({ exportarElementoParaPdf }) => {
+                    exportarElementoParaPdf(elem, "meu-pdi-carreira");
+                  });
+                }
+              }}
+            >
+              Exportar PDF
+            </Botao>
+          </>
+        }
+      />
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 

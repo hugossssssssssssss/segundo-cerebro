@@ -64,6 +64,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Carregando, Vazio } from "@/components/ui";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
 
 type NotaRecente = {
@@ -1091,44 +1092,37 @@ export default function Home() {
   );
 
   return (
-    <div className="flex-1 space-y-8 animate-in fade-in duration-300 w-full pb-10">
-      {/* Topo Hero & Saudação */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-card via-card to-accent/30 p-6 sm:p-8 rounded-2xl border border-border shadow-sm">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2.5">
-            <IconeTempo className="h-7 w-7 text-amber-500" />
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              {saudacao}!
-            </h1>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Seu centro de comando do Klaus. Adicione e organize os gadgets como preferir.
-          </p>
-        </div>
+    <div className="flex-1 space-y-8 animate-in fade-in duration-200 w-full pb-10">
+      <CabecalhoPagina
+        titulo={`${saudacao}!`}
+        descricao="Seu centro de comando do Klaus. Adicione e organize seus gadgets como preferir."
+        icone={<IconeTempo size={20} />}
+        corIcone="bg-amber-500/10 text-amber-600 dark:text-amber-400"
+        acoes={
+          <>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setModalAdicionarAberto(true)}
+              className="gap-2 text-xs font-semibold shadow-2xs"
+            >
+              <Plus size={15} />
+              <span>Adicionar Gadget</span>
+            </Button>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => setModalAdicionarAberto(true)}
-            className="gap-2 text-xs font-semibold shadow-xs"
-          >
-            <Plus size={15} />
-            <span>Adicionar Gadget</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={restaurarLayout}
-            className="gap-2 text-xs text-muted-foreground hover:text-foreground bg-background shadow-xs"
-            title="Restaurar o layout padrão dos gadgets"
-          >
-            <RotateCcw size={14} />
-            <span>Restaurar Layout</span>
-          </Button>
-        </div>
-      </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={restaurarLayout}
+              className="gap-2 text-xs text-muted-foreground hover:text-foreground bg-background shadow-2xs"
+              title="Restaurar o layout padrão dos gadgets"
+            >
+              <RotateCcw size={14} />
+              <span>Restaurar Layout</span>
+            </Button>
+          </>
+        }
+      />
 
       {erro && (
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center gap-2">

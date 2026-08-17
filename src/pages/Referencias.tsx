@@ -35,6 +35,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { cn, lerParametroAbrir } from "@/lib/utils";
 
 export default function Referencias() {
@@ -53,6 +55,7 @@ export default function Referencias() {
   const { salvarTexto, apagarItem, salvando, erro: erroSalvar, limparErro } = useSalvar(cfg);
 
   // ── Estado da UI ──────────────────────────────────────────────────────────
+  const [busca, setBusca] = useState("");
   const [erroLocal, setErroLocal] = useState("");
   const erro = erroLocal || erroCarregar || erroSalvar;
 
@@ -262,52 +265,63 @@ export default function Referencias() {
   }
 
   const tags = todasAsTags(refs);
-  const visiveis = filtro ? refs.filter((r) => r.tags.includes(filtro)) : refs;
+  const visiveis = refs
+    .filter((r) => !filtro || r.tags.includes(filtro))
+    .filter((r) => (r.titulo || "").toLowerCase().includes(busca.toLowerCase()));
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Referências</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            O que te inspirou, e por quê.
-          </p>
-        </div>
-        <Botao onClick={nova}>
-          <Plus size={16} />
-          Nova
-        </Botao>
-      </div>
+    <div className="space-y-6 animate-in fade-in duration-200">
+      <CabecalhoPagina
+        titulo="Referências Visuais"
+        descricao="O que te inspirou, ideias de design, paletas e imagens de referência."
+        icone={<ImagePlus size={20} />}
+        corIcone="bg-pink-500/10 text-pink-600 dark:text-pink-400"
+        acoes={
+          <Botao onClick={nova}>
+            <Plus size={16} />
+            Nova Referência
+          </Botao>
+        }
+      />
 
-      {tags.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          <button
-            onClick={() => setFiltro(null)}
-            className={cn(
-              "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-              filtro === null
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-secondary-foreground hover:bg-accent",
-            )}
-          >
-            Todas
-          </button>
-          {tags.map((t) => (
-            <button
-              key={t}
-              onClick={() => setFiltro(t)}
-              className={cn(
-                "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-                filtro === t
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-secondary-foreground hover:bg-accent",
-              )}
-            >
-              #{t}
-            </button>
-          ))}
-        </div>
-      )}
+      <BarraFerramentas
+        busca={busca}
+        aoMudarBusca={setBusca}
+        placeholderBusca="Buscar referência por título..."
+        filtros={
+          tags.length > 0 ? (
+            <div className="flex gap-1.5 overflow-x-auto py-0.5 max-w-full">
+              <button
+                type="button"
+                onClick={() => setFiltro(null)}
+                className={cn(
+                  "shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer",
+                  filtro === null
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "bg-muted text-muted-foreground hover:text-foreground hover:bg-accent",
+                )}
+              >
+                Todas
+              </button>
+              {tags.map((t) => (
+                <button
+                  type="button"
+                  key={t}
+                  onClick={() => setFiltro(t)}
+                  className={cn(
+                    "shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer",
+                    filtro === t
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "bg-muted text-muted-foreground hover:text-foreground hover:bg-accent",
+                  )}
+                >
+                  #{t}
+                </button>
+              ))}
+            </div>
+          ) : undefined
+        }
+      />
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 

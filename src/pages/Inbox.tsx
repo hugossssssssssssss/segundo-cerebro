@@ -34,6 +34,7 @@ import {
 import { extrairLembretesComIA } from "@/lib/gemini";
 import type { ItemInbox } from "@/lib/tipos";
 import { Botao, Cartao, Selo, Aviso, Vazio, Carregando } from "@/components/ui";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { ModalLembrete } from "@/components/ModalLembrete";
 import { useSalvar } from "@/lib/useSalvar";
 import { lerMarkdown, escreverMarkdown } from "@/lib/markdown";
@@ -446,46 +447,44 @@ export default function Inbox() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">Caixa de Entrada</h1>
-            {contagemNaoVistos > 0 && (
-              <span className="rounded-full bg-destructive px-2.5 py-0.5 text-xs font-bold text-destructive-foreground">
-                {contagemNaoVistos} {contagemNaoVistos === 1 ? "novo" : "novos"}
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Lembretes agendados, tarefas atrasadas e sugestões de organização.
-          </p>
-        </div>
+    <div className="space-y-6 animate-in fade-in duration-200">
+      <CabecalhoPagina
+        titulo="Caixa de Entrada"
+        descricao="Lembretes agendados, tarefas atrasadas e sugestões de organização."
+        icone={<Bell size={20} />}
+        corIcone="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+        badge={
+          contagemNaoVistos > 0 ? (
+            <span className="rounded-full bg-destructive px-2.5 py-0.5 text-xs font-bold text-destructive-foreground">
+              {contagemNaoVistos} {contagemNaoVistos === 1 ? "novo" : "novos"}
+            </span>
+          ) : undefined
+        }
+        acoes={
+          <>
+            <Botao
+              variante="neutro"
+              tamanho="pequeno"
+              onClick={executarExtracaoIA}
+              disabled={extraindoIA}
+              title="Usar a IA Gemini para identificar compromissos nos documentos"
+            >
+              <Sparkles size={14} className={extraindoIA ? "animate-spin text-amber-500" : "text-amber-500"} />
+              {extraindoIA ? "Analisando..." : "IA Extrair Prazos"}
+            </Botao>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <Botao
-            variante="neutro"
-            tamanho="pequeno"
-            onClick={executarExtracaoIA}
-            disabled={extraindoIA}
-            title="Usar a IA Gemini para identificar compromissos nos documentos"
-          >
-            <Sparkles size={14} className={extraindoIA ? "animate-spin text-amber-500" : "text-amber-500"} />
-            {extraindoIA ? "Analisando..." : "IA Extrair Prazos"}
-          </Botao>
+            <Botao variante="neutro" tamanho="pequeno" onClick={() => carregar()}>
+              <RefreshCw size={14} className={carregando ? "animate-spin" : ""} />
+              Atualizar
+            </Botao>
 
-          <Botao variante="neutro" tamanho="pequeno" onClick={() => carregar()}>
-            <RefreshCw size={14} className={carregando ? "animate-spin" : ""} />
-            Atualizar
-          </Botao>
-
-          <Botao variante="primario" tamanho="pequeno" onClick={() => setModalNovoAberto(true)}>
-            <Plus size={16} />
-            Novo Lembrete
-          </Botao>
-        </div>
-      </div>
+            <Botao variante="primario" tamanho="pequeno" onClick={() => setModalNovoAberto(true)}>
+              <Plus size={16} />
+              Novo Lembrete
+            </Botao>
+          </>
+        }
+      />
 
       {mensagemSucesso && <Aviso tom="sucesso">{mensagemSucesso}</Aviso>}
       {erro && <Aviso tom="erro">{erro}</Aviso>}

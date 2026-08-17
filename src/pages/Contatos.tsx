@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   FolderTree,
   Plus,
-  Search,
   Upload,
   Download,
   LayoutGrid,
@@ -44,6 +43,9 @@ import {
 } from "@/lib/contatos";
 import { Botao, Cartao, Selo, Modal, Carregando, ModalConfirmacao, Vazio } from "@/components/ui";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { BarraFerramentas } from "@/components/BarraFerramentas";
+import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -490,148 +492,94 @@ export default function Contatos() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* Topo / Cabeçalho no layout padrão Klaus */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/60 pb-5">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="rounded-lg p-2 bg-primary/10 text-primary">
-              <FolderTree size={24} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Árvore de Contatos</h1>
-              <p className="text-xs text-muted-foreground">
-                Gerencie pessoas, redes de relacionamento, equipes e hierarquias com o mesmo layout de notas e tarefas.
-              </p>
-            </div>
-          </div>
-        </div>
+      <CabecalhoPagina
+        titulo="Árvore de Contatos"
+        descricao="Gerencie pessoas, redes de relacionamento, equipes e hierarquias com facilidade."
+        icone={<FolderTree size={20} />}
+        corIcone="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+        acoes={
+          <>
+            <Botao onClick={() => novoContato()} className="gap-1.5 text-xs font-semibold">
+              <Plus size={16} />
+              Novo Contato
+            </Botao>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Botao onClick={() => novoContato()} className="gap-1.5 text-xs font-semibold">
-            <Plus size={16} />
-            Novo Contato
-          </Botao>
-
-          <Botao
-            variante="neutro"
-            onClick={() => setModalCSVAberta(true)}
-            className="gap-1.5 text-xs"
-          >
-            <Upload size={15} />
-            Importar CSV
-          </Botao>
-
-          {contatosLocais.length > 0 && (
             <Botao
               variante="neutro"
-              onClick={handleExportarCSV}
+              onClick={() => setModalCSVAberta(true)}
               className="gap-1.5 text-xs"
-              title="Exportar contatos para CSV"
             >
-              <Download size={15} />
-              Exportar
+              <Upload size={15} />
+              Importar CSV
             </Botao>
-          )}
-        </div>
-      </div>
+
+            {contatosLocais.length > 0 && (
+              <Botao
+                variante="neutro"
+                onClick={handleExportarCSV}
+                className="gap-1.5 text-xs"
+                title="Exportar contatos para CSV"
+              >
+                <Download size={15} />
+                Exportar
+              </Botao>
+            )}
+          </>
+        }
+      />
 
       {/* Filtros e Alternador de Visão */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-card p-3 rounded-xl border border-border/80 shadow-xs">
-        <div className="flex flex-1 flex-col sm:flex-row items-center gap-2.5 min-w-0">
-          {/* Busca por texto */}
-          <div className="relative w-full sm:w-64 min-w-0">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              type="text"
-              placeholder="Buscar por nome, cargo, e-mail..."
-              value={termoBusca}
-              onChange={(e) => setTermoBusca(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background pl-9 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
-          {/* Filtro Empresa */}
-          {empresasDisponiveis.length > 0 && (
-            <select
-              value={empresaFiltro}
-              onChange={(e) => setEmpresaFiltro(e.target.value)}
-              className="w-full sm:w-auto rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
-            >
-              <option value="todas">Todas Empresas ({empresasDisponiveis.length})</option>
-              {empresasDisponiveis.map((emp) => (
-                <option key={emp} value={emp}>
-                  {emp}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* Filtro Tag */}
-          {tagsDisponiveis.length > 0 && (
-            <select
-              value={tagFiltro}
-              onChange={(e) => setTagFiltro(e.target.value)}
-              className="w-full sm:w-auto rounded-lg border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
-            >
-              <option value="todas">Todas Tags ({tagsDisponiveis.length})</option>
-              {tagsDisponiveis.map((t) => (
-                <option key={t} value={t}>
-                  #{t}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-
-        {/* Botões de alternar visão */}
-        <div className="flex items-center gap-1 self-end md:self-auto bg-muted/60 p-1 rounded-lg border border-border/50 shrink-0">
-          <button
-            onClick={() => setVisao("arvore")}
-            className={cn(
-              "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
-              visao === "arvore"
-                ? "bg-background text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground",
+      <BarraFerramentas
+        busca={termoBusca}
+        aoMudarBusca={setTermoBusca}
+        placeholderBusca="Buscar por nome, cargo, e-mail..."
+        filtros={
+          <>
+            {empresasDisponiveis.length > 0 && (
+              <select
+                value={empresaFiltro}
+                onChange={(e) => setEmpresaFiltro(e.target.value)}
+                className="w-full sm:w-auto rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary shadow-2xs cursor-pointer"
+              >
+                <option value="todas">Todas Empresas ({empresasDisponiveis.length})</option>
+                {empresasDisponiveis.map((emp) => (
+                  <option key={emp} value={emp}>
+                    {emp}
+                  </option>
+                ))}
+              </select>
             )}
-            title="Visão Hierárquica em Árvore"
-          >
-            <FolderTree size={14} />
-            Árvore
-          </button>
 
-          <button
-            onClick={() => setVisao("cartoes")}
-            className={cn(
-              "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
-              visao === "cartoes"
-                ? "bg-background text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground",
+            {tagsDisponiveis.length > 0 && (
+              <select
+                value={tagFiltro}
+                onChange={(e) => setTagFiltro(e.target.value)}
+                className="w-full sm:w-auto rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary shadow-2xs cursor-pointer"
+              >
+                <option value="todas">Todas Tags ({tagsDisponiveis.length})</option>
+                {tagsDisponiveis.map((t) => (
+                  <option key={t} value={t}>
+                    #{t}
+                  </option>
+                ))}
+              </select>
             )}
-            title="Visão em Cartões"
-          >
-            <LayoutGrid size={14} />
-            Cartões
-          </button>
-
-          <button
-            onClick={() => setVisao("tabela")}
-            className={cn(
-              "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
-              visao === "tabela"
-                ? "bg-background text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-            title="Visão em Tabela"
-          >
-            <List size={14} />
-            Tabela
-          </button>
-        </div>
-      </div>
+          </>
+        }
+        acoes={
+          <AlternadorVisao
+            valorAtivo={visao}
+            aoAlternar={(v) => setVisao(v as VisaoContatos)}
+            opcoes={[
+              { id: "arvore", rotulo: "Árvore", icone: <FolderTree size={14} /> },
+              { id: "cartoes", rotulo: "Cartões", icone: <LayoutGrid size={14} /> },
+              { id: "tabela", rotulo: "Tabela", icone: <List size={14} /> },
+            ]}
+          />
+        }
+      />
 
       {/* Feedback de Carga / Erro */}
       {carregando && contatosLocais.length === 0 && (

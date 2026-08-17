@@ -17,6 +17,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { Botao, Cartao, Aviso, Vazio } from "@/components/ui";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import {
@@ -299,19 +300,13 @@ export default function Transcritor() {
   const itemAtivo = fila.find((i) => i.id === itemSelecionadoId) || fila[0];
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 space-y-6">
-      {/* Cabeçalho */}
-      <div className="border-b border-border/60 pb-4">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-            <Mic size={20} />
-          </div>
-          Transcrição de Áudio
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Transcreva áudios do WhatsApp, reuniões e entrevistas com opções 100% locais no navegador ou via IA.
-        </p>
-      </div>
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200">
+      <CabecalhoPagina
+        titulo="Transcrição de Áudio"
+        descricao="Transcreva áudios do WhatsApp, reuniões e entrevistas com opções 100% locais no navegador ou via IA."
+        icone={<Mic size={20} />}
+        corIcone="bg-purple-500/10 text-purple-600 dark:text-purple-400"
+      />
 
       {/* Seleção do Motor de Transcrição */}
       <div className="space-y-2 p-4 rounded-xl border border-border bg-card/60">

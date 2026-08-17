@@ -16,6 +16,7 @@ import {
   Minimize2,
 } from "lucide-react";
 import { Botao, Cartao, Aviso } from "@/components/ui";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
 
 type AbaILovePDF = "juntar" | "dividir" | "comprimir" | "recortar" | "desbloquear" | "organizar";
@@ -362,17 +363,13 @@ export default function FerramentasPDF() {
   const abaInfo = abasFerramentas.find((a) => a.id === abaAtiva)!;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 space-y-6">
-      {/* Cabeçalho Limpo */}
-      <div className="border-b border-border/60 pb-4">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-500/10 text-red-600 dark:text-red-400">
-            <FileText size={20} />
-          </div>
-          Ferramentas PDF
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">{abaInfo.descricao}</p>
-      </div>
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200">
+      <CabecalhoPagina
+        titulo="Ferramentas PDF"
+        descricao={abaInfo.descricao}
+        icone={<FileText size={20} />}
+        corIcone="bg-red-500/10 text-red-600 dark:text-red-400"
+      />
 
       {/* Navegação por Abas das 6 Ferramentas Principais */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">

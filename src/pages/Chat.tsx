@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Send, Sparkles, Trash2, Copy, Check, RefreshCw } from "lucide-react";
+import { Send, Sparkles, Trash2, Copy, Check, RefreshCw, MessageSquare } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
 import { conversar, PROMPTS, type Mensagem, type PromptSalvo } from "@/lib/gemini";
 import { acoesDeChamadas, executar, type Acao } from "@/lib/acoes";
 import { CartaoAcao } from "@/components/CartaoAcao";
 import { Botao, Cartao, AreaTexto, Aviso, Vazio, Selo } from "@/components/ui";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
 
 import { buscar } from "@/lib/busca";
@@ -166,30 +167,29 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Conversar</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Ele lê o que você escreveu — e pode criar e editar coisas, sempre
-            pedindo sua aprovação antes.
-          </p>
-        </div>
-        {falas.length > 0 && (
-          <Botao
-            variante="fantasma"
-            tamanho="pequeno"
-            onClick={() => {
-              setFalas([]);
-              setErro("");
-              setDescartadas(new Set());
-            }}
-          >
-            <Trash2 size={15} />
-            Limpar
-          </Botao>
-        )}
-      </div>
+    <div className="flex flex-col gap-6 animate-in fade-in duration-200">
+      <CabecalhoPagina
+        titulo="Conversar com a IA"
+        descricao="A IA lê seus documentos e pode criar ou editar registros com sua aprovação."
+        icone={<MessageSquare size={20} />}
+        corIcone="bg-purple-500/10 text-purple-600 dark:text-purple-400"
+        acoes={
+          falas.length > 0 ? (
+            <Botao
+              variante="fantasma"
+              tamanho="pequeno"
+              onClick={() => {
+                setFalas([]);
+                setErro("");
+                setDescartadas(new Set());
+              }}
+            >
+              <Trash2 size={15} />
+              Limpar Conversa
+            </Botao>
+          ) : undefined
+        }
+      />
 
       {falas.length === 0 && (
         <>

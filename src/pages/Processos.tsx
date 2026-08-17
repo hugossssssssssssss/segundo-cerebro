@@ -33,7 +33,6 @@ import {
   GripVertical,
   Settings2,
   Zap,
-  Search,
   Check,
   LayoutGrid,
   List,
@@ -61,6 +60,9 @@ import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Carregando, Vazio } from "@/components/ui";
+import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { BarraFerramentas } from "@/components/BarraFerramentas";
+import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { cn } from "@/lib/utils";
 
 const CORES_ETAPAS = {
@@ -748,30 +750,20 @@ export default function Processos() {
   }
 
   return (
-    <div className="flex-1 space-y-6 animate-in fade-in duration-300 w-full pb-10">
-      {/* Topo no Estilo CRM Profissional (Pipefy / HubSpot Layout) */}
-      <div className="flex flex-col gap-4 bg-card p-6 rounded-2xl border border-border shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <GitMerge className="h-6 w-6 text-primary" />
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                Pipeline de Processos & Tarefas
-              </h1>
-            </div>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Gerenciador visual de etapas, transições e automações.
-            </p>
-          </div>
-
-          {/* Seletor de Pipeline + Alternador de Visão + Ações */}
-          <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex-1 space-y-6 animate-in fade-in duration-200 w-full pb-10">
+      <CabecalhoPagina
+        titulo="Pipeline de Processos & Tarefas"
+        descricao="Gerenciador visual de etapas, transições e automações de trabalho."
+        icone={<GitMerge size={20} />}
+        corIcone="bg-purple-500/10 text-purple-600 dark:text-purple-400"
+        acoes={
+          <>
             {processos.length > 0 && (
               <div className="relative">
                 <select
                   value={processoAtivoId}
                   onChange={(e) => setProcessoAtivoId(e.target.value)}
-                  className="appearance-none bg-accent/60 border border-border text-foreground font-bold text-xs rounded-xl px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="appearance-none bg-card border border-border text-foreground font-bold text-xs rounded-xl px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer shadow-2xs"
                 >
                   {processos.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -783,32 +775,14 @@ export default function Processos() {
               </div>
             )}
 
-            {/* Alternador de Visão (Kanban vs Tabela) */}
-            <div className="flex items-center rounded-xl border border-border bg-muted/40 p-0.5">
-              <button
-                onClick={() => setModoVisao("kanban")}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all",
-                  modoVisao === "kanban" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                )}
-                title="Visão Quadro Kanban"
-              >
-                <LayoutGrid size={14} />
-                <span className="hidden sm:inline">Quadro</span>
-              </button>
-
-              <button
-                onClick={() => setModoVisao("tabela")}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-all",
-                  modoVisao === "tabela" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                )}
-                title="Visão Tabela de Dados CRM"
-              >
-                <List size={14} />
-                <span className="hidden sm:inline">Tabela</span>
-              </button>
-            </div>
+            <AlternadorVisao
+              valorAtivo={modoVisao}
+              aoAlternar={(v) => setModoVisao(v as "kanban" | "tabela")}
+              opcoes={[
+                { id: "kanban", rotulo: "Quadro", icone: <LayoutGrid size={14} /> },
+                { id: "tabela", rotulo: "Tabela", icone: <List size={14} /> },
+              ]}
+            />
 
             {processoAtivo && (
               <>
@@ -857,29 +831,23 @@ export default function Processos() {
               <Plus size={14} />
               <span>Novo Funil</span>
             </Button>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        {/* Pesquisa & Contador */}
-        {processoAtivo && (
-          <div className="pt-3 border-t border-border flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={pesquisaCard}
-                onChange={(e) => setPesquisaCard(e.target.value)}
-                placeholder="Pesquisar Cards no pipeline..."
-                className="w-full rounded-xl border border-border bg-background px-3 py-1.5 pl-9 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
+      {/* Pesquisa & Contador */}
+      {processoAtivo && (
+        <BarraFerramentas
+          busca={pesquisaCard}
+          aoMudarBusca={setPesquisaCard}
+          placeholderBusca="Pesquisar cards no pipeline..."
+          acoes={
             <span className="text-xs text-muted-foreground font-medium">
               Total: <strong className="text-foreground">{cardsFiltrados.length}</strong> {cardsFiltrados.length === 1 ? "Card" : "Cards"}
             </span>
-          </div>
-        )}
-      </div>
+          }
+        />
+      )}
 
       {erro && (
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center gap-2">
