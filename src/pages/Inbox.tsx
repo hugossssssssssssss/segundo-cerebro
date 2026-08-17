@@ -47,11 +47,11 @@ import { useSalvar } from "@/lib/useSalvar";
 import { lerMarkdown, escreverMarkdown } from "@/lib/markdown";
 import { comoTarefa } from "@/lib/entidades";
 import { toast } from "@/lib/toast";
-import { lerParametroCriar, formatarDataPtBR } from "@/lib/utils";
+import { lerParametroCriar, formatarDataPtBR, formatarNomeAmigavel } from "@/lib/utils";
 import {
   obterRascunhosLocais,
   removerRascunhoLocal,
-  sincronizarFilaOffline,
+  forcarResolverConflitoRascunho,
 } from "@/lib/offlineQueue";
 
 type AbaFiltro = "nao_vistos" | "lembretes" | "atrasadas" | "inativas" | "rascunhos" | "todas" | "arquivados";
@@ -735,67 +735,90 @@ export default function Inbox() {
           }
           return (
             <div className="space-y-3">
-              {rascunhos.map((r) => (
-                <CartaoItem
-                  key={r.id}
-                  icone={<WifiOff size={18} />}
-                  titulo={r.caminho.split("/").pop() || r.caminho}
-                  subtitulo={`Caminho: ${r.caminho} • Criado em ${r.criadoEm.slice(0, 10)}`}
-                  badge={
-                    <SeloStatus
-                      rotulo={
-                        r.status === "conflito"
-                          ? "Conflito (409)"
-                          : r.status === "erro"
-                          ? "Erro no Envio"
-                          : "Pendente"
-                      }
-                      tom={
-                        r.status === "conflito"
-                          ? "perigo"
-                          : r.status === "erro"
-                          ? "aviso"
-                          : "primario"
-                      }
-                    />
-                  }
-                  acoes={
-                    <div className="flex items-center gap-2">
-                      <Botao
-                        variante="primario"
-                        tamanho="pequeno"
-                        onClick={async () => {
-                          const res = await sincronizarFilaOffline(cfg);
-                          if (res.concluidos > 0) toast(`${res.concluidos} rascunho(s) sincronizados com sucesso!`, { tipo: "sucesso" });
-                          else if (res.falhas > 0) toast(`${res.falhas} rascunho(s) com falha ou conflito: clique para ver`, { tipo: "erro", detalhes: "Rascunhos offline não puderam ser gravados no GitHub porque o arquivo mudou no repositório remoto (Conflito 409) ou ocorreu uma falha de conexão.\n\nUse os botões de ação do rascunho para regravar ou descartar." });
-                          else toast("Nenhum rascunho para enviar.", { tipo: "info" });
-                          carregar();
-                        }}
+              {rascunhos.map((r) => {
+                const nomeAmigavel = formatarNomeAmigavel(r.caminho);
+                const dataFormatada = formatarDataPtBR(r.criadoEm);
+
+                return (
+                  <CartaoItem
+                    key={r.id}
+                    icone={<WifiOff size={18} />}
+                    titulo={nomeAmigavel}
+                    subtitulo={`Caminho: ${r.caminho} • Criado em ${dataFormatada}`}
+                    badge={
+                      <SeloStatus
+                        rotulo={
+                          r.status === "conflito"
+                            ? "Conflito (409)"
+                            : r.status === "erro"
+                            ? "Erro no Envio"
+                            : "Pendente"
+                        }
+                        tom={
+                          r.status === "conflito"
+                            ? "perigo"
+                            : r.status === "erro"
+                            ? "aviso"
+                            : "primario"
+                        }
+                      />
+                    }
+                    acoes={
+                      <div className="flex items-center gap-2">
+                        <Botao
+                          variante={r.status === "conflito" ? "perigo" : "primario"}
+                          tamanho="pequeno"
+                          onClick={async () => {
+                            try {
+                              await forcarResolverConflitoRascunho(cfg, r.id);
+                              toast(`"${nomeAmigavel}" salvo`, { tipo: "sucesso" });
+                              carregar();
+                            } catch (err: any) {
+                              const msg = err instanceof Error ? err.message : String(err);
+                              toast(`Erro ao sincronizar "${nomeAmigavel}": clique para ver`, {
+                                tipo: "erro",
+                                detalhes: msg,
+                              });
+                            }
+                          }}
+                        >
+                          <RotateCcw size={14} />
+                          {r.status === "conflito" ? "Forçar Regravação" : "Sincronizar"}
+                        </Botao>
+                        <Botao
+                          variante="fantasma"
+                          tamanho="icone"
+                          onClick={() => {
+                            removerRascunhoLocal(r.id);
+                            toast(`Rascunho de "${nomeAmigavel}" descartado`, { tipo: "info" });
+                            carregar();
+                          }}
+                          title="Descartar rascunho"
+                        >
+                          <Trash2 size={14} />
+                        </Botao>
+                      </div>
+                    }
+                  >
+                    {r.ultimoErro && (
+                      <div
+                        onClick={() =>
+                          toast(`Detalhes do erro em "${nomeAmigavel}"`, {
+                            tipo: "erro",
+                            detalhes: r.ultimoErro,
+                          })
+                        }
+                        className="cursor-pointer"
+                        title="Clique para ver o erro completo"
                       >
-                        <RotateCcw size={14} /> Sincronizar
-                      </Botao>
-                      <Botao
-                        variante="fantasma"
-                        tamanho="icone"
-                        onClick={() => {
-                          removerRascunhoLocal(r.id);
-                          toast("Rascunho descartado localmente.", { tipo: "info" });
-                          carregar();
-                        }}
-                        title="Descartar rascunho"
-                      >
-                        <Trash2 size={14} />
-                      </Botao>
-                    </div>
-                  }
-                >
-                  {r.ultimoErro && (
-                    <Aviso tom="erro">
-                      {r.ultimoErro}
-                    </Aviso>
-                  )}
-                </CartaoItem>
-              ))}
+                        <Aviso tom="erro">
+                          {r.ultimoErro} (Clique para abrir detalhes)
+                        </Aviso>
+                      </div>
+                    )}
+                  </CartaoItem>
+                );
+              })}
             </div>
           );
         })()

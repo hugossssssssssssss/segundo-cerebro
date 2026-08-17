@@ -201,3 +201,26 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
 
   return { concluidos, falhas };
 }
+
+/**
+ * Força a gravação de um rascunho com conflito (409) ou erro no GitHub,
+ * buscando a SHA mais recente do repositório remoto e aplicando o rascunho.
+ */
+export async function forcarResolverConflitoRascunho(cfg: Settings, id: string): Promise<void> {
+  const rascunhos = obterRascunhosLocais();
+  const alvo = rascunhos.find((r) => r.id === id);
+  if (!alvo) throw new Error("Rascunho não encontrado.");
+
+  let remoteSha = alvo.sha;
+  try {
+    const res = await ler(cfg, alvo.caminho);
+    remoteSha = res.sha;
+  } catch {
+    /* arquivo novo remoto */
+  }
+
+  await gravar(cfg, alvo.caminho, alvo.texto, remoteSha, alvo.mensagemCommit || `Resolve conflito em ${alvo.caminho}`);
+  removerRascunhoLocal(id);
+  invalidarCache();
+  notificarOutrasAbas(alvo.caminho);
+}
