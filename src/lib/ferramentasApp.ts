@@ -19,6 +19,13 @@ import {
   Minimize2,
   ScanText,
   PenTool,
+  Plus,
+  UserPlus,
+  FolderPlus,
+  UploadCloud,
+  BellPlus,
+  SunMoon,
+  Timer,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -26,7 +33,7 @@ export interface FerramentaApp {
   id: string;
   titulo: string;
   descricao: string;
-  categoria: "conversor" | "ferramenta" | "modulo";
+  categoria: "conversor" | "ferramenta" | "modulo" | "acao";
   rota: string;
   icone: ComponentType<{ size?: number; className?: string }>;
   palavrasChave: string[];
@@ -255,5 +262,88 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
     rota: "/config",
     icone: Settings,
     palavrasChave: ["ajustes", "configuração", "token", "github", "gemini", "senha"],
+  },
+
+  // --- AÇÕES RÁPIDAS (QUICK ACTIONS) ---
+  {
+    id: "acao_nova_nota",
+    titulo: "Criar Nova Nota",
+    descricao: "Abra instantaneamente a tela de criação de nota em Markdown",
+    categoria: "acao",
+    rota: "/notas?nova=true",
+    icone: Plus,
+    palavrasChave: ["criar nota", "nova nota", "escrever nota", "adicionar nota", "nova"],
+  },
+  {
+    id: "acao_nova_tarefa",
+    titulo: "Criar Nova Tarefa",
+    descricao: "Cadastre uma nova tarefa com prazo, prioridade e checklist",
+    categoria: "acao",
+    rota: "/tarefas?nova=true",
+    icone: CheckSquare,
+    palavrasChave: ["criar tarefa", "nova tarefa", "fazer", "adicionar tarefa", "pendencia"],
+  },
+  {
+    id: "acao_novo_contato",
+    titulo: "Adicionar Novo Contato",
+    descricao: "Cadastre um novo contato na sua árvore de relacionamentos",
+    categoria: "acao",
+    rota: "/contatos?novo=true",
+    icone: UserPlus,
+    palavrasChave: ["criar contato", "novo contato", "adicionar pessoa", "equipe", "adicionar contato"],
+  },
+  {
+    id: "acao_novo_processo",
+    titulo: "Criar Novo Processo / Funil",
+    descricao: "Crie um novo pipeline Kanban de processos ou CRM",
+    categoria: "acao",
+    rota: "/processos?novo=true",
+    icone: FolderPlus,
+    palavrasChave: ["criar processo", "novo processo", "novo funil", "novo pipeline", "crm"],
+  },
+  {
+    id: "acao_nova_meta",
+    titulo: "Criar Meta no PDI",
+    descricao: "Cadastre uma nova meta profissional no seu Plano de Desenvolvimento",
+    categoria: "acao",
+    rota: "/pdi?nova_meta=true",
+    icone: Target,
+    palavrasChave: ["criar meta", "nova meta", "pdi", "carreira", "desenvolvimento"],
+  },
+  {
+    id: "acao_upload_referencia",
+    titulo: "Upload de Referência Visual",
+    descricao: "Envie novas imagens e inspirações visuais para a sua galeria",
+    categoria: "acao",
+    rota: "/referencias?upload=true",
+    icone: UploadCloud,
+    palavrasChave: ["upload", "nova imagem", "enviar foto", "nova referencia", "inspiração"],
+  },
+  {
+    id: "acao_novo_lembrete",
+    titulo: "Criar Lembrete na Caixa de Entrada",
+    descricao: "Cadastre um novo lembrete com notificação e data",
+    categoria: "acao",
+    rota: "/inbox?novo=true",
+    icone: BellPlus,
+    palavrasChave: ["criar lembrete", "novo lembrete", "inbox", "notificação", "alerta"],
+  },
+  {
+    id: "acao_alternar_tema",
+    titulo: "Alternar Tema Claro / Escuro",
+    descricao: "Mude o tema visual do Klaus entre modo escuro (dark) e claro (light)",
+    categoria: "acao",
+    rota: "acao:alternar_tema",
+    icone: SunMoon,
+    palavrasChave: ["tema", "escuro", "claro", "dark mode", "light mode", "modo escuro", "modo claro", "aparencia"],
+  },
+  {
+    id: "acao_iniciar_pomodoro",
+    titulo: "Iniciar Cronômetro Pomodoro",
+    descricao: "Abra o temporizador de foco Pomodoro para concentrar no trabalho",
+    categoria: "acao",
+    rota: "acao:iniciar_pomodoro",
+    icone: Timer,
+    palavrasChave: ["pomodoro", "cronometro", "temporizador", "foco", "timer"],
   },
 ];

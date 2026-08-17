@@ -1,5 +1,4 @@
-import React from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Campo } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -41,8 +40,18 @@ export function BarraFerramentas({
               value={busca || ""}
               onChange={(e) => aoMudarBusca(e.target.value)}
               placeholder={placeholderBusca}
-              className="pl-9 text-xs sm:text-sm"
+              className="pl-9 pr-8 text-xs sm:text-sm"
             />
+            {busca && (
+              <button
+                type="button"
+                onClick={() => aoMudarBusca("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors"
+                title="Limpar busca"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
         )}
         {filtros}

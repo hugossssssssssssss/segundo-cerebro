@@ -39,6 +39,7 @@ export type Resultado = {
 
 export type CategoriaFiltroBusca =
   | "tudo"
+  | "acoes"
   | "ferramentas"
   | "contatos"
   | "notas"
@@ -202,19 +203,29 @@ export function agrupar(resultados: Resultado[]): [TipoItem, Resultado[]][] {
 
 /* ------------------------------------------------ BUSCA DE FERRAMENTAS DO APP */
 
-export function buscarFerramentas(termo: string): FerramentaApp[] {
+export function buscarFerramentas(
+  termo: string,
+  categoriaFilter?: CategoriaFiltroBusca
+): FerramentaApp[] {
   const tNorm = normalizar(termo.trim());
   if (tNorm.length < 2) return [];
 
   return LISTA_FERRAMENTAS_APP.filter((f) => {
+    if (categoriaFilter === "acoes" && f.categoria !== "acao") return false;
+    if (categoriaFilter === "ferramentas" && f.categoria === "acao") return false;
+    if (
+      categoriaFilter &&
+      categoriaFilter !== "tudo" &&
+      categoriaFilter !== "acoes" &&
+      categoriaFilter !== "ferramentas"
+    ) {
+      return false;
+    }
+
     const titNorm = normalizar(f.titulo);
     const descNorm = normalizar(f.descricao);
     const kwMatch = f.palavrasChave.some((kw) => normalizar(kw).includes(tNorm));
-    return (
-      titNorm.includes(tNorm) ||
-      descNorm.includes(tNorm) ||
-      kwMatch
-    );
+    return titNorm.includes(tNorm) || descNorm.includes(tNorm) || kwMatch;
   });
 }
 
@@ -223,7 +234,7 @@ export function filtrarPorCategoria(
   categoria: CategoriaFiltroBusca
 ): Resultado[] {
   if (categoria === "tudo") return resultados;
-  if (categoria === "ferramentas") return [];
+  if (categoria === "ferramentas" || categoria === "acoes") return [];
   if (categoria === "contatos") return resultados.filter((r) => r.tipo === "contato");
   if (categoria === "notas") return resultados.filter((r) => r.tipo === "nota" || r.tipo === "reuniao");
   if (categoria === "tarefas") return resultados.filter((r) => r.tipo === "tarefa");

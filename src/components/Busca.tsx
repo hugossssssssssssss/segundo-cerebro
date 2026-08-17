@@ -23,6 +23,7 @@ import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutua
 
 const OPCOES_FILTRO: Array<{ id: CategoriaFiltroBusca; rotulo: string }> = [
   { id: "tudo", rotulo: "Tudo" },
+  { id: "acoes", rotulo: "Ações" },
   { id: "ferramentas", rotulo: "Ferramentas" },
   { id: "contatos", rotulo: "Contatos" },
   { id: "notas", rotulo: "Notas" },
@@ -57,6 +58,18 @@ export function Busca({
 
   const aoSelecionarFerramenta = (f: FerramentaApp) => {
     aoFechar();
+    if (f.rota === "acao:alternar_tema") {
+      const ehEscuro = document.documentElement.classList.contains("dark");
+      if (ehEscuro) {
+        document.documentElement.classList.remove("dark");
+        localStorage.setItem("theme", "light");
+      } else {
+        document.documentElement.classList.add("dark");
+        localStorage.setItem("theme", "dark");
+      }
+      return;
+    }
+
     if (f.categoria === "conversor" || f.categoria === "ferramenta") {
       abrirFerramentaFlutuante(f.id);
     } else {
@@ -102,9 +115,9 @@ export function Busca({
     return { ferramentas: favFerramentas, repoItens: favRepoItens };
   }, [favoritos, acervo]);
 
-  // Ferramentas encontradas pela busca
+  // Ferramentas e Ações encontradas pela busca
   const ferramentasResultado = useMemo(
-    () => (categoria === "tudo" || categoria === "ferramentas" ? buscarFerramentas(termo) : []),
+    () => buscarFerramentas(termo, categoria),
     [termo, categoria]
   );
 
