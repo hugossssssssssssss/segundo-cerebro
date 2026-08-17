@@ -90,10 +90,10 @@ export function removerAcentos(s: string): string {
  * Verifica se um texto contém o termo de busca, tolerante a maiúsculas/minúsculas,
  * acentos e trechos internos da palavra (ex: "uinho" encontra "Huguinho").
  */
-export function correspondeBusca(texto: string | undefined | null, termo: string): boolean {
-  if (!texto || !termo) return false;
+export function correspondeBusca(texto: string | undefined | null, termo: string | undefined | null): boolean {
+  if (!termo || !termo.trim()) return true;
+  if (!texto) return false;
   const termoNorm = removerAcentos(termo.trim().toLowerCase());
-  if (!termoNorm) return true;
   const textoNorm = removerAcentos(texto.toLowerCase());
   return textoNorm.includes(termoNorm);
 }

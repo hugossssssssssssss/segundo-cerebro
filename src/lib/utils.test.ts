@@ -98,6 +98,14 @@ describe("correspondeBusca", () => {
     expect(correspondeBusca("Grade suíça", "SUICA")).toBe(true);
   });
 
+  it("retorna true para termo de busca vazio ou nulo (mostra todos os itens)", () => {
+    expect(correspondeBusca("Qualquer texto", "")).toBe(true);
+    expect(correspondeBusca("Qualquer texto", "   ")).toBe(true);
+    expect(correspondeBusca("Qualquer texto", null)).toBe(true);
+    expect(correspondeBusca("Qualquer texto", undefined)).toBe(true);
+    expect(correspondeBusca(null, "")).toBe(true);
+  });
+
   it("retorna false quando não encontra", () => {
     expect(correspondeBusca("Huguinho", "marcelo")).toBe(false);
     expect(correspondeBusca(null, "teste")).toBe(false);
