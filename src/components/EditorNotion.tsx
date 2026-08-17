@@ -152,11 +152,27 @@ export function EditorNotion({
   }, []);
 
   useEffect(() => {
+    let cancelado = false;
     if (pronto && markdown === ultimoMd.current) return;
     ultimoMd.current = markdown;
-    const blocos = editor.tryParseMarkdownToBlocks(markdown || "");
-    editor.replaceBlocks(editor.document, blocos);
-    setPronto(true);
+
+    async function atualizarBlocos() {
+      try {
+        const blocos = await editor.tryParseMarkdownToBlocks(markdown || "");
+        if (!cancelado && Array.isArray(blocos)) {
+          editor.replaceBlocks(editor.document, blocos);
+          setPronto(true);
+        }
+      } catch (err) {
+        console.error("Erro ao converter markdown em blocos do BlockNote:", err);
+      }
+    }
+
+    atualizarBlocos();
+
+    return () => {
+      cancelado = true;
+    };
   }, [editor, markdown, pronto]);
 
   const aoColar = (e: React.ClipboardEvent) => {
@@ -300,17 +316,19 @@ export function EditorNotion({
         editor={editor}
         editable={editable}
         theme={escuro ? "dark" : "light"}
-        onChange={() => {
-          // `restaurarWikilinks` NÃO é opcional aqui. O serializador do
-          // BlockNote grava `\[\[Briefing]]` com os colchetes escapados: o
-          // arquivo fica sujo no GitHub e o app deixa de reconhecer o link.
-          // Sem esta linha, toda nota antiga que você ABRISSE e salvasse
-          // perdia os `[[links]]` que já tinha.
-          const limpo = restaurarWikilinks(
-            editor.blocksToMarkdownLossy(editor.document),
-          );
-          ultimoMd.current = limpo;
-          onChange(limpo);
+        onChange={async () => {
+          try {
+            const md = await editor.blocksToMarkdownLossy(editor.document);
+            if (typeof md === "string") {
+              const limpo = restaurarWikilinks(md);
+              if (limpo !== ultimoMd.current) {
+                ultimoMd.current = limpo;
+                onChange(limpo);
+              }
+            }
+          } catch (err) {
+            console.error("Erro ao converter blocos para markdown:", err);
+          }
         }}
       >
         {/* `@` é o gatilho principal. `[` continua atendido porque quem já
