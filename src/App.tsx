@@ -28,6 +28,7 @@ import { CapturaRapida } from "@/components/CapturaRapida";
 import { ToastsContainer } from "@/components/ToastsContainer";
 import { NavegacaoLateral } from "@/components/NavegacaoLateral";
 import { LimiteDeErro } from "@/components/LimiteDeErro";
+import { toast } from "@/lib/toast";
 import { GavetaMais } from "@/components/GavetaMais";
 import { LogoKlaus } from "@/components/LogoKlaus";
 import { Carregando } from "@/components/ui";
@@ -167,9 +168,17 @@ function Estrutura({ children }: { children: React.ReactNode }) {
 
   // Sincronização automática de rascunhos offline ao reconectar à internet
   useEffect(() => {
-    const aoVoltarOnline = () => {
+    const aoVoltarOnline = async () => {
       const cfg = lerConfig();
-      if (configCompleta(cfg)) syncOffline(cfg);
+      if (configCompleta(cfg)) {
+        const res = await syncOffline(cfg);
+        if (res.concluidos > 0) {
+          toast(`${res.concluidos} rascunho(s) offline sincronizado(s) com o GitHub!`, { tipo: "sucesso" });
+        }
+        if (res.falhas > 0) {
+          toast(`${res.falhas} rascunho(s) pendente(s) por falha ou conflito. Acesse a Caixa de Entrada.`, { tipo: "aviso" });
+        }
+      }
     };
     window.addEventListener("online", aoVoltarOnline);
     aoVoltarOnline();

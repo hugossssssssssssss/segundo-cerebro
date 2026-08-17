@@ -391,6 +391,7 @@ export default function Home() {
     } catch (e) {
       setOrigTarefa(t);
       setErro(e instanceof Error ? e.message : String(e));
+      throw e;
     } finally {
       setSalvandoItem(false);
     }
@@ -438,6 +439,7 @@ export default function Home() {
     } catch (e) {
       setOrigNota({ titulo: editandoNota.titulo, corpo: editandoNota.corpo, bruto: editandoNota.bruto });
       setErro(e instanceof Error ? e.message : String(e));
+      throw e;
     } finally {
       setSalvandoItem(false);
     }
@@ -459,6 +461,7 @@ export default function Home() {
     } catch (e) {
       setOrigMeta(m);
       setErro(e instanceof Error ? e.message : String(e));
+      throw e;
     } finally {
       setSalvandoItem(false);
     }

@@ -91,7 +91,8 @@ export default function Noticias() {
       const lista = await buscarNoticiasPorCategoria(cat);
       setNoticias(lista);
     } catch (err) {
-      console.error("Erro ao carregar notícias:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast(`Erro ao carregar notícias: ${msg}`, { tipo: "erro" });
     } finally {
       setCarregando(false);
     }

@@ -242,8 +242,8 @@ export default function PDI() {
         return orig;
       });
       recarregar();
-    } catch {
-      // erro já está em erroSalvar via useSalvar
+    } catch (err) {
+      throw err;
     }
   }
 
@@ -262,8 +262,8 @@ export default function PDI() {
       await salvarTexto(caminho, texto, limpa.sha || undefined);
       fecharEntrega();
       recarregar();
-    } catch {
-      // erro já está em erroSalvar
+    } catch (err) {
+      throw err;
     }
   }
 

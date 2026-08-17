@@ -709,9 +709,10 @@ export default function Inbox() {
                         variante="primario"
                         tamanho="pequeno"
                         onClick={async () => {
-                          const n = await sincronizarFilaOffline(cfg);
-                          if (n > 0) toast("Rascunhos sincronizados com sucesso!", { tipo: "sucesso" });
-                          else toast("Tentativa de sincronização concluída.", { tipo: "aviso" });
+                          const res = await sincronizarFilaOffline(cfg);
+                          if (res.concluidos > 0) toast(`${res.concluidos} rascunho(s) sincronizados!`, { tipo: "sucesso" });
+                          else if (res.falhas > 0) toast(`${res.falhas} rascunho(s) pendentes com falha ou conflito.`, { tipo: "erro" });
+                          else toast("Nenhum rascunho para enviar.", { tipo: "info" });
                           carregar();
                         }}
                       >

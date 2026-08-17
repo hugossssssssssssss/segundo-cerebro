@@ -114,49 +114,64 @@ export function removerRascunhoLocal(idOuCaminho: string): void {
   window.dispatchEvent(new CustomEvent("acervo-atualizado"));
 }
 
+let sincronizandoFila = false;
+
 /** Tenta descarregar a fila de rascunhos offline para o GitHub */
-export async function sincronizarFilaOffline(cfg: Settings): Promise<number> {
-  if (!navigator.onLine) return 0;
+export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluidos: number; falhas: number }> {
+  if (!navigator.onLine) return { concluidos: 0, falhas: 0 };
+  if (sincronizandoFila) return { concluidos: 0, falhas: 0 };
+
   const rascunhos = obterRascunhosLocais();
-  if (rascunhos.length === 0) return 0;
+  if (rascunhos.length === 0) return { concluidos: 0, falhas: 0 };
 
+  sincronizandoFila = true;
   let concluidos = 0;
-  for (const item of rascunhos) {
-    // Não re-tenta itens marcados com conflito automático até o usuário resolver
-    if (item.status === "conflito") continue;
+  let falhas = 0;
 
-    try {
-      await gravar(cfg, item.caminho, item.texto, item.sha, item.mensagemCommit);
-      removerRascunhoLocal(item.id);
-      concluidos++;
-    } catch (err: any) {
-      const status = err instanceof ErroGitHub ? err.status : err?.status;
-      const msg = err instanceof Error ? err.message : String(err);
-      const tent = (item.tentativas || 0) + 1;
-
-      if (status === 401 || status === 403) {
-        toast("Sincronização offline interrompida: Token do GitHub inválido ou sem permissão.", { tipo: "erro" });
-        break;
+  try {
+    for (const item of rascunhos) {
+      // Não re-tenta itens marcados com conflito automático até o usuário resolver
+      if (item.status === "conflito") {
+        falhas++;
+        continue;
       }
 
-      if (status === 409 || msg.includes("409") || msg.includes("conflito")) {
-        // Conflito no GitHub (arquivo mudou lá)
-        atualizarRascunhoLocal({
-          ...item,
-          tentativas: tent,
-          status: "conflito",
-          ultimoErro: "Conflito de edição no GitHub (HTTP 409). O arquivo mudou no repositório.",
-        });
-        toast(`Conflito de edição no rascunho de "${item.caminho.split("/").pop()}". Acesse a Caixa de Entrada para revisar.`, { tipo: "aviso" });
-      } else {
-        atualizarRascunhoLocal({
-          ...item,
-          tentativas: tent,
-          status: tent >= 3 ? "erro" : "pendente",
-          ultimoErro: msg,
-        });
+      try {
+        await gravar(cfg, item.caminho, item.texto, item.sha, item.mensagemCommit);
+        removerRascunhoLocal(item.id);
+        concluidos++;
+      } catch (err: any) {
+        falhas++;
+        const status = err instanceof ErroGitHub ? err.status : err?.status;
+        const msg = err instanceof Error ? err.message : String(err);
+        const tent = (item.tentativas || 0) + 1;
+
+        if (status === 401 || status === 403) {
+          toast("Sincronização offline interrompida: Token do GitHub inválido ou sem permissão.", { tipo: "erro" });
+          break;
+        }
+
+        if (status === 409 || msg.includes("409") || msg.includes("conflito")) {
+          // Conflito no GitHub (arquivo mudou lá)
+          atualizarRascunhoLocal({
+            ...item,
+            tentativas: tent,
+            status: "conflito",
+            ultimoErro: "Conflito de edição no GitHub (HTTP 409). O arquivo mudou no repositório.",
+          });
+          toast(`Conflito de edição no rascunho de "${item.caminho.split("/").pop()}". Acesse a Caixa de Entrada para revisar.`, { tipo: "aviso" });
+        } else {
+          atualizarRascunhoLocal({
+            ...item,
+            tentativas: tent,
+            status: tent >= 3 ? "erro" : "pendente",
+            ultimoErro: msg,
+          });
+        }
       }
     }
+  } finally {
+    sincronizandoFila = false;
   }
 
   if (concluidos > 0) {
@@ -165,5 +180,5 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<number> {
     notificarOutrasAbas();
   }
 
-  return concluidos;
+  return { concluidos, falhas };
 }
