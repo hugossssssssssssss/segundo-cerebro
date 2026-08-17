@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
 import "@blocknote/core/fonts/inter.css";
@@ -112,32 +112,40 @@ export function EditorNotion({
 
   const [modalLembreteAberto, setModalLembreteAberto] = useState(false);
 
-  /** Monta os itens do menu a partir do que já está em memória. */
-  const itensDoMenu = (query: string) => {
-    const itens = filtrarAlvos(alvos, query, 35).map((s) => {
-      const ehLousa = s.tipo === "lousa" || s.caminho.startsWith("lousas/");
-      return {
-        title: ehLousa ? `🗺️ @${s.titulo}` : `@${s.titulo}`,
-        subtext: ehLousa ? `Mapa Mental Excalidraw (${s.caminho})` : s.caminho,
-        onItemClick: () => {
-          editor.insertInlineContent([`@${s.titulo} `]);
-        },
-      };
-    });
+  const alvosRef = useRef(alvos);
+  useEffect(() => {
+    alvosRef.current = alvos;
+  }, [alvos]);
 
-    const q = query.toLowerCase().trim();
-    if (!q || "lembrete".includes(q) || "lembre".includes(q)) {
-      itens.unshift({
-        title: "⏰ @lembrete — Agendar Lembrete",
-        subtext: "Abrir seletor de data, hora e notificações",
-        onItemClick: () => {
-          setModalLembreteAberto(true);
-        },
+  /** Monta os itens do menu com callback estável de getItems para a SuggestionMenuController */
+  const handleGetItems = useCallback(
+    async (query: string) => {
+      const itens = filtrarAlvos(alvosRef.current, query, 35).map((s) => {
+        const ehLousa = s.tipo === "lousa" || s.caminho.startsWith("lousas/");
+        return {
+          title: ehLousa ? `🗺️ @${s.titulo}` : `@${s.titulo}`,
+          subtext: ehLousa ? `Mapa Mental Excalidraw (${s.caminho})` : s.caminho,
+          onItemClick: () => {
+            editor.insertInlineContent([`@${s.titulo} `]);
+          },
+        };
       });
-    }
 
-    return itens;
-  };
+      const q = query.toLowerCase().trim();
+      if (!q || "lembrete".includes(q) || "lembre".includes(q)) {
+        itens.unshift({
+          title: "⏰ @lembrete — Agendar Lembrete",
+          subtext: "Abrir seletor de data, hora e notificações",
+          onItemClick: () => {
+            setModalLembreteAberto(true);
+          },
+        });
+      }
+
+      return itens;
+    },
+    [editor],
+  );
 
   // acompanha o botão de tema do cabeçalho
   useEffect(() => {
@@ -153,14 +161,14 @@ export function EditorNotion({
 
   useEffect(() => {
     let cancelado = false;
-    if (pronto && markdown === ultimoMd.current) return;
-    ultimoMd.current = markdown;
 
     async function atualizarBlocos() {
+      if (markdown === ultimoMd.current && pronto) return;
       try {
         const blocos = await editor.tryParseMarkdownToBlocks(markdown || "");
         if (!cancelado && Array.isArray(blocos)) {
           editor.replaceBlocks(editor.document, blocos);
+          ultimoMd.current = markdown;
           setPronto(true);
         }
       } catch (err) {
@@ -173,7 +181,7 @@ export function EditorNotion({
     return () => {
       cancelado = true;
     };
-  }, [editor, markdown, pronto]);
+  }, [editor, markdown]);
 
   const aoColar = (e: React.ClipboardEvent) => {
     const raw = e.clipboardData.getData("text/plain");
@@ -183,6 +191,26 @@ export function EditorNotion({
       document.execCommand("insertText", false, substituicao);
     }
   };
+
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  const handleEditorChange = useCallback(async () => {
+    try {
+      const md = await editor.blocksToMarkdownLossy(editor.document);
+      if (typeof md === "string") {
+        const limpo = restaurarWikilinks(md);
+        if (limpo !== ultimoMd.current) {
+          ultimoMd.current = limpo;
+          onChangeRef.current(limpo);
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao converter blocos para markdown:", err);
+    }
+  }, [editor]);
 
   /**
    * Destaca as menções com a cor do tipo do item.
@@ -313,30 +341,17 @@ export function EditorNotion({
         editor={editor}
         editable={editable}
         theme={escuro ? "dark" : "light"}
-        onChange={async () => {
-          try {
-            const md = await editor.blocksToMarkdownLossy(editor.document);
-            if (typeof md === "string") {
-              const limpo = restaurarWikilinks(md);
-              if (limpo !== ultimoMd.current) {
-                ultimoMd.current = limpo;
-                onChange(limpo);
-              }
-            }
-          } catch (err) {
-            console.error("Erro ao converter blocos para markdown:", err);
-          }
-        }}
+        onChange={handleEditorChange}
       >
         {/* `@` é o gatilho principal. `[` continua atendido porque quem já
             escrevia `[[` no app antigo tenta de novo por reflexo. */}
         <SuggestionMenuController
           triggerCharacter="@"
-          getItems={async (query) => itensDoMenu(query)}
+          getItems={handleGetItems}
         />
         <SuggestionMenuController
           triggerCharacter="["
-          getItems={async (query) => itensDoMenu(query)}
+          getItems={handleGetItems}
         />
       </BlockNoteView>
 
