@@ -135,4 +135,9 @@ describe("a data do pomodoro", () => {
     expect(registrarCiclo("", 25)).toContain("14:20 → 14:45 (25min)");
     vi.useRealTimers();
   });
+
+  it("garante duracao minima de 1 minuto em registrarCiclo", () => {
+    expect(registrarCiclo("", 0)).toContain("(1min)");
+    expect(registrarCiclo("", -10)).toContain("(1min)");
+  });
 });

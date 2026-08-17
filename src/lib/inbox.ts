@@ -401,8 +401,7 @@ export async function enviarNotificacaoEmailGoogle(
   try {
     const res = await fetch(scriptUrl, {
       method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         assunto,
         mensagem,

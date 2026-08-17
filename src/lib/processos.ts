@@ -218,3 +218,46 @@ export function cardProcessoParaFrontmatter(c: CardProcesso): Record<string, any
     atualizadoEm: new Date().toISOString(),
   });
 }
+
+/**
+ * Reordena ou move um cartão de processo para uma nova etapa e/ou nova posição na lista.
+ * Protege contra posições fora dos limites da lista (índice negativo ou maior que o tamanho).
+ */
+export function moverCardProcesso<T extends CardProcesso>(
+  lista: T[],
+  cardId: string,
+  novaEtapaId: string,
+  novoIndice: number
+): T[] {
+  const card = lista.find((c) => c.id === cardId);
+  if (!card) return lista;
+
+  const semCard = lista.filter((c) => c.id !== cardId);
+  const cardAtualizado = { ...card, etapaId: novaEtapaId, atualizadoEm: new Date().toISOString() };
+
+  const cartoesDaEtapa = semCard.filter((c) => c.etapaId === novaEtapaId);
+  const indiceClamped = Math.max(0, Math.min(novoIndice, cartoesDaEtapa.length));
+
+  const resultado: T[] = [];
+  let inserido = false;
+  let contagemNaEtapa = 0;
+
+  for (const c of semCard) {
+    if (c.etapaId === novaEtapaId) {
+      if (contagemNaEtapa === indiceClamped) {
+        resultado.push(cardAtualizado as T);
+        inserido = true;
+      }
+      resultado.push(c);
+      contagemNaEtapa++;
+    } else {
+      resultado.push(c);
+    }
+  }
+
+  if (!inserido) {
+    resultado.push(cardAtualizado as T);
+  }
+
+  return resultado;
+}

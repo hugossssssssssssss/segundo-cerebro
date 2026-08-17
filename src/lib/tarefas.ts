@@ -98,15 +98,16 @@ export function textoPrazo(t: Tarefa): string {
  *   - 2026-08-13 14:20 → 14:45 (25min)
  */
 export function registrarCiclo(corpo: string, minutos: number): string {
+  const minsValidos = Math.max(1, Math.round(minutos || 0));
   const agora = new Date();
   const fim = agora.toTimeString().slice(0, 5);
-  const inicio = new Date(agora.getTime() - minutos * 60_000)
+  const inicio = new Date(agora.getTime() - minsValidos * 60_000)
     .toTimeString()
     .slice(0, 5);
   // dataISO e nao toISOString: depois das 21h no horario de Brasilia,
   // o UTC ja virou o dia e o ciclo era registrado em amanha.
   const dia = dataISO(agora);
-  const linha = `- ${dia} ${inicio} → ${fim} (${minutos}min)`;
+  const linha = `- ${dia} ${inicio} → ${fim} (${minsValidos}min)`;
 
   const CABECALHO = "## Tempo";
   if (corpo.includes(CABECALHO)) {

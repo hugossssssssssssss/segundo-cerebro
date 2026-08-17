@@ -5,6 +5,7 @@ import {
   comoCardProcesso,
   cardProcessoParaFrontmatter,
   MODELOS_PROCESSO_PADRAO,
+  moverCardProcesso,
 } from "./processos";
 import {
   executarRegrasAoChecklist,
@@ -156,5 +157,31 @@ describe("Módulo de Processos e Funis", () => {
     expect(res.cardAtualizado.etapaId).toBe("e2");
     expect(res.cardAtualizado.comentarios.length).toBe(1);
     expect(res.cardAtualizado.comentarios[0].texto).toContain("Etapa 1");
+  });
+
+  it("deve mover card de etapa e tratar indice negativo ou alem do tamanho da lista", () => {
+    const card1: CardProcesso = {
+      caminho: "processos/cards/c1.md",
+      sha: "sha1",
+      bruto: {},
+      id: "c1",
+      processoId: "p1",
+      etapaId: "e1",
+      titulo: "Card 1",
+      corpo: "",
+      checklists: {},
+      comentarios: [],
+      tags: [],
+      urgente: false,
+      atualizadoEm: "2026-08-15",
+    };
+
+    // Mover com indice negativo deve colocar no inicio (indice 0)
+    const movidoNegativo = moverCardProcesso([card1], "c1", "e2", -5);
+    expect(movidoNegativo[0].etapaId).toBe("e2");
+
+    // Mover com indice gigante deve colocar no final
+    const movidoAlem = moverCardProcesso([card1], "c1", "e2", 999);
+    expect(movidoAlem[movidoAlem.length - 1].etapaId).toBe("e2");
   });
 });
