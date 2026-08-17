@@ -16,6 +16,8 @@ import {
   Archive,
   WifiOff,
   RotateCcw,
+  ChevronDown,
+  Sun,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
@@ -35,6 +37,7 @@ import {
 import { extrairLembretesComIA } from "@/lib/gemini";
 import type { ItemInbox } from "@/lib/tipos";
 import { Botao, Cartao, Selo, Aviso, Vazio, Carregando, Modal } from "@/components/ui";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { CartaoItem } from "@/components/CartaoItem";
 import { SeloStatus } from "@/components/SeloStatus";
@@ -885,43 +888,81 @@ export default function Inbox() {
                     className="flex items-center gap-1.5 shrink-0 self-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40 w-full sm:w-auto justify-end flex-wrap"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {/* Botões rápidos de Snooze para lembretes */}
+                    {/* Menu Popover Elegante para Adiar (Snooze) */}
                     {!item.visto && !ehInativa && (
-                      <div className="flex items-center gap-1.5 border-r border-border/60 pr-2 mr-1">
-                        <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-0.5">
-                          <Clock size={11} /> Adiar:
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            adiarItem(item, "1h");
-                          }}
-                          className="px-2 py-1 rounded bg-secondary text-[11px] font-semibold hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
-                          title="Adiar 1 hora"
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/80 bg-secondary/60 hover:bg-accent text-xs font-semibold text-foreground transition-all cursor-pointer shadow-2xs mr-1"
+                            title="Adiar prazo ou lembrete"
+                          >
+                            <Clock size={13} className="text-amber-500 shrink-0" />
+                            <span>Adiar</span>
+                            <ChevronDown size={12} className="opacity-60" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          align="end"
+                          className="w-52 p-1.5 shadow-xl border border-border/80 bg-popover rounded-xl z-50"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          +1h
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            adiarItem(item, "amanha");
-                          }}
-                          className="px-2 py-1 rounded bg-secondary text-[11px] font-semibold hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
-                          title="Adiar para Amanhã às 09:00"
-                        >
-                          Amanhã
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            adiarItem(item, "3dias");
-                          }}
-                          className="px-2 py-1 rounded bg-secondary text-[11px] font-semibold hover:bg-primary hover:text-primary-foreground transition-colors hidden sm:inline-block cursor-pointer"
-                          title="Adiar 3 dias"
-                        >
-                          +3d
-                        </button>
-                      </div>
+                          <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border/40 mb-1">
+                            Adiar Pendência
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              adiarItem(item, "1h");
+                            }}
+                            className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2 font-medium">
+                              <Clock size={13} className="text-amber-500" /> +1 Hora
+                            </span>
+                            <span className="text-[10px] text-muted-foreground font-mono">+60min</span>
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              adiarItem(item, "amanha");
+                            }}
+                            className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2 font-medium">
+                              <Sun size={13} className="text-orange-500" /> Amanhã
+                            </span>
+                            <span className="text-[10px] text-muted-foreground font-mono">09:00</span>
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              adiarItem(item, "3dias");
+                            }}
+                            className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2 font-medium">
+                              <Calendar size={13} className="text-blue-500" /> +3 Dias
+                            </span>
+                            <span className="text-[10px] text-muted-foreground font-mono">+3d</span>
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              adiarItem(item, "proxima_segunda");
+                            }}
+                            className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2 font-medium">
+                              <Calendar size={13} className="text-purple-500" /> Próxima Segunda
+                            </span>
+                            <span className="text-[10px] text-muted-foreground font-mono">09:00</span>
+                          </button>
+                        </PopoverContent>
+                      </Popover>
                     )}
 
                     <Botao
