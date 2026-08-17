@@ -15,6 +15,8 @@ import {
   Clock,
   Tag,
   Archive,
+  WifiOff,
+  RotateCcw,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
@@ -35,12 +37,19 @@ import { extrairLembretesComIA } from "@/lib/gemini";
 import type { ItemInbox } from "@/lib/tipos";
 import { Botao, Cartao, Selo, Aviso, Vazio, Carregando } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { CartaoItem } from "@/components/CartaoItem";
+import { SeloStatus } from "@/components/SeloStatus";
 import { ModalLembrete } from "@/components/ModalLembrete";
 import { useSalvar } from "@/lib/useSalvar";
 import { lerMarkdown, escreverMarkdown } from "@/lib/markdown";
 import { toast } from "@/lib/toast";
+import {
+  obterRascunhosLocais,
+  removerRascunhoLocal,
+  sincronizarFilaOffline,
+} from "@/lib/offlineQueue";
 
-type AbaFiltro = "nao_vistos" | "lembretes" | "atrasadas" | "inativas" | "todas" | "arquivados";
+type AbaFiltro = "nao_vistos" | "lembretes" | "atrasadas" | "inativas" | "rascunhos" | "todas" | "arquivados";
 
 export default function Inbox() {
   const cfg = lerConfig();
@@ -576,6 +585,18 @@ export default function Inbox() {
           </button>
 
           <button
+            onClick={() => setAba("rascunhos")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              aba === "rascunhos"
+                ? "bg-purple-600 text-white font-semibold"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            }`}
+          >
+            <WifiOff size={14} />
+            Rascunhos Offline ({obterRascunhosLocais().length})
+          </button>
+
+          <button
             onClick={() => setAba("todas")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               aba === "todas"
@@ -644,7 +665,84 @@ export default function Inbox() {
       )}
 
       {/* Lista de Conteúdo */}
-      {carregando ? (
+      {aba === "rascunhos" ? (
+        (() => {
+          const rascunhos = obterRascunhosLocais();
+          if (rascunhos.length === 0) {
+            return (
+              <Vazio
+                icone={<WifiOff size={24} />}
+                titulo="Nenhum rascunho offline pendente"
+                descricao="Todas as suas edições e arquivos já foram sincronizados com o repositório remoto."
+              />
+            );
+          }
+          return (
+            <div className="space-y-3">
+              {rascunhos.map((r) => (
+                <CartaoItem
+                  key={r.id}
+                  icone={<WifiOff size={18} />}
+                  titulo={r.caminho.split("/").pop() || r.caminho}
+                  subtitulo={`Caminho: ${r.caminho} • Criado em ${r.criadoEm.slice(0, 10)}`}
+                  badge={
+                    <SeloStatus
+                      rotulo={
+                        r.status === "conflito"
+                          ? "Conflito (409)"
+                          : r.status === "erro"
+                          ? "Erro no Envio"
+                          : "Pendente"
+                      }
+                      tom={
+                        r.status === "conflito"
+                          ? "perigo"
+                          : r.status === "erro"
+                          ? "aviso"
+                          : "primario"
+                      }
+                    />
+                  }
+                  acoes={
+                    <div className="flex items-center gap-2">
+                      <Botao
+                        variante="primario"
+                        tamanho="pequeno"
+                        onClick={async () => {
+                          const n = await sincronizarFilaOffline(cfg);
+                          if (n > 0) toast("Rascunhos sincronizados com sucesso!", { tipo: "sucesso" });
+                          else toast("Tentativa de sincronização concluída.", { tipo: "aviso" });
+                          carregar();
+                        }}
+                      >
+                        <RotateCcw size={14} /> Sincronizar
+                      </Botao>
+                      <Botao
+                        variante="fantasma"
+                        tamanho="icone"
+                        onClick={() => {
+                          removerRascunhoLocal(r.id);
+                          toast("Rascunho descartado localmente.", { tipo: "info" });
+                          carregar();
+                        }}
+                        title="Descartar rascunho"
+                      >
+                        <Trash2 size={14} />
+                      </Botao>
+                    </div>
+                  }
+                >
+                  {r.ultimoErro && (
+                    <Aviso tom="erro">
+                      {r.ultimoErro}
+                    </Aviso>
+                  )}
+                </CartaoItem>
+              ))}
+            </div>
+          );
+        })()
+      ) : carregando ? (
         <Carregando texto="Buscando lembretes e tarefas..." />
       ) : itensExibidos.length === 0 ? (
         <Vazio

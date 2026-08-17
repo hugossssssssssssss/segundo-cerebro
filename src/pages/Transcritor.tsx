@@ -27,6 +27,7 @@ import {
 import { transcreverAudioComIA } from "@/lib/gemini";
 import { gravar } from "@/lib/github";
 import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
+import { carregarRepo, invalidarCache } from "@/lib/repo";
 
 type MotorTranscricao = "whisper_base" | "native_speech" | "gemini";
 
@@ -266,16 +267,19 @@ export default function Transcritor() {
     try {
       const cfg = lerConfig();
       const titulo = `Transcrição: ${item.nomeArquivo.replace(/\.[^/.]+$/, "")}`;
-      const caminho = nomeLivre("notas", titulo, []);
+      const acervo = await carregarRepo(cfg);
+      const caminho = nomeLivre("notas", titulo, acervo.map((i) => i.caminho));
       const doc = {
         dados: { titulo, criado_em: new Date().toISOString() },
         corpo: item.transcricao,
       };
       const textoMd = escreverMarkdown(doc);
       await gravar(cfg, caminho, textoMd, undefined, `Transcrição criada de ${item.nomeArquivo}`);
+      invalidarCache();
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
       setMensagemSucesso(`Salvo como nota "${titulo}" no repositório!`);
-    } catch {
-      setErro("Erro ao salvar como nota no repositório. Verifique suas chaves nos Ajustes.");
+    } catch (err: any) {
+      setErro(err?.message || "Erro ao salvar como nota no repositório. Verifique suas chaves nos Ajustes.");
     } finally {
       setSalvandoNota(false);
     }

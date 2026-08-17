@@ -401,7 +401,8 @@ export async function enviarNotificacaoEmailGoogle(
   try {
     const res = await fetch(scriptUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
       body: JSON.stringify({
         assunto,
         mensagem,
@@ -424,7 +425,7 @@ export function precisaEscalationInatividade(
   horasEscala: number = 3,
   agora: Date = new Date(),
 ): boolean {
-  if (item.visto || item.notificadoTelegram) return false;
+  if (item.visto || item.notificadoTelegram || item.notificadoEmail) return false;
 
   const dataVenc = new Date(item.dataVencimento);
   if (isNaN(dataVenc.getTime())) return false;

@@ -24,6 +24,7 @@ import {
   LayoutTemplate,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
+import { toast } from "@/lib/toast";
 import { correspondeBusca } from "@/lib/utils";
 import { conversar } from "@/lib/gemini";
 import {
@@ -185,8 +186,9 @@ export default function Noticias() {
       setMensagemSucesso(`Nota criada em: ${arq}`);
       setTimeout(() => setMensagemSucesso(null), 4000);
     } catch (err) {
-      console.error("Erro ao criar nota:", err);
-    } finally {
+        const msg = err instanceof Error ? err.message : String(err);
+        toast(`Erro ao criar nota: ${msg}`, { tipo: "erro" });
+      } finally {
       setAcaoId(null);
     }
   };
@@ -199,8 +201,9 @@ export default function Noticias() {
       setMensagemSucesso(`Salvo em Referências: ${arq}`);
       setTimeout(() => setMensagemSucesso(null), 4000);
     } catch (err) {
-      console.error("Erro ao salvar referência:", err);
-    } finally {
+        const msg = err instanceof Error ? err.message : String(err);
+        toast(`Erro ao salvar referencia: ${msg}`, { tipo: "erro" });
+      } finally {
       setAcaoId(null);
     }
   };
@@ -213,8 +216,9 @@ export default function Noticias() {
       setMensagemSucesso(`Tarefa gerada: ${arq}`);
       setTimeout(() => setMensagemSucesso(null), 4000);
     } catch (err) {
-      console.error("Erro ao criar tarefa:", err);
-    } finally {
+        const msg = err instanceof Error ? err.message : String(err);
+        toast(`Erro ao criar tarefa: ${msg}`, { tipo: "erro" });
+      } finally {
       setAcaoId(null);
     }
   };

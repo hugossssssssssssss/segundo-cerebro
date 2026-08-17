@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { lerConfig } from "@/lib/settings";
 import { gravar } from "@/lib/github";
 import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
+import { carregarRepo, invalidarCache } from "@/lib/repo";
 import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -474,14 +475,17 @@ export default function Conversor() {
       const tituloProvavel = arquivoTexto
         ? arquivoTexto.name.replace(/\.[^/.]+$/, "")
         : "Nota Convertida";
-      const caminho = nomeLivre("notas", tituloProvavel, []);
+      const acervo = await carregarRepo(cfg);
+        const caminho = nomeLivre("notas", tituloProvavel, acervo.map((i) => i.caminho));
       const mdFormatado = escreverMarkdown({
         dados: { titulo: tituloProvavel, criado_em: new Date().toISOString().slice(0, 10) },
         corpo: markdownResultado,
       });
 
       await gravar(cfg, caminho, mdFormatado, undefined, `Criar nota convertida: ${tituloProvavel}`);
-      setMensagemSucesso(`Nota salva com sucesso em notas/${tituloProvavel}.md!`);
+      invalidarCache();
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+      setMensagemSucesso(`Nota salva com sucesso em ${caminho}!`);
     } catch (err: any) {
       setErro(`Erro ao salvar no GitHub: ${err.message || "Falha ao gravar arquivo"}`);
     } finally {

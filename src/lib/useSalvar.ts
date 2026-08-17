@@ -98,8 +98,12 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
 
       if (ehRede) {
         // Salva rascunho local apenas em caso de falha real de conexão
-        salvarRascunhoLocal(caminho, texto, sha, mensagemCommit, false);
-        toast(`Sem conexão: "${caminho.split("/").pop()}" salvo localmente como rascunho.`, { tipo: "aviso" });
+        try {
+          salvarRascunhoLocal(caminho, texto, sha, mensagemCommit, false);
+          toast(`Sem conexão: "${caminho.split("/").pop()}" salvo localmente como rascunho.`, { tipo: "aviso" });
+        } catch (errQuota: any) {
+          toast(errQuota?.message || "Espaço local cheio. Libere espaço no navegador para guardar rascunhos.", { tipo: "erro" });
+        }
       } else {
         // Para erros de autenticação (401/403), conflito (409) ou dados (422), reporta a falha real
         toast(`Erro no GitHub: ${mensagem}`, { tipo: "erro" });

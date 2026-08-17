@@ -18,6 +18,7 @@ import {
 import { LISTA_FERRAMENTAS_APP, type FerramentaApp } from "@/lib/ferramentasApp";
 import { Campo, Selo } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 import { tituloProvavel } from "@/lib/markdown";
 import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 
@@ -62,11 +63,17 @@ export function Busca({
       const ehEscuro = document.documentElement.classList.contains("dark");
       if (ehEscuro) {
         document.documentElement.classList.remove("dark");
-        localStorage.setItem("theme", "light");
+        localStorage.setItem("tema", "claro");
       } else {
         document.documentElement.classList.add("dark");
-        localStorage.setItem("theme", "dark");
+        localStorage.setItem("tema", "escuro");
       }
+      return;
+    }
+
+    if (f.rota === "acao:iniciar_pomodoro") {
+      navegar("/tarefas");
+      toast("Abra o cronometro Pomodoro no painel de uma tarefa.");
       return;
     }
 

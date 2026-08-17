@@ -212,6 +212,7 @@ export async function gravar(
       });
     };
 
+    const eraNovaCriacao = sha === undefined;
     let shaAtual = sha;
     let resposta: Response | null = null;
 
@@ -224,24 +225,14 @@ export async function gravar(
       }
 
       /**
-       * Repetir SÓ em 422, e nunca em 409.
-       *
-       * Os dois parecem a mesma coisa e não são:
-       *
-       * - **422** é o sha que ficou para trás por culpa do próprio app — duas
-       *   gravações suas em sequência rápida, a segunda ainda segurando o sha
-       *   de antes da primeira. O conteúdo que você quer gravar continua sendo
-       *   o certo, então buscar o sha novo e repetir é exatamente o conserto.
-       *
-       * - **409** significa que o arquivo MUDOU no GitHub depois que você
-       *   abriu — quase sempre porque você editou pelo site, que é coisa que
-       *   você faz. Buscar o sha novo e regravar por cima aqui apagaria essa
-       *   edição sem avisar. Este laço fazia isso, e ainda deixava a mensagem
-       *   de conflito lá embaixo virar letra morta: ela nunca chegava na tela.
-       *   Agora o 409 sai pelo `conferir` e você decide o que fazer.
-       *
-       * O 400 saiu da lista: pedido malformado não melhora com repetição.
+       * Se era uma nova criação (sha undefined) e o GitHub devolveu 422 (já existe),
+       * NUNCA buscar o sha do arquivo existente para regravar por cima.
+       * Isso destruiria o arquivo antigo silenciosamente.
        */
+      if (resposta.status === 422 && eraNovaCriacao) {
+        break;
+      }
+
       if (resposta.status !== 422) break;
 
       await new Promise((r) => setTimeout(r, 150 * Math.pow(2, tentativa - 1)));

@@ -22,7 +22,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { carregarRepo, daPasta, arquivosIlegiveis, type ItemRepo } from "./repo";
-import { tituloProvavel } from "./markdown";
+import { tituloProvavel, lerMarkdown } from "./markdown";
+import { obterRascunhosLocais } from "./offlineQueue";
 import type { Settings } from "./settings";
 import type { Pasta } from "./tipos";
 
@@ -77,7 +78,41 @@ export function useItemRepo<T>(
       setErro("");
 
       try {
-        const todos = await carregarRepo(cfg);
+        const todosBase = await carregarRepo(cfg);
+        const rascunhos = obterRascunhosLocais();
+
+        let todos = [...todosBase];
+        if (rascunhos.length > 0) {
+          const mapaRascunhos = new Map(rascunhos.map((r) => [r.caminho, r]));
+
+          todos = todos.map((item) => {
+            const rascunho = mapaRascunhos.get(item.caminho);
+            if (rascunho) {
+              mapaRascunhos.delete(item.caminho);
+              const docRascunho = lerMarkdown(rascunho.texto);
+              return {
+                ...item,
+                texto: rascunho.texto,
+                doc: docRascunho,
+              };
+            }
+            return item;
+          });
+
+          for (const rascunho of mapaRascunhos.values()) {
+            const docRascunho = lerMarkdown(rascunho.texto);
+            const nome = rascunho.caminho.split("/").pop() || "rascunho.md";
+            todos.push({
+              caminho: rascunho.caminho,
+              nome,
+              sha: rascunho.sha || "",
+              tamanho: rascunho.texto.length,
+              texto: rascunho.texto,
+              doc: docRascunho,
+            });
+          }
+        }
+
         setIlegiveis(arquivosIlegiveis());
         setAcervo(todos);
 
