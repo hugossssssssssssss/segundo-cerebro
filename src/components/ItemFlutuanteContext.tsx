@@ -1,24 +1,5 @@
-import React, { createContext, useContext, useState, lazy, Suspense } from "react";
-import type { ModoVisaoNotion } from "@/components/PainelNotionBase";
-
-/**
- * O painel entra sob demanda, e não junto com o app.
- *
- * Este provedor mora no `App`, fora do `lazy` das telas — então importar o
- * painel aqui de forma normal arrastava o `EditorNotion` e, com ele, o
- * BlockNote + Mantine inteiros para o pacote inicial. Resultado: todo mundo
- * baixava o editor de texto rico só para abrir a tela de Início, inclusive no
- * celular, que é metade do uso.
- *
- * As telas que usam o painel direto (Notas, Tarefas, PDI, Início) já são
- * `lazy`, então elas continuam trazendo o mesmo pedaço quando abrem — nada é
- * baixado duas vezes.
- */
-const PainelNotionBase = lazy(() =>
-  import("@/components/PainelNotionBase").then((m) => ({
-    default: m.PainelNotionBase,
-  })),
-);
+import React, { createContext, useContext, useState } from "react";
+import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 
 export interface ItemFlutuanteGlobal {
   id: string;
@@ -96,7 +77,6 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
       {children}
 
       {itemFlutuante !== null && (
-        <Suspense fallback={null}>
         <PainelNotionBase
           rotuloTipo={itemFlutuante.rotuloTipo}
           modoVisao={modoVisao}
@@ -128,7 +108,6 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
           mencoes={itemFlutuante.mencoes}
           opcoesRelacionamento={itemFlutuante.opcoesRelacionamento}
         />
-        </Suspense>
       )}
     </ItemFlutuanteContext.Provider>
   );
