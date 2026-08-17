@@ -40,7 +40,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-import { lerConfig, configCompleta } from "@/lib/settings";
+import { lerConfig, configCompleta, nomeExibido } from "@/lib/settings";
 import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal } from "@/lib/repo";
 import { gravar, apagar } from "@/lib/github";
 import { tituloProvavel, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
@@ -571,7 +571,9 @@ export default function Processos() {
     const novoComentario: ComentarioCard = {
       id: `com_${Date.now()}`,
       data: new Date().toISOString(),
-      autor: "Hugo",
+      // Vai gravado no arquivo, então tem de ser quem realmente escreveu —
+      // num repositório compartilhado o comentário é assinado para valer.
+      autor: nomeExibido(lerConfig()),
       texto: novoComentarioTexto.trim(),
     };
 

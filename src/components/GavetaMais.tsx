@@ -27,7 +27,11 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
   const [modalPersonalizarAberta, setModalPersonalizarAberta] = useState(false);
 
   const atualizarMenu = useCallback(() => {
-    setGrupos(carregarMenuPersonalizado());
+    try {
+      setGrupos(carregarMenuPersonalizado());
+    } catch {
+      // silencioso
+    }
   }, []);
 
   useEffect(() => {
@@ -69,22 +73,22 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
 
           {/* Grupos de Links */}
           <div className="space-y-4">
-            {grupos.map((grupo) => {
-              const itensVisiveis = grupo.itens.filter((item) => !item.oculto);
+            {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo) => {
+              const itensVisiveis = (grupo.itens || []).filter((item) => item && typeof item === "object" && !item.oculto);
               if (itensVisiveis.length === 0) return null;
 
               return (
-                <div key={grupo.id} className="space-y-1">
+                <div key={grupo.id || grupo.titulo} className="space-y-1">
                   <h3 className="px-2 text-[11px] font-semibold text-muted-foreground tracking-wider uppercase truncate">
                     {grupo.titulo}
                   </h3>
                   <div className="grid grid-cols-2 gap-1.5">
                     {itensVisiveis.map((item) => {
-                      const Icone = obterIconePorNome(item.iconeNome);
+                      const Icone = obterIconePorNome(item.iconeNome || "HelpCircle");
                       return (
                         <NavLink
-                          key={item.id}
-                          to={item.para}
+                          key={item.id || item.para}
+                          to={item.para || "/home"}
                           onClick={aoFechar}
                           className={({ isActive }) =>
                             cn(
@@ -100,7 +104,7 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
                             style={{ color: item.cor }}
                             className="shrink-0 text-primary"
                           />
-                          <span className="truncate flex-1">{item.rotulo}</span>
+                          <span className="truncate flex-1">{item.rotulo || "Item"}</span>
                           {item.destaque && (
                             <Sparkles size={12} className="text-amber-500 shrink-0" />
                           )}

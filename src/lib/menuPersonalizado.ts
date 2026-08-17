@@ -79,19 +79,23 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
     if (!salvo) return GRUPOS_MENU_PADRAO;
 
     const parsed = JSON.parse(salvo);
-    if (!Array.isArray(parsed) || parsed.length === 0) return GRUPOS_MENU_PADRAO;
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      localStorage.removeItem(CHAVE_STORAGE_MENU);
+      return GRUPOS_MENU_PADRAO;
+    }
 
-    const gruposValidos = parsed.filter((g) => g && typeof g === "object");
-    if (gruposValidos.length === 0) return GRUPOS_MENU_PADRAO;
+    const gruposValidos = parsed.filter((g) => g && typeof g === "object" && Array.isArray(g.itens));
+    if (gruposValidos.length === 0) {
+      localStorage.removeItem(CHAVE_STORAGE_MENU);
+      return GRUPOS_MENU_PADRAO;
+    }
 
     // Garantir que todos os itens das rotas padrões existam
     const mapaItensSalvos = new Map<string, ItemMenuPersonalizado>();
     for (const g of gruposValidos) {
-      if (Array.isArray(g.itens)) {
-        for (const item of g.itens) {
-          if (item && typeof item === "object" && typeof item.para === "string" && item.para) {
-            mapaItensSalvos.set(item.para, item);
-          }
+      for (const item of g.itens) {
+        if (item && typeof item === "object" && typeof item.para === "string" && item.para) {
+          mapaItensSalvos.set(item.para, item);
         }
       }
     }
@@ -132,7 +136,11 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
     }
 
     return gruposResultantes;
-  } catch {
+  } catch (err) {
+    console.error("[Klaus] Erro ao carregar menu personalizado, limpando chave em localStorage:", err);
+    try {
+      localStorage.removeItem(CHAVE_STORAGE_MENU);
+    } catch {}
     return GRUPOS_MENU_PADRAO;
   }
 }

@@ -43,7 +43,11 @@ export function NavegacaoLateral({
   const [modalPersonalizarAberta, setModalPersonalizarAberta] = useState(false);
 
   const atualizarMenu = useCallback(() => {
-    setGrupos(carregarMenuPersonalizado());
+    try {
+      setGrupos(carregarMenuPersonalizado());
+    } catch {
+      // silencioso
+    }
   }, []);
 
   useEffect(() => {
@@ -103,12 +107,12 @@ export function NavegacaoLateral({
 
         {/* Corpo da Navegação */}
         <div className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
-          {grupos.map((grupo) => {
-            const itensVisiveis = grupo.itens.filter((item) => !item.oculto);
+          {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo) => {
+            const itensVisiveis = (grupo.itens || []).filter((item) => item && typeof item === "object" && !item.oculto);
             if (itensVisiveis.length === 0) return null;
 
             return (
-              <div key={grupo.id} className="space-y-1">
+              <div key={grupo.id || grupo.titulo} className="space-y-1">
                 {!colapsada && (
                   <h3 className="px-2 text-[11px] font-semibold text-muted-foreground tracking-wider uppercase truncate">
                     {grupo.titulo}
@@ -116,11 +120,11 @@ export function NavegacaoLateral({
                 )}
                 <nav className="space-y-0.5">
                   {itensVisiveis.map((item) => {
-                    const Icone = obterIconePorNome(item.iconeNome);
+                    const Icone = obterIconePorNome(item.iconeNome || "HelpCircle");
                     return (
                       <NavLink
-                        key={item.id}
-                        to={item.para}
+                        key={item.id || item.para}
+                        to={item.para || "/home"}
                         onClick={aoNavegar}
                         className={({ isActive }) =>
                           cn(
@@ -139,7 +143,7 @@ export function NavegacaoLateral({
                           className="shrink-0 transition-transform group-hover:scale-105"
                         />
                         {!colapsada && (
-                          <span className="truncate flex-1">{item.rotulo}</span>
+                          <span className="truncate flex-1">{item.rotulo || "Item"}</span>
                         )}
                         {!colapsada && item.destaque && (
                           <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold">
