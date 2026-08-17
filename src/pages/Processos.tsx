@@ -56,6 +56,7 @@ import {
   executarRegrasAoMudarEtapa,
 } from "@/lib/automacoesProcesso";
 import type { Processo, CardProcesso, EtapaProcesso, RegraAutomacao, ComentarioCard } from "@/lib/tipos";
+import { toast } from "@/lib/toast";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -358,7 +359,9 @@ export default function Processos() {
           atualizarCacheLocal(procAtualizado.caminho, texto, lerMarkdown(texto), sha);
           setProcessos((prev) => prev.map((p) => (p.id === procAtualizado.id ? { ...procAtualizado, sha } : p)));
         } catch (e) {
-          setErro(e instanceof Error ? e.message : String(e));
+          const msg = e instanceof Error ? e.message : String(e);
+          setErro(msg);
+          toast(`Erro ao salvar processo no GitHub: ${msg}`, { tipo: "erro" });
         }
       }, 2500);
       return;
@@ -374,7 +377,9 @@ export default function Processos() {
       atualizarCacheLocal(procAtualizado.caminho, texto, lerMarkdown(texto), sha);
       setProcessos((prev) => prev.map((p) => (p.id === procAtualizado.id ? { ...procAtualizado, sha } : p)));
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setErro(msg);
+      toast(`Erro ao salvar processo no GitHub: ${msg}`, { tipo: "erro" });
     }
   };
 
@@ -416,7 +421,10 @@ export default function Processos() {
       atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
       setProcessos((prev) => prev.map((p) => (p.id === id ? { ...p, sha } : p)));
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      setProcessos((prev) => prev.filter((p) => p.id !== id));
+      const msg = e instanceof Error ? e.message : String(e);
+      setErro(msg);
+      toast(`Erro ao criar processo no GitHub: ${msg}`, { tipo: "erro" });
     }
   };
 
@@ -452,7 +460,10 @@ export default function Processos() {
       atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
       setProcessos((prev) => prev.map((p) => (p.id === id ? { ...p, sha } : p)));
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      setProcessos((prev) => prev.filter((p) => p.id !== id));
+      const msg = e instanceof Error ? e.message : String(e);
+      setErro(msg);
+      toast(`Erro ao criar modelo de processo no GitHub: ${msg}`, { tipo: "erro" });
     }
   };
 
@@ -555,7 +566,10 @@ export default function Processos() {
       atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
       setCards((prev) => prev.map((c) => (c.id === id ? { ...c, sha } : c)));
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      setCards((prev) => prev.filter((c) => c.id !== id));
+      const msg = e instanceof Error ? e.message : String(e);
+      setErro(msg);
+      toast(`Erro ao criar card no GitHub: ${msg}`, { tipo: "erro" });
     }
   };
 
@@ -592,14 +606,16 @@ export default function Processos() {
     if (!cardParaExcluir) return;
     const cardAlvo = cardParaExcluir;
     setCardParaExcluir(null);
-    setCardEmEdicao(null);
-    setCards((prev) => prev.filter((c) => c.id !== cardAlvo.id));
 
     try {
       await apagar(cfg, cardAlvo.caminho, cardAlvo.sha);
+      setCardEmEdicao(null);
+      setCards((prev) => prev.filter((c) => c.id !== cardAlvo.id));
       invalidarCache();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setErro(msg);
+      toast(`Erro ao excluir card no GitHub: ${msg}`, { tipo: "erro" });
     }
   };
 

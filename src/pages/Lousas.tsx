@@ -23,6 +23,7 @@ import { PASTAS } from "@/lib/tipos";
 import { tituloProvavel, nomeLivre, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
 import { propagarRenomeacao } from "@/lib/links";
 import { Botao, Campo, Cartao, Aviso, Vazio, Carregando, ModalConfirmacao } from "@/components/ui";
+import { toast } from "@/lib/toast";
 
 const PASTA = PASTAS.lousas;
 
@@ -286,15 +287,15 @@ export default function Lousas() {
     const { caminho: alvoCaminho, sha: alvoSha } = lousaParaDeletar;
     setLousaParaDeletar(null);
 
-    // Remoção visual instantânea
-    removerDoCacheLocal(alvoCaminho);
-    if (aberta && aberta.caminho === alvoCaminho) setAberta(null);
-
     try {
       await apagarItem(alvoCaminho, alvoSha || "");
+      removerDoCacheLocal(alvoCaminho);
+      if (aberta && aberta.caminho === alvoCaminho) setAberta(null);
       recarregar();
     } catch (e) {
-      setErroLocal(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setErroLocal(msg);
+      toast(`Erro ao excluir lousa no GitHub: ${msg}`, { tipo: "erro" });
       recarregar();
     }
   }

@@ -311,6 +311,8 @@ export default function Contatos() {
     const texto = escreverMarkdown({ dados, corpo });
     const caminho = c.caminho || nomeLivre(PASTAS.contatos, titulo, contatosLocais.map((item) => item.caminho));
 
+    const contatosAnteriores = contatosLocais;
+
     // 1. ATUALIZAÇÃO OTIMISTA NA TELA
     setContatosLocais((prev) => {
       const idx = prev.findIndex((item) => item.caminho === caminho);
@@ -323,31 +325,43 @@ export default function Contatos() {
     });
 
     // 2. GRAVAÇÃO NO GITHUB
-    const novaSha = await salvarTexto(caminho, texto, c.sha || undefined);
+    try {
+      const novaSha = await salvarTexto(caminho, texto, c.sha || undefined);
 
-    setAberta((atual) => {
-      if (!atual || (atual.caminho !== caminho && atual.caminho !== "")) return atual;
-      return {
-        ...atual,
-        caminho,
-        sha: novaSha,
-        titulo,
-        bruto: dados,
-        original: { titulo, corpo, bruto: dados },
-      };
-    });
+      setAberta((atual) => {
+        if (!atual || (atual.caminho !== caminho && atual.caminho !== "")) return atual;
+        return {
+          ...atual,
+          caminho,
+          sha: novaSha,
+          titulo,
+          bruto: dados,
+          original: { titulo, corpo, bruto: dados },
+        };
+      });
 
-    recarregar();
+      recarregar();
+    } catch (err: any) {
+      setContatosLocais(contatosAnteriores);
+      toast(`Erro ao salvar contato no GitHub: ${err?.message || "Falha na gravação"}`, { tipo: "erro" });
+    }
   };
 
   const removerContato = async () => {
     if (!aberto?.caminho) return;
 
+    const contatosAnteriores = contatosLocais;
     const caminhoAlvo = aberto.caminho;
-    setContatosLocais((prev) => prev.filter((c) => c.caminho !== caminhoAlvo));
-    await apagarItem(aberto.caminho, aberto.sha);
-    fecharContato();
-    recarregar();
+
+    try {
+      await apagarItem(aberto.caminho, aberto.sha);
+      setContatosLocais((prev) => prev.filter((c) => c.caminho !== caminhoAlvo));
+      fecharContato();
+      recarregar();
+    } catch (err: any) {
+      setContatosLocais(contatosAnteriores);
+      toast(`Erro ao excluir contato no GitHub: ${err?.message || "Falha na exclusão"}`, { tipo: "erro" });
+    }
   };
 
   // Alternar nó da árvore
@@ -388,9 +402,11 @@ export default function Contatos() {
 
   const handleImportarCSV = async () => {
     setImportandoCSV(true);
-    try {
-      const novosAdicionados: Contato[] = [];
+    let sucessos = 0;
+    let falhas = 0;
+    const novosAdicionados: Contato[] = [];
 
+    try {
       for (let i = 0; i < previewCSV.length; i++) {
         if (!selecionadosCSV[i]) continue;
         const item = previewCSV[i];
@@ -413,18 +429,35 @@ export default function Contatos() {
           corpo: item.corpo,
         };
 
-        novosAdicionados.push(novo);
-
         const doc = contatoParaArquivo(novo);
         const texto = escreverMarkdown(doc);
-        await salvarTexto(caminho, texto);
+        try {
+          const sha = await salvarTexto(caminho, texto);
+          novosAdicionados.push({ ...novo, sha });
+          sucessos++;
+        } catch {
+          falhas++;
+        }
       }
 
-      setContatosLocais((prev) => [...novosAdicionados, ...prev]);
+      if (novosAdicionados.length > 0) {
+        setContatosLocais((prev) => [...novosAdicionados, ...prev]);
+      }
+
+      if (falhas === 0 && sucessos > 0) {
+        toast(`Importados ${sucessos} contatos com sucesso!`, { tipo: "sucesso" });
+      } else if (sucessos > 0 && falhas > 0) {
+        toast(`Importados ${sucessos} contatos com sucesso. ${falhas} falharam.`, { tipo: "aviso" });
+      } else if (falhas > 0 && sucessos === 0) {
+        toast(`Falha ao importar contatos. Os ${falhas} contatos falharam ao gravar no GitHub.`, { tipo: "erro" });
+      }
+
       setModalCSVAberta(false);
       setTextoCSV("");
       setPreviewCSV([]);
       recarregar();
+    } catch (err: any) {
+      toast(`Erro ao processar importação de CSV: ${err?.message || "Falha na importação"}`, { tipo: "erro" });
     } finally {
       setImportandoCSV(false);
     }
