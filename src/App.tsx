@@ -32,7 +32,7 @@ import { GavetaMais } from "@/components/GavetaMais";
 import { LogoKlaus } from "@/components/LogoKlaus";
 import { Carregando } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { lerConfig, configCompleta } from "@/lib/settings";
+import { lerConfig, configCompleta, precisaOnboarding } from "@/lib/settings";
 import { carregarRepo } from "@/lib/repo";
 import { carregarEstadoInbox, compilarItensInbox } from "@/lib/inbox";
 import { sincronizarFilaOffline as syncOffline } from "@/lib/offlineQueue";
@@ -55,8 +55,10 @@ const Conversor = lazy(() => import("@/pages/Conversor"));
 const Transcritor = lazy(() => import("@/pages/Transcritor"));
 const GrafoNeural = lazy(() => import("@/pages/GrafoNeural"));
 const Processos = lazy(() => import("@/pages/Processos"));
+const Contatos = lazy(() => import("@/pages/Contatos"));
 const Noticias = lazy(() => import("@/pages/Noticias"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
+const BoasVindas = lazy(() => import("@/pages/BoasVindas"));
 
 
 
@@ -403,6 +405,50 @@ function Estrutura({ children }: { children: React.ReactNode }) {
 
 
 
+/**
+ * O app propriamente dito: barra lateral, rotas, o resto.
+ *
+ * Separado de `App` porque o passo a passo de boas-vindas roda fora daqui —
+ * ele precisa da tela inteira, e nenhum item do menu funciona antes de
+ * existir uma conexão com o GitHub.
+ */
+function AppInterno() {
+  // Lido uma vez na montagem, e é o suficiente: este componente só monta
+  // depois que o passo a passo saiu de cena, e ao sair ele já gravou.
+  const [cfg] = useState(lerConfig);
+
+  if (precisaOnboarding(cfg)) {
+    return <Navigate to="/boas-vindas" replace />;
+  }
+
+  return (
+    <Estrutura>
+      <Suspense fallback={<Carregando />}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/inbox" element={<Inbox />} />
+          <Route path="/tarefas" element={<Tarefas />} />
+          <Route path="/notas" element={<Notas />} />
+          <Route path="/referencias" element={<Referencias />} />
+          <Route path="/lousas" element={<Lousas />} />
+          <Route path="/grafo" element={<GrafoNeural />} />
+          <Route path="/pdi" element={<PDI />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/pdf" element={<FerramentasPDF />} />
+          <Route path="/conversor" element={<Conversor />} />
+          <Route path="/transcritor" element={<Transcritor />} />
+          <Route path="/processos" element={<Processos />} />
+          <Route path="/contatos" element={<Contatos />} />
+          <Route path="/noticias" element={<Noticias />} />
+          <Route path="/config" element={<Configuracoes />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
+        </Routes>
+      </Suspense>
+    </Estrutura>
+  );
+}
+
 export default function App() {
   return (
     <HashRouter>
@@ -414,29 +460,12 @@ export default function App() {
       <LimiteDeErro>
       <ProvedorFlutuanteGlobal>
         <ProvedorFerramentasFlutuantes>
-          <Estrutura>
-            <Suspense fallback={<Carregando />}>
-              <Routes>
-                <Route path="/" element={<Navigate to="/home" replace />} />
-                <Route path="/home" element={<Home />} />
-                <Route path="/inbox" element={<Inbox />} />
-                <Route path="/tarefas" element={<Tarefas />} />
-                <Route path="/notas" element={<Notas />} />
-                <Route path="/referencias" element={<Referencias />} />
-                <Route path="/lousas" element={<Lousas />} />
-                <Route path="/grafo" element={<GrafoNeural />} />
-                <Route path="/pdi" element={<PDI />} />
-                <Route path="/chat" element={<Chat />} />
-                <Route path="/pdf" element={<FerramentasPDF />} />
-                <Route path="/conversor" element={<Conversor />} />
-                <Route path="/transcritor" element={<Transcritor />} />
-                <Route path="/processos" element={<Processos />} />
-                <Route path="/noticias" element={<Noticias />} />
-                <Route path="/config" element={<Configuracoes />} />
-                <Route path="*" element={<Navigate to="/home" replace />} />
-              </Routes>
-            </Suspense>
-          </Estrutura>
+          <Suspense fallback={<Carregando />}>
+            <Routes>
+              <Route path="/boas-vindas" element={<BoasVindas />} />
+              <Route path="*" element={<AppInterno />} />
+            </Routes>
+          </Suspense>
         </ProvedorFerramentasFlutuantes>
       </ProvedorFlutuanteGlobal>
       </LimiteDeErro>

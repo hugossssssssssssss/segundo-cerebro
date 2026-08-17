@@ -41,6 +41,7 @@ describe("PASTAS", () => {
       processos: "processos",
       cardsProcesso: "processos/cards",
       caixaEntrada: "caixa-entrada",
+      contatos: "contatos",
     });
   });
 });

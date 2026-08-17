@@ -34,6 +34,9 @@ const cfg: Settings = {
   branch: "main",
   geminiKey: "",
   geminiModel: "",
+  nomeUsuario: "Hugo",
+  profissaoUsuario: "Designer",
+  onboardingConcluido: true,
 };
 
 beforeEach(() => {

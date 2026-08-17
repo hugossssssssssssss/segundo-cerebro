@@ -197,6 +197,7 @@ const CHAVE_POR_ENTIDADE: Record<string, string> = {
   Entrega: "entregas",
   Referencia: "referencias",
   Lousa: "lousas",
+  Contato: "contatos",
 };
 
 const doApp = entidades.filter((e) => e.nome in CHAVE_POR_ENTIDADE);

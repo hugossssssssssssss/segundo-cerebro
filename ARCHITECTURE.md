@@ -1,6 +1,6 @@
 # Arquitetura do Klaus
 
-> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-16.**
+> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-17.**
 > Não edite este arquivo à mão — ele é reescrito a cada `npm run build`.
 > Para mudar o que está aqui, mude `src/lib/tipos.ts` e `src/lib/entidades.ts`.
 
@@ -29,6 +29,7 @@ dados e um par de funções de conversão em `src/lib/entidades.ts`.
 | Entrega | `Entrega` | `PASTAS.entregas` → `pdi/entregas/` | `entrega` | `comoEntrega()` | `entregaParaArquivo()` |
 | Referencia | `Referencia` | `PASTAS.referencias` → `referencias/` | `referencia` | `comoReferencia()` | `referenciaParaArquivo()` |
 | Lousa | `Lousa` | `PASTAS.lousas` → `lousas/` | — | — | — |
+| Contato | `Contato` | `PASTAS.contatos` → `contatos/` | `contato` | `comoContato()` | `contatoParaArquivo()` |
 
 ## Campos de cada entidade
 
@@ -123,6 +124,27 @@ Uma lousa Excalidraw em `lousas/`. O corpo é o JSON do Excalidraw.
 | `tituloOriginal` | `string` | sim | — |
 | `dados` | `LousaDados` | sim | O JSON do Excalidraw, parseado. |
 
+### Contato
+
+Um contato ou pessoa vinculada em `contatos/`.
+
+| Campo | Tipo | Obrigatório | O que é |
+|---|---|---|---|
+| `caminho` | `string` | sim | _(de ItemBase)_ |
+| `sha` | `string` | sim | _(de ItemBase)_ |
+| `bruto` | `Frontmatter` | sim | _(de ItemBase)_ |
+| `titulo` | `string` | sim | _(de ItemBase)_ |
+| `corpo` | `string` | sim | _(de ItemBase)_ |
+| `id` | `string` | sim | — |
+| `cargo` | `string` | não | — |
+| `empresa` | `string` | não | — |
+| `email` | `string` | não | — |
+| `telefone` | `string` | não | — |
+| `paiId` | `string` | não | — |
+| `tags` | `string[]` | sim | — |
+| `propriedades` | `Record<string, string>` | sim | — |
+| `atualizado` | `string` | não | — |
+
 ## Valores de status válidos
 
 Status fora desta lista são normalizados para o primeiro valor ao ler o arquivo —
@@ -161,8 +183,10 @@ direto · `não usa` = não toca no repositório de dados.
 
 | Tela | Carregar | Gravar |
 |---|---|---|
+| `src/pages/BoasVindas.tsx` | não usa | não usa |
 | `src/pages/Chat.tsx` | na mão | não usa |
 | `src/pages/Configuracoes.tsx` | na mão | hook |
+| `src/pages/Contatos.tsx` | hook | hook |
 | `src/pages/Conversor.tsx` | não usa | na mão |
 | `src/pages/FerramentasPDF.tsx` | não usa | não usa |
 | `src/pages/GrafoNeural.tsx` | na mão | hook |

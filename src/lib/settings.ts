@@ -2,10 +2,28 @@
  * Configuração do app — fica no localStorage do navegador.
  *
  * Nada disto vai para o código nem para o repositório público.
- * O token e a chave existem só no navegador do Hugo.
+ * O token e a chave existem só no navegador de quem está usando o app.
  */
 
 export type Settings = {
+  /**
+   * Nome de quem usa o app. Aparece no campo "criado por" e é o que a IA usa
+   * para se dirigir à pessoa. Vazio é estado válido: o app inteiro funciona
+   * sem isto, então nada aqui pode assumir que veio preenchido.
+   */
+  nomeUsuario: string;
+  /**
+   * Área de atuação, ex: "design gráfico". Só serve para a IA calibrar o
+   * vocabulário — sem isto ela apenas evita jargão técnico por padrão.
+   */
+  profissaoUsuario: string;
+  /**
+   * Marca que o passo a passo inicial já foi concluído *ou dispensado*.
+   * Separado de `configCompleta` de propósito: quem pulou a configuração
+   * não pode ser jogado de volta no passo a passo a cada recarregamento.
+   */
+  onboardingConcluido: boolean;
+
   /** Token fine-grained do GitHub, com permissão de Contents no repo de dados */
   githubToken: string;
   /** Dono do repositório, ex: "hugosilva" */
@@ -166,6 +184,10 @@ function decodificarTexto(b64: string): string {
 }
 
 export const PADRAO: Settings = {
+  nomeUsuario: "",
+  profissaoUsuario: "",
+  onboardingConcluido: false,
+
   githubToken: "",
   repoOwner: "",
   repoName: "segundo-cerebro-dados",
@@ -196,6 +218,11 @@ function limpar(s: Settings): Settings {
     (v || "").replace(/[\s\u200B-\u200D\uFEFF]/g, "");
   return {
     ...s,
+    // trim e não tirarInvisiveis: nome composto tem espaço no meio, e
+    // "Hugo Silva" não pode virar "HugoSilva".
+    nomeUsuario: (s.nomeUsuario || "").trim(),
+    profissaoUsuario: (s.profissaoUsuario || "").trim(),
+    onboardingConcluido: Boolean(s.onboardingConcluido),
     githubToken: tirarInvisiveis(s.githubToken),
     geminiKey: tirarInvisiveis(s.geminiKey),
     repoOwner: tirarInvisiveis(s.repoOwner),
@@ -255,4 +282,25 @@ export function salvarConfig(s: Settings): Settings {
 /** O app só consegue ler/escrever se estes três estiverem preenchidos. */
 export function configCompleta(s: Settings): boolean {
   return Boolean(s.githubToken && s.repoOwner && s.repoName);
+}
+
+/**
+ * Como a interface se refere a quem está usando — em "criado por", por exemplo.
+ *
+ * Cai para o usuário do GitHub antes de desistir, porque quem pulou o campo de
+ * nome no passo a passo ainda assim configurou a conta, e ver o próprio
+ * usuário do GitHub ali é melhor que ver "Você".
+ */
+export function nomeExibido(s: Settings): string {
+  return s.nomeUsuario.trim() || s.repoOwner.trim() || "Você";
+}
+
+/**
+ * Decide se o passo a passo inicial deve aparecer.
+ *
+ * Quem já tem configuração válida nunca vê — inclusive quem usava o app antes
+ * deste campo existir, cuja config gravada não tem `onboardingConcluido`.
+ */
+export function precisaOnboarding(s: Settings): boolean {
+  return !configCompleta(s) && !s.onboardingConcluido;
 }

@@ -43,6 +43,7 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
       { id: "inbox", para: "/inbox", rotulo: "Caixa de Entrada", iconeNome: "Inbox" },
       { id: "tarefas", para: "/tarefas", rotulo: "Tarefas", iconeNome: "CheckSquare" },
       { id: "processos", para: "/processos", rotulo: "Processos", iconeNome: "GitMerge" },
+      { id: "contatos", para: "/contatos", rotulo: "Árvore de Contatos", iconeNome: "FolderTree" },
       { id: "notas", para: "/notas", rotulo: "Notas", iconeNome: "FileText" },
       { id: "noticias", para: "/noticias", rotulo: "Notícias", iconeNome: "Newspaper" },
     ],

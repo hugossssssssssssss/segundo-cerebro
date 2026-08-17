@@ -10,6 +10,7 @@ import {
   MessageCircle,
   Settings,
   GitMerge,
+  FolderTree,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -107,6 +108,15 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
     rota: "/processos",
     icone: GitMerge,
     palavrasChave: ["processo", "pipeline", "crm", "funil", "automação", "pipefy", "etapas"],
+  },
+  {
+    id: "contatos",
+    titulo: "Árvore de Contatos",
+    descricao: "Gerencie contatos, rede de relacionamentos, hierarquias (chefe/equipe) e propriedades editáveis",
+    categoria: "modulo",
+    rota: "/contatos",
+    icone: FolderTree,
+    palavrasChave: ["contatos", "árvore", "pessoas", "equipe", "chefe", "hierarquia", "rede", "relacionamentos", "csv"],
   },
   {
     id: "tarefas",

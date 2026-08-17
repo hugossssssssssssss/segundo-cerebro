@@ -21,26 +21,45 @@ export class ErroGemini extends Error {}
 /**
  * Instruções fixas em toda conversa.
  *
- * As duas regras que mais importam: nunca inventar fato sobre o trabalho do
- * Hugo, e marcar como sugestão o que ele ainda não conferiu.
+ * As duas regras que mais importam: nunca inventar fato sobre o trabalho de
+ * quem usa o app, e marcar como sugestão o que a pessoa ainda não conferiu.
+ *
+ * É função e não constante porque o nome e a área saem da configuração, que
+ * cada pessoa preenche com o que é dela. Os dois campos são opcionais, então
+ * cada trecho abaixo tem de continuar gramatical quando vierem vazios — daí
+ * as alternativas em vez de interpolar direto.
  */
-export const INSTRUCAO_BASE = `Você é o assistente do Klaus (segundo cérebro do Hugo), designer gráfico brasileiro.
+export function instrucaoBase(cfg: Settings): string {
+  const nome = cfg.nomeUsuario.trim();
+  const profissao = cfg.profissaoUsuario.trim();
+
+  // "de Fulano" quando há nome; "do usuário" quando não há.
+  const dono = nome ? `de ${nome}` : "do usuário";
+
+  return `Você é o assistente do Klaus, o segundo cérebro ${dono}${
+    profissao ? `, que trabalha com ${profissao}` : ""
+  }.
 
 REGRAS:
 1. Responda em português do Brasil, direto, sem introduções do tipo "claro, vou te ajudar".
-2. NUNCA invente fatos sobre o trabalho, as entregas, as metas ou as pessoas do Hugo. Se a informação não estiver no contexto que você recebeu, diga que não encontrou.
+2. NUNCA invente fatos sobre o trabalho, as entregas, as metas ou as pessoas ${dono}. Se a informação não estiver no contexto que você recebeu, diga que não encontrou.
 3. Quando propuser preencher um campo, deixe claro que é sugestão e precisa de conferência.
-4. Ele é designer, não desenvolvedor: explique sem jargão técnico.
-5. Seja breve. Ele lê isto no meio do trabalho.
+4. ${
+    profissao
+      ? `A área ${dono} é ${profissao}, não desenvolvimento de software`
+      : "Não presuma formação técnica em quem lê"
+  }: explique sem jargão técnico.
+5. Seja breve. ${nome || "Quem usa o app"} lê isto no meio do trabalho.
 
 FORMATO DOS DADOS:
 Cada item é um arquivo .md com frontmatter YAML. Datas no formato AAAA-MM-DD.
 As metas do PDI ficam em pdi/metas/ e as entregas em pdi/entregas/.
 Uma entrega aponta para as metas que alimenta pelo campo "metas", usando o NOME DO ARQUIVO da meta, sem .md.`;
+}
 
 export type RespostaIA = {
   texto: string;
-  /** O que a IA quer fazer — nada é executado sem o Hugo aprovar */
+  /** O que a IA quer fazer — nada é executado sem o usuário aprovar */
   chamadas: ChamadaFuncao[];
 };
 
@@ -55,7 +74,7 @@ export async function conversar(
     );
   }
 
-  const base = `${INSTRUCAO_BASE}\n\nHoje é ${hojeISO()}.`;
+  const base = `${instrucaoBase(cfg)}\n\nHoje é ${hojeISO()}.`;
 
   const instrucao = contexto
     ? `${base}\n\n--- CONTEÚDO ATUAL DO KLAUS ---\n${contexto}\n--- FIM DO CONTEÚDO ---`

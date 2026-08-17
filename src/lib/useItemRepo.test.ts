@@ -40,6 +40,9 @@ const cfg: Settings = {
   branch: "main",
   geminiKey: "",
   geminiModel: "",
+  nomeUsuario: "Hugo",
+  profissaoUsuario: "Designer",
+  onboardingConcluido: true,
 };
 
 /** Um ItemRepo mínimo para os testes. */

@@ -26,6 +26,9 @@ import { ptBR } from "date-fns/locale";
 import { Link as LinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extrairMencoesTexto } from "@/lib/links";
+// Apelidado: este arquivo já tem um `nomeExibido` local, que traduz chave de
+// frontmatter em rótulo — coisa sem relação nenhuma com o nome do usuário.
+import { lerConfig, nomeExibido as nomeDoUsuario } from "@/lib/settings";
 
 export function abrirItemSpa(caminho: string) {
   if (!caminho) return;
@@ -448,10 +451,15 @@ export function PropriedadesNotion({
     }
 
     if (tipo === "criado_por" || chave === "criado_por") {
+      // O valor gravado no frontmatter manda, quando existe: um item pode ter
+      // vindo de outra pessoa num repositório compartilhado. Só na ausência
+      // dele é que assumimos que foi quem está com o app aberto.
+      const autor =
+        (typeof valor === "string" && valor.trim()) || nomeDoUsuario(lerConfig());
       return (
         <span className="text-xs font-medium text-foreground/80 px-2 py-1 flex items-center gap-1.5">
           <User size={13} className="text-muted-foreground shrink-0" />
-          Hugo
+          {autor}
         </span>
       );
     }

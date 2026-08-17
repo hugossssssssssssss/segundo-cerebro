@@ -60,6 +60,7 @@ export function tipoDoItem(item: ItemRepo): TipoItem {
   if (pasta === "referencias") return "referencia";
   if (pasta === "lousas") return "lousa";
   if (pasta === "reunioes") return "reuniao";
+  if (pasta === "contatos") return "contato";
   if (item.caminho.startsWith("pdi/metas")) return "meta";
   if (item.caminho.startsWith("pdi/entregas")) return "entrega";
   return "outro";

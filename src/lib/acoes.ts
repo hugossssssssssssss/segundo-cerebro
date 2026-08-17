@@ -117,7 +117,7 @@ export const FERRAMENTAS = [
       {
         name: "apagar_item",
         description:
-          "Apaga um item. Só chame se o Hugo pedir explicitamente para apagar aquilo.",
+          "Apaga um item. Só chame se o usuário pedir explicitamente para apagar aquilo.",
         parameters: {
           type: "object",
           properties: {

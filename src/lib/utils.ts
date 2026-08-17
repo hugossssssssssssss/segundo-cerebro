@@ -64,3 +64,9 @@ export function lerParametroAbrir(loc: { search: string; hash: string }): string
 
   return null;
 }
+
+/** Tira acentos de uma string para buscas e slugs. */
+export function removerAcentos(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+

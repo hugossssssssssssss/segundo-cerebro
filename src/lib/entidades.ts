@@ -27,6 +27,7 @@ import {
   type StatusMeta,
   type Entrega,
   type Referencia,
+  type Contato,
 } from "./tipos";
 
 /* ------------------------------------------------------------ helpers */
@@ -248,6 +249,74 @@ export function referenciaParaArquivo(r: Referencia): { dados: Frontmatter; corp
       tags:   r.tags.length ? r.tags : undefined,
     }),
     corpo: r.corpo,
+  };
+}
+
+/* =========================================================== CONTATO */
+
+export function comoContato(
+  doc: Documento,
+  caminho: string,
+  sha: string,
+  tituloFallback: string,
+): Contato {
+  const d = doc.dados;
+  const propsRaw =
+    typeof d.propriedades === "object" && d.propriedades !== null
+      ? (d.propriedades as Record<string, unknown>)
+      : {};
+  const propriedades: Record<string, string> = {};
+  for (const [k, v] of Object.entries(propsRaw)) {
+    if (v !== undefined && v !== null) {
+      propriedades[k] = String(v);
+    }
+  }
+
+  const paiId =
+    typeof d.pai_id === "string" && d.pai_id.trim()
+      ? d.pai_id.trim()
+      : typeof d.pai === "string" && d.pai.trim()
+      ? d.pai.trim()
+      : undefined;
+
+  return {
+    bruto: doc.dados,
+    caminho,
+    id: idDoCaminho(caminho),
+    sha,
+    titulo:
+      typeof d.titulo === "string" && d.titulo.trim()
+        ? d.titulo.trim()
+        : typeof d.nome === "string" && d.nome.trim()
+        ? d.nome.trim()
+        : tituloFallback,
+    cargo: typeof d.cargo === "string" && d.cargo.trim() ? d.cargo.trim() : undefined,
+    empresa: typeof d.empresa === "string" && d.empresa.trim() ? d.empresa.trim() : undefined,
+    email: typeof d.email === "string" && d.email.trim() ? d.email.trim() : undefined,
+    telefone: typeof d.telefone === "string" && d.telefone.trim() ? d.telefone.trim() : undefined,
+    paiId,
+    tags: comoLista(d.tags),
+    propriedades,
+    corpo: doc.corpo,
+    atualizado: typeof d.atualizado === "string" ? d.atualizado : undefined,
+  };
+}
+
+export function contatoParaArquivo(c: Contato): { dados: Frontmatter; corpo: string } {
+  return {
+    dados: mesclarFrontmatter(c.bruto, {
+      titulo: c.titulo,
+      tipo: "contato",
+      cargo: c.cargo || undefined,
+      empresa: c.empresa || undefined,
+      email: c.email || undefined,
+      telefone: c.telefone || undefined,
+      pai_id: c.paiId || undefined,
+      tags: c.tags.length ? c.tags : undefined,
+      propriedades: Object.keys(c.propriedades).length ? c.propriedades : undefined,
+      atualizado: new Date().toISOString().slice(0, 10),
+    }),
+    corpo: c.corpo,
   };
 }
 

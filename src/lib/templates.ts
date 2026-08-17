@@ -50,8 +50,8 @@ Mencione referências ou salve em @referencias.
       tags: ["reuniao", "decisoes"],
     },
     corpoPadrao: `## Participantes
-- Hugo Silva
-- 
+-
+-
 
 ## Decisões Tomadas
 - [ ] 

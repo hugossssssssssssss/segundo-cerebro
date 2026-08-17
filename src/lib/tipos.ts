@@ -34,6 +34,7 @@ export const PASTAS = {
   processos: "processos",
   cardsProcesso: "processos/cards",
   caixaEntrada: "caixa-entrada",
+  contatos:  "contatos",
 } as const;
 
 export type Pasta = (typeof PASTAS)[keyof typeof PASTAS];
@@ -219,6 +220,19 @@ export interface ItemInbox {
   tags?: string[];
 }
 
+/** Um contato ou pessoa vinculada em `contatos/`. */
+export interface Contato extends ItemBase {
+  readonly id: string;
+  cargo?: string;
+  empresa?: string;
+  email?: string;
+  telefone?: string;
+  paiId?: string;
+  tags: string[];
+  propriedades: Record<string, string>;
+  atualizado?: string;
+}
+
 /* ========================================================= MAPEAMENTOS */
 
 /**
@@ -235,6 +249,7 @@ export type TipoItem =
   | "reuniao"
   | "processo"
   | "card_processo"
+  | "contato"
   | "outro";
 
 /** Para onde navegar ao clicar em cada tipo de item na busca. */
@@ -248,6 +263,7 @@ export const ROTA_POR_TIPO: Record<TipoItem, string> = {
   reuniao:   "/notas",
   processo:  "/processos",
   card_processo: "/processos",
+  contato:   "/contatos",
   outro:     "/notas",
 };
 
@@ -262,5 +278,6 @@ export const ROTULO_TIPO: Record<TipoItem, string> = {
   reuniao:   "Reunião",
   processo:  "Processo / Funil",
   card_processo: "Cartão de Processo",
+  contato:   "Contato / Árvore",
   outro:     "Outro",
 };

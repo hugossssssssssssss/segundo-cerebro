@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
@@ -133,6 +134,38 @@ export default function Configuracoes() {
             <Palette size={16} />
             Personalizar Menu
           </Botao>
+        </div>
+      </Cartao>
+
+      <Cartao className="p-5 space-y-4">
+        <div>
+          <h2 className="font-medium">Sobre você</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Opcional. O nome assina o que você cria e a área ajuda o assistente
+            a explicar as coisas do seu jeito.
+          </p>
+        </div>
+
+        <div>
+          <Rotulo dica="Aparece no campo “criado por” dos seus itens.">
+            Seu nome
+          </Rotulo>
+          <Campo
+            value={cfg.nomeUsuario}
+            onChange={(e) => atualizar("nomeUsuario", e.target.value)}
+            placeholder="Maria Souza"
+          />
+        </div>
+
+        <div>
+          <Rotulo dica="Com o que você trabalha. Ex: design gráfico, direito, enfermagem.">
+            Sua área
+          </Rotulo>
+          <Campo
+            value={cfg.profissaoUsuario}
+            onChange={(e) => atualizar("profissaoUsuario", e.target.value)}
+            placeholder="design gráfico"
+          />
         </div>
       </Cartao>
 
@@ -461,6 +494,14 @@ export default function Configuracoes() {
         seu navegador que fala direto com o GitHub — por isso a chave fica aqui,
         e só aqui. Se você abrir o site em outro aparelho, precisa colar de novo.
       </Aviso>
+
+      <p className="text-sm text-muted-foreground">
+        Perdido na configuração?{" "}
+        <Link to="/boas-vindas" className="text-primary hover:underline">
+          Refazer o passo a passo inicial
+        </Link>
+        .
+      </p>
 
       <ModalPersonalizarMenu
         aberta={modalPersonalizarAberta}
