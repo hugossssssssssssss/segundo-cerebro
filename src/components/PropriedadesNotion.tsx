@@ -230,8 +230,8 @@ export function PropriedadesNotion({
   function nomeExibido(chave: string): string {
     if (rotulosMap[chave]) return rotulosMap[chave];
     if (chave === "relacionamentos" || chave === "relacao") return "Relacionamentos";
-    if (chave === "criado_por" || chave === "criado") return "Criado por";
-    if (chave === "criado_em") return "Criado em";
+    if (chave === "criado_por" || chave === "autor") return "Criado por";
+    if (chave === "criado_em" || chave === "criado") return "Criado em";
     if (chave === "ultima_edicao" || chave === "atualizado") return "Última edição em";
     if (chave === "status") return "Status";
     if (chave === "prazo") return "Prazo";

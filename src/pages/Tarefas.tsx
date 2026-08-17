@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
-  Timer,
-  List,
   Columns3,
   CalendarDays,
   ListTodo,
@@ -25,14 +23,7 @@ import {
   nomeLivre,
 } from "@/lib/markdown";
 import {
-  ordenar,
-  urgencia,
-  textoPrazo,
   registrarCiclo,
-  minutosRegistrados,
-  progressoSubtarefas,
-  STATUS,
-  ROTULO_STATUS,
   type Tarefa,
   type Status,
 } from "@/lib/tarefas";
@@ -48,19 +39,9 @@ import {
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
-import { SeloStatus } from "@/components/SeloStatus";
-import { CartaoItem } from "@/components/CartaoItem";
 import { cn, lerParametroAbrir, correspondeBusca } from "@/lib/utils";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { toast } from "@/lib/toast";
-
-const CORES_URGENCIA = {
-  atrasada: "perigo",
-  hoje: "aviso",
-  proxima: "primario",
-  tranquila: "neutro",
-  nenhuma: "neutro",
-} as const;
 
 export default function Tarefas() {
   const cfg = lerConfig();
@@ -82,13 +63,13 @@ export default function Tarefas() {
 
   // ── Estado da UI ──────────────────────────────────────────────────────────
   const [busca, setBusca] = useState("");
-  const [filtro, setFiltro] = useState<Status | "todas">("todas");
   const [editando, setEditando] = useState<Tarefa | null>(null);
   const [original, setOriginal] = useState<Tarefa | null>(null);
   const [cronometrando, setCronometrando] = useState<Tarefa | null>(null);
-  const [visao, setVisao] = useState<"lista" | "quadro" | "calendario">(() => {
+  const [tagSelecionada, setTagSelecionada] = useState<string | null>(null);
+  const [visao, setVisao] = useState<"quadro" | "calendario">(() => {
     const salvo = localStorage.getItem("tarefa-visao");
-    return salvo === "quadro" || salvo === "calendario" ? salvo : "lista";
+    return salvo === "calendario" ? salvo : "quadro";
   });
   const [gravandoCaminho, setGravandoCaminho] = useState<string | null>(null);
   const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>(() => {
@@ -100,6 +81,15 @@ export default function Tarefas() {
     setModoVisao(novo);
     localStorage.setItem("tarefa-modo-visao", novo);
   };
+
+  // ── Tags para filtro ───────────────────────────────────────────────────────
+  const todasTags = useMemo(() => {
+    const conjunto = new Set<string>();
+    for (const t of tarefas) {
+      for (const tag of t.tags || []) conjunto.add(tag);
+    }
+    return Array.from(conjunto).sort();
+  }, [tarefas]);
 
   // ── Relacionamentos ────────────────────────────────────────────────────────
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
@@ -199,6 +189,15 @@ export default function Tarefas() {
   // ── Ações ──────────────────────────────────────────────────────────────────
 
   function fechar() {
+    if (editando) {
+      const mudou = original !== null && JSON.stringify(editando) !== JSON.stringify(original);
+      if (mudou && editando.titulo.trim()) {
+        const tSalvar = { ...editando };
+        salvar(tSalvar).catch((err) => {
+          toast(`Erro ao salvar tarefa: ${err?.message || "Falha na gravação"}`, { tipo: "erro" });
+        });
+      }
+    }
     setEditando(null);
     setOriginal(null);
     limparErro();
@@ -321,15 +320,19 @@ export default function Tarefas() {
     );
   }
 
-  const visiveis = ordenar(
-    (filtro === "todas" ? tarefas : tarefas.filter((t) => t.status === filtro))
-      .filter((t) =>
+  const tarefasExibidas = tarefas.filter((t) => {
+    if (tagSelecionada && (!t.tags || !t.tags.includes(tagSelecionada))) {
+      return false;
+    }
+    if (busca.trim()) {
+      return (
         correspondeBusca(t.titulo, busca) ||
         correspondeBusca(t.corpo, busca) ||
         t.tags.some((tag) => correspondeBusca(tag, busca))
-      )
-  );
-  const pendentes = tarefas.filter((t) => t.status !== "feito").length;
+      );
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -338,13 +341,7 @@ export default function Tarefas() {
         descricao="Organize suas pendências, prazos e prioridades do dia a dia."
         icone={<ListTodo size={20} />}
         corIcone="bg-blue-500/10 text-blue-600 dark:text-blue-400"
-        badge={
-          pendentes > 0 ? (
-            <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400">
-              {pendentes} {pendentes === 1 ? "pendente" : "pendentes"}
-            </span>
-          ) : undefined
-        }
+        badge={undefined}
         acoes={
           <Botao onClick={abrirNova}>
             <Plus size={16} />
@@ -361,40 +358,51 @@ export default function Tarefas() {
           <AlternadorVisao
             valorAtivo={visao}
             aoAlternar={(v) => {
-              setVisao(v);
-              localStorage.setItem("tarefa-visao", v);
+              const novaVisao = v as "quadro" | "calendario";
+              setVisao(novaVisao);
+              localStorage.setItem("tarefa-visao", novaVisao);
             }}
             opcoes={[
-              { id: "lista", rotulo: "Lista", icone: <List size={15} /> },
-              { id: "quadro", rotulo: "Quadro", icone: <Columns3 size={15} /> },
+              { id: "quadro", rotulo: "Quadro (Kanban)", icone: <Columns3 size={15} /> },
               { id: "calendario", rotulo: "Calendário", icone: <CalendarDays size={15} /> },
             ]}
           />
         }
       />
 
-      {/* filtros — no quadro não fazem sentido: as colunas JÁ são o filtro */}
-      <div
-        className={cn(
-          "flex gap-2 overflow-x-auto pb-1",
-          visao !== "lista" && "hidden",
-        )}
-      >
-        {(["todas", ...STATUS] as const).map((f) => (
+      {/* Filtro por Tags */}
+      {todasTags.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap py-1">
+          <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+            <Tag size={12} /> Tags:
+          </span>
           <button
-            key={f}
-            onClick={() => setFiltro(f)}
+            onClick={() => setTagSelecionada(null)}
             className={cn(
-              "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-              filtro === f
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-secondary-foreground hover:bg-accent",
+              "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer",
+              tagSelecionada === null
+                ? "bg-primary text-primary-foreground font-semibold"
+                : "bg-secondary/60 text-muted-foreground hover:bg-accent",
             )}
           >
-            {f === "todas" ? "Todas" : ROTULO_STATUS[f]}
+            Todas
           </button>
-        ))}
-      </div>
+          {todasTags.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTagSelecionada(t === tagSelecionada ? null : t)}
+              className={cn(
+                "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer",
+                tagSelecionada === t
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "bg-secondary/60 text-muted-foreground hover:bg-accent",
+              )}
+            >
+              #{t}
+            </button>
+          ))}
+        </div>
+      )}
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 
@@ -402,83 +410,14 @@ export default function Tarefas() {
         <Carregando texto="Buscando suas tarefas…" />
       ) : visao === "quadro" ? (
         <Quadro
-          tarefas={tarefas}
+          tarefas={tarefasExibidas}
           aoAbrir={abrir}
           aoCronometrar={setCronometrando}
           aoMudarStatus={mudarStatus}
           gravandoCaminho={gravandoCaminho}
         />
-      ) : visao === "calendario" ? (
-        <Calendario tarefas={tarefas} aoAbrir={abrir} />
-      ) : visiveis.length === 0 ? (
-        <Vazio
-          icone={<ListTodo size={24} />}
-          titulo={filtro === "todas" ? "Nenhuma tarefa criada ainda" : "Nenhuma tarefa encontrada"}
-          descricao={
-            filtro === "todas"
-              ? "Cada tarefa vira um arquivo .md no seu repositório — com suporte a prazos e Pomodoro."
-              : `Nenhuma tarefa com o filtro atual "${ROTULO_STATUS[filtro as Status]}".`
-          }
-        />
       ) : (
-        <div className="grid gap-2.5">
-          {visiveis.map((t) => {
-            const u = urgencia(t);
-            const min = minutosRegistrados(t.corpo);
-            const passos = progressoSubtarefas(t.corpo);
-            const tomUrgencia = CORES_URGENCIA[u];
-
-            return (
-              <CartaoItem
-                key={t.caminho}
-                icone={<ListTodo size={18} />}
-                titulo={
-                  <span className={cn(t.status === "feito" && "line-through text-muted-foreground")}>
-                    {t.titulo}
-                  </span>
-                }
-                badge={
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {t.status === "fazendo" && (
-                      <SeloStatus rotulo="Fazendo" tom="primario" />
-                    )}
-                    {t.status === "feito" && (
-                      <SeloStatus rotulo="Concluída" tom="sucesso" />
-                    )}
-                    {u !== "nenhuma" && (
-                      <SeloStatus rotulo={textoPrazo(t)} tom={tomUrgencia as any} />
-                    )}
-                    {min > 0 && <SeloStatus rotulo={`🍅 ${min}min`} tom="neutro" comPonto={false} />}
-                    {passos.total > 0 && (
-                      <SeloStatus
-                        rotulo={`${passos.feitas}/${passos.total} passos`}
-                        tom={passos.porcento === 100 ? "sucesso" : "neutro"}
-                        comPonto={false}
-                      />
-                    )}
-                  </div>
-                }
-                tags={t.tags}
-                acoes={
-                  t.status !== "feito" ? (
-                    <Botao
-                      variante="fantasma"
-                      tamanho="icone"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCronometrando(t);
-                      }}
-                      title="Iniciar Pomodoro"
-                    >
-                      <Timer size={17} />
-                    </Botao>
-                  ) : undefined
-                }
-                onClick={() => abrir(t)}
-              />
-            );
-          })}
-        </div>
+        <Calendario tarefas={tarefasExibidas} aoAbrir={abrir} />
       )}
 
       {/* painel de edição */}

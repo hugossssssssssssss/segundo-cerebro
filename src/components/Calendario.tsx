@@ -3,9 +3,11 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
-import { Cartao, Selo } from "@/components/ui";
+import { Cartao } from "@/components/ui";
+import { SeloStatus } from "@/components/SeloStatus";
 import { cn } from "@/lib/utils";
 import { urgencia, type Tarefa } from "@/lib/tarefas";
+import { Calendar, Clock, ArrowRight } from "lucide-react";
 
 export function Calendario({
   tarefas,
@@ -32,11 +34,11 @@ export function Calendario({
   const semData = tarefas.filter((t) => !t.prazo && t.status !== "feito");
 
   return (
-    <div className="space-y-6 md:grid md:grid-cols-[1fr_300px] md:gap-6 md:space-y-0">
-      <Cartao className="p-4 flex justify-center">
+    <div className="space-y-6 md:grid md:grid-cols-[1fr_320px] md:gap-6 md:space-y-0">
+      <Cartao className="p-4 flex justify-center border border-border/80 shadow-sm bg-card rounded-2xl">
         <style>{`
           .rdp {
-            --rdp-cell-size: 40px;
+            --rdp-cell-size: 42px;
             --rdp-accent-color: var(--color-primary);
             --rdp-background-color: var(--color-primary);
             --rdp-accent-color-dark: var(--color-primary);
@@ -46,22 +48,24 @@ export function Calendario({
             margin: 0;
           }
           .rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover {
-            background-color: var(--color-primary);
-            color: var(--color-primary-foreground);
+            background-color: var(--color-primary) !important;
+            color: var(--color-primary-foreground) !important;
             font-weight: bold;
+            border-radius: 10px;
           }
           .rdp-button:hover:not([disabled]):not(.rdp-day_selected) {
             background-color: var(--color-accent);
+            border-radius: 10px;
           }
           .rdp-day {
-            border-radius: 8px;
+            border-radius: 10px;
             position: relative;
           }
           .rdp-nav_button {
-            border-radius: 8px;
+            border-radius: 10px;
           }
-          .day-overdue::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; background-color: var(--color-destructive); }
-          .day-pending::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; background-color: var(--color-primary); }
+          .day-overdue::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background-color: var(--color-destructive); }
+          .day-pending::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background-color: var(--color-primary); }
         `}</style>
         <DayPicker
           mode="single"
@@ -90,52 +94,84 @@ export function Calendario({
       <div className="space-y-6">
         {selecionado && (
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              {doDia.length === 0
-                ? "Nada para " + format(selecionado, "dd/MM")
-                : `${doDia.length} tarefa${doDia.length > 1 ? "s" : ""} em ${format(selecionado, "dd/MM")}`}
-            </h3>
+            <div className="flex items-center justify-between border-b border-border/60 pb-2">
+              <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
+                <Calendar size={14} /> {format(selecionado, "dd 'de' MMMM", { locale: ptBR })}
+              </h3>
+              <span className="text-xs font-bold text-primary">
+                {doDia.length} {doDia.length === 1 ? "tarefa" : "tarefas"}
+              </span>
+            </div>
+
             {doDia.length > 0 ? (
-              <div className="grid gap-2">
-                {doDia.map((t) => (
-                  <Cartao
-                    key={t.caminho}
-                    className="cursor-pointer p-3 transition-colors hover:bg-accent border-l-2"
-                    style={{ borderLeftColor: t.status === "feito" ? 'var(--color-muted)' : 'var(--color-primary)' }}
-                    onClick={() => aoAbrir(t)}
-                  >
-                    <p
+              <div className="grid gap-2.5">
+                {doDia.map((t) => {
+                  const ehFeito = t.status === "feito";
+                  const ehFazendo = t.status === "fazendo";
+                  const urg = urgencia(t);
+
+                  return (
+                    <div
+                      key={t.caminho}
+                      onClick={() => aoAbrir(t)}
                       className={cn(
-                        "text-sm font-medium",
-                        t.status === "feito" && "text-muted-foreground line-through",
+                        "p-3.5 rounded-xl border border-border/80 bg-card hover:bg-accent/70 hover:border-primary/50 transition-all cursor-pointer shadow-2xs group space-y-2",
+                        ehFeito && "opacity-60",
                       )}
                     >
-                      {t.titulo}
-                    </p>
-                  </Cartao>
-                ))}
+                      <div className="flex items-start justify-between gap-2">
+                        <span className={cn("text-xs font-semibold group-hover:text-primary transition-colors leading-snug", ehFeito && "line-through text-muted-foreground")}>
+                          {t.titulo}
+                        </span>
+                        <ArrowRight size={14} className="text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 mt-0.5" />
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                        <SeloStatus
+                          rotulo={ehFeito ? "Concluída" : ehFazendo ? "Em andamento" : "A fazer"}
+                          tom={ehFeito ? "sucesso" : ehFazendo ? "primario" : "neutro"}
+                        />
+                        {urg === "atrasada" && (
+                          <SeloStatus rotulo="Atrasada" tom="perigo" />
+                        )}
+                        {t.tags?.map((tag) => (
+                          <span key={tag} className="text-muted-foreground font-mono">
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
-                Dia livre!
+              <div className="rounded-xl border border-dashed border-border/70 p-6 text-center text-xs text-muted-foreground space-y-1">
+                <p className="font-semibold text-foreground/80">Dia sem tarefas marcadas 🎉</p>
+                <p>Nenhuma pendência agendada para esta data.</p>
               </div>
             )}
           </div>
         )}
 
         {semData.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Sem data marcada ({semData.length})
+          <div className="space-y-3 pt-2">
+            <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
+              <Clock size={14} /> Sem prazo definido ({semData.length})
             </h3>
             <div className="flex flex-wrap gap-1.5">
               {semData.slice(0, 10).map((t) => (
-                <button key={t.caminho} onClick={() => aoAbrir(t)} className="text-left">
-                  <Selo className="hover:bg-primary/20 transition-colors cursor-pointer">{t.titulo}</Selo>
+                <button
+                  key={t.caminho}
+                  onClick={() => aoAbrir(t)}
+                  className="px-2.5 py-1 rounded-lg border border-border/70 bg-secondary/50 hover:bg-accent text-xs font-medium text-foreground transition-all cursor-pointer"
+                >
+                  {t.titulo}
                 </button>
               ))}
               {semData.length > 10 && (
-                <Selo>e mais {semData.length - 10}</Selo>
+                <span className="text-xs text-muted-foreground font-medium self-center">
+                  +{semData.length - 10} mais
+                </span>
               )}
             </div>
           </div>

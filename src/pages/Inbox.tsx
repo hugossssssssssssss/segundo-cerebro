@@ -528,7 +528,7 @@ export default function Inbox() {
             className="text-[11px] font-medium text-primary hover:underline flex items-center gap-1 cursor-pointer"
             title="Abrir mapa de tarefas do mês em formato calendário"
           >
-            <Calendar size={13} /> Visão Geral (Calendário Mês)
+            <Calendar size={13} /> Visão Geral
           </button>
         </div>
 
@@ -579,68 +579,78 @@ export default function Inbox() {
         )}
       </div>
 
-      {/* Abas Principais */}
+      {/* Abas Principais (Exibe apenas as abas com contagem > 0) */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
         <div className="flex flex-wrap gap-1">
-          <button
-            onClick={() => setAba("nao_vistos")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              aba === "nao_vistos"
-                ? "bg-primary text-primary-foreground font-semibold"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
-          >
-            <Bell size={14} />
-            Não Vistas ({contagemNaoVistos})
-          </button>
+          {(contagemNaoVistos > 0 || aba === "nao_vistos") && (
+            <button
+              onClick={() => setAba("nao_vistos")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                aba === "nao_vistos"
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+            >
+              <Bell size={14} />
+              Não Vistas ({contagemNaoVistos})
+            </button>
+          )}
 
-          <button
-            onClick={() => setAba("atrasadas")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              aba === "atrasadas"
-                ? "bg-destructive text-destructive-foreground font-semibold"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
-          >
-            <AlertTriangle size={14} />
-            Tarefas Atrasadas ({contagemAtrasadas})
-          </button>
+          {(contagemAtrasadas > 0 || aba === "atrasadas") && (
+            <button
+              onClick={() => setAba("atrasadas")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                aba === "atrasadas"
+                  ? "bg-destructive text-destructive-foreground font-semibold"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+            >
+              <AlertTriangle size={14} />
+              Tarefas Atrasadas ({contagemAtrasadas})
+            </button>
+          )}
 
-          <button
-            onClick={() => setAba("lembretes")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              aba === "lembretes"
-                ? "bg-primary text-primary-foreground font-semibold"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
-          >
-            <Calendar size={14} />
-            Lembretes ({contagemLembretes})
-          </button>
+          {(contagemLembretes > 0 || aba === "lembretes") && (
+            <button
+              onClick={() => setAba("lembretes")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                aba === "lembretes"
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+            >
+              <Calendar size={14} />
+              Lembretes ({contagemLembretes})
+            </button>
+          )}
 
-          <button
-            onClick={() => setAba("inativas")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              aba === "inativas"
-                ? "bg-amber-500 text-white font-semibold"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
-          >
-            <Archive size={14} />
-            Notas Inativas ({contagemInativas})
-          </button>
+          {(contagemInativas > 0 || aba === "inativas") && (
+            <button
+              onClick={() => setAba("inativas")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                aba === "inativas"
+                  ? "bg-amber-500 text-white font-semibold"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+            >
+              <Archive size={14} />
+              Notas Inativas ({contagemInativas})
+            </button>
+          )}
 
-          <button
-            onClick={() => setAba("rascunhos")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              aba === "rascunhos"
-                ? "bg-purple-600 text-white font-semibold"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
-          >
-            <WifiOff size={14} />
-            Rascunhos Offline ({obterRascunhosLocais().length})
-          </button>
+          {(obterRascunhosLocais().length > 0 || aba === "rascunhos") && (
+            <button
+              onClick={() => setAba("rascunhos")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                aba === "rascunhos"
+                  ? "bg-purple-600 text-white font-semibold"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+            >
+              <WifiOff size={14} />
+              Rascunhos Offline ({obterRascunhosLocais().length})
+            </button>
+          )}
 
           <button
             onClick={() => setAba("todas")}

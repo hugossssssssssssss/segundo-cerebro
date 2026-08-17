@@ -122,9 +122,23 @@ export function EditorNotion({
     async (query: string) => {
       const itens = filtrarAlvos(alvosRef.current, query, 35).map((s) => {
         const ehLousa = s.tipo === "lousa" || s.caminho.startsWith("lousas/");
+        const categoria = ehLousa
+          ? "🗺️ Mapa Mental Excalidraw"
+          : s.caminho.startsWith("tarefas/")
+          ? "📋 Tarefa"
+          : s.caminho.startsWith("notas/")
+          ? "📝 Nota"
+          : s.caminho.startsWith("pdi/")
+          ? "🎯 Meta / Entrega PDI"
+          : s.caminho.startsWith("referencias/")
+          ? "🖼️ Referência Visual"
+          : s.caminho.startsWith("processos/")
+          ? "🔄 Processo / CRM"
+          : "📄 Documento";
+
         return {
           title: ehLousa ? `🗺️ @${s.titulo}` : `@${s.titulo}`,
-          subtext: ehLousa ? `Mapa Mental Excalidraw (${s.caminho})` : s.caminho,
+          subtext: categoria,
           onItemClick: () => {
             editor.insertInlineContent([`@${s.titulo} `]);
           },
