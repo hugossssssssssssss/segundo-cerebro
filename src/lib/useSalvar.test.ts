@@ -14,10 +14,21 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { useSalvar } from "./useSalvar";
 import type { Settings } from "./settings";
 
-vi.mock("./github", () => ({
-  gravar: vi.fn(),
-  apagar: vi.fn(),
-}));
+vi.mock("./github", () => {
+  class ErroGitHub extends Error {
+    status: number;
+    constructor(message: string, status: number) {
+      super(message);
+      this.name = "ErroGitHub";
+      this.status = status;
+    }
+  }
+  return {
+    gravar: vi.fn(),
+    apagar: vi.fn(),
+    ErroGitHub,
+  };
+});
 
 vi.mock("./repo", () => ({
   atualizarCacheLocal: vi.fn(),

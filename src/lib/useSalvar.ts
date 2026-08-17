@@ -24,7 +24,7 @@
  */
 
 import { useState } from "react";
-import { gravar, apagar } from "./github";
+import { gravar, apagar, ErroGitHub } from "./github";
 import { atualizarCacheLocal, invalidarCache } from "./repo";
 import { lerMarkdown } from "./markdown";
 import { notificarOutrasAbas } from "./syncChannel";
@@ -89,9 +89,21 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
       const mensagem = e instanceof Error ? e.message : String(e);
       setErro(mensagem);
 
-      // Salva rascunho local em caso de falha de conexão/gravação no GitHub
-      salvarRascunhoLocal(caminho, texto, sha, mensagemCommit, false);
-      toast(`Sem conexão: "${caminho.split("/").pop()}" salvo localmente como rascunho.`, { tipo: "aviso" });
+      const status = e instanceof ErroGitHub ? e.status : undefined;
+      const ehRede =
+        status === 0 ||
+        !navigator.onLine ||
+        mensagem.includes("sem internet") ||
+        mensagem.includes("Não consegui falar");
+
+      if (ehRede) {
+        // Salva rascunho local apenas em caso de falha real de conexão
+        salvarRascunhoLocal(caminho, texto, sha, mensagemCommit, false);
+        toast(`Sem conexão: "${caminho.split("/").pop()}" salvo localmente como rascunho.`, { tipo: "aviso" });
+      } else {
+        // Para erros de autenticação (401/403), conflito (409) ou dados (422), reporta a falha real
+        toast(`Erro no GitHub: ${mensagem}`, { tipo: "erro" });
+      }
       throw e;
     } finally {
       setSalvando(false);

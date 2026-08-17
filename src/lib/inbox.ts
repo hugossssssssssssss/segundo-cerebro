@@ -332,6 +332,12 @@ export async function carregarEstadoInbox(cfg: Settings): Promise<{ mapa: MapaEs
   return { mapa: local };
 }
 
+export interface ResultadoGravarEstadoInbox {
+  ok: boolean;
+  sha?: string;
+  erro?: string;
+}
+
 /**
  * Grava o estado atualizado da Inbox no repositório GitHub.
  */
@@ -339,16 +345,18 @@ export async function gravarEstadoInbox(
   cfg: Settings,
   mapa: MapaEstadoInbox,
   shaAntigo?: string,
-): Promise<string | null> {
+): Promise<ResultadoGravarEstadoInbox> {
   salvarEstadoInboxLocal(mapa);
-  if (!cfg.githubToken || !cfg.repoOwner || !cfg.repoName) return null;
+  if (!cfg.githubToken || !cfg.repoOwner || !cfg.repoName) {
+    return { ok: false, erro: "Configuração do GitHub incompleta." };
+  }
 
   try {
     const conteudo = JSON.stringify(mapa, null, 2);
     const novoSha = await gravar(cfg, CAMINHO_ESTADO_INBOX, conteudo, shaAntigo, "atualizar estado da caixa de entrada");
-    return novoSha;
-  } catch {
-    return null;
+    return { ok: true, sha: novoSha };
+  } catch (err: any) {
+    return { ok: false, erro: err?.message || "Falha ao gravar estado no GitHub." };
   }
 }
 

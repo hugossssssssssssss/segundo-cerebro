@@ -22,6 +22,7 @@ import {
   compilarItensInbox,
   compilarNotasInativas,
   carregarEstadoInbox,
+  salvarEstadoInboxLocal,
   gravarEstadoInbox,
   enviarNotificacaoTelegram,
   enviarNotificacaoEmailGoogle,
@@ -165,8 +166,8 @@ export default function Inbox() {
 
       if (alterado) {
         setMapaEstado(novoMapa);
-        const novoSha = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
-        if (novoSha) setShaEstado(novoSha);
+        const res = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
+        if (res.ok && res.sha) setShaEstado(res.sha);
       }
     };
 
@@ -175,6 +176,7 @@ export default function Inbox() {
 
   // Alternar visto/não visto
   const alternarVisto = async (id: string) => {
+    const mapaAnterior = { ...mapaEstado };
     const atual = mapaEstado[id]?.visto;
     const novoMapa: MapaEstadoInbox = {
       ...mapaEstado,
@@ -185,8 +187,14 @@ export default function Inbox() {
       },
     };
     setMapaEstado(novoMapa);
-    const novoSha = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
-    if (novoSha) setShaEstado(novoSha);
+    const res = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
+    if (res.ok && res.sha) {
+      setShaEstado(res.sha);
+    } else if (!res.ok) {
+      setMapaEstado(mapaAnterior);
+      salvarEstadoInboxLocal(mapaAnterior);
+      toast(`Erro ao sincronizar com GitHub: ${res.erro || "Falha na gravação"}`, { tipo: "erro" });
+    }
   };
 
   // Snooze / Adiar lembrete em 1 clique (Ideia 1)
@@ -199,28 +207,49 @@ export default function Inbox() {
     // Se tiver arquivo de origem e tag de lembrete bruta, atualiza o arquivo no GitHub
     if (item.lembreteBruto && item.caminhoOrigem) {
       const docAlvo = acervo.find((i) => i.caminho === item.caminhoOrigem);
-      if (docAlvo && docAlvo.texto) {
-        const doc = lerMarkdown(docAlvo.texto);
-        const novaTag = formatarTagLembrete(item.titulo, novaDataHora);
-        const corpoAtualizado = doc.corpo.replace(item.lembreteBruto, novaTag);
-        const novoTexto = escreverMarkdown({ dados: doc.dados, corpo: corpoAtualizado });
+      if (!docAlvo || !docAlvo.texto) {
+        toast(`Nota de origem (${item.caminhoOrigem}) não encontrada para adiar.`, { tipo: "erro" });
+        return;
+      }
 
+      const doc = lerMarkdown(docAlvo.texto);
+      const novaTag = formatarTagLembrete(item.titulo, novaDataHora);
+      const corpoAtualizado = doc.corpo.replace(item.lembreteBruto, novaTag);
+      const novoTexto = escreverMarkdown({ dados: doc.dados, corpo: corpoAtualizado });
+
+      try {
         await salvarTexto(docAlvo.caminho, novoTexto, docAlvo.sha, `adiar lembrete: ${item.titulo}`);
+        setMensagemSucesso(`Lembrete adiado para ${novaDataHora}!`);
+        setTimeout(() => setMensagemSucesso(null), 3000);
+        carregar();
+      } catch (err: any) {
+        toast(`Erro ao adiar lembrete no GitHub: ${err?.message || "Falha na gravação"}`, { tipo: "erro" });
       }
     } else if (item.caminhoOrigem && item.caminhoOrigem.startsWith("tarefas/")) {
       const docAlvo = acervo.find((i) => i.caminho === item.caminhoOrigem);
-      if (docAlvo && docAlvo.texto) {
-        const doc = lerMarkdown(docAlvo.texto);
-        const novaDataPrazo = novaDataHora.split(" ")[0];
-        const novoTexto = escreverMarkdown({
-          dados: { ...doc.dados, prazo: novaDataPrazo },
-          corpo: doc.corpo,
-        });
+      if (!docAlvo || !docAlvo.texto) {
+        toast(`Tarefa de origem (${item.caminhoOrigem}) não encontrada para adiar.`, { tipo: "erro" });
+        return;
+      }
 
+      const doc = lerMarkdown(docAlvo.texto);
+      const novaDataPrazo = novaDataHora.split(" ")[0];
+      const novoTexto = escreverMarkdown({
+        dados: { ...doc.dados, prazo: novaDataPrazo },
+        corpo: doc.corpo,
+      });
+
+      try {
         await salvarTexto(docAlvo.caminho, novoTexto, docAlvo.sha, `adiar prazo de tarefa: ${item.titulo}`);
+        setMensagemSucesso(`Prazo de tarefa adiado para ${novaDataPrazo}!`);
+        setTimeout(() => setMensagemSucesso(null), 3000);
+        carregar();
+      } catch (err: any) {
+        toast(`Erro ao adiar prazo da tarefa no GitHub: ${err?.message || "Falha na gravação"}`, { tipo: "erro" });
       }
     } else {
       // Para tarefas ou itens sem tag, atualiza o mapa de estado com visto
+      const mapaAnterior = { ...mapaEstado };
       const novoMapa: MapaEstadoInbox = {
         ...mapaEstado,
         [item.id]: {
@@ -230,16 +259,23 @@ export default function Inbox() {
         },
       };
       setMapaEstado(novoMapa);
-      await gravarEstadoInbox(cfg, novoMapa, shaEstado);
+      const res = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
+      if (res.ok && res.sha) {
+        setShaEstado(res.sha);
+        setMensagemSucesso(`Lembrete marcado como visto e adiado!`);
+        setTimeout(() => setMensagemSucesso(null), 3000);
+        carregar();
+      } else {
+        setMapaEstado(mapaAnterior);
+        salvarEstadoInboxLocal(mapaAnterior);
+        toast(`Erro ao salvar no GitHub: ${res.erro || "Falha na gravação"}`, { tipo: "erro" });
+      }
     }
-
-    setMensagemSucesso(`Lembrete adiado para ${novaDataHora}!`);
-    setTimeout(() => setMensagemSucesso(null), 3000);
-    carregar();
   };
 
   // Marcar todos como vistos
   const marcarTodosComoVistos = async () => {
+    const mapaAnterior = { ...mapaEstado };
     const agoraIso = new Date().toISOString();
     const novoMapa: MapaEstadoInbox = { ...mapaEstado };
 
@@ -252,14 +288,21 @@ export default function Inbox() {
     }
 
     setMapaEstado(novoMapa);
-    const novoSha = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
-    if (novoSha) setShaEstado(novoSha);
-    setMensagemSucesso("Todos os itens foram marcados como lidos!");
-    setTimeout(() => setMensagemSucesso(null), 3000);
+    const res = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
+    if (res.ok && res.sha) {
+      setShaEstado(res.sha);
+      setMensagemSucesso("Todos os itens foram marcados como lidos!");
+      setTimeout(() => setMensagemSucesso(null), 3000);
+    } else {
+      setMapaEstado(mapaAnterior);
+      salvarEstadoInboxLocal(mapaAnterior);
+      toast(`Erro ao sincronizar com o GitHub: ${res.erro || "Falha na gravação"}`, { tipo: "erro" });
+    }
   };
 
   // Descartar/Arquivar um item
   const descartarItem = async (id: string) => {
+    const mapaAnterior = { ...mapaEstado };
     const novoMapa: MapaEstadoInbox = {
       ...mapaEstado,
       [id]: {
@@ -268,8 +311,14 @@ export default function Inbox() {
       },
     };
     setMapaEstado(novoMapa);
-    const novoSha = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
-    if (novoSha) setShaEstado(novoSha);
+    const res = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
+    if (res.ok && res.sha) {
+      setShaEstado(res.sha);
+    } else {
+      setMapaEstado(mapaAnterior);
+      salvarEstadoInboxLocal(mapaAnterior);
+      toast(`Erro ao arquivar item no GitHub: ${res.erro || "Falha na gravação"}`, { tipo: "erro" });
+    }
   };
 
   // Extrair lembretes com a IA Gemini (Ideia 7)

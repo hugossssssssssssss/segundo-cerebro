@@ -9,6 +9,7 @@ import type { Settings } from "./settings";
 import { gravar } from "./github";
 import { invalidarCache } from "./repo";
 import { notificarOutrasAbas } from "./syncChannel";
+import { toast } from "./toast";
 
 export type RascunhoOffline = {
   id: string;
@@ -79,8 +80,12 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<number> {
       await gravar(cfg, item.caminho, item.texto, item.sha, item.mensagemCommit);
       removerRascunhoLocal(item.caminho);
       concluidos++;
-    } catch {
-      // continua tentando os próximos
+    } catch (err: any) {
+      const status = err?.status;
+      if (status === 401 || status === 403) {
+        toast("Sincronização offline interrompida: Token do GitHub inválido ou sem permissão.", { tipo: "erro" });
+        break;
+      }
     }
   }
 

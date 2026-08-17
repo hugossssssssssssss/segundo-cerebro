@@ -479,7 +479,7 @@ export default function Conversor() {
         corpo: markdownResultado,
       });
 
-      await gravar(cfg, caminho, mdFormatado, `Criar nota convertida: ${tituloProvavel}`);
+      await gravar(cfg, caminho, mdFormatado, undefined, `Criar nota convertida: ${tituloProvavel}`);
       setMensagemSucesso(`Nota salva com sucesso em notas/${tituloProvavel}.md!`);
     } catch (err: any) {
       setErro(`Erro ao salvar no GitHub: ${err.message || "Falha ao gravar arquivo"}`);

@@ -195,7 +195,11 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
   };
 
   const salvar = () => {
-    salvarMenuPersonalizado(grupos);
+    const ok = salvarMenuPersonalizado(grupos);
+    if (!ok) {
+      toast("Não foi possível salvar as alterações no navegador (armazenamento indisponível ou cota cheia).", { tipo: "erro" });
+      return;
+    }
     setSucessoMsg("Menu personalizado salvo com sucesso!");
     setTimeout(() => {
       setSucessoMsg("");
@@ -208,7 +212,12 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
   };
 
   const executarReset = () => {
-    restaurarMenuPadrao();
+    const ok = restaurarMenuPadrao();
+    if (!ok) {
+      toast("Não foi possível restaurar os padrões no navegador.", { tipo: "erro" });
+      setConfirmarReset(false);
+      return;
+    }
     setGrupos(carregarMenuPersonalizado());
     setSucessoMsg("Padrões restaurados!");
     setConfirmarReset(false);

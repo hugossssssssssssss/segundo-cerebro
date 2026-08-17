@@ -147,8 +147,9 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
 
 /**
  * Salva a nova configuração do menu no localStorage e dispara o evento de atualização.
+ * Retorna true em caso de sucesso ou false se falhar (ex: cota cheia / modo privado).
  */
-export function salvarMenuPersonalizado(grupos: GrupoMenuPersonalizado[]): void {
+export function salvarMenuPersonalizado(grupos: GrupoMenuPersonalizado[]): boolean {
   try {
     const gruposLimpos = (grupos || [])
       .filter((g) => g && typeof g === "object")
@@ -159,19 +160,24 @@ export function salvarMenuPersonalizado(grupos: GrupoMenuPersonalizado[]): void 
 
     localStorage.setItem(CHAVE_STORAGE_MENU, JSON.stringify(gruposLimpos));
     window.dispatchEvent(new CustomEvent(EVENTO_MENU_ATUALIZADO));
+    return true;
   } catch (err) {
     console.error("Erro ao salvar menu personalizado:", err);
+    return false;
   }
 }
 
 /**
  * Restaura o menu lateral para as configurações originais de fábrica.
+ * Retorna true em caso de sucesso ou false se falhar.
  */
-export function restaurarMenuPadrao(): void {
+export function restaurarMenuPadrao(): boolean {
   try {
     localStorage.removeItem(CHAVE_STORAGE_MENU);
     window.dispatchEvent(new CustomEvent(EVENTO_MENU_ATUALIZADO));
+    return true;
   } catch (err) {
     console.error("Erro ao restaurar menu padrão:", err);
+    return false;
   }
 }
