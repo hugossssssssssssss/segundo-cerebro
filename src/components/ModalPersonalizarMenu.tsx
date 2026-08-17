@@ -47,6 +47,8 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
   // Estado para arrastar e soltar (Drag and Drop)
   const [dragItem, setDragItem] = useState<{ idxGrupo: number; idxItem: number } | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<number | null>(null);
+  const [confirmarReset, setConfirmarReset] = useState(false);
+  const [categoriaParaRemoverIdx, setCategoriaParaRemoverIdx] = useState<number | null>(null);
 
   useEffect(() => {
     if (aberta) {
@@ -86,9 +88,6 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
     };
     setGrupos([...grupos, nova]);
   };
-
-  const [confirmarReset, setConfirmarReset] = useState(false);
-  const [categoriaParaRemoverIdx, setCategoriaParaRemoverIdx] = useState<number | null>(null);
 
   const removerCategoria = (idxGrupo: number) => {
     if (grupos.length <= 1) {
