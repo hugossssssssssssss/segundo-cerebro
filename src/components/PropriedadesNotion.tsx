@@ -215,7 +215,7 @@ export function PropriedadesNotion({
   const rotulosMap = { ...globalConfig.rotulos, ...((dados._rotulos as Record<string, string>) || {}) };
 
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
-    .filter(k => !["titulo", "tipo", "atualizado", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos"].includes(k));
+    .filter(k => !["titulo", "tipo", "atualizado", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos"].includes(k));
     
   const temRelacionamentos = (Array.isArray(dados.relacionamentos) && dados.relacionamentos.length > 0) ||
     (Array.isArray(dados.relacao) && dados.relacao.length > 0);
