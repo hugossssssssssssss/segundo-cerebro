@@ -62,10 +62,22 @@ export default function Notas() {
   const { abrirFlutuante, focarFlutuante } = useItemFlutuante();
 
   // ── Carregamento ──────────────────────────────────────────────────────────
+  // Carrega TODAS as notas de notas/ incluindo subpastas (o useItemRepo com
+  // PASTAS.notas só pega o nível direto — subpastas ficam de fora)
   const { itens: arquivos, acervo, titulos, carregando, erro: erroCarregar, ilegiveis, recarregar } =
     useItemRepo(cfg, PASTAS.notas, (item) =>
       comoNota(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
     );
+
+  // Todas as notas de notas/ incluindo subpastas
+  const todasNotas = useMemo(() => {
+    const prefixo = `${PASTAS.notas}/`;
+    return acervo
+      .filter((i) => i.caminho.startsWith(prefixo))
+      .map((item) =>
+        comoNota(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+      );
+  }, [acervo]);
 
   // ── Salvamento ────────────────────────────────────────────────────────────
   const { salvarTexto, apagarItem, salvando, erro: erroSalvar, limparErro } = useSalvar(cfg);
@@ -86,6 +98,8 @@ export default function Notas() {
   // ── Navegação de pastas ───────────────────────────────────────────────────
   const [pastaAtual, setPastaAtual] = useState(""); // "" = raiz de notas/
   const [pastasExistentes, setPastasExistentes] = useState<string[]>([]);
+  // Pastas criadas na sessão (mesmo sem notas dentro ainda)
+  const [pastasCriadas, setPastasCriadas] = useState<string[]>([]);
 
   // ── Seleção (marquee) ─────────────────────────────────────────────────────
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
@@ -396,6 +410,7 @@ export default function Notas() {
         const nome = acao.nome.replace(/[^a-zA-Z0-9\s-]/g, "").trim().replace(/\s+/g, "-").toLowerCase();
         if (!nome) return;
         const novaPasta = pastaAtual ? `${pastaAtual}/${nome}` : nome;
+        setPastasCriadas((atual) => [...new Set([...atual, novaPasta])]);
         setPastaAtual(novaPasta);
         toast(`Pasta "${nome}" criada`, { tipo: "sucesso" });
         break;
@@ -532,12 +547,42 @@ export default function Notas() {
     );
   }
 
-  // Filtra por pasta atual
-  const naPasta = arquivos.filter((a) => {
+  // Filtra por pasta atual (usando todasNotas que inclui subpastas)
+  const naPasta = todasNotas.filter((a) => {
     const partes = a.caminho.split("/");
     const pastaDoItem = partes.slice(1, -1).join("/");
     return pastaDoItem === pastaAtual;
   });
+
+  // Subpastas diretas da pasta atual (para mostrar como cartões na raiz)
+  const subpastas = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of todasNotas) {
+      const partes = a.caminho.split("/");
+      if (partes.length > 2) {
+        const pastaDoItem = partes.slice(1, -1).join("/");
+        if (pastaDoItem.startsWith(pastaAtual ? `${pastaAtual}/` : "")) {
+          const resto = pastaDoItem.slice(pastaAtual ? pastaAtual.length + 1 : 0);
+          const primeira = resto.split("/")[0];
+          if (primeira) set.add(primeira);
+        }
+      }
+    }
+    // Pastas criadas na sessão (mesmo vazias)
+    for (const p of pastasCriadas) {
+      if (pastaAtual) {
+        if (p.startsWith(`${pastaAtual}/`)) {
+          const resto = p.slice(pastaAtual.length + 1);
+          const primeira = resto.split("/")[0];
+          if (primeira) set.add(primeira);
+        }
+      } else {
+        const primeira = p.split("/")[0];
+        if (primeira) set.add(primeira);
+      }
+    }
+    return [...set].sort();
+  }, [todasNotas, pastaAtual, pastasCriadas]);
 
   // Filtra por busca, tags e data
   const visiveis = naPasta.filter((a) => {
@@ -557,11 +602,11 @@ export default function Notas() {
   // Todas as tags disponíveis (para o filtro)
   const todasTags = useMemo(() => {
     const set = new Set<string>();
-    for (const a of arquivos) {
+    for (const a of todasNotas) {
       for (const t of a.tags) set.add(t);
     }
     return [...set].sort();
-  }, [arquivos]);
+  }, [todasNotas]);
 
   // Caminho da pasta atual para breadcrumb
   const partesPasta = pastaAtual ? pastaAtual.split("/") : [];
@@ -782,6 +827,28 @@ export default function Notas() {
           onContextMenu={(e) => abrirMenuContexto(e, false)}
           className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 select-none"
         >
+          {/* Subpastas como cartões */}
+          {subpastas.map((pasta) => {
+            const caminhoPasta = pastaAtual ? `${pastaAtual}/${pasta}` : pasta;
+            return (
+              <div
+                key={`pasta-${caminhoPasta}`}
+                data-cartao
+                onContextMenu={(e) => {
+                  e.stopPropagation();
+                  abrirMenuContexto(e, true);
+                }}
+              >
+                <CartaoItem
+                  icone={<FolderOpen size={18} className="text-primary" />}
+                  titulo={pasta}
+                  subtitulo="Pasta"
+                  onClick={() => setPastaAtual(caminhoPasta)}
+                />
+              </div>
+            );
+          })}
+
           {visiveis.map((nota) => {
             const tituloNota = titulos[nota.caminho] ?? nota.titulo ?? nota.caminho;
             const nomeArquivo = nota.caminho.split("/").pop() || "";

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Star, Plus, Trash2, Check, FileText, Pencil, X, Tag, Type } from "lucide-react";
-import { Modal, Botao, EntradaTexto, AreaTexto } from "@/components/ui";
+import { Star, Plus, Trash2, FileText, Pencil } from "lucide-react";
+import { Modal, Botao } from "@/components/ui";
+import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import {
   obterTodosModelos,
   obterModeloPadraoId,
@@ -8,15 +9,7 @@ import {
   salvarModelosPersonalizados,
   ehModeloCustom,
   type TemplateItem,
-  type TemplateCategoria,
 } from "@/lib/templates";
-
-const CATEGORIAS: { id: TemplateCategoria; rotulo: string }[] = [
-  { id: "design", rotulo: "Design" },
-  { id: "reuniao", rotulo: "Reunião" },
-  { id: "tarefa", rotulo: "Tarefa" },
-  { id: "pdi", rotulo: "Carreira / PDI" },
-];
 
 export function ModalGerenciarModelos({
   aberto,
@@ -29,14 +22,14 @@ export function ModalGerenciarModelos({
 }) {
   const [modelos, setModelos] = useState<TemplateItem[]>(obterTodosModelos());
   const [padraoId, setPadraoId] = useState<string | null>(obterModeloPadraoId());
+  const [editando, setEditando] = useState<TemplateItem | null>(null);
   const [criando, setCriando] = useState(false);
-  const [editandoId, setEditandoId] = useState<string | null>(null);
 
-  // Formulário de novo/edição de modelo
+  // Estado do modelo em edição (estilo nota)
   const [formTitulo, setFormTitulo] = useState("");
-  const [formCategoria, setFormCategoria] = useState<TemplateCategoria>("design");
-  const [formTagsStr, setFormTagsStr] = useState("");
   const [formCorpo, setFormCorpo] = useState("");
+  const [formDados, setFormDados] = useState<Record<string, any>>({});
+  const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>("popup");
 
   function alternarPadrao(id: string) {
     const novoId = padraoId === id ? null : id;
@@ -46,40 +39,36 @@ export function ModalGerenciarModelos({
   }
 
   function abrirCriacao() {
-    setEditandoId(null);
+    setEditando(null);
     setFormTitulo("");
-    setFormCategoria("design");
-    setFormTagsStr("");
     setFormCorpo("");
+    setFormDados({ tipo: "nota", tags: [] });
     setCriando(true);
   }
 
   function abrirEdicao(m: TemplateItem) {
-    setCriando(true);
-    setEditandoId(m.id);
+    setEditando(m);
     setFormTitulo(m.titulo);
-    setFormCategoria(m.categoria);
-    setFormTagsStr((m.frontmatter.tags as string[] | undefined)?.join(", ") || "");
     setFormCorpo(m.corpoPadrao);
+    setFormDados({ ...m.frontmatter });
+    setCriando(true);
   }
 
   function cancelarForm() {
     setCriando(false);
-    setEditandoId(null);
+    setEditando(null);
   }
 
   function salvarForm() {
     if (!formTitulo.trim()) return;
-    const tags = formTagsStr
-      .split(",")
-      .map((t) => t.trim().replace(/^#/, ""))
-      .filter(Boolean);
+    const tags = Array.isArray(formDados.tags) ? formDados.tags : [];
 
     const dados = {
       titulo: formTitulo.trim(),
-      categoria: formCategoria,
+      categoria: (formDados.categoria as any) || "design",
       descricao: "Modelo personalizado",
       frontmatter: {
+        ...formDados,
         tipo: "nota",
         tags,
       },
@@ -88,9 +77,9 @@ export function ModalGerenciarModelos({
 
     const apenasCustom = modelos.filter((m) => ehModeloCustom(m.id));
 
-    if (editandoId) {
+    if (editando) {
       const atualizados = apenasCustom.map((m) =>
-        m.id === editandoId ? { ...m, ...dados, id: editandoId } : m,
+        m.id === editando.id ? { ...m, ...dados, id: editando.id } : m,
       );
       salvarModelosPersonalizados(atualizados);
     } else {
@@ -193,96 +182,8 @@ export function ModalGerenciarModelos({
           })}
         </div>
 
-        {/* Formulário de Criação/Edição de Modelo — estilo nota */}
-        {criando ? (
-          <div className="rounded-xl border border-primary/40 bg-card overflow-hidden animate-in fade-in-50">
-            {/* Cabeçalho do formulário */}
-            <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
-              <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <FileText size={16} className="text-primary" />
-                {editandoId ? "Editar Modelo Personalizado" : "Criar Novo Modelo Personalizado"}
-              </h4>
-              <Botao
-                variante="fantasma"
-                tamanho="icone"
-                onClick={cancelarForm}
-                className="h-8 w-8"
-                title="Cancelar"
-              >
-                <X size={16} />
-              </Botao>
-            </div>
-
-            <div className="p-4 space-y-4">
-              {/* Título */}
-              <div>
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-1.5">
-                  <Type size={13} className="text-muted-foreground" /> Título do Modelo
-                </label>
-                <EntradaTexto
-                  placeholder="Ex: Briefing de Redes Sociais"
-                  valor={formTitulo}
-                  aoMudar={setFormTitulo}
-                  className="text-sm"
-                />
-              </div>
-
-              {/* Categoria + Tags */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-1.5">
-                    <FileText size={13} className="text-muted-foreground" /> Categoria
-                  </label>
-                  <select
-                    value={formCategoria}
-                    onChange={(e) => setFormCategoria(e.target.value as TemplateCategoria)}
-                    className="w-full h-11 rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    {CATEGORIAS.map((c) => (
-                      <option key={c.id} value={c.id}>{c.rotulo}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-1.5">
-                    <Tag size={13} className="text-muted-foreground" /> Tags (separadas por vírgula)
-                  </label>
-                  <EntradaTexto
-                    placeholder="design, briefing, cliente"
-                    valor={formTagsStr}
-                    aoMudar={setFormTagsStr}
-                    className="text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Corpo em Markdown */}
-              <div>
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-1.5">
-                  <FileText size={13} className="text-muted-foreground" /> Corpo Padrão em Markdown
-                </label>
-                <AreaTexto
-                  value={formCorpo}
-                  onChange={(e) => setFormCorpo(e.target.value)}
-                  placeholder={`## Tópicos do modelo...\n\n- [ ] Tarefa 1\n- [ ] Tarefa 2`}
-                  rows={8}
-                  className="font-mono text-xs leading-relaxed"
-                />
-              </div>
-
-              {/* Ações */}
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
-                <Botao variante="neutro" tamanho="pequeno" onClick={cancelarForm}>
-                  <X size={14} /> Cancelar
-                </Botao>
-                <Botao variante="primario" tamanho="pequeno" onClick={salvarForm} className="gap-1">
-                  <Check size={14} /> {editandoId ? "Salvar Alterações" : "Salvar Modelo"}
-                </Botao>
-              </div>
-            </div>
-          </div>
-        ) : (
+        {/* Botão Criar Modelo */}
+        {!criando && (
           <Botao
             variante="neutro"
             tamanho="pequeno"
@@ -293,6 +194,32 @@ export function ModalGerenciarModelos({
           </Botao>
         )}
       </div>
+
+      {/* Editor de Modelo — idêntico à nota (PainelNotionBase) */}
+      {criando && (
+        <PainelNotionBase
+          rotuloTipo={editando ? "Editar Modelo" : "Novo Modelo"}
+          modoVisao={modoVisao}
+          setModoVisao={setModoVisao}
+          titulo={formTitulo}
+          setTitulo={setFormTitulo}
+          corpo={formCorpo}
+          setCorpo={setFormCorpo}
+          dadosProps={formDados}
+          onChangeProps={setFormDados}
+          camposFixosProps={{
+            tipo: { icone: <FileText className="h-4 w-4 opacity-50 text-orange-500" />, tipo: "select", opcoes: ["nota", "referencia", "rascunho"] },
+            tags: { icone: <FileText className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
+          }}
+          salvando={false}
+          temMudancas={false}
+          aoFechar={cancelarForm}
+          aoSalvar={async () => {
+            salvarForm();
+          }}
+          aoRemover={undefined}
+        />
+      )}
     </Modal>
   );
 }
