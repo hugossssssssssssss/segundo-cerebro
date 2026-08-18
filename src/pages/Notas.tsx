@@ -273,6 +273,28 @@ export default function Notas() {
     nova(modeloPadrao);
   }
 
+  // Ao criar a partir de uma pasta, o caminho já nasce definido. Isso evita
+  // depender de `pastaAtual` quando o painel for fechado e salvo.
+  function novaNaPasta(pasta: string, template?: TemplateItem) {
+    const titulo = template?.titulo || "Nova Nota";
+    const caminho = nomeLivre(
+      `${PASTAS.notas}/${pasta}`,
+      titulo,
+      todasNotas.map((a) => a.caminho),
+    );
+    const notaVazia: NotaAberta = {
+      bruto: template ? { ...template.frontmatter } : {},
+      caminho,
+      sha: "",
+      titulo,
+      tipo: (template?.frontmatter?.tipo as any) || "nota",
+      tags: template?.frontmatter?.tags || [],
+      corpo: template?.corpoPadrao || "",
+      original: { titulo: "", corpo: "", bruto: {} },
+    };
+    setAberta(notaVazia);
+  }
+
   async function salvar(alvo?: NotaAberta) {
     const n = alvo || aberta;
     if (!n) return;
@@ -828,7 +850,7 @@ export default function Notas() {
           descricao="Esta pasta ainda não tem notas. Crie a primeira nota dentro dela."
           acao={
             <div className="flex items-center gap-2">
-              <Botao onClick={novaComPadrao}>
+              <Botao onClick={() => novaNaPasta(pastaAtual, modeloPadrao)}>
                 <Plus size={16} /> Criar nota aqui
               </Botao>
               <Botao variante="neutro" onClick={() => setPastaAtual("")}>
@@ -897,6 +919,16 @@ export default function Notas() {
                       : ""
                   }
                   onClick={() => setPastaAtual(caminhoPasta)}
+                  acoes={
+                    <button
+                      type="button"
+                      title={`Criar nota em ${caminhoPasta}`}
+                      onClick={() => novaNaPasta(caminhoPasta, modeloPadrao)}
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                    >
+                      <Plus size={15} />
+                    </button>
+                  }
                 />
               </div>
             );
@@ -947,6 +979,25 @@ export default function Notas() {
                   subtitulo={subtitulo}
                   tags={nota.tags}
                   selecionado={estaSelecionada}
+                  acoes={
+                    pastasExistentes.length > 0 ? (
+                      <select
+                        aria-label={`Mover ${tituloNota} para uma pasta`}
+                        defaultValue=""
+                        onChange={(e) => {
+                          const destino = e.target.value;
+                          if (destino) moverNotaParaPasta(nota.caminho, destino);
+                          e.currentTarget.value = "";
+                        }}
+                        className="max-w-28 rounded-md border border-border bg-card px-1.5 py-1 text-[10px] text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <option value="" disabled>Mover…</option>
+                        {pastasExistentes
+                          .filter((pasta) => `${PASTAS.notas}/${pasta}` !== nota.caminho.slice(0, nota.caminho.lastIndexOf("/")))
+                          .map((pasta) => <option key={pasta} value={pasta}>{pasta}</option>)}
+                      </select>
+                    ) : undefined
+                  }
                   onClick={() => {
                     if (selecionadas.size > 0) {
                       alternarSelecao(nota.caminho);
