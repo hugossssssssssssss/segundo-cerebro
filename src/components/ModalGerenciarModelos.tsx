@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Star, Plus, Trash2, Check, FileText, Pencil, X } from "lucide-react";
-import { Modal, Botao, EntradaTexto } from "@/components/ui";
+import { Star, Plus, Trash2, Check, FileText, Pencil, X, Tag, Type } from "lucide-react";
+import { Modal, Botao, EntradaTexto, AreaTexto } from "@/components/ui";
 import {
   obterTodosModelos,
   obterModeloPadraoId,
@@ -118,7 +118,7 @@ export function ModalGerenciarModelos({
   }
 
   return (
-    <Modal aberto={aberto} aoFechar={aoFechar} titulo="Gerenciar Modelos de Nota">
+    <Modal aberto={aberto} aoFechar={aoFechar} titulo="Gerenciar Modelos de Nota" tamanho="largo">
       <div className="space-y-4 p-4 max-h-[75dvh] overflow-y-auto">
         <p className="text-xs text-muted-foreground">
           Configure seus modelos de anotações (estilo Notion) e escolha um <strong>Modelo Padrão ⭐</strong> para ser aplicado automaticamente ao clicar em "Nova Nota".
@@ -133,8 +133,8 @@ export function ModalGerenciarModelos({
               <div
                 key={m.id}
                 className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-all ${ehPadrao
-                    ? "border-amber-500/50 bg-amber-500/5 shadow-xs"
-                    : "border-border/80 bg-card hover:bg-accent/40"
+                  ? "border-amber-500/50 bg-amber-500/5 shadow-xs"
+                  : "border-border/80 bg-card hover:bg-accent/40"
                   }`}
               >
                 <div className="min-w-0 flex-1">
@@ -193,65 +193,93 @@ export function ModalGerenciarModelos({
           })}
         </div>
 
-        {/* Formulário de Criação/Edição de Modelo */}
+        {/* Formulário de Criação/Edição de Modelo — estilo nota */}
         {criando ? (
-          <div className="p-3.5 rounded-xl border border-primary/40 bg-card space-y-3 animate-in fade-in-50">
-            <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-              <FileText size={14} className="text-primary" />
-              {editandoId ? "Editar Modelo Personalizado" : "Criar Novo Modelo Personalizado"}
-            </h4>
+          <div className="rounded-xl border border-primary/40 bg-card overflow-hidden animate-in fade-in-50">
+            {/* Cabeçalho do formulário */}
+            <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
+              <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <FileText size={16} className="text-primary" />
+                {editandoId ? "Editar Modelo Personalizado" : "Criar Novo Modelo Personalizado"}
+              </h4>
+              <Botao
+                variante="fantasma"
+                tamanho="icone"
+                onClick={cancelarForm}
+                className="h-8 w-8"
+                title="Cancelar"
+              >
+                <X size={16} />
+              </Botao>
+            </div>
 
-            <EntradaTexto
-              rotulo="Título do Modelo"
-              placeholder="Ex: Briefing de Redes Sociais"
-              valor={formTitulo}
-              aoMudar={setFormTitulo}
-            />
-
-            <div className="grid grid-cols-2 gap-2">
+            <div className="p-4 space-y-4">
+              {/* Título */}
               <div>
-                <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                  Categoria
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-1.5">
+                  <Type size={13} className="text-muted-foreground" /> Título do Modelo
                 </label>
-                <select
-                  value={formCategoria}
-                  onChange={(e) => setFormCategoria(e.target.value as TemplateCategoria)}
-                  className="w-full rounded-xl border border-border bg-card px-2.5 py-1.5 text-xs text-foreground focus:outline-none"
-                >
-                  {CATEGORIAS.map((c) => (
-                    <option key={c.id} value={c.id}>{c.rotulo}</option>
-                  ))}
-                </select>
+                <EntradaTexto
+                  placeholder="Ex: Briefing de Redes Sociais"
+                  valor={formTitulo}
+                  aoMudar={setFormTitulo}
+                  className="text-sm"
+                />
               </div>
 
-              <EntradaTexto
-                rotulo="Tags (separadas por vírgula)"
-                placeholder="design, briefing, cliente"
-                valor={formTagsStr}
-                aoMudar={setFormTagsStr}
-              />
-            </div>
+              {/* Categoria + Tags */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-1.5">
+                    <FileText size={13} className="text-muted-foreground" /> Categoria
+                  </label>
+                  <select
+                    value={formCategoria}
+                    onChange={(e) => setFormCategoria(e.target.value as TemplateCategoria)}
+                    className="w-full h-11 rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {CATEGORIAS.map((c) => (
+                      <option key={c.id} value={c.id}>{c.rotulo}</option>
+                    ))}
+                  </select>
+                </div>
 
-            <div>
-              <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                Corpo Padrão em Markdown
-              </label>
-              <textarea
-                value={formCorpo}
-                onChange={(e) => setFormCorpo(e.target.value)}
-                placeholder="## Tópicos do modelo..."
-                rows={4}
-                className="w-full rounded-xl border border-border bg-card p-2.5 text-xs text-foreground font-mono focus:outline-none"
-              />
-            </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-1.5">
+                    <Tag size={13} className="text-muted-foreground" /> Tags (separadas por vírgula)
+                  </label>
+                  <EntradaTexto
+                    placeholder="design, briefing, cliente"
+                    valor={formTagsStr}
+                    aoMudar={setFormTagsStr}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
 
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <Botao variante="neutro" tamanho="pequeno" onClick={cancelarForm}>
-                <X size={14} /> Cancelar
-              </Botao>
-              <Botao variante="primario" tamanho="pequeno" onClick={salvarForm} className="gap-1">
-                <Check size={14} /> {editandoId ? "Salvar Alterações" : "Salvar Modelo"}
-              </Botao>
+              {/* Corpo em Markdown */}
+              <div>
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-1.5">
+                  <FileText size={13} className="text-muted-foreground" /> Corpo Padrão em Markdown
+                </label>
+                <AreaTexto
+                  value={formCorpo}
+                  onChange={(e) => setFormCorpo(e.target.value)}
+                  placeholder={`## Tópicos do modelo...\n\n- [ ] Tarefa 1\n- [ ] Tarefa 2`}
+                  rows={8}
+                  className="font-mono text-xs leading-relaxed"
+                />
+              </div>
+
+              {/* Ações */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
+                <Botao variante="neutro" tamanho="pequeno" onClick={cancelarForm}>
+                  <X size={14} /> Cancelar
+                </Botao>
+                <Botao variante="primario" tamanho="pequeno" onClick={salvarForm} className="gap-1">
+                  <Check size={14} /> {editandoId ? "Salvar Alterações" : "Salvar Modelo"}
+                </Botao>
+              </div>
             </div>
           </div>
         ) : (

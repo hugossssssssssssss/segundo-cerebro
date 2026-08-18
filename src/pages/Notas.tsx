@@ -749,6 +749,22 @@ export default function Notas() {
           descricao="Crie a primeira nota. Ela vira um arquivo .md no seu repositório — que você pode abrir em qualquer lugar."
           acao={<Botao onClick={novaComPadrao}>Criar primeira nota</Botao>}
         />
+      ) : naPasta.length === 0 && pastaAtual ? (
+        <Vazio
+          icone={<FolderOpen size={24} />}
+          titulo={`Pasta "${pastaAtual}" vazia`}
+          descricao="Esta pasta ainda não tem notas. Crie a primeira nota dentro dela."
+          acao={
+            <div className="flex items-center gap-2">
+              <Botao onClick={novaComPadrao}>
+                <Plus size={16} /> Criar nota aqui
+              </Botao>
+              <Botao variante="neutro" onClick={() => setPastaAtual("")}>
+                Voltar para Notas
+              </Botao>
+            </div>
+          }
+        />
       ) : visiveis.length === 0 ? (
         <Vazio
           icone={<FileText size={24} />}
