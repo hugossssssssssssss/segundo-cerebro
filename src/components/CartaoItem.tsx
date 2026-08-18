@@ -11,7 +11,9 @@ interface CartaoItemProps {
   tags?: string[];
   acoes?: React.ReactNode;
   ativo?: boolean;
+  selecionado?: boolean;
   onClick?: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
   className?: string;
   children?: React.ReactNode;
 }
@@ -27,24 +29,56 @@ export function CartaoItem({
   tags,
   acoes,
   ativo = false,
+  selecionado = false,
   onClick,
+  onContextMenu,
   className,
   children,
 }: CartaoItemProps) {
+  const temTags = tags && tags.length > 0;
+
   return (
     <Cartao
       onClick={onClick}
+      onContextMenu={onContextMenu}
       className={cn(
         "p-4 transition-all duration-200 group relative flex flex-col justify-between border-border/80 bg-card",
         onClick && "cursor-pointer hover:border-primary/50 hover:shadow-xs",
         ativo && "border-primary bg-primary/5 ring-1 ring-primary/20",
+        selecionado &&
+        "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-md",
+        temTags &&
+        "border-l-4 border-l-amber-400/70 hover:border-l-amber-500",
         className
       )}
     >
+      {/* Indicador de seleção */}
+      {selecionado && (
+        <div className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-3 min-w-0">
         <div className="flex items-start gap-3 min-w-0 flex-1">
           {icone && (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/60 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+            <div
+              className={cn(
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/60 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors",
+                temTags && "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              )}
+            >
               {icone}
             </div>
           )}
@@ -75,7 +109,7 @@ export function CartaoItem({
 
       {children && <div className="mt-3">{children}</div>}
 
-      {tags && tags.length > 0 && (
+      {temTags && (
         <div className="mt-3 flex items-center gap-1.5 flex-wrap">
           {tags.map((t) => (
             <TagChip key={t} tag={t} />

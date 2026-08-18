@@ -11,6 +11,8 @@ export type TemplateItem = {
   corpoPadrao: string;
 };
 
+export type TemplateCategoria = TemplateItem["categoria"];
+
 export const MODELOS_PADRAO: TemplateItem[] = [
   {
     id: "briefing-design",
@@ -99,6 +101,11 @@ export function salvarModelosPersonalizados(custom: TemplateItem[]): void {
   localStorage.setItem(CHAVE_MODELOS_CUSTOM, JSON.stringify(custom));
 }
 
+/** Só os modelos personalizados (id começa com "custom_"). */
+export function obterModelosPersonalizados(): TemplateItem[] {
+  return obterTodosModelos().filter((m) => ehModeloCustom(m.id));
+}
+
 export function obterModeloPadraoId(): string | null {
   return localStorage.getItem(CHAVE_MODELO_PADRAO);
 }
@@ -115,4 +122,55 @@ export function obterModeloPadrao(): TemplateItem | undefined {
   const id = obterModeloPadraoId();
   if (!id) return undefined;
   return obterTodosModelos().find((m) => m.id === id);
+}
+
+export function ehModeloCustom(id: string): boolean {
+  return id.startsWith("custom_");
+}
+
+/**
+ * Cria um novo modelo personalizado e salva junto aos existentes.
+ * Devolve o modelo criado.
+ */
+export function criarModeloPersonalizado(
+  dados: Omit<TemplateItem, "id">,
+): TemplateItem {
+  const novo: TemplateItem = {
+    ...dados,
+    id: `custom_${Date.now()}`,
+  };
+  const custom = obterModelosPersonalizados();
+  salvarModelosPersonalizados([...custom, novo]);
+  return novo;
+}
+
+/**
+ * Atualiza um modelo personalizado existente (por id).
+ * Modelos padrão não podem ser editados — devolve false.
+ */
+export function editarModeloPersonalizado(
+  id: string,
+  dados: Partial<Omit<TemplateItem, "id">>,
+): boolean {
+  if (!ehModeloCustom(id)) return false;
+  const custom = obterModelosPersonalizados();
+  const idx = custom.findIndex((m) => m.id === id);
+  if (idx < 0) return false;
+  custom[idx] = { ...custom[idx], ...dados, id };
+  salvarModelosPersonalizados(custom);
+  return true;
+}
+
+/**
+ * Remove um modelo personalizado. Se ele era o padrão, limpa a preferência.
+ * Modelos padrão não podem ser removidos — devolve false.
+ */
+export function removerModeloPersonalizado(id: string): boolean {
+  if (!ehModeloCustom(id)) return false;
+  const custom = obterModelosPersonalizados().filter((m) => m.id !== id);
+  salvarModelosPersonalizados(custom);
+  if (obterModeloPadraoId() === id) {
+    definirModeloPadraoId(null);
+  }
+  return true;
 }

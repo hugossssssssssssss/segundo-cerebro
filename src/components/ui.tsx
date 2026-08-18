@@ -143,6 +143,33 @@ export function Rotulo({
   );
 }
 
+export function EntradaTexto({
+  rotulo,
+  dica,
+  valor,
+  aoMudar,
+  className,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & {
+  rotulo?: string;
+  dica?: string;
+  valor?: string;
+  aoMudar?: (val: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      {rotulo && <Rotulo>{rotulo}</Rotulo>}
+      <Campo
+        value={valor}
+        onChange={(e) => aoMudar?.(e.target.value)}
+        className={className}
+        {...props}
+      />
+      {dica && <p className="text-xs text-muted-foreground">{dica}</p>}
+    </div>
+  );
+}
+
 /* --------------------------------------------------------------- Cartão */
 
 // `ComponentProps<"div">` e não `HTMLAttributes`: inclui `ref` e `style`, que
@@ -310,8 +337,8 @@ export function Modal({
     tamanho === "extra-largo"
       ? "sm:max-w-5xl"
       : tamanho === "largo"
-      ? "sm:max-w-3xl"
-      : "sm:max-w-2xl";
+        ? "sm:max-w-3xl"
+        : "sm:max-w-2xl";
 
   return (
     <div

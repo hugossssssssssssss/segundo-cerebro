@@ -1,13 +1,22 @@
 import { useState } from "react";
-import { Star, Plus, Trash2, Check, FileText } from "lucide-react";
+import { Star, Plus, Trash2, Check, FileText, Pencil, X } from "lucide-react";
 import { Modal, Botao, EntradaTexto } from "@/components/ui";
 import {
   obterTodosModelos,
   obterModeloPadraoId,
   definirModeloPadraoId,
   salvarModelosPersonalizados,
+  ehModeloCustom,
   type TemplateItem,
+  type TemplateCategoria,
 } from "@/lib/templates";
+
+const CATEGORIAS: { id: TemplateCategoria; rotulo: string }[] = [
+  { id: "design", rotulo: "Design" },
+  { id: "reuniao", rotulo: "Reunião" },
+  { id: "tarefa", rotulo: "Tarefa" },
+  { id: "pdi", rotulo: "Carreira / PDI" },
+];
 
 export function ModalGerenciarModelos({
   aberto,
@@ -21,12 +30,13 @@ export function ModalGerenciarModelos({
   const [modelos, setModelos] = useState<TemplateItem[]>(obterTodosModelos());
   const [padraoId, setPadraoId] = useState<string | null>(obterModeloPadraoId());
   const [criando, setCriando] = useState(false);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
 
-  // Formulário de novo modelo
-  const [novoTitulo, setNovoTitulo] = useState("");
-  const [novaCategoria, setNovaCategoria] = useState<"design" | "reuniao" | "tarefa" | "pdi">("design");
-  const [novasTagsStr, setNovasTagsStr] = useState("");
-  const [novoCorpo, setNovoCorpo] = useState("");
+  // Formulário de novo/edição de modelo
+  const [formTitulo, setFormTitulo] = useState("");
+  const [formCategoria, setFormCategoria] = useState<TemplateCategoria>("design");
+  const [formTagsStr, setFormTagsStr] = useState("");
+  const [formCorpo, setFormCorpo] = useState("");
 
   function alternarPadrao(id: string) {
     const novoId = padraoId === id ? null : id;
@@ -35,38 +45,69 @@ export function ModalGerenciarModelos({
     aoAtualizar();
   }
 
-  function salvarNovoModelo() {
-    if (!novoTitulo.trim()) return;
-    const novoItem: TemplateItem = {
-      id: `custom_${Date.now()}`,
-      titulo: novoTitulo.trim(),
-      categoria: novaCategoria,
+  function abrirCriacao() {
+    setEditandoId(null);
+    setFormTitulo("");
+    setFormCategoria("design");
+    setFormTagsStr("");
+    setFormCorpo("");
+    setCriando(true);
+  }
+
+  function abrirEdicao(m: TemplateItem) {
+    setCriando(true);
+    setEditandoId(m.id);
+    setFormTitulo(m.titulo);
+    setFormCategoria(m.categoria);
+    setFormTagsStr((m.frontmatter.tags as string[] | undefined)?.join(", ") || "");
+    setFormCorpo(m.corpoPadrao);
+  }
+
+  function cancelarForm() {
+    setCriando(false);
+    setEditandoId(null);
+  }
+
+  function salvarForm() {
+    if (!formTitulo.trim()) return;
+    const tags = formTagsStr
+      .split(",")
+      .map((t) => t.trim().replace(/^#/, ""))
+      .filter(Boolean);
+
+    const dados = {
+      titulo: formTitulo.trim(),
+      categoria: formCategoria,
       descricao: "Modelo personalizado",
       frontmatter: {
         tipo: "nota",
-        tags: novasTagsStr
-          .split(",")
-          .map((t) => t.trim().replace(/^#/, ""))
-          .filter(Boolean),
+        tags,
       },
-      corpoPadrao: novoCorpo,
+      corpoPadrao: formCorpo,
     };
 
-    const apenasCustom = modelos.filter((m) => m.id.startsWith("custom_"));
-    const novosCustom = [...apenasCustom, novoItem];
-    salvarModelosPersonalizados(novosCustom);
+    const apenasCustom = modelos.filter((m) => ehModeloCustom(m.id));
 
-    const todos = obterTodosModelos();
-    setModelos(todos);
-    setCriando(false);
-    setNovoTitulo("");
-    setNovasTagsStr("");
-    setNovoCorpo("");
+    if (editandoId) {
+      const atualizados = apenasCustom.map((m) =>
+        m.id === editandoId ? { ...m, ...dados, id: editandoId } : m,
+      );
+      salvarModelosPersonalizados(atualizados);
+    } else {
+      const novoItem: TemplateItem = {
+        ...dados,
+        id: `custom_${Date.now()}`,
+      };
+      salvarModelosPersonalizados([...apenasCustom, novoItem]);
+    }
+
+    setModelos(obterTodosModelos());
+    cancelarForm();
     aoAtualizar();
   }
 
   function excluirModelo(id: string) {
-    const apenasCustom = modelos.filter((m) => m.id.startsWith("custom_") && m.id !== id);
+    const apenasCustom = modelos.filter((m) => ehModeloCustom(m.id) && m.id !== id);
     salvarModelosPersonalizados(apenasCustom);
     if (padraoId === id) {
       definirModeloPadraoId(null);
@@ -87,15 +128,14 @@ export function ModalGerenciarModelos({
         <div className="space-y-2">
           {modelos.map((m) => {
             const ehPadrao = padraoId === m.id;
-            const ehCustom = m.id.startsWith("custom_");
+            const ehCustom = ehModeloCustom(m.id);
             return (
               <div
                 key={m.id}
-                className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-all ${
-                  ehPadrao
+                className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-all ${ehPadrao
                     ? "border-amber-500/50 bg-amber-500/5 shadow-xs"
                     : "border-border/80 bg-card hover:bg-accent/40"
-                }`}
+                  }`}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -126,15 +166,26 @@ export function ModalGerenciarModelos({
                   </Botao>
 
                   {ehCustom && (
-                    <Botao
-                      variante="fantasma"
-                      tamanho="icone"
-                      onClick={() => excluirModelo(m.id)}
-                      title="Excluir este modelo"
-                      className="text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 size={14} />
-                    </Botao>
+                    <>
+                      <Botao
+                        variante="fantasma"
+                        tamanho="icone"
+                        onClick={() => abrirEdicao(m)}
+                        title="Editar este modelo"
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Pencil size={14} />
+                      </Botao>
+                      <Botao
+                        variante="fantasma"
+                        tamanho="icone"
+                        onClick={() => excluirModelo(m.id)}
+                        title="Excluir este modelo"
+                        className="text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 size={14} />
+                      </Botao>
+                    </>
                   )}
                 </div>
               </div>
@@ -142,18 +193,19 @@ export function ModalGerenciarModelos({
           })}
         </div>
 
-        {/* Formulário de Criação de Modelo */}
+        {/* Formulário de Criação/Edição de Modelo */}
         {criando ? (
           <div className="p-3.5 rounded-xl border border-primary/40 bg-card space-y-3 animate-in fade-in-50">
             <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-              <FileText size={14} className="text-primary" /> Criar Novo Modelo Personalizado
+              <FileText size={14} className="text-primary" />
+              {editandoId ? "Editar Modelo Personalizado" : "Criar Novo Modelo Personalizado"}
             </h4>
 
             <EntradaTexto
               rotulo="Título do Modelo"
               placeholder="Ex: Briefing de Redes Sociais"
-              valor={novoTitulo}
-              aoMudar={setNovoTitulo}
+              valor={formTitulo}
+              aoMudar={setFormTitulo}
             />
 
             <div className="grid grid-cols-2 gap-2">
@@ -162,22 +214,21 @@ export function ModalGerenciarModelos({
                   Categoria
                 </label>
                 <select
-                  value={novaCategoria}
-                  onChange={(e) => setNovaCategoria(e.target.value as any)}
+                  value={formCategoria}
+                  onChange={(e) => setFormCategoria(e.target.value as TemplateCategoria)}
                   className="w-full rounded-xl border border-border bg-card px-2.5 py-1.5 text-xs text-foreground focus:outline-none"
                 >
-                  <option value="design">Design</option>
-                  <option value="reuniao">Reunião</option>
-                  <option value="tarefa">Tarefa</option>
-                  <option value="pdi">Carreira / PDI</option>
+                  {CATEGORIAS.map((c) => (
+                    <option key={c.id} value={c.id}>{c.rotulo}</option>
+                  ))}
                 </select>
               </div>
 
               <EntradaTexto
                 rotulo="Tags (separadas por vírgula)"
                 placeholder="design, briefing, cliente"
-                valor={novasTagsStr}
-                aoMudar={setNovasTagsStr}
+                valor={formTagsStr}
+                aoMudar={setFormTagsStr}
               />
             </div>
 
@@ -186,8 +237,8 @@ export function ModalGerenciarModelos({
                 Corpo Padrão em Markdown
               </label>
               <textarea
-                value={novoCorpo}
-                onChange={(e) => setNovoCorpo(e.target.value)}
+                value={formCorpo}
+                onChange={(e) => setFormCorpo(e.target.value)}
                 placeholder="## Tópicos do modelo..."
                 rows={4}
                 className="w-full rounded-xl border border-border bg-card p-2.5 text-xs text-foreground font-mono focus:outline-none"
@@ -195,11 +246,11 @@ export function ModalGerenciarModelos({
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-1">
-              <Botao variante="neutro" tamanho="pequeno" onClick={() => setCriando(false)}>
-                Cancelar
+              <Botao variante="neutro" tamanho="pequeno" onClick={cancelarForm}>
+                <X size={14} /> Cancelar
               </Botao>
-              <Botao variante="primario" tamanho="pequeno" onClick={salvarNovoModelo} className="gap-1">
-                <Check size={14} /> Salvar Modelo
+              <Botao variante="primario" tamanho="pequeno" onClick={salvarForm} className="gap-1">
+                <Check size={14} /> {editandoId ? "Salvar Alterações" : "Salvar Modelo"}
               </Botao>
             </div>
           </div>
@@ -207,7 +258,7 @@ export function ModalGerenciarModelos({
           <Botao
             variante="neutro"
             tamanho="pequeno"
-            onClick={() => setCriando(true)}
+            onClick={abrirCriacao}
             className="w-full border-dashed gap-1.5 py-2.5"
           >
             <Plus size={14} /> Criar Modelo Customizado
