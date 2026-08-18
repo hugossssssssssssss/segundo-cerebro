@@ -5,7 +5,6 @@ import {
   Tag,
   FileText,
   FolderOpen,
-  FolderPlus,
   ChevronRight,
   Settings2,
   Trash2,
@@ -697,31 +696,67 @@ export default function Notas() {
         />
       )}
 
+      {/* Indicador da pasta atual */}
+      {pastaAtual && (
+        <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-2.5 text-xs font-medium text-foreground animate-in fade-in duration-150">
+          <FolderOpen size={14} className="text-amber-500" />
+          <span>Criando notas dentro de: <strong>{pastaAtual}</strong></span>
+          <button
+            type="button"
+            onClick={() => setPastaAtual("")}
+            className="ml-auto text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Sair da pasta
+          </button>
+        </div>
+      )}
+
       {selecionadas.size > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 animate-in fade-in duration-150">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 animate-in fade-in duration-150">
           <div className="flex items-center gap-2 text-xs font-medium text-foreground">
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
               {selecionadas.size}
             </span>
             nota(s) selecionada(s)
           </div>
-          <div className="flex items-center gap-1.5">
-            <Botao
-              variante="fantasma"
-              tamanho="pequeno"
-              onClick={() => setMenuContexto({ x: window.innerWidth / 2, y: 100, emCartao: true })}
-              className="gap-1 text-[11px]"
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Mover para pasta — dropdown direto */}
+            <select
+              value=""
+              onChange={(e) => {
+                const destino = e.target.value;
+                if (destino) processarAcaoMenu({ tipo: "mover_para", pasta: destino });
+                e.target.value = "";
+              }}
+              className="rounded-xl border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
+              title="Mover selecionados para pasta"
             >
-              <FolderPlus size={13} /> Mover
-            </Botao>
-            <Botao
-              variante="fantasma"
-              tamanho="pequeno"
-              onClick={() => setMenuContexto({ x: window.innerWidth / 2, y: 100, emCartao: true })}
-              className="gap-1 text-[11px]"
-            >
-              <Tag size={13} /> Tags
-            </Botao>
+              <option value="" disabled>Mover para pasta...</option>
+              {[...new Set([...subpastas, ...pastasCriadas])].map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+
+            {/* Adicionar tags — input direto */}
+            <input
+              type="text"
+              placeholder="+ tags..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const tags = (e.target as HTMLInputElement).value
+                    .split(",")
+                    .map((t) => t.trim().replace(/^#/, ""))
+                    .filter(Boolean);
+                  if (tags.length > 0) {
+                    processarAcaoMenu({ tipo: "adicionar_tags", tags });
+                    (e.target as HTMLInputElement).value = "";
+                  }
+                }
+              }}
+              className="rounded-xl border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-28"
+              title="Digite tags separadas por vírgula e pressione Enter"
+            />
+
             <Botao
               variante="fantasma"
               tamanho="pequeno"
@@ -913,7 +948,7 @@ export default function Notas() {
         aberto={menuContexto !== null}
         aoFechar={() => setMenuContexto(null)}
         aoAcao={processarAcaoMenu}
-        pastasExistentes={pastasCriadas.length > 0 ? pastasCriadas : subpastas}
+        pastasExistentes={[...new Set([...subpastas, ...pastasCriadas])]}
         temSelecao={selecionadas.size > 0}
         emCartao={menuContexto?.emCartao ?? false}
       />
