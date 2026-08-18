@@ -47,7 +47,6 @@ import { MenuContextoNotas, type AcaoMenuContexto } from "@/components/MenuConte
 import { toast } from "@/lib/toast";
 import type { Nota } from "@/lib/tipos";
 
-// Nota com rastreamento de mudanças para o painel de edição
 type NotaAberta = Nota & {
   original: { titulo: string; corpo: string; bruto?: Frontmatter };
 };
@@ -61,29 +60,14 @@ export default function Notas() {
   const navegar = useNavigate();
   const { abrirFlutuante, focarFlutuante } = useItemFlutuante();
 
-  // ── Carregamento ──────────────────────────────────────────────────────────
-  // Carrega TODAS as notas de notas/ incluindo subpastas (o useItemRepo com
-  // PASTAS.notas só pega o nível direto — subpastas ficam de fora)
   const { itens: arquivos, acervo, titulos, carregando, erro: erroCarregar, ilegiveis, recarregar } =
     useItemRepo(cfg, PASTAS.notas, (item) =>
       comoNota(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
     );
 
-  // Todas as notas de notas/ incluindo subpastas
-  const todasNotas = useMemo(() => {
-    const prefixo = `${PASTAS.notas}/`;
-    return acervo
-      .filter((i) => i.caminho.startsWith(prefixo))
-      .map((item) =>
-        comoNota(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
-      );
-  }, [acervo]);
-
-  // ── Salvamento ────────────────────────────────────────────────────────────
   const { salvarTexto, apagarItem, salvando, erro: erroSalvar, limparErro } = useSalvar(cfg);
   const erro = erroCarregar || erroSalvar;
 
-  // ── Estado da UI ──────────────────────────────────────────────────────────
   const [busca, setBusca] = useState("");
   const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>(() => {
     const salvo = localStorage.getItem('klaus_modo_visao_notas');
@@ -95,13 +79,9 @@ export default function Notas() {
 
   const [aberta, setAberta] = useState<NotaAberta | null>(null);
 
-  // ── Navegação de pastas ───────────────────────────────────────────────────
-  const [pastaAtual, setPastaAtual] = useState(""); // "" = raiz de notas/
-  const [pastasExistentes, setPastasExistentes] = useState<string[]>([]);
-  // Pastas criadas na sessão (mesmo sem notas dentro ainda)
+  const [pastaAtual, setPastaAtual] = useState("");
   const [pastasCriadas, setPastasCriadas] = useState<string[]>([]);
 
-  // ── Seleção (marquee) ─────────────────────────────────────────────────────
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [arrastando, setArrastando] = useState(false);
@@ -109,23 +89,23 @@ export default function Notas() {
   const inicioArrastoRef = useRef<{ x: number; y: number } | null>(null);
   const cartoesRef = useRef<Map<string, DOMRect>>(new Map());
 
-  // ── Menu de contexto ──────────────────────────────────────────────────────
   const [menuContexto, setMenuContexto] = useState<{
     x: number;
     y: number;
     emCartao: boolean;
   } | null>(null);
 
-  // ── Filtros ───────────────────────────────────────────────────────────────
+  // Drag and drop: nota arrastada sobre pasta
+  const [notaArrastada, setNotaArrastada] = useState<string | null>(null);
+  const [pastaAlvo, setPastaAlvo] = useState<string | null>(null);
+
   const [tagsFiltro, setTagsFiltro] = useState<string[]>([]);
   const [filtroData, setFiltroData] = useState<FiltroData>("qualquer");
 
-  // ── Modelos ───────────────────────────────────────────────────────────────
   const [modalModelosAberto, setModalModelosAberto] = useState(false);
   const [modelos, setModelos] = useState<TemplateItem[]>(obterTodosModelos());
   const [modeloPadrao, setModeloPadrao] = useState<TemplateItem | undefined>(obterModeloPadrao());
 
-  // ── Relacionamentos ────────────────────────────────────────────────────────
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
   const opcoesRelacionamento = useMemo(() =>
     alvosUnicos(indice)
@@ -138,19 +118,16 @@ export default function Notas() {
     return mencoesA(aberta.caminho, acervo, indice);
   }, [aberta?.caminho, acervo, indice]);
 
-  // ── Extrai pastas existentes dos caminhos ─────────────────────────────────
-  useEffect(() => {
-    const pastas = new Set<string>();
-    for (const a of arquivos) {
-      const partes = a.caminho.split("/");
-      if (partes.length > 2) {
-        pastas.add(partes.slice(1, -1).join("/"));
-      }
-    }
-    setPastasExistentes([...pastas].sort());
-  }, [arquivos]);
+  // Todas as notas de notas/ incluindo subpastas
+  const todasNotas = useMemo(() => {
+    const prefixo = `${PASTAS.notas}/`;
+    return acervo
+      .filter((i) => i.caminho.startsWith(prefixo))
+      .map((item) =>
+        comoNota(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+      );
+  }, [acervo]);
 
-  // ── Abre item pela URL ─────────────────────────────────────────────────────
   const processouUrlRef = useRef<string | null>(null);
   useEffect(() => {
     const urlAtual = `${location.pathname}${location.search}${location.hash}`;
@@ -158,7 +135,7 @@ export default function Notas() {
 
     if (lerParametroCriar(location, ["nova", "novo"])) {
       processouUrlRef.current = urlAtual;
-      const caminhoNovo = nomeLivre(pastaAtual ? `${PASTAS.notas}/${pastaAtual}` : PASTAS.notas, "Nova Nota", arquivos.map((a) => a.caminho));
+      const caminhoNovo = nomeLivre(pastaAtual ? `${PASTAS.notas}/${pastaAtual}` : PASTAS.notas, "Nova Nota", todasNotas.map((a) => a.caminho));
       const n = comoNota({ dados: { titulo: "Nova Nota", tipo: "nota" }, corpo: "" }, caminhoNovo, "", "Nova Nota");
       setAberta({ ...n, original: { titulo: n.titulo, corpo: n.corpo, bruto: n.bruto } });
       return;
@@ -175,9 +152,8 @@ export default function Notas() {
         setAberta({ ...nota, original: { titulo: nota.titulo, corpo: nota.corpo, bruto: nota.bruto } });
       }
     }
-  }, [location.pathname, location.search, location.hash, acervo.length > 0, pastaAtual]);
+  }, [location.pathname, location.search, location.hash, acervo.length > 0, pastaAtual, todasNotas]);
 
-  // ── Proteção contra fechar com mudança não salva ───────────────────────────
   const mudou = aberta
     ? aberta.titulo !== aberta.original.titulo ||
     aberta.corpo !== aberta.original.corpo ||
@@ -211,7 +187,6 @@ export default function Notas() {
     return () => removeEventListener("beforeunload", aoSair);
   }, [mudou]);
 
-  // ── Modo flutuante ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (modoVisao === "flutuante" && aberta) {
       const notaOriginal = { ...aberta };
@@ -245,7 +220,7 @@ export default function Notas() {
           };
           const { dados, corpo } = notaParaArquivo(notaAtualizada);
           const texto = escreverMarkdown({ dados, corpo });
-          const caminho = itemFlutuanteAtual.caminho || nomeLivre(pastaAtual ? `${PASTAS.notas}/${pastaAtual}` : PASTAS.notas, titulo, arquivos.map((a) => a.caminho));
+          const caminho = itemFlutuanteAtual.caminho || nomeLivre(pastaAtual ? `${PASTAS.notas}/${pastaAtual}` : PASTAS.notas, titulo, todasNotas.map((a) => a.caminho));
           await salvarTexto(caminho, texto, itemFlutuanteAtual.sha || undefined);
           recarregar();
         },
@@ -258,8 +233,6 @@ export default function Notas() {
       setModoVisao("popup");
     }
   }, [modoVisao, aberta]);
-
-  // ── Ações ──────────────────────────────────────────────────────────────────
 
   function fecharNota() {
     setAberta(null);
@@ -307,7 +280,7 @@ export default function Notas() {
     const notaAtualizada: Nota = { ...n, titulo };
     const { dados, corpo } = notaParaArquivo(notaAtualizada);
     const texto = escreverMarkdown({ dados, corpo });
-    const caminho = n.caminho || nomeLivre(pastaAtual ? `${PASTAS.notas}/${pastaAtual}` : PASTAS.notas, titulo, arquivos.map((a) => a.caminho));
+    const caminho = n.caminho || nomeLivre(pastaAtual ? `${PASTAS.notas}/${pastaAtual}` : PASTAS.notas, titulo, todasNotas.map((a) => a.caminho));
 
     const novaSha = await salvarTexto(caminho, texto, n.sha || undefined);
 
@@ -326,8 +299,6 @@ export default function Notas() {
     recarregar();
   }
 
-  // ── Seleção (marquee) ─────────────────────────────────────────────────────
-
   function alternarSelecao(caminho: string) {
     setSelecionadas((atual) => {
       const novo = new Set(atual);
@@ -341,9 +312,8 @@ export default function Notas() {
     setSelecionadas(new Set());
   }
 
-  // Inicia o arrasto de seleção
   function iniciarArrasto(e: React.MouseEvent) {
-    if (e.button !== 0) return; // só botão esquerdo
+    if (e.button !== 0) return;
     if (e.target instanceof HTMLElement && e.target.closest("button, a, input, select, textarea")) return;
     if (e.target instanceof HTMLElement && e.target.closest("[data-cartao]")) return;
 
@@ -355,7 +325,6 @@ export default function Notas() {
     setMarquee({ x: e.clientX - rect.left, y: e.clientY - rect.top, w: 0, h: 0 });
   }
 
-  // Atualiza o retângulo durante o arrasto
   useEffect(() => {
     if (!arrastando) return;
 
@@ -370,7 +339,6 @@ export default function Notas() {
       const h = Math.abs(e.clientY - inicio.y);
       setMarquee({ x, y, w, h });
 
-      // Seleciona cartões que intersectam o retângulo
       const novoSelecionadas = new Set<string>();
       for (const [caminho, r] of cartoesRef.current) {
         const intersecta =
@@ -397,11 +365,28 @@ export default function Notas() {
     };
   }, [arrastando]);
 
-  // ── Menu de contexto ──────────────────────────────────────────────────────
-
   function abrirMenuContexto(e: React.MouseEvent, emCartao: boolean) {
     e.preventDefault();
     setMenuContexto({ x: e.clientX, y: e.clientY, emCartao });
+  }
+
+  // Mover nota por drag and drop
+  async function moverNotaParaPasta(caminhoNota: string, pastaDestino: string) {
+    const nota = todasNotas.find((a) => a.caminho === caminhoNota);
+    if (!nota) return;
+    const nomeArquivo = caminhoNota.split("/").pop()!;
+    const novoCaminho = `${PASTAS.notas}/${pastaDestino}/${nomeArquivo}`;
+    if (novoCaminho === caminhoNota) return;
+    try {
+      const { dados, corpo } = notaParaArquivo(nota);
+      const texto = escreverMarkdown({ dados, corpo });
+      await salvarTexto(novoCaminho, texto, undefined, `mover: ${nomeArquivo} para ${pastaDestino}`);
+      await apagarItem(caminhoNota, nota.sha);
+      toast(`Nota movida para "${pastaDestino}"`, { tipo: "sucesso" });
+      recarregar();
+    } catch {
+      toast("Erro ao mover a nota", { tipo: "erro" });
+    }
   }
 
   async function processarAcaoMenu(acao: AcaoMenuContexto) {
@@ -425,7 +410,7 @@ export default function Notas() {
         let sucesso = 0;
         let falhas = 0;
         for (const caminho of selecionadas) {
-          const nota = arquivos.find((a) => a.caminho === caminho);
+          const nota = todasNotas.find((a) => a.caminho === caminho);
           if (!nota) continue;
           const nomeArquivo = caminho.split("/").pop()!;
           const novoCaminho = `${PASTAS.notas}/${destino}/${nomeArquivo}`;
@@ -454,7 +439,7 @@ export default function Notas() {
         let sucesso = 0;
         let falhas = 0;
         for (const caminho of selecionadas) {
-          const nota = arquivos.find((a) => a.caminho === caminho);
+          const nota = todasNotas.find((a) => a.caminho === caminho);
           if (!nota) continue;
           try {
             await apagarItem(caminho, nota.sha);
@@ -477,7 +462,7 @@ export default function Notas() {
         let sucesso = 0;
         let falhas = 0;
         for (const caminho of selecionadas) {
-          const nota = arquivos.find((a) => a.caminho === caminho);
+          const nota = todasNotas.find((a) => a.caminho === caminho);
           if (!nota) continue;
           const tagsNovas = [...new Set([...nota.tags, ...acao.tags])];
           const notaAtualizada = { ...nota, tags: tagsNovas };
@@ -501,8 +486,6 @@ export default function Notas() {
       }
     }
   }
-
-  // ── Filtros ───────────────────────────────────────────────────────────────
 
   function alternarTagFiltro(tag: string) {
     setTagsFiltro((atual) =>
@@ -532,7 +515,6 @@ export default function Notas() {
     return true;
   }
 
-  // ── Sem configuração ────────────────────────────────────────────────────────
   if (!pronto) {
     return (
       <Vazio
@@ -547,14 +529,12 @@ export default function Notas() {
     );
   }
 
-  // Filtra por pasta atual (usando todasNotas que inclui subpastas)
   const naPasta = todasNotas.filter((a) => {
     const partes = a.caminho.split("/");
     const pastaDoItem = partes.slice(1, -1).join("/");
     return pastaDoItem === pastaAtual;
   });
 
-  // Subpastas diretas da pasta atual (para mostrar como cartões na raiz)
   const subpastas = useMemo(() => {
     const set = new Set<string>();
     for (const a of todasNotas) {
@@ -568,7 +548,6 @@ export default function Notas() {
         }
       }
     }
-    // Pastas criadas na sessão (mesmo vazias)
     for (const p of pastasCriadas) {
       if (pastaAtual) {
         if (p.startsWith(`${pastaAtual}/`)) {
@@ -584,7 +563,6 @@ export default function Notas() {
     return [...set].sort();
   }, [todasNotas, pastaAtual, pastasCriadas]);
 
-  // Filtra por busca, tags e data
   const visiveis = naPasta.filter((a) => {
     const titulo = titulos[a.caminho] ?? a.titulo ?? a.caminho;
     const correspondeBuscaTexto =
@@ -599,7 +577,6 @@ export default function Notas() {
     return filtrarPorData(a);
   });
 
-  // Todas as tags disponíveis (para o filtro)
   const todasTags = useMemo(() => {
     const set = new Set<string>();
     for (const a of todasNotas) {
@@ -608,9 +585,7 @@ export default function Notas() {
     return [...set].sort();
   }, [todasNotas]);
 
-  // Caminho da pasta atual para breadcrumb
   const partesPasta = pastaAtual ? pastaAtual.split("/") : [];
-
   const filtroAtivo = busca.trim() !== "" || tagsFiltro.length > 0 || filtroData !== "qualquer";
 
   return (
@@ -654,7 +629,6 @@ export default function Notas() {
         }
       />
 
-      {/* Breadcrumb de pastas */}
       {pastaAtual && (
         <div className="flex items-center gap-1.5 flex-wrap text-xs">
           <button
@@ -690,7 +664,6 @@ export default function Notas() {
           placeholderBusca="Buscar nota por título..."
           filtros={
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Filtro por data */}
               <select
                 value={filtroData}
                 onChange={(e) => setFiltroData(e.target.value as FiltroData)}
@@ -702,7 +675,6 @@ export default function Notas() {
                 <option value="mes">Este mês</option>
               </select>
 
-              {/* Filtro por tags */}
               {todasTags.length > 0 && (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {todasTags.slice(0, 8).map((tag) => (
@@ -725,7 +697,6 @@ export default function Notas() {
         />
       )}
 
-      {/* Barra de seleção em lote */}
       {selecionadas.size > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 animate-in fade-in duration-150">
           <div className="flex items-center gap-2 text-xs font-medium text-foreground">
@@ -755,7 +726,6 @@ export default function Notas() {
               variante="fantasma"
               tamanho="pequeno"
               onClick={() => {
-                // Excluir selecionadas
                 processarAcaoMenu({ tipo: "excluir" });
               }}
               className="gap-1 text-[11px] text-destructive hover:bg-destructive/10"
@@ -827,13 +797,29 @@ export default function Notas() {
           onContextMenu={(e) => abrirMenuContexto(e, false)}
           className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 select-none"
         >
-          {/* Subpastas como cartões */}
           {subpastas.map((pasta) => {
             const caminhoPasta = pastaAtual ? `${pastaAtual}/${pasta}` : pasta;
             return (
               <div
                 key={`pasta-${caminhoPasta}`}
                 data-cartao
+                onDragOver={(e) => {
+                  if (notaArrastada) {
+                    e.preventDefault();
+                    setPastaAlvo(caminhoPasta);
+                  }
+                }}
+                onDragLeave={() => {
+                  if (notaArrastada) setPastaAlvo(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (notaArrastada) {
+                    moverNotaParaPasta(notaArrastada, caminhoPasta);
+                    setNotaArrastada(null);
+                    setPastaAlvo(null);
+                  }
+                }}
                 onContextMenu={(e) => {
                   e.stopPropagation();
                   abrirMenuContexto(e, true);
@@ -843,6 +829,11 @@ export default function Notas() {
                   icone={<FolderOpen size={18} className="text-primary" />}
                   titulo={pasta}
                   subtitulo="Pasta"
+                  className={
+                    pastaAlvo === caminhoPasta
+                      ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                      : ""
+                  }
                   onClick={() => setPastaAtual(caminhoPasta)}
                 />
               </div>
@@ -855,7 +846,6 @@ export default function Notas() {
             const estaSelecionada = selecionadas.has(nota.caminho);
             const emSubpasta = nota.caminho.split("/").length > 2;
 
-            // Mostra caminho apenas quando filtro ativo ou em subpasta
             const mostrarCaminho = filtroAtivo || emSubpasta;
             const subtitulo = mostrarCaminho
               ? emSubpasta
@@ -867,6 +857,12 @@ export default function Notas() {
               <div
                 key={nota.caminho}
                 data-cartao
+                draggable
+                onDragStart={() => setNotaArrastada(nota.caminho)}
+                onDragEnd={() => {
+                  setNotaArrastada(null);
+                  setPastaAlvo(null);
+                }}
                 ref={(el) => {
                   if (el) {
                     cartoesRef.current.set(nota.caminho, el.getBoundingClientRect());
@@ -897,7 +893,6 @@ export default function Notas() {
             );
           })}
 
-          {/* Retângulo de seleção (marquee) */}
           {marquee && (
             <div
               className="pointer-events-none absolute z-10 rounded-lg border-2 border-primary/60 bg-primary/10"
@@ -912,19 +907,17 @@ export default function Notas() {
         </div>
       )}
 
-      {/* Menu de contexto */}
       <MenuContextoNotas
         x={menuContexto?.x ?? 0}
         y={menuContexto?.y ?? 0}
         aberto={menuContexto !== null}
         aoFechar={() => setMenuContexto(null)}
         aoAcao={processarAcaoMenu}
-        pastasExistentes={pastasExistentes}
+        pastasExistentes={pastasCriadas.length > 0 ? pastasCriadas : subpastas}
         temSelecao={selecionadas.size > 0}
         emCartao={menuContexto?.emCartao ?? false}
       />
 
-      {/* Modal de gerenciamento de modelos */}
       <ModalGerenciarModelos
         aberto={modalModelosAberto}
         aoFechar={() => setModalModelosAberto(false)}
