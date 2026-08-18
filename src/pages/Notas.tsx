@@ -5,6 +5,7 @@ import {
   Tag,
   FileText,
   FolderOpen,
+  FolderPlus,
   ChevronRight,
   Settings2,
   Trash2,
@@ -584,6 +585,20 @@ export default function Notas() {
     return [...set].sort();
   }, [todasNotas]);
 
+  // `subpastas` serve só para desenhar a pasta atual. Para mover, porém,
+  // precisamos oferecer também as pastas mais profundas e as que acabaram de
+  // ser criadas nesta sessão.
+  const pastasExistentes = useMemo(() => {
+    const pastas = new Set(pastasCriadas);
+    for (const nota of todasNotas) {
+      const partes = nota.caminho.split("/").slice(1, -1);
+      for (let i = 1; i <= partes.length; i++) {
+        pastas.add(partes.slice(0, i).join("/"));
+      }
+    }
+    return [...pastas].filter(Boolean).sort((a, b) => a.localeCompare(b));
+  }, [todasNotas, pastasCriadas]);
+
   const partesPasta = pastaAtual ? pastaAtual.split("/") : [];
   const filtroAtivo = busca.trim() !== "" || tagsFiltro.length > 0 || filtroData !== "qualquer";
 
@@ -619,6 +634,13 @@ export default function Notas() {
             >
               <Settings2 size={14} />
               Modelos
+            </Botao>
+            <Botao
+              variante="neutro"
+              onClick={() => setMenuContexto({ x: window.innerWidth / 2 - 120, y: 96, emCartao: false })}
+            >
+              <FolderPlus size={16} />
+              Nova Pasta
             </Botao>
             <Botao onClick={novaComPadrao}>
               <Plus size={16} />
@@ -732,7 +754,7 @@ export default function Notas() {
               title="Mover selecionados para pasta"
             >
               <option value="" disabled>Mover para pasta...</option>
-              {[...new Set([...subpastas, ...pastasCriadas])].map((p) => (
+              {pastasExistentes.map((p) => (
                 <option key={p} value={p}>{p}</option>
               ))}
             </select>
@@ -815,7 +837,7 @@ export default function Notas() {
             </div>
           }
         />
-      ) : visiveis.length === 0 ? (
+      ) : visiveis.length === 0 && subpastas.length === 0 ? (
         <Vazio
           icone={<FileText size={24} />}
           titulo="Nenhuma nota encontrada"
@@ -839,8 +861,12 @@ export default function Notas() {
                 key={`pasta-${caminhoPasta}`}
                 data-cartao
                 onDragOver={(e) => {
-                  if (notaArrastada) {
+                  // O estado do React pode ainda não ter sido atualizado no
+                  // primeiro evento nativo de arraste. O dataTransfer é a
+                  // fonte imediata e funciona inclusive entre componentes.
+                  if (notaArrastada || e.dataTransfer.types.includes("text/plain")) {
                     e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
                     setPastaAlvo(caminhoPasta);
                   }
                 }}
@@ -849,8 +875,9 @@ export default function Notas() {
                 }}
                 onDrop={(e) => {
                   e.preventDefault();
-                  if (notaArrastada) {
-                    moverNotaParaPasta(notaArrastada, caminhoPasta);
+                  const caminhoNota = e.dataTransfer.getData("text/plain") || notaArrastada;
+                  if (caminhoNota) {
+                    moverNotaParaPasta(caminhoNota, caminhoPasta);
                     setNotaArrastada(null);
                     setPastaAlvo(null);
                   }
@@ -893,7 +920,11 @@ export default function Notas() {
                 key={nota.caminho}
                 data-cartao
                 draggable
-                onDragStart={() => setNotaArrastada(nota.caminho)}
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", nota.caminho);
+                  setNotaArrastada(nota.caminho);
+                }}
                 onDragEnd={() => {
                   setNotaArrastada(null);
                   setPastaAlvo(null);
@@ -948,7 +979,7 @@ export default function Notas() {
         aberto={menuContexto !== null}
         aoFechar={() => setMenuContexto(null)}
         aoAcao={processarAcaoMenu}
-        pastasExistentes={[...new Set([...subpastas, ...pastasCriadas])]}
+        pastasExistentes={pastasExistentes}
         temSelecao={selecionadas.size > 0}
         emCartao={menuContexto?.emCartao ?? false}
       />
