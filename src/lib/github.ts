@@ -32,6 +32,8 @@ function cabecalhos(cfg: Settings): HeadersInit {
     Authorization: `Bearer ${cfg.githubToken.trim()}`,
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
   };
 }
 

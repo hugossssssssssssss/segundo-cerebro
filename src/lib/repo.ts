@@ -42,6 +42,17 @@ type Cache = {
 
 let cache: Cache | null = null;
 
+type AlteracaoRecente = {
+  caminho: string;
+  sha: string;
+  size: number;
+  texto: string;
+  quando: number;
+};
+
+const alteracoesRecentes = new Map<string, AlteracaoRecente>();
+const delecoesRecentes = new Set<string>();
+
 /**
  * A carga que está acontecendo AGORA, se houver.
  *
@@ -268,26 +279,63 @@ async function carregarDeVerdade(
   // 1 requisição barata que diz o sha de cada arquivo. É ela que detecta
   // qualquer alteração feita fora do app.
   const folhas = await arvore(cfg);
-  if (folhas.length === 0) {
+
+  // Limpa alterações locais antigas (> 20 segundos)
+  const agora = Date.now();
+  for (const [caminho, alt] of alteracoesRecentes.entries()) {
+    if (agora - alt.quando > 20000) {
+      alteracoesRecentes.delete(caminho);
+    }
+  }
+
+  // Remove da lista as folhas que sabemos que foram deletadas localmente (contorna eventual consistency)
+  let folhasFiltradas = folhas.filter((f) => !delecoesRecentes.has(f.path));
+
+  // Mescla alterações locais recentes na árvore para dar consistência imediata
+  for (const alt of alteracoesRecentes.values()) {
+    const idx = folhasFiltradas.findIndex((f) => f.path === alt.caminho);
+    if (idx >= 0) {
+      if (folhasFiltradas[idx].sha !== alt.sha) {
+        folhasFiltradas[idx] = { path: alt.caminho, sha: alt.sha, size: alt.size };
+      }
+    } else {
+      folhasFiltradas.push({ path: alt.caminho, sha: alt.sha, size: alt.size });
+    }
+  }
+
+  if (folhasFiltradas.length === 0) {
     cache = { chave, itens: [], quando: Date.now() };
     return [];
   }
 
   // Só baixa o conteúdo de quem mudou de sha.
-  const faltando = folhas
+  const faltando = folhasFiltradas
     .filter((f) => !textoPorSha.has(f.sha))
     .map((f) => f.path);
 
   if (faltando.length) {
-    const baixados = await conteudoEmLote(cfg, faltando);
-    for (const f of folhas) {
-      const texto = baixados.get(f.path);
-      if (typeof texto === "string") textoPorSha.set(f.sha, texto);
+    // Se o arquivo que falta foi alterado recentemente, usamos a cópia em memória
+    // em vez de forçar download desnecessário do GitHub
+    const caminhosParaBaixar = faltando.filter((caminho) => {
+      const recente = alteracoesRecentes.get(caminho);
+      if (recente) {
+        textoPorSha.set(recente.sha, recente.texto);
+        return false;
+      }
+      return true;
+    });
+
+    if (caminhosParaBaixar.length) {
+      const baixados = await conteudoEmLote(cfg, caminhosParaBaixar);
+      for (const f of folhasFiltradas) {
+        const texto = baixados.get(f.path);
+        if (typeof texto === "string") textoPorSha.set(f.sha, texto);
+      }
     }
   }
 
   if (textoPorSha.size > TETO_MEMORIA) {
-    const vivos = new Set(folhas.map((f) => f.sha));
+    const vivos = new Set(folhasFiltradas.map((f) => f.sha));
     for (const sha of textoPorSha.keys()) {
       if (!vivos.has(sha)) textoPorSha.delete(sha);
     }
@@ -301,10 +349,10 @@ async function carregarDeVerdade(
    * e o próximo Salvar gravava o vazio por cima do arquivo real. Some da
    * tela é ruim; apagar sem avisar é inaceitável.
    */
-  const ilegiveis = folhas.filter((f) => !textoPorSha.has(f.sha));
+  const ilegiveis = folhasFiltradas.filter((f) => !textoPorSha.has(f.sha));
   ultimosIlegiveis = ilegiveis.map((f) => f.path);
 
-  const itens: ItemRepo[] = folhas
+  const itens: ItemRepo[] = folhasFiltradas
     .filter((f) => textoPorSha.has(f.sha))
     .map((f) => {
       const texto = textoPorSha.get(f.sha)!;
@@ -373,6 +421,16 @@ export function atualizarCacheLocal(
   const shaFinal = sha;
   textoPorSha.set(shaFinal, texto);
 
+  // Registra alteração recente para consistência imediata
+  alteracoesRecentes.set(caminho, {
+    caminho,
+    sha: shaFinal,
+    size: texto.length,
+    texto,
+    quando: Date.now(),
+  });
+  delecoesRecentes.delete(caminho);
+
   if (cache) {
     const nome = caminho.split("/").pop()!;
     const novoItem: ItemRepo = {
@@ -398,6 +456,14 @@ export function atualizarCacheLocal(
  * Remove instantaneamente um item do cache de memória local ao deletar.
  */
 export function removerDoCacheLocal(caminho: string) {
+  alteracoesRecentes.delete(caminho);
+  delecoesRecentes.add(caminho);
+
+  // Remove o rastro da deleção após 20 segundos
+  setTimeout(() => {
+    delecoesRecentes.delete(caminho);
+  }, 20000);
+
   if (cache) {
     cache.itens = cache.itens.filter((i) => i.caminho !== caminho);
     cache.quando = Date.now();

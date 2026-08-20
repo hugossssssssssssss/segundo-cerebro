@@ -129,7 +129,7 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
         }
       } else {
         // Para erros de autenticação (401/403), conflito (409) ou dados (422), reporta a falha real
-        toast(`Erro ao salvar "${nomeItem}": clique para ver o erro`, { tipo: "erro", detalhes: mensagem });
+        toast(`Erro ao salvar "${nomeItem}": ${mensagem}`, { tipo: "erro", detalhes: mensagem });
       }
       throw e;
     } finally {
@@ -171,7 +171,8 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
       setErro(mensagem);
-      toast(`Erro ao excluir: clique para ver o erro`, { tipo: "erro", detalhes: mensagem });
+      const nomeItem = formatarNomeAmigavel(caminho);
+      toast(`Erro ao excluir "${nomeItem}": ${mensagem}`, { tipo: "erro", detalhes: mensagem });
       throw e;
     } finally {
       setSalvando(false);
