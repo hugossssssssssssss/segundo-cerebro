@@ -143,12 +143,20 @@ function deBase64(b64: string): string {
   return new TextDecoder().decode(bytes);
 }
 
+function urlDeCaminho(cfg: Settings, caminho: string): string {
+  const caminhoCodificado = caminho
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+  return `${raiz(cfg)}/${caminhoCodificado}`;
+}
+
 /** Baixa o conteúdo de um arquivo. */
 export async function ler(
   cfg: Settings,
   caminho: string,
 ): Promise<{ texto: string; sha: string }> {
-  const url = `${raiz(cfg)}/${caminho}?ref=${encodeURIComponent(cfg.branch)}`;
+  const url = `${urlDeCaminho(cfg, caminho)}?ref=${encodeURIComponent(cfg.branch)}`;
   const resposta = await buscar(url, { headers: cabecalhos(cfg) });
   await conferir(resposta);
 
@@ -164,7 +172,7 @@ export async function lerOuVazio(
 ): Promise<string> {
   try {
     const branch = ref || cfg.branch;
-    const url = `${raiz(cfg)}/${caminho}?ref=${encodeURIComponent(branch)}`;
+    const url = `${urlDeCaminho(cfg, caminho)}?ref=${encodeURIComponent(branch)}`;
     const resposta = await buscar(url, { headers: cabecalhos(cfg) });
     if (!resposta.ok) return "";
     const dados = await resposta.json();
@@ -200,7 +208,7 @@ export async function gravar(
 
   const promessaAtual = (async () => {
     const fazerPut = async (shaParaEnviar?: string) => {
-      return await buscar(`${raiz(cfg)}/${caminho}`, {
+      return await buscar(urlDeCaminho(cfg, caminho), {
         method: "PUT",
         headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -237,7 +245,7 @@ export async function gravar(
 
       await new Promise((r) => setTimeout(r, 150 * Math.pow(2, tentativa - 1)));
       try {
-        const getRes = await buscar(`${raiz(cfg)}/${caminho}?ref=${encodeURIComponent(cfg.branch)}`, {
+        const getRes = await buscar(`${urlDeCaminho(cfg, caminho)}?ref=${encodeURIComponent(cfg.branch)}`, {
           headers: cabecalhos(cfg),
         });
         if (getRes.ok) {
@@ -277,7 +285,7 @@ export async function gravarBinario(
   base64: string,
   sha?: string,
 ): Promise<string> {
-  const resposta = await buscar(`${raiz(cfg)}/${caminho}`, {
+  const resposta = await buscar(urlDeCaminho(cfg, caminho), {
     method: "PUT",
     headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -298,7 +306,7 @@ export async function apagar(
   caminho: string,
   sha: string,
 ): Promise<void> {
-  const resposta = await buscar(`${raiz(cfg)}/${caminho}`, {
+  const resposta = await buscar(urlDeCaminho(cfg, caminho), {
     method: "DELETE",
     headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
     body: JSON.stringify({
