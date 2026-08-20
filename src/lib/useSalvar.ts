@@ -67,6 +67,7 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
     texto: string,
     sha?: string,
     mensagemCommit?: string,
+    silencioso = false,
   ): Promise<string> {
     setSalvando(true);
     setErro("");
@@ -90,17 +91,19 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
       const doc = lerMarkdown(texto);
       atualizarCacheLocal(caminho, texto, doc, novaSha);
       
-      // Espera um curto período para a árvore do Git no GitHub atualizar (evita cache inconsistente por eventual consistency)
-      await new Promise((r) => setTimeout(r, 800));
+      if (!silencioso) {
+        // Espera um curto período para a árvore do Git no GitHub atualizar (evita cache inconsistente por eventual consistency)
+        await new Promise((r) => setTimeout(r, 800));
 
-      invalidarCache();
+        invalidarCache();
 
-      // Sinaliza para a aba atual e outras abas abertas que o acervo mudou.
-      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
-      notificarOutrasAbas(caminho);
+        // Sinaliza para a aba atual e outras abas abertas que o acervo mudou.
+        window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+        notificarOutrasAbas(caminho);
 
-      const nomeItem = formatarNomeAmigavel(caminho);
-      toast(`"${nomeItem}" salvo`, { tipo: "sucesso" });
+        const nomeItem = formatarNomeAmigavel(caminho);
+        toast(`"${nomeItem}" salvo`, { tipo: "sucesso" });
+      }
 
       return novaSha;
     } catch (e) {
@@ -133,7 +136,7 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
     }
   }
 
-  async function apagarItem(caminho: string, sha: string): Promise<void> {
+  async function apagarItem(caminho: string, sha: string, silencioso = false): Promise<void> {
     setSalvando(true);
     setErro("");
     try {
@@ -153,15 +156,17 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
 
       removerDoCacheLocal(caminho);
 
-      // Espera um curto período para a árvore do Git no GitHub atualizar (evita cache inconsistente por eventual consistency)
-      await new Promise((r) => setTimeout(r, 800));
+      if (!silencioso) {
+        // Espera um curto período para a árvore do Git no GitHub atualizar (evita cache inconsistente por eventual consistency)
+        await new Promise((r) => setTimeout(r, 800));
 
-      invalidarCache();
-      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
-      notificarOutrasAbas(caminho);
+        invalidarCache();
+        window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+        notificarOutrasAbas(caminho);
 
-      const nomeItem = formatarNomeAmigavel(caminho);
-      toast(`"${nomeItem}" removido`, { tipo: "info" });
+        const nomeItem = formatarNomeAmigavel(caminho);
+        toast(`"${nomeItem}" removido`, { tipo: "info" });
+      }
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
       setErro(mensagem);

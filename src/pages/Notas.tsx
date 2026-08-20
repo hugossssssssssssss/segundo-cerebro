@@ -22,6 +22,7 @@ import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
 import { comoNota, notaParaArquivo, dataDoNome } from "@/lib/entidades";
 import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
+import { invalidarCache } from "@/lib/repo";
 import {
   escreverMarkdown,
   tituloProvavel,
@@ -454,10 +455,10 @@ export default function Notas() {
           try {
             const { dados, corpo } = notaParaArquivo(op.nota);
             const texto = escreverMarkdown({ dados, corpo });
-            await salvarTexto(caminhoDestino, texto, undefined, `${acao}: ${op.caminhoOrigem.split("/").pop()} para ${pastaAtual || "raiz"}`);
+            await salvarTexto(caminhoDestino, texto, undefined, `${acao}: ${op.caminhoOrigem.split("/").pop()} para ${pastaAtual || "raiz"}`, true);
             
             if (acao === "recortar") {
-              await apagarItem(op.caminhoOrigem, op.nota.sha);
+              await apagarItem(op.caminhoOrigem, op.nota.sha, true);
             }
             sucesso++;
           } catch (err) {
@@ -467,6 +468,11 @@ export default function Notas() {
         })
       );
       
+      // Espera o GitHub processar os commits antes de forçar o recarregamento unificado
+      await new Promise((r) => setTimeout(r, 800));
+      invalidarCache();
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+
       if (falhas > 0) {
         toast(`${sucesso} item(ns) colado(s), ${falhas} falha(s)`, { tipo: "aviso" });
       } else if (sucesso > 0) {
@@ -498,7 +504,7 @@ export default function Notas() {
       await Promise.all(
         resolved.map(async (op) => {
           try {
-            await apagarItem(op.caminhoOrigem, op.nota.sha);
+            await apagarItem(op.caminhoOrigem, op.nota.sha, true);
             sucesso++;
           } catch {
             falhas++;
@@ -506,6 +512,11 @@ export default function Notas() {
         })
       );
       
+      // Espera o GitHub processar a deleção antes de forçar o recarregamento unificado
+      await new Promise((r) => setTimeout(r, 800));
+      invalidarCache();
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+
       if (falhas > 0) {
         toast(`${sucesso} excluída(s), ${falhas} falha(s)`, { tipo: "aviso" });
       } else if (sucesso > 0) {
@@ -581,8 +592,14 @@ export default function Notas() {
     try {
       const { dados, corpo } = notaParaArquivo(nota);
       const texto = escreverMarkdown({ dados, corpo });
-      await salvarTexto(novoCaminho, texto, undefined, `mover: ${nomeArquivo} para ${pastaDestino || "raiz"}`);
-      await apagarItem(caminhoNota, nota.sha);
+      await salvarTexto(novoCaminho, texto, undefined, `mover: ${nomeArquivo} para ${pastaDestino || "raiz"}`, true);
+      await apagarItem(caminhoNota, nota.sha, true);
+      
+      // Espera o GitHub processar a movimentação antes de forçar o recarregamento unificado
+      await new Promise((r) => setTimeout(r, 800));
+      invalidarCache();
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+
       if (!silenciarToast) toast(`Nota movida para "${pastaDestino || "Notas"}"`, { tipo: "sucesso" });
       return true;
     } catch {
@@ -623,14 +640,20 @@ export default function Notas() {
               try {
                 const { dados, corpo } = notaParaArquivo(op.nota);
                 const texto = escreverMarkdown({ dados, corpo });
-                await salvarTexto(op.caminhoDestino, texto, undefined, `mover: ${op.caminhoOrigem.split("/").pop()} para ${destino || "raiz"}`);
-                await apagarItem(op.caminhoOrigem, op.nota.sha);
+                await salvarTexto(op.caminhoDestino, texto, undefined, `mover: ${op.caminhoOrigem.split("/").pop()} para ${destino || "raiz"}`, true);
+                await apagarItem(op.caminhoOrigem, op.nota.sha, true);
                 sucesso++;
               } catch {
                 falhas++;
               }
             })
           );
+          
+          // Espera o GitHub processar a movimentação em lote antes de forçar o recarregamento unificado
+          await new Promise((r) => setTimeout(r, 800));
+          invalidarCache();
+          window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+
           if (falhas > 0) {
             toast(`${sucesso} movida(s), ${falhas} falha(s)`, { tipo: "aviso" });
           } else if (sucesso > 0) {
