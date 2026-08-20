@@ -1032,7 +1032,7 @@ export default function Notas() {
 
       {carregando ? (
         <Carregando texto="Buscando suas notas…" />
-      ) : arquivos.length === 0 ? (
+      ) : todasNotas.length === 0 && pastasCriadas.length === 0 ? (
         <Vazio
           icone={<FileText size={24} />}
           titulo="Nenhuma nota criada ainda"

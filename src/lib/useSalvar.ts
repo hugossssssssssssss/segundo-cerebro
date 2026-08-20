@@ -44,13 +44,14 @@ export type EstadoSalvar = {
     texto: string,
     sha?: string,
     mensagemCommit?: string,
+    silencioso?: boolean,
   ) => Promise<string>;
 
   /**
    * Apaga um arquivo e invalida o cache.
    * Lança erro (que fica em `erro`) se a operação falhar.
    */
-  apagarItem: (caminho: string, sha: string) => Promise<void>;
+  apagarItem: (caminho: string, sha: string, silencioso?: boolean) => Promise<void>;
 
   salvando: boolean;
   erro: string;
