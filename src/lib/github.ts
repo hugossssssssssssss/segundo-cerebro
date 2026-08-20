@@ -32,8 +32,6 @@ function cabecalhos(cfg: Settings): HeadersInit {
     Authorization: `Bearer ${cfg.githubToken.trim()}`,
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
-    "Cache-Control": "no-cache",
-    "Pragma": "no-cache",
   };
 }
 
@@ -162,7 +160,7 @@ export async function ler(
   caminho: string,
 ): Promise<{ texto: string; sha: string }> {
   const url = `${urlDeCaminho(cfg, caminho)}?ref=${encodeURIComponent(cfg.branch)}`;
-  const resposta = await buscar(url, { headers: cabecalhos(cfg) });
+  const resposta = await buscar(url, { headers: cabecalhos(cfg), cache: "no-store" });
   await conferir(resposta);
 
   const dados = await resposta.json();
@@ -178,7 +176,7 @@ export async function lerOuVazio(
   try {
     const branch = ref || cfg.branch;
     const url = `${urlDeCaminho(cfg, caminho)}?ref=${encodeURIComponent(branch)}`;
-    const resposta = await buscar(url, { headers: cabecalhos(cfg) });
+    const resposta = await buscar(url, { headers: cabecalhos(cfg), cache: "no-store" });
     if (!resposta.ok) return "";
     const dados = await resposta.json();
     return deBase64(dados.content || "");
@@ -252,6 +250,7 @@ export async function gravar(
       try {
         const getRes = await buscar(`${urlDeCaminho(cfg, caminho)}?ref=${encodeURIComponent(cfg.branch)}`, {
           headers: cabecalhos(cfg),
+          cache: "no-store",
         });
         if (getRes.ok) {
           const getDados = await getRes.json();
