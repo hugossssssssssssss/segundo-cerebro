@@ -144,6 +144,9 @@ function deBase64(b64: string): string {
 }
 
 function urlDeCaminho(cfg: Settings, caminho: string): string {
+  if (typeof caminho !== "string") {
+    return raiz(cfg);
+  }
   const caminhoCodificado = caminho
     .split("/")
     .map(encodeURIComponent)
