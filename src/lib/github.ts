@@ -243,7 +243,24 @@ export async function gravar(
        * Isso destruiria o arquivo antigo silenciosamente.
        */
       if (resposta.status === 422 && eraNovaCriacao) {
-        break;
+        try {
+          const { sha: shaDestino, texto: textoDestino } = await ler(cfg, caminho);
+          if (textoDestino === texto) {
+            // O conteúdo é idêntico! Podemos ignorar o erro e retornar o shaDestino (gravação redundante)
+            return shaDestino;
+          } else {
+            // O conteúdo é diferente. Lançamos um erro explícito para evitar destruição de dados
+            throw new ErroGitHub(
+              `Já existe um arquivo diferente no destino "${caminho}". Escolha outro nome ou exclua-o antes de mover.`,
+              422
+            );
+          }
+        } catch (lerErr) {
+          if (lerErr instanceof ErroGitHub) {
+            throw lerErr;
+          }
+          break;
+        }
       }
 
       if (resposta.status !== 422) break;
