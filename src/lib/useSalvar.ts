@@ -25,7 +25,7 @@
 
 import { useState } from "react";
 import { gravar, ler, apagar, ErroGitHub } from "./github";
-import { atualizarCacheLocal, invalidarCache } from "./repo";
+import { atualizarCacheLocal, invalidarCache, removerDoCacheLocal } from "./repo";
 import { lerMarkdown } from "./markdown";
 import { notificarOutrasAbas } from "./syncChannel";
 import { toast } from "./toast";
@@ -89,6 +89,10 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
       // Atualiza DEPOIS de gravar, com o sha REAL. Nunca antes.
       const doc = lerMarkdown(texto);
       atualizarCacheLocal(caminho, texto, doc, novaSha);
+      
+      // Espera um curto período para a árvore do Git no GitHub atualizar (evita cache inconsistente por eventual consistency)
+      await new Promise((r) => setTimeout(r, 800));
+
       invalidarCache();
 
       // Sinaliza para a aba atual e outras abas abertas que o acervo mudou.
@@ -133,7 +137,25 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
     setSalvando(true);
     setErro("");
     try {
-      await apagar(cfg, caminho, sha);
+      try {
+        await apagar(cfg, caminho, sha);
+      } catch (err: any) {
+        const status = err instanceof ErroGitHub ? err.status : err?.status;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (status === 409 || msg.includes("409") || msg.includes("conflito")) {
+          // Recupera o SHA atual no GitHub e tenta apagar novamente
+          const { sha: remoteSha } = await ler(cfg, caminho);
+          await apagar(cfg, caminho, remoteSha);
+        } else {
+          throw err;
+        }
+      }
+
+      removerDoCacheLocal(caminho);
+
+      // Espera um curto período para a árvore do Git no GitHub atualizar (evita cache inconsistente por eventual consistency)
+      await new Promise((r) => setTimeout(r, 800));
+
       invalidarCache();
       window.dispatchEvent(new CustomEvent("acervo-atualizado"));
       notificarOutrasAbas(caminho);

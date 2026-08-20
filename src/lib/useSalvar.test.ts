@@ -34,10 +34,11 @@ vi.mock("./github", () => {
 vi.mock("./repo", () => ({
   atualizarCacheLocal: vi.fn(),
   invalidarCache: vi.fn(),
+  removerDoCacheLocal: vi.fn(),
 }));
 
 import { gravar, ler, apagar } from "./github";
-import { atualizarCacheLocal, invalidarCache } from "./repo";
+import { atualizarCacheLocal, invalidarCache, removerDoCacheLocal } from "./repo";
 
 const cfg: Settings = {
   githubToken: "tok",
@@ -246,6 +247,7 @@ describe("useSalvar — apagarItem", () => {
     });
 
     expect(apagar).toHaveBeenCalledWith(cfg, "notas/a.md", "sha");
+    expect(removerDoCacheLocal).toHaveBeenCalledWith("notas/a.md");
     expect(invalidarCache).toHaveBeenCalled();
     expect(ouvinte).toHaveBeenCalledTimes(1);
     window.removeEventListener("acervo-atualizado", ouvinte);
