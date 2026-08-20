@@ -482,7 +482,8 @@ export default function Notas() {
         }
       }
     } catch (e) {
-      toast("Ocorreu um erro ao colar os arquivos", { tipo: "erro" });
+      const msg = e instanceof Error ? e.message : String(e);
+      toast(`Ocorreu um erro ao colar os arquivos: ${msg}`, { tipo: "erro" });
     } finally {
       limparSelecao();
       recarregar();
@@ -522,8 +523,9 @@ export default function Notas() {
       } else if (sucesso > 0) {
         toast(`${sucesso} nota(s) excluída(s)`, { tipo: "sucesso" });
       }
-    } catch {
-      toast("Erro ao excluir notas", { tipo: "erro" });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast(`Erro ao excluir notas: ${msg}`, { tipo: "erro" });
     } finally {
       limparSelecao();
       recarregar();
@@ -602,8 +604,9 @@ export default function Notas() {
 
       if (!silenciarToast) toast(`Nota movida para "${pastaDestino || "Notas"}"`, { tipo: "sucesso" });
       return true;
-    } catch {
-      if (!silenciarToast) toast("Erro ao mover a nota", { tipo: "erro" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!silenciarToast) toast(`Erro ao mover a nota: ${msg}`, { tipo: "erro" });
       return false;
     }
   }
@@ -659,8 +662,9 @@ export default function Notas() {
           } else if (sucesso > 0) {
             toast(`${sucesso} nota(s) movida(s) para "${destino || "Notas"}"`, { tipo: "sucesso" });
           }
-        } catch {
-          toast("Erro ao mover notas", { tipo: "erro" });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          toast(`Erro ao mover notas: ${msg}`, { tipo: "erro" });
         } finally {
           limparSelecao();
           recarregar();

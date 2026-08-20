@@ -146,10 +146,22 @@ export function useSalvar(cfg: Settings): EstadoSalvar {
       } catch (err: any) {
         const status = err instanceof ErroGitHub ? err.status : err?.status;
         const msg = err instanceof Error ? err.message : String(err);
-        if (status === 409 || msg.includes("409") || msg.includes("conflito")) {
-          // Recupera o SHA atual no GitHub e tenta apagar novamente
-          const { sha: remoteSha } = await ler(cfg, caminho);
-          await apagar(cfg, caminho, remoteSha);
+        
+        if (status === 404) {
+          // Arquivo já foi excluído no GitHub (sucesso silencioso!)
+        } else if (status === 409 || msg.includes("409") || msg.includes("conflito")) {
+          try {
+            // Recupera o SHA atual no GitHub e tenta apagar novamente
+            const { sha: remoteSha } = await ler(cfg, caminho);
+            await apagar(cfg, caminho, remoteSha);
+          } catch (innerErr: any) {
+            const innerStatus = innerErr instanceof ErroGitHub ? innerErr.status : innerErr?.status;
+            if (innerStatus === 404) {
+              // Arquivo já foi excluído, prosseguir como sucesso silencioso
+            } else {
+              throw innerErr;
+            }
+          }
         } else {
           throw err;
         }

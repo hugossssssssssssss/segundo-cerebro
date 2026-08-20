@@ -122,10 +122,12 @@ export async function conferir(resposta: Response): Promise<void> {
     422: "O GitHub recusou a gravação. Normalmente é o nome do arquivo ou o SHA desatualizado.",
   };
 
-  throw new ErroGitHub(
-    amigavel[resposta.status] ?? `Erro do GitHub (${resposta.status}). ${detalhe}`,
-    resposta.status,
-  );
+  const msgAmigavel = amigavel[resposta.status];
+  const mensagemFinal = msgAmigavel
+    ? `${msgAmigavel} (GitHub respondeu: ${detalhe || resposta.statusText || "sem detalhes"})`
+    : `Erro do GitHub (${resposta.status}). ${detalhe || resposta.statusText || "sem detalhes"}`;
+
+  throw new ErroGitHub(mensagemFinal, resposta.status);
 }
 
 /** Converte texto UTF-8 para base64 (o btoa puro quebra com acento). */
