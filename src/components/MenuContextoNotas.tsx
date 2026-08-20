@@ -7,6 +7,9 @@ import {
     Tag,
     X,
     Check,
+    Copy,
+    Scissors,
+    Clipboard,
 } from "lucide-react";
 import { Botao, Campo } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -16,7 +19,10 @@ export type AcaoMenuContexto =
     | { tipo: "criar_nota" }
     | { tipo: "mover_para"; pasta: string }
     | { tipo: "excluir" }
-    | { tipo: "adicionar_tags"; tags: string[] };
+    | { tipo: "adicionar_tags"; tags: string[] }
+    | { tipo: "copiar" }
+    | { tipo: "recortar" }
+    | { tipo: "colar" };
 
 interface MenuContextoNotasProps {
     x: number;
@@ -30,6 +36,8 @@ interface MenuContextoNotasProps {
     temSelecao: boolean;
     /** true quando o clique foi num cartão (mostra ações de item) */
     emCartao: boolean;
+    /** true quando há itens no clipboard do app */
+    temClipboard: boolean;
 }
 
 /**
@@ -45,6 +53,7 @@ export function MenuContextoNotas({
     pastasExistentes,
     temSelecao,
     emCartao,
+    temClipboard,
 }: MenuContextoNotasProps) {
     const [criandoPasta, setCriandoPasta] = useState(false);
     const [nomePasta, setNomePasta] = useState("");
@@ -106,20 +115,25 @@ export function MenuContextoNotas({
         rotulo,
         onClick,
         perigo,
+        desabilitado,
     }: {
         icone: React.ReactNode;
         rotulo: string;
         onClick: () => void;
         perigo?: boolean;
+        desabilitado?: boolean;
     }) => (
         <button
             type="button"
+            disabled={desabilitado}
             onClick={onClick}
             className={cn(
                 "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors",
-                perigo
-                    ? "text-destructive hover:bg-destructive/10"
-                    : "text-foreground hover:bg-accent"
+                desabilitado
+                    ? "opacity-40 cursor-not-allowed text-muted-foreground"
+                    : perigo
+                        ? "text-destructive hover:bg-destructive/10"
+                        : "text-foreground hover:bg-accent"
             )}
         >
             {icone}
@@ -183,6 +197,39 @@ export function MenuContextoNotas({
                 rotulo="Nova Nota"
                 onClick={() => {
                     aoAcao({ tipo: "criar_nota" });
+                    aoFechar();
+                }}
+            />
+
+            {/* Separador */}
+            <div className="my-1 border-t border-border/60" />
+
+            <ItemMenu
+                icone={<Copy size={14} className="text-blue-500" />}
+                rotulo="Copiar"
+                desabilitado={!temSelecao}
+                onClick={() => {
+                    aoAcao({ tipo: "copiar" });
+                    aoFechar();
+                }}
+            />
+
+            <ItemMenu
+                icone={<Scissors size={14} className="text-indigo-500" />}
+                rotulo="Recortar"
+                desabilitado={!temSelecao}
+                onClick={() => {
+                    aoAcao({ tipo: "recortar" });
+                    aoFechar();
+                }}
+            />
+
+            <ItemMenu
+                icone={<Clipboard size={14} className="text-emerald-500" />}
+                rotulo="Colar"
+                desabilitado={!temClipboard}
+                onClick={() => {
+                    aoAcao({ tipo: "colar" });
                     aoFechar();
                 }}
             />

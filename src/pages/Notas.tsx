@@ -98,6 +98,10 @@ export default function Notas() {
   // Drag and drop: nota arrastada sobre pasta
   const [notaArrastada, setNotaArrastada] = useState<string | null>(null);
   const [pastaAlvo, setPastaAlvo] = useState<string | null>(null);
+  const [clipboard, setClipboard] = useState<{
+    acao: "copiar" | "recortar";
+    caminhos: string[];
+  } | null>(null);
 
   const [tagsFiltro, setTagsFiltro] = useState<string[]>([]);
   const [filtroData, setFiltroData] = useState<FiltroData>("qualquer");
@@ -379,6 +383,192 @@ export default function Notas() {
     setMenuContexto({ x: e.clientX, y: e.clientY, emCartao });
   }
 
+  // Resolve notas e pastas selecionadas para uma lista de operações individuais em notas
+  function obterOperacoesParaItens(ids: string[], pastaDestino: string): { caminhoOrigem: string; caminhoDestino: string; nota: Nota }[] {
+    const operacoes: { caminhoOrigem: string; caminhoDestino: string; nota: Nota }[] = [];
+    const prefixoDestino = pastaDestino ? `${PASTAS.notas}/${pastaDestino}` : PASTAS.notas;
+    
+    for (const id of ids) {
+      if (id.startsWith("folder:")) {
+        const caminhoPasta = id.slice(7); // e.g. "my-folder"
+        const prefixoPastaOrigem = `${PASTAS.notas}/${caminhoPasta}/`;
+        
+        // Nome da pasta que está sendo movida
+        const nomePasta = caminhoPasta.split("/").pop() || "";
+        
+        // A pasta de destino terá esta pasta adicionada a ela
+        const pastaDestinoFinal = pastaDestino ? `${pastaDestino}/${nomePasta}` : nomePasta;
+        const prefixoPastaDestino = `${PASTAS.notas}/${pastaDestinoFinal}`;
+        
+        // Encontra todas as notas contidas nesta pasta recursivamente
+        const notasFilhas = todasNotas.filter(n => n.caminho.startsWith(prefixoPastaOrigem));
+        
+        for (const nota of notasFilhas) {
+          const caminhoRelativo = nota.caminho.slice(prefixoPastaOrigem.length);
+          const caminhoDestino = `${prefixoPastaDestino}/${caminhoRelativo}`;
+          operacoes.push({ caminhoOrigem: nota.caminho, caminhoDestino, nota });
+        }
+      } else {
+        const nota = todasNotas.find(n => n.caminho === id);
+        if (nota) {
+          const nomeArquivo = id.split("/").pop() || "";
+          const caminhoDestino = `${prefixoDestino}/${nomeArquivo}`;
+          operacoes.push({ caminhoOrigem: id, caminhoDestino, nota });
+        }
+      }
+    }
+    return operacoes;
+  }
+
+  async function executarColar() {
+    if (!clipboard || clipboard.caminhos.length === 0) return;
+    
+    const { acao, caminhos } = clipboard;
+    const operacoes = obterOperacoesParaItens(caminhos, pastaAtual);
+    
+    if (operacoes.length === 0) {
+      toast("Nenhum arquivo encontrado para colar", { tipo: "aviso" });
+      return;
+    }
+    
+    let sucesso = 0;
+    let falhas = 0;
+    
+    toast(acao === "recortar" ? "Movendo arquivos..." : "Copiando arquivos...", { tipo: "info" });
+    
+    try {
+      await Promise.all(
+        operacoes.map(async (op) => {
+          let caminhoDestino = op.caminhoDestino;
+          
+          if (acao === "copiar" && caminhoDestino === op.caminhoOrigem) {
+            const extensao = op.caminhoOrigem.split(".").pop();
+            const nomeSemExt = op.caminhoOrigem.slice(0, op.caminhoOrigem.lastIndexOf("."));
+            caminhoDestino = `${nomeSemExt}-copia.${extensao}`;
+          }
+          
+          if (caminhoDestino === op.caminhoOrigem) {
+            return;
+          }
+          
+          try {
+            const { dados, corpo } = notaParaArquivo(op.nota);
+            const texto = escreverMarkdown({ dados, corpo });
+            await salvarTexto(caminhoDestino, texto, undefined, `${acao}: ${op.caminhoOrigem.split("/").pop()} para ${pastaAtual || "raiz"}`);
+            
+            if (acao === "recortar") {
+              await apagarItem(op.caminhoOrigem, op.nota.sha);
+            }
+            sucesso++;
+          } catch (err) {
+            console.error(err);
+            falhas++;
+          }
+        })
+      );
+      
+      if (falhas > 0) {
+        toast(`${sucesso} item(ns) colado(s), ${falhas} falha(s)`, { tipo: "aviso" });
+      } else if (sucesso > 0) {
+        toast(`${sucesso} item(ns) colado(s) com sucesso`, { tipo: "sucesso" });
+        if (acao === "recortar") {
+          setClipboard(null);
+        }
+      }
+    } catch (e) {
+      toast("Ocorreu um erro ao colar os arquivos", { tipo: "erro" });
+    } finally {
+      limparSelecao();
+      recarregar();
+    }
+  }
+
+  async function executarExcluir() {
+    if (selecionadas.size === 0) return;
+    
+    let sucesso = 0;
+    let falhas = 0;
+    
+    const resolved = obterOperacoesParaItens(Array.from(selecionadas), pastaAtual);
+    if (resolved.length === 0) return;
+    
+    toast("Excluindo arquivos...", { tipo: "info" });
+    
+    try {
+      await Promise.all(
+        resolved.map(async (op) => {
+          try {
+            await apagarItem(op.caminhoOrigem, op.nota.sha);
+            sucesso++;
+          } catch {
+            falhas++;
+          }
+        })
+      );
+      
+      if (falhas > 0) {
+        toast(`${sucesso} excluída(s), ${falhas} falha(s)`, { tipo: "aviso" });
+      } else if (sucesso > 0) {
+        toast(`${sucesso} nota(s) excluída(s)`, { tipo: "sucesso" });
+      }
+    } catch {
+      toast("Erro ao excluir notas", { tipo: "erro" });
+    } finally {
+      limparSelecao();
+      recarregar();
+    }
+  }
+
+  useEffect(() => {
+    const aoTecla = async (e: KeyboardEvent) => {
+      if (
+        document.activeElement &&
+        (document.activeElement.tagName === "INPUT" ||
+          document.activeElement.tagName === "TEXTAREA" ||
+          document.activeElement.getAttribute("contenteditable") === "true" ||
+          document.activeElement.closest(".bn-editor") ||
+          document.activeElement.closest("input, textarea"))
+      ) {
+        return;
+      }
+      
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+        if (selecionadas.size > 0) {
+          e.preventDefault();
+          setClipboard({ acao: "copiar", caminhos: Array.from(selecionadas) });
+          toast(`${selecionadas.size} item(ns) copiado(s)`, { tipo: "sucesso" });
+        }
+      }
+      
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "x") {
+        if (selecionadas.size > 0) {
+          e.preventDefault();
+          setClipboard({ acao: "recortar", caminhos: Array.from(selecionadas) });
+          toast(`${selecionadas.size} item(ns) recortado(s)`, { tipo: "sucesso" });
+        }
+      }
+      
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+        if (clipboard && clipboard.caminhos.length > 0) {
+          e.preventDefault();
+          await executarColar();
+        }
+      }
+      
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selecionadas.size > 0) {
+          e.preventDefault();
+          await executarExcluir();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", aoTecla);
+    return () => {
+      window.removeEventListener("keydown", aoTecla);
+    };
+  }, [selecionadas, clipboard, pastaAtual, todasNotas]);
+
   // Mover nota por drag and drop ou menu
   async function moverNotaParaPasta(caminhoNota: string, pastaDestino: string, silenciarToast = false): Promise<boolean> {
     const nota = todasNotas.find((a) => a.caminho === caminhoNota);
@@ -419,43 +609,61 @@ export default function Notas() {
       case "mover_para": {
         if (selecionadas.size === 0) return;
         const destino = acao.pasta;
+        const operacoes = obterOperacoesParaItens(Array.from(selecionadas), destino);
+        if (operacoes.length === 0) return;
+        
         let sucesso = 0;
         let falhas = 0;
-        for (const caminho of selecionadas) {
-          const moveu = await moverNotaParaPasta(caminho, destino, true);
-          if (moveu) sucesso++;
-          else falhas++;
+        toast("Movendo arquivos...", { tipo: "info" });
+        
+        try {
+          await Promise.all(
+            operacoes.map(async (op) => {
+              if (op.caminhoDestino === op.caminhoOrigem) return;
+              try {
+                const { dados, corpo } = notaParaArquivo(op.nota);
+                const texto = escreverMarkdown({ dados, corpo });
+                await salvarTexto(op.caminhoDestino, texto, undefined, `mover: ${op.caminhoOrigem.split("/").pop()} para ${destino || "raiz"}`);
+                await apagarItem(op.caminhoOrigem, op.nota.sha);
+                sucesso++;
+              } catch {
+                falhas++;
+              }
+            })
+          );
+          if (falhas > 0) {
+            toast(`${sucesso} movida(s), ${falhas} falha(s)`, { tipo: "aviso" });
+          } else if (sucesso > 0) {
+            toast(`${sucesso} nota(s) movida(s) para "${destino || "Notas"}"`, { tipo: "sucesso" });
+          }
+        } catch {
+          toast("Erro ao mover notas", { tipo: "erro" });
+        } finally {
+          limparSelecao();
+          recarregar();
         }
-        if (falhas > 0) {
-          toast(`${sucesso} movida(s), ${falhas} falha(s)`, { tipo: "aviso" });
-        } else if (sucesso > 0) {
-          toast(`${sucesso} nota(s) movida(s) para "${destino || "Notas"}"`, { tipo: "sucesso" });
-        }
-        limparSelecao();
-        recarregar();
         break;
       }
       case "excluir": {
-        if (selecionadas.size === 0) return;
-        let sucesso = 0;
-        let falhas = 0;
-        for (const caminho of selecionadas) {
-          const nota = todasNotas.find((a) => a.caminho === caminho);
-          if (!nota) continue;
-          try {
-            await apagarItem(caminho, nota.sha);
-            sucesso++;
-          } catch {
-            falhas++;
-          }
+        await executarExcluir();
+        break;
+      }
+      case "copiar": {
+        if (selecionadas.size > 0) {
+          setClipboard({ acao: "copiar", caminhos: Array.from(selecionadas) });
+          toast(`${selecionadas.size} item(ns) copiado(s)`, { tipo: "sucesso" });
         }
-        if (falhas > 0) {
-          toast(`${sucesso} excluída(s), ${falhas} falha(s)`, { tipo: "aviso" });
-        } else if (sucesso > 0) {
-          toast(`${sucesso} nota(s) excluída(s)`, { tipo: "sucesso" });
+        break;
+      }
+      case "recortar": {
+        if (selecionadas.size > 0) {
+          setClipboard({ acao: "recortar", caminhos: Array.from(selecionadas) });
+          toast(`${selecionadas.size} item(ns) recortado(s)`, { tipo: "sucesso" });
         }
-        limparSelecao();
-        recarregar();
+        break;
+      }
+      case "colar": {
+        await executarColar();
         break;
       }
       case "adicionar_tags": {
@@ -719,20 +927,6 @@ export default function Notas() {
         />
       )}
 
-      {/* Indicador da pasta atual */}
-      {pastaAtual && (
-        <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-2.5 text-xs font-medium text-foreground animate-in fade-in duration-150">
-          <FolderOpen size={14} className="text-amber-500" />
-          <span>Criando notas dentro de: <strong>{pastaAtual}</strong></span>
-          <button
-            type="button"
-            onClick={() => setPastaAtual("")}
-            className="ml-auto text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Sair da pasta
-          </button>
-        </div>
-      )}
 
       {selecionadas.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 animate-in fade-in duration-150">
@@ -853,10 +1047,12 @@ export default function Notas() {
           ref={gridRef}
           onMouseDown={iniciarArrasto}
           onContextMenu={(e) => abrirMenuContexto(e, false)}
-          className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 select-none"
+          className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 select-none min-h-[60vh] pb-24 content-start"
         >
           {subpastas.map((pasta) => {
             const caminhoPasta = pastaAtual ? `${pastaAtual}/${pasta}` : pasta;
+            const pastaId = `folder:${caminhoPasta}`;
+            const estaPastaSelecionada = selecionadas.has(pastaId);
             return (
               <div
                 key={`pasta-${caminhoPasta}`}
@@ -873,7 +1069,11 @@ export default function Notas() {
                   e.preventDefault();
                   const caminhoNota = e.dataTransfer.getData("text/plain") || notaArrastada;
                   if (caminhoNota) {
-                    moverNotaParaPasta(caminhoNota, caminhoPasta);
+                    if (selecionadas.has(caminhoNota)) {
+                      processarAcaoMenu({ tipo: "mover_para", pasta: caminhoPasta });
+                    } else {
+                      moverNotaParaPasta(caminhoNota, caminhoPasta);
+                    }
                     setNotaArrastada(null);
                     setPastaAlvo(null);
                   }
@@ -882,27 +1082,31 @@ export default function Notas() {
                   e.stopPropagation();
                   abrirMenuContexto(e, true);
                 }}
+                ref={(el) => {
+                  if (el) {
+                    cartoesRef.current.set(pastaId, el.getBoundingClientRect());
+                  } else {
+                    cartoesRef.current.delete(pastaId);
+                  }
+                }}
               >
                 <CartaoItem
                   icone={<FolderOpen size={18} className="text-primary" />}
                   titulo={pasta}
                   subtitulo="Pasta"
+                  selecionado={estaPastaSelecionada}
                   className={
                     pastaAlvo === caminhoPasta
                       ? "border-primary bg-primary/10 ring-2 ring-primary/30"
                       : ""
                   }
-                  onClick={() => setPastaAtual(caminhoPasta)}
-                  acoes={
-                    <button
-                      type="button"
-                      title={`Criar nota em ${caminhoPasta}`}
-                      onClick={() => nova(undefined, caminhoPasta)}
-                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                    >
-                      <Plus size={15} />
-                    </button>
-                  }
+                  onClick={() => {
+                    if (selecionadas.size > 0) {
+                      alternarSelecao(pastaId);
+                    } else {
+                      setPastaAtual(caminhoPasta);
+                    }
+                  }}
                 />
               </div>
             );
@@ -953,25 +1157,6 @@ export default function Notas() {
                   subtitulo={subtitulo}
                   tags={nota.tags}
                   selecionado={estaSelecionada}
-                  acoes={
-                    pastasExistentes.length > 0 ? (
-                      <select
-                        aria-label={`Mover ${tituloNota} para uma pasta`}
-                        defaultValue=""
-                        onChange={(e) => {
-                          const destino = e.target.value;
-                          if (destino) moverNotaParaPasta(nota.caminho, destino);
-                          e.currentTarget.value = "";
-                        }}
-                        className="max-w-28 rounded-md border border-border bg-card px-1.5 py-1 text-[10px] text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                      >
-                        <option value="" disabled>Mover…</option>
-                        {pastasExistentes
-                          .filter((pasta) => `${PASTAS.notas}/${pasta}` !== nota.caminho.slice(0, nota.caminho.lastIndexOf("/")))
-                          .map((pasta) => <option key={pasta} value={pasta}>{pasta}</option>)}
-                      </select>
-                    ) : undefined
-                  }
                   onClick={() => {
                     if (selecionadas.size > 0) {
                       alternarSelecao(nota.caminho);
@@ -1007,6 +1192,7 @@ export default function Notas() {
         pastasExistentes={pastasExistentes}
         temSelecao={selecionadas.size > 0}
         emCartao={menuContexto?.emCartao ?? false}
+        temClipboard={clipboard !== null && clipboard.caminhos.length > 0}
       />
 
       <ModalGerenciarModelos

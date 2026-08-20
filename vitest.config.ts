@@ -20,5 +20,6 @@ export default defineConfig({
     // encontradas nas auditorias viviam em componentes e eram invisíveis
     // para uma suíte que só testava funções puras.
     environment: "jsdom",
+    setupFiles: ["./src/test-setup.ts"],
   },
 });
