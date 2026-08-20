@@ -255,41 +255,28 @@ export default function Notas() {
     window.history.replaceState(null, "", `?abrir=${encodeURIComponent(nota.caminho)}`);
   }
 
-  function nova(template?: TemplateItem) {
-    const notaVazia: NotaAberta = {
-      bruto: template ? { ...template.frontmatter } : {},
-      caminho: "",
-      sha: "",
-      titulo: template ? template.titulo : "",
-      tipo: (template?.frontmatter?.tipo as any) || "nota",
-      tags: template?.frontmatter?.tags || [],
-      corpo: template ? template.corpoPadrao : "",
-      original: { titulo: "", corpo: "", bruto: {} },
-    };
-    setAberta(notaVazia);
-  }
+  function nova(template?: TemplateItem, pastaDestino?: string) {
+    const tmpl = template || modeloPadrao;
+    const titulo = tmpl?.titulo || "Nova Nota";
+    
+    let caminho = "";
+    const pastaReal = pastaDestino ?? pastaAtual;
+    if (pastaReal) {
+      caminho = nomeLivre(
+        `${PASTAS.notas}/${pastaReal}`,
+        titulo,
+        todasNotas.map((a) => a.caminho),
+      );
+    }
 
-  function novaComPadrao() {
-    nova(modeloPadrao);
-  }
-
-  // Ao criar a partir de uma pasta, o caminho já nasce definido. Isso evita
-  // depender de `pastaAtual` quando o painel for fechado e salvo.
-  function novaNaPasta(pasta: string, template?: TemplateItem) {
-    const titulo = template?.titulo || "Nova Nota";
-    const caminho = nomeLivre(
-      `${PASTAS.notas}/${pasta}`,
-      titulo,
-      todasNotas.map((a) => a.caminho),
-    );
     const notaVazia: NotaAberta = {
-      bruto: template ? { ...template.frontmatter } : {},
+      bruto: tmpl ? { ...tmpl.frontmatter } : {},
       caminho,
       sha: "",
       titulo,
-      tipo: (template?.frontmatter?.tipo as any) || "nota",
-      tags: template?.frontmatter?.tags || [],
-      corpo: template?.corpoPadrao || "",
+      tipo: (tmpl?.frontmatter?.tipo as any) || "nota",
+      tags: tmpl?.frontmatter?.tags || [],
+      corpo: tmpl?.corpoPadrao || "",
       original: { titulo: "", corpo: "", bruto: {} },
     };
     setAberta(notaVazia);
@@ -392,22 +379,25 @@ export default function Notas() {
     setMenuContexto({ x: e.clientX, y: e.clientY, emCartao });
   }
 
-  // Mover nota por drag and drop
-  async function moverNotaParaPasta(caminhoNota: string, pastaDestino: string) {
+  // Mover nota por drag and drop ou menu
+  async function moverNotaParaPasta(caminhoNota: string, pastaDestino: string, silenciarToast = false): Promise<boolean> {
     const nota = todasNotas.find((a) => a.caminho === caminhoNota);
-    if (!nota) return;
+    if (!nota) return false;
     const nomeArquivo = caminhoNota.split("/").pop()!;
-    const novoCaminho = `${PASTAS.notas}/${pastaDestino}/${nomeArquivo}`;
-    if (novoCaminho === caminhoNota) return;
+    const prefixoDestino = pastaDestino ? `${PASTAS.notas}/${pastaDestino}` : PASTAS.notas;
+    const novoCaminho = `${prefixoDestino}/${nomeArquivo}`;
+    if (novoCaminho === caminhoNota) return false;
+    
     try {
       const { dados, corpo } = notaParaArquivo(nota);
       const texto = escreverMarkdown({ dados, corpo });
-      await salvarTexto(novoCaminho, texto, undefined, `mover: ${nomeArquivo} para ${pastaDestino}`);
+      await salvarTexto(novoCaminho, texto, undefined, `mover: ${nomeArquivo} para ${pastaDestino || "raiz"}`);
       await apagarItem(caminhoNota, nota.sha);
-      toast(`Nota movida para "${pastaDestino}"`, { tipo: "sucesso" });
-      recarregar();
+      if (!silenciarToast) toast(`Nota movida para "${pastaDestino || "Notas"}"`, { tipo: "sucesso" });
+      return true;
     } catch {
-      toast("Erro ao mover a nota", { tipo: "erro" });
+      if (!silenciarToast) toast("Erro ao mover a nota", { tipo: "erro" });
+      return false;
     }
   }
 
@@ -432,25 +422,14 @@ export default function Notas() {
         let sucesso = 0;
         let falhas = 0;
         for (const caminho of selecionadas) {
-          const nota = todasNotas.find((a) => a.caminho === caminho);
-          if (!nota) continue;
-          const nomeArquivo = caminho.split("/").pop()!;
-          const novoCaminho = `${PASTAS.notas}/${destino}/${nomeArquivo}`;
-          if (novoCaminho === caminho) continue;
-          try {
-            const { dados, corpo } = notaParaArquivo(nota);
-            const texto = escreverMarkdown({ dados, corpo });
-            await salvarTexto(novoCaminho, texto, undefined, `mover: ${nomeArquivo} para ${destino}`);
-            await apagarItem(caminho, nota.sha);
-            sucesso++;
-          } catch {
-            falhas++;
-          }
+          const moveu = await moverNotaParaPasta(caminho, destino, true);
+          if (moveu) sucesso++;
+          else falhas++;
         }
         if (falhas > 0) {
           toast(`${sucesso} movida(s), ${falhas} falha(s)`, { tipo: "aviso" });
         } else if (sucesso > 0) {
-          toast(`${sucesso} nota(s) movida(s) para "${destino}"`, { tipo: "sucesso" });
+          toast(`${sucesso} nota(s) movida(s) para "${destino || "Notas"}"`, { tipo: "sucesso" });
         }
         limparSelecao();
         recarregar();
@@ -664,7 +643,7 @@ export default function Notas() {
               <FolderPlus size={16} />
               Nova Pasta
             </Botao>
-            <Botao onClick={novaComPadrao}>
+            <Botao onClick={() => nova()}>
               <Plus size={16} />
               Nova Nota
             </Botao>
@@ -841,7 +820,7 @@ export default function Notas() {
           icone={<FileText size={24} />}
           titulo="Nenhuma nota criada ainda"
           descricao="Crie a primeira nota. Ela vira um arquivo .md no seu repositório — que você pode abrir em qualquer lugar."
-          acao={<Botao onClick={novaComPadrao}>Criar primeira nota</Botao>}
+          acao={<Botao onClick={() => nova()}>Criar primeira nota</Botao>}
         />
       ) : naPasta.length === 0 && pastaAtual ? (
         <Vazio
@@ -850,7 +829,7 @@ export default function Notas() {
           descricao="Esta pasta ainda não tem notas. Crie a primeira nota dentro dela."
           acao={
             <div className="flex items-center gap-2">
-              <Botao onClick={() => novaNaPasta(pastaAtual, modeloPadrao)}>
+              <Botao onClick={() => nova(undefined, pastaAtual)}>
                 <Plus size={16} /> Criar nota aqui
               </Botao>
               <Botao variante="neutro" onClick={() => setPastaAtual("")}>
@@ -883,14 +862,9 @@ export default function Notas() {
                 key={`pasta-${caminhoPasta}`}
                 data-cartao
                 onDragOver={(e) => {
-                  // O estado do React pode ainda não ter sido atualizado no
-                  // primeiro evento nativo de arraste. O dataTransfer é a
-                  // fonte imediata e funciona inclusive entre componentes.
-                  if (notaArrastada || e.dataTransfer.types.includes("text/plain")) {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                    setPastaAlvo(caminhoPasta);
-                  }
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setPastaAlvo(caminhoPasta);
                 }}
                 onDragLeave={() => {
                   if (notaArrastada) setPastaAlvo(null);
@@ -923,7 +897,7 @@ export default function Notas() {
                     <button
                       type="button"
                       title={`Criar nota em ${caminhoPasta}`}
-                      onClick={() => novaNaPasta(caminhoPasta, modeloPadrao)}
+                      onClick={() => nova(undefined, caminhoPasta)}
                       className="rounded-lg p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                     >
                       <Plus size={15} />
