@@ -84,7 +84,7 @@ export function notaParaArquivo(n: Nota): { dados: Frontmatter; corpo: string } 
       titulo:    n.titulo,
       tipo:      n.tipo || "nota",
       tags:      n.tags.length ? n.tags : undefined,
-      atualizado: new Date().toISOString().slice(0, 10),
+      atualizado: new Date().toISOString(),
     }),
     corpo: n.corpo,
   };
@@ -164,6 +164,7 @@ export function metaParaArquivo(m: Meta): { dados: Frontmatter; corpo: string } 
       status:    m.status,
       prazo:     m.prazo,
       indicador: m.indicador || undefined,
+      atualizado: new Date().toISOString(),
     }),
     corpo: m.corpo,
   };
@@ -202,6 +203,7 @@ export function entregaParaArquivo(e: Entrega): { dados: Frontmatter; corpo: str
       data:       e.data,
       metas:      e.metas.length ? e.metas : undefined,
       ia_sugeriu: e.iaSugeriu || undefined,
+      atualizado: new Date().toISOString(),
     }),
     corpo: e.corpo,
   };
@@ -247,6 +249,7 @@ export function referenciaParaArquivo(r: Referencia): { dados: Frontmatter; corp
       fonte:  r.fonte,
       porque: r.porque || undefined,
       tags:   r.tags.length ? r.tags : undefined,
+      atualizado: new Date().toISOString(),
     }),
     corpo: r.corpo,
   };
@@ -346,7 +349,7 @@ export function contatoParaArquivo(c: Contato): { dados: Frontmatter; corpo: str
       telefone: telefone || undefined,
       pai_id: paiId || undefined,
       tags: tags && tags.length ? tags : undefined,
-      atualizado: new Date().toISOString().slice(0, 10),
+      atualizado: new Date().toISOString(),
     }),
     corpo: c.corpo,
   };

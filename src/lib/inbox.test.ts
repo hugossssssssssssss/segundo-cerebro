@@ -135,4 +135,64 @@ prazo: 2026-08-10
     const amanha = adiarDataHora("2026-08-15 10:00", "amanha", agora);
     expect(amanha).toContain("09:00");
   });
+
+  it("compilarItensInbox inclui metas ou notas com data apenas no dia correspondente (fuso local)", () => {
+    const itensRepo: ItemRepo[] = [
+      {
+        caminho: "pdi/metas/meta-estudar.md",
+        nome: "meta-estudar.md",
+        sha: "abc",
+        tamanho: 100,
+        texto: `---
+tipo: meta
+prazo: 2026-08-21
+---
+# Estudar Design`,
+        doc: {
+          dados: { tipo: "meta", prazo: "2026-08-21" },
+          corpo: "# Estudar Design",
+        },
+      },
+      {
+        caminho: "notas/evento.md",
+        nome: "evento.md",
+        sha: "def",
+        tamanho: 120,
+        texto: `---
+tipo: nota
+data: 2026-08-21
+---
+# Evento Importante`,
+        doc: {
+          dados: { tipo: "nota", data: "2026-08-21" },
+          corpo: "# Evento Importante",
+        },
+      },
+      {
+        caminho: "notas/evento-futuro.md",
+        nome: "evento-futuro.md",
+        sha: "ghi",
+        tamanho: 120,
+        texto: `---
+tipo: nota
+data: 2026-08-22
+---
+# Evento Amanha`,
+        doc: {
+          dados: { tipo: "nota", data: "2026-08-22" },
+          corpo: "# Evento Amanha",
+        },
+      }
+    ];
+
+    const agoraLocalDefinido = new Date(2026, 7, 21, 14, 20, 0); // 21 de Agosto de 2026
+
+    const caixa = compilarItensInbox(itensRepo, {}, agoraLocalDefinido);
+
+    const titulos = caixa.map(i => i.titulo);
+    expect(titulos).toContain("Estudar Design");
+    expect(titulos).toContain("Evento Importante");
+    expect(titulos).not.toContain("Evento Amanha");
+    expect(caixa).toHaveLength(2);
+  });
 });

@@ -29,6 +29,37 @@ import { extrairMencoesTexto } from "@/lib/links";
 // Apelidado: este arquivo já tem um `nomeExibido` local, que traduz chave de
 // frontmatter em rótulo — coisa sem relação nenhuma com o nome do usuário.
 import { lerConfig, nomeExibido as nomeDoUsuario } from "@/lib/settings";
+import { cache } from "@/lib/repo";
+
+export function obterTagsDisponiveis(dadosTagsAtuais: string[], coresTagsGlobais: Record<string, string>): string[] {
+  const tagsSet = new Set<string>();
+
+  // 1. Tags do item atual
+  dadosTagsAtuais.forEach(t => {
+    if (typeof t === "string" && t.trim()) tagsSet.add(t.trim());
+  });
+
+  // 2. Tags configuradas no localStorage
+  Object.keys(coresTagsGlobais).forEach(t => {
+    if (typeof t === "string" && t.trim()) tagsSet.add(t.trim());
+  });
+
+  // 3. Tags em uso no acervo
+  if (cache && cache.itens) {
+    cache.itens.forEach(item => {
+      const tags = item.doc?.dados?.tags;
+      if (Array.isArray(tags)) {
+        tags.forEach(t => {
+          if (typeof t === "string" && t.trim()) {
+            tagsSet.add(t.trim());
+          }
+        });
+      }
+    });
+  }
+
+  return Array.from(tagsSet).sort();
+}
 
 export function abrirItemSpa(caminho: string) {
   if (!caminho) return;
@@ -186,7 +217,9 @@ export function PropriedadesNotion({
   const [renomearPara, setRenomearPara] = useState("");
   const [copiado, setCopiado] = useState<string | null>(null);
   const [mostrandoOcultas, setMostrandoOcultas] = useState(false);
-  const [tagInputs, setTagInputs] = useState<Record<string, string>>({});
+  const [buscaTag, setBuscaTag] = useState("");
+  const [editandoTag, setEditandoTag] = useState<string | null>(null);
+  const [novoNomeTag, setNovoNomeTag] = useState("");
 
   const [globalConfig, setGlobalConfig] = useState(lerConfigPropriedadesGlobais());
 
@@ -590,7 +623,7 @@ export function PropriedadesNotion({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-3" align="start" onInteractOutside={() => setMenuAberto(null)}>
+          <PopoverContent className="w-72 p-3" align="start" onInteractOutside={() => setMenuAberto(null)}>
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
                 <span>Data Inicial</span>
@@ -664,16 +697,40 @@ export function PropriedadesNotion({
         );
       }
 
-      function processarEInserirTag(inp: string) {
-        const pedacos = inp.split(/[,;]/).map(s => s.trim().replace(/^@+/, "")).filter(Boolean);
-        if (pedacos.length === 0) return;
-        
-        const novastags = Array.from(new Set([...tags, ...pedacos]));
-        atualizar(chave, novastags);
-        setTagInputs({ ...tagInputs, [chave]: "" });
-      }
+      const tagsDisponiveis = obterTagsDisponiveis(tags, coresMap);
+      const tagsFiltradas = tagsDisponiveis.filter(t => t.toLowerCase().includes(buscaTag.toLowerCase()));
+      const existeExata = tagsDisponiveis.some(t => t.toLowerCase() === buscaTag.toLowerCase().trim());
 
-      const inputVal = tagInputs[chave] || "";
+      const processarCriarTag = (nomeNovaTag: string) => {
+        const nomeLimpo = nomeNovaTag.trim().replace(/^@+/, "");
+        if (!nomeLimpo) return;
+        const novasTags = Array.from(new Set([...tags, nomeLimpo]));
+        atualizar(chave, novasTags);
+        if (!coresMap[nomeLimpo]) {
+          atualizarCorTag(nomeLimpo, "azul");
+        }
+        setBuscaTag("");
+      };
+
+      const processarRenomearTag = (velhaTag: string, novaTag: string) => {
+        const nomeLimpo = novaTag.trim();
+        if (!nomeLimpo || velhaTag === nomeLimpo) {
+          setEditandoTag(null);
+          return;
+        }
+
+        const novasTags = tags.map(t => t === velhaTag ? nomeLimpo : t);
+        atualizar(chave, novasTags);
+
+        const corVelha = coresMap[velhaTag] || "azul";
+        const novasCores = { ...globalConfig.coresTags };
+        delete novasCores[velhaTag];
+        novasCores[nomeLimpo] = corVelha;
+        salvarConfigPropriedadesGlobais(undefined, novasCores);
+        setGlobalConfig(lerConfigPropriedadesGlobais());
+
+        setEditandoTag(null);
+      };
 
       return (
         <div className="flex items-center gap-1.5 flex-wrap py-1 min-h-7">
@@ -690,29 +747,121 @@ export function PropriedadesNotion({
             </div>
           ))}
 
-          <input
-            type="text"
-            placeholder={tags.length === 0 ? "Digitar tag (Enter ou vírgula)..." : "+ tag"}
-            value={inputVal}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val.includes(",") || val.includes(";")) {
-                processarEInserirTag(val);
-              } else {
-                setTagInputs({ ...tagInputs, [chave]: val });
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === "Tab") {
-                e.preventDefault();
-                processarEInserirTag(inputVal);
-              }
-            }}
-            onBlur={() => {
-              if (inputVal.trim()) processarEInserirTag(inputVal);
-            }}
-            className="bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted-foreground/60 px-1 py-0.5 min-w-[120px] focus:ring-0"
-          />
+          <Popover open={menuAberto === idPopover} onOpenChange={(open) => {
+            setMenuAberto(open ? idPopover : null);
+            if (!open) {
+              setBuscaTag("");
+              setEditandoTag(null);
+            }
+          }}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-1.5 text-[11px] font-normal text-muted-foreground hover:text-foreground flex items-center gap-1 border border-dashed border-border/80 rounded"
+              >
+                <Plus size={11} />
+                <span>Tag</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[240px] p-2 flex flex-col gap-2 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
+              {editandoTag ? (
+                <div className="space-y-2 p-1">
+                  <p className="text-[11px] font-semibold text-muted-foreground">Renomear tag "{editandoTag}"</p>
+                  <input
+                    type="text"
+                    value={novoNomeTag}
+                    onChange={(e) => setNovoNomeTag(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") processarRenomearTag(editandoTag, novoNomeTag);
+                      if (e.key === "Escape") setEditandoTag(null);
+                    }}
+                    autoFocus
+                    className="w-full bg-accent/40 border border-border text-xs px-2 py-1 rounded outline-none"
+                  />
+                  <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => setEditandoTag(null)}>Cancelar</Button>
+                    <Button variant="default" size="sm" className="h-7 text-[10px]" onClick={() => processarRenomearTag(editandoTag, novoNomeTag)}>Salvar</Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    placeholder="Buscar ou criar tag..."
+                    value={buscaTag}
+                    onChange={(e) => setBuscaTag(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && buscaTag.trim() && !existeExata) {
+                        processarCriarTag(buscaTag);
+                      }
+                    }}
+                    autoFocus
+                    className="w-full bg-accent/40 border border-border text-xs px-2.5 py-1.5 rounded-md outline-none"
+                  />
+
+                  <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
+                    {tagsFiltradas.map((tag) => {
+                      const selecionada = tags.includes(tag);
+                      return (
+                        <div
+                          key={tag}
+                          className="w-full flex items-center justify-between rounded-md hover:bg-accent px-1.5 py-1 transition-colors group/item"
+                        >
+                          <button
+                            onClick={() => {
+                              if (selecionada) {
+                                atualizar(chave, tags.filter(t => t !== tag));
+                              } else {
+                                atualizar(chave, [...tags, tag]);
+                              }
+                            }}
+                            className="flex-1 flex items-center gap-2 text-left"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selecionada}
+                              readOnly
+                              className="w-3.5 h-3.5 rounded border-border text-primary focus:ring-0 cursor-pointer"
+                            />
+                            {renderizarBadgeTag(tag)}
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditandoTag(tag);
+                              setNovoNomeTag(tag);
+                            }}
+                            className="opacity-0 group-hover/item:opacity-100 p-1 text-muted-foreground hover:text-foreground hover:bg-accent-foreground/10 rounded transition-all"
+                            title="Editar tag"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                            </svg>
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                    {buscaTag.trim() && !existeExata && (
+                      <button
+                        onClick={() => processarCriarTag(buscaTag)}
+                        className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-md flex items-center gap-1.5"
+                      >
+                        <Plus size={12} />
+                        <span>Criar tag "{buscaTag.trim()}"</span>
+                      </button>
+                    )}
+
+                    {tagsFiltradas.length === 0 && !buscaTag.trim() && (
+                      <span className="text-[11px] text-muted-foreground p-2 text-center">Nenhuma tag cadastrada</span>
+                    )}
+                  </div>
+                </>
+              )}
+            </PopoverContent>
+          </Popover>
         </div>
       );
     }
@@ -877,19 +1026,20 @@ export function PropriedadesNotion({
                 { id: "vazia", label: "Esconder se vazia", icon: EyeOff },
                 { id: "esconder", label: "Sempre esconder", icon: EyeOff },
               ].map((v) => (
-                <Button
+                <button
                   key={v.id}
-                  variant="ghost"
-                  size="sm"
                   onClick={() => {
                     atualizarVisibilidade(chave, v.id as OpcaoVisibilidade);
                     setMenuAberto(null);
                   }}
-                  className={cn("justify-start text-xs font-normal h-7 px-2", visAtual === v.id && "bg-accent font-semibold")}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left transition-colors hover:bg-accent",
+                    visAtual === v.id ? "bg-accent font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <v.icon className="h-3.5 w-3.5 mr-2 opacity-60" />
-                  {v.label}
-                </Button>
+                  <v.icon className="h-4 w-4 opacity-75 shrink-0" />
+                  <span>{v.label}</span>
+                </button>
               ))}
             </div>
           </div>
@@ -899,19 +1049,20 @@ export function PropriedadesNotion({
               <span className="text-[11px] font-semibold text-muted-foreground px-1 uppercase tracking-wider block mb-1">Tipo de Propriedade</span>
               <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto pr-1">
                 {(Object.entries(ICONES_TIPO) as [TipoPropriedade, React.ElementType][]).map(([t, Icon]) => (
-                  <Button 
+                  <button 
                     key={t}
-                    variant="ghost" 
-                    size="sm" 
                     onClick={() => {
                       atualizarEsquema(chave, t);
                       setMenuAberto(null);
                     }}
-                    className={cn("justify-start font-normal text-xs h-7 px-2", tipoAtual === t && "bg-accent font-semibold")}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left transition-colors hover:bg-accent",
+                      tipoAtual === t ? "bg-accent font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
                   >
-                    <Icon className="h-3.5 w-3.5 mr-2 opacity-60" />
-                    {NOMES_TIPO[t]}
-                  </Button>
+                    <Icon className="h-4 w-4 opacity-75 shrink-0" />
+                    <span>{NOMES_TIPO[t]}</span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -919,10 +1070,13 @@ export function PropriedadesNotion({
           
           {!fixo && (
             <div className="border-t border-border pt-2 mt-1">
-              <Button variant="ghost" size="sm" onClick={() => remover(chave)} className="w-full justify-start text-xs text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2">
-                <Trash2 className="h-3.5 w-3.5 mr-2" />
-                Excluir propriedade
-              </Button>
+              <button 
+                onClick={() => remover(chave)} 
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                <Trash2 className="h-4 w-4 shrink-0" />
+                <span>Excluir propriedade</span>
+              </button>
             </div>
           )}
         </PopoverContent>
@@ -992,11 +1146,11 @@ export function PropriedadesNotion({
                         criarNovaPropriedade(t);
                       }}
                       className={cn(
-                        "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-left transition-colors hover:bg-accent",
-                        tipoNovoCampo === t && "bg-accent font-semibold"
+                        "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left transition-colors hover:bg-accent",
+                        tipoNovoCampo === t ? "bg-accent font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Icon className="h-3.5 w-3.5 opacity-60 shrink-0" />
+                      <Icon className="h-4 w-4 opacity-75 shrink-0" />
                       <span>{NOMES_TIPO[t]}</span>
                     </button>
                   ))}

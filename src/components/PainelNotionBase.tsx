@@ -11,9 +11,14 @@ import {
   Pin,
   GripHorizontal,
   History as IconeHistorico,
+  MoreVertical,
+  Copy,
+  CopyPlus,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Botao, Aviso, ModalConfirmacao } from "@/components/ui";
-import { PropriedadesNotion } from "@/components/PropriedadesNotion";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PropriedadesNotion, abrirItemSpa } from "@/components/PropriedadesNotion";
 import { EditorNotion } from "@/components/EditorNotion";
 import { Subtarefas } from "@/components/Subtarefas";
 import { MencionadoEm } from "@/components/Links";
@@ -21,7 +26,11 @@ import { MapaMentalEmbed } from "@/components/MapaMentalEmbed";
 import { sincronizarRelacionamentos } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
-import { lerMarkdown, escreverMarkdown } from "@/lib/markdown";
+import { lerMarkdown, escreverMarkdown, nomeLivre, mesclarFrontmatter } from "@/lib/markdown";
+import { gravar, apagar } from "@/lib/github";
+import { cache, invalidarCache } from "@/lib/repo";
+import { lerConfig } from "@/lib/settings";
+import { toast } from "@/lib/toast";
 
 const HistoricoDiffModal = lazy(() =>
   import("@/components/HistoricoDiffModal").then((m) => ({
@@ -77,6 +86,110 @@ export function PainelNotionBase({
   const [confirmandoApagar, setConfirmandoApagar] = useState(false);
   const [minimizadoFlutuante, setMinimizadoFlutuante] = useState(false);
   const [vendoHistorico, setVendoHistorico] = useState(false);
+  const [menuAcoesAberto, setMenuAcoesAberto] = useState(false);
+
+  const acaoCopiarLink = useCallback(() => {
+    if (!caminhoItem) return;
+    const pasta = caminhoItem.split("/")[0]?.toLowerCase() || "";
+    let rota = "/notas";
+    if (pasta === "tarefas") rota = "/tarefas";
+    else if (pasta === "referencias") rota = "/referencias";
+    else if (pasta === "pdi" || pasta === "metas") rota = "/pdi";
+    else if (pasta === "lousas") rota = "/lousas";
+    const url = `${window.location.origin}${window.location.pathname}#${rota}?abrir=${encodeURIComponent(caminhoItem)}`;
+    navigator.clipboard.writeText(url);
+    toast("Link copiado para a área de transferência!");
+    setMenuAcoesAberto(false);
+  }, [caminhoItem]);
+
+  const acaoDuplicar = useCallback(async () => {
+    if (!caminhoItem) return;
+    const cfg = lerConfig();
+    const pasta = caminhoItem.split("/").slice(0, -1).join("/") || caminhoItem.split("/")[0];
+    const novoTitulo = `Cópia de ${titulo}`;
+    const caminhosExistentes = cache?.itens.map((i) => i.caminho) || [];
+    const caminhoNovo = nomeLivre(pasta, novoTitulo, caminhosExistentes);
+
+    const dadosNovos = { ...dadosProps };
+    if (pasta.includes("metas")) {
+      dadosNovos.id = caminhoNovo.split("/").pop()!.replace(/\.md$/, "");
+    }
+
+    const textoNovo = escreverMarkdown({ dados: dadosNovos, corpo });
+
+    try {
+      await gravar(cfg, caminhoNovo, textoNovo, undefined, `duplicar ${caminhoItem}`);
+      invalidarCache();
+      toast("Item duplicado com sucesso!");
+      abrirItemSpa(caminhoNovo);
+      setMenuAcoesAberto(false);
+      aoFechar();
+    } catch (err: any) {
+      toast(`Erro ao duplicar item: ${err?.message || err}`, { tipo: "erro" });
+    }
+  }, [caminhoItem, titulo, dadosProps, corpo, aoFechar]);
+
+  const acaoConverter = useCallback(async (novoTipo: string, novaPasta: string) => {
+    if (!caminhoItem) return;
+    const cfg = lerConfig();
+    const confirmacao = window.confirm(`Deseja mesmo converter este item para ${novoTipo === 'nota' ? 'Nota' : novoTipo === 'tarefa' ? 'Tarefa' : 'Meta'}? Isso moverá o arquivo físico no repositório.`);
+    if (!confirmacao) return;
+
+    const caminhosExistentes = cache?.itens.map((i) => i.caminho) || [];
+    const caminhoNovo = nomeLivre(novaPasta, titulo, caminhosExistentes);
+
+    const dadosLimpos = { ...dadosProps };
+    let dadosNovos: Record<string, any> = {};
+
+    if (novoTipo === "nota") {
+      delete dadosLimpos.status;
+      delete dadosLimpos.prazo;
+      delete dadosLimpos.indicador;
+      delete dadosLimpos.metas;
+      delete dadosLimpos.id;
+      dadosNovos = mesclarFrontmatter(dadosLimpos, {
+        tipo: "nota",
+        tags: dadosProps.tags || []
+      });
+    } else if (novoTipo === "tarefa") {
+      delete dadosLimpos.indicador;
+      delete dadosLimpos.metas;
+      delete dadosLimpos.id;
+      dadosNovos = mesclarFrontmatter(dadosLimpos, {
+        tipo: "tarefa",
+        status: dadosProps.status || "a-fazer",
+        tags: dadosProps.tags || []
+      });
+    } else if (novoTipo === "meta") {
+      delete dadosLimpos.tags;
+      delete dadosLimpos.metas;
+      const novoId = caminhoNovo.split("/").pop()!.replace(/\.md$/, "");
+      dadosNovos = mesclarFrontmatter(dadosLimpos, {
+        tipo: "meta",
+        id: novoId,
+        status: dadosProps.status || "a-fazer",
+        indicador: dadosProps.indicador || ""
+      });
+    }
+
+    const textoNovo = escreverMarkdown({ dados: dadosNovos, corpo });
+
+    try {
+      await gravar(cfg, caminhoNovo, textoNovo, undefined, `converter de ${caminhoItem} para ${novoTipo}`);
+      const itemOrigem = cache?.itens.find((i) => i.caminho === caminhoItem);
+      const shaOrigem = itemOrigem?.sha || "";
+      if (shaOrigem) {
+        await apagar(cfg, caminhoItem, shaOrigem);
+      }
+      invalidarCache();
+      toast("Item convertido com sucesso!");
+      abrirItemSpa(caminhoNovo);
+      setMenuAcoesAberto(false);
+      aoFechar();
+    } catch (err: any) {
+      toast(`Erro ao converter item: ${err?.message || err}`, { tipo: "erro" });
+    }
+  }, [caminhoItem, titulo, dadosProps, corpo, aoFechar]);
 
   const painelRef = useRef<HTMLDivElement>(null);
   const miniRef = useRef<HTMLDivElement>(null);
@@ -472,6 +585,67 @@ export function PainelNotionBase({
           >
             {minimizadoFlutuante ? <Maximize size={15} /> : <Minimize2 size={15} />}
           </button>
+        )}
+
+        {caminhoItem && (
+          <Popover open={menuAcoesAberto} onOpenChange={setMenuAcoesAberto}>
+            <PopoverTrigger asChild>
+              <button
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                title="Ações do item"
+              >
+                <MoreVertical size={16} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-1.5 shadow-xl border-border" align="end">
+              <div className="flex flex-col gap-0.5">
+                <button
+                  onClick={acaoCopiarLink}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
+                >
+                  <Copy size={14} className="opacity-70 shrink-0" />
+                  <span>Copiar link</span>
+                </button>
+
+                <button
+                  onClick={acaoDuplicar}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
+                >
+                  <CopyPlus size={14} className="opacity-70 shrink-0" />
+                  <span>Duplicar</span>
+                </button>
+
+                <div className="my-1 border-t border-border/60" />
+                <div className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Converter para
+                </div>
+                {[
+                  { tipo: "nota", pasta: "notas", rotulo: "Nota" },
+                  { tipo: "tarefa", pasta: "tarefas", rotulo: "Tarefa" },
+                  { tipo: "meta", pasta: "pdi/metas", rotulo: "Meta do PDI" }
+                ].map((dest) => {
+                  const ehTipoAtual =
+                    caminhoItem.startsWith(dest.pasta + "/") ||
+                    (dest.tipo === "nota" && rotuloTipo?.toLowerCase().includes("nota")) ||
+                    (dest.tipo === "tarefa" && rotuloTipo?.toLowerCase().includes("tarefa")) ||
+                    (dest.tipo === "meta" && rotuloTipo?.toLowerCase().includes("meta"));
+
+                  if (ehTipoAtual) return null;
+
+                  return (
+                    <button
+                      key={dest.tipo}
+                      onClick={() => acaoConverter(dest.tipo, dest.pasta)}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
+                    >
+                      <ArrowRightLeft size={14} className="opacity-70 shrink-0" />
+                      <span>{dest.rotulo}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
 
         <button

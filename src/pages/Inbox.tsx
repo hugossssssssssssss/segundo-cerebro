@@ -139,7 +139,12 @@ export default function Inbox() {
     for (let i = 0; i < 7; i++) {
       const d = new Date(hoje);
       d.setDate(hoje.getDate() + i);
-      const iso = d.toISOString().slice(0, 10);
+      
+      const ano = d.getFullYear();
+      const mes = String(d.getMonth() + 1).padStart(2, "0");
+      const dia = String(d.getDate()).padStart(2, "0");
+      const iso = `${ano}-${mes}-${dia}`;
+      
       const diaDaSemana = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
       const total = itensCompilados.filter((item) => item.dataVencimento.startsWith(iso) && !item.visto).length;
 

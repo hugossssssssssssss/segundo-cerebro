@@ -203,7 +203,12 @@ export function compilarItensInbox(
   agora: Date = new Date(),
 ): ItemInbox[] {
   const resultado: ItemInbox[] = [];
-  const hojeIso = agora.toISOString().slice(0, 10);
+  
+  // Usar fuso horário local do usuário para hojeIso
+  const ano = agora.getFullYear();
+  const mes = String(agora.getMonth() + 1).padStart(2, "0");
+  const dia = String(agora.getDate()).padStart(2, "0");
+  const hojeIso = `${ano}-${mes}-${dia}`;
 
   for (const item of itensRepo) {
     if (!item.texto) continue;
@@ -279,6 +284,54 @@ export function compilarItensInbox(
           lembreteBruto: formatarTagLembrete(lembrete.titulo, lembrete.dataHora),
           tags: tagsDoc,
         });
+      }
+    }
+
+    // 3. Outras entidades com campo de data ou prazo (Agenda do Dia - exclusivamente no dia)
+    if (!item.caminho.startsWith("tarefas/")) {
+      const dataCampos = ["data", "prazo"];
+      let dataValor: string | undefined;
+
+      for (const campo of dataCampos) {
+        const val = doc.dados[campo];
+        if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+          dataValor = val.trim();
+          break;
+        }
+      }
+
+      if (dataValor && dataValor === hojeIso) {
+        const id = `entidade-data-${item.caminho}`;
+        const estado = mapaEstado[id];
+
+        if (!estado?.descartado) {
+          let tipoEntidade = "nota";
+          if (item.caminho.startsWith("pdi/metas/")) tipoEntidade = "meta";
+          else if (item.caminho.startsWith("pdi/entregas/")) tipoEntidade = "entrega";
+          else if (item.caminho.startsWith("referencias/")) tipoEntidade = "referencia";
+          else if (item.caminho.startsWith("contatos/")) tipoEntidade = "contato";
+
+          const rotuloEntidade = tipoEntidade === "nota" ? "Nota"
+                               : tipoEntidade === "meta" ? "Meta"
+                               : tipoEntidade === "entrega" ? "Entrega"
+                               : tipoEntidade === "referencia" ? "Referência"
+                               : "Contato";
+
+          resultado.push({
+            id,
+            tipo: "lembrete",
+            titulo: tituloDoc,
+            descricao: `${rotuloEntidade} agendada para HOJE.`,
+            caminhoOrigem: item.caminho,
+            tituloOrigem: tituloDoc,
+            dataVencimento: dataValor,
+            visto: Boolean(estado?.visto),
+            vistoEm: estado?.vistoEm,
+            notificadoTelegram: estado?.notificadoTelegram,
+            notificadoEmail: estado?.notificadoEmail,
+            tags: tagsDoc,
+          });
+        }
       }
     }
   }

@@ -120,9 +120,9 @@ describe("notaParaArquivo", () => {
     expect(notaParaArquivo(n).dados.tags).toBeUndefined();
   });
 
-  it("carimba a data de atualização", () => {
+  it("carimba a data de atualização com ISO completo", () => {
     const n = comoNota(doc("---\ntitulo: X\n---\n"), "notas/a.md", "s", "t");
-    expect(notaParaArquivo(n).dados.atualizado).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(notaParaArquivo(n).dados.atualizado).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
   });
 });
 
@@ -228,6 +228,11 @@ describe("metaParaArquivo", () => {
       "t",
     );
     expect(metaParaArquivo(m).dados.revisado_por).toBe("chefe");
+  });
+
+  it("carimba a data de atualização com ISO completo", () => {
+    const m = comoMeta(doc("---\ntitulo: X\n---\n"), "pdi/metas/a.md", "s", "t");
+    expect(metaParaArquivo(m).dados.atualizado).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
   });
 });
 
