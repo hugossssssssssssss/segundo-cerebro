@@ -640,6 +640,7 @@ export function PropriedadesNotion({
               <Calendar
                 mode="single"
                 selected={inicioObj}
+                className="w-full"
                 onSelect={(d: Date | undefined) => {
                   const nInicio = d ? format(d, "yyyy-MM-dd") : "";
                   atualizar(chave, fimStr ? `${nInicio} → ${fimStr}` : nInicio);

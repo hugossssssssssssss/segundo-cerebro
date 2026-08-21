@@ -27,7 +27,7 @@ import { sincronizarRelacionamentos } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
 import { lerMarkdown, escreverMarkdown, nomeLivre, mesclarFrontmatter } from "@/lib/markdown";
-import { gravar, apagar } from "@/lib/github";
+import { useSalvar } from "@/lib/useSalvar";
 import { cache, invalidarCache } from "@/lib/repo";
 import { lerConfig } from "@/lib/settings";
 import { toast } from "@/lib/toast";
@@ -87,6 +87,10 @@ export function PainelNotionBase({
   const [minimizadoFlutuante, setMinimizadoFlutuante] = useState(false);
   const [vendoHistorico, setVendoHistorico] = useState(false);
   const [menuAcoesAberto, setMenuAcoesAberto] = useState(false);
+  const [confirmandoConversao, setConfirmandoConversao] = useState<{ novoTipo: string; novaPasta: string } | null>(null);
+
+  const cfg = useMemo(() => lerConfig(), []);
+  const { salvarTexto, apagarItem } = useSalvar(cfg);
 
   const acaoCopiarLink = useCallback(() => {
     if (!caminhoItem) return;
@@ -104,7 +108,6 @@ export function PainelNotionBase({
 
   const acaoDuplicar = useCallback(async () => {
     if (!caminhoItem) return;
-    const cfg = lerConfig();
     const pasta = caminhoItem.split("/").slice(0, -1).join("/") || caminhoItem.split("/")[0];
     const novoTitulo = `Cópia de ${titulo}`;
     const caminhosExistentes = cache?.itens.map((i) => i.caminho) || [];
@@ -118,7 +121,7 @@ export function PainelNotionBase({
     const textoNovo = escreverMarkdown({ dados: dadosNovos, corpo });
 
     try {
-      await gravar(cfg, caminhoNovo, textoNovo, undefined, `duplicar ${caminhoItem}`);
+      await salvarTexto(caminhoNovo, textoNovo, undefined, `duplicar ${caminhoItem}`);
       invalidarCache();
       toast("Item duplicado com sucesso!");
       abrirItemSpa(caminhoNovo);
@@ -127,14 +130,15 @@ export function PainelNotionBase({
     } catch (err: any) {
       toast(`Erro ao duplicar item: ${err?.message || err}`, { tipo: "erro" });
     }
-  }, [caminhoItem, titulo, dadosProps, corpo, aoFechar]);
+  }, [caminhoItem, titulo, dadosProps, corpo, aoFechar, salvarTexto]);
 
-  const acaoConverter = useCallback(async (novoTipo: string, novaPasta: string) => {
+  const acaoConverter = useCallback((novoTipo: string, novaPasta: string) => {
+    setConfirmandoConversao({ novoTipo, novaPasta });
+    setMenuAcoesAberto(false);
+  }, []);
+
+  const executarConversao = useCallback(async (novoTipo: string, novaPasta: string) => {
     if (!caminhoItem) return;
-    const cfg = lerConfig();
-    const confirmacao = window.confirm(`Deseja mesmo converter este item para ${novoTipo === 'nota' ? 'Nota' : novoTipo === 'tarefa' ? 'Tarefa' : 'Meta'}? Isso moverá o arquivo físico no repositório.`);
-    if (!confirmacao) return;
-
     const caminhosExistentes = cache?.itens.map((i) => i.caminho) || [];
     const caminhoNovo = nomeLivre(novaPasta, titulo, caminhosExistentes);
 
@@ -175,21 +179,20 @@ export function PainelNotionBase({
     const textoNovo = escreverMarkdown({ dados: dadosNovos, corpo });
 
     try {
-      await gravar(cfg, caminhoNovo, textoNovo, undefined, `converter de ${caminhoItem} para ${novoTipo}`);
+      await salvarTexto(caminhoNovo, textoNovo, undefined, `converter de ${caminhoItem} para ${novoTipo}`);
       const itemOrigem = cache?.itens.find((i) => i.caminho === caminhoItem);
       const shaOrigem = itemOrigem?.sha || "";
       if (shaOrigem) {
-        await apagar(cfg, caminhoItem, shaOrigem);
+        await apagarItem(caminhoItem, shaOrigem);
       }
       invalidarCache();
       toast("Item convertido com sucesso!");
       abrirItemSpa(caminhoNovo);
-      setMenuAcoesAberto(false);
       aoFechar();
     } catch (err: any) {
       toast(`Erro ao converter item: ${err?.message || err}`, { tipo: "erro" });
     }
-  }, [caminhoItem, titulo, dadosProps, corpo, aoFechar]);
+  }, [caminhoItem, titulo, dadosProps, corpo, aoFechar, salvarTexto, apagarItem]);
 
   const painelRef = useRef<HTMLDivElement>(null);
   const miniRef = useRef<HTMLDivElement>(null);
@@ -700,6 +703,22 @@ export function PainelNotionBase({
           if (aoRemover) aoRemover();
         }}
         aoCancelar={() => setConfirmandoApagar(false)}
+      />
+
+      <ModalConfirmacao
+        aberto={confirmandoConversao !== null}
+        titulo="Converter item?"
+        descricao={`Deseja mesmo converter este item para ${confirmandoConversao?.novoTipo === 'nota' ? 'Nota' : confirmandoConversao?.novoTipo === 'tarefa' ? 'Tarefa' : 'Meta'}? Isso moverá o arquivo físico no seu repositório de dados.`}
+        textoConfirmar="Sim, converter"
+        textoCancelar="Cancelar"
+        varianteConfirmar="primario"
+        aoConfirmar={() => {
+          if (confirmandoConversao) {
+            executarConversao(confirmandoConversao.novoTipo, confirmandoConversao.novaPasta);
+          }
+          setConfirmandoConversao(null);
+        }}
+        aoCancelar={() => setConfirmandoConversao(null)}
       />
 
       {vendoHistorico && caminhoItem && (
