@@ -16,8 +16,8 @@ import { lerMarkdown } from "./markdown";
 import { notificarOutrasAbas } from "./syncChannel";
 import { toast } from "./toast";
 import { formatarNomeAmigavel } from "./utils";
-import { salvarRascunhoLocal, obterRascunhosLocais } from "./offlineQueue";
-import type { Settings } from "./settings";
+import { salvarRascunhoLocal, obterRascunhosLocais, sincronizarFilaOffline } from "./offlineQueue";
+import { lerConfig, configCompleta, type Settings } from "./settings";
 
 export type EstadoSalvar = {
   /**
@@ -97,6 +97,12 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
         toast(`"${nomeItem}" salvo localmente`, { tipo: "sucesso" });
       }
 
+      // 4. Dispara a sincronização real com o GitHub em background
+      const cfg = lerConfig();
+      if (configCompleta(cfg) && navigator.onLine) {
+        sincronizarFilaOffline(cfg).catch(() => {});
+      }
+
       return shaFinal;
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
@@ -121,6 +127,12 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
 
         const nomeItem = formatarNomeAmigavel(caminho);
         toast(`"${nomeItem}" removido`, { tipo: "info" });
+      }
+
+      // 4. Dispara a sincronização real com o GitHub em background
+      const cfg = lerConfig();
+      if (configCompleta(cfg) && navigator.onLine) {
+        sincronizarFilaOffline(cfg).catch(() => {});
       }
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
