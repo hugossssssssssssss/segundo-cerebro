@@ -196,6 +196,7 @@ direto · `não usa` = não toca no repositório de dados.
 | `src/pages/Notas.tsx` | hook | hook |
 | `src/pages/Noticias.tsx` | não usa | não usa |
 | `src/pages/PDI.tsx` | hook | hook |
+| `src/pages/PesquisaLivros.tsx` | não usa | não usa |
 | `src/pages/Processos.tsx` | na mão | não usa |
 | `src/pages/Referencias.tsx` | hook | hook |
 | `src/pages/Tarefas.tsx` | hook | hook |

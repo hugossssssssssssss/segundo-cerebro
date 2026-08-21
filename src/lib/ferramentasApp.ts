@@ -26,6 +26,7 @@ import {
   BellPlus,
   SunMoon,
   Timer,
+  BookOpen,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -209,6 +210,15 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
   },
 
   // --- MÓDULOS E FERRAMENTAS DO KLAUS ---
+  {
+    id: "pesquisa_livros",
+    titulo: "Pesquisar e Baixar Livros",
+    descricao: "Busque e baixe livros e PDFs de domínio público/abertos de forma rápida e direta",
+    categoria: "ferramenta",
+    rota: "/livros",
+    icone: BookOpen,
+    palavrasChave: ["livros", "pesquisar livros", "pdf", "epub", "baixar", "gutenberg", "open library", "gutenberg", "biblioteca"],
+  },
   {
     id: "contatos",
     titulo: "Árvore de Contatos & Pessoas",

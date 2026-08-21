@@ -14,6 +14,7 @@ const ROTAS_VALIDAS_APP = new Set([
   "/chat",
   "/config",
   "/conversor",
+  "/livros",
   "/pdf",
   "/historico-diff",
   "/noticias",

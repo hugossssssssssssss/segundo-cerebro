@@ -56,6 +56,7 @@ const Contatos = lazy(() => import("@/pages/Contatos"));
 const Noticias = lazy(() => import("@/pages/Noticias"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 const BoasVindas = lazy(() => import("@/pages/BoasVindas"));
+const PesquisaLivros = lazy(() => import("@/pages/PesquisaLivros"));
 
 
 
@@ -384,6 +385,7 @@ function AppInterno() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/pdf" element={<FerramentasPDF />} />
           <Route path="/conversor" element={<Conversor />} />
+          <Route path="/livros" element={<PesquisaLivros />} />
           <Route path="/transcritor" element={<Transcritor />} />
           <Route path="/processos" element={<Processos />} />
           <Route path="/contatos" element={<Contatos />} />

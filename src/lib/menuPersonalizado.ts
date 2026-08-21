@@ -57,6 +57,7 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
       { id: "referencias", para: "/referencias", rotulo: "Referências Visuais", iconeNome: "Image" },
       { id: "pdf", para: "/pdf", rotulo: "Ferramentas PDF", iconeNome: "FileCheck" },
       { id: "conversor", para: "/conversor", rotulo: "Conversor", iconeNome: "RefreshCw" },
+      { id: "livros", para: "/livros", rotulo: "Pesquisar Livros", iconeNome: "BookOpen" },
     ],
   },
   {
