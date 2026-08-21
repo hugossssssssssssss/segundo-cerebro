@@ -21,6 +21,7 @@ import { MapaMentalEmbed } from "@/components/MapaMentalEmbed";
 import { sincronizarRelacionamentos } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
+import { lerMarkdown, escreverMarkdown } from "@/lib/markdown";
 
 const HistoricoDiffModal = lazy(() =>
   import("@/components/HistoricoDiffModal").then((m) => ({
@@ -548,6 +549,15 @@ export function PainelNotionBase({
             aberto
             aoFechar={() => setVendoHistorico(false)}
             caminho={caminhoItem}
+            conteudoAtual={escreverMarkdown({ dados: dadosProps, corpo })}
+            aoRestaurar={(textoHistorico) => {
+              const { dados, corpo: corpoTexto } = lerMarkdown(textoHistorico);
+              if (dados.titulo && typeof dados.titulo === "string") {
+                setTitulo(dados.titulo);
+              }
+              setCorpo(corpoTexto);
+              onChangeProps(dados);
+            }}
           />
         </Suspense>
       )}
