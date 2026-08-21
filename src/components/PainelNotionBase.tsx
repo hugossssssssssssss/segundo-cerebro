@@ -349,22 +349,7 @@ export function PainelNotionBase({
     return () => limpar();
   }, [modoVisao, caminhoItem, titulo, tentarFechar]);
 
-  // Tecla Escape para fechar
-  useEffect(() => {
-    if (modoVisao === "flutuante") return;
-    const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === "Escape") tentarFechar();
-    };
-    document.addEventListener("keydown", aoTeclar);
-    const overflowAnterior = document.body.style.overflow;
-    if ((modoVisao as string) !== "flutuante") {
-      document.body.style.overflow = "hidden";
-    }
-    return () => {
-      document.removeEventListener("keydown", aoTeclar);
-      document.body.style.overflow = overflowAnterior;
-    };
-  }, [tentarFechar, modoVisao]);
+
 
   // Alerta de segurança ao tentar sair/fechar a aba do navegador
   useEffect(() => {
