@@ -151,8 +151,8 @@ async function buscar(url: string, init?: RequestInit): Promise<Response> {
 type Folha = { path: string; sha: string; size: number };
 
 async function arvore(cfg: Settings): Promise<Folha[]> {
-  const url = `${BASE}/repos/${cfg.repoOwner}/${cfg.repoName}/git/trees/${encodeURIComponent(cfg.branch)}?recursive=1`;
-  const resposta = await buscar(url, { headers: cabecalhos(cfg) });
+  const url = `${BASE}/repos/${cfg.repoOwner}/${cfg.repoName}/git/trees/${encodeURIComponent(cfg.branch)}?recursive=1&t=${Date.now()}`;
+  const resposta = await buscar(url, { headers: cabecalhos(cfg), cache: "no-store" });
 
   if (resposta.status === 404) return []; // repositório novo, sem commits
   // mesma tradução de erro do resto do app: limite de API não pode aparecer
