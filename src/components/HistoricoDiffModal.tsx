@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import ReactDiffViewer from "react-diff-viewer-continued";
+import ReactDiffViewer from "@alexbruf/react-diff-viewer";
 import { Modal, Botao, Carregando } from "@/components/ui";
 import { lerConfig } from "@/lib/settings";
 import { lerOuVazio } from "@/lib/github";

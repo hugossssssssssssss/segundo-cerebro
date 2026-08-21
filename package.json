@@ -1,7 +1,7 @@
 {
   "name": "segundo-cere-bro",
   "private": true,
-  "version": "1.43.3",
+  "version": "1.43.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@alexbruf/react-diff-viewer": "^3.1.5",
     "@blocknote/core": "^0.54.0",
     "@blocknote/mantine": "^0.54.0",
     "@blocknote/react": "^0.54.0",
@@ -44,7 +45,6 @@
     "pdfjs-dist": "^6.2.108",
     "react": "^19.2.8",
     "react-day-picker": "^10.0.1",
-    "react-diff-viewer-continued": "^4.4.0",
     "react-dom": "^19.2.8",
     "react-plock": "^3.6.1",
     "react-router-dom": "^7.18.2",

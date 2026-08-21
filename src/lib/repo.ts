@@ -430,6 +430,7 @@ export function atualizarCacheLocal(
     quando: Date.now(),
   });
   delecoesRecentes.delete(caminho);
+  cargaEmVoo = null;
 
   if (cache) {
     const nome = caminho.split("/").pop()!;
@@ -458,6 +459,7 @@ export function atualizarCacheLocal(
 export function removerDoCacheLocal(caminho: string) {
   alteracoesRecentes.delete(caminho);
   delecoesRecentes.add(caminho);
+  cargaEmVoo = null;
 
   // Remove o rastro da deleção após 20 segundos
   setTimeout(() => {

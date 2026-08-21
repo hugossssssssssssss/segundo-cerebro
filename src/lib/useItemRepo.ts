@@ -67,7 +67,7 @@ export function useItemRepo<T>(
 
       // Tenta recuperar cache local síncrono para Optimistic UI e SWR (0ms delay)
       const cacheValido = obterCacheExistente(cfg);
-      if (cacheValido && !jaCarregouRef.current) {
+      if (cacheValido) {
         const rascunhos = obterRascunhosLocais();
         let todos = [...cacheValido.itens];
 
