@@ -132,4 +132,33 @@ describe("buscarLivrosUnificado", () => {
     expect(resultados[0].titulo).toBe("Memórias Póstumas de Brás Cubas");
     expect(resultados[0].fonte).toBe("Open Library");
   });
+
+  it("aplica filtro de idioma nas requisições das APIs de origem", async () => {
+    const mockFetch = vi.mocked(fetch);
+    const urlsChamadas: string[] = [];
+
+    mockFetch.mockImplementation(async (url: any) => {
+      const urlStr = String(url);
+      urlsChamadas.push(urlStr);
+      
+      if (urlStr.includes("gutendex.com")) {
+        return { ok: true, json: async () => ({ results: [] }) } as any;
+      }
+      if (urlStr.includes("openlibrary.org")) {
+        return { ok: true, json: async () => ({ docs: [] }) } as any;
+      }
+      return { ok: false } as any;
+    });
+
+    await buscarLivrosUnificado("Machado", "pt");
+
+    // Verifica se os parâmetros de idioma foram anexados
+    expect(urlsChamadas).toHaveLength(2);
+    
+    const urlGutenberg = urlsChamadas.find(u => u.includes("gutendex.com"));
+    const urlOpenLibrary = urlsChamadas.find(u => u.includes("openlibrary.org"));
+
+    expect(urlGutenberg).toContain("languages=pt");
+    expect(decodeURIComponent(urlOpenLibrary || "")).toContain("language:por");
+  });
 });

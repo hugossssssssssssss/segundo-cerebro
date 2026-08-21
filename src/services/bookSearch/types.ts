@@ -13,5 +13,5 @@ export interface LivroBuscado {
 
 export interface ConectorBusca {
   nome: string;
-  buscar(query: string): Promise<LivroBuscado[]>;
+  buscar(query: string, idioma?: string): Promise<LivroBuscado[]>;
 }

@@ -25,11 +25,14 @@ function formatarAutor(nome: string): string {
 
 export const gutenbergConector: ConectorBusca = {
   nome: "Project Gutenberg",
-  async buscar(query: string): Promise<LivroBuscado[]> {
+  async buscar(query: string, idioma?: string): Promise<LivroBuscado[]> {
     if (!query.trim()) return [];
 
     try {
-      const url = `https://gutendex.com/books/?search=${encodeURIComponent(query)}`;
+      let url = `https://gutendex.com/books/?search=${encodeURIComponent(query)}`;
+      if (idioma && idioma !== "todos") {
+        url += `&languages=${idioma}`;
+      }
       const resposta = await fetch(url);
       
       if (!resposta.ok) {

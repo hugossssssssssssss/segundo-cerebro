@@ -7,6 +7,7 @@ const TIMEOUT_PADRAO = 9000; // 9 segundos de timeout por conector
 
 export async function buscarLivrosUnificado(
   query: string,
+  idioma?: string,
   timeoutMs = TIMEOUT_PADRAO
 ): Promise<LivroBuscado[]> {
   if (!query || !query.trim()) return [];
@@ -22,7 +23,7 @@ export async function buscarLivrosUnificado(
       );
 
       // Corrida entre a busca real e o timeout
-      return await Promise.race([conector.buscar(termoBusca), timeoutPromessa]);
+      return await Promise.race([conector.buscar(termoBusca, idioma), timeoutPromessa]);
     } catch (erro) {
       console.warn(`[Buscador de Livros] Erro ou timeout na fonte ${conector.nome}:`, erro);
       // Lança o erro para sabermos quais fontes falharam no allSettled

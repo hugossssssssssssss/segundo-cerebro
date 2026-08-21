@@ -8,6 +8,7 @@ import { toast } from "@/lib/toast";
 
 export default function PesquisaLivros() {
   const [busca, setBusca] = useState("");
+  const [idioma, setIdioma] = useState<"pt" | "todos" | "en">("pt");
   const [carregando, setCarregando] = useState(false);
   const [livros, setLivros] = useState<LivroBuscado[]>([]);
   const [erro, setErro] = useState("");
@@ -23,7 +24,7 @@ export default function PesquisaLivros() {
     setEstadoInicial(false);
 
     try {
-      const resultados = await buscarLivrosUnificado(busca);
+      const resultados = await buscarLivrosUnificado(busca, idioma);
       setLivros(resultados);
     } catch (err) {
       console.error(err);
@@ -134,6 +135,16 @@ export default function PesquisaLivros() {
             </button>
           )}
         </div>
+        <select
+          value={idioma}
+          onChange={(e) => setIdioma(e.target.value as any)}
+          disabled={carregando}
+          className="flex h-11 rounded-lg border border-input bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 text-foreground cursor-pointer outline-none shrink-0"
+        >
+          <option value="pt">🇧🇷 Português</option>
+          <option value="todos">🌍 Todos</option>
+          <option value="en">🇬🇧 Inglês</option>
+        </select>
         <Botao type="submit" disabled={carregando || !busca.trim()} className="shrink-0">
           {carregando ? <Loader2 size={16} className="animate-spin" /> : "Pesquisar"}
         </Botao>

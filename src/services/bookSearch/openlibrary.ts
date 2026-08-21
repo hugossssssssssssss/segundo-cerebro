@@ -19,12 +19,17 @@ function obterIdioma3Letras(siglas: string[]): string {
 
 export const openlibraryConector: ConectorBusca = {
   nome: "Open Library",
-  async buscar(query: string): Promise<LivroBuscado[]> {
+  async buscar(query: string, idioma?: string): Promise<LivroBuscado[]> {
     if (!query.trim()) return [];
 
     try {
-      // Limitamos a 40 para ter bastante resultados e fazemos a query
-      const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=40`;
+      let queryCompleta = query;
+      if (idioma === "pt") {
+        queryCompleta += " language:por";
+      } else if (idioma === "en") {
+        queryCompleta += " language:eng";
+      }
+      const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(queryCompleta)}&limit=40`;
       const resposta = await fetch(url);
       
       if (!resposta.ok) {
