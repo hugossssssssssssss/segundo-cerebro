@@ -13,6 +13,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   esbuild: {
     keepNames: true,
+    minifyIdentifiers: false,
   } as any,
   resolve: {
     // fileURLToPath e não .pathname: o caminho tem espaço e acento,
