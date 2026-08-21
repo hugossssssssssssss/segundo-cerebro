@@ -4,6 +4,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import JSZip from "jszip";
 import TurndownService from "turndown";
 import { PDFDocument } from "pdf-lib";
+import jEpub from "jepub";
 import {
   RefreshCw,
   FileText,
@@ -18,6 +19,8 @@ import {
   Upload,
   FileCheck,
   FileImage,
+  BookOpen,
+  Trash2,
 } from "lucide-react";
 import { Botao, Cartao, Aviso } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
@@ -27,7 +30,18 @@ import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
 import { carregarRepo } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
 import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
+import {
+  adicionarAoHistorico,
+  listarHistorico,
+  limparExcedentesETtl,
+  deletarHistorico,
+} from "@/lib/historicoConversor";
+import type { ItemHistorico } from "@/lib/historicoConversor";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+
+if (typeof window !== "undefined") {
+  (window as any).JSZip = JSZip;
+}
 
 // Configura o worker do PDF.js via Vite bundle local
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -35,6 +49,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 export type TipoFerramentaConversor =
   | "pdf_para_png"
   | "pdf_para_jpg"
+  | "pdf_para_epub"
+  | "epub_trocar_capa"
   | "img_para_pdf"
   | "img_para_webp"
   | "img_para_png"
@@ -69,6 +85,20 @@ const FERRAMENTAS_CONVERSOR: ItemFerramentaUI[] = [
     descricao: "Converte páginas de PDF em arquivos de imagem JPG compactos",
     icone: FileImage,
     cor: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+  {
+    id: "pdf_para_epub",
+    titulo: "PDF para EPUB",
+    descricao: "Extraia o texto de documentos PDF e monte um arquivo EPUB fluido",
+    icone: BookOpen,
+    cor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  {
+    id: "epub_trocar_capa",
+    titulo: "Trocar Capa de EPUB",
+    descricao: "Substitua a imagem de capa de um livro digital EPUB existente",
+    icone: FileImage,
+    cor: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
   },
   {
     id: "img_para_pdf",
@@ -150,6 +180,15 @@ export default function Conversor() {
     if (ferramentaAtiva === "pdf_para_jpg") setFormatoSaidaPdf("jpeg");
   }, [ferramentaAtiva]);
 
+  // Estados de PDF -> EPUB
+  const [pdfEpubArquivo, setPdfEpubArquivo] = useState<File | null>(null);
+  const [pdfEpubTitulo, setPdfEpubTitulo] = useState("");
+  const [pdfEpubAutor, setPdfEpubAutor] = useState("");
+
+  // Estados de Trocar Capa de EPUB
+  const [epubArquivo, setEpubArquivo] = useState<File | null>(null);
+  const [novaCapaArquivo, setNovaCapaArquivo] = useState<File | null>(null);
+
   // Estados de Imagem -> PDF
   const [arquivosParaPdf, setArquivosParaPdf] = useState<File[]>([]);
 
@@ -157,6 +196,37 @@ export default function Conversor() {
   const [arquivosImagem, setArquivosImagem] = useState<File[]>([]);
   const [formatoSaidaImg, setFormatoSaidaImg] = useState<"png" | "jpeg" | "webp">("png");
   const [qualidadeImg, setQualidadeImg] = useState<number>(90);
+
+  // Histórico
+  const [historico, setHistorico] = useState<ItemHistorico[]>([]);
+
+  // Sincroniza a limpeza e recarregamento do histórico
+  useEffect(() => {
+    limparExcedentesETtl().then(() => {
+      recarregarHistorico();
+    });
+  }, [ferramentaAtiva]);
+
+  const recarregarHistorico = async () => {
+    const lista = await listarHistorico();
+    setHistorico(lista);
+  };
+
+  const baixarArquivoDoHistorico = (item: ItemHistorico) => {
+    const url = URL.createObjectURL(item.blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = item.nome;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const aoLimparHistorico = async () => {
+    await deletarHistorico();
+    await recarregarHistorico();
+  };
 
   // Ajusta formato padrão quando muda entre img_para_webp, img_para_png e img_para_jpg
   useEffect(() => {
@@ -251,6 +321,301 @@ export default function Conversor() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  // CONVERTER PDF PARA EPUB
+  async function converterPdfParaEpub() {
+    if (!pdfEpubArquivo) {
+      setErro("Selecione um arquivo PDF para converter.");
+      return;
+    }
+    setProcessando(true);
+    setErro("");
+    setMensagemSucesso("");
+
+    try {
+      const buffer = await pdfEpubArquivo.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({
+        data: new Uint8Array(buffer),
+        cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+        cMapPacked: true,
+      });
+      const pdf = await loadingTask.promise;
+      const totalPaginas = pdf.numPages;
+
+      const titulo = pdfEpubTitulo.trim() || pdfEpubArquivo.name.replace(/\.pdf$/i, "");
+      const autor = pdfEpubAutor.trim() || "Autor Desconhecido";
+
+      const jepubObj = new jEpub();
+      jepubObj.init({
+        title: titulo,
+        author: autor,
+        publisher: "Klaus",
+        description: `Livro gerado a partir do arquivo PDF: ${pdfEpubArquivo.name}`,
+        tags: ["pdf", "epub", "klaus"],
+      });
+
+      let paginasValidas = 0;
+
+      for (let i = 1; i <= totalPaginas; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        
+        let textoPagina = "";
+        let ultimaY = -1;
+
+        for (const item of textContent.items) {
+          if ("str" in item) {
+            const y = item.transform[5];
+            if (ultimaY !== -1 && Math.abs(y - ultimaY) > 6) {
+              textoPagina += "\n";
+            }
+            textoPagina += item.str + " ";
+            ultimaY = y;
+          }
+        }
+
+        const textoLimpo = textoPagina.trim();
+        if (textoLimpo.length > 0) {
+          const paragrafos = textoLimpo
+            .split("\n")
+            .map((linha) => linha.trim())
+            .filter((linha) => linha.length > 0)
+            .map((linha) => `<p>${escaparHtml(linha)}</p>`)
+            .join("");
+
+          jepubObj.add(`Página ${i}`, `<h2>Página ${i}</h2>\n${paragrafos}`);
+          paginasValidas++;
+        }
+      }
+
+      if (paginasValidas === 0) {
+        throw new Error("Nenhum texto legível pôde ser extraído do PDF.");
+      }
+
+      const epubBlob = (await jepubObj.generate("blob")) as Blob;
+      const nomeFinal = `${titulo.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.epub`;
+      
+      const url = URL.createObjectURL(epubBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nomeFinal;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      await adicionarAoHistorico(nomeFinal, "PDF para EPUB", epubBlob);
+      await recarregarHistorico();
+
+      setMensagemSucesso(`EPUB "${titulo}" gerado com sucesso! ${paginasValidas} página(s) convertida(s).`);
+    } catch (err: any) {
+      setErro(`Erro ao converter PDF para EPUB: ${err.message || "Arquivo inválido ou corrompido"}`);
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  function escaparHtml(texto: string) {
+    return texto
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  // TROCAR CAPA DE EPUB
+  async function trocarCapaEpub() {
+    if (!epubArquivo) {
+      setErro("Selecione um arquivo EPUB de origem.");
+      return;
+    }
+    if (!novaCapaArquivo) {
+      setErro("Selecione uma nova imagem de capa.");
+      return;
+    }
+    setProcessando(true);
+    setErro("");
+    setMensagemSucesso("");
+
+    try {
+      const zip = await JSZip.loadAsync(epubArquivo);
+      
+      const containerXml = await zip.file("META-INF/container.xml")?.async("string");
+      if (!containerXml) {
+        throw new Error("Arquivo container.xml não encontrado no EPUB. O arquivo pode estar corrompido.");
+      }
+
+      const parser = new DOMParser();
+      const containerDoc = parser.parseFromString(containerXml, "text/xml");
+      const rootfile = containerDoc.querySelector("rootfile");
+      const opfPath = rootfile?.getAttribute("full-path");
+      
+      if (!opfPath) {
+        throw new Error("Caminho do manifesto content.opf não encontrado no container.");
+      }
+
+      const opfTexto = await zip.file(opfPath)?.async("string");
+      if (!opfTexto) {
+        throw new Error(`Manifesto OPF não encontrado no caminho indicado: ${opfPath}`);
+      }
+
+      const opfDoc = parser.parseFromString(opfTexto, "text/xml");
+
+      let itemCapa = opfDoc.querySelector("item[properties~='cover-image']");
+      
+      if (!itemCapa) {
+        const metaCover = opfDoc.querySelector("meta[name='cover']");
+        const coverId = metaCover?.getAttribute("content");
+        if (coverId) {
+          itemCapa = opfDoc.querySelector(`item[id='${coverId}']`);
+        }
+      }
+
+      if (!itemCapa) {
+        const itensManifesto = Array.from(opfDoc.querySelectorAll("item"));
+        itemCapa = itensManifesto.find((item) => {
+          const id = item.getAttribute("id") || "";
+          const href = item.getAttribute("href") || "";
+          const type = item.getAttribute("media-type") || "";
+          return (
+            type.startsWith("image/") &&
+            (id.toLowerCase().includes("cover") || href.toLowerCase().includes("cover"))
+          );
+        }) || null;
+      }
+
+      let nomeArquivoSaida = epubArquivo.name;
+      if (!nomeArquivoSaida.endsWith("-nova-capa.epub")) {
+        nomeArquivoSaida = nomeArquivoSaida.replace(/\.epub$/i, "") + "-nova-capa.epub";
+      }
+
+      if (itemCapa) {
+        const hrefOriginal = itemCapa.getAttribute("href");
+        const mimeOriginal = itemCapa.getAttribute("media-type") || "image/jpeg";
+        if (!hrefOriginal) {
+          throw new Error("Referência de href da capa original está inválida no manifesto.");
+        }
+
+        const caminhoCapaNoZip = resolverCaminhoRelativo(opfPath, hrefOriginal);
+        const blobNovaCapa = await converterImagemParaFormato(novaCapaArquivo, mimeOriginal);
+
+        zip.file(caminhoCapaNoZip, blobNovaCapa);
+      } else {
+        const blobNovaCapa = await converterImagemParaFormato(novaCapaArquivo, "image/jpeg");
+        const pastaOpf = opfPath.substring(0, opfPath.lastIndexOf("/")) || "";
+        const caminhoCapaNoZip = pastaOpf ? `${pastaOpf}/cover.jpg` : "cover.jpg";
+        
+        zip.file(caminhoCapaNoZip, blobNovaCapa);
+
+        const manifest = opfDoc.querySelector("manifest");
+        const metadata = opfDoc.querySelector("metadata");
+
+        if (manifest) {
+          const novoItem = opfDoc.createElement("item");
+          novoItem.setAttribute("id", "klaus-cover");
+          novoItem.setAttribute("href", "cover.jpg");
+          novoItem.setAttribute("media-type", "image/jpeg");
+          novoItem.setAttribute("properties", "cover-image");
+          manifest.appendChild(novoItem);
+        }
+
+        if (metadata) {
+          const novaMeta = opfDoc.createElement("meta");
+          novaMeta.setAttribute("name", "cover");
+          novaMeta.setAttribute("content", "klaus-cover");
+          metadata.appendChild(novaMeta);
+        }
+
+        const opfTextoAtualizado = new XMLSerializer().serializeToString(opfDoc);
+        zip.file(opfPath, opfTextoAtualizado);
+      }
+
+      const epubBlob = await zip.generateAsync({ type: "blob", mimeType: "application/epub+zip" });
+
+      const url = URL.createObjectURL(epubBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nomeArquivoSaida;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      await adicionarAoHistorico(nomeArquivoSaida, "Trocar Capa de EPUB", epubBlob);
+      await recarregarHistorico();
+
+      setMensagemSucesso(`Capa do EPUB trocada com sucesso! Novo arquivo baixado.`);
+    } catch (err: any) {
+      setErro(`Erro ao trocar a capa do EPUB: ${err.message || "Arquivo inválido ou malformado"}`);
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  function resolverCaminhoRelativo(base: string, relativo: string): string {
+    const partesBase = base.split("/");
+    partesBase.pop();
+    
+    const partesRelativo = relativo.split("/");
+    for (const parte of partesRelativo) {
+      if (parte === "..") {
+        partesBase.pop();
+      } else if (parte !== ".") {
+        partesBase.push(parte);
+      }
+    }
+    return partesBase.join("/");
+  }
+
+  function converterImagemParaFormato(arquivo: File, mimeAlvo: string): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      if (!arquivo.type.startsWith("image/")) {
+        reject(new Error("O arquivo enviado para a capa não é uma imagem válida."));
+        return;
+      }
+
+      const url = URL.createObjectURL(arquivo);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Falha ao criar o Canvas de conversão."));
+          return;
+        }
+
+        if (mimeAlvo === "image/jpeg" || mimeAlvo === "image/jpg") {
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        ctx.drawImage(img, 0, 0);
+        
+        const mimeFinal = (mimeAlvo === "image/jpg") ? "image/jpeg" : mimeAlvo;
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error("Falha ao gerar o Blob da imagem de capa."));
+            }
+          },
+          mimeFinal,
+          0.92
+        );
+        URL.revokeObjectURL(url);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Erro ao ler a imagem. Arquivo pode estar corrompido ou ter formato inválido."));
+      };
+      img.src = url;
+    });
   }
 
   // 2. CONVERTER IMAGENS PARA PDF
@@ -507,6 +872,10 @@ export default function Conversor() {
     if (ferramentaAtiva === "pdf_para_png" || ferramentaAtiva === "pdf_para_jpg") {
       setArquivoPdf(files[0]);
       setPaginasRenderizadas([]);
+    } else if (ferramentaAtiva === "pdf_para_epub") {
+      setPdfEpubArquivo(files[0]);
+      setPdfEpubTitulo("");
+      setPdfEpubAutor("");
     } else if (ferramentaAtiva === "img_para_pdf") {
       setArquivosParaPdf(Array.from(files));
     } else if (
@@ -686,6 +1055,179 @@ export default function Conversor() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* FERRAMENTA: PDF PARA EPUB */}
+      {ferramentaAtiva === "pdf_para_epub" && (
+        <div className="space-y-6">
+          <Cartao className="p-6 border-dashed border-2 border-border/80 hover:border-primary/50 transition-colors text-center cursor-pointer bg-card/40">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={(e) => aoSelecionarArquivos(e.target.files)}
+              className="hidden"
+            />
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="flex flex-col items-center justify-center gap-2.5 py-6"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <BookOpen size={24} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {pdfEpubArquivo ? `Arquivo selecionado: ${pdfEpubArquivo.name}` : "Clique ou arraste um arquivo PDF aqui"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  O texto do PDF será extraído para criar um livro EPUB fluido
+                </p>
+              </div>
+              <Botao variante="neutro" tamanho="pequeno" className="mt-2">
+                {pdfEpubArquivo ? "Trocar PDF" : "Selecionar PDF"}
+              </Botao>
+            </div>
+          </Cartao>
+
+          {pdfEpubArquivo && (
+            <div className="space-y-4 p-5 rounded-2xl border border-border bg-card/60">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Metadados do Livro (Opcional)
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">Título do Livro</label>
+                  <input
+                    type="text"
+                    value={pdfEpubTitulo}
+                    onChange={(e) => setPdfEpubTitulo(e.target.value)}
+                    placeholder={pdfEpubArquivo.name.replace(/\.pdf$/i, "")}
+                    className="w-full rounded-xl border border-border bg-card px-3.5 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">Autor</label>
+                  <input
+                    type="text"
+                    value={pdfEpubAutor}
+                    onChange={(e) => setPdfEpubAutor(e.target.value)}
+                    placeholder="Autor Desconhecido"
+                    className="w-full rounded-xl border border-border bg-card px-3.5 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Botao
+                  variante="primario"
+                  disabled={processando}
+                  onClick={converterPdfParaEpub}
+                  className="w-full sm:w-auto flex items-center gap-2"
+                >
+                  {processando ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                  <span>Converter para EPUB</span>
+                </Botao>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* FERRAMENTA: TROCAR CAPA DE EPUB */}
+      {ferramentaAtiva === "epub_trocar_capa" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Upload do EPUB */}
+            <Cartao className="p-6 border-dashed border-2 border-border/80 hover:border-primary/50 transition-colors text-center cursor-pointer bg-card/40">
+              <input
+                type="file"
+                accept=".epub"
+                id="input-epub-arquivo"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    setEpubArquivo(e.target.files[0]);
+                  }
+                }}
+                className="hidden"
+              />
+              <label
+                htmlFor="input-epub-arquivo"
+                className="flex flex-col items-center justify-center gap-2.5 py-4 cursor-pointer"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                  <BookOpen size={24} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {epubArquivo ? `Livro: ${epubArquivo.name}` : "Carregar arquivo EPUB"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Arraste ou clique para selecionar o arquivo .epub
+                  </p>
+                </div>
+                <Botao variante="neutro" tamanho="pequeno" className="mt-2 pointer-events-none">
+                  {epubArquivo ? "Trocar EPUB" : "Selecionar EPUB"}
+                </Botao>
+              </label>
+            </Cartao>
+
+            {/* Upload da Nova Capa */}
+            <Cartao className="p-6 border-dashed border-2 border-border/80 hover:border-primary/50 transition-colors text-center cursor-pointer bg-card/40">
+              <input
+                type="file"
+                accept="image/*"
+                id="input-capa-arquivo"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    setNovaCapaArquivo(e.target.files[0]);
+                  }
+                }}
+                className="hidden"
+              />
+              <label
+                htmlFor="input-capa-arquivo"
+                className="flex flex-col items-center justify-center gap-2.5 py-4 cursor-pointer"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <ImageIcon size={24} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {novaCapaArquivo ? `Nova Capa: ${novaCapaArquivo.name}` : "Carregar Nova Capa"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Arraste ou clique para selecionar (JPG, PNG)
+                  </p>
+                </div>
+                <Botao variante="neutro" tamanho="pequeno" className="mt-2 pointer-events-none">
+                  {novaCapaArquivo ? "Trocar Imagem" : "Selecionar Imagem"}
+                </Botao>
+              </label>
+            </Cartao>
+          </div>
+
+          {(epubArquivo || novaCapaArquivo) && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-border bg-card/60">
+              <div className="text-xs text-muted-foreground">
+                {epubArquivo && novaCapaArquivo ? (
+                  <span>Pronto para substituir a capa de <strong>{epubArquivo.name}</strong></span>
+                ) : (
+                  <span>Selecione o arquivo EPUB e a nova imagem de capa para prosseguir.</span>
+                )}
+              </div>
+
+              <Botao
+                variante="primario"
+                disabled={processando || !epubArquivo || !novaCapaArquivo}
+                onClick={trocarCapaEpub}
+                className="w-full sm:w-auto flex items-center gap-2"
+              >
+                {processando ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                <span>Processar e Trocar Capa</span>
+              </Botao>
             </div>
           )}
         </div>
@@ -943,6 +1485,52 @@ export default function Conversor() {
               />
             </div>
           )}
+        </div>
+      )}
+
+      {/* HISTÓRICO RECENTE (IndexedDB) */}
+      {historico.length > 0 && (
+        <div className="space-y-4 pt-6 border-t border-border mt-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Histórico Recente de Conversões</h3>
+              <p className="text-xs text-muted-foreground">Últimos 2 arquivos processados salvos localmente. Expira em 7 dias.</p>
+            </div>
+            <Botao
+              variante="neutro"
+              tamanho="pequeno"
+              onClick={aoLimparHistorico}
+              className="flex items-center gap-1.5 text-red-600 hover:bg-red-500/10 cursor-pointer animate-none"
+            >
+              <Trash2 size={14} />
+              <span>Limpar Histórico</span>
+            </Botao>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {historico.map((item) => (
+              <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-card/60 animate-in fade-in duration-100">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+                    {item.tipo === "PDF para EPUB" ? <BookOpen size={20} /> : <FileImage size={20} />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-xs text-foreground truncate" title={item.nome}>{item.nome}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {item.tipo} • {new Date(item.data).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => baixarArquivoDoHistorico(item)}
+                  className="p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors shrink-0 ml-2 cursor-pointer"
+                  title="Baixar Arquivo"
+                >
+                  <Download size={18} />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

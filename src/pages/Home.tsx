@@ -229,6 +229,22 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
     corIcone: "text-purple-500 bg-purple-500/10",
   },
   {
+    id: "pdf_para_epub",
+    titulo: "PDF para EPUB",
+    descricao: "Extrai texto de PDF e gera um EPUB fluido",
+    icone: FileText,
+    colunasPadrao: 1,
+    corIcone: "text-emerald-500 bg-emerald-500/10",
+  },
+  {
+    id: "epub_trocar_capa",
+    titulo: "Trocar Capa de EPUB",
+    descricao: "Substitua a capa de um livro EPUB existente",
+    icone: FileImage,
+    colunasPadrao: 1,
+    corIcone: "text-orange-500 bg-orange-500/10",
+  },
+  {
     id: "texto_para_md",
     titulo: "Texto para Markdown",
     descricao: "Converte textos colados ou HTML para Markdown",
