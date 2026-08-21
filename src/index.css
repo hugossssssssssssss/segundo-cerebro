@@ -37,27 +37,27 @@
 }
 
 .dark {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  --card: 240 10% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --popover: 240 10% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 0 0% 98%;
-  --primary-foreground: 240 5.9% 10%;
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
-  --accent: 240 3.7% 15.9%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
+  --background: 240 10% 2.8%;
+  --foreground: 240 5% 96%;
+  --card: 240 6% 7%;
+  --card-foreground: 240 5% 96%;
+  --popover: 240 6% 9.5%;
+  --popover-foreground: 240 5% 96%;
+  --primary: 240 5% 90%;
+  --primary-foreground: 240 10% 2.8%;
+  --secondary: 240 5% 8.5%;
+  --secondary-foreground: 240 5% 96%;
+  --muted: 240 5% 7.5%;
+  --muted-foreground: 240 4% 63%;
+  --accent: 240 5% 9%;
+  --accent-foreground: 240 5% 98%;
+  --destructive: 0 72% 35%;
   --destructive-foreground: 0 0% 98%;
-  --success: hsl(142 65% 48%);
-  --warning: hsl(38 92% 58%);
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --ring: 240 4.9% 83.9%;
+  --success: hsl(142 70% 42%);
+  --warning: hsl(38 92% 52%);
+  --border: 240 5% 10.5%;
+  --input: 240 5% 10.5%;
+  --ring: 240 5% 70%;
 }
 
 @theme inline {
@@ -114,6 +114,8 @@
       "Segoe UI",
       sans-serif;
     -webkit-font-smoothing: antialiased;
+    /* Transição suave ao trocar de tema */
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
   }
   /* Alvo de toque confortável no celular */
   button,
@@ -122,5 +124,26 @@
   textarea,
   select {
     touch-action: manipulation;
+  }
+  
+  /* Scrollbar elegante e minimalista adaptada para o tema */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border) / 0.8);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
   }
 }

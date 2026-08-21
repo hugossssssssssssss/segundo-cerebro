@@ -100,9 +100,10 @@ export function NavegadorGrafo3D({
       const centroX = largura / 2 + panX;
       const centroY = altura / 2 + panY;
 
-      // Fundo limpo e escuro estilo Obsidian
-      ctx.fillStyle = "#0c1017";
-      ctx.fillRect(0, 0, largura, altura);
+      const escuro = document.documentElement.classList.contains("dark");
+
+      // Limpa o canvas para que ele herde o fundo definido via CSS/Tailwind (bg-background)
+      ctx.clearRect(0, 0, largura, altura);
 
       const { nos, arestas } = grafoRef.current;
 
@@ -142,11 +143,11 @@ export function NavegadorGrafo3D({
         ctx.lineTo(x2, y2);
 
         if (estaConectadoAoHover) {
-          ctx.strokeStyle = "#60a5fa";
+          ctx.strokeStyle = escuro ? "#60a5fa" : "#3b82f6";
           ctx.lineWidth = 1.8 * zoom;
           ctx.globalAlpha = 0.9;
         } else {
-          ctx.strokeStyle = "rgba(148, 163, 184, 0.15)";
+          ctx.strokeStyle = escuro ? "rgba(148, 163, 184, 0.18)" : "rgba(100, 116, 139, 0.22)";
           ctx.lineWidth = 1 * zoom;
           ctx.globalAlpha = noHover ? 0.08 : 0.4;
         }
@@ -207,7 +208,9 @@ export function NavegadorGrafo3D({
 
         if (deveMostrarRotulo) {
           ctx.font = `${ehHover ? "600 12px" : "11px"} sans-serif`;
-          ctx.fillStyle = ehHover ? "#ffffff" : "rgba(226, 232, 240, 0.85)";
+          ctx.fillStyle = ehHover
+            ? (escuro ? "#ffffff" : "#0f172a")
+            : (escuro ? "rgba(226, 232, 240, 0.85)" : "rgba(15, 23, 42, 0.85)");
           ctx.textAlign = "center";
           ctx.fillText(no.titulo, x, y + raioFinal + 12);
         }
@@ -308,7 +311,7 @@ export function NavegadorGrafo3D({
         onTouchEnd={aoFinalizarArraste}
         onWheel={aoRolarWheel}
         onClick={aoClicarCanvas}
-        className="w-full h-full cursor-grab active:cursor-grabbing block"
+        className="w-full h-full bg-background cursor-grab active:cursor-grabbing block"
       />
 
       {/* Barra de Filtros Minimalista no Topo */}
