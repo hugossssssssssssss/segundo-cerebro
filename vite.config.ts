@@ -11,6 +11,9 @@ const base = process.env.NODE_ENV === "production" ? "/segundo-cerebro/" : "/";
 export default defineConfig({
   base,
   plugins: [react(), tailwindcss()],
+  esbuild: {
+    keepNames: true,
+  } as any,
   resolve: {
     // fileURLToPath e não .pathname: o caminho tem espaço e acento,
     // que .pathname devolveria percent-encoded ("Segundo%20Cere%CC%81bro").
