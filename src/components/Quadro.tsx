@@ -137,7 +137,7 @@ function CartaoArrastavel({
       <button
         onClick={() => aoAbrir(t)}
         onPointerDown={(e) => e.stopPropagation()}
-        className="min-w-0 flex-1 text-left"
+        className="min-w-0 flex-1 text-left cursor-pointer"
       >
         <ConteudoDoCartao t={t} />
       </button>
