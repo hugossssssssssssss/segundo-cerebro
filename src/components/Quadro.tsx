@@ -134,7 +134,11 @@ function CartaoArrastavel({
         <GripVertical size={16} />
       </button>
 
-      <button onClick={() => aoAbrir(t)} className="min-w-0 flex-1 text-left">
+      <button
+        onClick={() => aoAbrir(t)}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="min-w-0 flex-1 text-left"
+      >
         <ConteudoDoCartao t={t} />
       </button>
 
@@ -143,6 +147,7 @@ function CartaoArrastavel({
           variante="fantasma"
           tamanho="icone"
           onClick={() => aoCronometrar(t)}
+          onPointerDown={(e) => e.stopPropagation()}
           title="Iniciar pomodoro"
         >
           <Timer size={16} />
