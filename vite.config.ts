@@ -21,6 +21,7 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   build: {
+    minify: false,
     chunkSizeWarningLimit: 1200,
     rollupOptions: {
       output: {
