@@ -59,7 +59,7 @@ export function useItemRepo<T>(
   const jaCarregouRef = useRef(false);
 
   const carregar = useCallback(
-    async (silencioso = false) => {
+    async (silencioso = false, forcar = false) => {
       if (!cfg.githubToken || !cfg.repoOwner || !cfg.repoName) {
         setCarregando(false);
         return;
@@ -127,7 +127,10 @@ export function useItemRepo<T>(
 
       try {
         // Se já mostramos os dados locais, esta chamada à rede ocorre de forma silenciosa
-        const todosBase = await carregarRepo(cfg);
+        const todosBase = await carregarRepo(cfg, {
+          memoria: forcar ? 0 : 15_000,
+          forcarRede: forcar,
+        });
         const rascunhos = obterRascunhosLocais();
 
         let todos = [...todosBase];
@@ -198,7 +201,7 @@ export function useItemRepo<T>(
     return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
   }, [carregar]);
 
-  const recarregar = useCallback(() => carregar(true), [carregar]);
+  const recarregar = useCallback(() => carregar(true, true), [carregar]);
 
   return { itens, acervo, titulos, carregando, erro, ilegiveis, recarregar };
 }
