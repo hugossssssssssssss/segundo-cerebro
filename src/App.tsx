@@ -34,6 +34,10 @@ import { carregarRepo } from "@/lib/repo";
 import { carregarEstadoInbox, compilarItensInbox } from "@/lib/inbox";
 import { sincronizarFilaOffline as syncOffline } from "@/lib/offlineQueue";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
+import { ConsoleDesenvolvedor } from "@/components/ConsoleDesenvolvedor";
+import { inicializarLogger } from "@/lib/logger";
+
+inicializarLogger();
 
 /**
  * HashRouter (URLs com #) em vez de BrowserRouter: o GitHub Pages não sabe
@@ -417,6 +421,7 @@ export default function App() {
           </Suspense>
         </ProvedorFerramentasFlutuantes>
       </ProvedorFlutuanteGlobal>
+      <ConsoleDesenvolvedor />
       </LimiteDeErro>
     </HashRouter>
   );

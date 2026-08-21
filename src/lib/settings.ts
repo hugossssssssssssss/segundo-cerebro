@@ -52,6 +52,8 @@ export type Settings = {
   googleAppsScriptUrl?: string;
   /** Se o envio por e-mail está ativo */
   googleEmailAtivo?: boolean;
+  /** Se o modo desenvolvedor (console de logs) está ativo */
+  modoDesenvolvedor?: boolean;
 };
 
 const CHAVE = "segundo-cerebro:config";
@@ -203,6 +205,7 @@ export const PADRAO: Settings = {
 
   googleAppsScriptUrl: "",
   googleEmailAtivo: false,
+  modoDesenvolvedor: false,
 };
 
 /**
@@ -236,6 +239,7 @@ function limpar(s: Settings): Settings {
     inboxEscalaHoras: Number(s.inboxEscalaHoras) || 3,
     googleAppsScriptUrl: (s.googleAppsScriptUrl || "").trim(),
     googleEmailAtivo: Boolean(s.googleEmailAtivo),
+    modoDesenvolvedor: Boolean(s.modoDesenvolvedor),
   };
 }
 

@@ -7,6 +7,7 @@
  */
 
 import { load, dump } from "js-yaml";
+import { logger } from "./logger";
 
 export type Frontmatter = Record<string, unknown>;
 
@@ -35,8 +36,8 @@ export function lerMarkdown(texto: string): Documento {
             return { dados: { titulo: t.trim(), tipo: "lousa" }, corpo: texto };
           }
         }
-      } catch {
-        // ignora
+      } catch (erro) {
+        logger.warn("Falha ao analisar o JSON de lousa/rascunho", erro);
       }
     }
     return { dados: {}, corpo: texto };
@@ -49,7 +50,8 @@ export function lerMarkdown(texto: string): Documento {
         ? (analisado as Frontmatter)
         : {};
     return { dados, corpo: texto.slice(encontrado[0].length) };
-  } catch {
+  } catch (erro) {
+    logger.error("Falha ao analisar o YAML do frontmatter", erro);
     return { dados: {}, corpo: texto };
   }
 }

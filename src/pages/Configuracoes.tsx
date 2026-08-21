@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp, Settings as SettingsIcon } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp, Settings as SettingsIcon, Terminal } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
 import { carregarRepo } from "@/lib/repo";
@@ -481,6 +481,36 @@ export default function Configuracoes() {
               <Upload size={16} />
               <span>{importando ? "Importando..." : "Importar .md / Obsidian"}</span>
             </div>
+          </label>
+        </div>
+      </Cartao>
+
+      {/* Seção do Modo Desenvolvedor */}
+      <Cartao className="p-5 space-y-4">
+        <div>
+          <h2 className="font-medium text-foreground flex items-center gap-2">
+            <Terminal size={18} className="text-primary" />
+            Desenvolvedor
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Ative o console de logs em tempo real para visualizar requisições da API, erros de rede e falhas de parser.
+          </p>
+        </div>
+
+        <div className="space-y-3 pt-2">
+          <label className="flex items-center gap-2 cursor-pointer font-medium text-sm">
+            <input
+              type="checkbox"
+              checked={cfg.modoDesenvolvedor || false}
+              onChange={(e) => {
+                const novaConfig = { ...cfg, modoDesenvolvedor: e.target.checked };
+                setCfg(novaConfig);
+                salvarConfig(novaConfig);
+                window.dispatchEvent(new CustomEvent("klaus-config-mudou"));
+              }}
+              className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+            />
+            Ativar console de logs do Desenvolvedor
           </label>
         </div>
       </Cartao>
