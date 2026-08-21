@@ -42,13 +42,13 @@ export type DadosGrafo3D = {
 };
 
 export const CORES_TIPOS_GRAFO: Record<TipoNoGrafo, string> = {
-  nota: "#3b82f6",       // Azul Neon
-  tarefa: "#10b981",     // Esmeralda Neon
-  meta: "#f59e0b",       // Âmbar Neon
-  entrega: "#ec4899",    // Rosa Neon
-  referencia: "#a855f7", // Roxo Neon
-  lousa: "#06b6d4",      // Ciano Neon
-  tag: "#8b5cf6",        // Violeta
+  nota: "#89b4fa",       // Azul Pastel (Sky/Blue)
+  tarefa: "#a6e3a1",     // Verde Pastel (Green)
+  meta: "#fab387",       // Pêssego Pastel (Peach/Orange)
+  entrega: "#f5c2e7",    // Rosa Pastel (Pink)
+  referencia: "#cba6f7", // Lilás Pastel (Mauve/Purple)
+  lousa: "#89dceb",      // Ciano Pastel (Sky)
+  tag: "#b4befe",        // Lavanda Pastel (Lavender)
 };
 
 export function construirGrafo3D(

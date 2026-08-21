@@ -435,24 +435,24 @@ export function EditorNotion({
 
         /* No escuro o texto precisa clarear, senão some no fundo */
         .dark ::highlight(sc-mencao-tarefa) {
-          color: #93c5fd;
-          background-color: rgba(37, 99, 235, 0.28);
+          color: #a6e3a1;
+          background-color: rgba(166, 227, 161, 0.2);
         }
         .dark ::highlight(sc-mencao-meta) {
-          color: #6ee7b7;
-          background-color: rgba(5, 150, 105, 0.28);
+          color: #fab387;
+          background-color: rgba(250, 179, 135, 0.2);
         }
         .dark ::highlight(sc-mencao-nota) {
-          color: #fcd34d;
-          background-color: rgba(217, 119, 6, 0.28);
+          color: #89b4fa;
+          background-color: rgba(137, 180, 250, 0.2);
         }
         .dark ::highlight(sc-mencao-referencia) {
-          color: #c4b5fd;
-          background-color: rgba(124, 58, 237, 0.28);
+          color: #cba6f7;
+          background-color: rgba(203, 166, 247, 0.2);
         }
         .dark ::highlight(sc-mencao-lousa) {
-          color: #818cf8;
-          background-color: rgba(79, 70, 229, 0.28);
+          color: #89dceb;
+          background-color: rgba(137, 220, 235, 0.2);
         }
       `}</style>
     </div>
