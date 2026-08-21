@@ -29,6 +29,7 @@ vi.mock("./repo", () => ({
     itens.filter((i) => i.caminho.startsWith(pasta + "/")),
   ),
   arquivosIlegiveis: vi.fn(() => []),
+  obterCacheExistente: vi.fn(() => null),
 }));
 
 import { carregarRepo, daPasta, arquivosIlegiveis } from "./repo";

@@ -8,9 +8,9 @@
 
 import DOMPurify from "dompurify";
 import type { Settings } from "./settings";
-import { escreverMarkdown, nomeDeArquivo } from "./markdown";
-import { gravar } from "./github";
-import { invalidarCache } from "./repo";
+import { escreverMarkdown, nomeDeArquivo, lerMarkdown } from "./markdown";
+import { atualizarCacheLocal } from "./repo";
+import { salvarRascunhoLocal } from "./offlineQueue";
 
 export type CategoriaNoticia = "futebol" | "design" | "tech" | "brasil" | "curiosidades" | "personalizado";
 export type ModoExibicao = "revista" | "cards" | "feed";
@@ -509,7 +509,7 @@ export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): P
 
 // ── INTEGRAÇÕES COM O SEGUNDO CÉREBRO ─────────────────────────────────────────────
 
-export async function criarNotaDaNoticia(noticia: ItemNoticia, cfg: Settings): Promise<string> {
+export async function criarNotaDaNoticia(noticia: ItemNoticia, _cfg: Settings): Promise<string> {
   const dataHoje = new Date().toISOString().slice(0, 10);
   const nomeArq = `notas/${nomeDeArquivo(`Nota - ${noticia.titulo}`)}`;
 
@@ -538,12 +538,13 @@ export async function criarNotaDaNoticia(noticia: ItemNoticia, cfg: Settings): P
   corpo += `---\n*Nota gerada no Klaus em ${dataHoje}.*`;
 
   const conteudoFinal = escreverMarkdown({ dados: frontmatter, corpo });
-  await gravar(cfg, nomeArq, conteudoFinal, undefined, `Criar nota para a notícia "${noticia.titulo}"`);
-  invalidarCache();
+  const shaFinal = `temp_${Math.random().toString(36).substring(7)}`;
+  salvarRascunhoLocal(nomeArq, conteudoFinal, undefined, `Criar nota para a notícia "${noticia.titulo}"`);
+  atualizarCacheLocal(nomeArq, conteudoFinal, lerMarkdown(conteudoFinal), shaFinal);
   return nomeArq;
 }
 
-export async function salvarNoticiaComoReferencia(noticia: ItemNoticia, cfg: Settings): Promise<string> {
+export async function salvarNoticiaComoReferencia(noticia: ItemNoticia, _cfg: Settings): Promise<string> {
   const dataHoje = new Date().toISOString().slice(0, 10);
   const nomeArq = `referencias/${nomeDeArquivo(noticia.titulo)}`;
 
@@ -578,12 +579,13 @@ export async function salvarNoticiaComoReferencia(noticia: ItemNoticia, cfg: Set
   corpo += `---\n*Salvo em Referências do Klaus em ${dataHoje}.*`;
 
   const conteudoFinal = escreverMarkdown({ dados: frontmatter, corpo });
-  await gravar(cfg, nomeArq, conteudoFinal, undefined, `Salvar notícia "${noticia.titulo}" nas Referências`);
-  invalidarCache();
+  const shaFinal = `temp_${Math.random().toString(36).substring(7)}`;
+  salvarRascunhoLocal(nomeArq, conteudoFinal, undefined, `Salvar notícia "${noticia.titulo}" nas Referências`);
+  atualizarCacheLocal(nomeArq, conteudoFinal, lerMarkdown(conteudoFinal), shaFinal);
   return nomeArq;
 }
 
-export async function criarTarefaDaNoticia(noticia: ItemNoticia, cfg: Settings): Promise<string> {
+export async function criarTarefaDaNoticia(noticia: ItemNoticia, _cfg: Settings): Promise<string> {
   const dataHoje = new Date().toISOString().slice(0, 10);
   const tituloTarefa = `Ler e analisar: ${noticia.titulo}`;
   const nomeArq = `tarefas/${nomeDeArquivo(tituloTarefa)}`;
@@ -606,7 +608,8 @@ export async function criarTarefaDaNoticia(noticia: ItemNoticia, cfg: Settings):
   corpo += `---\n*Tarefa gerada no Klaus em ${dataHoje}.*`;
 
   const conteudoFinal = escreverMarkdown({ dados: frontmatter, corpo });
-  await gravar(cfg, nomeArq, conteudoFinal, undefined, `Criar tarefa para a notícia "${noticia.titulo}"`);
-  invalidarCache();
+  const shaFinal = `temp_${Math.random().toString(36).substring(7)}`;
+  salvarRascunhoLocal(nomeArq, conteudoFinal, undefined, `Criar tarefa para a notícia "${noticia.titulo}"`);
+  atualizarCacheLocal(nomeArq, conteudoFinal, lerMarkdown(conteudoFinal), shaFinal);
   return nomeArq;
 }

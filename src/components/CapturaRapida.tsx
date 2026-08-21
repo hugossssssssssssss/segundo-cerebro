@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckSquare, FileText, Image, Send, X } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { gravar } from "@/lib/github";
-import { carregarRepo, invalidarCache } from "@/lib/repo";
+import { carregarRepo } from "@/lib/repo";
 import { escreverMarkdown, nomeLivre } from "@/lib/markdown";
 import { hojeISO } from "@/lib/utils";
+import { useSalvar } from "@/lib/useSalvar";
 import { Botao, AreaTexto, Cartao } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +73,8 @@ export function CapturaRapida({
   /** Preenchido quando vem do compartilhamento do Android */
   textoInicial?: string;
 }) {
+  const cfg = lerConfig();
+  const { salvarTexto } = useSalvar(cfg);
   const [texto, setTexto] = useState(textoInicial);
   const [destino, setDestino] = useState<Destino>("notas");
   const [tocouNoDestino, setTocouNoDestino] = useState(false);
@@ -162,8 +164,7 @@ export function CapturaRapida({
         corpo: corpoFinal,
       });
 
-      await gravar(cfg, caminho, conteudo, undefined, `captura: ${titulo}`);
-      invalidarCache();
+      await salvarTexto(caminho, conteudo, undefined, `captura: ${titulo}`);
 
       setSalvo(true);
       setTexto("");

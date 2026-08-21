@@ -1,6 +1,6 @@
 # Arquitetura do Klaus
 
-> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-17.**
+> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-21.**
 > Não edite este arquivo à mão — ele é reescrito a cada `npm run build`.
 > Para mudar o que está aqui, mude `src/lib/tipos.ts` e `src/lib/entidades.ts`.
 
@@ -187,19 +187,19 @@ direto · `não usa` = não toca no repositório de dados.
 | `src/pages/Chat.tsx` | na mão | não usa |
 | `src/pages/Configuracoes.tsx` | na mão | hook |
 | `src/pages/Contatos.tsx` | hook | hook |
-| `src/pages/Conversor.tsx` | na mão | na mão |
+| `src/pages/Conversor.tsx` | na mão | hook |
 | `src/pages/FerramentasPDF.tsx` | não usa | não usa |
 | `src/pages/GrafoNeural.tsx` | na mão | hook |
-| `src/pages/Home.tsx` | na mão | na mão |
+| `src/pages/Home.tsx` | na mão | hook |
 | `src/pages/Inbox.tsx` | na mão | hook |
 | `src/pages/Lousas.tsx` | hook | hook |
 | `src/pages/Notas.tsx` | hook | hook |
 | `src/pages/Noticias.tsx` | não usa | não usa |
 | `src/pages/PDI.tsx` | hook | hook |
-| `src/pages/Processos.tsx` | na mão | na mão |
+| `src/pages/Processos.tsx` | na mão | não usa |
 | `src/pages/Referencias.tsx` | hook | hook |
 | `src/pages/Tarefas.tsx` | hook | hook |
-| `src/pages/Transcritor.tsx` | na mão | na mão |
+| `src/pages/Transcritor.tsx` | na mão | hook |
 
 ## Como criar uma tela nova
 

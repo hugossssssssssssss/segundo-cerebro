@@ -1,18 +1,20 @@
 /**
- * Gerenciador de Rascunhos e Fila de Operações Offline.
+ * Gerenciador de Rascunhos e Fila de Operações em Segundo Plano (Sync Queue).
  *
- * Permite salvar notas e tarefas localmente quando o usuário estiver sem internet
- * e sincroniza automaticamente com o GitHub assim que a conexão voltar.
+ * Permite salvar e deletar notas, tarefas e outros itens localmente com Optimistic UI
+ * e sincroniza automaticamente com o GitHub em background assim que houver rede.
  */
 
+import { lerConfig, configCompleta } from "./settings";
 import type { Settings } from "./settings";
-import { gravar, ler, ErroGitHub } from "./github";
-import { invalidarCache } from "./repo";
+import { gravar, ler, apagar, ErroGitHub } from "./github";
+import { atualizarCacheLocal, invalidarCache, removerDoCacheLocal } from "./repo";
+import { lerMarkdown } from "./markdown";
 import { notificarOutrasAbas } from "./syncChannel";
 import { toast } from "./toast";
 import { formatarNomeAmigavel } from "./utils";
 
-export type StatusRascunho = "pendente" | "conflito" | "erro";
+export type StatusRascunho = "pendente" | "conflito" | "erro" | "sincronizando";
 
 export type RascunhoOffline = {
   id: string;
@@ -24,6 +26,7 @@ export type RascunhoOffline = {
   tentativas?: number;
   status?: StatusRascunho;
   ultimoErro?: string;
+  acao?: "gravar" | "apagar";
 };
 
 const CHAVE_RASCUNHOS = "klaus:rascunhos_offline";
@@ -42,7 +45,8 @@ export function salvarRascunhoLocal(
   texto: string,
   sha?: string,
   mensagemCommit?: string,
-  notificarEvent = true
+  notificarEvent = true,
+  acao: "gravar" | "apagar" = "gravar"
 ): { ok: boolean; rascunho: RascunhoOffline } {
   const rascunhos = obterRascunhosLocais();
   const id = `draft_${caminho.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}`;
@@ -56,8 +60,10 @@ export function salvarRascunhoLocal(
     criadoEm: new Date().toISOString(),
     tentativas: 0,
     status: "pendente",
+    acao,
   };
 
+  // Coalescing: Substitui qualquer rascunho pendente do mesmo arquivo pelo mais recente
   const filtrados = rascunhos.filter((r) => r.caminho !== caminho);
   filtrados.push(novo);
 
@@ -82,6 +88,12 @@ export function salvarRascunhoLocal(
 
   if (gravado && notificarEvent) {
     window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+    
+    // Dispara a sincronização imediatamente em background se estiver online e autenticado
+    const cfg = lerConfig();
+    if (configCompleta(cfg) && navigator.onLine) {
+      sincronizarFilaOffline(cfg).catch(() => {});
+    }
   }
 
   return { ok: gravado, rascunho: novo };
@@ -137,10 +149,25 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
         continue;
       }
 
+      // Coloca status como "sincronizando"
+      atualizarRascunhoLocal({ ...item, status: "sincronizando" });
+      const acao = item.acao || "gravar";
+
       try {
-        await gravar(cfg, item.caminho, item.texto, item.sha, item.mensagemCommit);
-        removerRascunhoLocal(item.id);
-        concluidos++;
+        if (acao === "apagar") {
+          await apagar(cfg, item.caminho, item.sha || "");
+          removerRascunhoLocal(item.id);
+          removerDoCacheLocal(item.caminho);
+          concluidos++;
+        } else {
+          const novoSha = await gravar(cfg, item.caminho, item.texto, item.sha, item.mensagemCommit);
+          removerRascunhoLocal(item.id);
+          
+          // Sincroniza o cache em memória com os dados finais reais
+          const doc = lerMarkdown(item.texto);
+          atualizarCacheLocal(item.caminho, item.texto, doc, novoSha);
+          concluidos++;
+        }
       } catch (err: any) {
         falhas++;
         const status = err instanceof ErroGitHub ? err.status : err?.status;
@@ -148,6 +175,11 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
         const tent = (item.tentativas || 0) + 1;
 
         if (status === 401 || status === 403) {
+          atualizarRascunhoLocal({
+            ...item,
+            status: "erro",
+            ultimoErro: msg,
+          });
           toast("Sincronização offline interrompida: Token do GitHub inválido ou sem permissão", {
             tipo: "erro",
             detalhes: `A API do GitHub retornou erro de permissão (HTTP ${status}). Acesse a aba de Ajustes para renovar seu token.`,
@@ -156,12 +188,29 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
         }
 
         const nomeAmigavel = formatarNomeAmigavel(item.caminho);
+
+        if (status === 404 && acao === "apagar") {
+          // Arquivo já foi excluído no GitHub, sucesso silencioso
+          removerRascunhoLocal(item.id);
+          removerDoCacheLocal(item.caminho);
+          concluidos++;
+          continue;
+        }
+
         if (status === 409 || msg.includes("409") || msg.includes("conflito")) {
           // Tenta auto-resolver buscando o SHA atualizado no GitHub
           try {
             const { sha: remoteSha } = await ler(cfg, item.caminho);
-            await gravar(cfg, item.caminho, item.texto, remoteSha, item.mensagemCommit);
-            removerRascunhoLocal(item.id);
+            if (acao === "apagar") {
+              await apagar(cfg, item.caminho, remoteSha);
+              removerRascunhoLocal(item.id);
+              removerDoCacheLocal(item.caminho);
+            } else {
+              const novoSha = await gravar(cfg, item.caminho, item.texto, remoteSha, item.mensagemCommit);
+              removerRascunhoLocal(item.id);
+              const doc = lerMarkdown(item.texto);
+              atualizarCacheLocal(item.caminho, item.texto, doc, novoSha);
+            }
             concluidos++;
             continue;
           } catch {
@@ -174,6 +223,7 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
             tentativas: tent,
             status: "conflito",
             ultimoErro: erroTxt,
+            acao,
           });
           toast(`Conflito no rascunho de "${nomeAmigavel}": clique para ver o erro`, {
             tipo: "erro",
@@ -185,6 +235,7 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
             tentativas: tent,
             status: tent >= 3 ? "erro" : "pendente",
             ultimoErro: msg,
+            acao,
           });
         }
       }
@@ -211,6 +262,7 @@ export async function forcarResolverConflitoRascunho(cfg: Settings, id: string):
   const alvo = rascunhos.find((r) => r.id === id);
   if (!alvo) throw new Error("Rascunho não encontrado.");
 
+  const acao = alvo.acao || "gravar";
   let remoteSha = alvo.sha;
   try {
     const res = await ler(cfg, alvo.caminho);
@@ -219,8 +271,17 @@ export async function forcarResolverConflitoRascunho(cfg: Settings, id: string):
     /* arquivo novo remoto */
   }
 
-  await gravar(cfg, alvo.caminho, alvo.texto, remoteSha, alvo.mensagemCommit || `Resolve conflito em ${alvo.caminho}`);
-  removerRascunhoLocal(id);
+  if (acao === "apagar") {
+    await apagar(cfg, alvo.caminho, remoteSha || "");
+    removerRascunhoLocal(id);
+    removerDoCacheLocal(alvo.caminho);
+  } else {
+    const novoSha = await gravar(cfg, alvo.caminho, alvo.texto, remoteSha, alvo.mensagemCommit || `Resolve conflito em ${alvo.caminho}`);
+    removerRascunhoLocal(id);
+    const doc = lerMarkdown(alvo.texto);
+    atualizarCacheLocal(alvo.caminho, alvo.texto, doc, novoSha);
+  }
+  
   invalidarCache();
   notificarOutrasAbas(alvo.caminho);
 }

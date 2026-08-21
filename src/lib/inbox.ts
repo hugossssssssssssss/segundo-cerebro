@@ -9,10 +9,12 @@
  */
 
 import type { ItemRepo } from "./repo";
+import { atualizarCacheLocal } from "./repo";
+import { salvarRascunhoLocal } from "./offlineQueue";
 import type { ItemInbox, Lembrete } from "./tipos";
 import type { Settings } from "./settings";
 import { lerMarkdown, tituloProvavel } from "./markdown";
-import { ler, gravar } from "./github";
+import { ler } from "./github";
 import { formatarDataPtBR, rotuloStatusAmigavel } from "./utils";
 
 export const CAMINHO_ESTADO_INBOX = "caixa-entrada/estado.json";
@@ -368,8 +370,10 @@ export async function gravarEstadoInbox(
 
   try {
     const conteudo = JSON.stringify(mapa, null, 2);
-    const novoSha = await gravar(cfg, CAMINHO_ESTADO_INBOX, conteudo, shaAntigo, "atualizar estado da caixa de entrada");
-    return { ok: true, sha: novoSha };
+    const shaFinal = shaAntigo || `temp_${Math.random().toString(36).substring(7)}`;
+    salvarRascunhoLocal(CAMINHO_ESTADO_INBOX, conteudo, shaAntigo, "atualizar estado da caixa de entrada");
+    atualizarCacheLocal(CAMINHO_ESTADO_INBOX, conteudo, lerMarkdown(conteudo), shaFinal);
+    return { ok: true, sha: shaFinal };
   } catch (err: any) {
     return { ok: false, erro: err?.message || "Falha ao gravar estado no GitHub." };
   }

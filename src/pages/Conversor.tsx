@@ -23,9 +23,9 @@ import { Botao, Cartao, Aviso } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
 import { lerConfig } from "@/lib/settings";
-import { gravar } from "@/lib/github";
 import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
-import { carregarRepo, invalidarCache } from "@/lib/repo";
+import { carregarRepo } from "@/lib/repo";
+import { useSalvar } from "@/lib/useSalvar";
 import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -108,6 +108,8 @@ const FERRAMENTAS_CONVERSOR: ItemFerramentaUI[] = [
 ];
 
 export default function Conversor() {
+  const cfg = lerConfig();
+  const { salvarTexto } = useSalvar(cfg);
   const [searchParams, setSearchParams] = useSearchParams();
   const ferramentaParam = searchParams.get("ferramenta") as TipoFerramentaConversor | null;
 
@@ -461,7 +463,6 @@ export default function Conversor() {
 
   async function salvarComoNotaMarkdown() {
     if (!markdownResultado.trim()) return;
-    const cfg = lerConfig();
     if (!cfg.githubToken) {
       setErro("Configure seu token do GitHub em Ajustes para salvar notas.");
       return;
@@ -476,15 +477,13 @@ export default function Conversor() {
         ? arquivoTexto.name.replace(/\.[^/.]+$/, "")
         : "Nota Convertida";
       const acervo = await carregarRepo(cfg);
-        const caminho = nomeLivre("notas", tituloProvavel, acervo.map((i) => i.caminho));
+      const caminho = nomeLivre("notas", tituloProvavel, acervo.map((i) => i.caminho));
       const mdFormatado = escreverMarkdown({
         dados: { titulo: tituloProvavel, criado_em: new Date().toISOString().slice(0, 10) },
         corpo: markdownResultado,
       });
 
-      await gravar(cfg, caminho, mdFormatado, undefined, `Criar nota convertida: ${tituloProvavel}`);
-      invalidarCache();
-      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+      await salvarTexto(caminho, mdFormatado, undefined, `Criar nota convertida: ${tituloProvavel}`);
       setMensagemSucesso(`Nota salva com sucesso em ${caminho}!`);
     } catch (err: any) {
       setErro(`Erro ao salvar no GitHub: ${err.message || "Falha ao gravar arquivo"}`);

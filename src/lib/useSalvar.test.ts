@@ -1,12 +1,9 @@
 /**
- * Testes do hook de salvamento.
+ * Testes do hook de salvamento otimista.
  *
- * A regra que estes testes protegem é a ORDEM das operações:
- *   gravar() → atualizarCacheLocal(sha REAL) → invalidarCache() → evento
- *
- * Se o cache for atualizado antes de `gravar()` retornar, ele guarda o texto
- * novo com o sha ANTIGO — e o mapa `textoPorSha` passa a mentir para o resto
- * do app. Foi uma das perdas de dados encontradas na auditoria.
+ * Garante que o useSalvar realiza as gravações e exclusões na fila de sincronização
+ * local (Sync Queue) e atualiza o cache em memória imediatamente (Optimistic UI)
+ * sem travar a interface do usuário.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -14,31 +11,18 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { useSalvar } from "./useSalvar";
 import type { Settings } from "./settings";
 
-vi.mock("./github", () => {
-  class ErroGitHub extends Error {
-    status: number;
-    constructor(message: string, status: number) {
-      super(message);
-      this.name = "ErroGitHub";
-      this.status = status;
-    }
-  }
-  return {
-    gravar: vi.fn(),
-    ler: vi.fn(),
-    apagar: vi.fn(),
-    ErroGitHub,
-  };
-});
-
 vi.mock("./repo", () => ({
   atualizarCacheLocal: vi.fn(),
-  invalidarCache: vi.fn(),
   removerDoCacheLocal: vi.fn(),
 }));
 
-import { gravar, ler, apagar } from "./github";
-import { atualizarCacheLocal, invalidarCache, removerDoCacheLocal } from "./repo";
+vi.mock("./offlineQueue", () => ({
+  salvarRascunhoLocal: vi.fn().mockReturnValue({ ok: true }),
+  obterRascunhosLocais: vi.fn().mockReturnValue([]),
+}));
+
+import { atualizarCacheLocal, removerDoCacheLocal } from "./repo";
+import { salvarRascunhoLocal, obterRascunhosLocais } from "./offlineQueue";
 
 const cfg: Settings = {
   githubToken: "tok",
@@ -54,6 +38,7 @@ const cfg: Settings = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(obterRascunhosLocais).mockReturnValue([]);
 });
 
 afterEach(() => {
@@ -61,8 +46,7 @@ afterEach(() => {
 });
 
 describe("useSalvar — salvarTexto", () => {
-  it("devolve o sha novo que veio do GitHub", async () => {
-    vi.mocked(gravar).mockResolvedValue("sha-novo");
+  it("devolve o sha enviado ou gera um temporário", async () => {
     const { result } = renderHook(() => useSalvar(cfg));
 
     let devolvido = "";
@@ -70,47 +54,25 @@ describe("useSalvar — salvarTexto", () => {
       devolvido = await result.current.salvarTexto("notas/a.md", "texto", "sha-antigo");
     });
 
-    expect(devolvido).toBe("sha-novo");
-    expect(gravar).toHaveBeenCalledWith(cfg, "notas/a.md", "texto", "sha-antigo", undefined);
+    expect(devolvido).toBe("sha-antigo");
+    expect(salvarRascunhoLocal).toHaveBeenCalledWith("notas/a.md", "texto", "sha-antigo", undefined, false, "gravar");
+    expect(atualizarCacheLocal).toHaveBeenCalledWith("notas/a.md", "texto", expect.any(Object), "sha-antigo");
   });
 
-  it("atualiza o cache com o sha REAL do GitHub, não com o sha enviado", async () => {
-    vi.mocked(gravar).mockResolvedValue("sha-novo");
+  it("gera um sha temporário caso não seja passado", async () => {
     const { result } = renderHook(() => useSalvar(cfg));
 
+    let devolvido = "";
     await act(async () => {
-      await result.current.salvarTexto("notas/a.md", "texto", "sha-antigo");
+      devolvido = await result.current.salvarTexto("notas/a.md", "texto");
     });
 
-    const [caminho, texto, , sha] = vi.mocked(atualizarCacheLocal).mock.calls[0];
-    expect(caminho).toBe("notas/a.md");
-    expect(texto).toBe("texto");
-    expect(sha).toBe("sha-novo");
+    expect(devolvido).toContain("temp_");
+    expect(salvarRascunhoLocal).toHaveBeenCalledWith("notas/a.md", "texto", undefined, undefined, false, "gravar");
+    expect(atualizarCacheLocal).toHaveBeenCalledWith("notas/a.md", "texto", expect.any(Object), devolvido);
   });
 
-  it("só toca no cache DEPOIS de gravar() resolver", async () => {
-    const ordem: string[] = [];
-    vi.mocked(gravar).mockImplementation(async () => {
-      ordem.push("gravar");
-      return "sha-novo";
-    });
-    vi.mocked(atualizarCacheLocal).mockImplementation(() => {
-      ordem.push("atualizarCacheLocal");
-    });
-    vi.mocked(invalidarCache).mockImplementation(() => {
-      ordem.push("invalidarCache");
-    });
-
-    const { result } = renderHook(() => useSalvar(cfg));
-    await act(async () => {
-      await result.current.salvarTexto("notas/a.md", "texto", "sha");
-    });
-
-    expect(ordem).toEqual(["gravar", "atualizarCacheLocal", "invalidarCache"]);
-  });
-
-  it("dispara 'acervo-atualizado' para as outras telas sincronizarem", async () => {
-    vi.mocked(gravar).mockResolvedValue("sha-novo");
+  it("dispara 'acervo-atualizado' para as outras telas sincronizarem se não for silencioso", async () => {
     const ouvinte = vi.fn();
     window.addEventListener("acervo-atualizado", ouvinte);
 
@@ -123,121 +85,35 @@ describe("useSalvar — salvarTexto", () => {
     window.removeEventListener("acervo-atualizado", ouvinte);
   });
 
-  it("repassa a mensagem de commit quando ela é dada", async () => {
-    vi.mocked(gravar).mockResolvedValue("sha-novo");
+  it("reage ao status da fila local (salvando)", async () => {
+    // Mocka a fila local como contendo itens pendentes
+    vi.mocked(obterRascunhosLocais).mockReturnValue([
+      { id: "1", caminho: "a.md", texto: "t", criadoEm: "", status: "sincronizando" }
+    ]);
+
     const { result } = renderHook(() => useSalvar(cfg));
-
-    await act(async () => {
-      await result.current.salvarTexto("notas/a.md", "t", "s", "minha mensagem");
-    });
-
-    expect(gravar).toHaveBeenCalledWith(cfg, "notas/a.md", "t", "s", "minha mensagem");
-  });
-});
-
-describe("useSalvar — falhas", () => {
-  it("guarda o erro no estado e repassa a exceção para quem chamou quando recuperação falha", async () => {
-    vi.mocked(gravar).mockRejectedValue(new Error("500 Erro Interno"));
-    const { result } = renderHook(() => useSalvar(cfg));
-
-    await act(async () => {
-      await expect(
-        result.current.salvarTexto("notas/a.md", "texto", "sha"),
-      ).rejects.toThrow("500 Erro Interno");
-    });
-
-    await waitFor(() => expect(result.current.erro).toBe("500 Erro Interno"));
+    
+    // O useEffect roda na montagem e atualiza o estado
+    await waitFor(() => expect(result.current.salvando).toBe(true));
   });
 
-  it("recupera automaticamente de conflito 409 buscando a sha mais recente", async () => {
-    vi.mocked(gravar)
-      .mockRejectedValueOnce(new Error("409 conflito"))
-      .mockResolvedValueOnce("sha_novo_recuperado");
-    vi.mocked(ler).mockResolvedValueOnce({ sha: "sha_remote", texto: "antigo" } as any);
+  it("reage a erros na fila local", async () => {
+    // Mocka a fila local contendo item com erro
+    vi.mocked(obterRascunhosLocais).mockReturnValue([
+      { id: "1", caminho: "a.md", texto: "t", criadoEm: "", status: "erro", ultimoErro: "Erro 500" }
+    ]);
 
     const { result } = renderHook(() => useSalvar(cfg));
+    await waitFor(() => expect(result.current.erro).toBe("Erro 500"));
 
-    let shaRetornado = "";
-    await act(async () => {
-      shaRetornado = await result.current.salvarTexto("notas/a.md", "texto", "sha_antigo");
-    });
-
-    expect(shaRetornado).toBe("sha_novo_recuperado");
-    expect(ler).toHaveBeenCalledWith(cfg, "notas/a.md");
-    expect(gravar).toHaveBeenLastCalledWith(cfg, "notas/a.md", "texto", "sha_remote", undefined);
-  });
-
-  it("NÃO envenena o cache quando a gravação falha", async () => {
-    vi.mocked(gravar).mockRejectedValue(new Error("falhou"));
-    const { result } = renderHook(() => useSalvar(cfg));
-
-    await act(async () => {
-      await result.current.salvarTexto("notas/a.md", "texto", "sha").catch(() => {});
-    });
-
-    expect(atualizarCacheLocal).not.toHaveBeenCalled();
-    expect(invalidarCache).not.toHaveBeenCalled();
-  });
-
-  it("não anuncia 'acervo-atualizado' quando a gravação falha", async () => {
-    vi.mocked(gravar).mockRejectedValue(new Error("falhou"));
-    const ouvinte = vi.fn();
-    window.addEventListener("acervo-atualizado", ouvinte);
-
-    const { result } = renderHook(() => useSalvar(cfg));
-    await act(async () => {
-      await result.current.salvarTexto("notas/a.md", "texto", "sha").catch(() => {});
-    });
-
-    expect(ouvinte).not.toHaveBeenCalled();
-    window.removeEventListener("acervo-atualizado", ouvinte);
-  });
-
-  it("baixa o sinalizador de salvando mesmo depois de falhar", async () => {
-    vi.mocked(gravar).mockRejectedValue(new Error("falhou"));
-    const { result } = renderHook(() => useSalvar(cfg));
-
-    await act(async () => {
-      await result.current.salvarTexto("notas/a.md", "texto", "sha").catch(() => {});
-    });
-
-    await waitFor(() => expect(result.current.salvando).toBe(false));
-  });
-
-  it("limparErro zera a mensagem", async () => {
-    vi.mocked(gravar).mockRejectedValue(new Error("falhou"));
-    const { result } = renderHook(() => useSalvar(cfg));
-
-    await act(async () => {
-      await result.current.salvarTexto("notas/a.md", "t", "s").catch(() => {});
-    });
-    await waitFor(() => expect(result.current.erro).toBe("falhou"));
-
+    // Limpar erro zera o erro localmente no hook
     act(() => result.current.limparErro());
-    await waitFor(() => expect(result.current.erro).toBe(""));
-  });
-
-  it("um save bem-sucedido limpa o erro do save anterior", async () => {
-    vi.mocked(gravar).mockRejectedValueOnce(new Error("falhou"));
-    const { result } = renderHook(() => useSalvar(cfg));
-
-    await act(async () => {
-      await result.current.salvarTexto("notas/a.md", "t", "s").catch(() => {});
-    });
-    await waitFor(() => expect(result.current.erro).toBe("falhou"));
-
-    vi.mocked(gravar).mockResolvedValue("sha-novo");
-    await act(async () => {
-      await result.current.salvarTexto("notas/a.md", "t", "s");
-    });
-
-    await waitFor(() => expect(result.current.erro).toBe(""));
+    expect(result.current.erro).toBe("");
   });
 });
 
 describe("useSalvar — apagarItem", () => {
-  it("apaga, invalida o cache e anuncia a mudança", async () => {
-    vi.mocked(apagar).mockResolvedValue(undefined);
+  it("enfileira a exclusão e remove do cache local imediatamente", async () => {
     const ouvinte = vi.fn();
     window.addEventListener("acervo-atualizado", ouvinte);
 
@@ -246,22 +122,9 @@ describe("useSalvar — apagarItem", () => {
       await result.current.apagarItem("notas/a.md", "sha");
     });
 
-    expect(apagar).toHaveBeenCalledWith(cfg, "notas/a.md", "sha");
+    expect(salvarRascunhoLocal).toHaveBeenCalledWith("notas/a.md", "", "sha", undefined, false, "apagar");
     expect(removerDoCacheLocal).toHaveBeenCalledWith("notas/a.md");
-    expect(invalidarCache).toHaveBeenCalled();
     expect(ouvinte).toHaveBeenCalledTimes(1);
     window.removeEventListener("acervo-atualizado", ouvinte);
-  });
-
-  it("não invalida o cache quando o apagar falha", async () => {
-    vi.mocked(apagar).mockRejectedValue(new Error("404"));
-    const { result } = renderHook(() => useSalvar(cfg));
-
-    await act(async () => {
-      await result.current.apagarItem("notas/a.md", "sha").catch(() => {});
-    });
-
-    expect(invalidarCache).not.toHaveBeenCalled();
-    await waitFor(() => expect(result.current.erro).toBe("404"));
   });
 });

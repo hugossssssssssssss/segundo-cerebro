@@ -41,8 +41,8 @@ import {
 
 import { lerConfig, configCompleta, nomeExibido } from "@/lib/settings";
 import { correspondeBusca, lerParametroCriar } from "@/lib/utils";
-import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal } from "@/lib/repo";
-import { gravar, apagar } from "@/lib/github";
+import { carregarRepo, daPasta, atualizarCacheLocal, removerDoCacheLocal } from "@/lib/repo";
+import { salvarRascunhoLocal } from "@/lib/offlineQueue";
 import { tituloProvavel, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
 import {
   comoProcesso,
@@ -301,10 +301,10 @@ export default function Processos() {
           corpo: `Processo de ${mod.titulo}`,
         });
 
-        const sha = await gravar(cfg, caminho, texto, undefined, `Criar processo inicial: ${mod.titulo}`);
+        const sha = `temp_${Math.random().toString(36).substring(7)}`;
+        salvarRascunhoLocal(caminho, texto, undefined, `Criar processo inicial: ${mod.titulo}`);
         const doc = lerMarkdown(texto);
         atualizarCacheLocal(caminho, texto, doc, sha);
-        invalidarCache();
         const novoProcComSha = { ...novoProc, sha };
         listaProc = [novoProcComSha];
         setProcessos([novoProcComSha]);
@@ -369,7 +369,8 @@ export default function Processos() {
             corpo: procAtualizado.corpo || `Processo de ${procAtualizado.titulo}`,
           });
 
-          const sha = await gravar(cfg, procAtualizado.caminho, texto, procAtualizado.sha || undefined);
+          const sha = procAtualizado.sha || `temp_${Math.random().toString(36).substring(7)}`;
+          salvarRascunhoLocal(procAtualizado.caminho, texto, procAtualizado.sha || undefined);
           atualizarCacheLocal(procAtualizado.caminho, texto, lerMarkdown(texto), sha);
           setProcessos((prev) => prev.map((p) => (p.id === procAtualizado.id ? { ...procAtualizado, sha } : p)));
         } catch (e) {
@@ -387,7 +388,8 @@ export default function Processos() {
         corpo: procAtualizado.corpo || `Processo de ${procAtualizado.titulo}`,
       });
 
-      const sha = await gravar(cfg, procAtualizado.caminho, texto, procAtualizado.sha || undefined);
+      const sha = procAtualizado.sha || `temp_${Math.random().toString(36).substring(7)}`;
+      salvarRascunhoLocal(procAtualizado.caminho, texto, procAtualizado.sha || undefined);
       atualizarCacheLocal(procAtualizado.caminho, texto, lerMarkdown(texto), sha);
       setProcessos((prev) => prev.map((p) => (p.id === procAtualizado.id ? { ...procAtualizado, sha } : p)));
     } catch (e) {
@@ -431,7 +433,8 @@ export default function Processos() {
         corpo: `Processo de ${novoProc.titulo}`,
       });
 
-      const sha = await gravar(cfg, caminho, texto);
+      const sha = `temp_${Math.random().toString(36).substring(7)}`;
+      salvarRascunhoLocal(caminho, texto);
       atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
       setProcessos((prev) => prev.map((p) => (p.id === id ? { ...p, sha } : p)));
     } catch (e) {
@@ -470,7 +473,8 @@ export default function Processos() {
         corpo: `Processo de ${mod.titulo}`,
       });
 
-      const sha = await gravar(cfg, caminho, texto);
+      const sha = `temp_${Math.random().toString(36).substring(7)}`;
+      salvarRascunhoLocal(caminho, texto);
       atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
       setProcessos((prev) => prev.map((p) => (p.id === id ? { ...p, sha } : p)));
     } catch (e) {
@@ -496,7 +500,8 @@ export default function Processos() {
             corpo: cardAtualizado.corpo,
           });
 
-          const sha = await gravar(cfg, cardAtualizado.caminho, texto, cardAtualizado.sha || undefined);
+          const sha = cardAtualizado.sha || `temp_${Math.random().toString(36).substring(7)}`;
+          salvarRascunhoLocal(cardAtualizado.caminho, texto, cardAtualizado.sha || undefined);
           atualizarCacheLocal(cardAtualizado.caminho, texto, lerMarkdown(texto), sha);
           const cardComSha = { ...cardAtualizado, sha };
           setCards((prev) => prev.map((c) => (c.id === cardAtualizado.id ? cardComSha : c)));
@@ -514,7 +519,8 @@ export default function Processos() {
         corpo: cardAtualizado.corpo,
       });
 
-      const sha = await gravar(cfg, cardAtualizado.caminho, texto, cardAtualizado.sha || undefined);
+      const sha = cardAtualizado.sha || `temp_${Math.random().toString(36).substring(7)}`;
+      salvarRascunhoLocal(cardAtualizado.caminho, texto, cardAtualizado.sha || undefined);
       atualizarCacheLocal(cardAtualizado.caminho, texto, lerMarkdown(texto), sha);
       const cardComSha = { ...cardAtualizado, sha };
       setCards((prev) => prev.map((c) => (c.id === cardAtualizado.id ? cardComSha : c)));
@@ -576,7 +582,8 @@ export default function Processos() {
         corpo: "",
       });
 
-      const sha = await gravar(cfg, caminho, texto);
+      const sha = `temp_${Math.random().toString(36).substring(7)}`;
+      salvarRascunhoLocal(caminho, texto);
       atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
       setCards((prev) => prev.map((c) => (c.id === id ? { ...c, sha } : c)));
     } catch (e) {
@@ -622,10 +629,10 @@ export default function Processos() {
     setCardParaExcluir(null);
 
     try {
-      await apagar(cfg, cardAlvo.caminho, cardAlvo.sha);
+      salvarRascunhoLocal(cardAlvo.caminho, "", cardAlvo.sha, undefined, true, "apagar");
+      removerDoCacheLocal(cardAlvo.caminho);
       setCardEmEdicao(null);
       setCards((prev) => prev.filter((c) => c.id !== cardAlvo.id));
-      invalidarCache();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setErro(msg);

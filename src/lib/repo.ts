@@ -34,13 +34,13 @@ export type ItemRepo = {
   doc: Documento;
 };
 
-type Cache = {
+export type Cache = {
   chave: string;
   itens: ItemRepo[];
   quando: number;
 };
 
-let cache: Cache | null = null;
+export let cache: Cache | null = null;
 
 type AlteracaoRecente = {
   caminho: string;
@@ -468,4 +468,15 @@ export function removerDoCacheLocal(caminho: string) {
     cache.itens = cache.itens.filter((i) => i.caminho !== caminho);
     cache.quando = Date.now();
   }
+}
+
+/**
+ * Retorna o cache em memória atual, se existir e for do mesmo repositório.
+ */
+export function obterCacheExistente(cfg: Settings): Cache | null {
+  const chave = chaveDe(cfg);
+  if (cache && cache.chave === chave) {
+    return cache;
+  }
+  return null;
 }

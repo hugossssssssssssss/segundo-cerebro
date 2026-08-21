@@ -1,27 +1,20 @@
 /**
- * Hook de carregamento padrão do app.
+ * Hook de carregamento padrão do app com suporte a SWR (Stale-While-Revalidate).
  *
  * TODA tela principal deve usar este hook em vez de reimplementar o
  * carregamento do repositório. Não chame `carregarRepo` + `daPasta`
  * diretamente nas telas — use este hook.
  *
  * O hook:
- * - Guarda internamente o `jaCarregouRef` (evita spinner duplo)
+ * - Se os dados estiverem em cache local, renderiza-os imediatamente (0ms)
+ * - Valida e atualiza o acervo silenciosamente no GitHub em background
+ * - Mescla alterações da fila offline (e oculta exclusões pendentes)
  * - Escuta o evento "acervo-atualizado" e recarrega em silêncio
  * - Expõe `recarregar()` para ser chamado após salvar/apagar
- *
- * @example
- * ```tsx
- * const { itens, acervo, carregando, erro, recarregar } = useItemRepo(
- *   cfg,
- *   PASTAS.notas,
- *   (item) => comoNota(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
- * );
- * ```
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { carregarRepo, daPasta, arquivosIlegiveis, type ItemRepo } from "./repo";
+import { carregarRepo, daPasta, arquivosIlegiveis, obterCacheExistente, type ItemRepo } from "./repo";
 import { tituloProvavel, lerMarkdown } from "./markdown";
 import { obterRascunhosLocais } from "./offlineQueue";
 import type { Settings } from "./settings";
@@ -72,12 +65,68 @@ export function useItemRepo<T>(
         return;
       }
 
-      if (!silencioso && !jaCarregouRef.current) {
+      // Tenta recuperar cache local síncrono para Optimistic UI e SWR (0ms delay)
+      const cacheValido = obterCacheExistente(cfg);
+      if (cacheValido && !jaCarregouRef.current) {
+        const rascunhos = obterRascunhosLocais();
+        let todos = [...cacheValido.itens];
+
+        if (rascunhos.length > 0) {
+          const mapaRascunhos = new Map(rascunhos.map((r) => [r.caminho, r]));
+
+          todos = todos.map((item) => {
+            const rascunho = mapaRascunhos.get(item.caminho);
+            if (rascunho) {
+              mapaRascunhos.delete(item.caminho);
+              if (rascunho.acao === "apagar") {
+                return null; // Oculta o arquivo imediatamente (Optimistic Delete)
+              }
+              const docRascunho = lerMarkdown(rascunho.texto);
+              return {
+                ...item,
+                texto: rascunho.texto,
+                doc: docRascunho,
+              };
+            }
+            return item;
+          }).filter((i): i is NonNullable<typeof i> => i !== null);
+
+          for (const rascunho of mapaRascunhos.values()) {
+            if (rascunho.acao === "apagar") continue;
+            const docRascunho = lerMarkdown(rascunho.texto);
+            const nome = rascunho.caminho.split("/").pop() || "rascunho.md";
+            todos.push({
+              caminho: rascunho.caminho,
+              nome,
+              sha: rascunho.sha || "",
+              tamanho: rascunho.texto.length,
+              texto: rascunho.texto,
+              doc: docRascunho,
+            });
+          }
+        }
+
+        setIlegiveis(arquivosIlegiveis());
+        setAcervo(todos);
+
+        const lista = daPasta(todos, pasta);
+        setItens(lista.map(converter));
+        setTitulos(
+          Object.fromEntries(
+            todos.map((i) => [i.caminho, tituloProvavel(i.doc, i.nome)]),
+          ),
+        );
+        
+        setCarregando(false);
+        jaCarregouRef.current = true;
+      } else if (!silencioso && !jaCarregouRef.current) {
         setCarregando(true);
       }
+      
       setErro("");
 
       try {
+        // Se já mostramos os dados locais, esta chamada à rede ocorre de forma silenciosa
         const todosBase = await carregarRepo(cfg);
         const rascunhos = obterRascunhosLocais();
 
@@ -89,6 +138,9 @@ export function useItemRepo<T>(
             const rascunho = mapaRascunhos.get(item.caminho);
             if (rascunho) {
               mapaRascunhos.delete(item.caminho);
+              if (rascunho.acao === "apagar") {
+                return null; // Oculta o arquivo imediatamente (Optimistic Delete)
+              }
               const docRascunho = lerMarkdown(rascunho.texto);
               return {
                 ...item,
@@ -97,9 +149,10 @@ export function useItemRepo<T>(
               };
             }
             return item;
-          });
+          }).filter((i): i is NonNullable<typeof i> => i !== null);
 
           for (const rascunho of mapaRascunhos.values()) {
+            if (rascunho.acao === "apagar") continue;
             const docRascunho = lerMarkdown(rascunho.texto);
             const nome = rascunho.caminho.split("/").pop() || "rascunho.md";
             todos.push({
@@ -124,7 +177,10 @@ export function useItemRepo<T>(
           ),
         );
       } catch (e) {
-        setErro(e instanceof Error ? e.message : String(e));
+        // Só exibe o erro se não tínhamos nada em cache, para evitar alertas intrusivos ao usuário
+        if (!cacheValido) {
+          setErro(e instanceof Error ? e.message : String(e));
+        }
       } finally {
         jaCarregouRef.current = true;
         setCarregando(false);

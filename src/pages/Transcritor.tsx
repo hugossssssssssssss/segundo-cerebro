@@ -25,9 +25,9 @@ import {
   transcreverComWebSpeechAPI,
 } from "@/lib/whisperLocal";
 import { transcreverAudioComIA } from "@/lib/gemini";
-import { gravar } from "@/lib/github";
 import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
-import { carregarRepo, invalidarCache } from "@/lib/repo";
+import { carregarRepo } from "@/lib/repo";
+import { useSalvar } from "@/lib/useSalvar";
 
 type MotorTranscricao = "whisper_base" | "native_speech" | "gemini";
 
@@ -44,6 +44,7 @@ interface ItemTranscricao {
 
 export default function Transcritor() {
   const cfg = lerConfig();
+  const { salvarTexto } = useSalvar(cfg);
   const pronto = configCompleta(cfg);
   const chaveStorage = pronto ? `sc_transcricoes_${cfg.repoOwner}_${cfg.repoName}` : null;
 
@@ -265,7 +266,6 @@ export default function Transcritor() {
     setMensagemSucesso("");
 
     try {
-      const cfg = lerConfig();
       const titulo = `Transcrição: ${item.nomeArquivo.replace(/\.[^/.]+$/, "")}`;
       const acervo = await carregarRepo(cfg);
       const caminho = nomeLivre("notas", titulo, acervo.map((i) => i.caminho));
@@ -274,9 +274,7 @@ export default function Transcritor() {
         corpo: item.transcricao,
       };
       const textoMd = escreverMarkdown(doc);
-      await gravar(cfg, caminho, textoMd, undefined, `Transcrição criada de ${item.nomeArquivo}`);
-      invalidarCache();
-      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+      await salvarTexto(caminho, textoMd, undefined, `Transcrição criada de ${item.nomeArquivo}`);
       setMensagemSucesso(`Salvo como nota "${titulo}" no repositório!`);
     } catch (err: any) {
       setErro(err?.message || "Erro ao salvar como nota no repositório. Verifique suas chaves nos Ajustes.");

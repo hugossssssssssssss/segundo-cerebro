@@ -48,8 +48,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { carregarRepo, daPasta, invalidarCache, atualizarCacheLocal } from "@/lib/repo";
-import { gravar, ler, apagar } from "@/lib/github";
+import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
+import { ler, apagar } from "@/lib/github";
+import { useSalvar } from "@/lib/useSalvar";
 import { comoTarefa, ordenar, textoPrazo, urgencia, paraFrontmatter, type Tarefa } from "@/lib/tarefas";
 import { tituloProvavel, escreverMarkdown, nomeLivre, lerMarkdown, mesclarFrontmatter } from "@/lib/markdown";
 import { comoReferencia, type Referencia } from "@/lib/referencias";
@@ -373,6 +374,7 @@ export default function Home() {
   const pronto = configCompleta(cfg);
 
   const { abrirFerramentaFlutuante } = useFerramentasFlutuantes();
+  const { salvarTexto } = useSalvar(cfg);
 
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -415,10 +417,7 @@ export default function Home() {
         corpo: t.corpo,
       });
       const caminho = t.caminho || nomeLivre("tarefas", t.titulo, tarefasPendentes.map((x) => x.caminho));
-      const docAtualizado = lerMarkdown(texto);
-      const novaSha = await gravar(cfg, caminho, texto, t.sha || undefined);
-      atualizarCacheLocal(caminho, texto, docAtualizado, novaSha);
-      invalidarCache();
+      const novaSha = await salvarTexto(caminho, texto, t.sha || undefined, undefined, true);
       const tSalva = { ...t, caminho, sha: novaSha };
       setEditandoTarefa(fechar ? null : tSalva);
       setOrigTarefa(fechar ? null : tSalva);
@@ -463,10 +462,7 @@ export default function Home() {
         }),
         corpo: editandoNota.corpo,
       });
-      const docAtualizado = lerMarkdown(texto);
-      const novaSha = await gravar(cfg, editandoNota.caminho, texto, editandoNota.sha);
-      atualizarCacheLocal(editandoNota.caminho, texto, docAtualizado, novaSha);
-      invalidarCache();
+      const novaSha = await salvarTexto(editandoNota.caminho, texto, editandoNota.sha, undefined, true);
       const nSalva = { ...editandoNota, sha: novaSha };
       setEditandoNota(fechar ? null : nSalva);
       setOrigNota(fechar ? null : { titulo: nSalva.titulo, corpo: nSalva.corpo, bruto: nSalva.bruto });
@@ -487,8 +483,7 @@ export default function Home() {
         dados: metaParaFrontmatter(m),
         corpo: m.corpo,
       });
-      const novaSha = await gravar(cfg, m.caminho, texto, m.sha);
-      invalidarCache();
+      const novaSha = await salvarTexto(m.caminho, texto, m.sha, undefined, true);
       const mSalva = { ...m, sha: novaSha };
       setEditandoMeta(fechar ? null : mSalva);
       setOrigMeta(fechar ? null : mSalva);
