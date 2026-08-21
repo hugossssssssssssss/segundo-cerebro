@@ -188,8 +188,8 @@ export default function Tarefas() {
 
   // ── Ações ──────────────────────────────────────────────────────────────────
 
-  function fechar() {
-    if (editando) {
+  function fechar(ignorarSalvar = false) {
+    if (editando && !ignorarSalvar) {
       const mudou = original !== null && JSON.stringify(editando) !== JSON.stringify(original);
       if (mudou && editando.titulo.trim()) {
         const tSalvar = { ...editando };
@@ -264,7 +264,7 @@ export default function Tarefas() {
 
   async function remover(t: Tarefa) {
     await apagarItem(t.caminho, t.sha);
-    fechar();
+    fechar(true);
     recarregar();
   }
 
