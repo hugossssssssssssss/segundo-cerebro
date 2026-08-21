@@ -27,6 +27,7 @@ import {
   SunMoon,
   Timer,
   BookOpen,
+  Video,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -227,6 +228,15 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
     rota: "/contatos",
     icone: FolderTree,
     palavrasChave: ["contatos", "árvore", "pessoas", "equipe", "chefe", "hierarquia", "rede", "relacionamentos", "csv"],
+  },
+  {
+    id: "testador_hardware",
+    titulo: "Diagnóstico de Hardware",
+    descricao: "Verifique o feed de vídeo, grave um áudio de teste e monitore seus microfones",
+    categoria: "ferramenta",
+    rota: "/testador",
+    icone: Video,
+    palavrasChave: ["câmera", "microfone", "áudio", "vídeo", "hardware", "diagnóstico", "teste", "espelho", "camera", "som"],
   },
   {
     id: "transcritor",

@@ -24,6 +24,7 @@ const ROTAS_VALIDAS_APP = new Set([
   "/converter-midia",
   "/camadas-imagens",
   "/ocr",
+  "/testador",
 ]);
 
 const ACOES_TRATADAS_BUSCA = new Set([

@@ -61,6 +61,7 @@ const Noticias = lazy(() => import("@/pages/Noticias"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 const BoasVindas = lazy(() => import("@/pages/BoasVindas"));
 const PesquisaLivros = lazy(() => import("@/pages/PesquisaLivros"));
+const TestadorHardware = lazy(() => import("@/pages/TestadorHardware"));
 
 
 
@@ -391,6 +392,7 @@ function AppInterno() {
           <Route path="/conversor" element={<Conversor />} />
           <Route path="/livros" element={<PesquisaLivros />} />
           <Route path="/transcritor" element={<Transcritor />} />
+          <Route path="/testador" element={<TestadorHardware />} />
           <Route path="/processos" element={<Processos />} />
           <Route path="/contatos" element={<Contatos />} />
           <Route path="/noticias" element={<Noticias />} />

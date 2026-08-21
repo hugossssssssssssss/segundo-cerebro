@@ -200,6 +200,7 @@ direto · `não usa` = não toca no repositório de dados.
 | `src/pages/Processos.tsx` | na mão | não usa |
 | `src/pages/Referencias.tsx` | hook | hook |
 | `src/pages/Tarefas.tsx` | hook | hook |
+| `src/pages/TestadorHardware.tsx` | não usa | não usa |
 | `src/pages/Transcritor.tsx` | na mão | hook |
 
 ## Como criar uma tela nova

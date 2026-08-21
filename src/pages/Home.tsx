@@ -28,6 +28,7 @@ import {
   FileType,
   Settings,
   GitMerge,
+  Video,
 } from "lucide-react";
 import {
   DndContext,
@@ -269,12 +270,20 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
     corIcone: "text-pink-500 bg-pink-500/10",
   },
   {
-    id: "configuracoes",
-    titulo: "Ajustes do App",
-    descricao: "Tokens do GitHub e chave do Gemini",
+    id: "config_ajustes",
+    titulo: "Configurações e Ajustes",
+    descricao: "Ajuste conexões com o GitHub e tokens de API",
     icone: Settings,
     colunasPadrao: 1,
     corIcone: "text-slate-500 bg-slate-500/10",
+  },
+  {
+    id: "testador_hardware",
+    titulo: "Diagnóstico de Hardware",
+    descricao: "Verifique sua câmera, microfone e alto-falantes rapidamente",
+    icone: Video,
+    colunasPadrao: 1,
+    corIcone: "text-red-500 bg-red-500/10",
   },
 ];
 
@@ -287,6 +296,7 @@ const GADGETS_PADRAO: Gadget[] = [
   { id: "notas", colunas: 1 },
   { id: "referencias", colunas: 2 },
   { id: "pdi", colunas: 1 },
+  { id: "testador_hardware", colunas: 1 },
 ];
 
 function GadgetWrapper({

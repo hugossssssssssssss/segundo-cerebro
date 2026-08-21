@@ -58,6 +58,7 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
       { id: "pdf", para: "/pdf", rotulo: "Ferramentas PDF", iconeNome: "FileCheck" },
       { id: "conversor", para: "/conversor", rotulo: "Conversor", iconeNome: "RefreshCw" },
       { id: "livros", para: "/livros", rotulo: "Pesquisar Livros", iconeNome: "BookOpen" },
+      { id: "testador_hardware", para: "/testador", rotulo: "Testador de Hardware", iconeNome: "Video" },
     ],
   },
   {

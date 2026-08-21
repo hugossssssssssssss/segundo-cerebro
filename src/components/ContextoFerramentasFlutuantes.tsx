@@ -7,6 +7,7 @@ const Conversor = lazy(() => import("@/pages/Conversor"));
 const Transcritor = lazy(() => import("@/pages/Transcritor"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 const Chat = lazy(() => import("@/pages/Chat"));
+const TestadorHardware = lazy(() => import("@/pages/TestadorHardware"));
 
 interface ContextoFerramentasFlutuantesTipo {
   ferramentaAtiva: string | null;
@@ -103,6 +104,8 @@ export function ProvedorFerramentasFlutuantes({ children }: { children: ReactNod
                   <Configuracoes />
                 ) : ferramentaAtiva === "chat_ia" ? (
                   <Chat />
+                ) : ferramentaAtiva === "testador_hardware" ? (
+                  <TestadorHardware />
                 ) : (
                   <Conversor />
                 )}
