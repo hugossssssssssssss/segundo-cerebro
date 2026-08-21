@@ -77,10 +77,10 @@ export function higienizar(texto: string): string {
   
   // GitHub Fine-grained e Classic Tokens
   textoLimpo = textoLimpo.replace(/ghp_[a-zA-Z0-9]+/g, "[TOKEN_GITHUB_OCULTO]");
-  textoLimpo = textoLimpo.replace(/github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]+/g, "[TOKEN_GITHUB_OCULTO]");
+  textoLimpo = textoLimpo.replace(/github_pat_[a-zA-Z0-9]{5,22}_[a-zA-Z0-9]+/g, "[TOKEN_GITHUB_OCULTO]");
 
   // Chaves de API do Google/Gemini
-  textoLimpo = textoLimpo.replace(/AIzaSy[a-zA-Z0-9_-]{33}/g, "[CHAVE_GEMINI_OCULTA]");
+  textoLimpo = textoLimpo.replace(/AIzaSy[a-zA-Z0-9_-]{5,40}/g, "[CHAVE_GEMINI_OCULTA]");
 
   // Cabeçalho Authorization
   textoLimpo = textoLimpo.replace(/(Authorization:\s*Bearer\s+)[^\s"']+/gi, "$1[TOKEN_OCULTO]");

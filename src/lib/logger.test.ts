@@ -11,8 +11,8 @@ import {
 // Mock de lerConfig de settings para isolar os testes
 vi.mock("./settings", () => ({
   lerConfig: () => ({
-    githubToken: "github_pat_supersecrettokenhere_123456789",
-    geminiKey: "AIzaSyFakeGeminiAPIKey987654321",
+    githubToken: "github_pat_FakeTokenDeTeste_1234",
+    geminiKey: "AIzaSyFakeKeyExemplo",
     telegramBotToken: "123456:TelegramBotTokenTest",
   }),
 }));
@@ -56,8 +56,8 @@ describe("Logger e Higienizador de Dados Sensíveis", () => {
 
   describe("Higienização de credenciais", () => {
     it("deve mascarar tokens dinâmicos configurados no localStorage", () => {
-      const logComToken = "Gravando arquivo usando token github_pat_supersecrettokenhere_123456789";
-      const logComGemini = "Chamando api do gemini com chave AIzaSyFakeGeminiAPIKey987654321";
+      const logComToken = "Gravando arquivo usando token github_pat_FakeTokenDeTeste_1234";
+      const logComGemini = "Chamando api do gemini com chave AIzaSyFakeKeyExemplo";
       const logComTelegram = "Aviso: Telegram disparado com 123456:TelegramBotTokenTest";
 
       expect(higienizar(logComToken)).toBe("Gravando arquivo usando token [TOKEN_GITHUB_OCULTO]");
@@ -66,15 +66,15 @@ describe("Logger e Higienizador de Dados Sensíveis", () => {
     });
 
     it("deve mascarar tokens do GitHub usando regras de regex padrão (fallback)", () => {
-      const classicToken = "Token antigo: ghp_abc123XYZabc123XYZabc123XYZabc123XYZ";
-      const fineGrainedToken = "Token novo: github_pat_1234567890123456789012_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefgh";
+      const classicToken = "Token antigo: ghp_FakeTokenCurto";
+      const fineGrainedToken = "Token novo: github_pat_FakeTokenCurto_123456789";
 
       expect(higienizar(classicToken)).toBe("Token antigo: [TOKEN_GITHUB_OCULTO]");
       expect(higienizar(fineGrainedToken)).toBe("Token novo: [TOKEN_GITHUB_OCULTO]");
     });
 
     it("deve mascarar chaves do Gemini usando regex padrão (fallback)", () => {
-      const geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyA1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q";
+      const geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyFakeUrlKey";
       expect(higienizar(geminiUrl)).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=[CHAVE_GEMINI_OCULTA]");
     });
 
