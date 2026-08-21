@@ -198,25 +198,6 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
         }
 
         if (status === 409 || msg.includes("409") || msg.includes("conflito")) {
-          // Tenta auto-resolver buscando o SHA atualizado no GitHub
-          try {
-            const { sha: remoteSha } = await ler(cfg, item.caminho);
-            if (acao === "apagar") {
-              await apagar(cfg, item.caminho, remoteSha);
-              removerRascunhoLocal(item.id);
-              removerDoCacheLocal(item.caminho);
-            } else {
-              const novoSha = await gravar(cfg, item.caminho, item.texto, remoteSha, item.mensagemCommit);
-              removerRascunhoLocal(item.id);
-              const doc = lerMarkdown(item.texto);
-              atualizarCacheLocal(item.caminho, item.texto, doc, novoSha);
-            }
-            concluidos++;
-            continue;
-          } catch {
-            // Se falhar a leitura/recuperação, marca como conflito para o usuário revisar
-          }
-
           const erroTxt = "Conflito de edição no GitHub (HTTP 409). O arquivo foi modificado diretamente no repositório.";
           atualizarRascunhoLocal({
             ...item,

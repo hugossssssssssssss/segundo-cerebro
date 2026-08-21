@@ -8,6 +8,7 @@
 
 import type { ItemRepo } from "./repo";
 import { tituloProvavel } from "./markdown";
+import { montarIndice, extrairLinks } from "./links";
 
 export type TipoNoGrafo = "nota" | "tarefa" | "meta" | "entrega" | "referencia" | "lousa" | "tag";
 
@@ -100,38 +101,19 @@ export function construirGrafo3D(
     });
   }
 
-  // 2. Extrai relacionamentos por menções (@título e [[título]]) e campo relacionamentos
-  const mapaTitulosParaCaminho = new Map<string, string>();
-  for (const [caminho, no] of nosMap.entries()) {
-    mapaTitulosParaCaminho.set(no.titulo.toLowerCase().trim(), caminho);
-    const arqSemExt = no.caminho.split("/").pop()?.replace(/\.md$/, "").toLowerCase().trim();
-    if (arqSemExt) mapaTitulosParaCaminho.set(arqSemExt, caminho);
-  }
+  // 2. Extrai relacionamentos por menções (@título e [[título]]) e campo relacionamentos de forma eficiente
+  const indiceAlvos = montarIndice(itens);
 
   for (const [caminho, no] of nosMap.entries()) {
     const item = itens.find((i) => i.caminho === caminho);
     if (!item) continue;
 
-    const corpoTexto = item.texto.toLowerCase();
-    const relsFrontmatter = Array.isArray(item.doc.dados.relacionamentos)
-      ? item.doc.dados.relacionamentos
-      : [];
-
-    // Procura menções explicitas e implícitas aos outros títulos
-    for (const [títuloNorm, destinoCaminho] of mapaTitulosParaCaminho.entries()) {
-      if (destinoCaminho === caminho) continue;
-
-      const mencaoSub = `@${títuloNorm}`;
-      const wikiSub = `[[${títuloNorm}]]`;
-
-      const ehRelacionado =
-        corpoTexto.includes(mencaoSub) ||
-        corpoTexto.includes(wikiSub) ||
-        relsFrontmatter.includes(destinoCaminho) ||
-        relsFrontmatter.includes(títuloNorm);
-
-      if (ehRelacionado) {
+    const links = extrairLinks(item.texto, indiceAlvos);
+    for (const link of links) {
+      if (link.alvo && link.alvo.caminho !== caminho) {
+        const destinoCaminho = link.alvo.caminho;
         const arestaKey = [caminho, destinoCaminho].sort().join("<->");
+
         if (!arestaSet.has(arestaKey)) {
           arestaSet.add(arestaKey);
           arestas.push({
@@ -145,6 +127,37 @@ export function construirGrafo3D(
           no.conexoesCount++;
           const noDestino = nosMap.get(destinoCaminho);
           if (noDestino) noDestino.conexoesCount++;
+        }
+      }
+    }
+
+    const relsFrontmatter = Array.isArray(item.doc.dados.relacionamentos)
+      ? item.doc.dados.relacionamentos
+      : [];
+
+    for (const rel of relsFrontmatter) {
+      if (typeof rel === "string" && rel.trim()) {
+        const relNorm = rel.toLowerCase().trim();
+        const alvoResolvido = indiceAlvos.get(relNorm);
+
+        if (alvoResolvido && alvoResolvido.caminho !== caminho) {
+          const destinoCaminho = alvoResolvido.caminho;
+          const arestaKey = [caminho, destinoCaminho].sort().join("<->");
+
+          if (!arestaSet.has(arestaKey)) {
+            arestaSet.add(arestaKey);
+            arestas.push({
+              id: arestaKey,
+              origem: caminho,
+              destino: destinoCaminho,
+              forca: 1,
+              rotulo: "menciona",
+            });
+
+            no.conexoesCount++;
+            const noDestino = nosMap.get(destinoCaminho);
+            if (noDestino) noDestino.conexoesCount++;
+          }
         }
       }
     }

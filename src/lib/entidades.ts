@@ -327,17 +327,19 @@ export function comoContato(
 
 export function contatoParaArquivo(c: Contato): { dados: Frontmatter; corpo: string } {
   const d = c.bruto || {};
-  const cargo = typeof d.cargo === "string" && d.cargo.trim() ? d.cargo.trim() : c.cargo;
-  const empresa = typeof d.empresa === "string" && d.empresa.trim() ? d.empresa.trim() : c.empresa;
-  const email = typeof d.email === "string" && d.email.trim() ? d.email.trim() : c.email;
-  const telefone = typeof d.telefone === "string" && d.telefone.trim() ? d.telefone.trim() : c.telefone;
+  const cargo = c.cargo !== undefined ? c.cargo : (typeof d.cargo === "string" ? d.cargo.trim() : undefined);
+  const empresa = c.empresa !== undefined ? c.empresa : (typeof d.empresa === "string" ? d.empresa.trim() : undefined);
+  const email = c.email !== undefined ? c.email : (typeof d.email === "string" ? d.email.trim() : undefined);
+  const telefone = c.telefone !== undefined ? c.telefone : (typeof d.telefone === "string" ? d.telefone.trim() : undefined);
   const paiId =
-    typeof d.pai_id === "string" && d.pai_id.trim()
+    c.paiId !== undefined
+      ? c.paiId
+      : typeof d.pai_id === "string" && d.pai_id.trim()
       ? d.pai_id.trim()
       : typeof d.pai === "string" && d.pai.trim()
       ? d.pai.trim()
-      : c.paiId;
-  const tags = Array.isArray(d.tags) ? (d.tags as string[]) : c.tags;
+      : undefined;
+  const tags = c.tags !== undefined && c.tags.length > 0 ? c.tags : (Array.isArray(d.tags) ? (d.tags as string[]) : undefined);
 
   return {
     dados: mesclarFrontmatter(c.bruto, {

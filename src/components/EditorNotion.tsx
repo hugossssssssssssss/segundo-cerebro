@@ -339,8 +339,16 @@ export function EditorNotion({
       }
     };
 
+    let timeoutId: any = null;
+    const pintarDebounced = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        pintar();
+      }, 250); // debounce de 250ms para não travar a digitação
+    };
+
     pintar();
-    const obs = new MutationObserver(pintar);
+    const obs = new MutationObserver(pintarDebounced);
     obs.observe(container, {
       childList: true,
       subtree: true,
@@ -349,6 +357,7 @@ export function EditorNotion({
 
     return () => {
       obs.disconnect();
+      if (timeoutId) clearTimeout(timeoutId);
       // o editor fechou: o destaque some junto, senão sobra intervalo
       // apontando para nó que não existe mais
       for (const nome of TIPOS) realces.delete(nome);

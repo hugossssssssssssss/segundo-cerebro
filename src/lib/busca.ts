@@ -191,34 +191,68 @@ export function buscar(itens: ItemRepo[], termo: string): Resultado[] {
   }
 
   // Complementa com busca por substring interna (ex: "uinho" -> "Huguinho")
-  for (const item of itens) {
-    if (idsJaIncluidos.has(item.caminho)) continue;
+  // Apenas para termos com pelo menos 3 caracteres, para evitar lentidão
+  if (termoNorm.length >= 3) {
+    for (const item of itens) {
+      if (idsJaIncluidos.has(item.caminho)) continue;
 
-    const titNorm = normalizar(tituloProvavel(item.doc, item.nome));
-    const tagsNorm = normalizar(comoLista(item.doc.dados.tags).join(" "));
-    const d = item.doc.dados;
-    const extrasContatoNorm = normalizar([
-      typeof d.cargo === "string" ? d.cargo : "",
-      typeof d.empresa === "string" ? d.empresa : "",
-      typeof d.email === "string" ? d.email : "",
-      typeof d.telefone === "string" ? d.telefone : "",
-    ].join(" "));
-    const corpoNorm = normalizar(item.doc.corpo || "");
+      const titNorm = normalizar(tituloProvavel(item.doc, item.nome));
+      if (titNorm.includes(termoNorm)) {
+        saida.push({
+          caminho: item.caminho,
+          titulo: tituloProvavel(item.doc, item.nome),
+          tipo: tipoDoItem(item),
+          trecho: recortar(item.doc.corpo, [termoNorm]),
+          peso: 3,
+        });
+        continue;
+      }
 
-    if (
-      titNorm.includes(termoNorm) ||
-      tagsNorm.includes(termoNorm) ||
-      extrasContatoNorm.includes(termoNorm) ||
-      corpoNorm.includes(termoNorm)
-    ) {
-      const pesoSubstring = titNorm.includes(termoNorm) ? 3 : 1;
-      saida.push({
-        caminho: item.caminho,
-        titulo: tituloProvavel(item.doc, item.nome),
-        tipo: tipoDoItem(item),
-        trecho: recortar(item.doc.corpo, [termoNorm]),
-        peso: pesoSubstring,
-      });
+      const tagsNorm = normalizar(comoLista(item.doc.dados.tags).join(" "));
+      if (tagsNorm.includes(termoNorm)) {
+        saida.push({
+          caminho: item.caminho,
+          titulo: tituloProvavel(item.doc, item.nome),
+          tipo: tipoDoItem(item),
+          trecho: recortar(item.doc.corpo, [termoNorm]),
+          peso: 1,
+        });
+        continue;
+      }
+
+      const d = item.doc.dados;
+      const extrasContatoNorm = normalizar([
+        typeof d.cargo === "string" ? d.cargo : "",
+        typeof d.empresa === "string" ? d.empresa : "",
+        typeof d.email === "string" ? d.email : "",
+        typeof d.telefone === "string" ? d.telefone : "",
+      ].join(" "));
+      if (extrasContatoNorm.includes(termoNorm)) {
+        saida.push({
+          caminho: item.caminho,
+          titulo: tituloProvavel(item.doc, item.nome),
+          tipo: tipoDoItem(item),
+          trecho: recortar(item.doc.corpo, [termoNorm]),
+          peso: 1,
+        });
+        continue;
+      }
+
+      // Para o corpo, apenas normaliza e compara se o tamanho do corpo for menor que 15.000 caracteres
+      // notas maiores que isso já são adequadamente cobertas pelo MiniSearch indexado.
+      const corpoOriginal = item.doc.corpo || "";
+      if (corpoOriginal.length < 15000) {
+        const corpoNorm = normalizar(corpoOriginal);
+        if (corpoNorm.includes(termoNorm)) {
+          saida.push({
+            caminho: item.caminho,
+            titulo: tituloProvavel(item.doc, item.nome),
+            tipo: tipoDoItem(item),
+            trecho: recortar(item.doc.corpo, [termoNorm]),
+            peso: 1,
+          });
+        }
+      }
     }
   }
 
