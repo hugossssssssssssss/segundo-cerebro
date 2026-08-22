@@ -204,6 +204,12 @@ export default function Lousas() {
         ? (excalidrawAPI.getFiles() || {})
         : (filesRef.current || {});
 
+      if (files && Object.keys(files).length > 0) {
+        throw new Error(
+          "O Klaus não suporta colar ou anexar imagens locais nas lousas para evitar lentidão de sincronismo e falha de salvamento no GitHub (limite de 5 MB). Por favor, remova as imagens locais antes de salvar."
+        );
+      }
+
       const elementosValidos = Array.isArray(elementsToSave)
         ? elementsToSave.filter((el: any) => !el.isDeleted)
         : [];

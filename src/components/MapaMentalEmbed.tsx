@@ -31,12 +31,34 @@ export function MapaMentalEmbed({
   const [carregandoSvg, setCarregandoSvg] = useState(true);
   const [zoomScale, setZoomScale] = useState<number>(0.75); // Zoom confortável padrão
   const [expandido, setExpandido] = useState<boolean>(true);
+  const [visivel, setVisivel] = useState(false);
 
   // Redimensionamento do container segurando e arrastando pelo canto
   const [altura, setAltura] = useState<number>(280);
   const arrastandoRef = useRef(false);
   const startYRef = useRef(0);
   const startAlturaRef = useRef(280);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const elemento = containerRef.current;
+    if (!elemento) return;
+
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        if (entradas[0]?.isIntersecting) {
+          setVisivel(true);
+          observador.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observador.observe(elemento);
+
+    return () => {
+      observador.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     if (!conteudoTexto && item.caminho) {
@@ -57,6 +79,8 @@ export function MapaMentalEmbed({
   const ehModoEscuro = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
 
   useEffect(() => {
+    if (!visivel) return;
+
     let cancelado = false;
     setCarregandoSvg(true);
 
@@ -115,7 +139,7 @@ export function MapaMentalEmbed({
     return () => {
       cancelado = true;
     };
-  }, [docParsed, conteudoTexto, ehModoEscuro]);
+  }, [docParsed, conteudoTexto, ehModoEscuro, visivel]);
 
   const abrirNoExcalidraw = () => {
     if (onAbrirEditor) {
@@ -151,7 +175,7 @@ export function MapaMentalEmbed({
   };
 
   return (
-    <div className="my-4 w-full rounded-2xl border border-indigo-500/30 bg-card overflow-hidden shadow-lg transition-all hover:border-indigo-500/50 group relative">
+    <div ref={containerRef} className="my-4 w-full rounded-2xl border border-indigo-500/30 bg-card overflow-hidden shadow-lg transition-all hover:border-indigo-500/50 group relative">
       {/* Cabeçalho com Alça de Arraste Estilo Notion */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-indigo-500/10 dark:bg-indigo-950/40 border-b border-indigo-500/20">
         <div className="flex items-center gap-1.5">
