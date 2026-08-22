@@ -107,7 +107,13 @@ function obterSaltSessao(): Uint8Array {
   if (typeof window !== "undefined" && window.crypto) {
     window.crypto.getRandomValues(arr as any);
   } else {
-    arr.fill(42);
+    // Fallback pseudo-aleatório baseado em gerador linear congruente (LCG) semeado com o tempo
+    let semente = Date.now() + Math.floor(Math.random() * 100000);
+    for (let i = 0; i < 32; i++) {
+      semente = (semente * 9301 + 49297) % 233280;
+      const pseudoRand = semente / 233280.0;
+      arr[i] = Math.floor(pseudoRand * 256);
+    }
   }
 
   // 3. Salva o novo salt no localStorage para futuras leituras nesta origem/dispositivo

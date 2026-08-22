@@ -228,11 +228,20 @@ export function useMediaDevices() {
       if (stream) {
         stream.getTracks().forEach((t) => t.stop());
       }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {}
+      }
       if (audioContextRef.current) {
         audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
+      }
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
       }
     };
-  }, [stream]);
+  }, [stream, audioUrl]);
 
   return {
     dispositivosVideo,

@@ -305,4 +305,42 @@ describe("a IA não pode esvaziar um texto sem querer", () => {
     expect(gravado).toContain("texto importante");
     vi.unstubAllGlobals();
   });
+
+  it("edição com corpo '<limpar>' esvazia o corpo existente", async () => {
+    limparReservas();
+    let gravado = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        if (init?.method === "PUT") {
+          const b64 = JSON.parse(String(init.body)).content;
+          gravado = new TextDecoder().decode(
+            Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)),
+          );
+        }
+        // resposta do `ler` que antecede a edição
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({
+            content: btoa("---\ntitulo: X\n---\n\ntexto importante"),
+            sha: "s",
+            ...(init?.method === "PUT" ? { content: { sha: "novo" } } : {}),
+          }),
+        } as unknown as Response;
+      }),
+    );
+    vi.stubGlobal("navigator", { onLine: true });
+
+    await executar(
+      { ...PADRAO, githubToken: "t", repoOwner: "h", repoName: "d" },
+      { tipo: "editar", caminho: "notas/x.md", corpo: "<limpar>" },
+      [],
+    );
+
+    expect(gravado).not.toContain("texto importante");
+    expect(gravado.endsWith("---\n\n")).toBe(true);
+    vi.unstubAllGlobals();
+  });
 });

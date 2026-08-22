@@ -282,7 +282,7 @@ export async function executar(
       // `""` NÃO é ausência: o modelo às vezes devolve corpo vazio e o `??`
       // deixava passar, esvaziando a nota. Corpo em branco = não mexer no
       // corpo. Para apagar de propósito, edite pela tela.
-      corpo: acao.corpo && acao.corpo.trim() ? acao.corpo : doc.corpo,
+      corpo: acao.corpo === "<limpar>" ? "" : (acao.corpo && acao.corpo.trim() ? acao.corpo : doc.corpo),
     });
     await gravar(cfg, acao.caminho!, conteudo, sha, `IA edita ${acao.caminho}`);
     invalidarCache();

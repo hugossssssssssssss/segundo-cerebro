@@ -285,11 +285,21 @@ export function NavegadorGrafo3D({
   };
 
   // Zoom no scroll do mouse
-  const aoRolarWheel = (e: React.WheelEvent) => {
+  const aoRolarWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
     const factor = e.deltaY > 0 ? 0.9 : 1.1;
     cameraRef.current.zoom = Math.min(Math.max(0.4, cameraRef.current.zoom * factor), 3.5);
-  };
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    canvas.addEventListener("wheel", aoRolarWheel, { passive: false });
+    return () => {
+      canvas.removeEventListener("wheel", aoRolarWheel);
+    };
+  }, [aoRolarWheel]);
 
   // Clique para abrir o documento no Notion Modal
   const aoClicarCanvas = () => {
@@ -309,7 +319,6 @@ export function NavegadorGrafo3D({
         onTouchStart={aoIniciarArraste}
         onTouchMove={aoMoverArraste}
         onTouchEnd={aoFinalizarArraste}
-        onWheel={aoRolarWheel}
         onClick={aoClicarCanvas}
         className="w-full h-full bg-background cursor-grab active:cursor-grabbing block"
       />
