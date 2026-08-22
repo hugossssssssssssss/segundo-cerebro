@@ -161,6 +161,45 @@ export function inicializarLogger() {
       }
     }
 
+    let silenciar404 = false;
+    let silenciarTodosErros = false;
+
+    if (init && init.headers) {
+      if (init.headers instanceof Headers) {
+        if (init.headers.has("x-silent-404")) {
+          silenciar404 = init.headers.get("x-silent-404") === "true";
+          init.headers.delete("x-silent-404");
+        }
+        if (init.headers.has("x-silent-errors")) {
+          silenciarTodosErros = init.headers.get("x-silent-errors") === "true";
+          init.headers.delete("x-silent-errors");
+        }
+      } else if (Array.isArray(init.headers)) {
+        const novosHeaders: [string, string][] = [];
+        for (const [k, v] of init.headers) {
+          if (k.toLowerCase() === "x-silent-404") {
+            silenciar404 = v === "true";
+          } else if (k.toLowerCase() === "x-silent-errors") {
+            silenciarTodosErros = v === "true";
+          } else {
+            novosHeaders.push([k, v]);
+          }
+        }
+        init.headers = novosHeaders;
+      } else {
+        const novosHeaders = { ...init.headers } as Record<string, string>;
+        if ("x-silent-404" in novosHeaders) {
+          silenciar404 = novosHeaders["x-silent-404"] === "true";
+          delete novosHeaders["x-silent-404"];
+        }
+        if ("x-silent-errors" in novosHeaders) {
+          silenciarTodosErros = novosHeaders["x-silent-errors"] === "true";
+          delete novosHeaders["x-silent-errors"];
+        }
+        init.headers = novosHeaders;
+      }
+    }
+
     const idRequisicao = Math.random().toString(36).substring(2, 9);
 
     logger.request(`→ ${metodo} ${url}`, {
@@ -197,11 +236,20 @@ export function inicializarLogger() {
           body: responseBody,
         });
       } else {
-        logger.error(`← ${metodo} ${url} [FALHA: ${statusTexto}] (${duration}ms)`, {
-          id: idRequisicao,
-          headers: Object.fromEntries(resposta.headers.entries()),
-          body: responseBody,
-        });
+        const ehSilencioso = silenciarTodosErros || (silenciar404 && resposta.status === 404);
+        if (ehSilencioso) {
+          logger.request(`← ${metodo} ${url} [${statusTexto} (Silenciado)] (${duration}ms)`, {
+            id: idRequisicao,
+            headers: Object.fromEntries(resposta.headers.entries()),
+            body: responseBody,
+          });
+        } else {
+          logger.error(`← ${metodo} ${url} [FALHA: ${statusTexto}] (${duration}ms)`, {
+            id: idRequisicao,
+            headers: Object.fromEntries(resposta.headers.entries()),
+            body: responseBody,
+          });
+        }
       }
 
       return resposta;

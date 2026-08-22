@@ -160,9 +160,14 @@ function urlDeCaminho(cfg: Settings, caminho: string): string {
 export async function ler(
   cfg: Settings,
   caminho: string,
+  opcoes?: { silenciar404?: boolean },
 ): Promise<{ texto: string; sha: string }> {
   const url = `${urlDeCaminho(cfg, caminho)}?ref=${encodeURIComponent(cfg.branch)}`;
-  const resposta = await buscar(url, { headers: cabecalhos(cfg), cache: "no-store" });
+  const headers = { ...cabecalhos(cfg) };
+  if (opcoes?.silenciar404) {
+    (headers as any)["x-silent-404"] = "true";
+  }
+  const resposta = await buscar(url, { headers, cache: "no-store" });
   await conferir(resposta);
 
   const dados = await resposta.json();
@@ -178,7 +183,8 @@ export async function lerOuVazio(
   try {
     const branch = ref || cfg.branch;
     const url = `${urlDeCaminho(cfg, caminho)}?ref=${encodeURIComponent(branch)}`;
-    const resposta = await buscar(url, { headers: cabecalhos(cfg), cache: "no-store" });
+    const headers = { ...cabecalhos(cfg), "x-silent-404": "true" };
+    const resposta = await buscar(url, { headers, cache: "no-store" });
     if (!resposta.ok) return "";
     const dados = await resposta.json();
     return deBase64(dados.content || "");

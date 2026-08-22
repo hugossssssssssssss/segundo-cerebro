@@ -186,10 +186,9 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       const cfg = lerConfig();
       if (!configCompleta(cfg)) return;
       try {
-        const [todos, estadoRes] = await Promise.all([
-          carregarRepo(cfg, { memoria: 30_000 }),
-          carregarEstadoInbox(cfg),
-        ]);
+        const todos = await carregarRepo(cfg, { memoria: 30_000 });
+        if (cancelado) return;
+        const estadoRes = await carregarEstadoInbox(cfg, todos);
         if (cancelado) return;
         const itens = compilarItensInbox(todos, estadoRes.mapa);
         const naoVistos = itens.filter((i) => !i.visto).length;

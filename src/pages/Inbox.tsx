@@ -80,12 +80,9 @@ export default function Inbox() {
     if (!pronto) return;
     setCarregando(true);
     setErro(null);
-
     try {
-      const [todos, estadoRes] = await Promise.all([
-        carregarRepo(cfg),
-        carregarEstadoInbox(cfg),
-      ]);
+      const todos = await carregarRepo(cfg);
+      const estadoRes = await carregarEstadoInbox(cfg, todos);
       setAcervo(todos);
       setMapaEstado(estadoRes.mapa);
       setShaEstado(estadoRes.sha);

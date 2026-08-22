@@ -381,14 +381,35 @@ export function salvarEstadoInboxLocal(mapa: MapaEstadoInbox): void {
 /**
  * Carrega o estado da Inbox sincronizado do repositório GitHub (com fallback pro local).
  */
-export async function carregarEstadoInbox(cfg: Settings): Promise<{ mapa: MapaEstadoInbox; sha?: string }> {
+export async function carregarEstadoInbox(
+  cfg: Settings,
+  itensRepo?: ItemRepo[],
+): Promise<{ mapa: MapaEstadoInbox; sha?: string }> {
   const local = lerEstadoInboxLocal();
   if (!cfg.githubToken || !cfg.repoOwner || !cfg.repoName) {
     return { mapa: local };
   }
 
+  // Se tivermos a lista de itens do repositório em mãos, tentamos encontrar o arquivo de estado lá
+  if (itensRepo) {
+    const itemEstado = itensRepo.find((i) => i.caminho === CAMINHO_ESTADO_INBOX);
+    if (itemEstado) {
+      try {
+        const remoto: MapaEstadoInbox = JSON.parse(itemEstado.texto);
+        const mesclado = { ...local, ...remoto };
+        salvarEstadoInboxLocal(mesclado);
+        return { mapa: mesclado, sha: itemEstado.sha };
+      } catch {
+        // arquivo de estado quebrado no repo (JSON inválido)
+      }
+    }
+    // Se o array de itensRepo existe mas o arquivo não está nele, temos certeza que ele não existe no repositório!
+    // Não precisamos fazer nenhuma requisição de rede e podemos retornar o estado local diretamente.
+    return { mapa: local };
+  }
+
   try {
-    const res = await ler(cfg, CAMINHO_ESTADO_INBOX);
+    const res = await ler(cfg, CAMINHO_ESTADO_INBOX, { silenciar404: true });
     if (res?.texto) {
       const remoto: MapaEstadoInbox = JSON.parse(res.texto);
       const mesclado = { ...local, ...remoto };
