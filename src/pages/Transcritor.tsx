@@ -14,7 +14,6 @@ import {
   FileCheck,
   Cpu,
   Sparkles,
-  Volume2,
 } from "lucide-react";
 import { Botao, Cartao, Aviso, Vazio } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
@@ -22,14 +21,13 @@ import { cn } from "@/lib/utils";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import {
   transcreverAudioLocalWhisper,
-  transcreverComWebSpeechAPI,
 } from "@/lib/whisperLocal";
 import { transcreverAudioComIA } from "@/lib/gemini";
 import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
 import { carregarRepo } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
 
-type MotorTranscricao = "whisper_base" | "native_speech" | "gemini";
+type MotorTranscricao = "whisper_base" | "gemini";
 
 interface ItemTranscricao {
   id: string;
@@ -161,9 +159,7 @@ export default function Transcritor() {
 
     let promessaTranscricao: Promise<string>;
 
-    if (motorSelecionado === "native_speech") {
-      promessaTranscricao = transcreverComWebSpeechAPI(arquivoFile, callbackProgresso);
-    } else if (motorSelecionado === "gemini") {
+    if (motorSelecionado === "gemini") {
       const cfg = lerConfig();
       promessaTranscricao = transcreverAudioComIA(cfg, arquivoFile, callbackProgresso);
     } else {
@@ -335,24 +331,7 @@ export default function Transcritor() {
             </p>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setMotorSelecionado("native_speech")}
-            className={cn(
-              "p-3 rounded-xl border text-left transition-all space-y-1",
-              motorSelecionado === "native_speech"
-                ? "border-primary bg-primary/10 shadow-sm"
-                : "border-border bg-card hover:bg-accent"
-            )}
-          >
-            <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-              <Volume2 size={14} className="text-green-500" />
-              <span>Voz Nativa do Sistema</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              Usa o reconhecedor nativo do Mac/Android. Leve, rápido e sem downloads.
-            </p>
-          </button>
+
 
           <button
             type="button"

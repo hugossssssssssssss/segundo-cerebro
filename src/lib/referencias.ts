@@ -66,6 +66,8 @@ export function caminhoCompletoDaImagem(caminho: string): string {
     : `${PASTA_REFS}/${caminho.replace(/^\.?\//, "")}`;
 }
 
+const cacheBlobs = new Map<string, Blob>();
+
 /**
  * Baixa uma imagem do repositório PRIVADO e devolve um `blob:` utilizável.
  *
@@ -77,20 +79,28 @@ export async function baixarImagemPrivada(
   caminho: string,
 ): Promise<string> {
   const completo = caminhoCompletoDaImagem(caminho);
-  const url =
-    `https://api.github.com/repos/${encodeURIComponent(cfg.repoOwner)}/${encodeURIComponent(cfg.repoName)}` +
-    `/contents/${completo.split("/").map(encodeURIComponent).join("/")}` +
-    `?ref=${encodeURIComponent(cfg.branch)}`;
+  const cacheKey = `${cfg.repoOwner}/${cfg.repoName}/${cfg.branch}/${completo}`;
 
-  const resposta = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${cfg.githubToken.trim()}`,
-      Accept: "application/vnd.github.raw",
-    },
-  });
-  if (!resposta.ok) throw new Error(`Não consegui baixar a imagem (${resposta.status}).`);
+  let blob = cacheBlobs.get(cacheKey);
+  if (!blob) {
+    const url =
+      `https://api.github.com/repos/${encodeURIComponent(cfg.repoOwner)}/${encodeURIComponent(cfg.repoName)}` +
+      `/contents/${completo.split("/").map(encodeURIComponent).join("/")}` +
+      `?ref=${encodeURIComponent(cfg.branch)}`;
 
-  return URL.createObjectURL(await resposta.blob());
+    const resposta = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${cfg.githubToken.trim()}`,
+        Accept: "application/vnd.github.raw",
+      },
+    });
+    if (!resposta.ok) throw new Error(`Não consegui baixar a imagem (${resposta.status}).`);
+
+    blob = await resposta.blob();
+    cacheBlobs.set(cacheKey, blob);
+  }
+
+  return URL.createObjectURL(blob);
 }
 
 /** Junta todas as tags usadas, para montar o filtro. */

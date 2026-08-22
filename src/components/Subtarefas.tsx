@@ -70,10 +70,10 @@ export function Subtarefas({
         <div className="space-y-2 pt-1 pl-1">
           <ul className="space-y-1">
             {subs.map((s) => (
-              <li key={s.linha} className="group flex items-start gap-2">
+              <li key={`${s.texto}-${s.linha}`} className="group flex items-start gap-2">
                 <button
                   type="button"
-                  onClick={() => onChange(alternarSubtarefa(corpo, s.linha))}
+                  onClick={() => onChange(alternarSubtarefa(corpo, s.texto, s.feita))}
                   className="-m-1.5 shrink-0 p-1.5"
                   aria-label={s.feita ? "Desmarcar" : "Marcar como feita"}
                 >
@@ -100,7 +100,7 @@ export function Subtarefas({
 
                 <button
                   type="button"
-                  onClick={() => onChange(removerSubtarefa(corpo, s.linha))}
+                  onClick={() => onChange(removerSubtarefa(corpo, s.texto, s.feita))}
                   className="-m-1.5 shrink-0 p-1.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 focus:opacity-100"
                   aria-label="Remover subtarefa"
                 >

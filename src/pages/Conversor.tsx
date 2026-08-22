@@ -61,6 +61,7 @@ interface PaginaRenderizada {
   numPagina: number;
   dataUrl: string;
   nomeArquivo: string;
+  blob?: Blob;
 }
 
 interface ItemFerramentaUI {
@@ -172,6 +173,16 @@ export default function Conversor() {
   // Estados de PDF -> Imagem
   const [arquivoPdf, setArquivoPdf] = useState<File | null>(null);
   const [paginasRenderizadas, setPaginasRenderizadas] = useState<PaginaRenderizada[]>([]);
+
+  useEffect(() => {
+    return () => {
+      paginasRenderizadas.forEach((p) => {
+        if (p.dataUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(p.dataUrl);
+        }
+      });
+    };
+  }, [paginasRenderizadas]);
   const [formatoSaidaPdf, setFormatoSaidaPdf] = useState<"png" | "jpeg">("png");
 
   // Ajusta formato padrão quando muda entre pdf_para_png e pdf_para_jpg
@@ -271,6 +282,12 @@ export default function Conversor() {
       const pdf = await loadingTask.promise;
       const totalPaginas = pdf.numPages;
 
+      if (totalPaginas > 30) {
+        throw new Error(
+          `Este documento possui ${totalPaginas} páginas. Para evitar travamentos e proteger a memória do seu dispositivo, o limite para conversão é de até 30 páginas.`
+        );
+      }
+
       const resultados: PaginaRenderizada[] = [];
 
       for (let i = 1; i <= totalPaginas; i++) {
@@ -285,13 +302,21 @@ export default function Conversor() {
           await page.render({ canvasContext: ctx, viewport, canvas }).promise;
           const mimeType = formatoSaidaPdf === "png" ? "image/png" : "image/jpeg";
           const ext = formatoSaidaPdf === "png" ? "png" : "jpg";
-          const dataUrl = canvas.toDataURL(mimeType, 0.92);
-          const nomeBase = arquivoPdf.name.replace(/\.pdf$/i, "");
-          resultados.push({
-            numPagina: i,
-            dataUrl,
-            nomeArquivo: `${nomeBase}-pagina-${i}.${ext}`,
-          });
+          
+          const blob = await new Promise<Blob | null>((resolve) =>
+            canvas.toBlob(resolve, mimeType, 0.92)
+          );
+          
+          if (blob) {
+            const dataUrl = URL.createObjectURL(blob);
+            const nomeBase = arquivoPdf.name.replace(/\.pdf$/i, "");
+            resultados.push({
+              numPagina: i,
+              dataUrl,
+              nomeArquivo: `${nomeBase}-pagina-${i}.${ext}`,
+              blob,
+            });
+          }
         }
       }
 
@@ -309,8 +334,12 @@ export default function Conversor() {
     if (paginasRenderizadas.length === 0) return;
     const zip = new JSZip();
     paginasRenderizadas.forEach((p) => {
-      const base64Data = p.dataUrl.split(",")[1];
-      zip.file(p.nomeArquivo, base64Data, { base64: true });
+      if (p.blob) {
+        zip.file(p.nomeArquivo, p.blob);
+      } else {
+        const base64Data = p.dataUrl.split(",")[1];
+        zip.file(p.nomeArquivo, base64Data, { base64: true });
+      }
     });
     const content = await zip.generateAsync({ type: "blob" });
     const url = URL.createObjectURL(content);

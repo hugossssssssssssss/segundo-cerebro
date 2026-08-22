@@ -160,18 +160,47 @@ export function lerSubtarefas(corpo: string): Subtarefa[] {
 }
 
 /** Marca ou desmarca uma caixinha, preservando indentação e o resto do texto. */
-export function alternarSubtarefa(corpo: string, linha: number): string {
+export function alternarSubtarefa(corpo: string, identificador: number | string, feita?: boolean): string {
+  let textoAlvo = "";
+  let feitaAlvo = false;
+
+  if (typeof identificador === "number") {
+    const subs = lerSubtarefas(corpo);
+    const encontrada = subs.find((s) => s.linha === identificador);
+    if (!encontrada) return corpo;
+    textoAlvo = encontrada.texto;
+    feitaAlvo = encontrada.feita;
+  } else {
+    textoAlvo = identificador;
+    feitaAlvo = feita !== undefined ? feita : false;
+  }
+
   const linhas = corpo.split("\n");
-  const alvo = linhas[linha];
-  if (alvo === undefined) return corpo;
+  const idx = linhas.findIndex((l) => {
+    const m = l.match(CAIXA);
+    return m && m[3].trim() === textoAlvo && (m[2].toLowerCase() === "x") === feitaAlvo;
+  });
 
-  const m = alvo.match(CAIXA);
-  if (!m) return corpo;
+  if (idx === -1) {
+    // Fallback apenas pelo texto
+    const idxApenasTexto = linhas.findIndex((l) => {
+      const m = l.match(CAIXA);
+      return m && m[3].trim() === textoAlvo;
+    });
+    if (idxApenasTexto === -1) return corpo;
 
-  const marcada = m[2].toLowerCase() === "x";
-  linhas[linha] = alvo.replace(
+    const m = linhas[idxApenasTexto].match(CAIXA)!;
+    const jaMarcada = m[2].toLowerCase() === "x";
+    linhas[idxApenasTexto] = linhas[idxApenasTexto].replace(
+      /\[( |x|X)\]/,
+      jaMarcada ? "[ ]" : "[x]"
+    );
+    return linhas.join("\n");
+  }
+
+  linhas[idx] = linhas[idx].replace(
     /\[( |x|X)\]/,
-    marcada ? "[ ]" : "[x]",
+    feitaAlvo ? "[ ]" : "[x]"
   );
   return linhas.join("\n");
 }
@@ -196,10 +225,39 @@ export function adicionarSubtarefa(corpo: string, texto: string): string {
   return linhas.join("\n");
 }
 
-export function removerSubtarefa(corpo: string, linha: number): string {
+export function removerSubtarefa(corpo: string, identificador: number | string, feita?: boolean): string {
+  let textoAlvo = "";
+  let feitaAlvo = false;
+
+  if (typeof identificador === "number") {
+    const subs = lerSubtarefas(corpo);
+    const encontrada = subs.find((s) => s.linha === identificador);
+    if (!encontrada) return corpo;
+    textoAlvo = encontrada.texto;
+    feitaAlvo = encontrada.feita;
+  } else {
+    textoAlvo = identificador;
+    feitaAlvo = feita !== undefined ? feita : false;
+  }
+
   const linhas = corpo.split("\n");
-  if (!linhas[linha]?.match(CAIXA)) return corpo;
-  linhas.splice(linha, 1);
+  const idx = linhas.findIndex((l) => {
+    const m = l.match(CAIXA);
+    return m && m[3].trim() === textoAlvo && (m[2].toLowerCase() === "x") === feitaAlvo;
+  });
+
+  if (idx === -1) {
+    // Fallback apenas pelo texto
+    const idxApenasTexto = linhas.findIndex((l) => {
+      const m = l.match(CAIXA);
+      return m && m[3].trim() === textoAlvo;
+    });
+    if (idxApenasTexto === -1) return corpo;
+    linhas.splice(idxApenasTexto, 1);
+    return linhas.join("\n");
+  }
+
+  linhas.splice(idx, 1);
   return linhas.join("\n");
 }
 

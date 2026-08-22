@@ -118,77 +118,7 @@ export async function transcreverAudioLocalWhisper(
   return textoFinal;
 }
 
-/**
- * Reconhecimento Nativo usando a Web Speech API do próprio sistema operacioanl / navegador
- */
-export async function transcreverComWebSpeechAPI(
-  file: File,
-  aoProgresso?: (msg: string) => void
-): Promise<string> {
-  return new Promise(async (resolve, reject) => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-    if (!SpeechRecognition) {
-      reject(new Error("Seu navegador não possui suporte ao Web Speech API nativo."));
-      return;
-    }
-
-    aoProgresso?.("Transcrevendo via motor de voz nativo do sistema em pt-BR...");
-    
-    const audioUrl = URL.createObjectURL(file);
-    const audioEl = new Audio(audioUrl);
-    const recognition = new SpeechRecognition();
-
-    recognition.lang = "pt-BR";
-    recognition.continuous = true;
-    recognition.interimResults = false;
-
-    let textoAcumulado = "";
-
-    recognition.onresult = (event: any) => {
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          textoAcumulado += event.results[i][0].transcript + " ";
-        }
-      }
-    };
-
-    recognition.onerror = (e: any) => {
-      URL.revokeObjectURL(audioUrl);
-      if (e.error === "not-allowed") {
-        reject(
-          new Error(
-            "Permissão de microfone/voz negada no seu navegador. Clique no ícone de cadeado na barra de endereço do navegador para permitir o uso de voz nativa."
-          )
-        );
-      } else {
-        reject(new Error(`Erro no reconhecimento nativo: ${e.error || "falha ao ouvir"}`));
-      }
-    };
-
-    recognition.onend = () => {
-      URL.revokeObjectURL(audioUrl);
-      const resultado = removerRepeticoesInfinitas(textoAcumulado.trim());
-      if (!resultado) {
-        resolve("Não foi possível reconhecer a fala nativamente.");
-      } else {
-        resolve(`# Transcrição Nativa do Navegador (pt-BR)\n\n**Arquivo**: \`${file.name}\`  \n**Motor**: Nativo do Sistema (0ms Custo / 0 API)  \n\n---\n\n${resultado}`);
-      }
-    };
-
-    audioEl.onended = () => {
-      recognition.stop();
-    };
-
-    try {
-      recognition.start();
-      await audioEl.play();
-    } catch {
-      recognition.start();
-    }
-  });
-}
 
 function saibaComoFormatador(saida: any, nomeArquivo: string, modelo: string): string {
   if (!saida) return "Nenhum texto detectado no áudio.";
