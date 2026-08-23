@@ -103,7 +103,8 @@ export function comoTarefa(
   const Pomodoro = typeof d.Pomodoro === "number" ? d.Pomodoro :
                    typeof d.pomodoro === "number" ? d.pomodoro :
                    typeof d.pomodoros === "number" ? d.pomodoros :
-                   typeof d.estimativa === "number" ? d.estimativa : undefined;
+                   typeof d.estimativa === "number" ? d.estimativa :
+                   typeof d.c === "number" ? d.c : undefined;
 
   const fraturados = typeof d.PomodoroFraturado === "number" ? d.PomodoroFraturado :
                      typeof d.pomodoro_fraturado === "number" ? d.pomodoro_fraturado :
@@ -144,6 +145,7 @@ export function tarefaParaArquivo(t: Tarefa): { dados: Frontmatter; corpo: strin
       pomodoro: undefined,
       pomodoro_fraturado: undefined,
       fraturados: undefined,
+      c: undefined,
       criado,
       atualizado: agora,
     }),

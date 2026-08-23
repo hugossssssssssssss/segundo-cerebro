@@ -298,7 +298,7 @@ export function compilarItensInbox(
         }
       }
 
-      if (dataValor && dataValor === hojeIso) {
+      if (dataValor && dataValor <= hojeIso) {
         const id = `entidade-data-${item.caminho}`;
         const estado = mapaEstado[id];
 
@@ -315,11 +315,15 @@ export function compilarItensInbox(
                                : tipoEntidade === "referencia" ? "Referência"
                                : "Contato";
 
+          const descricao = dataValor === hojeIso
+            ? `${rotuloEntidade} agendada para HOJE.`
+            : `${rotuloEntidade} com data vencida em ${formatarDataPtBR(dataValor)}.`;
+
           resultado.push({
             id,
             tipo: "lembrete",
             titulo: tituloDoc,
-            descricao: `${rotuloEntidade} agendada para HOJE.`,
+            descricao,
             caminhoOrigem: item.caminho,
             tituloOrigem: tituloDoc,
             dataVencimento: dataValor,

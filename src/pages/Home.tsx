@@ -10,6 +10,7 @@ import {
   Target,
   ArrowRight,
   Clock,
+  Timer,
   AlertTriangle,
   GripVertical,
   RotateCcw,
@@ -1358,6 +1359,7 @@ export default function Home() {
             status: editandoTarefa.status,
             prazo: editandoTarefa.prazo,
             tags: editandoTarefa.tags,
+            Pomodoro: editandoTarefa.Pomodoro,
           }}
           onChangeProps={(nProps) => {
             setEditandoTarefa({
@@ -1368,12 +1370,16 @@ export default function Home() {
               tags: Array.isArray(nProps.tags)
                 ? (nProps.tags as string[])
                 : editandoTarefa.tags,
+              Pomodoro: typeof nProps.Pomodoro === "number"
+                ? nProps.Pomodoro
+                : (nProps.Pomodoro ? Number(nProps.Pomodoro) : undefined),
             });
           }}
           camposFixosProps={{
             status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
             prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
             tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" },
+            Pomodoro: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
           }}
           salvando={salvandoItem}
           temMudancas={
