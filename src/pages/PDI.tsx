@@ -427,6 +427,22 @@ export default function PDI() {
     setOrigEntrega(vazia);
   };
 
+const novaEntregaParaMeta = (meta: Meta) => {
+  const vazia: Entrega = {
+    bruto: {},
+    caminho: "",
+    id: "",
+    sha: "",
+    titulo: "",
+    data: hojeISO(),
+    metas: [meta.id],
+    iaSugeriu: false,
+    corpo: "",
+  };
+  setEditandoEntrega(vazia);
+  setOrigEntrega(vazia);
+};
+
   return (
     <div id="conteudo-pdi-pdf" className="space-y-6 animate-in fade-in duration-200">
       <CabecalhoPagina
@@ -593,6 +609,9 @@ export default function PDI() {
                                 <Sparkles size={12} className="shrink-0 text-primary" />
                               )}
                             </button>
+                      <Botao onClick={() => novaEntregaParaMeta(m)} variante="neutro" className="mt-2">
+                        <Plus size={14} /> Entrega
+                      </Botao>
                           </li>
                         ))}
                         {ligadas.length > 4 && (
