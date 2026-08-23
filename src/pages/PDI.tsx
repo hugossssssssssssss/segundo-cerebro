@@ -457,6 +457,10 @@ const novaEntregaParaMeta = (meta: Meta) => {
               <Target size={15} />
               Nova Meta
             </Botao>
+            <Botao onClick={novaEntrega} variante="neutro">
+              <Plus size={15} />
+              Nova Entrega
+            </Botao>
             <Botao
               variante="neutro"
               onClick={() => {
@@ -531,18 +535,27 @@ const novaEntregaParaMeta = (meta: Meta) => {
           {/* ----------------------------------------------------- metas */}
           {resumos.length > 0 && (
             <section className="space-y-4">
-              <CabecalhoSecao titulo="Metas Profissionais" contador={resumos.length} />
+              <CabecalhoSecao
+                titulo="Metas Profissionais"
+                contador={resumos.length}
+                acoes={
+                  <Botao onClick={novaMeta} variante="neutro" className="h-7 text-xs px-2.5">
+                    <Plus size={13} /> Nova Meta
+                  </Botao>
+                }
+              />
               <div className="grid gap-3">
                 {resumos.map(({ meta: m, entregas: ligadas }) => (
                   <Cartao
                     key={m.id}
-                    className="p-4 cursor-grab active:cursor-grabbing hover:border-muted-foreground/30 transition-colors"
+                    className="p-4 cursor-grab active:cursor-grabbing hover:border-muted-foreground/30 transition-all flex flex-col justify-between"
                     draggable
                     onDragStart={(ev) => {
                       ev.dataTransfer.setData("text/plain", m.id);
                     }}
                   >
                     <button
+                      type="button"
                       onClick={() => {
                         if (estaAbertoFlutuante(m.caminho)) {
                           fecharFlutuante();
@@ -551,13 +564,13 @@ const novaEntregaParaMeta = (meta: Meta) => {
                         setOrigMeta(m);
                         navegar(`?abrir=${encodeURIComponent(m.caminho)}`, { replace: true });
                       }}
-                      className="w-full text-left"
+                      className="w-full text-left group"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <p
                           className={cn(
-                            "font-medium",
-                            m.status === "concluida" && "text-muted-foreground",
+                            "font-medium group-hover:text-primary transition-colors",
+                            m.status === "concluida" && "text-muted-foreground line-through decoration-muted-foreground/50",
                           )}
                         >
                           {m.titulo}
@@ -590,38 +603,53 @@ const novaEntregaParaMeta = (meta: Meta) => {
                       </div>
                     </button>
 
-                    {ligadas.length > 0 && (
-                      <ul className="mt-3 space-y-1 border-t border-border pt-3">
-                        {ligadas.slice(0, 4).map((e) => (
-                          <li key={e.id}>
-                            <button
-                              onClick={() => {
-                                setEditandoEntrega(e);
-                                setOrigEntrega(e);
-                                navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
-                              }}
-                              className="flex w-full items-center gap-2 text-left text-sm text-muted-foreground hover:text-foreground"
-                            >
-                              <span className="text-xs tabular-nums">
-                                {dataCurta(e.data)}
-                              </span>
-                              <span className="truncate">{e.titulo}</span>
-                              {e.iaSugeriu && (
-                                <Sparkles size={12} className="shrink-0 text-primary" />
-                              )}
-                            </button>
-                          </li>
-                        ))}
-                        {ligadas.length > 4 && (
-                          <li className="text-xs text-muted-foreground">
-                            e mais {ligadas.length - 4}…
-                          </li>
-                        )}
-                      </ul>
-                    )}
-                    <Botao onClick={() => novaEntregaParaMeta(m)} variante="neutro" className="mt-2">
-                      <Plus size={14} /> Entrega
-                    </Botao>
+                    <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+                      {ligadas.length > 0 && (
+                        <ul className="space-y-1">
+                          {ligadas.slice(0, 4).map((e) => (
+                            <li key={e.id}>
+                              <button
+                                type="button"
+                                onClick={(ev) => {
+                                  ev.stopPropagation();
+                                  setEditandoEntrega(e);
+                                  setOrigEntrega(e);
+                                  navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
+                                }}
+                                className="flex w-full items-center gap-2 text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent/40 rounded px-1.5 py-1 transition-colors cursor-pointer"
+                              >
+                                <span className="text-xs tabular-nums opacity-80 shrink-0">
+                                  {dataCurta(e.data)}
+                                </span>
+                                <span className="truncate flex-1">{e.titulo}</span>
+                                {e.iaSugeriu && (
+                                  <Sparkles size={12} className="shrink-0 text-primary" />
+                                )}
+                              </button>
+                            </li>
+                          ))}
+                          {ligadas.length > 4 && (
+                            <li className="text-xs text-muted-foreground/80 px-1.5">
+                              e mais {ligadas.length - 4}…
+                            </li>
+                          )}
+                        </ul>
+                      )}
+
+                      <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            novaEntregaParaMeta(m);
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md px-2 py-1 transition-all cursor-pointer font-medium"
+                        >
+                          <Plus size={13} className="text-primary" />
+                          <span>Adicionar entrega</span>
+                        </button>
+                      </div>
+                    </div>
                   </Cartao>
                 ))}
               </div>
@@ -629,39 +657,53 @@ const novaEntregaParaMeta = (meta: Meta) => {
           )}
 
           {/* -------------------------------------------------- entregas */}
-          {entregas.length > 0 && (
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-medium text-muted-foreground">
-                    Tudo que você entregou
-                  </h2>
-                  <button
-                    onClick={novaEntrega}
-                    className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-all cursor-pointer"
-                    title="Adicionar Nova Entrega"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={alternarEsconderEntregas}
-                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
-                >
-                  {esconderEntregas ? (
-                    <>
-                      <ChevronDown size={14} /> Mostrar ({entregas.length})
-                    </>
-                  ) : (
-                    <>
-                      <ChevronUp size={14} /> Ocultar
-                    </>
+          <section className="space-y-3">
+            <CabecalhoSecao
+              titulo="Tudo que você entregou"
+              contador={entregas.length}
+              acoes={
+                <div className="flex items-center gap-1.5">
+                  {entregas.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={alternarEsconderEntregas}
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent/60 transition-colors cursor-pointer"
+                    >
+                      {esconderEntregas ? (
+                        <>
+                          <ChevronDown size={14} /> Mostrar ({entregas.length})
+                        </>
+                      ) : (
+                        <>
+                          <ChevronUp size={14} /> Ocultar
+                        </>
+                      )}
+                    </button>
                   )}
-                </button>
+                  <Botao onClick={novaEntrega} variante="neutro" className="h-7 text-xs px-2.5">
+                    <Plus size={13} /> Nova Entrega
+                  </Botao>
+                </div>
+              }
+            />
+
+            {entregas.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border/70 p-6 text-center bg-card/30 flex flex-col items-center justify-center gap-2">
+                <div className="p-2.5 rounded-full bg-primary/10 text-primary">
+                  <Package size={20} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Nenhuma entrega registrada ainda</p>
+                  <p className="text-xs text-muted-foreground max-w-sm mt-0.5">
+                    Registre projetos finalizados, conquistas ou marcos da sua carreira para acompanhar seu progresso no PDI.
+                  </p>
+                </div>
+                <Botao onClick={novaEntrega} variante="neutro" className="mt-1 text-xs h-8 px-3">
+                  <Plus size={13} /> Registrar primeira entrega
+                </Botao>
               </div>
-              
-              {!esconderEntregas && (
+            ) : (
+              !esconderEntregas && (
                 <div className="grid gap-2">
                   {[...entregas]
                     .sort((a, b) => b.data.localeCompare(a.data))
@@ -719,9 +761,9 @@ const novaEntregaParaMeta = (meta: Meta) => {
                       </Cartao>
                     ))}
                 </div>
-              )}
-            </section>
-          )}
+              )
+            )}
+          </section>
         </>
       )}
 
