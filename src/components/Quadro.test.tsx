@@ -3,6 +3,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Quadro } from "./Quadro";
 import type { Tarefa } from "@/lib/tarefas";
+import { CronometroProvider } from "./ContextoCronometro";
 
 afterEach(cleanup);
 
@@ -31,14 +32,16 @@ function montar(props?: Partial<React.ComponentProps<typeof Quadro>>) {
   const aoCronometrar = vi.fn();
   const aoMudarStatus = vi.fn();
   render(
-    <Quadro
-      tarefas={tarefas}
-      aoAbrir={aoAbrir}
-      aoCronometrar={aoCronometrar}
-      aoMudarStatus={aoMudarStatus}
-      gravandoCaminho={null}
-      {...props}
-    />,
+    <CronometroProvider>
+      <Quadro
+        tarefas={tarefas}
+        aoAbrir={aoAbrir}
+        aoCronometrar={aoCronometrar}
+        aoMudarStatus={aoMudarStatus}
+        gravandoCaminho={null}
+        {...props}
+      />
+    </CronometroProvider>,
   );
   return { aoAbrir, aoCronometrar, aoMudarStatus };
 }
@@ -102,7 +105,7 @@ describe("Quadro", () => {
       ],
     });
     expect(screen.getByText(/atrasada/)).toBeTruthy();
-    expect(screen.getByText("🍅 25min")).toBeTruthy();
+    expect(screen.getByText("25min")).toBeTruthy();
     expect(screen.getByText("1/2 passos")).toBeTruthy();
     expect(screen.getByText("#cliente")).toBeTruthy();
   });

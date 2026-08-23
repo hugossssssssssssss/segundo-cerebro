@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Timer, GripVertical } from "lucide-react";
+import { Timer, GripVertical, Pause } from "lucide-react";
 import {
   urgencia,
   textoPrazo,
@@ -64,10 +64,13 @@ const COR_COLUNA: Record<Status, string> = {
   feito: "bg-[var(--success)]",
 };
 
+import { PrismasFoco } from "@/components/PrismasFoco";
+
 function ConteudoDoCartao({ t }: { t: Tarefa }) {
   const u = urgencia(t);
   const min = minutosRegistrados(t.corpo);
   const passos = progressoSubtarefas(t.corpo);
+  const focosConcluidos = Math.floor(min / 25);
 
   return (
     <>
@@ -79,10 +82,26 @@ function ConteudoDoCartao({ t }: { t: Tarefa }) {
       >
         {t.titulo}
       </p>
+
+      {/* Prismas de Foco do Hugo */}
+      {t.estimativa && t.estimativa > 0 ? (
+        <PrismasFoco
+          estimativa={t.estimativa}
+          concluido={focosConcluidos}
+          className="mt-1.5"
+          tamanho={13}
+        />
+      ) : null}
+
       {(u !== "nenhuma" || min > 0 || passos.total > 0 || t.tags.length > 0) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {u !== "nenhuma" && <Selo tom={CORES_URGENCIA[u]}>{textoPrazo(t)}</Selo>}
-          {min > 0 && <Selo>🍅 {min}min</Selo>}
+          {min > 0 && (
+            <Selo className="flex items-center gap-1">
+              <Timer size={10} className="opacity-70" />
+              <span>{min}min</span>
+            </Selo>
+          )}
           {passos.total > 0 && (
             <Selo tom={passos.porcento === 100 ? "sucesso" : "neutro"}>
               {passos.feitas}/{passos.total} passos
@@ -96,6 +115,8 @@ function ConteudoDoCartao({ t }: { t: Tarefa }) {
     </>
   );
 }
+
+import { useCronometro } from "@/components/ContextoCronometro";
 
 function CartaoArrastavel({
   t,
@@ -111,18 +132,37 @@ function CartaoArrastavel({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: t.caminho });
 
+  const { tarefa: tarefaAtiva, rodando, pausar, retomar } = useCronometro();
+  const isAtivo = tarefaAtiva?.caminho === t.caminho;
+
+  const aoClicarCronometro = () => {
+    if (isAtivo) {
+      if (rodando) pausar();
+      else retomar();
+    } else {
+      aoCronometrar(t);
+    }
+  };
+
   return (
     <Cartao
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "flex items-start gap-1.5 p-3",
-        // some o original enquanto a cópia está na mão, senão parece que
-        // existem duas tarefas iguais
+        "flex items-start gap-1.5 p-3 relative overflow-hidden transition-all duration-300",
         isDragging && "opacity-40",
         gravando && "opacity-60",
+        isAtivo && "border-indigo-500/50 bg-indigo-500/5 shadow-md",
       )}
     >
+      {/* Sutil linha de indicação de foco ativo na lateral esquerda */}
+      {isAtivo && (
+        <span className={cn(
+          "absolute left-0 top-0 bottom-0 w-1 rounded-r bg-indigo-500",
+          rodando && "animate-pulse"
+        )} />
+      )}
+
       {/* A alça é só dela: o cartão inteiro arrastável impedia o toque de
           abrir a tarefa no celular, onde não existe "clicar sem arrastar". */}
       <button
@@ -144,13 +184,21 @@ function CartaoArrastavel({
 
       {t.status !== "feito" && (
         <Botao
-          variante="fantasma"
+          variante={isAtivo ? "neutro" : "fantasma"}
           tamanho="icone"
-          onClick={() => aoCronometrar(t)}
+          onClick={aoClicarCronometro}
           onPointerDown={(e) => e.stopPropagation()}
-          title="Iniciar pomodoro"
+          title={isAtivo ? (rodando ? "Pausar pomodoro" : "Retomar pomodoro") : "Iniciar pomodoro"}
+          className={cn(
+            "transition-colors shrink-0",
+            isAtivo && (rodando ? "text-indigo-500 bg-indigo-500/10 hover:bg-indigo-500/20" : "text-muted-foreground")
+          )}
         >
-          <Timer size={16} />
+          {isAtivo && rodando ? (
+            <Pause size={14} className="animate-pulse" />
+          ) : (
+            <Timer size={14} />
+          )}
         </Botao>
       )}
     </Cartao>

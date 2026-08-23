@@ -1,6 +1,6 @@
 # Arquitetura do Klaus
 
-> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-21.**
+> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-23.**
 > Não edite este arquivo à mão — ele é reescrito a cada `npm run build`.
 > Para mudar o que está aqui, mude `src/lib/tipos.ts` e `src/lib/entidades.ts`.
 
@@ -62,6 +62,7 @@ Uma tarefa em `tarefas/`.
 | `status` | `StatusTarefa` | sim | — |
 | `prazo` | `string` | não | — |
 | `tags` | `string[]` | sim | — |
+| `estimativa` | `number` | não | — |
 
 ### Meta
 

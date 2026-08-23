@@ -1,31 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Play, Pause, RotateCcw, X, Settings } from "lucide-react";
 import { Botao, Cartao } from "@/components/ui";
-
-/**
- * Pomodoro com configurações personalizáveis de tempo de Foco e Descanso.
- * Persiste preferências no localStorage ("pomodoro-config").
- */
-
-interface ConfigPomodoro {
-  tempoFoco: number; // minutos
-  tempoPausa: number; // minutos
-}
-
-function carregarConfigPomodoro(): ConfigPomodoro {
-  try {
-    const salvo = localStorage.getItem("pomodoro-config");
-    if (salvo) {
-      const parsed = JSON.parse(salvo);
-      if (typeof parsed.tempoFoco === "number" && typeof parsed.tempoPausa === "number") {
-        return parsed;
-      }
-    }
-  } catch {
-    /* fallback */
-  }
-  return { tempoFoco: 25, tempoPausa: 5 };
-}
+import { useCronometro } from "@/components/ContextoCronometro";
+import { PrismasFoco } from "@/components/PrismasFoco";
+import { minutosRegistrados } from "@/lib/tarefas";
 
 function formatar(segundos: number): string {
   const m = Math.floor(Math.max(0, segundos) / 60);
@@ -33,178 +11,157 @@ function formatar(segundos: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export function Pomodoro({
-  tarefa,
-  aoConcluirCiclo,
-  aoFechar,
-}: {
-  tarefa: string;
-  /** Chamado quando um ciclo de foco termina, com os minutos trabalhados */
-  aoConcluirCiclo: (minutos: number) => void;
-  aoFechar: () => void;
-}) {
-  const [config, setConfig] = useState<ConfigPomodoro>(carregarConfigPomodoro);
+export function Pomodoro() {
+  const {
+    tarefa,
+    rodando,
+    modo,
+    restante,
+    total,
+    config,
+    pausar,
+    retomar,
+    reiniciar,
+    parar,
+    salvarConfig,
+  } = useCronometro();
+
   const [abertoConfig, setAbertoConfig] = useState(false);
-  const [modo, setModo] = useState<"foco" | "pausa">("foco");
-  const [rodando, setRodando] = useState(false);
+  const [tempoFocoTemp, setTempoFocoTemp] = useState(config.tempoFoco);
+  const [tempoPausaTemp, setTempoPausaTemp] = useState(config.tempoPausa);
 
-  const focoSegundos = (config.tempoFoco || 25) * 60;
-  const pausaSegundos = (config.tempoPausa || 5) * 60;
-
-  const [restante, setRestante] = useState(focoSegundos);
-
-  // Momento em que o ciclo atual deve acabar (ms). Fonte da verdade do timer.
-  const fimEm = useRef<number | null>(null);
-  const jaAvisou = useRef(false);
-
-  const total = modo === "foco" ? focoSegundos : pausaSegundos;
-
-  useEffect(() => {
-    if (!rodando) return;
-
-    const tick = () => {
-      if (fimEm.current === null) return;
-      const falta = Math.round((fimEm.current - Date.now()) / 1000);
-      setRestante(falta);
-
-      if (falta <= 0 && !jaAvisou.current) {
-        jaAvisou.current = true;
-        setRodando(false);
-
-        if (modo === "foco") {
-          aoConcluirCiclo(config.tempoFoco);
-          setModo("pausa");
-          setRestante(pausaSegundos);
-        } else {
-          setModo("foco");
-          setRestante(focoSegundos);
-        }
-
-        try {
-          new Audio(
-            "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=",
-          ).play();
-        } catch {
-          /* sem som, tudo bem */
-        }
-      }
-    };
-
-    tick();
-    const id = setInterval(tick, 250);
-    return () => clearInterval(id);
-  }, [rodando, modo, config.tempoFoco, config.tempoPausa, aoConcluirCiclo, focoSegundos, pausaSegundos]);
-
-  function alternar() {
-    if (rodando) {
-      setRodando(false);
-      fimEm.current = null;
-      return;
-    }
-    jaAvisou.current = false;
-    fimEm.current = Date.now() + restante * 1000;
-    setRodando(true);
-  }
-
-  function reiniciar() {
-    setRodando(false);
-    fimEm.current = null;
-    jaAvisou.current = false;
-    setRestante(total);
-  }
-
-  function salvarConfig(novos: ConfigPomodoro) {
-    setConfig(novos);
-    localStorage.setItem("pomodoro-config", JSON.stringify(novos));
-    if (!rodando) {
-      const nTotal = modo === "foco" ? novos.tempoFoco * 60 : novos.tempoPausa * 60;
-      setRestante(nTotal);
-    }
-  }
+  // Se não houver tarefa cronometrando, não renderiza o painel flutuante
+  if (!tarefa) return null;
 
   const progresso = ((total - Math.max(0, restante)) / total) * 100;
+  const ciclosConcluidos = Math.floor(minutosRegistrados(tarefa.corpo) / 25);
+
+  function aplicarConfig() {
+    salvarConfig({
+      tempoFoco: Math.max(1, tempoFocoTemp),
+      tempoPausa: Math.max(1, tempoPausaTemp),
+    });
+    setAbertoConfig(false);
+  }
 
   return (
-    <Cartao className="fixed bottom-20 sm:bottom-6 right-4 left-4 sm:left-auto sm:w-80 z-50 p-4 shadow-xl border border-border/80 bg-card rounded-2xl animate-in slide-in-from-bottom-3 duration-200">
+    <Cartao className="fixed bottom-20 sm:bottom-6 right-4 left-4 sm:left-auto sm:w-80 z-50 p-4 shadow-xl border border-border/80 bg-card/95 backdrop-blur rounded-2xl animate-in slide-in-from-bottom-3 duration-200">
+      {/* Cabeçalho */}
       <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className={`h-2 w-2 rounded-full ${modo === "foco" ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              {modo === "foco" ? "Foco Pomodoro" : "Descanso / Pausa"}
+            <span className={`h-2 w-2 rounded-full ${modo === "foco" ? "bg-indigo-500 animate-pulse" : "bg-emerald-500"}`} />
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              {modo === "foco" ? "Foco Ativo" : "Descanso / Pausa"}
             </p>
           </div>
-          <p className="truncate text-xs font-medium text-foreground">{tarefa}</p>
+          <p className="truncate text-xs font-semibold text-foreground" title={tarefa.titulo}>
+            {tarefa.titulo}
+          </p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <button
-            onClick={() => setAbertoConfig((v) => !v)}
-            className={`rounded-lg p-1.5 transition-colors ${abertoConfig ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-accent"}`}
-            title="Ajustes de tempo do Pomodoro"
+            onClick={() => {
+              setTempoFocoTemp(config.tempoFoco);
+              setTempoPausaTemp(config.tempoPausa);
+              setAbertoConfig((v) => !v);
+            }}
+            className={`rounded-lg p-1.5 transition-colors cursor-pointer ${abertoConfig ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-accent"}`}
+            title="Ajustes de tempo"
           >
             <Settings size={15} />
           </button>
           <button
-            onClick={aoFechar}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-            title="Fechar timer"
+            onClick={parar}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors cursor-pointer"
+            title="Parar foco atual"
           >
             <X size={15} />
           </button>
         </div>
       </div>
 
+      {/* Ajustes de Configuração */}
       {abertoConfig ? (
         <div className="mt-3 space-y-3 bg-secondary/30 p-3 rounded-xl border border-border/60">
-          <p className="text-xs font-semibold text-foreground">Configurações de Tempo (minutos)</p>
+          <p className="text-xs font-semibold text-foreground">Ajustes de Tempo (minutos)</p>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[10px] text-muted-foreground block mb-1 font-medium">Tempo Foco (min)</label>
+              <label className="text-[9px] text-muted-foreground block mb-1 font-medium">Tempo Foco</label>
               <input
                 type="number"
                 min={1}
                 max={120}
-                value={config.tempoFoco}
-                onChange={(e) => salvarConfig({ ...config, tempoFoco: Math.max(1, Number(e.target.value)) })}
-                className="w-full h-8 px-2 rounded-lg border border-input bg-card text-xs font-medium"
+                value={tempoFocoTemp}
+                onChange={(e) => setTempoFocoTemp(Math.max(1, Number(e.target.value)))}
+                className="w-full h-8 px-2 rounded-lg border border-input bg-card text-xs font-medium focus:ring-1 focus:ring-primary focus:outline-none"
               />
             </div>
             <div>
-              <label className="text-[10px] text-muted-foreground block mb-1 font-medium">Descanso (min)</label>
+              <label className="text-[9px] text-muted-foreground block mb-1 font-medium">Pausa</label>
               <input
                 type="number"
                 min={1}
                 max={60}
-                value={config.tempoPausa}
-                onChange={(e) => salvarConfig({ ...config, tempoPausa: Math.max(1, Number(e.target.value)) })}
-                className="w-full h-8 px-2 rounded-lg border border-input bg-card text-xs font-medium"
+                value={tempoPausaTemp}
+                onChange={(e) => setTempoPausaTemp(Math.max(1, Number(e.target.value)))}
+                className="w-full h-8 px-2 rounded-lg border border-input bg-card text-xs font-medium focus:ring-1 focus:ring-primary focus:outline-none"
               />
             </div>
           </div>
-          <Botao tamanho="pequeno" variante="neutro" onClick={() => setAbertoConfig(false)} className="w-full text-xs">
-            Pronto
+          <Botao tamanho="pequeno" variante="neutro" onClick={aplicarConfig} className="w-full text-xs">
+            Salvar Ajustes
           </Botao>
         </div>
       ) : (
         <>
-          <p className="mt-3 text-center text-4xl font-bold tracking-tight tabular-nums">
+          {/* Cronômetro */}
+          <p className="mt-3 text-center text-4xl font-bold tracking-tight tabular-nums text-foreground select-none">
             {formatar(restante)}
           </p>
 
+          {/* Prismas de Concentração */}
+          {tarefa.estimativa && tarefa.estimativa > 0 ? (
+            <div className="mt-2 flex justify-center">
+              <PrismasFoco
+                estimativa={tarefa.estimativa}
+                concluido={ciclosConcluidos}
+                rodando={rodando && modo === "foco"}
+                tamanho={14}
+              />
+            </div>
+          ) : null}
+
+          {/* Barra de Progresso */}
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
             <div
-              className={`h-full rounded-full transition-[width] duration-300 ${modo === "foco" ? "bg-primary" : "bg-emerald-500"}`}
+              className={`h-full rounded-full transition-[width] duration-300 ${modo === "foco" ? "bg-indigo-500" : "bg-emerald-500"}`}
               style={{ width: `${progresso}%` }}
             />
           </div>
 
+          {/* Controles de Play / Pause */}
           <div className="mt-4 flex gap-2">
-            <Botao tamanho="pequeno" onClick={alternar} className="flex-1 font-semibold text-xs">
-              {rodando ? <Pause size={15} /> : <Play size={15} />}
-              {rodando ? "Pausar" : "Iniciar Foco"}
+            <Botao
+              tamanho="pequeno"
+              onClick={rodando ? pausar : retomar}
+              className={`flex-1 font-semibold text-xs transition-all ${
+                rodando 
+                  ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" 
+                  : "bg-indigo-600 text-white hover:bg-indigo-700"
+              }`}
+            >
+              {rodando ? <Pause size={14} /> : <Play size={14} />}
+              {rodando ? "Pausar" : modo === "foco" ? "Iniciar Foco" : "Iniciar Descanso"}
             </Botao>
-            <Botao variante="neutro" tamanho="pequeno" onClick={reiniciar} title="Reiniciar ciclo">
-              <RotateCcw size={15} />
+            <Botao 
+              variante="neutro" 
+              tamanho="pequeno" 
+              onClick={reiniciar} 
+              title="Reiniciar ciclo"
+              className="hover:bg-accent transition-colors"
+            >
+              <RotateCcw size={14} />
             </Botao>
           </div>
         </>

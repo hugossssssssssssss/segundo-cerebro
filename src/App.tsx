@@ -36,6 +36,8 @@ import { sincronizarFilaOffline as syncOffline } from "@/lib/offlineQueue";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
 import { ConsoleDesenvolvedor } from "@/components/ConsoleDesenvolvedor";
 import { inicializarLogger } from "@/lib/logger";
+import { CronometroProvider } from "@/components/ContextoCronometro";
+import { Pomodoro } from "@/components/Pomodoro";
 
 inicializarLogger();
 
@@ -351,6 +353,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
           setTextoCompartilhado("");
         }}
       />
+      <Pomodoro />
     </div>
   );
 }
@@ -374,32 +377,34 @@ function AppInterno() {
   }
 
   return (
-    <Estrutura>
-      <Suspense fallback={<Carregando />}>
-        <Routes>
-          <Route path="/" element={<Navigate to="/home" replace />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/inbox" element={<Inbox />} />
-          <Route path="/tarefas" element={<Tarefas />} />
-          <Route path="/notas" element={<Notas />} />
-          <Route path="/referencias" element={<Referencias />} />
-          <Route path="/lousas" element={<Lousas />} />
-          <Route path="/grafo" element={<GrafoNeural />} />
-          <Route path="/pdi" element={<PDI />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/pdf" element={<FerramentasPDF />} />
-          <Route path="/conversor" element={<Conversor />} />
-          <Route path="/livros" element={<PesquisaLivros />} />
-          <Route path="/transcritor" element={<Transcritor />} />
-          <Route path="/testador" element={<TestadorHardware />} />
-          <Route path="/processos" element={<Processos />} />
-          <Route path="/contatos" element={<Contatos />} />
-          <Route path="/noticias" element={<Noticias />} />
-          <Route path="/config" element={<Configuracoes />} />
-          <Route path="*" element={<Navigate to="/home" replace />} />
-        </Routes>
-      </Suspense>
-    </Estrutura>
+    <CronometroProvider>
+      <Estrutura>
+        <Suspense fallback={<Carregando />}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route path="/home" element={<Home />} />
+            <Route path="/inbox" element={<Inbox />} />
+            <Route path="/tarefas" element={<Tarefas />} />
+            <Route path="/notas" element={<Notas />} />
+            <Route path="/referencias" element={<Referencias />} />
+            <Route path="/lousas" element={<Lousas />} />
+            <Route path="/grafo" element={<GrafoNeural />} />
+            <Route path="/pdi" element={<PDI />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/pdf" element={<FerramentasPDF />} />
+            <Route path="/conversor" element={<Conversor />} />
+            <Route path="/livros" element={<PesquisaLivros />} />
+            <Route path="/transcritor" element={<Transcritor />} />
+            <Route path="/testador" element={<TestadorHardware />} />
+            <Route path="/processos" element={<Processos />} />
+            <Route path="/contatos" element={<Contatos />} />
+            <Route path="/noticias" element={<Noticias />} />
+            <Route path="/config" element={<Configuracoes />} />
+            <Route path="*" element={<Navigate to="/home" replace />} />
+          </Routes>
+        </Suspense>
+      </Estrutura>
+    </CronometroProvider>
   );
 }
 

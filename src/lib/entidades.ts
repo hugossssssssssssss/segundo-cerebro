@@ -110,6 +110,7 @@ export function comoTarefa(
     status: statusTarefaValido(d.status),
     prazo: typeof d.prazo === "string" ? d.prazo : undefined,
     tags: comoLista(d.tags),
+    estimativa: typeof d.estimativa === "number" ? d.estimativa : undefined,
     corpo: doc.corpo,
   };
 }
@@ -124,6 +125,7 @@ export function tarefaParaArquivo(t: Tarefa): { dados: Frontmatter; corpo: strin
       status: t.status,
       prazo:  t.prazo,
       tags:   t.tags.length ? t.tags : undefined,
+      estimativa: t.estimativa,
       criado,
       atualizado: agora,
     }),

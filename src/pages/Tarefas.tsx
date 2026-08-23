@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -10,24 +10,23 @@ import {
 } from "lucide-react";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { ler } from "@/lib/github";
 import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
 import { comoTarefa, tarefaParaArquivo } from "@/lib/entidades";
 import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
 import {
-  lerMarkdown,
   escreverMarkdown,
   tituloProvavel,
   nomeLivre,
 } from "@/lib/markdown";
 import {
-  registrarCiclo,
   type Tarefa,
   type Status,
 } from "@/lib/tarefas";
-import { Pomodoro } from "@/components/Pomodoro";
+import { useCronometro } from "@/components/ContextoCronometro";
+import { obterTodosModelos } from "@/lib/templates";
+import { Timer } from "lucide-react";
 import { Calendario } from "@/components/Calendario";
 import { Quadro } from "@/components/Quadro";
 import {
@@ -65,7 +64,8 @@ export default function Tarefas() {
   const [busca, setBusca] = useState("");
   const [editando, setEditando] = useState<Tarefa | null>(null);
   const [original, setOriginal] = useState<Tarefa | null>(null);
-  const [cronometrando, setCronometrando] = useState<Tarefa | null>(null);
+  const { iniciar } = useCronometro();
+  const modelosTarefa = useMemo(() => obterTodosModelos().filter((m) => m.categoria === "tarefa"), []);
   const [tagSelecionada, setTagSelecionada] = useState<string | null>(null);
   const [visao, setVisao] = useState<"quadro" | "calendario">(() => {
     const salvo = localStorage.getItem("tarefa-visao");
@@ -132,7 +132,13 @@ export default function Tarefas() {
   useEffect(() => {
     if (modoVisao === "flutuante" && editando) {
       const tarefaOriginal = { ...editando };
-      const dados = { status: tarefaOriginal.status, prazo: tarefaOriginal.prazo, tags: tarefaOriginal.tags, ...tarefaOriginal.bruto };
+      const dados = {
+        status: tarefaOriginal.status,
+        prazo: tarefaOriginal.prazo,
+        tags: tarefaOriginal.tags,
+        estimativa: tarefaOriginal.estimativa,
+        ...tarefaOriginal.bruto
+      };
       abrirFlutuante({
         id: tarefaOriginal.caminho,
         rotuloTipo: tarefaOriginal.caminho ? "Tarefa" : "Nova tarefa",
@@ -143,6 +149,7 @@ export default function Tarefas() {
           status: { icone: <ListTodo className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "status" },
           prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
           tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
+          estimativa: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
         },
         caminho: tarefaOriginal.caminho,
         sha: tarefaOriginal.sha,
@@ -161,6 +168,9 @@ export default function Tarefas() {
             status: (itemFlutuanteAtual.dadosProps.status as Status) || "a-fazer",
             prazo: itemFlutuanteAtual.dadosProps.prazo,
             tags: itemFlutuanteAtual.dadosProps.tags || [],
+            estimativa: typeof itemFlutuanteAtual.dadosProps.estimativa === "number"
+              ? itemFlutuanteAtual.dadosProps.estimativa
+              : (itemFlutuanteAtual.dadosProps.estimativa ? Number(itemFlutuanteAtual.dadosProps.estimativa) : undefined),
             corpo: itemFlutuanteAtual.corpo,
           };
           await gravarTarefa(tarefaAtualizada);
@@ -238,6 +248,22 @@ export default function Tarefas() {
     setOriginal(vazia);
   }
 
+  function criarComModelo(modeloId: string) {
+    const m = modelosTarefa.find((x) => x.id === modeloId);
+    if (!m) return;
+    const nova: Tarefa = {
+      bruto: { ...m.frontmatter },
+      caminho: "",
+      sha: "",
+      titulo: m.titulo,
+      status: (m.frontmatter.status as Status) || "a-fazer",
+      tags: m.frontmatter.tags || [],
+      corpo: m.corpoPadrao,
+    };
+    setEditando(nova);
+    setOriginal(nova);
+  }
+
   async function salvar(alvo?: Tarefa) {
     const t = alvo || editando;
     if (!t) return;
@@ -287,23 +313,7 @@ export default function Tarefas() {
     }
   }
 
-  const registrarTempo = useCallback(
-    async (minutos: number) => {
-      if (!cronometrando) return;
-      try {
-        const { texto, sha } = await ler(cfg, cronometrando.caminho);
-        const doc = lerMarkdown(texto);
-        const atual = comoTarefa(doc, cronometrando.caminho, sha, cronometrando.titulo);
-        const atualizado = { ...atual, corpo: registrarCiclo(doc.corpo, minutos) };
-        const salva = await gravarTarefa(atualizado, `+${minutos}min em ${cronometrando.titulo}`);
-        setCronometrando(salva);
-        recarregar();
-      } catch (e) {
-        setErroLocal(e instanceof Error ? e.message : String(e));
-      }
-    },
-    [cronometrando, cfg.repoOwner, cfg.repoName, cfg.githubToken],
-  );
+  // registrarTempo removido em favor da gestão global do cronômetro
 
   // ── Sem configuração ────────────────────────────────────────────────────────
   if (!pronto) {
@@ -343,10 +353,27 @@ export default function Tarefas() {
         corIcone="bg-blue-500/10 text-blue-600 dark:text-blue-400"
         badge={undefined}
         acoes={
-          <Botao onClick={abrirNova}>
-            <Plus size={16} />
-            Nova Tarefa
-          </Botao>
+          <div className="flex items-center gap-2">
+            {modelosTarefa.length > 0 && (
+              <select
+                onChange={(e) => {
+                  criarComModelo(e.target.value);
+                  e.target.value = "";
+                }}
+                defaultValue=""
+                className="h-9 px-3 rounded-lg border border-input bg-card text-xs font-semibold hover:bg-accent hover:text-accent-foreground cursor-pointer focus:ring-1 focus:ring-primary focus:outline-none"
+              >
+                <option value="" disabled>Usar Modelo...</option>
+                {modelosTarefa.map((m) => (
+                  <option key={m.id} value={m.id}>{m.titulo}</option>
+                ))}
+              </select>
+            )}
+            <Botao onClick={abrirNova}>
+              <Plus size={16} />
+              Nova Tarefa
+            </Botao>
+          </div>
         }
       />
 
@@ -412,7 +439,7 @@ export default function Tarefas() {
         <Quadro
           tarefas={tarefasExibidas}
           aoAbrir={abrir}
-          aoCronometrar={setCronometrando}
+          aoCronometrar={iniciar}
           aoMudarStatus={mudarStatus}
           gravandoCaminho={gravandoCaminho}
         />
@@ -436,6 +463,7 @@ export default function Tarefas() {
             status: editando.status,
             prazo: editando.prazo,
             tags: editando.tags,
+            estimativa: editando.estimativa,
           }}
           onChangeProps={(nProps) => {
             setEditando({
@@ -444,12 +472,16 @@ export default function Tarefas() {
               status: (nProps.status as Status) || editando.status,
               prazo: nProps.prazo as string | undefined,
               tags: Array.isArray(nProps.tags) ? nProps.tags as string[] : editando.tags,
+              estimativa: typeof nProps.estimativa === "number"
+                ? nProps.estimativa
+                : (nProps.estimativa ? Number(nProps.estimativa) : undefined),
             });
           }}
           camposFixosProps={{
             status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
             prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
             tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" },
+            estimativa: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
           }}
           salvando={salvando}
           temMudancas={original !== null && JSON.stringify(editando) !== JSON.stringify(original)}
@@ -462,13 +494,7 @@ export default function Tarefas() {
         />
       )}
 
-      {cronometrando && (
-        <Pomodoro
-          tarefa={cronometrando.titulo}
-          aoConcluirCiclo={registrarTempo}
-          aoFechar={() => setCronometrando(null)}
-        />
-      )}
+      {/* O temporizador Pomodoro é agora renderizado globalmente via App.tsx */}
     </div>
   );
 }
