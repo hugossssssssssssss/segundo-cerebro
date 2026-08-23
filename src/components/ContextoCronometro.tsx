@@ -18,6 +18,15 @@ import {
 import { toast } from "@/lib/toast";
 import { ModalConfirmacao } from "@/components/ui";
 
+export const LISTA_SONS_AMBIENTE = [
+  { id: "chuva", nome: "Chuva Forte", url: "https://cdn.jsdelivr.net/gh/rivea0/ambient-sounds-web-components/src/assets/heavy-rain/heavy-rain.mp3" },
+  { id: "fogueira", nome: "Fogueira", url: "https://cdn.jsdelivr.net/gh/rivea0/ambient-sounds-web-components/src/assets/fire/fire.mp3" },
+  { id: "cafeteria", nome: "Cafeteria", url: "https://cdn.jsdelivr.net/gh/rivea0/ambient-sounds-web-components/src/assets/coffee-shop/coffee-shop.mp3" },
+  { id: "vento", nome: "Vento do Vale", url: "https://cdn.jsdelivr.net/gh/rivea0/ambient-sounds-web-components/src/assets/wind/wind.mp3" },
+  { id: "ondas", nome: "Ondas do Mar", url: "https://cdn.jsdelivr.net/gh/rivea0/ambient-sounds-web-components/src/assets/waves/waves.mp3" },
+  { id: "passaros", nome: "Pássaros na Floresta", url: "https://cdn.jsdelivr.net/gh/rivea0/ambient-sounds-web-components/src/assets/birds/birds.mp3" },
+];
+
 interface ConfigPomodoro {
   tempoFoco: number; // minutos
   tempoPausa: number; // minutos
@@ -32,6 +41,8 @@ interface ContextoCronometroProps {
   config: ConfigPomodoro;
   metaDiaria: number;
   concluidosHoje: number;
+  somAmbiente: string | null;
+  setSomAmbiente: (som: string | null) => void;
   iniciar: (tarefa: Tarefa) => void;
   pausar: () => void;
   retomar: () => void;
@@ -66,6 +77,20 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
   // Metas diárias
   const [metaDiaria, setMetaDiaria] = useState(5);
   const [concluidosHoje, setConcluidosHoje] = useState(0);
+
+  // Som ambiente
+  const [somAmbiente, setSomAmbienteState] = useState<string | null>(() => {
+    return localStorage.getItem("klaus-som-ambiente") || null;
+  });
+
+  const setSomAmbiente = useCallback((novoSom: string | null) => {
+    setSomAmbienteState(novoSom);
+    if (novoSom) {
+      localStorage.setItem("klaus-som-ambiente", novoSom);
+    } else {
+      localStorage.removeItem("klaus-som-ambiente");
+    }
+  }, []);
 
   const fimEmRef = useRef<number | null>(null);
   const tarefaRef = useRef<Tarefa | null>(null);
@@ -425,6 +450,47 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
     }
   }, [restart, lidarComTermino]);
 
+  const audioAmbienteRef = useRef<HTMLAudioElement | null>(null);
+
+  // Controla a execução do som ambiente baseado no foco e timer rodando
+  useEffect(() => {
+    const deveTocar = somAmbiente && isRunning && modo === "foco";
+
+    if (deveTocar) {
+      const som = LISTA_SONS_AMBIENTE.find(s => s.id === somAmbiente);
+      if (som) {
+        if (!audioAmbienteRef.current) {
+          audioAmbienteRef.current = new Audio(som.url);
+          audioAmbienteRef.current.loop = true;
+          audioAmbienteRef.current.volume = 0.4;
+        } else if (audioAmbienteRef.current.src !== som.url) {
+          audioAmbienteRef.current.pause();
+          audioAmbienteRef.current = new Audio(som.url);
+          audioAmbienteRef.current.loop = true;
+          audioAmbienteRef.current.volume = 0.4;
+        }
+
+        audioAmbienteRef.current.play().catch(err => {
+          console.warn("Áudio não pôde ser reproduzido automaticamente devido a políticas do navegador:", err);
+        });
+      }
+    } else {
+      if (audioAmbienteRef.current) {
+        audioAmbienteRef.current.pause();
+      }
+    }
+  }, [somAmbiente, isRunning, modo]);
+
+  // Limpa o som ao desmontar
+  useEffect(() => {
+    return () => {
+      if (audioAmbienteRef.current) {
+        audioAmbienteRef.current.pause();
+        audioAmbienteRef.current = null;
+      }
+    };
+  }, []);
+
   return (
     <ContextoCronometro.Provider
       value={{
@@ -436,6 +502,8 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
         config,
         metaDiaria,
         concluidosHoje,
+        somAmbiente,
+        setSomAmbiente,
         iniciar,
         pausar,
         retomar,

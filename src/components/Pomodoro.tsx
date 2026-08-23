@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Play, Pause, RotateCcw, X, Settings } from "lucide-react";
+import { Play, Pause, RotateCcw, X, Settings, Headphones } from "lucide-react";
 import { Botao, Cartao } from "@/components/ui";
-import { useCronometro } from "@/components/ContextoCronometro";
+import { useCronometro, LISTA_SONS_AMBIENTE } from "@/components/ContextoCronometro";
 import { PrismasFoco } from "@/components/PrismasFoco";
 import { minutosRegistrados } from "@/lib/tarefas";
 
@@ -21,6 +21,8 @@ export function Pomodoro() {
     config,
     metaDiaria,
     concluidosHoje,
+    somAmbiente,
+    setSomAmbiente,
     pausar,
     retomar,
     reiniciar,
@@ -29,6 +31,7 @@ export function Pomodoro() {
   } = useCronometro();
 
   const [abertoConfig, setAbertoConfig] = useState(false);
+  const [abertoSom, setAbertoSom] = useState(false);
   const [tempoFocoTemp, setTempoFocoTemp] = useState(config.tempoFoco);
   const [tempoPausaTemp, setTempoPausaTemp] = useState(config.tempoPausa);
 
@@ -53,17 +56,28 @@ export function Pomodoro() {
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <span className={`h-2 w-2 rounded-full ${modo === "foco" ? "bg-indigo-500 animate-pulse" : "bg-emerald-500"}`} />
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider select-none">
               {modo === "foco" ? "Foco Ativo" : "Descanso / Pausa"}
             </p>
           </div>
-          <p className="truncate text-xs font-semibold text-foreground" title={tarefa.titulo}>
+          <p className="truncate text-xs font-semibold text-foreground select-none" title={tarefa.titulo}>
             {tarefa.titulo}
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => {
+              setAbertoConfig(false);
+              setAbertoSom((v) => !v);
+            }}
+            className={`rounded-lg p-1.5 transition-colors cursor-pointer ${abertoSom ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-accent"}`}
+            title="Sons ambiente para imersão"
+          >
+            <Headphones size={15} />
+          </button>
+          <button
+            onClick={() => {
+              setAbertoSom(false);
               setTempoFocoTemp(config.tempoFoco);
               setTempoPausaTemp(config.tempoPausa);
               setAbertoConfig((v) => !v);
@@ -115,6 +129,42 @@ export function Pomodoro() {
             Salvar Ajustes
           </Botao>
         </div>
+      ) : abertoSom ? (
+        // Menu de Som Ambiente
+        <div className="mt-3 space-y-3 bg-secondary/30 p-3 rounded-xl border border-border/60 animate-in fade-in duration-200">
+          <p className="text-xs font-semibold text-foreground flex items-center gap-1.5 select-none">
+            <Headphones size={13} className="text-indigo-500" />
+            Som de Fundo (Foco)
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setSomAmbiente(null)}
+              className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium border transition-colors cursor-pointer select-none ${
+                somAmbiente === null
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : "bg-card hover:bg-accent border-border text-muted-foreground"
+              }`}
+            >
+              Silêncio
+            </button>
+            {LISTA_SONS_AMBIENTE.map((som) => (
+              <button
+                key={som.id}
+                onClick={() => setSomAmbiente(som.id)}
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium border transition-colors cursor-pointer select-none ${
+                  somAmbiente === som.id
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "bg-card hover:bg-accent border-border text-muted-foreground"
+                }`}
+              >
+                {som.nome}
+              </button>
+            ))}
+          </div>
+          <Botao tamanho="pequeno" variante="neutro" onClick={() => setAbertoSom(false)} className="w-full text-xs">
+            Fechar
+          </Botao>
+        </div>
       ) : (
         <>
           {/* Cronômetro */}
@@ -151,7 +201,7 @@ export function Pomodoro() {
             <Botao
               tamanho="pequeno"
               onClick={rodando ? pausar : retomar}
-              className={`flex-1 font-semibold text-xs transition-all ${
+              className={`flex-1 font-semibold text-xs transition-all cursor-pointer ${
                 rodando 
                   ? "bg-secondary text-secondary-foreground hover:bg-secondary/80" 
                   : "bg-indigo-600 text-white hover:bg-indigo-700"
@@ -165,7 +215,7 @@ export function Pomodoro() {
               tamanho="pequeno" 
               onClick={reiniciar} 
               title="Reiniciar ciclo"
-              className="hover:bg-accent transition-colors"
+              className="hover:bg-accent transition-colors cursor-pointer"
             >
               <RotateCcw size={14} />
             </Botao>
