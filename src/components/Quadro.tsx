@@ -85,7 +85,7 @@ function ConteudoDoCartao({ t }: { t: Tarefa }) {
 
       {/* Prismas de Foco do Hugo (5 slots fixos) */}
       <PrismasFoco
-        estimativa={t.estimativa || 0}
+        estimativa={t.Pomodoro || 0}
         concluido={focosConcluidos}
         fraturados={t.fraturados || 0}
         className="mt-1.5"

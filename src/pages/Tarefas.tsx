@@ -136,7 +136,7 @@ export default function Tarefas() {
         status: tarefaOriginal.status,
         prazo: tarefaOriginal.prazo,
         tags: tarefaOriginal.tags,
-        estimativa: tarefaOriginal.estimativa,
+        Pomodoro: tarefaOriginal.Pomodoro,
         ...tarefaOriginal.bruto
       };
       abrirFlutuante({
@@ -149,7 +149,7 @@ export default function Tarefas() {
           status: { icone: <ListTodo className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "status" },
           prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
           tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
-          estimativa: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
+          Pomodoro: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
         },
         caminho: tarefaOriginal.caminho,
         sha: tarefaOriginal.sha,
@@ -168,9 +168,9 @@ export default function Tarefas() {
             status: (itemFlutuanteAtual.dadosProps.status as Status) || "a-fazer",
             prazo: itemFlutuanteAtual.dadosProps.prazo,
             tags: itemFlutuanteAtual.dadosProps.tags || [],
-            estimativa: typeof itemFlutuanteAtual.dadosProps.estimativa === "number"
-              ? itemFlutuanteAtual.dadosProps.estimativa
-              : (itemFlutuanteAtual.dadosProps.estimativa ? Number(itemFlutuanteAtual.dadosProps.estimativa) : undefined),
+            Pomodoro: typeof itemFlutuanteAtual.dadosProps.Pomodoro === "number"
+              ? itemFlutuanteAtual.dadosProps.Pomodoro
+              : (itemFlutuanteAtual.dadosProps.Pomodoro ? Number(itemFlutuanteAtual.dadosProps.Pomodoro) : undefined),
             corpo: itemFlutuanteAtual.corpo,
           };
           await gravarTarefa(tarefaAtualizada);
@@ -463,7 +463,7 @@ export default function Tarefas() {
             status: editando.status,
             prazo: editando.prazo,
             tags: editando.tags,
-            estimativa: editando.estimativa,
+            Pomodoro: editando.Pomodoro,
           }}
           onChangeProps={(nProps) => {
             setEditando({
@@ -472,16 +472,16 @@ export default function Tarefas() {
               status: (nProps.status as Status) || editando.status,
               prazo: nProps.prazo as string | undefined,
               tags: Array.isArray(nProps.tags) ? nProps.tags as string[] : editando.tags,
-              estimativa: typeof nProps.estimativa === "number"
-                ? nProps.estimativa
-                : (nProps.estimativa ? Number(nProps.estimativa) : undefined),
+              Pomodoro: typeof nProps.Pomodoro === "number"
+                ? nProps.Pomodoro
+                : (nProps.Pomodoro ? Number(nProps.Pomodoro) : undefined),
             });
           }}
           camposFixosProps={{
             status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
             prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
             tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" },
-            estimativa: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
+            Pomodoro: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
           }}
           salvando={salvando}
           temMudancas={original !== null && JSON.stringify(editando) !== JSON.stringify(original)}

@@ -175,7 +175,7 @@ export function Pomodoro() {
           {/* Prismas de Concentração da Tarefa */}
           <div className="mt-2 flex justify-center">
             <PrismasFoco
-              estimativa={tarefa.estimativa || 0}
+              estimativa={tarefa.Pomodoro || 0}
               concluido={ciclosConcluidos}
               fraturados={tarefa.fraturados || 0}
               rodando={rodando && modo === "foco"}

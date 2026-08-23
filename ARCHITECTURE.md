@@ -62,7 +62,7 @@ Uma tarefa em `tarefas/`.
 | `status` | `StatusTarefa` | sim | — |
 | `prazo` | `string` | não | — |
 | `tags` | `string[]` | sim | — |
-| `estimativa` | `number` | não | — |
+| `Pomodoro` | `number` | não | — |
 | `fraturados` | `number` | não | — |
 
 ### Meta
@@ -201,6 +201,7 @@ direto · `não usa` = não toca no repositório de dados.
 | `src/pages/PesquisaLivros.tsx` | não usa | não usa |
 | `src/pages/Processos.tsx` | na mão | não usa |
 | `src/pages/Referencias.tsx` | hook | hook |
+| `src/pages/Sons.tsx` | não usa | não usa |
 | `src/pages/Tarefas.tsx` | hook | hook |
 | `src/pages/TestadorHardware.tsx` | não usa | não usa |
 | `src/pages/Transcritor.tsx` | na mão | hook |

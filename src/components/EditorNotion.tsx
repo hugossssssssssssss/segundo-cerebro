@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
 import { SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
+import * as locales from "@blocknote/core/locales";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { lerConfig } from "@/lib/settings";
@@ -9,6 +10,74 @@ import { montarIndice, alvosUnicos, filtrarAlvos, type Alvo } from "@/lib/links"
 import { restaurarWikilinks } from "@/lib/markdown";
 import { formatarTagLembrete } from "@/lib/inbox";
 import { ModalLembrete } from "./ModalLembrete";
+
+// Dicionário customizado com atalhos de Markdown em português para as legendas
+const dicionarioCustomizado = locales.pt ? {
+  ...locales.pt,
+  slash_menu: {
+    ...locales.pt.slash_menu,
+    heading: {
+      title: "Título 1",
+      subtext: "# + Espaço para título grande",
+      aliases: ["h1", "titulo1", "#"],
+      group: "Títulos"
+    },
+    heading_2: {
+      title: "Título 2",
+      subtext: "## + Espaço para título médio",
+      aliases: ["h2", "titulo2", "##"],
+      group: "Títulos"
+    },
+    heading_3: {
+      title: "Título 3",
+      subtext: "### + Espaço para título pequeno",
+      aliases: ["h3", "titulo3", "###"],
+      group: "Títulos"
+    },
+    paragraph: {
+      title: "Parágrafo",
+      subtext: "Texto normal",
+      aliases: ["p", "texto", "normal"],
+      group: "Básicos"
+    },
+    bullet_list: {
+      title: "Lista de marcadores",
+      subtext: "- ou * + Espaço para lista simples",
+      aliases: ["lista", "marcadores", "-"],
+      group: "Básicos"
+    },
+    numbered_list: {
+      title: "Lista numerada",
+      subtext: "1. + Espaço para lista sequencial",
+      aliases: ["lista", "numerada", "1."],
+      group: "Básicos"
+    },
+    check_list: {
+      title: "Lista de tarefas",
+      subtext: "[] + Espaço para caixas de seleção",
+      aliases: ["tarefa", "checklist", "[]"],
+      group: "Básicos"
+    },
+    blockquote: {
+      title: "Citação",
+      subtext: "> + Espaço para destacar texto",
+      aliases: ["cita", "citacao", ">"],
+      group: "Básicos"
+    },
+    code_block: {
+      title: "Bloco de código",
+      subtext: "``` + Espaço para código formatado",
+      aliases: ["codigo", "code", "```"],
+      group: "Básicos"
+    },
+    divider: {
+      title: "Linha divisória",
+      subtext: "--- para uma linha de separação",
+      aliases: ["separador", "hr", "---"],
+      group: "Básicos"
+    }
+  }
+} : undefined;
 
 /**
  * Auxiliar para converter URLs coladas do tipo ?abrir=caminho ou [[alvo]] em @ Nome do Item
@@ -78,7 +147,9 @@ export function EditorNotion({
     () => document.documentElement.classList.contains("dark"),
   );
 
-  const editor = useCreateBlockNote();
+  const editor = useCreateBlockNote({
+    dictionary: dicionarioCustomizado,
+  });
   const ultimoMd = useRef(markdown);
 
   const [alvos, setAlvos] = useState<Alvo[]>([]);

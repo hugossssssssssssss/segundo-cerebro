@@ -685,6 +685,7 @@ export function PropriedadesNotion({
                 mode="single"
                 selected={inicioObj}
                 className="w-full"
+                locale={ptBR}
                 onSelect={(d: Date | undefined) => {
                   const nInicio = d ? format(d, "yyyy-MM-dd") : "";
                   atualizar(chave, fimStr ? `${nInicio} → ${fimStr}` : nInicio);

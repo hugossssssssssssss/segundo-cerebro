@@ -43,6 +43,10 @@ interface ContextoCronometroProps {
   concluidosHoje: number;
   somAmbiente: string | null;
   setSomAmbiente: (som: string | null) => void;
+  somAmbienteTocando: boolean;
+  setSomAmbienteTocando: (tocando: boolean) => void;
+  volumeSomAmbiente: number;
+  setVolumeSomAmbiente: (vol: number) => void;
   iniciar: (tarefa: Tarefa) => void;
   pausar: () => void;
   retomar: () => void;
@@ -80,15 +84,36 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
 
   // Som ambiente
   const [somAmbiente, setSomAmbienteState] = useState<string | null>(() => {
-    return localStorage.getItem("klaus-som-ambiente") || null;
+    return localStorage.getItem("klaus-som-ambiente");
   });
+  const [somAmbienteTocando, setSomAmbienteTocandoState] = useState<boolean>(false);
+  const [volumeSomAmbiente, setVolumeSomAmbienteState] = useState<number>(() => {
+    const salvo = localStorage.getItem("klaus-volume-som");
+    return salvo ? Number(salvo) : 0.5;
+  });
+  const audioAmbienteRef = useRef<HTMLAudioElement | null>(null);
 
   const setSomAmbiente = useCallback((novoSom: string | null) => {
     setSomAmbienteState(novoSom);
     if (novoSom) {
       localStorage.setItem("klaus-som-ambiente", novoSom);
+      setSomAmbienteTocandoState(true); // Se selecionar, dá play
     } else {
       localStorage.removeItem("klaus-som-ambiente");
+      setSomAmbienteTocandoState(false);
+    }
+  }, []);
+
+  const setSomAmbienteTocando = useCallback((tocando: boolean) => {
+    setSomAmbienteTocandoState(tocando);
+  }, []);
+
+  const setVolumeSomAmbiente = useCallback((vol: number) => {
+    const v = Math.max(0, Math.min(1, vol));
+    setVolumeSomAmbienteState(v);
+    localStorage.setItem("klaus-volume-som", String(v));
+    if (audioAmbienteRef.current) {
+      audioAmbienteRef.current.volume = v;
     }
   }, []);
 
@@ -196,6 +221,8 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
         restart(new Date(Date.now() + tempoSegundos * 1000), false);
       }
 
+      setSomAmbienteTocandoState(false);
+ 
       // Alerta sonoro básico
       try {
         new Audio(
@@ -218,8 +245,8 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
     const segundosTotais = (isFoco ? configRef.current.tempoFoco : configRef.current.tempoPausa) * 60;
     const segundosPassados = segundosTotais - restante;
 
-    // Só grava interrupção se rodou por mais de 5 segundos de foco
-    if (isFoco && segundosPassados >= 5) {
+    // Só grava interrupção se rodou por mais de 60 segundos de foco
+    if (isFoco && segundosPassados >= 60) {
       try {
         const cfg = lerConfig();
         const acervo = await carregarRepo(cfg, { memoria: 30_000 });
@@ -270,7 +297,7 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
           sincronizarFilaOffline(cfg).catch(() => {});
         }
 
-        toast(`Sessão interrompida. Prisma quebrado para "${t.titulo}".`, { tipo: "erro" });
+        toast(`Prisma de foco interrompido para "${t.titulo}".`, { tipo: "info" });
       } catch (e) {
         console.error("Erro ao gravar interrupção:", e);
       }
@@ -279,6 +306,7 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
     setTarefa(null);
     setModo("foco");
     fimEmRef.current = null;
+    setSomAmbienteTocandoState(false);
     pause();
   }, [restante, pause]);
 
@@ -296,17 +324,20 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
     const tempoSegundos = config.tempoFoco * 60;
     fimEmRef.current = Date.now() + tempoSegundos * 1000;
     restart(new Date(Date.now() + tempoSegundos * 1000), true);
-  }, [config.tempoFoco, isRunning, restart]);
+    if (somAmbiente) setSomAmbienteTocandoState(true);
+  }, [config.tempoFoco, isRunning, restart, somAmbiente]);
 
   const pausar = useCallback(() => {
     fimEmRef.current = null;
+    setSomAmbienteTocandoState(false);
     pause();
   }, [pause]);
 
   const retomar = useCallback(() => {
     fimEmRef.current = Date.now() + restante * 1000;
     restart(new Date(Date.now() + restante * 1000), true);
-  }, [restante, restart]);
+    if (somAmbiente) setSomAmbienteTocandoState(true);
+  }, [restante, restart, somAmbiente]);
 
   const reiniciar = useCallback(() => {
     fimEmRef.current = isRunning ? Date.now() + total * 1000 : null;
@@ -450,11 +481,10 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
     }
   }, [restart, lidarComTermino]);
 
-  const audioAmbienteRef = useRef<HTMLAudioElement | null>(null);
 
-  // Controla a execução do som ambiente baseado no foco e timer rodando
+  // Controla a execução do som ambiente baseado no foco, play manual e volume
   useEffect(() => {
-    const deveTocar = somAmbiente && isRunning && modo === "foco";
+    const deveTocar = somAmbiente && somAmbienteTocando;
 
     if (deveTocar) {
       const som = LISTA_SONS_AMBIENTE.find(s => s.id === somAmbiente);
@@ -462,12 +492,14 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
         if (!audioAmbienteRef.current) {
           audioAmbienteRef.current = new Audio(som.url);
           audioAmbienteRef.current.loop = true;
-          audioAmbienteRef.current.volume = 0.4;
+          audioAmbienteRef.current.volume = volumeSomAmbiente;
         } else if (audioAmbienteRef.current.src !== som.url) {
           audioAmbienteRef.current.pause();
           audioAmbienteRef.current = new Audio(som.url);
           audioAmbienteRef.current.loop = true;
-          audioAmbienteRef.current.volume = 0.4;
+          audioAmbienteRef.current.volume = volumeSomAmbiente;
+        } else {
+          audioAmbienteRef.current.volume = volumeSomAmbiente;
         }
 
         audioAmbienteRef.current.play().catch(err => {
@@ -479,7 +511,7 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
         audioAmbienteRef.current.pause();
       }
     }
-  }, [somAmbiente, isRunning, modo]);
+  }, [somAmbiente, somAmbienteTocando, volumeSomAmbiente]);
 
   // Limpa o som ao desmontar
   useEffect(() => {
@@ -504,6 +536,10 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
         concluidosHoje,
         somAmbiente,
         setSomAmbiente,
+        somAmbienteTocando,
+        setSomAmbienteTocando,
+        volumeSomAmbiente,
+        setVolumeSomAmbiente,
         iniciar,
         pausar,
         retomar,

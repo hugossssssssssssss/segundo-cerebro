@@ -16,6 +16,11 @@ import {
   Plus,
   MoreHorizontal,
   Bell,
+  Headphones,
+  Music,
+  Play,
+  Pause,
+  VolumeX,
 } from "lucide-react";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
@@ -36,7 +41,7 @@ import { sincronizarFilaOffline as syncOffline } from "@/lib/offlineQueue";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
 import { ConsoleDesenvolvedor } from "@/components/ConsoleDesenvolvedor";
 import { inicializarLogger } from "@/lib/logger";
-import { CronometroProvider } from "@/components/ContextoCronometro";
+import { CronometroProvider, useCronometro, LISTA_SONS_AMBIENTE } from "@/components/ContextoCronometro";
 import { Pomodoro } from "@/components/Pomodoro";
 
 inicializarLogger();
@@ -64,6 +69,7 @@ const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 const BoasVindas = lazy(() => import("@/pages/BoasVindas"));
 const PesquisaLivros = lazy(() => import("@/pages/PesquisaLivros"));
 const TestadorHardware = lazy(() => import("@/pages/TestadorHardware"));
+const Sons = lazy(() => import("@/pages/Sons"));
 
 
 
@@ -80,11 +86,20 @@ function Estrutura({ children }: { children: React.ReactNode }) {
   const [capturando, setCapturando] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
   const [textoCompartilhado, setTextoCompartilhado] = useState("");
-
   const [colapsada, setColapsada] = useState(() => {
     const salvo = localStorage.getItem("sidebar-colapsada");
     return salvo ? salvo === "true" : false;
   });
+
+  const {
+    somAmbiente,
+    setSomAmbiente,
+    somAmbienteTocando,
+    setSomAmbienteTocando,
+    volumeSomAmbiente,
+    setVolumeSomAmbiente,
+  } = useCronometro();
+  const [somMenuAberto, setSomMenuAberto] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("sidebar-colapsada", String(colapsada));
@@ -145,6 +160,8 @@ function Estrutura({ children }: { children: React.ReactNode }) {
     });
     return () => limpar();
   }, [gavetaAberta]);
+
+
 
   // Sincronização automática de rascunhos offline ao reconectar à internet
   useEffect(() => {
@@ -249,7 +266,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
               </NavLink>
             </div>
 
-            {/* Lado Direito: Captura Rápida, Inbox e Busca */}
+            {/* Lado Direito: Captura Rápida, Caixa de Som, Inbox e Busca */}
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setCapturando(true)}
@@ -260,11 +277,116 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                 <Plus size={18} />
               </button>
 
+              {/* Botão de Som Ambiente no Header */}
+              {somAmbiente && (
+                <div className="relative">
+                  <button
+                    onClick={() => setSomMenuAberto(!somMenuAberto)}
+                    className={cn(
+                      "rounded-lg p-2 transition-colors relative flex items-center justify-center cursor-pointer",
+                      somAmbienteTocando 
+                        ? "bg-primary/10 text-primary" 
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    )}
+                    title="Configurações de som ambiente"
+                    aria-label="Controle de áudio"
+                  >
+                    <Headphones size={18} className={somAmbienteTocando ? "animate-pulse" : ""} />
+                    {somAmbienteTocando && (
+                      <span className="absolute bottom-1 right-1 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Menu suspenso de áudio */}
+                  {somMenuAberto && (
+                    <div className="absolute right-0 mt-2 w-64 rounded-xl border border-border bg-card/95 p-4 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+                      <div className="flex items-center justify-between border-b border-border/40 pb-2 mb-3">
+                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                          <Music size={13} className="text-primary" />
+                          Som de Fundo
+                        </span>
+                        <button
+                          onClick={() => setSomMenuAberto(false)}
+                          className="text-[10px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
+                        >
+                          Fechar
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {/* Seletor rápido de sons */}
+                        <div className="grid grid-cols-2 gap-1">
+                          {LISTA_SONS_AMBIENTE.map((s) => (
+                            <button
+                              key={s.id}
+                              onClick={() => {
+                                setSomAmbiente(s.id);
+                              }}
+                              className={cn(
+                                "text-[11px] px-2 py-1 rounded-md text-left truncate transition-colors cursor-pointer",
+                                somAmbiente === s.id
+                                  ? "bg-primary/15 text-primary font-semibold"
+                                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                              )}
+                              title={s.nome}
+                            >
+                              {s.nome}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Controles de Play/Pause/Volume */}
+                        <div className="flex items-center justify-between border-t border-border/40 pt-2.5 mt-1 gap-2">
+                          <button
+                            onClick={() => setSomAmbienteTocando(!somAmbienteTocando)}
+                            className="p-1.5 rounded-lg bg-secondary text-foreground hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
+                            title={somAmbienteTocando ? "Pausar som" : "Tocar som"}
+                          >
+                            {somAmbienteTocando ? <Pause size={14} /> : <Play size={14} />}
+                          </button>
+                          
+                          {/* Slider de volume */}
+                          <div className="flex-1 flex items-center gap-1.5">
+                            <input
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.1"
+                              value={volumeSomAmbiente}
+                              onChange={(e) => setVolumeSomAmbiente(Number(e.target.value))}
+                              className="w-full accent-primary h-1 rounded bg-secondary appearance-none cursor-pointer"
+                              title="Volume"
+                            />
+                            <span className="text-[10px] font-mono text-muted-foreground w-6 text-right select-none">
+                              {Math.round(volumeSomAmbiente * 100)}%
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              setSomAmbiente(null);
+                              setSomMenuAberto(false);
+                            }}
+                            className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                            title="Desligar e fechar"
+                          >
+                            <VolumeX size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <NavLink
                 to="/inbox"
                 className={({ isActive }) =>
                   cn(
-                    "rounded-lg p-2 transition-colors relative",
+                    "rounded-lg p-2 transition-colors relative cursor-pointer",
                     isActive
                       ? "bg-primary/10 text-primary font-semibold"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -391,7 +513,7 @@ function AppInterno() {
             <Route path="/grafo" element={<GrafoNeural />} />
             <Route path="/pdi" element={<PDI />} />
             <Route path="/chat" element={<Chat />} />
-            <Route path="/pdf" element={<FerramentasPDF />} />
+             <Route path="/pdf" element={<FerramentasPDF />} />
             <Route path="/conversor" element={<Conversor />} />
             <Route path="/livros" element={<PesquisaLivros />} />
             <Route path="/transcritor" element={<Transcritor />} />
@@ -400,6 +522,7 @@ function AppInterno() {
             <Route path="/contatos" element={<Contatos />} />
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/config" element={<Configuracoes />} />
+            <Route path="/sons" element={<Sons />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </Suspense>

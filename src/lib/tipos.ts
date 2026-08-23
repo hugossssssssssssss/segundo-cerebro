@@ -78,7 +78,7 @@ export interface Tarefa extends ItemBase {
   status: StatusTarefa;
   prazo?: string;
   tags: string[];
-  estimativa?: number;
+  Pomodoro?: number;
   fraturados?: number;
 }
 

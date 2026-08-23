@@ -229,30 +229,26 @@ export function compilarItensInbox(
 
           if (!estado?.descartado) {
             const ehAtrasada = prazoStr < hojeIso;
-            const ehHoje = prazoStr === hojeIso;
-            const dataPt = formatarDataPtBR(prazoStr);
-            const statusAmigavel = rotuloStatusAmigavel(typeof status === "string" ? status : undefined);
+            if (ehAtrasada) {
+              const dataPt = formatarDataPtBR(prazoStr);
+              const statusAmigavel = rotuloStatusAmigavel(typeof status === "string" ? status : undefined);
+              const descricao = `Prazo venceu em ${dataPt} • Status: ${statusAmigavel}`;
 
-            const descricao = ehAtrasada
-              ? `Prazo venceu em ${dataPt} • Status: ${statusAmigavel}`
-              : ehHoje
-              ? `Prazo vence HOJE (${dataPt}) • Status: ${statusAmigavel}`
-              : `Prazo agendado para ${dataPt} • Status: ${statusAmigavel}`;
-
-            resultado.push({
-              id,
-              tipo: "tarefa_atrasada",
-              titulo: tituloDoc,
-              descricao,
-              caminhoOrigem: item.caminho,
-              tituloOrigem: tituloDoc,
-              dataVencimento: prazoStr,
-              visto: Boolean(estado?.visto),
-              vistoEm: estado?.vistoEm,
-              notificadoTelegram: estado?.notificadoTelegram,
-              notificadoEmail: estado?.notificadoEmail,
-              tags: tagsDoc,
-            });
+              resultado.push({
+                id,
+                tipo: "tarefa_atrasada",
+                titulo: tituloDoc,
+                descricao,
+                caminhoOrigem: item.caminho,
+                tituloOrigem: tituloDoc,
+                dataVencimento: prazoStr,
+                visto: Boolean(estado?.visto),
+                vistoEm: estado?.vistoEm,
+                notificadoTelegram: estado?.notificadoTelegram,
+                notificadoEmail: estado?.notificadoEmail,
+                tags: tagsDoc,
+              });
+            }
           }
         }
       }

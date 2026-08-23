@@ -55,6 +55,7 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
       { id: "grafo", para: "/grafo", rotulo: "Grafo de Links", iconeNome: "Network", destaque: true },
       { id: "lousas", para: "/lousas", rotulo: "Lousas Visuais", iconeNome: "Layout" },
       { id: "referencias", para: "/referencias", rotulo: "Referências Visuais", iconeNome: "Image" },
+      { id: "sons", para: "/sons", rotulo: "Sons de Foco", iconeNome: "Headphones" },
       { id: "pdf", para: "/pdf", rotulo: "Ferramentas PDF", iconeNome: "FileCheck" },
       { id: "conversor", para: "/conversor", rotulo: "Conversor", iconeNome: "RefreshCw" },
       { id: "livros", para: "/livros", rotulo: "Pesquisar Livros", iconeNome: "BookOpen" },

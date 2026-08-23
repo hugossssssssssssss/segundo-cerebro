@@ -1,12 +1,6 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import {
-  Bell,
-  CheckCheck,
-  AlertTriangle,
-  Calendar,
-  ExternalLink,
-  Trash2,
   Check,
   Filter,
   Plus,
@@ -18,6 +12,15 @@ import {
   RotateCcw,
   ChevronDown,
   Sun,
+  X,
+  ListTodo,
+  Timer,
+  Calendar,
+  AlertTriangle,
+  Bell,
+  CheckCheck,
+  Trash2,
+  ExternalLink,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
@@ -44,9 +47,12 @@ import { SeloStatus } from "@/components/SeloStatus";
 import { ModalLembrete } from "@/components/ModalLembrete";
 import { Calendario } from "@/components/Calendario";
 import { useSalvar } from "@/lib/useSalvar";
-import { lerMarkdown, escreverMarkdown } from "@/lib/markdown";
+import { lerMarkdown, escreverMarkdown, tituloProvavel } from "@/lib/markdown";
 import { comoTarefa } from "@/lib/entidades";
 import { toast } from "@/lib/toast";
+import { EditorNotion } from "@/components/EditorNotion";
+import { PropriedadesNotion } from "@/components/PropriedadesNotion";
+
 import { lerParametroCriar, formatarDataPtBR, formatarNomeAmigavel } from "@/lib/utils";
 import {
   obterRascunhosLocais,
@@ -59,7 +65,6 @@ type AbaFiltro = "nao_vistos" | "lembretes" | "atrasadas" | "inativas" | "rascun
 export default function Inbox() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
-  const navegar = useNavigate();
   const { salvarTexto } = useSalvar(cfg);
 
   const [carregando, setCarregando] = useState(true);
@@ -74,6 +79,13 @@ export default function Inbox() {
   const [modalNovoAberto, setModalNovoAberto] = useState(false);
   const [extraindoIA, setExtraindoIA] = useState(false);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
+  const [itemVisualizado, setItemVisualizado] = useState<{
+    caminho: string;
+    titulo: string;
+    corpo: string;
+    dadosProps: Record<string, any>;
+    sha: string;
+  } | null>(null);
 
   // Carrega repositório e estado da Inbox
   const carregar = useCallback(async () => {
@@ -464,13 +476,34 @@ export default function Inbox() {
   const contagemInativas = notasInativas.length;
 
   const navegarParaOrigem = (caminho: string) => {
-    let pasta = "notas";
-    if (caminho.startsWith("tarefas/")) pasta = "tarefas";
-    else if (caminho.startsWith("processos/")) pasta = "processos";
-    else if (caminho.startsWith("pdi/")) pasta = "pdi";
-    else if (caminho.startsWith("referencias/")) pasta = "referencias";
+    const item = acervo.find((i) => i.caminho === caminho);
+    if (item) {
+      const doc = lerMarkdown(item.texto || "");
+      setItemVisualizado({
+        caminho: item.caminho,
+        titulo: tituloProvavel(doc, item.nome),
+        corpo: doc.corpo,
+        dadosProps: doc.dados,
+        sha: item.sha,
+      });
 
-    navegar(`/${pasta}?abrir=${encodeURIComponent(caminho)}`);
+      // Marca o item como visto silenciosamente ao abrir o pop-up
+      const itemInbox = itensCompilados.find((i) => i.caminhoOrigem === caminho);
+      if (itemInbox && !itemInbox.visto) {
+        const novoMapa: MapaEstadoInbox = {
+          ...mapaEstado,
+          [itemInbox.id]: {
+            ...mapaEstado[itemInbox.id],
+            visto: true,
+            vistoEm: new Date().toISOString(),
+          },
+        };
+        setMapaEstado(novoMapa);
+        gravarEstadoInbox(cfg, novoMapa, shaEstado).then((res) => {
+          if (res.ok && res.sha) setShaEstado(res.sha);
+        });
+      }
+    }
   };
 
   if (!pronto) {
@@ -1056,6 +1089,102 @@ export default function Inbox() {
         aoFechar={() => setModalNovoAberto(false)}
         aoSalvar={salvarNovoLembrete}
       />
+
+      {/* Pop-up de visualização e edição integrado para a Inbox */}
+      <Modal
+        aberto={itemVisualizado !== null}
+        aoFechar={() => setItemVisualizado(null)}
+        titulo={itemVisualizado?.titulo || "Visualização"}
+        tamanho="largo"
+      >
+        {itemVisualizado && (
+          <div className="flex flex-col max-h-[80vh] w-full bg-card rounded-xl overflow-hidden">
+            {/* Cabeçalho */}
+            <div className="flex items-center justify-between border-b border-border/60 p-4 shrink-0 bg-secondary/10">
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block select-none">
+                  Caixa de Entrada • Visualização de Item
+                </span>
+                <h2 className="text-base font-bold text-foreground truncate mt-0.5 select-none">
+                  {itemVisualizado.titulo}
+                </h2>
+              </div>
+              <button
+                onClick={() => setItemVisualizado(null)}
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
+                title="Fechar visualização"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Conteúdo rolável */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Propriedades se for tarefa */}
+              {itemVisualizado.caminho.startsWith("tarefas/") && (
+                <div className="bg-secondary/20 p-3 rounded-lg border border-border/40 shrink-0">
+                  <h3 className="text-xs font-bold text-muted-foreground mb-2.5 uppercase tracking-wider select-none">
+                    Propriedades da Tarefa
+                  </h3>
+                  <PropriedadesNotion
+                    dados={itemVisualizado.dadosProps}
+                    onChange={async (novosDados: Record<string, any>) => {
+                      const novoTexto = escreverMarkdown({ dados: novosDados, corpo: itemVisualizado.corpo });
+                      
+                      // Salva local e agenda sincronização
+                      await salvarTexto(itemVisualizado.caminho, novoTexto, itemVisualizado.sha, "atualiza propriedade na inbox");
+                      setItemVisualizado({
+                        ...itemVisualizado,
+                        dadosProps: novosDados,
+                      });
+                      
+                      // Atualiza acervo em memória localmente
+                      setAcervo(prev => prev.map(i => i.caminho === itemVisualizado.caminho ? { ...i, texto: novoTexto } : i));
+                      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+                    }}
+                    camposFixos={{
+                      status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
+                      prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
+                      tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" },
+                      Pomodoro: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Editor */}
+              <div className="border border-border/40 rounded-lg p-3 bg-card/40 flex-1 min-h-[300px]">
+                <h3 className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wider select-none">
+                  Conteúdo do Documento
+                </h3>
+                <EditorNotion
+                  markdown={itemVisualizado.corpo}
+                  acervo={acervo}
+                  onChange={async (novoCorpo) => {
+                    const novoTexto = escreverMarkdown({ dados: itemVisualizado.dadosProps, corpo: novoCorpo });
+                    
+                    await salvarTexto(itemVisualizado.caminho, novoTexto, itemVisualizado.sha, `edita corpo na inbox`);
+                    setItemVisualizado({
+                      ...itemVisualizado,
+                      corpo: novoCorpo,
+                    });
+                    
+                    setAcervo(prev => prev.map(i => i.caminho === itemVisualizado.caminho ? { ...i, texto: novoTexto } : i));
+                    window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+                  }}
+                />
+              </div>
+            </div>
+            
+            {/* Rodapé simples */}
+            <div className="border-t border-border/60 p-3 shrink-0 bg-secondary/5 flex justify-end">
+              <Botao variante="neutro" tamanho="pequeno" onClick={() => setItemVisualizado(null)}>
+                Fechar
+              </Botao>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
