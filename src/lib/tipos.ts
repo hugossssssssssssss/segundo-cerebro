@@ -79,6 +79,7 @@ export interface Tarefa extends ItemBase {
   prazo?: string;
   tags: string[];
   estimativa?: number;
+  fraturados?: number;
 }
 
 /** Os três estados de uma meta de PDI. */

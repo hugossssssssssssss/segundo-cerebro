@@ -63,6 +63,7 @@ Uma tarefa em `tarefas/`.
 | `prazo` | `string` | não | — |
 | `tags` | `string[]` | sim | — |
 | `estimativa` | `number` | não | — |
+| `fraturados` | `number` | não | — |
 
 ### Meta
 

@@ -99,6 +99,16 @@ export function comoTarefa(
   tituloFallback: string,
 ): Tarefa {
   const d = doc.dados;
+
+  const estimativa = typeof d.Pomodoro === "number" ? d.Pomodoro :
+                     typeof d.pomodoro === "number" ? d.pomodoro :
+                     typeof d.pomodoros === "number" ? d.pomodoros :
+                     typeof d.estimativa === "number" ? d.estimativa : undefined;
+
+  const fraturados = typeof d.PomodoroFraturado === "number" ? d.PomodoroFraturado :
+                     typeof d.pomodoro_fraturado === "number" ? d.pomodoro_fraturado :
+                     typeof d.fraturados === "number" ? d.fraturados : undefined;
+
   return {
     bruto: doc.dados,
     caminho,
@@ -110,7 +120,8 @@ export function comoTarefa(
     status: statusTarefaValido(d.status),
     prazo: typeof d.prazo === "string" ? d.prazo : undefined,
     tags: comoLista(d.tags),
-    estimativa: typeof d.estimativa === "number" ? d.estimativa : undefined,
+    estimativa,
+    fraturados,
     corpo: doc.corpo,
   };
 }
@@ -125,7 +136,14 @@ export function tarefaParaArquivo(t: Tarefa): { dados: Frontmatter; corpo: strin
       status: t.status,
       prazo:  t.prazo,
       tags:   t.tags.length ? t.tags : undefined,
-      estimativa: t.estimativa,
+      Pomodoro: t.estimativa,
+      PomodoroFraturado: t.fraturados,
+      // Remove campos legados do frontmatter para limpeza
+      estimativa: undefined,
+      pomodoros: undefined,
+      pomodoro: undefined,
+      pomodoro_fraturado: undefined,
+      fraturados: undefined,
       criado,
       atualizado: agora,
     }),

@@ -30,6 +30,8 @@ interface ContextoCronometroProps {
   restante: number; // em segundos
   total: number; // segundos totais do ciclo
   config: ConfigPomodoro;
+  metaDiaria: number;
+  concluidosHoje: number;
   iniciar: (tarefa: Tarefa) => void;
   pausar: () => void;
   retomar: () => void;
@@ -60,13 +62,17 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
   const [tarefa, setTarefa] = useState<Tarefa | null>(null);
   const [modo, setModo] = useState<"foco" | "pausa">("foco");
   const [conflito, setConflito] = useState<{ tarefaPendente: Tarefa } | null>(null);
+  
+  // Metas diárias
+  const [metaDiaria, setMetaDiaria] = useState(5);
+  const [concluidosHoje, setConcluidosHoje] = useState(0);
 
   const fimEmRef = useRef<number | null>(null);
   const tarefaRef = useRef<Tarefa | null>(null);
   const modoRef = useRef<"foco" | "pausa">("foco");
   const configRef = useRef<ConfigPomodoro>(config);
 
-  // Sincroniza refs para evitar stale closures
+  // Sincroniza refs para evitar stale closures em callbacks assíncronos
   useEffect(() => { tarefaRef.current = tarefa; }, [tarefa]);
   useEffect(() => { modoRef.current = modo; }, [modo]);
   useEffect(() => { configRef.current = config; }, [config]);
@@ -151,14 +157,14 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
 
         toast(`Ciclo de foco concluído para: ${t.titulo}!`, { tipo: "sucesso" });
 
-        // Muda para descanso (pausa)
+        // Muda para descanso (pausa), mas de forma MANUAL (autoStart = false)
         setModo("pausa");
         const tempoSegundos = configRef.current.tempoPausa * 60;
-        fimEmRef.current = Date.now() + tempoSegundos * 1000;
-        restart(new Date(Date.now() + tempoSegundos * 1000), true);
+        fimEmRef.current = null;
+        restart(new Date(Date.now() + tempoSegundos * 1000), false);
       } else {
-        // Terminou a pausa
-        toast("Seu descanso acabou. Hora de concentrar!", { tipo: "info" });
+        // Terminou a pausa, muda para foco mas aguarda play ativo (MANUAL)
+        toast("Seu descanso acabou. Clique em iniciar foco para continuar!", { tipo: "info" });
         setModo("foco");
         const tempoSegundos = configRef.current.tempoFoco * 60;
         fimEmRef.current = null;
@@ -178,7 +184,7 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
     }
   }, [restart]);
 
-  // Interrupção manual ou cancelamento do timer
+  // Interrupção manual ou cancelamento do timer (Registra Fratura)
   const parar = useCallback(async () => {
     const t = tarefaRef.current;
     if (!t) return;
@@ -187,13 +193,15 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
     const segundosTotais = (isFoco ? configRef.current.tempoFoco : configRef.current.tempoPausa) * 60;
     const segundosPassados = segundosTotais - restante;
 
-    // Só grava telemetria de interrupção se rodou por mais de 5 segundos de foco
+    // Só grava interrupção se rodou por mais de 5 segundos de foco
     if (isFoco && segundosPassados >= 5) {
       try {
         const cfg = lerConfig();
         const acervo = await carregarRepo(cfg, { memoria: 30_000 });
         const logs = extrairLogsTelemetria(acervo);
         const shaTelemetria = obterShaTelemetria(acervo);
+        
+        // 1. Grava na telemetria
         const novoLog: LogTempo = {
           data: new Date().toISOString(),
           tarefaCaminho: t.caminho,
@@ -207,13 +215,37 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
         salvarRascunhoLocal(CAMINHO_TELEMETRIA, textoTelemetria, shaTelemetria, `Foco interrompido (${Math.round(segundosPassados / 60)}min)`, false, "gravar");
         atualizarCacheLocal(CAMINHO_TELEMETRIA, textoTelemetria, lerMarkdown(textoTelemetria), shaTelemetria || `temp_${Math.random()}`);
 
+        // 2. Grava a FRATURA na própria tarefa (Frontmatter: PomodoroFraturado)
+        let textoTarefa = "";
+        let shaTarefa = t.sha;
+        try {
+          const arq = await ler(cfg, t.caminho);
+          textoTarefa = arq.texto;
+          shaTarefa = arq.sha;
+        } catch {
+          const { corpo } = tarefaParaArquivo(t);
+          textoTarefa = escreverMarkdown({ dados: t.bruto, corpo });
+        }
+
+        const docTarefa = lerMarkdown(textoTarefa);
+        const tarefaEntidade = comoTarefa(docTarefa, t.caminho, shaTarefa, t.titulo);
+        
+        // Incrementa o número de fraturas (limite máximo de 5)
+        const novasFraturas = Math.min((tarefaEntidade.fraturados || 0) + 1, 5);
+        const tarefaAtualizada = { ...tarefaEntidade, fraturados: novasFraturas };
+        const { dados: dadosNovos, corpo: corpoNovo } = tarefaParaArquivo(tarefaAtualizada);
+        const textoNovo = escreverMarkdown({ dados: dadosNovos, corpo: corpoNovo });
+
+        salvarRascunhoLocal(t.caminho, textoNovo, shaTarefa, `Fratura registrada em "${t.titulo}"`, false, "gravar");
+        atualizarCacheLocal(t.caminho, textoNovo, lerMarkdown(textoNovo), shaTarefa);
+
         window.dispatchEvent(new CustomEvent("acervo-atualizado"));
 
         if (navigator.onLine) {
           sincronizarFilaOffline(cfg).catch(() => {});
         }
 
-        toast(`Sessão interrompida. ${Math.round(segundosPassados / 60)} minutos salvos.`, { tipo: "info" });
+        toast(`Sessão interrompida. Prisma quebrado para "${t.titulo}".`, { tipo: "erro" });
       } catch (e) {
         console.error("Erro ao gravar interrupção:", e);
       }
@@ -271,9 +303,8 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
     const pendente = conflito.tarefaPendente;
     setConflito(null);
 
-    // Salva a interrupção da tarefa ativa
+    // Salva a interrupção da tarefa ativa e depois inicia a nova
     parar().then(() => {
-      // Começa o cronômetro para a nova tarefa
       setTarefa(pendente);
       setModo("foco");
       const tempoSegundos = config.tempoFoco * 60;
@@ -281,6 +312,66 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
       restart(new Date(Date.now() + tempoSegundos * 1000), true);
     });
   }, [conflito, config.tempoFoco, parar, restart]);
+
+  // Lógica de cálculo da Meta Diária Dinâmica
+  const recalcularMetasDiarias = useCallback(async () => {
+    try {
+      const cfg = lerConfig();
+      const acervo = await carregarRepo(cfg, { memoria: 30_000 });
+      const logs = extrairLogsTelemetria(acervo);
+
+      // Determina fuso local hoje (YYYY-MM-DD)
+      const d = new Date();
+      const ano = d.getFullYear();
+      const mes = String(d.getMonth() + 1).padStart(2, "0");
+      const dia = String(d.getDate()).padStart(2, "0");
+      const hojeLocal = `${ano}-${mes}-${dia}`;
+
+      // 1. Calcula concluídos hoje
+      const logsHoje = logs.filter((l) => {
+        const diaLog = l.data.slice(0, 10);
+        return diaLog === hojeLocal && l.modo === "foco" && l.status === "Completo";
+      });
+      setConcluidosHoje(logsHoje.length);
+
+      // 2. Calcula meta diária baseado nos últimos 7 dias
+      const logsUltimaSemana = logs.filter((l) => {
+        if (l.modo !== "foco" || l.status !== "Completo") return false;
+        const tempoDiferenca = Date.now() - new Date(l.data).getTime();
+        return tempoDiferenca <= 7 * 24 * 60 * 60 * 1000;
+      });
+
+      // Agrupa concluídos por dia
+      const focosPorDia: Record<string, number> = {};
+      logsUltimaSemana.forEach((l) => {
+        const diaLog = l.data.slice(0, 10);
+        focosPorDia[diaLog] = (focosPorDia[diaLog] || 0) + 1;
+      });
+
+      const diasAtivos = Object.keys(focosPorDia);
+      if (diasAtivos.length > 0) {
+        const totalFocos = Object.values(focosPorDia).reduce((a, b) => a + b, 0);
+        const media = totalFocos / diasAtivos.length;
+        
+        // Limita a meta diária dinâmica entre 3 e 8 prismas
+        const metaEstipulada = Math.min(Math.max(Math.round(media), 3), 8);
+        setMetaDiaria(metaEstipulada);
+      } else {
+        setMetaDiaria(5); // Meta diária padrão inicial
+      }
+    } catch (e) {
+      console.error("Erro ao calcular metas diárias:", e);
+    }
+  }, []);
+
+  // Monitora alterações para reavaliar as metas diárias
+  useEffect(() => {
+    recalcularMetasDiarias();
+    window.addEventListener("acervo-atualizado", recalcularMetasDiarias);
+    return () => {
+      window.removeEventListener("acervo-atualizado", recalcularMetasDiarias);
+    };
+  }, [recalcularMetasDiarias]);
 
   // Persistência em localStorage para sobrevivência a F5/recarregamento
   useEffect(() => {
@@ -316,13 +407,12 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
               // Expirou enquanto estava fora: conclui
               setTarefa(estado.tarefa);
               setModo(estado.modo);
-              // Dispara conclusão imediatamente de forma assíncrona
               setTimeout(() => {
                 lidarComTermino();
               }, 100);
             }
           } else {
-            // Estava pausado
+            // Estava pausado ou parado
             setTarefa(estado.tarefa);
             setModo(estado.modo);
             fimEmRef.current = null;
@@ -333,7 +423,7 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
     } catch (e) {
       console.error("Falha ao restaurar cronômetro:", e);
     }
-  }, []);
+  }, [restart, lidarComTermino]);
 
   return (
     <ContextoCronometro.Provider
@@ -344,6 +434,8 @@ export function CronometroProvider({ children }: { children: React.ReactNode }) 
         restante,
         total,
         config,
+        metaDiaria,
+        concluidosHoje,
         iniciar,
         pausar,
         retomar,

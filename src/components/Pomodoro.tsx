@@ -19,6 +19,8 @@ export function Pomodoro() {
     restante,
     total,
     config,
+    metaDiaria,
+    concluidosHoje,
     pausar,
     retomar,
     reiniciar,
@@ -120,20 +122,24 @@ export function Pomodoro() {
             {formatar(restante)}
           </p>
 
-          {/* Prismas de Concentração */}
-          {tarefa.estimativa && tarefa.estimativa > 0 ? (
-            <div className="mt-2 flex justify-center">
-              <PrismasFoco
-                estimativa={tarefa.estimativa}
-                concluido={ciclosConcluidos}
-                rodando={rodando && modo === "foco"}
-                tamanho={14}
-              />
-            </div>
-          ) : null}
+          {/* Prismas de Concentração da Tarefa */}
+          <div className="mt-2 flex justify-center">
+            <PrismasFoco
+              estimativa={tarefa.estimativa || 0}
+              concluido={ciclosConcluidos}
+              fraturados={tarefa.fraturados || 0}
+              rodando={rodando && modo === "foco"}
+              tamanho={14}
+            />
+          </div>
+
+          {/* Meta Diária Dinâmica */}
+          <p className="mt-1.5 text-center text-[10px] font-medium text-muted-foreground select-none">
+            Hoje: {concluidosHoje} / {metaDiaria} {metaDiaria === 1 ? "prisma" : "prismas"}
+          </p>
 
           {/* Barra de Progresso */}
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
+          <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-secondary">
             <div
               className={`h-full rounded-full transition-[width] duration-300 ${modo === "foco" ? "bg-indigo-500" : "bg-emerald-500"}`}
               style={{ width: `${progresso}%` }}

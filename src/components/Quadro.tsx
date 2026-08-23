@@ -83,15 +83,14 @@ function ConteudoDoCartao({ t }: { t: Tarefa }) {
         {t.titulo}
       </p>
 
-      {/* Prismas de Foco do Hugo */}
-      {t.estimativa && t.estimativa > 0 ? (
-        <PrismasFoco
-          estimativa={t.estimativa}
-          concluido={focosConcluidos}
-          className="mt-1.5"
-          tamanho={13}
-        />
-      ) : null}
+      {/* Prismas de Foco do Hugo (5 slots fixos) */}
+      <PrismasFoco
+        estimativa={t.estimativa || 0}
+        concluido={focosConcluidos}
+        fraturados={t.fraturados || 0}
+        className="mt-1.5"
+        tamanho={13}
+      />
 
       {(u !== "nenhuma" || min > 0 || passos.total > 0 || t.tags.length > 0) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">

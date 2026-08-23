@@ -183,12 +183,12 @@ describe("tarefaParaArquivo", () => {
 
   it("preserva campos desconhecidos", () => {
     const t = comoTarefa(
-      doc("---\ntitulo: X\npomodoros: 3\n---\n"),
+      doc("---\ntitulo: X\ndesconhecido: \"valor\"\n---\n"),
       "tarefas/a.md",
       "s",
       "t",
     );
-    expect(tarefaParaArquivo(t).dados.pomodoros).toBe(3);
+    expect(tarefaParaArquivo(t).dados.desconhecido).toBe("valor");
   });
 });
 

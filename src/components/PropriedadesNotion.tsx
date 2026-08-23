@@ -547,6 +547,50 @@ export function PropriedadesNotion({
     }
 
     if (tipo === "numero") {
+      if (chave === "estimativa" || chave === "Pomodoro" || chave === "pomodoro") {
+        const val = typeof valor === "number" ? Math.min(Math.max(0, valor), 5) : 0;
+        return (
+          <div className="flex items-center gap-1.5 ml-2 py-1 select-none">
+            {Array.from({ length: 5 }).map((_, idx) => {
+              const ativo = idx < val;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    const novoVal = idx + 1;
+                    atualizar(chave, val === novoVal ? undefined : novoVal);
+                  }}
+                  className="focus:outline-none cursor-pointer transform active:scale-95 transition-transform"
+                  title={`Definir esforço como ${idx + 1} ${idx + 1 === 1 ? "prisma" : "prismas"}`}
+                >
+                  <svg
+                    width={16}
+                    height={16}
+                    viewBox="0 0 20 20"
+                    className={ativo ? "drop-shadow-[0_0_4px_rgba(99,102,241,0.4)]" : ""}
+                  >
+                    <polygon
+                      points="10,2 17,6 17,14 10,18 3,14 3,6"
+                      className={cn(
+                        "stroke-[1.5] stroke-linejoin-round transition-all duration-200",
+                        ativo 
+                          ? "fill-indigo-500/80 stroke-indigo-400" 
+                          : "fill-muted/20 stroke-muted-foreground/30 hover:stroke-muted-foreground/50"
+                      )}
+                    />
+                  </svg>
+                </button>
+              );
+            })}
+            {val > 0 && (
+              <span className="text-[10px] text-muted-foreground ml-2 font-medium select-none">
+                {val} {val === 1 ? "prisma" : "prismas"}
+              </span>
+            )}
+          </div>
+        );
+      }
       return (
         <input
           type="number"
