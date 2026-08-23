@@ -248,7 +248,7 @@ export function PropriedadesNotion({
   const rotulosMap = { ...globalConfig.rotulos, ...((dados._rotulos as Record<string, string>) || {}) };
 
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
-    .filter(k => !["titulo", "tipo", "atualizado", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos"].includes(k));
+    .filter(k => !["titulo", "tipo", "atualizado", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "c", "pomodoro", "pomodoros", "estimativa"].includes(k));
     
   const temRelacionamentos = (Array.isArray(dados.relacionamentos) && dados.relacionamentos.length > 0) ||
     (Array.isArray(dados.relacao) && dados.relacao.length > 0);
@@ -261,6 +261,7 @@ export function PropriedadesNotion({
   if (!todasAsChaves.includes("ultima_edicao")) todasAsChaves.push("ultima_edicao");
 
   function nomeExibido(chave: string): string {
+    if (chave === "Pomodoro" || chave === "pomodoro" || chave === "estimativa" || chave === "c") return "Pomodoro";
     if (rotulosMap[chave]) return rotulosMap[chave];
     if (chave === "relacionamentos" || chave === "relacao") return "Relacionamentos";
     if (chave === "criado_por" || chave === "autor") return "Criado por";
