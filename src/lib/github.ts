@@ -248,7 +248,7 @@ export async function gravar(
        * NUNCA buscar o sha do arquivo existente para regravar por cima.
        * Isso destruiria o arquivo antigo silenciosamente.
        */
-      if (resposta.status === 422 && eraNovaCriacao) {
+      if ((resposta.status === 422 || resposta.status === 409) && eraNovaCriacao) {
         try {
           const { sha: shaDestino, texto: textoDestino } = await ler(cfg, caminho);
           if (textoDestino === texto) {

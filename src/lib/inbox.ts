@@ -228,11 +228,13 @@ export function compilarItensInbox(
           const estado = mapaEstado[id];
 
           if (!estado?.descartado) {
-            const ehAtrasada = prazoStr < hojeIso;
+            const ehAtrasada = prazoStr <= hojeIso;
             if (ehAtrasada) {
               const dataPt = formatarDataPtBR(prazoStr);
               const statusAmigavel = rotuloStatusAmigavel(typeof status === "string" ? status : undefined);
-              const descricao = `Prazo venceu em ${dataPt} • Status: ${statusAmigavel}`;
+              const descricao = prazoStr === hojeIso
+                ? `Prazo vence HOJE • Status: ${statusAmigavel}`
+                : `Prazo venceu em ${dataPt} • Status: ${statusAmigavel}`;
 
               resultado.push({
                 id,

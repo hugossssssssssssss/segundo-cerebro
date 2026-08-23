@@ -8,7 +8,7 @@
 import { lerConfig, configCompleta } from "./settings";
 import type { Settings } from "./settings";
 import { gravar, ler, apagar, ErroGitHub } from "./github";
-import { atualizarCacheLocal, invalidarCache, removerDoCacheLocal } from "./repo";
+import { atualizarCacheLocal, invalidarCache, removerDoCacheLocal, cache, obterCacheExistente } from "./repo";
 import { lerMarkdown } from "./markdown";
 import { notificarOutrasAbas } from "./syncChannel";
 import { toast } from "./toast";
@@ -143,24 +143,28 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
 
   try {
     for (const item of rascunhos) {
-      // Não re-tenta itens marcados com conflito automático até o usuário resolver
-      if (item.status === "conflito") {
-        falhas++;
-        continue;
-      }
+
 
       // Coloca status como "sincronizando"
       atualizarRascunhoLocal({ ...item, status: "sincronizando" });
       const acao = item.acao || "gravar";
 
       try {
+        // Tenta obter o SHA mais recente do cache local em memória
+        let shaParaEnviar = item.sha;
+        const cacheExistente = cache || obterCacheExistente(cfg);
+        const itemCache = cacheExistente?.itens.find((i) => i.caminho === item.caminho);
+        if (itemCache && itemCache.sha && !itemCache.sha.startsWith("temp_")) {
+          shaParaEnviar = itemCache.sha;
+        }
+
         if (acao === "apagar") {
-          await apagar(cfg, item.caminho, item.sha || "");
+          await apagar(cfg, item.caminho, shaParaEnviar || "");
           removerRascunhoLocal(item.id);
           removerDoCacheLocal(item.caminho);
           concluidos++;
         } else {
-          const novoSha = await gravar(cfg, item.caminho, item.texto, item.sha, item.mensagemCommit);
+          const novoSha = await gravar(cfg, item.caminho, item.texto, shaParaEnviar, item.mensagemCommit);
           removerRascunhoLocal(item.id);
           
           // Sincroniza o cache em memória com os dados finais reais
