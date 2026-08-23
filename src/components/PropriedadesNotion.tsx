@@ -262,6 +262,9 @@ export function PropriedadesNotion({
 
   function nomeExibido(chave: string): string {
     if (chave === "Pomodoro" || chave === "pomodoro" || chave === "estimativa" || chave === "c") return "Pomodoro";
+    if (chave === "indicador") return "Indicador";
+    if (chave === "metas") return "Metas";
+    if (chave === "data") return "Data";
     if (rotulosMap[chave]) return rotulosMap[chave];
     if (chave === "relacionamentos" || chave === "relacao") return "Relacionamentos";
     if (chave === "criado_por" || chave === "autor") return "Criado por";
@@ -744,11 +747,12 @@ export function PropriedadesNotion({
         );
       }
 
-      const tagsDisponiveis = obterTagsDisponiveis(tags, coresMap);
+      const tagsDisponiveis = fixo?.opcoes || obterTagsDisponiveis(tags, coresMap);
       const tagsFiltradas = tagsDisponiveis.filter(t => t.toLowerCase().includes(buscaTag.toLowerCase()));
       const existeExata = tagsDisponiveis.some(t => t.toLowerCase() === buscaTag.toLowerCase().trim());
 
       const processarCriarTag = (nomeNovaTag: string) => {
+        if (fixo?.opcoes) return;
         const nomeLimpo = nomeNovaTag.trim().replace(/^@+/, "");
         if (!nomeLimpo) return;
         const novasTags = Array.from(new Set([...tags, nomeLimpo]));
@@ -760,6 +764,7 @@ export function PropriedadesNotion({
       };
 
       const processarRenomearTag = (velhaTag: string, novaTag: string) => {
+        if (fixo?.opcoes) return;
         const nomeLimpo = novaTag.trim();
         if (!nomeLimpo || velhaTag === nomeLimpo) {
           setEditandoTag(null);
@@ -808,7 +813,7 @@ export function PropriedadesNotion({
                 className="h-6 px-1.5 text-[11px] font-normal text-muted-foreground hover:text-foreground flex items-center gap-1 border border-dashed border-border/80 rounded"
               >
                 <Plus size={11} />
-                <span>Tag</span>
+                <span>{nomeExibido(chave)}</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[240px] p-2 flex flex-col gap-2 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
@@ -835,11 +840,11 @@ export function PropriedadesNotion({
                 <>
                   <input
                     type="text"
-                    placeholder="Buscar ou criar tag..."
+                    placeholder={fixo?.opcoes ? "Buscar..." : "Buscar ou criar tag..."}
                     value={buscaTag}
                     onChange={(e) => setBuscaTag(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && buscaTag.trim() && !existeExata) {
+                      if (e.key === "Enter" && buscaTag.trim() && !existeExata && !fixo?.opcoes) {
                         processarCriarTag(buscaTag);
                       }
                     }}
@@ -874,24 +879,26 @@ export function PropriedadesNotion({
                             {renderizarBadgeTag(tag)}
                           </button>
 
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditandoTag(tag);
-                              setNovoNomeTag(tag);
-                            }}
-                            className="opacity-0 group-hover/item:opacity-100 p-1 text-muted-foreground hover:text-foreground hover:bg-accent-foreground/10 rounded transition-all"
-                            title="Editar tag"
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-                            </svg>
-                          </button>
+                          {!fixo?.opcoes && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditandoTag(tag);
+                                setNovoNomeTag(tag);
+                              }}
+                              className="opacity-0 group-hover/item:opacity-100 p-1 text-muted-foreground hover:text-foreground hover:bg-accent-foreground/10 rounded transition-all"
+                              title="Editar tag"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       );
                     })}
 
-                    {buscaTag.trim() && !existeExata && (
+                    {buscaTag.trim() && !existeExata && !fixo?.opcoes && (
                       <button
                         onClick={() => processarCriarTag(buscaTag)}
                         className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-md flex items-center gap-1.5"
@@ -902,7 +909,9 @@ export function PropriedadesNotion({
                     )}
 
                     {tagsFiltradas.length === 0 && !buscaTag.trim() && (
-                      <span className="text-[11px] text-muted-foreground p-2 text-center">Nenhuma tag cadastrada</span>
+                      <span className="text-[11px] text-muted-foreground p-2 text-center">
+                        {fixo?.opcoes ? "Nenhuma opção encontrada" : "Nenhuma tag cadastrada"}
+                      </span>
                     )}
                   </div>
                 </>

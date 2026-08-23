@@ -9,6 +9,7 @@ import {
   CheckSquare,
   ChevronDown,
   ChevronUp,
+  Plus,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
@@ -110,6 +111,7 @@ export default function PDI() {
   const [origMeta, setOrigMeta] = useState<Meta | null>(null);
   const [origEntrega, setOrigEntrega] = useState<Entrega | null>(null);
   const [esconderEntregas, setEsconderEntregas] = useState(() => localStorage.getItem("klaus-pdi-esconder-entregas") === "true");
+  const [dropHoverId, setDropHoverId] = useState<string | null>(null);
 
   const alternarEsconderEntregas = () => {
     const novo = !esconderEntregas;
@@ -438,19 +440,10 @@ export default function PDI() {
               <Target size={15} />
               Nova Meta
             </Botao>
-            <Botao onClick={novaEntrega}>
-              <Package size={15} />
-              Nova Entrega
-            </Botao>
             <Botao
               variante="neutro"
               onClick={() => {
-                const elem = document.getElementById("conteudo-pdi-pdf");
-                if (elem) {
-                  import("@/lib/pdf").then(({ exportarElementoParaPdf }) => {
-                    exportarElementoParaPdf(elem, "meu-pdi-carreira");
-                  });
-                }
+                window.print();
               }}
             >
               Exportar PDF
@@ -524,7 +517,14 @@ export default function PDI() {
               <CabecalhoSecao titulo="Metas Profissionais" contador={resumos.length} />
               <div className="grid gap-3">
                 {resumos.map(({ meta: m, entregas: ligadas }) => (
-                  <Cartao key={m.id} className="p-4">
+                  <Cartao
+                    key={m.id}
+                    className="p-4 cursor-grab active:cursor-grabbing hover:border-muted-foreground/30 transition-colors"
+                    draggable
+                    onDragStart={(ev) => {
+                      ev.dataTransfer.setData("text/plain", m.id);
+                    }}
+                  >
                     <button
                       onClick={() => {
                         if (estaAbertoFlutuante(m.caminho)) {
@@ -612,9 +612,18 @@ export default function PDI() {
           {entregas.length > 0 && (
             <section className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-muted-foreground">
-                  Tudo que você entregou
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-medium text-muted-foreground">
+                    Tudo que você entregou
+                  </h2>
+                  <button
+                    onClick={novaEntrega}
+                    className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                    title="Adicionar Nova Entrega"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={alternarEsconderEntregas}
@@ -639,11 +648,34 @@ export default function PDI() {
                     .map((e) => (
                       <Cartao
                         key={e.id}
-                        className="cursor-pointer p-3.5 transition-colors hover:bg-accent"
+                        className={cn(
+                          "cursor-pointer p-3.5 transition-all border",
+                          dropHoverId === e.id
+                            ? "bg-indigo-500/10 border-indigo-500/40 scale-[1.01] shadow-xs"
+                            : "hover:bg-accent border-transparent"
+                        )}
                         onClick={() => {
                           setEditandoEntrega(e);
                           setOrigEntrega(e);
                           navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
+                        }}
+                        onDragOver={(ev) => ev.preventDefault()}
+                        onDragEnter={() => setDropHoverId(e.id)}
+                        onDragLeave={() => setDropHoverId(null)}
+                        onDrop={async (ev) => {
+                          ev.preventDefault();
+                          setDropHoverId(null);
+                          const metaId = ev.dataTransfer.getData("text/plain");
+                          if (metaId && !e.metas.includes(metaId)) {
+                            const entregaAtualizada = {
+                              ...e,
+                              metas: [...e.metas, metaId]
+                            };
+                            const { dados, corpo } = entregaParaArquivo(entregaAtualizada);
+                            const texto = escreverMarkdown({ dados, corpo });
+                            await salvarTexto(e.caminho, texto, e.sha);
+                            recarregar();
+                          }
                         }}
                       >
                         <div className="flex items-start justify-between gap-3">

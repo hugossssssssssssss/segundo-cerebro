@@ -156,3 +156,27 @@
     background-clip: padding-box;
   }
 }
+
+/* Regras de impressão limpa para PDF nativo (PDI) */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #conteudo-pdi-pdf, #conteudo-pdi-pdf * {
+    visibility: visible;
+  }
+  #conteudo-pdi-pdf {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    padding: 0px !important;
+    margin: 0px !important;
+  }
+  /* Oculta botões e elementos interativos da impressão */
+  .no-print, button, svg, .no-pdf, [role="button"], select {
+    display: none !important;
+  }
+}
