@@ -10,8 +10,25 @@
  */
 
 import type { Settings } from "./settings";
+import { lerMarkdown } from "./markdown";
 
 const BASE = "https://api.github.com";
+
+function conteudosSemelhantes(textoA: string, textoB: string): boolean {
+  if (textoA === textoB) return true;
+  try {
+    const docA = lerMarkdown(textoA);
+    const docB = lerMarkdown(textoB);
+    if (docA.corpo.trim() !== docB.corpo.trim()) return false;
+    const dadosA = { ...docA.dados };
+    const dadosB = { ...docB.dados };
+    delete dadosA.atualizado;
+    delete dadosB.atualizado;
+    return JSON.stringify(dadosA) === JSON.stringify(dadosB);
+  } catch {
+    return textoA.trim() === textoB.trim();
+  }
+}
 
 export class ErroGitHub extends Error {
   // Campo declarado fora do construtor: `erasableSyntaxOnly` do tsconfig
@@ -243,15 +260,35 @@ export async function gravar(
         return dados.content.sha as string;
       }
 
+      // Se der 409 Conflict, o SHA enviado está desatualizado
+      if (resposta.status === 409) {
+        try {
+          const { sha: shaDestino, texto: textoDestino } = await ler(cfg, caminho);
+          if (conteudosSemelhantes(textoDestino, texto)) {
+            // O conteúdo útil é idêntico! Retornamos o shaDestino atual do GitHub (salvamento redundante F5)
+            return shaDestino;
+          } else {
+            // O conteúdo útil mudou: lança erro de conflito real de concorrência
+            throw new ErroGitHub(
+              `Conflito de edição no GitHub (HTTP 409). O arquivo foi modificado diretamente no repositório.\n\nAcesse a Caixa de Entrada > Rascunhos Offline para aceitar a versão local ou descartar.`,
+              409
+            );
+          }
+        } catch (lerErr) {
+          if (lerErr instanceof ErroGitHub) throw lerErr;
+          break;
+        }
+      }
+
       /**
        * Se era uma nova criação (sha undefined) e o GitHub devolveu 422 (já existe),
        * NUNCA buscar o sha do arquivo existente para regravar por cima.
        * Isso destruiria o arquivo antigo silenciosamente.
        */
-      if ((resposta.status === 422 || resposta.status === 409) && eraNovaCriacao) {
+      if (resposta.status === 422 && eraNovaCriacao) {
         try {
           const { sha: shaDestino, texto: textoDestino } = await ler(cfg, caminho);
-          if (textoDestino === texto) {
+          if (conteudosSemelhantes(textoDestino, texto)) {
             // O conteúdo é idêntico! Podemos ignorar o erro e retornar o shaDestino (gravação redundante)
             return shaDestino;
           } else {
