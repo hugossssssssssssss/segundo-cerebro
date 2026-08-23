@@ -47,7 +47,8 @@ export async function exportarElementoParaPdf(
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
     };
 
-    await html2pdf().set(opcoes as any).from(container).save();
+    const html2pdfFn = (html2pdf as any).default || html2pdf;
+    await html2pdfFn().set(opcoes as any).from(container).save();
   } finally {
     document.body.removeChild(container);
   }

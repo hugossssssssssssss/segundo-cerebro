@@ -4,10 +4,11 @@ import {
   Target,
   Calendar,
   Package,
-  Trash2,
   AlertTriangle,
   Sparkles,
   CheckSquare,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
@@ -37,16 +38,12 @@ import {
 } from "@/lib/pdi";
 import {
   Botao,
-  Campo,
   Cartao,
   Selo,
   Aviso,
   Vazio,
   Carregando,
-  Modal,
   ModalConfirmacao,
-  Rotulo,
-  AreaTexto,
 } from "@/components/ui";
 import { hojeISO, dataCurta, lerParametroAbrir, lerParametroCriar } from "@/lib/utils";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
@@ -109,8 +106,16 @@ export default function PDI() {
   const [editandoMeta, setEditandoMeta] = useState<Meta | null>(null);
   const [editandoEntrega, setEditandoEntrega] = useState<Entrega | null>(null);
   const [modoVisaoMeta, setModoVisaoMeta] = useState<ModoVisaoNotion>("popup");
+  const [modoVisaoEntrega, setModoVisaoEntrega] = useState<ModoVisaoNotion>("popup");
   const [origMeta, setOrigMeta] = useState<Meta | null>(null);
   const [origEntrega, setOrigEntrega] = useState<Entrega | null>(null);
+  const [esconderEntregas, setEsconderEntregas] = useState(() => localStorage.getItem("klaus-pdi-esconder-entregas") === "true");
+
+  const alternarEsconderEntregas = () => {
+    const novo = !esconderEntregas;
+    setEsconderEntregas(novo);
+    localStorage.setItem("klaus-pdi-esconder-entregas", String(novo));
+  };
 
   // ── Abre item pela URL ─────────────────────────────────────────────────────
   const processouUrlRef = useRef<string | null>(null);
@@ -209,6 +214,63 @@ export default function PDI() {
       setModoVisaoMeta("popup");
     }
   }, [modoVisaoMeta, editandoMeta]);
+
+  // ── Modo flutuante de entregas ─────────────────────────────────────────────
+  useEffect(() => {
+    if (modoVisaoEntrega === "flutuante" && editandoEntrega) {
+      const entregaOriginal = { ...editandoEntrega };
+      abrirFlutuante({
+        id: entregaOriginal.caminho,
+        rotuloTipo: entregaOriginal.caminho ? "Entrega de PDI" : "Nova entrega",
+        titulo: entregaOriginal.titulo,
+        corpo: entregaOriginal.corpo,
+        dadosProps: {
+          data: entregaOriginal.data,
+          metas: entregaOriginal.metas.map(id => metas.find(m => m.id === id)?.titulo || "").filter(Boolean),
+        },
+        camposFixosProps: {
+          data: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
+          metas: {
+            icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />,
+            tipo: "multiselect",
+            opcoes: metas.map((m) => m.titulo),
+          }
+        },
+        caminho: entregaOriginal.caminho,
+        sha: entregaOriginal.sha,
+        temMudancas: origEntrega !== null && JSON.stringify(editandoEntrega) !== JSON.stringify(origEntrega),
+        salvando,
+        erro,
+        aoSalvar: async (itemFlutuanteAtual) => {
+          const titulo = itemFlutuanteAtual.titulo.trim() || "Sem título";
+          const eSalvar: Entrega = {
+            caminho: itemFlutuanteAtual.caminho,
+            sha: itemFlutuanteAtual.sha,
+            bruto: itemFlutuanteAtual.dadosProps || {},
+            id: entregaOriginal.id || itemFlutuanteAtual.caminho.split("/").pop()?.replace(/\.md$/, "") || "",
+            titulo,
+            data: itemFlutuanteAtual.dadosProps.data as string || hojeISO(),
+            metas: Array.isArray(itemFlutuanteAtual.dadosProps.metas)
+              ? itemFlutuanteAtual.dadosProps.metas.map(titulo => metas.find(m => m.titulo === titulo)?.id || "").filter(Boolean)
+              : [],
+            iaSugeriu: false,
+            corpo: itemFlutuanteAtual.corpo,
+          };
+          const { dados, corpo } = entregaParaArquivo(eSalvar);
+          const texto = escreverMarkdown({ dados, corpo });
+          const caminho = itemFlutuanteAtual.caminho || nomeLivre(PASTAS.entregas, titulo, entregas.map((x) => x.caminho));
+          await salvarTexto(caminho, texto, itemFlutuanteAtual.sha || undefined);
+          recarregarEntregas();
+        },
+        aoRemover: entregaOriginal.caminho ? async () => {
+          await removerEntrega(entregaOriginal);
+        } : undefined,
+      });
+      setEditandoEntrega(null);
+      setOrigEntrega(null);
+      setModoVisaoEntrega("popup");
+    }
+  }, [modoVisaoEntrega, editandoEntrega, metas]);
 
   // ── Alerta ao sair com mudanças ────────────────────────────────────────────
   useEffect(() => {
@@ -378,7 +440,7 @@ export default function PDI() {
             </Botao>
             <Botao onClick={novaEntrega}>
               <Package size={15} />
-              Registrar Entrega
+              Nova Entrega
             </Botao>
             <Botao
               variante="neutro"
@@ -549,43 +611,63 @@ export default function PDI() {
           {/* -------------------------------------------------- entregas */}
           {entregas.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-sm font-medium text-muted-foreground">
-                Tudo que você entregou
-              </h2>
-              <div className="grid gap-2">
-                {[...entregas]
-                  .sort((a, b) => b.data.localeCompare(a.data))
-                  .map((e) => (
-                    <Cartao
-                      key={e.id}
-                      className="cursor-pointer p-3.5 transition-colors hover:bg-accent"
-                      onClick={() => {
-                        setEditandoEntrega(e);
-                        setOrigEntrega(e);
-                        navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="font-medium">{e.titulo}</p>
-                        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                          {dataCurta(e.data)}
-                        </span>
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        {e.metas.length === 0 ? (
-                          <Selo tom="aviso">sem meta</Selo>
-                        ) : (
-                          e.metas.map((id) => (
-                            <Selo key={id} tom="primario">
-                              {metas.find((m) => m.id === id)?.titulo ?? id}
-                            </Selo>
-                          ))
-                        )}
-                        {e.iaSugeriu && <Selo tom="primario">🤖 conferir</Selo>}
-                      </div>
-                    </Cartao>
-                  ))}
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-muted-foreground">
+                  Tudo que você entregou
+                </h2>
+                <button
+                  type="button"
+                  onClick={alternarEsconderEntregas}
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  {esconderEntregas ? (
+                    <>
+                      <ChevronDown size={14} /> Mostrar ({entregas.length})
+                    </>
+                  ) : (
+                    <>
+                      <ChevronUp size={14} /> Ocultar
+                    </>
+                  )}
+                </button>
               </div>
+              
+              {!esconderEntregas && (
+                <div className="grid gap-2">
+                  {[...entregas]
+                    .sort((a, b) => b.data.localeCompare(a.data))
+                    .map((e) => (
+                      <Cartao
+                        key={e.id}
+                        className="cursor-pointer p-3.5 transition-colors hover:bg-accent"
+                        onClick={() => {
+                          setEditandoEntrega(e);
+                          setOrigEntrega(e);
+                          navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="font-medium">{e.titulo}</p>
+                          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                            {dataCurta(e.data)}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          {e.metas.length === 0 ? (
+                            <Selo tom="aviso">sem meta</Selo>
+                          ) : (
+                            e.metas.map((id) => (
+                              <Selo key={id} tom="primario">
+                                {metas.find((m) => m.id === id)?.titulo ?? id}
+                              </Selo>
+                            ))
+                          )}
+                          {e.iaSugeriu && <Selo tom="primario">🤖 conferir</Selo>}
+                        </div>
+                      </Cartao>
+                    ))}
+                </div>
+              )}
             </section>
           )}
         </>
@@ -630,115 +712,45 @@ export default function PDI() {
       )}
 
       {/* ---------------------------------------------- modal da entrega */}
-      <Modal
-        aberto={editandoEntrega !== null}
-        aoFechar={() => setEditandoEntrega(null)}
-        temMudancas={JSON.stringify(editandoEntrega) !== JSON.stringify(origEntrega)}
-        titulo={editandoEntrega?.caminho ? "Editar entrega" : "Registrar entrega"}
-        rodape={
-          <>
-            {editandoEntrega?.caminho && (
-              <Botao
-                variante="fantasma"
-                onClick={() => editandoEntrega && removerEntrega(editandoEntrega)}
-              >
-                <Trash2 size={16} />
-                Apagar
-              </Botao>
-            )}
-            <Botao variante="neutro" onClick={() => setEditandoEntrega(null)}>
-              Cancelar
-            </Botao>
-            <Botao onClick={salvarEntrega} disabled={salvando}>
-              {salvando ? "Salvando…" : "Salvar"}
-            </Botao>
-          </>
-        }
-      >
-        {editandoEntrega && (
-          <div className="space-y-4">
-            <div>
-              <Rotulo>O que você entregou</Rotulo>
-              <Campo
-                value={editandoEntrega.titulo}
-                onChange={(ev) =>
-                  setEditandoEntrega({
-                    ...editandoEntrega,
-                    titulo: ev.target.value,
-                  })
-                }
-                placeholder="Identidade visual do cliente X"
-                autoFocus
-              />
-            </div>
-
-            <div>
-              <Rotulo>Quando</Rotulo>
-              <Campo
-                type="date"
-                value={editandoEntrega.data}
-                onChange={(ev) =>
-                  setEditandoEntrega({
-                    ...editandoEntrega,
-                    data: ev.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <Rotulo dica="Pode deixar em branco agora e resolver depois, sozinho ou com a IA.">
-                Alimenta quais metas
-              </Rotulo>
-              {metas.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Você ainda não tem metas. Crie uma primeiro para poder ligar.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {metas.map((m) => (
-                    <label
-                      key={m.id}
-                      className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-2.5 hover:bg-accent"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={editandoEntrega.metas.includes(m.id)}
-                        onChange={(ev) =>
-                          setEditandoEntrega({
-                            ...editandoEntrega,
-                            metas: ev.target.checked
-                              ? [...editandoEntrega.metas, m.id]
-                              : editandoEntrega.metas.filter((x) => x !== m.id),
-                          })
-                        }
-                        className="mt-0.5 h-4 w-4 accent-[var(--primary)]"
-                      />
-                      <span className="text-sm">{m.titulo}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Rotulo dica="O que foi pedido, como você resolveu, que retorno teve. É isto que vira argumento numa conversa de promoção.">
-                Detalhes
-              </Rotulo>
-              <AreaTexto
-                value={editandoEntrega.corpo}
-                onChange={(ev) =>
-                  setEditandoEntrega({
-                    ...editandoEntrega,
-                    corpo: ev.target.value,
-                  })
-                }
-                className="min-h-32"
-              />
-            </div>
-          </div>
-        )}
-      </Modal>
+      {editandoEntrega !== null && (
+        <PainelNotionBase
+          rotuloTipo={editandoEntrega.caminho ? "Entrega de PDI" : "Nova entrega"}
+          modoVisao={modoVisaoEntrega}
+          setModoVisao={setModoVisaoEntrega}
+          titulo={editandoEntrega.titulo}
+          setTitulo={(t) => setEditandoEntrega({ ...editandoEntrega, titulo: t })}
+          corpo={editandoEntrega.corpo}
+          setCorpo={(c) => setEditandoEntrega({ ...editandoEntrega, corpo: c })}
+          caminhoItem={editandoEntrega.caminho}
+          dadosProps={{
+            data: editandoEntrega.data,
+            metas: editandoEntrega.metas.map(id => metas.find(m => m.id === id)?.titulo || "").filter(Boolean),
+          }}
+          onChangeProps={(novosDados) => {
+            setEditandoEntrega({
+              ...editandoEntrega,
+              data: (novosDados.data as string) || editandoEntrega.data,
+              metas: Array.isArray(novosDados.metas)
+                ? novosDados.metas.map(titulo => metas.find(m => m.titulo === titulo)?.id || "").filter(Boolean)
+                : [],
+            });
+          }}
+          camposFixosProps={{
+            data: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
+            metas: {
+              icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />,
+              tipo: "multiselect",
+              opcoes: metas.map((m) => m.titulo),
+            }
+          }}
+          salvando={salvando}
+          temMudancas={origEntrega !== null && JSON.stringify(editandoEntrega) !== JSON.stringify(origEntrega)}
+          aoFechar={fecharEntrega}
+          aoSalvar={async () => { if (editandoEntrega) await salvarEntrega(); }}
+          aoRemover={editandoEntrega.caminho ? async () => { await removerEntrega(editandoEntrega); } : undefined}
+          erro={erro}
+        />
+      )}
 
       <ModalConfirmacao
         aberto={metaParaExcluir !== null}
