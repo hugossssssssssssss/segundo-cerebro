@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { LogoKlaus } from "./LogoKlaus";
-import { VERSAO_APP } from "@/lib/versao";
+import { versao } from "@/lib/versao";
 import {
   carregarMenuPersonalizado,
   EVENTO_MENU_ATUALIZADO,
@@ -86,7 +86,7 @@ export function NavegacaoLateral({
                 <LogoKlaus tamanho={28} />
                 <span className="truncate text-base font-bold tracking-tight">Klaus</span>
                 <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-primary border border-primary/20">
-                  v{VERSAO_APP}
+                  v{versao}
                 </span>
               </NavLink>
               <button
@@ -102,7 +102,7 @@ export function NavegacaoLateral({
             <button
               onClick={() => setColapsada(false)}
               className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-              title={`Expandir barra lateral (Klaus v${VERSAO_APP})`}
+              title={`Expandir barra lateral (Klaus v${versao})`}
               aria-label="Expandir barra lateral"
             >
               <ChevronRight size={18} />

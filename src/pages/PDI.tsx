@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Target,
@@ -609,9 +610,6 @@ const novaEntregaParaMeta = (meta: Meta) => {
                                 <Sparkles size={12} className="shrink-0 text-primary" />
                               )}
                             </button>
-                      <Botao onClick={() => novaEntregaParaMeta(m)} variante="neutro" className="mt-2">
-                        <Plus size={14} /> Entrega
-                      </Botao>
                           </li>
                         ))}
                         {ligadas.length > 4 && (
@@ -621,6 +619,9 @@ const novaEntregaParaMeta = (meta: Meta) => {
                         )}
                       </ul>
                     )}
+                    <Botao onClick={() => novaEntregaParaMeta(m)} variante="neutro" className="mt-2">
+                      <Plus size={14} /> Entrega
+                    </Botao>
                   </Cartao>
                 ))}
               </div>
