@@ -457,10 +457,6 @@ const novaEntregaParaMeta = (meta: Meta) => {
               <Target size={15} />
               Nova Meta
             </Botao>
-            <Botao onClick={novaEntrega} variante="neutro">
-              <Plus size={15} />
-              Nova Entrega
-            </Botao>
             <Botao
               variante="neutro"
               onClick={() => {
@@ -538,11 +534,6 @@ const novaEntregaParaMeta = (meta: Meta) => {
               <CabecalhoSecao
                 titulo="Metas Profissionais"
                 contador={resumos.length}
-                acoes={
-                  <Botao onClick={novaMeta} variante="neutro" className="h-7 text-xs px-2.5">
-                    <Plus size={13} /> Nova Meta
-                  </Botao>
-                }
               />
               <div className="grid gap-3">
                 {resumos.map(({ meta: m, entregas: ligadas }) => (
@@ -662,28 +653,23 @@ const novaEntregaParaMeta = (meta: Meta) => {
               titulo="Tudo que você entregou"
               contador={entregas.length}
               acoes={
-                <div className="flex items-center gap-1.5">
-                  {entregas.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={alternarEsconderEntregas}
-                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent/60 transition-colors cursor-pointer"
-                    >
-                      {esconderEntregas ? (
-                        <>
-                          <ChevronDown size={14} /> Mostrar ({entregas.length})
-                        </>
-                      ) : (
-                        <>
-                          <ChevronUp size={14} /> Ocultar
-                        </>
-                      )}
-                    </button>
-                  )}
-                  <Botao onClick={novaEntrega} variante="neutro" className="h-7 text-xs px-2.5">
-                    <Plus size={13} /> Nova Entrega
-                  </Botao>
-                </div>
+                entregas.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={alternarEsconderEntregas}
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent/60 transition-colors cursor-pointer"
+                  >
+                    {esconderEntregas ? (
+                      <>
+                        <ChevronDown size={14} /> Mostrar ({entregas.length})
+                      </>
+                    ) : (
+                      <>
+                        <ChevronUp size={14} /> Ocultar
+                      </>
+                    )}
+                  </button>
+                ) : undefined
               }
             />
 
