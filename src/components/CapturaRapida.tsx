@@ -181,7 +181,7 @@ export function CapturaRapida({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-start sm:p-4 sm:pt-28"
+      className="fixed inset-0 z-[600] flex items-end justify-center bg-black/50 p-0 sm:items-start sm:p-4 sm:pt-28"
       onClick={aoFechar}
     >
       <Cartao

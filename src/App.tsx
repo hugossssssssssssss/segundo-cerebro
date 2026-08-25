@@ -467,15 +467,8 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Modais, Toasts e Gavetas */}
-      <ToastsContainer />
+      <WorkspaceTelaCheia />
       <GavetaMais aberta={gavetaAberta} aoFechar={() => setGavetaAberta(false)} />
-      <Busca
-        aberta={buscando || buscaGlobalAberta}
-        aoFechar={() => {
-          setBuscando(false);
-          setBuscaGlobalAberta(false);
-        }}
-      />
       <CapturaRapida
         aberta={capturando}
         textoInicial={textoCompartilhado}
@@ -484,8 +477,15 @@ function Estrutura({ children }: { children: React.ReactNode }) {
           setTextoCompartilhado("");
         }}
       />
+      <Busca
+        aberta={buscando || buscaGlobalAberta}
+        aoFechar={() => {
+          setBuscando(false);
+          setBuscaGlobalAberta(false);
+        }}
+      />
       <Pomodoro />
-      <WorkspaceTelaCheia />
+      <ToastsContainer />
     </div>
   );
 }

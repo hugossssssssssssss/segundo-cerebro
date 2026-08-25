@@ -245,7 +245,7 @@ export function Busca({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-0 pt-0 sm:p-4 sm:pt-20 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[600] flex items-start justify-center bg-black/60 p-0 pt-0 sm:p-4 sm:pt-20 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={aoFechar}
     >
       <div

@@ -149,7 +149,7 @@ export function WorkspaceTelaCheia() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-black/40 backdrop-blur-[3px] p-2 sm:p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-[200] flex flex-col bg-black/40 backdrop-blur-[3px] p-2 sm:p-4 animate-in fade-in duration-150"
       onClick={fecharWorkspace}
     >
       <div
