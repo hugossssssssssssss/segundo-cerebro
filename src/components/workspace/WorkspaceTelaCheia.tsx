@@ -147,12 +147,12 @@ export function WorkspaceTelaCheia() {
   };
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-card overflow-hidden animate-in fade-in duration-150">
+    <div className="flex-1 min-h-0 flex flex-col bg-card overflow-hidden animate-in fade-in zoom-in-[0.99] duration-200 ease-out">
       {/* Corpo do Workspace */}
       {abas.length === 0 || !abaAtiva ? (
         <WorkspaceVazio />
       ) : (
-        <>
+        <div key={abaAtiva.id} className="flex-1 min-h-0 flex flex-col overflow-hidden animate-in fade-in duration-150 ease-out">
           {/* Cabeçalho Interativo com Breadcrumbs */}
           <div className="flex items-center justify-between border-b border-border/80 px-4 sm:px-6 py-2 bg-card/60 shrink-0">
             <WorkspaceBreadcrumbs caminho={abaAtiva.caminho} titulo={abaAtiva.titulo} />
@@ -160,8 +160,8 @@ export function WorkspaceTelaCheia() {
 
           {/* Conteúdo do Documento Ativo */}
           <div className="min-h-0 flex-1 overflow-y-auto px-6 sm:px-12 py-6">
-              <div className="space-y-5 max-w-4xl mx-auto w-full">
-                {abaAtiva.erro && <Aviso tom="erro">{abaAtiva.erro}</Aviso>}
+            <div className="space-y-5 max-w-4xl mx-auto w-full">
+              {abaAtiva.erro && <Aviso tom="erro">{abaAtiva.erro}</Aviso>}
 
                 {/* Título do Documento */}
                 <input
@@ -241,7 +241,7 @@ export function WorkspaceTelaCheia() {
               aoVerHistorico={abaAtiva.caminho ? () => setVendoHistorico(true) : undefined}
               temHistorico={!!abaAtiva.caminho}
             />
-          </>
+          </div>
         )}
 
       {/* Modal de Confirmação para Apagar Item */}

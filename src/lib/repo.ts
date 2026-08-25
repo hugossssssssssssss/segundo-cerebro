@@ -165,12 +165,19 @@ export function ehArquivoInternoOuSistema(caminho: string): boolean {
     c.startsWith(".vscode/") ||
     c.startsWith("src/") ||
     c.startsWith("public/") ||
-    c.startsWith("dist/")
+    c.startsWith("dist/") ||
+    c.startsWith("modelos/") ||
+    c.startsWith("templates/") ||
+    c.startsWith(".templates/") ||
+    c.startsWith("exemplos/") ||
+    c.startsWith("processos/")
   ) {
     return true;
   }
 
   const nome = c.split("/").pop() || "";
+  const nomeSemExt = nome.replace(/\.(md|json|excalidraw)$/i, "");
+
   const nomesInternos = [
     "agents.md",
     "architecture.md",
@@ -188,11 +195,23 @@ export function ehArquivoInternoOuSistema(caminho: string): boolean {
     "tsconfig.node.json",
     "vite.config.ts",
     "estado.json",
+    "kanban-geral",
+    "kanban geral",
+    "identidade-visual-e-branding",
+    "identidade visual e branding",
+    "briefing-de-identidade-visual",
+    "briefing de identidade visual",
+    "tese",
+    "ata-de-reuniao",
+    "ata de reuniao",
+    "ata-reuniao",
+    "1-1-com-liderado",
+    "revisao-trimestral-okrs",
   ];
 
-  if (nomesInternos.includes(nome)) return true;
+  if (nomesInternos.includes(nome) || nomesInternos.includes(nomeSemExt)) return true;
 
-  // Arquivos soltos diretamente na raiz do repositório (sem subpasta)
+  // Arquivos soltos diretamente na raiz do repositório (sem subpasta de conteúdo como notas/, tarefas/, etc.)
   if (!c.includes("/")) {
     return true;
   }

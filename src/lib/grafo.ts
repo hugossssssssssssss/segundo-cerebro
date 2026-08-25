@@ -6,7 +6,7 @@
  * e gera um grafo tridimensional com simulação de forças físicas.
  */
 
-import type { ItemRepo } from "./repo";
+import { type ItemRepo, ehArquivoInternoOuSistema } from "./repo";
 import { tituloProvavel } from "./markdown";
 import { montarIndice, extrairLinks } from "./links";
 
@@ -72,6 +72,7 @@ export function construirGrafo3D(
 
   // 1. Cria nós para cada documento no repositório
   for (const item of itens) {
+    if (ehArquivoInternoOuSistema(item.caminho)) continue;
     if (item.caminho.startsWith("referencias/imagens/")) continue;
 
     const tipo = determinarTipo(item.caminho);
