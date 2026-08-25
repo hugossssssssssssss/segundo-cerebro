@@ -97,10 +97,9 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
   {
     id: "busca_web",
     titulo: "Busca Web Inteligente",
-    descricao: "Pesquise no Google, Bing ou DuckDuckGo com construtor de filtros e operadores avançados (Dorks)",
+    descricao: "Pesquise na internet com construtor visual de filtros e operadores avançados",
     icone: Globe,
     colunasPadrao: 3,
-    corIcone: "text-blue-500 bg-blue-500/10",
   },
   {
     id: "hoje",

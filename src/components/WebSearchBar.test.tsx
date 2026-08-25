@@ -11,35 +11,24 @@ describe("WebSearchBar Component", () => {
     cleanup();
   });
 
-  it("deve renderizar o input de busca, abas de motores e botões", () => {
+  it("deve renderizar o input de busca e botão de filtros", () => {
     render(<WebSearchBar modo="widget" />);
 
-    expect(screen.getByRole("button", { name: /google/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /bing/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /duckduckgo/i })).toBeTruthy();
     expect(screen.getByPlaceholderText(/o que você deseja pesquisar/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: /filtros/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /buscar/i })).toBeTruthy();
   });
 
-  it("permite alternar o motor de busca pelas abas e atualiza o placeholder", () => {
-    render(<WebSearchBar modo="widget" />);
-
-    const botaoDuck = screen.getByRole("button", { name: /duckduckgo/i });
-    fireEvent.click(botaoDuck);
-
-    expect(screen.getByPlaceholderText(/pesquise com privacidade no duckduckgo/i)).toBeTruthy();
-  });
-
-  it("abre o painel de filtros com atalhos e categorias principais", () => {
+  it("abre o painel de propriedades e exibe campos Site, Tipo, Exatamente", () => {
     render(<WebSearchBar modo="widget" />);
 
     const botaoFiltros = screen.getByRole("button", { name: /filtros/i });
     fireEvent.click(botaoFiltros);
 
-    expect(screen.getByText(/apenas neste site/i)).toBeTruthy();
-    expect(screen.getByText(/documentos em pdf/i)).toBeTruthy();
-    expect(screen.getByText(/frase ou expressão exata/i)).toBeTruthy();
+    expect(screen.getByText(/site:/i)).toBeTruthy();
+    expect(screen.getByText(/tipo:/i)).toBeTruthy();
+    expect(screen.getByText(/exatamente:/i)).toBeTruthy();
+    expect(screen.getByText(/sem as palavras:/i)).toBeTruthy();
   });
 
   it("chama aoSubmeter com a query correta ao submeter busca", () => {
