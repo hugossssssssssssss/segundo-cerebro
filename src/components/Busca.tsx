@@ -323,11 +323,11 @@ export function Busca({
       onClick={aoFechar}
     >
       <div
-        className="flex max-h-[100dvh] w-full flex-col border-border bg-card shadow-2xl sm:max-h-[80dvh] sm:max-w-2xl sm:rounded-2xl sm:border overflow-hidden"
+        className="flex max-h-[100dvh] w-full flex-col border-border bg-card shadow-2xl sm:max-h-[85dvh] sm:max-w-3xl lg:max-w-4xl sm:rounded-2xl sm:border overflow-hidden overflow-x-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Campo de Entrada */}
-        <div className="flex shrink-0 items-center gap-2 border-b border-border p-3">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border p-3 sm:p-3.5">
           <Search size={18} className="shrink-0 text-muted-foreground ml-1" />
           <Campo
             ref={entrada}
@@ -340,28 +340,28 @@ export function Busca({
           {termo && (
             <button
               onClick={() => setTermo("")}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground"
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
             >
               <X size={16} />
             </button>
           )}
           <button
             onClick={aoFechar}
-            className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
             aria-label="Fechar busca"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Filtros por Categoria */}
-        <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/60 bg-card/50 overflow-x-auto no-scrollbar shrink-0">
+        {/* Filtros por Categoria sem rolagem horizontal */}
+        <div className="flex items-center flex-wrap gap-1.5 px-3.5 py-2.5 border-b border-border/60 bg-card/50 shrink-0 select-none">
           {OPCOES_FILTRO.map((f) => (
             <button
               key={f.id}
               onClick={() => setCategoria(f.id)}
               className={cn(
-                "px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 select-none",
+                "px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 select-none cursor-pointer",
                 categoria === f.id
                   ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                   : "bg-secondary/60 text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -373,7 +373,7 @@ export function Busca({
         </div>
 
         {/* Lista de Resultados / Estado Inicial */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           {erro ? (
             <p className="p-6 text-sm text-destructive">{erro}</p>
           ) : carregando && acervo.length === 0 && termo.trim().length >= 2 ? (
