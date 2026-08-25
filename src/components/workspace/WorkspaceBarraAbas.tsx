@@ -29,28 +29,52 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useWorkspace, type WorkspaceAba } from "./WorkspaceContext";
-import { cn } from "@/lib/utils";
+import { cn, formatarTituloAmigavel } from "@/lib/utils";
 
 function obterIconeTipo(rotulo: string, caminho?: string) {
   const r = (rotulo || "").toLowerCase();
   const c = (caminho || "").toLowerCase();
 
   if (r.includes("tarefa") || c.startsWith("tarefas/")) {
-    return <CheckSquare size={14} className="text-emerald-500 shrink-0" />;
+    return (
+      <div className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+        <CheckSquare size={13} />
+      </div>
+    );
   }
   if (r.includes("meta") || c.startsWith("pdi/metas") || c.startsWith("metas/")) {
-    return <Target size={14} className="text-blue-500 shrink-0" />;
+    return (
+      <div className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
+        <Target size={13} />
+      </div>
+    );
   }
   if (r.includes("entrega") || c.startsWith("pdi/entregas/")) {
-    return <Sparkles size={14} className="text-purple-500 shrink-0" />;
+    return (
+      <div className="flex h-5 w-5 items-center justify-center rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+        <Sparkles size={13} />
+      </div>
+    );
   }
   if (r.includes("referencia") || c.startsWith("referencias/")) {
-    return <ImageIcon size={14} className="text-pink-500 shrink-0" />;
+    return (
+      <div className="flex h-5 w-5 items-center justify-center rounded-md bg-pink-500/10 text-pink-600 dark:text-pink-400 shrink-0">
+        <ImageIcon size={13} />
+      </div>
+    );
   }
   if (r.includes("contato") || c.startsWith("contatos/")) {
-    return <User size={14} className="text-cyan-500 shrink-0" />;
+    return (
+      <div className="flex h-5 w-5 items-center justify-center rounded-md bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shrink-0">
+        <User size={13} />
+      </div>
+    );
   }
-  return <FileText size={14} className="text-amber-500 shrink-0" />;
+  return (
+    <div className="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+      <FileText size={13} />
+    </div>
+  );
 }
 
 interface AbaItemProps {
@@ -83,10 +107,11 @@ const AbaItem = memo(function AbaItem({
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 50 : undefined,
-    opacity: isDragging ? 0.7 : 1,
+    opacity: isDragging ? 0.75 : 1,
   };
 
   const [menuAberto, setMenuAberto] = React.useState(false);
+  const tituloLimpo = formatarTituloAmigavel(aba.titulo, aba.caminho?.split("/").pop());
 
   return (
     <div
@@ -94,10 +119,10 @@ const AbaItem = memo(function AbaItem({
       style={style}
       {...attributes}
       className={cn(
-        "group relative flex items-center gap-2 border-r border-border/70 px-3.5 py-2 text-xs font-medium cursor-pointer select-none transition-all max-w-[200px] sm:max-w-[240px] shrink-0",
+        "group relative flex items-center gap-2 px-3 py-1.5 text-xs font-medium cursor-pointer select-none transition-all duration-150 max-w-[200px] sm:max-w-[240px] shrink-0",
         ativa
-          ? "bg-card text-foreground border-b-2 border-b-primary shadow-xs font-semibold"
-          : "bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground border-b border-b-border"
+          ? "bg-card text-foreground border-t-2 border-t-primary border-x border-x-border/70 border-b-transparent shadow-xs font-semibold rounded-t-xl -mb-[1px] z-10"
+          : "bg-transparent text-muted-foreground hover:bg-card/60 hover:text-foreground border border-transparent rounded-lg my-1 hover:shadow-2xs"
       )}
       onClick={onSelecionar}
       onContextMenu={(e) => {
@@ -107,16 +132,16 @@ const AbaItem = memo(function AbaItem({
     >
       <div {...listeners} className="flex items-center gap-1.5 min-w-0 flex-1">
         {obterIconeTipo(aba.rotuloTipo, aba.caminho)}
-        <span className="truncate" title={aba.titulo || "Sem título"}>
-          {aba.titulo || "Sem título"}
+        <span className="truncate" title={tituloLimpo}>
+          {tituloLimpo}
         </span>
       </div>
 
       {/* Indicador de Status (Salvando / Modificado) */}
       {aba.salvando ? (
-        <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-ping shrink-0" title="Salvando..." />
+        <span className="h-2 w-2 rounded-full bg-blue-500 animate-ping shrink-0" title="Salvando..." />
       ) : aba.temMudancas ? (
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" title="Modificado (Salva automaticamente)" />
+        <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" title="Modificado (Salva automaticamente)" />
       ) : null}
 
       {/* Menu dropdown de opções da aba */}
@@ -127,7 +152,7 @@ const AbaItem = memo(function AbaItem({
               e.stopPropagation();
             }}
             className={cn(
-              "rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-opacity shrink-0",
+              "rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-opacity shrink-0 cursor-pointer",
               ativa ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-70 hover:!opacity-100"
             )}
             title="Opções da aba"
@@ -146,7 +171,7 @@ const AbaItem = memo(function AbaItem({
                 setMenuAberto(false);
                 onFechar();
               }}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
             >
               <X size={14} className="shrink-0" />
               <span>Fechar aba</span>
@@ -157,7 +182,7 @@ const AbaItem = memo(function AbaItem({
                 setMenuAberto(false);
                 onMigrarPopup();
               }}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors cursor-pointer"
             >
               <Square size={14} className="shrink-0 opacity-70" />
               <span>Abrir em modo pop-up</span>
@@ -168,7 +193,7 @@ const AbaItem = memo(function AbaItem({
                 setMenuAberto(false);
                 onAbrirNovaGuia();
               }}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors cursor-pointer"
             >
               <ExternalLink size={14} className="shrink-0 opacity-70" />
               <span>Abrir em outra guia</span>
@@ -184,7 +209,7 @@ const AbaItem = memo(function AbaItem({
           onFechar();
         }}
         className={cn(
-          "rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all shrink-0",
+          "rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all shrink-0 cursor-pointer",
           ativa ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-70 hover:!opacity-100"
         )}
         title="Fechar aba"
@@ -241,12 +266,12 @@ export function WorkspaceBarraAbas() {
   };
 
   return (
-    <div className="flex items-center justify-between border-b border-border bg-muted/40 px-2 select-none shrink-0 h-10 overflow-hidden">
+    <div className="flex items-center justify-between border-b border-border/80 bg-muted/30 px-2 select-none shrink-0 h-11 overflow-hidden">
       {/* Lista de Abas com drag-and-drop */}
-      <div className="flex items-center min-w-0 flex-1 overflow-x-auto no-scrollbar">
+      <div className="flex items-end min-w-0 flex-1 overflow-x-auto no-scrollbar h-full pt-1.5">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={lidarDragEnd}>
           <SortableContext items={abas.map((a) => a.id)} strategy={horizontalListSortingStrategy}>
-            <div className="flex items-center">
+            <div className="flex items-end gap-1">
               {abas.map((aba) => (
                 <AbaItem
                   key={aba.id}
@@ -265,11 +290,11 @@ export function WorkspaceBarraAbas() {
         {/* Botão de Adicionar / Abrir Documento */}
         <button
           onClick={() => setBuscaGlobalAberta(true)}
-          className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/80 rounded-md transition-colors shrink-0 ml-1"
+          className="flex items-center gap-1.5 h-8 px-2.5 mb-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card border border-border/40 hover:border-border/80 rounded-lg transition-all shrink-0 ml-1.5 shadow-2xs cursor-pointer"
           title="Abrir ou pesquisar documento (⌘K)"
         >
-          <Plus size={14} />
-          <span className="hidden sm:inline">Abrir</span>
+          <Plus size={13} />
+          <span className="hidden sm:inline">Nova aba</span>
         </button>
       </div>
 
@@ -277,8 +302,8 @@ export function WorkspaceBarraAbas() {
       <div className="flex items-center gap-1 shrink-0 pl-2">
         <button
           onClick={fecharWorkspace}
-          className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          title="Minimizar / Fechar tela cheia"
+          className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+          title="Sair do Workspace / Fechar tela cheia"
         >
           <Minimize2 size={15} />
         </button>

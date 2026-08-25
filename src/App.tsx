@@ -123,12 +123,16 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         setCapturando(true);
       } else if (tecla === "b") {
         e.preventDefault();
-        setColapsada((v) => !v);
+        if (workspaceAberto) {
+          toast("Para expandir a barra lateral, saia do modo tela cheia (Workspace).", { tipo: "info" });
+        } else {
+          setColapsada((v) => !v);
+        }
       }
     };
     document.addEventListener("keydown", aoTeclar);
     return () => document.removeEventListener("keydown", aoTeclar);
-  }, []);
+  }, [workspaceAberto]);
 
   // Registro das camadas no gerenciador do Klaus
   useEffect(() => {

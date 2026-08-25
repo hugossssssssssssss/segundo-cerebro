@@ -19,6 +19,8 @@ import {
 } from "@/lib/menuPersonalizado";
 import { obterIconePorNome } from "@/lib/icones";
 import { ModalPersonalizarMenu } from "./ModalPersonalizarMenu";
+import { toast } from "@/lib/toast";
+import { useWorkspace } from "@/components/workspace/WorkspaceContext";
 
 import { alternarTema, lerTemaSalvo, type Tema } from "@/lib/tema";
 
@@ -36,6 +38,23 @@ export function NavegacaoLateral({
   className,
 }: NavegacaoLateralProps) {
   const [tema, setTema] = useState<Tema>(lerTemaSalvo);
+  let workspace: any = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    workspace = useWorkspace();
+  } catch {}
+
+  const workspaceAberto = !!workspace?.workspaceAberto;
+
+  const lidarToggleColapsada = () => {
+    if (colapsada && workspaceAberto) {
+      toast("Para expandir a barra lateral, saia do modo tela cheia (Workspace).", {
+        tipo: "info",
+      });
+      return;
+    }
+    setColapsada((v) => !v);
+  };
 
   useEffect(() => {
     const aoMudar = () => setTema(lerTemaSalvo());
@@ -100,9 +119,16 @@ export function NavegacaoLateral({
             </>
           ) : (
             <button
-              onClick={() => setColapsada(false)}
-              className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-              title={`Expandir barra lateral (Klaus v${versao})`}
+              onClick={lidarToggleColapsada}
+              className={cn(
+                "mx-auto flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors relative group",
+                workspaceAberto && "hover:text-primary"
+              )}
+              title={
+                workspaceAberto
+                  ? "Para expandir a barra lateral, saia do modo tela cheia (Workspace)."
+                  : `Expandir barra lateral (Klaus v${versao})`
+              }
               aria-label="Expandir barra lateral"
             >
               <ChevronRight size={18} />

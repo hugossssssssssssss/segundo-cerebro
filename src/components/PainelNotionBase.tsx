@@ -15,6 +15,8 @@ import {
   Copy,
   CopyPlus,
   ArrowRightLeft,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Botao, Aviso, ModalConfirmacao } from "@/components/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -551,6 +553,46 @@ export function PainelNotionBase({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opcoesRelacionamento.map((x) => x.caminho).join(",")]);
 
+  // Informações de Navegação Sequencial no Pop-up (Ex: "3 de 100" e setas < e >)
+  const infoSequencial = useMemo(() => {
+    if (!caminhoItem) {
+      return { indice: 0, total: 0, podeAnterior: false, podeProximo: false, anterior: null, proximo: null };
+    }
+
+    const pasta = caminhoItem.split("/")[0]?.toLowerCase() || "";
+    const todosItens = (cache?.itens || []).filter((i) => {
+      if (!pasta) return false;
+      return i.caminho.startsWith(pasta + "/") && !i.caminho.endsWith(".excalidraw.json");
+    });
+
+    const ordenados = [...todosItens].sort((a, b) => a.caminho.localeCompare(b.caminho));
+    const idx = ordenados.findIndex((i) => i.caminho === caminhoItem);
+
+    if (idx === -1) {
+      return { indice: 0, total: ordenados.length, podeAnterior: false, podeProximo: false, anterior: null, proximo: null };
+    }
+
+    return {
+      indice: idx + 1,
+      total: ordenados.length,
+      podeAnterior: idx > 0,
+      podeProximo: idx < ordenados.length - 1,
+      anterior: idx > 0 ? ordenados[idx - 1] : null,
+      proximo: idx < ordenados.length - 1 ? ordenados[idx + 1] : null,
+    };
+  }, [caminhoItem]);
+
+  const navegarSequencial = async (direcao: "anterior" | "proximo") => {
+    const itemAlvo = direcao === "anterior" ? infoSequencial.anterior : infoSequencial.proximo;
+    if (!itemAlvo) return;
+    if (temMudancas) {
+      try {
+        await aoSalvar();
+      } catch {}
+    }
+    abrirItemSpa(itemAlvo.caminho);
+  };
+
   // Cabeçalho unificado
   const cabecalho = (
     <div
@@ -568,6 +610,33 @@ export function PainelNotionBase({
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
           {rotuloTipo}
         </span>
+
+        {/* Controles de Navegação Sequencial no Cabeçalho */}
+        {infoSequencial.total > 1 && (
+          <div className="flex items-center gap-0.5 rounded-lg border border-border/80 bg-muted/40 p-0.5 shrink-0">
+            <button
+              onClick={() => navegarSequencial("anterior")}
+              disabled={!infoSequencial.podeAnterior}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              title="Documento anterior"
+            >
+              <ChevronLeft size={13} />
+            </button>
+
+            <span className="text-[11px] font-medium text-muted-foreground px-1 select-none font-mono">
+              {infoSequencial.indice}/{infoSequencial.total}
+            </span>
+
+            <button
+              onClick={() => navegarSequencial("proximo")}
+              disabled={!infoSequencial.podeProximo}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              title="Próximo documento"
+            >
+              <ChevronRight size={13} />
+            </button>
+          </div>
+        )}
 
         <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-accent/60 flex items-center gap-1 shrink-0">
           {salvando || fechandoESalvando ? (
@@ -740,7 +809,35 @@ export function PainelNotionBase({
           </Botao>
         )}
       </div>
-      <span className="text-[11px] text-muted-foreground">Salva automaticamente ao fechar</span>
+
+      {/* Controles Sequenciais no Rodapé (Ex: "< 3 de 100 >") */}
+      {infoSequencial.total > 1 && (
+        <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-lg border border-border/60">
+          <button
+            onClick={() => navegarSequencial("anterior")}
+            disabled={!infoSequencial.podeAnterior}
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+            title="Documento anterior"
+          >
+            <ChevronLeft size={14} />
+          </button>
+
+          <span className="text-[11px] font-medium text-muted-foreground px-1 select-none">
+            {infoSequencial.indice} de {infoSequencial.total}
+          </span>
+
+          <button
+            onClick={() => navegarSequencial("proximo")}
+            disabled={!infoSequencial.podeProximo}
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+            title="Próximo documento"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
+
+      <span className="text-[11px] text-muted-foreground hidden sm:inline">Salva automaticamente ao fechar</span>
     </div>
   );
 
