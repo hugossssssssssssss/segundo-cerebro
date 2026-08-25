@@ -5,23 +5,25 @@ import { Badge } from "@/components/ui/badge";
 
 export function WebSearchWidget() {
   return (
-    <Card className="h-full border border-border/80 bg-card shadow-xs flex flex-col justify-between overflow-hidden">
-      <CardHeader className="p-5 sm:p-6 pb-2 sm:pb-3 space-y-1">
+    <Card className="h-full border border-border/80 bg-card/95 backdrop-blur-xs shadow-xs flex flex-col justify-between overflow-hidden rounded-3xl p-1 sm:p-2">
+      <CardHeader className="p-5 sm:p-6 pb-3 sm:pb-4 space-y-1.5">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-            <Globe className="h-4 w-4 text-blue-500" />
-            <span>Busca Web Avançada</span>
+          <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
+              <Globe size={18} />
+            </div>
+            <span>Busca Web Inteligente</span>
           </CardTitle>
-          <Badge variant="outline" className="text-[10px] text-muted-foreground border-border/60">
-            Dork Builder
+          <Badge variant="outline" className="text-[11px] text-muted-foreground border-border/70 py-0.5 px-2 font-medium">
+            Google • Bing • DuckDuckGo
           </Badge>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Pesquise no Google, Bing ou DuckDuckGo com filtros de site, formato e termos exatos.
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Pesquise diretamente na internet com filtros avançados de formato, site e datas sem complicação.
         </p>
       </CardHeader>
 
-      <CardContent className="p-5 sm:p-6 pt-2 sm:pt-2 flex-1 flex flex-col justify-center">
+      <CardContent className="p-5 sm:p-6 pt-0 sm:pt-0 flex-1 flex flex-col justify-start">
         <WebSearchBar modo="widget" />
       </CardContent>
     </Card>

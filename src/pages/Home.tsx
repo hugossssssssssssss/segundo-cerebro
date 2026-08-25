@@ -96,10 +96,10 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
   // --- MÓDULOS DE CONTEÚDO ---
   {
     id: "busca_web",
-    titulo: "Busca Web Avançada",
-    descricao: "Pesquise no Google, Bing ou DuckDuckGo com construtor de filtros Dorks",
+    titulo: "Busca Web Inteligente",
+    descricao: "Pesquise no Google, Bing ou DuckDuckGo com construtor de filtros e operadores avançados (Dorks)",
     icone: Globe,
-    colunasPadrao: 2,
+    colunasPadrao: 3,
     corIcone: "text-blue-500 bg-blue-500/10",
   },
   {
@@ -299,7 +299,7 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
 ];
 
 const GADGETS_PADRAO: Gadget[] = [
-  { id: "busca_web", colunas: 2 },
+  { id: "busca_web", colunas: 3 },
   { id: "kpi_tarefas", colunas: 1 },
   { id: "kpi_notas", colunas: 1 },
   { id: "kpi_referencias", colunas: 1 },
@@ -567,7 +567,12 @@ export default function Home() {
     const salvo = localStorage.getItem("home-gadgets");
     if (salvo) {
       try {
-        return JSON.parse(salvo);
+        const parsed: Gadget[] = JSON.parse(salvo);
+        // Garante que a Busca Web apareça no topo da Home mesmo se o usuário já tiver layout antigo salvo
+        if (Array.isArray(parsed) && !parsed.some((g) => g.id === "busca_web")) {
+          return [{ id: "busca_web", colunas: 3 }, ...parsed];
+        }
+        return parsed;
       } catch {
         return GADGETS_PADRAO;
       }

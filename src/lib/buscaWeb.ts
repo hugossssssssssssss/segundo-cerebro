@@ -25,10 +25,11 @@ export interface WebSearchFilters {
 export interface InfoCampoFiltro {
   chave: keyof WebSearchFilters;
   rotulo: string;
+  dica: string;
   placeholder: string;
-  descricao?: string;
   tipo?: "text" | "date";
-  exemplo?: string;
+  exemplo: string;
+  iconeNome?: string;
 }
 
 export const MOTORES_BUSCA: {
@@ -36,51 +37,67 @@ export const MOTORES_BUSCA: {
   nome: string;
   urlBase: string;
   placeholder: string;
+  descricao: string;
+  corAcento: string;
 }[] = [
   {
     id: "google",
     nome: "Google",
     urlBase: "https://www.google.com/search?q=",
-    placeholder: "Pesquisar no Google com operadores...",
+    placeholder: "O que você deseja pesquisar na web?",
+    descricao: "Maior acervo de resultados e maior suporte a filtros de data e texto.",
+    corAcento: "text-blue-500 bg-blue-500/10 border-blue-500/30",
   },
   {
     id: "bing",
     nome: "Bing",
     urlBase: "https://www.bing.com/search?q=",
-    placeholder: "Pesquisar no Bing com operadores...",
+    placeholder: "Pesquise no Bing com filtros inteligentes...",
+    descricao: "Excelente para buscas acadêmicas, técnicas e segmentação geográfica.",
+    corAcento: "text-teal-500 bg-teal-500/10 border-teal-500/30",
   },
   {
     id: "duckduckgo",
     nome: "DuckDuckGo",
     urlBase: "https://duckduckgo.com/?q=",
-    placeholder: "Pesquisar no DuckDuckGo com operadores...",
+    placeholder: "Pesquise com privacidade no DuckDuckGo...",
+    descricao: "Foco em privacidade, sem rastreamento ou bolha de resultados.",
+    corAcento: "text-amber-500 bg-amber-500/10 border-amber-500/30",
   },
 ];
 
 export const FILTROS_PRINCIPAIS: InfoCampoFiltro[] = [
   {
     chave: "site",
-    rotulo: "Site Específico",
-    placeholder: "ex: github.com ou wikipedia.org",
+    rotulo: "Apenas neste site ou domínio",
+    dica: "Limita a busca a um único portal (ex: buscar só no GitHub ou Wikipédia)",
+    placeholder: "ex: github.com, wikipedia.org, gov.br",
     exemplo: "site:github.com",
+    iconeNome: "Globe",
   },
   {
     chave: "filetype",
-    rotulo: "Tipo de Arquivo",
-    placeholder: "ex: pdf, docx, svg, json",
+    rotulo: "Tipo / Formato de arquivo",
+    dica: "Filtra apenas documentos disponíveis para download direto",
+    placeholder: "ex: pdf, docx, xlsx, svg, json",
     exemplo: "filetype:pdf",
+    iconeNome: "FileText",
   },
   {
     chave: "exata",
-    rotulo: "Palavra/Frase Exata",
-    placeholder: "ex: design system token",
+    rotulo: "Frase ou expressão exata",
+    dica: "O buscador só trará páginas que contenham este texto exatamente nessa ordem",
+    placeholder: 'ex: "design tokens" ou "inteligência artificial"',
     exemplo: '"design system"',
+    iconeNome: "Target",
   },
   {
     chave: "excluir",
-    rotulo: "Excluir Palavra",
-    placeholder: "ex: wordpress ou anuncio",
-    exemplo: "-wordpress",
+    rotulo: "Excluir estas palavras",
+    dica: "Ignora qualquer página que contenha os termos digitados aqui",
+    placeholder: "ex: anuncio patrocinado comprar",
+    exemplo: "-anuncio",
+    iconeNome: "MinusCircle",
   },
 ];
 
@@ -88,78 +105,134 @@ export const FILTROS_EXTRAS_POR_MOTOR: Record<WebSearchEngine, InfoCampoFiltro[]
   google: [
     {
       chave: "intitle",
-      rotulo: "Título da Página",
-      placeholder: "ex: tutorial react",
+      rotulo: "Aparece no Título da página",
+      dica: "A palavra deve estar destacada no título principal da aba",
+      placeholder: "ex: react tutorial",
       exemplo: "intitle:react",
+      iconeNome: "Heading",
     },
     {
       chave: "inurl",
-      rotulo: "URL da Página",
-      placeholder: "ex: blog ou docs",
-      exemplo: "inurl:blog",
+      rotulo: "Aparece no Link / URL",
+      dica: "O endereço da página precisa conter este caminho",
+      placeholder: "ex: blog, docs, release",
+      exemplo: "inurl:docs",
+      iconeNome: "Link",
     },
     {
       chave: "intext",
-      rotulo: "Texto da Página",
+      rotulo: "Aparece no Corpo do texto",
+      dica: "Obriga que o termo esteja dentro do artigo ou conteúdo",
       placeholder: "ex: arquitetura de software",
       exemplo: "intext:arquitetura",
-    },
-    {
-      chave: "before",
-      rotulo: "Antes da Data",
-      placeholder: "YYYY-MM-DD",
-      tipo: "date",
-      exemplo: "before:2025-01-01",
+      iconeNome: "AlignLeft",
     },
     {
       chave: "after",
-      rotulo: "Depois da Data",
-      placeholder: "YYYY-MM-DD",
+      rotulo: "Publicado Depois de",
+      dica: "Resultados mais recentes que esta data",
+      placeholder: "AAAA-MM-DD",
       tipo: "date",
       exemplo: "after:2024-01-01",
+      iconeNome: "Calendar",
+    },
+    {
+      chave: "before",
+      rotulo: "Publicado Antes de",
+      dica: "Resultados históricos anteriores a esta data",
+      placeholder: "AAAA-MM-DD",
+      tipo: "date",
+      exemplo: "before:2025-01-01",
+      iconeNome: "Calendar",
     },
   ],
   bing: [
     {
       chave: "intitle",
-      rotulo: "Título da Página",
-      placeholder: "ex: relatorio anual",
+      rotulo: "Aparece no Título da página",
+      dica: "O título da página no Bing precisa ter este termo",
+      placeholder: "ex: relatorio financeiro",
       exemplo: "intitle:relatorio",
+      iconeNome: "Heading",
     },
     {
       chave: "inbody",
-      rotulo: "Corpo da Página",
+      rotulo: "Aparece no Corpo da página",
+      dica: "O texto principal do site precisa conter a palavra",
       placeholder: "ex: guia completo",
       exemplo: "inbody:guia",
+      iconeNome: "AlignLeft",
     },
     {
       chave: "loc",
-      rotulo: "Região/Local",
-      placeholder: "ex: br ou us",
+      rotulo: "Região / País dos resultados",
+      dica: "Prioriza páginas de um país específico (ex: br para Brasil, us para EUA)",
+      placeholder: "ex: br, us, pt, uk",
       exemplo: "loc:br",
+      iconeNome: "MapPin",
     },
   ],
   duckduckgo: [
     {
       chave: "intitle",
-      rotulo: "Título da Página",
-      placeholder: "ex: documentacao",
+      rotulo: "Aparece no Título da página",
+      dica: "A palavra deve estar presente no título da página",
+      placeholder: "ex: documentacao oficial",
       exemplo: "intitle:documentacao",
+      iconeNome: "Heading",
     },
     {
       chave: "inurl",
-      rotulo: "URL da Página",
-      placeholder: "ex: dev ou api",
+      rotulo: "Aparece na URL / Link",
+      dica: "O endereço web precisa conter este trecho",
+      placeholder: "ex: api, tutorial",
       exemplo: "inurl:api",
+      iconeNome: "Link",
     },
     {
       chave: "inbody",
-      rotulo: "Corpo da Página",
+      rotulo: "Aparece no Corpo da página",
+      dica: "O texto interno da página deve conter o termo",
       placeholder: "ex: seguranca",
       exemplo: "inbody:seguranca",
+      iconeNome: "AlignLeft",
     },
   ],
 };
+
+export interface AtalhoDorkRapido {
+  rotulo: string;
+  icone: string;
+  filtros: Partial<WebSearchFilters>;
+}
+
+export const ATALHOS_DORKS_RAPIDOS: AtalhoDorkRapido[] = [
+  {
+    rotulo: "Documentos em PDF",
+    icone: "📄",
+    filtros: { filetype: "pdf" },
+  },
+  {
+    rotulo: "Repositórios GitHub",
+    icone: "💻",
+    filtros: { site: "github.com" },
+  },
+  {
+    rotulo: "Artigos da Wikipédia",
+    icone: "📚",
+    filtros: { site: "wikipedia.org" },
+  },
+  {
+    rotulo: "Planilhas Excel",
+    icone: "📊",
+    filtros: { filetype: "xlsx" },
+  },
+  {
+    rotulo: "Apresentações PPT",
+    icone: "📽️",
+    filtros: { filetype: "pptx" },
+  },
+];
 
 /**
  * Retorna as chaves de filtros suportadas pelo motor selecionado.
