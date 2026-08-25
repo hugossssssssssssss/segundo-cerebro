@@ -27,7 +27,7 @@ export function WebSearchHeader({ className }: WebSearchHeaderProps) {
       </button>
 
       <ModalBuscaWeb
-        aberto={modalAberto}
+        aberta={modalAberto}
         aoFechar={() => setModalAberto(false)}
       />
     </>

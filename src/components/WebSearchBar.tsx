@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import {
-  Search,
+  Globe,
   SlidersHorizontal,
   X,
   ChevronDown,
   ChevronUp,
   ArrowRight,
   RotateCcw,
-  ExternalLink,
   HelpCircle,
 } from "lucide-react";
 import {
@@ -26,27 +25,22 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const FORMATOS_PRE_CADASTRADOS = [
-  { valor: "", rotulo: "Qualquer tipo de arquivo" },
-  { valor: "pdf", rotulo: "PDF (.pdf) — Documentos e relatórios" },
-  { valor: "docx", rotulo: "Word (.docx) — Textos editáveis" },
-  { valor: "xlsx", rotulo: "Excel (.xlsx) — Planilhas e dados" },
-  { valor: "pptx", rotulo: "PowerPoint (.pptx) — Apresentações" },
-  { valor: "svg", rotulo: "Vetor SVG (.svg) — Ícones e ilustrações" },
-  { valor: "json", rotulo: "JSON (.json) — Estruturas de dados" },
-  { valor: "txt", rotulo: "Texto Puro (.txt) — Anotações simples" },
-  { valor: "custom", rotulo: "Outro formato personalizado..." },
+  { valor: "", rotulo: "Qualquer formato de arquivo" },
+  { valor: "pdf", rotulo: "PDF (.pdf)" },
+  { valor: "docx", rotulo: "Word (.docx)" },
+  { valor: "xlsx", rotulo: "Excel (.xlsx)" },
+  { valor: "pptx", rotulo: "PowerPoint (.pptx)" },
+  { valor: "svg", rotulo: "Vetor SVG (.svg)" },
+  { valor: "json", rotulo: "JSON (.json)" },
+  { valor: "txt", rotulo: "Texto Puro (.txt)" },
+  { valor: "custom", rotulo: "Outro formato..." },
 ];
 
 export interface WebSearchBarProps {
-  /** Modo visual de exibição */
   modo?: "widget" | "modal" | "compacto";
-  /** Placeholder customizado opcional */
   placeholder?: string;
-  /** Classe CSS extra para o container */
   className?: string;
-  /** Callback disparado após submeter a busca */
   aoSubmeter?: (query: string, motor: WebSearchEngine) => void;
-  /** Focar automaticamente no input */
   autoFocus?: boolean;
 }
 
@@ -73,7 +67,7 @@ export function WebSearchBar({
 
   const totalFiltrosAtivos = contarFiltrosAtivos(filtros, motor);
   const infoMotorAtual = MOTORES_BUSCA.find((m) => m.id === motor) || MOTORES_BUSCA[0];
-  const placeholderAtual = placeholder || infoMotorAtual.placeholder;
+  const placeholderAtual = placeholder || `Pesquisar no ${infoMotorAtual.nome}...`;
 
   const atualizarFiltro = (campo: keyof WebSearchFilters, valor: string) => {
     setFiltros((prev) => ({
@@ -102,13 +96,13 @@ export function WebSearchBar({
   const camposExtras = FILTROS_EXTRAS_POR_MOTOR[motor] || [];
 
   return (
-    <div className={cn("w-full space-y-4", modo === "modal" && "max-w-full", className)}>
-      {/* Barra de Pesquisa Principal */}
+    <div className={cn("w-full space-y-3", modo === "modal" && "max-w-full", className)}>
+      {/* Barra de Pesquisa */}
       <form
         onSubmit={handleBuscar}
-        className="relative flex items-center gap-2 rounded-2xl border border-border/80 bg-card text-foreground shadow-xs px-3.5 h-13 sm:h-14 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/60 transition-all"
+        className="relative flex items-center gap-2 rounded-xl border border-border/80 bg-background text-foreground shadow-xs px-3 h-11 sm:h-12 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all"
       >
-        <Search size={20} className="text-muted-foreground shrink-0 ml-1" />
+        <Globe size={18} className="text-blue-500 shrink-0 ml-0.5" />
 
         <input
           ref={inputRef}
@@ -116,10 +110,9 @@ export function WebSearchBar({
           value={termo}
           onChange={(e) => setTermo(e.target.value)}
           placeholder={placeholderAtual}
-          className="flex-1 bg-transparent text-sm sm:text-base text-foreground placeholder:text-muted-foreground/60 outline-none px-2 min-w-0 font-medium"
+          className="flex-1 bg-transparent text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none px-1 min-w-0 font-medium"
         />
 
-        {/* Botão Limpar Texto */}
         {termo && (
           <button
             type="button"
@@ -127,273 +120,193 @@ export function WebSearchBar({
               setTermo("");
               inputRef.current?.focus();
             }}
-            className="p-1.5 rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             title="Limpar texto"
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         )}
 
-        {/* Botão de Filtros Avançados */}
-        <Button
+        {/* Botão de Filtros */}
+        <button
           type="button"
-          variant={filtrosAbertos || totalFiltrosAtivos > 0 ? "secondary" : "outline"}
-          size="sm"
           onClick={() => setFiltrosAbertos(!filtrosAbertos)}
           className={cn(
-            "h-9 sm:h-10 px-3 gap-2 rounded-xl text-xs font-semibold cursor-pointer transition-all shrink-0",
-            (filtrosAbertos || totalFiltrosAtivos > 0) && "bg-primary/10 text-primary border-primary/30"
+            "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer shrink-0",
+            filtrosAbertos || totalFiltrosAtivos > 0
+              ? "bg-primary/10 text-primary border-primary/30"
+              : "text-muted-foreground hover:text-foreground border-border/60 hover:bg-accent"
           )}
           title="Filtros avançados (Site, Formato, Termo exato)"
         >
-          <SlidersHorizontal size={15} />
+          <SlidersHorizontal size={13} />
           <span>Filtros</span>
           {totalFiltrosAtivos > 0 && (
-            <Badge variant="default" className="h-5 min-w-5 px-1.5 rounded-full text-[10px] font-bold">
+            <Badge variant="default" className="h-4 min-w-4 px-1 rounded-full text-[10px]">
               {totalFiltrosAtivos}
             </Badge>
           )}
-        </Button>
+        </button>
 
-        {/* Botão de Buscar */}
+        {/* Botão Buscar */}
         <Button
           type="submit"
           disabled={!queryPreview.trim()}
           size="sm"
-          className="h-9 sm:h-10 px-4 sm:px-5 gap-2 rounded-xl font-bold text-xs sm:text-sm shrink-0 cursor-pointer shadow-xs"
+          className="h-8 px-3.5 gap-1.5 rounded-lg font-bold text-xs shrink-0 cursor-pointer"
         >
           <span>Buscar</span>
-          <ArrowRight size={15} />
+          <ArrowRight size={13} />
         </Button>
       </form>
 
-      {/* Painel de Propriedades dos Filtros (Estilo Notion / Klaus) */}
+      {/* Painel de Propriedades Compacto */}
       {filtrosAbertos && (
-        <div className="p-5 sm:p-6 rounded-3xl border border-border/80 bg-card/90 backdrop-blur-md shadow-xs space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
-          {/* Cabeçalho das Propriedades */}
-          <div className="flex items-center justify-between border-b border-border/60 pb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Propriedades de Busca
+        <div className="p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-muted/20 space-y-2.5 animate-in fade-in duration-150">
+          <div className="flex items-center justify-between pb-1 border-b border-border/40">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Propriedades do Filtro
             </span>
-
             {totalFiltrosAtivos > 0 && (
               <button
                 type="button"
                 onClick={limparFiltros}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-                title="Limpar todos os filtros preenchidos"
+                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive cursor-pointer"
               >
-                <RotateCcw size={13} />
-                <span>Limpar propriedades</span>
+                <RotateCcw size={11} />
+                <span>Limpar</span>
               </button>
             )}
           </div>
 
-          {/* Grid de Propriedades em Lista Limpa e Espaçosa */}
-          <div className="space-y-3.5">
-            {/* 1. Propriedade: Site */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4 p-2.5 rounded-2xl hover:bg-muted/30 transition-colors">
-              <div className="sm:col-span-1 flex items-center gap-1.5">
-                <Tooltip
-                  conteudo={
-                    <div className="max-w-xs space-y-1 text-xs">
-                      <p className="font-bold">Apenas neste site ou domínio</p>
-                      <p className="text-muted-foreground">
-                        Restringe todos os resultados exclusivamente a um endereço web.
-                      </p>
-                      <p className="font-mono text-primary text-[11px]">Exemplo: site:github.com ou site:wikipedia.org</p>
-                    </div>
-                  }
-                >
-                  <label className="text-xs font-bold text-foreground flex items-center gap-1 cursor-help select-none">
-                    <span>Site:</span>
-                    <HelpCircle size={13} className="text-muted-foreground" />
-                  </label>
-                </Tooltip>
-              </div>
+          {/* 1. Site */}
+          <div className="flex items-center gap-3 py-0.5 text-xs">
+            <Tooltip conteudo="Procura apenas dentro deste domínio. Ex: site:github.com">
+              <span className="w-20 text-muted-foreground font-semibold flex items-center gap-1 cursor-help shrink-0">
+                <span>Site:</span>
+                <HelpCircle size={11} />
+              </span>
+            </Tooltip>
+            <input
+              type="text"
+              value={filtros.site || ""}
+              onChange={(e) => atualizarFiltro("site", e.target.value)}
+              placeholder="ex: github.com ou wikipedia.org"
+              className="flex-1 h-7 sm:h-8 px-2.5 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary"
+            />
+          </div>
 
-              <div className="sm:col-span-3">
+          {/* 2. Tipo */}
+          <div className="flex items-center gap-3 py-0.5 text-xs">
+            <Tooltip conteudo="Filtra apenas documentos para download. Ex: filetype:pdf">
+              <span className="w-20 text-muted-foreground font-semibold flex items-center gap-1 cursor-help shrink-0">
+                <span>Tipo:</span>
+                <HelpCircle size={11} />
+              </span>
+            </Tooltip>
+            <div className="flex-1 flex gap-2">
+              <select
+                value={
+                  formatoCustomAtivo
+                    ? "custom"
+                    : FORMATOS_PRE_CADASTRADOS.some((f) => f.valor === (filtros.filetype || ""))
+                    ? filtros.filetype || ""
+                    : "custom"
+                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "custom") {
+                    setFormatoCustomAtivo(true);
+                  } else {
+                    setFormatoCustomAtivo(false);
+                    atualizarFiltro("filetype", val);
+                  }
+                }}
+                className="flex-1 h-7 sm:h-8 px-2.5 rounded-lg border border-border bg-background text-xs text-foreground outline-none focus:border-primary cursor-pointer"
+              >
+                {FORMATOS_PRE_CADASTRADOS.map((fmt) => (
+                  <option key={fmt.valor} value={fmt.valor}>
+                    {fmt.rotulo}
+                  </option>
+                ))}
+              </select>
+
+              {(formatoCustomAtivo || (!FORMATOS_PRE_CADASTRADOS.some((f) => f.valor === (filtros.filetype || "")) && filtros.filetype)) && (
                 <input
                   type="text"
-                  value={filtros.site || ""}
-                  onChange={(e) => atualizarFiltro("site", e.target.value)}
-                  placeholder="ex: github.com ou wikipedia.org"
-                  className="w-full h-9 px-3 rounded-xl border border-border/80 bg-background text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                  value={filtros.filetype || ""}
+                  onChange={(e) => atualizarFiltro("filetype", e.target.value)}
+                  placeholder="ext (ex: csv)"
+                  className="w-24 h-7 sm:h-8 px-2 rounded-lg border border-border bg-background text-xs text-foreground outline-none focus:border-primary font-mono"
+                  autoFocus
                 />
-              </div>
-            </div>
-
-            {/* 2. Propriedade: Tipo (Formato de Arquivo Pré-cadastrado) */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4 p-2.5 rounded-2xl hover:bg-muted/30 transition-colors">
-              <div className="sm:col-span-1 flex items-center gap-1.5">
-                <Tooltip
-                  conteudo={
-                    <div className="max-w-xs space-y-1 text-xs">
-                      <p className="font-bold">Formato de arquivo</p>
-                      <p className="text-muted-foreground">
-                        Filtra apenas documentos indexados para download direto.
-                      </p>
-                      <p className="font-mono text-primary text-[11px]">Exemplo: filetype:pdf ou filetype:docx</p>
-                    </div>
-                  }
-                >
-                  <label className="text-xs font-bold text-foreground flex items-center gap-1 cursor-help select-none">
-                    <span>Tipo:</span>
-                    <HelpCircle size={13} className="text-muted-foreground" />
-                  </label>
-                </Tooltip>
-              </div>
-
-              <div className="sm:col-span-3 space-y-2">
-                <select
-                  value={
-                    formatoCustomAtivo
-                      ? "custom"
-                      : FORMATOS_PRE_CADASTRADOS.some((f) => f.valor === (filtros.filetype || ""))
-                      ? filtros.filetype || ""
-                      : "custom"
-                  }
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === "custom") {
-                      setFormatoCustomAtivo(true);
-                    } else {
-                      setFormatoCustomAtivo(false);
-                      atualizarFiltro("filetype", val);
-                    }
-                  }}
-                  className="w-full h-9 px-3 rounded-xl border border-border/80 bg-background text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer transition-all"
-                >
-                  {FORMATOS_PRE_CADASTRADOS.map((fmt) => (
-                    <option key={fmt.valor} value={fmt.valor}>
-                      {fmt.rotulo}
-                    </option>
-                  ))}
-                </select>
-
-                {(formatoCustomAtivo || (!FORMATOS_PRE_CADASTRADOS.some((f) => f.valor === (filtros.filetype || "")) && filtros.filetype)) && (
-                  <input
-                    type="text"
-                    value={filtros.filetype || ""}
-                    onChange={(e) => atualizarFiltro("filetype", e.target.value)}
-                    placeholder="Digite a extensão (ex: csv, epub, mp3)"
-                    className="w-full h-8 px-3 rounded-xl border border-border/80 bg-background text-xs text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-mono"
-                    autoFocus
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* 3. Propriedade: Exatamente */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4 p-2.5 rounded-2xl hover:bg-muted/30 transition-colors">
-              <div className="sm:col-span-1 flex items-center gap-1.5">
-                <Tooltip
-                  conteudo={
-                    <div className="max-w-xs space-y-1 text-xs">
-                      <p className="font-bold">Frase ou expressão exata</p>
-                      <p className="text-muted-foreground">
-                        Encontra resultados contendo este termo exatamente nesta ordem.
-                      </p>
-                      <p className="font-mono text-primary text-[11px]">Exemplo: "design system" ou "inteligência artificial"</p>
-                    </div>
-                  }
-                >
-                  <label className="text-xs font-bold text-foreground flex items-center gap-1 cursor-help select-none">
-                    <span>Exatamente:</span>
-                    <HelpCircle size={13} className="text-muted-foreground" />
-                  </label>
-                </Tooltip>
-              </div>
-
-              <div className="sm:col-span-3">
-                <input
-                  type="text"
-                  value={filtros.exata || ""}
-                  onChange={(e) => atualizarFiltro("exata", e.target.value)}
-                  placeholder='ex: "design tokens" ou "inteligência artificial"'
-                  className="w-full h-9 px-3 rounded-xl border border-border/80 bg-background text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-            </div>
-
-            {/* 4. Propriedade: Sem as palavras (Excluir) */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4 p-2.5 rounded-2xl hover:bg-muted/30 transition-colors">
-              <div className="sm:col-span-1 flex items-center gap-1.5">
-                <Tooltip
-                  conteudo={
-                    <div className="max-w-xs space-y-1 text-xs">
-                      <p className="font-bold">Excluir palavras</p>
-                      <p className="text-muted-foreground">
-                        Remove dos resultados qualquer página que contenha estas palavras.
-                      </p>
-                      <p className="font-mono text-primary text-[11px]">Exemplo: -anuncio -patrocinado -comprar</p>
-                    </div>
-                  }
-                >
-                  <label className="text-xs font-bold text-foreground flex items-center gap-1 cursor-help select-none">
-                    <span>Sem as palavras:</span>
-                    <HelpCircle size={13} className="text-muted-foreground" />
-                  </label>
-                </Tooltip>
-              </div>
-
-              <div className="sm:col-span-3">
-                <input
-                  type="text"
-                  value={filtros.excluir || ""}
-                  onChange={(e) => atualizarFiltro("excluir", e.target.value)}
-                  placeholder="ex: anuncio patrocinado comprar"
-                  className="w-full h-9 px-3 rounded-xl border border-border/80 bg-background text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
+              )}
             </div>
           </div>
 
-          {/* 5. Seção "Mais Operadores Específicos" */}
+          {/* 3. Exato */}
+          <div className="flex items-center gap-3 py-0.5 text-xs">
+            <Tooltip conteudo='Busca o termo exatamente nesta sequência. Ex: "design system"'>
+              <span className="w-20 text-muted-foreground font-semibold flex items-center gap-1 cursor-help shrink-0">
+                <span>Exato:</span>
+                <HelpCircle size={11} />
+              </span>
+            </Tooltip>
+            <input
+              type="text"
+              value={filtros.exata || ""}
+              onChange={(e) => atualizarFiltro("exata", e.target.value)}
+              placeholder='ex: "design tokens"'
+              className="flex-1 h-7 sm:h-8 px-2.5 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary"
+            />
+          </div>
+
+          {/* 4. Excluir */}
+          <div className="flex items-center gap-3 py-0.5 text-xs">
+            <Tooltip conteudo="Exclui qualquer página com estas palavras. Ex: -anuncio">
+              <span className="w-20 text-muted-foreground font-semibold flex items-center gap-1 cursor-help shrink-0">
+                <span>Excluir:</span>
+                <HelpCircle size={11} />
+              </span>
+            </Tooltip>
+            <input
+              type="text"
+              value={filtros.excluir || ""}
+              onChange={(e) => atualizarFiltro("excluir", e.target.value)}
+              placeholder="ex: anuncio patrocinado"
+              className="flex-1 h-7 sm:h-8 px-2.5 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary"
+            />
+          </div>
+
+          {/* Mais Operadores */}
           {camposExtras.length > 0 && (
-            <div className="border-t border-border/60 pt-3 space-y-3">
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={() => setVerMaisAberto(!verMaisAberto)}
-                className="w-full flex items-center justify-between p-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 border border-border/60 transition-colors cursor-pointer text-xs font-bold text-foreground"
+                className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                <span>Mais operadores do {infoMotorAtual.nome}</span>
-                {verMaisAberto ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                <span>Mais operadores ({infoMotorAtual.nome})</span>
+                {verMaisAberto ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </button>
 
               {verMaisAberto && (
-                <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-150 pt-1">
+                <div className="space-y-1.5 pt-1.5 animate-in fade-in">
                   {camposExtras.map((f) => (
-                    <div
-                      key={f.chave}
-                      className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4 p-2.5 rounded-2xl hover:bg-muted/30 transition-colors"
-                    >
-                      <div className="sm:col-span-1 flex items-center gap-1.5">
-                        <Tooltip
-                          conteudo={
-                            <div className="max-w-xs space-y-1 text-xs">
-                              <p className="font-bold">{f.rotulo}</p>
-                              <p className="text-muted-foreground">{f.dica}</p>
-                              <p className="font-mono text-primary text-[11px]">Exemplo: {f.exemplo}</p>
-                            </div>
-                          }
-                        >
-                          <label className="text-xs font-bold text-foreground flex items-center gap-1 cursor-help select-none">
-                            <span>{f.rotulo}:</span>
-                            <HelpCircle size={13} className="text-muted-foreground" />
-                          </label>
-                        </Tooltip>
-                      </div>
-
-                      <div className="sm:col-span-3">
-                        <input
-                          type={f.tipo || "text"}
-                          value={filtros[f.chave] || ""}
-                          onChange={(e) => atualizarFiltro(f.chave, e.target.value)}
-                          placeholder={f.placeholder}
-                          className="w-full h-9 px-3 rounded-xl border border-border/80 bg-background text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                        />
-                      </div>
+                    <div key={f.chave} className="flex items-center gap-3 py-0.5 text-xs">
+                      <Tooltip conteudo={`${f.dica}. Ex: ${f.exemplo}`}>
+                        <span className="w-20 text-muted-foreground font-semibold flex items-center gap-1 cursor-help shrink-0 truncate">
+                          <span>{f.rotulo}:</span>
+                          <HelpCircle size={11} />
+                        </span>
+                      </Tooltip>
+                      <input
+                        type={f.tipo || "text"}
+                        value={filtros[f.chave] || ""}
+                        onChange={(e) => atualizarFiltro(f.chave, e.target.value)}
+                        placeholder={f.placeholder}
+                        className="flex-1 h-7 sm:h-8 px-2.5 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary"
+                      />
                     </div>
                   ))}
                 </div>
@@ -401,46 +314,28 @@ export function WebSearchBar({
             </div>
           )}
 
-          {/* Prévia da Busca e Botão de Ação */}
-          <div className="border-t border-border/60 pt-4 space-y-3">
-            {queryPreview && (
-              <div className="p-3 rounded-2xl bg-muted/40 border border-border/60 space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                  Como sua busca será enviada ao {infoMotorAtual.nome}:
-                </span>
-                <p className="text-xs sm:text-sm font-mono text-primary font-semibold break-all">
-                  {queryPreview}
-                </p>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-2 pt-1">
-              {/* Seletor discreto do buscador nas configurações dos filtros */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Buscador:</span>
-                <select
-                  value={motor}
-                  onChange={(e) => setMotor(e.target.value as WebSearchEngine)}
-                  className="text-xs font-semibold rounded-lg bg-muted/60 px-2 py-1 border border-border/60 outline-none cursor-pointer"
-                >
-                  {MOTORES_BUSCA.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <Button
-                type="button"
-                onClick={() => handleBuscar()}
-                disabled={!queryPreview.trim()}
-                className="gap-2 text-xs font-bold rounded-xl h-10 px-5 shadow-xs cursor-pointer"
+          {/* Rodapé dos Filtros */}
+          <div className="flex items-center justify-between pt-2 border-t border-border/40 text-[11px]">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <span>Buscador:</span>
+              <select
+                value={motor}
+                onChange={(e) => setMotor(e.target.value as WebSearchEngine)}
+                className="text-xs font-semibold rounded-md bg-background px-1.5 py-0.5 border border-border outline-none cursor-pointer text-foreground"
               >
-                <span>Pesquisar no {infoMotorAtual.nome}</span>
-                <ExternalLink size={15} />
-              </Button>
+                {MOTORES_BUSCA.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nome}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            {queryPreview && (
+              <span className="font-mono text-primary truncate max-w-[200px] sm:max-w-[300px]">
+                {queryPreview}
+              </span>
+            )}
           </div>
         </div>
       )}

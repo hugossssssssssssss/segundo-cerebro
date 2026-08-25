@@ -22,6 +22,7 @@ import {
   Pause,
   VolumeX,
   Minimize2,
+  Globe,
 } from "lucide-react";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
@@ -29,7 +30,7 @@ import { WorkspaceProvider, useWorkspace } from "@/components/workspace/Workspac
 import { WorkspaceTelaCheia } from "@/components/workspace/WorkspaceTelaCheia";
 import { WorkspaceBarraAbas } from "@/components/workspace/WorkspaceBarraAbas";
 import { Busca } from "@/components/Busca";
-import { WebSearchHeader } from "@/components/WebSearchHeader";
+import { ModalBuscaWeb } from "@/components/ModalBuscaWeb";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { ToastsContainer } from "@/components/ToastsContainer";
 import { NavegacaoLateral } from "@/components/NavegacaoLateral";
@@ -90,6 +91,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const { workspaceAberto, abaAtiva, fecharWorkspace, buscaGlobalAberta, setBuscaGlobalAberta } = useWorkspace();
   const [buscando, setBuscando] = useState(false);
+  const [buscandoWeb, setBuscandoWeb] = useState(false);
   const [capturando, setCapturando] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
   const [textoCompartilhado, setTextoCompartilhado] = useState("");
@@ -147,6 +149,17 @@ function Estrutura({ children }: { children: React.ReactNode }) {
     });
     return () => limpar();
   }, [buscando]);
+
+  useEffect(() => {
+    if (!buscandoWeb) return;
+    const limpar = gerenciadorCamadas.registrar({
+      id: "busca-web-modal",
+      nivel: NIVEIS_CAMADAS.MODAIS_GLOBAIS,
+      temBackdrop: true,
+      aoFechar: () => setBuscandoWeb(false),
+    });
+    return () => limpar();
+  }, [buscandoWeb]);
 
   useEffect(() => {
     if (!capturando) return;
@@ -446,8 +459,16 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                 <Bell size={18} />
               </NavLink>
 
-              {/* Busca Web Externa (Google, Bing, DuckDuckGo) */}
-              <WebSearchHeader />
+              {/* Busca Web Externa */}
+              <button
+                type="button"
+                onClick={() => setBuscandoWeb(true)}
+                className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+                title="Busca Web Externa"
+                aria-label="Busca Web"
+              >
+                <Globe size={18} />
+              </button>
 
               <button
                 onClick={() => setBuscando(true)}
@@ -548,6 +569,10 @@ function Estrutura({ children }: { children: React.ReactNode }) {
           setBuscando(false);
           setBuscaGlobalAberta(false);
         }}
+      />
+      <ModalBuscaWeb
+        aberta={buscandoWeb}
+        aoFechar={() => setBuscandoWeb(false)}
       />
       <Pomodoro />
       <ToastsContainer />

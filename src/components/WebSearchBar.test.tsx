@@ -14,12 +14,12 @@ describe("WebSearchBar Component", () => {
   it("deve renderizar o input de busca e botão de filtros", () => {
     render(<WebSearchBar modo="widget" />);
 
-    expect(screen.getByPlaceholderText(/o que você deseja pesquisar/i)).toBeTruthy();
+    expect(screen.getByPlaceholderText(/pesquisar no google/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: /filtros/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /buscar/i })).toBeTruthy();
   });
 
-  it("abre o painel de propriedades e exibe campos Site, Tipo, Exatamente", () => {
+  it("abre o painel de propriedades compactas e exibe campos Site, Tipo, Exato", () => {
     render(<WebSearchBar modo="widget" />);
 
     const botaoFiltros = screen.getByRole("button", { name: /filtros/i });
@@ -27,15 +27,15 @@ describe("WebSearchBar Component", () => {
 
     expect(screen.getByText(/site:/i)).toBeTruthy();
     expect(screen.getByText(/tipo:/i)).toBeTruthy();
-    expect(screen.getByText(/exatamente:/i)).toBeTruthy();
-    expect(screen.getByText(/sem as palavras:/i)).toBeTruthy();
+    expect(screen.getByText(/exato:/i)).toBeTruthy();
+    expect(screen.getByText(/excluir:/i)).toBeTruthy();
   });
 
   it("chama aoSubmeter com a query correta ao submeter busca", () => {
     const aoSubmeter = vi.fn();
     render(<WebSearchBar modo="widget" aoSubmeter={aoSubmeter} />);
 
-    const input = screen.getByPlaceholderText(/o que você deseja pesquisar/i);
+    const input = screen.getByPlaceholderText(/pesquisar no google/i);
     fireEvent.change(input, { target: { value: "design system" } });
 
     const botaoBuscar = screen.getByRole("button", { name: /buscar/i });
