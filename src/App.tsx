@@ -47,6 +47,7 @@ import { ConsoleDesenvolvedor } from "@/components/ConsoleDesenvolvedor";
 import { inicializarLogger } from "@/lib/logger";
 import { CronometroProvider, useCronometro, LISTA_SONS_AMBIENTE } from "@/components/ContextoCronometro";
 import { Pomodoro } from "@/components/Pomodoro";
+import { obterRotuloRota, EVENTO_MENU_ATUALIZADO } from "@/lib/menuPersonalizado";
 
 inicializarLogger();
 
@@ -86,7 +87,7 @@ const abasMobile = [
 
 function Estrutura({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  const { workspaceAberto, fecharWorkspace, buscaGlobalAberta, setBuscaGlobalAberta } = useWorkspace();
+  const { workspaceAberto, abaAtiva, fecharWorkspace, buscaGlobalAberta, setBuscaGlobalAberta } = useWorkspace();
   const [buscando, setBuscando] = useState(false);
   const [capturando, setCapturando] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
@@ -201,39 +202,55 @@ function Estrutura({ children }: { children: React.ReactNode }) {
    * requisições ao GitHub por clique na navegação, com o teto de 5.000/hora
    * bem à vista num dia de uso intenso.
    *
-   * Agora roda uma vez ao abrir e depois só quando o acervo realmente muda —
-   * que é o único momento em que o número pode ter mudado. O `memoria` faz a
-   * carga reaproveitar o que `repo.ts` já tem em mãos.
+  /**
+   * Mantém o título da aba do navegador sincronizado com a tela ou documento aberto,
+   * respeitando os nomes personalizados no menu e sem o prefixo "Klaus".
    */
   useEffect(() => {
     let cancelado = false;
 
-    const atualizarTituloBadge = async () => {
-      const cfg = lerConfig();
-      if (!configCompleta(cfg)) return;
-      try {
-        const todos = await carregarRepo(cfg, { memoria: 30_000 });
-        if (cancelado) return;
-        const estadoRes = await carregarEstadoInbox(cfg, todos);
-        if (cancelado) return;
-        const itens = compilarItensInbox(todos, estadoRes.mapa);
-        const naoVistos = itens.filter((i) => !i.visto).length;
-        document.title =
-          naoVistos > 0
-            ? `(${naoVistos}) Klaus - Caixa de Entrada`
-            : "Klaus - Segundo Cérebro";
-      } catch {
-        // um badge que falha não pode atrapalhar o resto do app
+    const atualizarTituloAba = async () => {
+      // 1. Se houver um documento ativo aberto no workspace / tela cheia
+      if (workspaceAberto && abaAtiva?.titulo) {
+        document.title = abaAtiva.titulo;
+        return;
       }
+
+      // 2. Rótulo da rota atual baseado no menu personalizado
+      const rotuloRota = obterRotuloRota(pathname);
+
+      // 3. Se for a tela de Inbox/Caixa de Entrada, atualiza com contagem de não lidos se houver
+      if (pathname === "/inbox" || pathname === "inbox") {
+        const cfg = lerConfig();
+        if (configCompleta(cfg)) {
+          try {
+            const todos = await carregarRepo(cfg, { memoria: 30_000 });
+            if (cancelado) return;
+            const estadoRes = await carregarEstadoInbox(cfg, todos);
+            if (cancelado) return;
+            const itens = compilarItensInbox(todos, estadoRes.mapa);
+            const naoVistos = itens.filter((i) => !i.visto).length;
+            document.title = naoVistos > 0 ? `(${naoVistos}) ${rotuloRota}` : rotuloRota;
+            return;
+          } catch {
+            // falha não interrompe
+          }
+        }
+      }
+
+      document.title = rotuloRota;
     };
 
-    atualizarTituloBadge();
-    window.addEventListener("acervo-atualizado", atualizarTituloBadge);
+    atualizarTituloAba();
+    window.addEventListener(EVENTO_MENU_ATUALIZADO, atualizarTituloAba);
+    window.addEventListener("acervo-atualizado", atualizarTituloAba);
+
     return () => {
       cancelado = true;
-      window.removeEventListener("acervo-atualizado", atualizarTituloBadge);
+      window.removeEventListener(EVENTO_MENU_ATUALIZADO, atualizarTituloAba);
+      window.removeEventListener("acervo-atualizado", atualizarTituloAba);
     };
-  }, []);
+  }, [pathname, workspaceAberto, abaAtiva?.titulo]);
 
   /**
    * Compartilhar de outro app do Android cai aqui.

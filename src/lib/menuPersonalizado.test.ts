@@ -3,6 +3,7 @@ import {
   carregarMenuPersonalizado,
   salvarMenuPersonalizado,
   restaurarMenuPadrao,
+  obterRotuloRota,
   GRUPOS_MENU_PADRAO,
   CHAVE_STORAGE_MENU,
   type GrupoMenuPersonalizado,
@@ -80,5 +81,27 @@ describe("menuPersonalizado", () => {
     localStorage.setItem(CHAVE_STORAGE_MENU, "{ json_invalido: ");
     const grupos = carregarMenuPersonalizado();
     expect(grupos).toEqual(GRUPOS_MENU_PADRAO);
+  });
+
+  it("deve retornar o rótulo correto para rotas padrão e personalizadas via obterRotuloRota", () => {
+    expect(obterRotuloRota("/tarefas")).toBe("Tarefas");
+    expect(obterRotuloRota("/notas")).toBe("Notas");
+    expect(obterRotuloRota("/home")).toBe("Início");
+
+    // Com personalização
+    const gruposCustom: GrupoMenuPersonalizado[] = [
+      {
+        id: "dia-a-dia",
+        titulo: "Dia a Dia",
+        itens: [
+          { id: "tarefas", para: "/tarefas", rotulo: "Minhas Tarefas", iconeNome: "CheckSquare" },
+          { id: "notas", para: "/notas", rotulo: "Caderno Digital", iconeNome: "FileText" },
+        ],
+      },
+    ];
+
+    salvarMenuPersonalizado(gruposCustom);
+    expect(obterRotuloRota("/tarefas")).toBe("Minhas Tarefas");
+    expect(obterRotuloRota("/notas")).toBe("Caderno Digital");
   });
 });

@@ -184,3 +184,55 @@ export function restaurarMenuPadrao(): boolean {
     return false;
   }
 }
+
+/**
+ * Obtém o rótulo atual de uma rota respeitando a personalização do menu feita pelo usuário.
+ */
+export function obterRotuloRota(rota: string): string {
+  const rotaLimpa = rota.startsWith("/") ? rota : `/${rota}`;
+  const rotaBase = rotaLimpa.split("?")[0].replace(/\/$/, "");
+  const grupos = carregarMenuPersonalizado();
+  
+  for (const g of grupos) {
+    for (const item of g.itens) {
+      if (item.para === rotaBase || item.para === rotaLimpa) {
+        return item.rotulo;
+      }
+    }
+  }
+
+  // Rotas especiais ou complementares
+  const mapeamentoEspecial: Record<string, string> = {
+    "": "Início",
+    "/": "Início",
+    "/home": "Início",
+    "/inbox": "Caixa de Entrada",
+    "/tarefas": "Tarefas",
+    "/notas": "Notas",
+    "/pdi": "Carreira (PDI)",
+    "/configuracoes": "Ajustes",
+    "/ajustes": "Ajustes",
+    "/chat": "Conversar",
+    "/referencias": "Referências Visuais",
+    "/lousas": "Lousas Visuais",
+    "/grafo": "Grafo de Links",
+    "/processos": "Processos",
+    "/contatos": "Árvore de Contatos",
+    "/noticias": "Notícias",
+    "/sons": "Sons de Foco",
+    "/pdf": "Ferramentas PDF",
+    "/conversor": "Conversor",
+    "/livros": "Pesquisar Livros",
+    "/testador": "Testador de Hardware",
+    "/transcritor": "Transcrição de Áudio",
+    "/boas-vindas": "Boas-vindas",
+  };
+
+  if (mapeamentoEspecial[rotaBase]) {
+    return mapeamentoEspecial[rotaBase];
+  }
+
+  const semBarra = rotaBase.replace(/^\//, "");
+  return semBarra ? semBarra.charAt(0).toUpperCase() + semBarra.slice(1) : "Início";
+}
+
