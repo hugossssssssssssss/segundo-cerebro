@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
+import { WorkspaceProvider, useWorkspace } from "@/components/workspace/WorkspaceContext";
+import { WorkspaceTelaCheia } from "@/components/workspace/WorkspaceTelaCheia";
 import { Busca } from "@/components/Busca";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { ToastsContainer } from "@/components/ToastsContainer";
@@ -82,6 +84,7 @@ const abasMobile = [
 
 function Estrutura({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
+  const { buscaGlobalAberta, setBuscaGlobalAberta } = useWorkspace();
   const [buscando, setBuscando] = useState(false);
   const [capturando, setCapturando] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
@@ -466,7 +469,13 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       {/* Modais, Toasts e Gavetas */}
       <ToastsContainer />
       <GavetaMais aberta={gavetaAberta} aoFechar={() => setGavetaAberta(false)} />
-      <Busca aberta={buscando} aoFechar={() => setBuscando(false)} />
+      <Busca
+        aberta={buscando || buscaGlobalAberta}
+        aoFechar={() => {
+          setBuscando(false);
+          setBuscaGlobalAberta(false);
+        }}
+      />
       <CapturaRapida
         aberta={capturando}
         textoInicial={textoCompartilhado}
@@ -476,6 +485,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         }}
       />
       <Pomodoro />
+      <WorkspaceTelaCheia />
     </div>
   );
 }
@@ -540,17 +550,19 @@ export default function App() {
         globais. O de dentro da <main> pega o resto.
       */}
       <LimiteDeErro>
-      <ProvedorFlutuanteGlobal>
-        <ProvedorFerramentasFlutuantes>
-          <Suspense fallback={<Carregando />}>
-            <Routes>
-              <Route path="/boas-vindas" element={<BoasVindas />} />
-              <Route path="*" element={<AppInterno />} />
-            </Routes>
-          </Suspense>
-        </ProvedorFerramentasFlutuantes>
-      </ProvedorFlutuanteGlobal>
-      <ConsoleDesenvolvedor />
+        <WorkspaceProvider>
+          <ProvedorFlutuanteGlobal>
+            <ProvedorFerramentasFlutuantes>
+              <Suspense fallback={<Carregando />}>
+                <Routes>
+                  <Route path="/boas-vindas" element={<BoasVindas />} />
+                  <Route path="*" element={<AppInterno />} />
+                </Routes>
+              </Suspense>
+            </ProvedorFerramentasFlutuantes>
+          </ProvedorFlutuanteGlobal>
+        </WorkspaceProvider>
+        <ConsoleDesenvolvedor />
       </LimiteDeErro>
     </HashRouter>
   );

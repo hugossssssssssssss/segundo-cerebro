@@ -20,8 +20,9 @@ import { Campo, Selo } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { alternarTema } from "@/lib/tema";
-import { tituloProvavel } from "@/lib/markdown";
+import { tituloProvavel, lerMarkdown } from "@/lib/markdown";
 import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
+import { useWorkspace } from "@/components/workspace/WorkspaceContext";
 
 const OPCOES_FILTRO: Array<{ id: CategoriaFiltroBusca; rotulo: string }> = [
   { id: "tudo", rotulo: "Tudo" },
@@ -58,6 +59,12 @@ export function Busca({
   const [itemFocadoIndex, setItemFocadoIndex] = useState(0);
   const entrada = useRef<HTMLInputElement>(null);
 
+  let workspace: any = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    workspace = useWorkspace();
+  } catch {}
+
   const aoSelecionarFerramenta = (f: FerramentaApp) => {
     aoFechar();
     if (f.rota === "acao:alternar_tema") {
@@ -76,6 +83,40 @@ export function Busca({
     } else {
       navegar(f.rota);
     }
+  };
+
+  const aoSelecionarItemRepo = (caminho: string, tipo?: string, titulo?: string) => {
+    if (workspace?.workspaceAberto) {
+      const itemRepo = acervo.find((i) => i.caminho === caminho);
+      if (itemRepo) {
+        const { dados, corpo } = lerMarkdown(itemRepo.texto || "");
+        const tit = titulo || tituloProvavel(itemRepo.doc, itemRepo.nome);
+        const rotulo = (tipo && ROTULO_TIPO[tipo as keyof typeof ROTULO_TIPO]) || "Nota";
+        workspace.abrirNoWorkspace({
+          id: caminho,
+          caminho,
+          sha: itemRepo.sha,
+          rotuloTipo: rotulo,
+          titulo: tit,
+          corpo,
+          dadosProps: dados,
+        });
+        aoFechar();
+        return;
+      }
+    }
+
+    const pasta = caminho.split("/")[0];
+    let rota = `/notas?abrir=${encodeURIComponent(caminho)}`;
+    if (pasta === "tarefas") rota = `/tarefas?abrir=${encodeURIComponent(caminho)}`;
+    else if (pasta === "contatos") rota = `/contatos?abrir=${encodeURIComponent(caminho)}`;
+    else if (pasta === "referencias") rota = `/referencias?abrir=${encodeURIComponent(caminho)}`;
+    else if (pasta === "lousas") rota = `/lousas?abrir=${encodeURIComponent(caminho)}`;
+    else if (pasta === "pdi" || pasta === "metas" || pasta === "entregas") rota = `/pdi?abrir=${encodeURIComponent(caminho)}`;
+    else if (tipo && ROTA_TIPO[tipo as keyof typeof ROTA_TIPO]) rota = `${ROTA_TIPO[tipo as keyof typeof ROTA_TIPO]}?abrir=${encodeURIComponent(caminho)}`;
+
+    navegar(rota);
+    aoFechar();
   };
 
   useEffect(() => {
@@ -309,17 +350,7 @@ export function Busca({
                     {itensFavoritados.repoItens.map((item) => (
                       <div
                         key={item.caminho}
-                        onClick={() => {
-                          const pasta = item.caminho.split("/")[0];
-                          let rota = `/notas?abrir=${encodeURIComponent(item.caminho)}`;
-                          if (pasta === "tarefas") rota = `/tarefas?abrir=${encodeURIComponent(item.caminho)}`;
-                          if (pasta === "contatos") rota = `/contatos?abrir=${encodeURIComponent(item.caminho)}`;
-                          if (pasta === "referencias") rota = `/referencias?abrir=${encodeURIComponent(item.caminho)}`;
-                          if (pasta === "lousas") rota = `/lousas?abrir=${encodeURIComponent(item.caminho)}`;
-                          if (item.caminho.startsWith("pdi")) rota = `/pdi?abrir=${encodeURIComponent(item.caminho)}`;
-                          navegar(rota);
-                          aoFechar();
-                        }}
+                        onClick={() => aoSelecionarItemRepo(item.caminho, undefined, tituloProvavel(item.doc, item.nome))}
                         className="flex items-center justify-between p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer transition-colors group"
                       >
                         <div className="min-w-0">
@@ -439,10 +470,7 @@ export function Busca({
                     return (
                       <div
                         key={r.caminho}
-                        onClick={() => {
-                          navegar(`${ROTA_TIPO[r.tipo]}?abrir=${encodeURIComponent(r.caminho)}`);
-                          aoFechar();
-                        }}
+                        onClick={() => aoSelecionarItemRepo(r.caminho, r.tipo, r.titulo)}
                         className="flex items-start justify-between border-b border-border px-4 py-3 text-left transition-colors hover:bg-accent cursor-pointer group"
                       >
                         <div className="min-w-0 flex-1 pr-2">

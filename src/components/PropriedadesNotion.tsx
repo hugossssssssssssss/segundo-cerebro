@@ -63,6 +63,8 @@ export function obterTagsDisponiveis(dadosTagsAtuais: string[], coresTagsGlobais
 
 export function abrirItemSpa(caminho: string) {
   if (!caminho) return;
+  window.dispatchEvent(new CustomEvent("klaus-abrir-item", { detail: { caminho } }));
+
   const pasta = caminho.split("/")[0]?.toLowerCase() || "";
   let rota = "/notas";
   if (pasta === "tarefas") rota = "/tarefas";

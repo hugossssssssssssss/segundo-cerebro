@@ -31,6 +31,7 @@ import { useSalvar } from "@/lib/useSalvar";
 import { cache, invalidarCache } from "@/lib/repo";
 import { lerConfig } from "@/lib/settings";
 import { toast } from "@/lib/toast";
+import { useWorkspace } from "@/components/workspace/WorkspaceContext";
 
 const HistoricoDiffModal = lazy(() =>
   import("@/components/HistoricoDiffModal").then((m) => ({
@@ -91,6 +92,60 @@ export function PainelNotionBase({
 
   const cfg = useMemo(() => lerConfig(), []);
   const { salvarTexto, apagarItem } = useSalvar(cfg);
+
+  let workspace: any = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    workspace = useWorkspace();
+  } catch {}
+
+  const abrirEmTelaCheiaWorkspace = useCallback(() => {
+    if (workspace?.abrirNoWorkspace) {
+      workspace.abrirNoWorkspace({
+        id: caminhoItem || `item-${Date.now()}`,
+        caminho: caminhoItem,
+        rotuloTipo,
+        titulo,
+        corpo,
+        dadosProps,
+        camposFixosProps,
+        temMudancas,
+        salvando,
+        mencoes,
+        opcoesRelacionamento,
+        aoSalvar: async () => {
+          await aoSalvar();
+        },
+        aoRemover,
+      });
+      aoFechar();
+    } else {
+      setModoVisao("telacheia");
+      setMinimizadoFlutuante(false);
+    }
+  }, [
+    workspace,
+    caminhoItem,
+    rotuloTipo,
+    titulo,
+    corpo,
+    dadosProps,
+    camposFixosProps,
+    temMudancas,
+    salvando,
+    mencoes,
+    opcoesRelacionamento,
+    aoSalvar,
+    aoRemover,
+    aoFechar,
+    setModoVisao,
+  ]);
+
+  useEffect(() => {
+    if (modoVisao === "telacheia" && workspace?.abrirNoWorkspace) {
+      abrirEmTelaCheiaWorkspace();
+    }
+  }, [modoVisao, workspace, abrirEmTelaCheiaWorkspace]);
 
   const acaoCopiarLink = useCallback(() => {
     if (!caminhoItem) return;
@@ -554,14 +609,14 @@ export function PainelNotionBase({
           </button>
 
           <button
-            onClick={() => { setModoVisao("telacheia"); setMinimizadoFlutuante(false); }}
+            onClick={abrirEmTelaCheiaWorkspace}
             className={cn(
               "p-1.5 rounded-md transition-colors flex items-center justify-center",
               modoVisao === "telacheia"
                 ? "bg-background text-foreground shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             )}
-            title="Tela cheia"
+            title="Workspace em Tela Cheia (com abas)"
           >
             <Maximize2 size={15} />
           </button>
