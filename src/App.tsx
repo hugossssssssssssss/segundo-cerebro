@@ -84,7 +84,7 @@ const abasMobile = [
 
 function Estrutura({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  const { buscaGlobalAberta, setBuscaGlobalAberta } = useWorkspace();
+  const { workspaceAberto, buscaGlobalAberta, setBuscaGlobalAberta } = useWorkspace();
   const [buscando, setBuscando] = useState(false);
   const [capturando, setCapturando] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
@@ -249,17 +249,17 @@ function Estrutura({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-dvh flex bg-background text-foreground">
+    <div className="min-h-dvh flex bg-background text-foreground overflow-hidden h-dvh">
       {/* Navegação Lateral (Desktop) */}
       <NavegacaoLateral
-        colapsada={colapsada}
+        colapsada={workspaceAberto ? true : colapsada}
         setColapsada={setColapsada}
-        className="hidden sm:flex sticky top-0 h-dvh"
+        className="hidden sm:flex sticky top-0 h-dvh shrink-0"
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-dvh overflow-hidden">
         {/* Cabeçalho Principal (Topbar Limpa) */}
-        <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
+        <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur shrink-0">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 h-14">
             {/* Lado Esquerdo: Logo no Mobile */}
             <div className="flex items-center gap-2">
@@ -421,42 +421,48 @@ function Estrutura({ children }: { children: React.ReactNode }) {
           consegue navegar para outro lugar sem recarregar a página. A `chave`
           é o caminho da rota — trocar de tela zera o erro automaticamente.
         */}
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 sm:px-6 py-8 pb-28 sm:pb-8">
-          <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
-        </main>
+        {workspaceAberto ? (
+          <WorkspaceTelaCheia />
+        ) : (
+          <main className="mx-auto w-full max-w-6xl flex-1 px-4 sm:px-6 py-8 pb-28 sm:pb-8 overflow-y-auto">
+            <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
+          </main>
+        )}
       </div>
 
       {/* Navegação inferior no celular */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 flex border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden">
-        {abasMobile.map(({ para, rotulo, Icone }) => (
-          <NavLink
-            key={para}
-            to={para}
-            className={({ isActive }) =>
-              cn(
-                "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors min-w-0 truncate px-0.5",
-                isActive ? "text-primary font-semibold" : "text-muted-foreground",
-              )
-            }
-          >
-            <Icone size={18} className="shrink-0" />
-            <span className="truncate max-w-full">{rotulo}</span>
-          </NavLink>
-        ))}
+      {!workspaceAberto && (
+        <nav className="fixed bottom-0 inset-x-0 z-40 flex border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden">
+          {abasMobile.map(({ para, rotulo, Icone }) => (
+            <NavLink
+              key={para}
+              to={para}
+              className={({ isActive }) =>
+                cn(
+                  "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors min-w-0 truncate px-0.5",
+                  isActive ? "text-primary font-semibold" : "text-muted-foreground",
+                )
+              }
+            >
+              <Icone size={18} className="shrink-0" />
+              <span className="truncate max-w-full">{rotulo}</span>
+            </NavLink>
+          ))}
 
-        {/* Botão Mais no celular */}
-        <button
-          onClick={() => setGavetaAberta(true)}
-          className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium text-muted-foreground transition-colors min-w-0 truncate px-0.5"
-          aria-label="Mais opções"
-        >
-          <MoreHorizontal size={18} className="shrink-0" />
-          <span className="truncate max-w-full">Mais</span>
-        </button>
-      </nav>
+          {/* Botão Mais no celular */}
+          <button
+            onClick={() => setGavetaAberta(true)}
+            className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium text-muted-foreground transition-colors min-w-0 truncate px-0.5"
+            aria-label="Mais opções"
+          >
+            <MoreHorizontal size={18} className="shrink-0" />
+            <span className="truncate max-w-full">Mais</span>
+          </button>
+        </nav>
+      )}
 
       {/* Botão flutuante de captura no celular */}
-      {!pathname.startsWith("/chat") && (
+      {!workspaceAberto && !pathname.startsWith("/chat") && (
         <button
           onClick={() => setCapturando(true)}
           className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 sm:hidden"
@@ -467,7 +473,6 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Modais, Toasts e Gavetas */}
-      <WorkspaceTelaCheia />
       <GavetaMais aberta={gavetaAberta} aoFechar={() => setGavetaAberta(false)} />
       <CapturaRapida
         aberta={capturando}

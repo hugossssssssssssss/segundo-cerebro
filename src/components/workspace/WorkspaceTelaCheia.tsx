@@ -148,29 +148,22 @@ export function WorkspaceTelaCheia() {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[200] flex flex-col w-screen h-screen bg-background animate-in fade-in duration-150 overflow-hidden"
-      onClick={fecharWorkspace}
-    >
-      <div
-        className="flex h-full w-full flex-col bg-card overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Barra de Abas Superior */}
-        <WorkspaceBarraAbas />
+    <div className="flex-1 min-h-0 flex flex-col bg-card overflow-hidden animate-in fade-in duration-150">
+      {/* Barra de Abas Superior */}
+      <WorkspaceBarraAbas />
 
-        {/* Corpo do Workspace */}
-        {abas.length === 0 || !abaAtiva ? (
-          <WorkspaceVazio />
-        ) : (
-          <>
-            {/* Cabeçalho Interativo com Breadcrumbs */}
-            <div className="flex items-center justify-between border-b border-border/80 px-4 sm:px-6 py-2 bg-card/60">
-              <WorkspaceBreadcrumbs caminho={abaAtiva.caminho} titulo={abaAtiva.titulo} />
-            </div>
+      {/* Corpo do Workspace */}
+      {abas.length === 0 || !abaAtiva ? (
+        <WorkspaceVazio />
+      ) : (
+        <>
+          {/* Cabeçalho Interativo com Breadcrumbs */}
+          <div className="flex items-center justify-between border-b border-border/80 px-4 sm:px-6 py-2 bg-card/60 shrink-0">
+            <WorkspaceBreadcrumbs caminho={abaAtiva.caminho} titulo={abaAtiva.titulo} />
+          </div>
 
-            {/* Conteúdo do Documento Ativo */}
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 sm:px-12 py-6">
+          {/* Conteúdo do Documento Ativo */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 sm:px-12 py-6">
               <div className="space-y-5 max-w-4xl mx-auto w-full">
                 {abaAtiva.erro && <Aviso tom="erro">{abaAtiva.erro}</Aviso>}
 
@@ -254,7 +247,6 @@ export function WorkspaceTelaCheia() {
             />
           </>
         )}
-      </div>
 
       {/* Modal de Confirmação para Apagar Item */}
       <ModalConfirmacao
