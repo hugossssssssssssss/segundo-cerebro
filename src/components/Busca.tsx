@@ -30,7 +30,16 @@ import {
   ROTULO_TIPO,
   ROTA_TIPO,
 } from "@/lib/busca";
-import { LISTA_FERRAMENTAS_APP, type FerramentaApp } from "@/lib/ferramentasApp";
+import {
+  LISTA_FERRAMENTAS_APP,
+  type FerramentaApp,
+  obterFerramentasPersonalizadas,
+} from "@/lib/ferramentasApp";
+import {
+  carregarMenuPersonalizado,
+  EVENTO_MENU_ATUALIZADO,
+  type GrupoMenuPersonalizado,
+} from "@/lib/menuPersonalizado";
 import { Campo, Selo } from "@/components/ui";
 import { cn, formatarCaminhoAmigavel, formatarTituloAmigavel } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -173,16 +182,30 @@ export function Busca({
     };
   }, [aberta]);
 
+  const [gruposMenu, setGruposMenu] = useState<GrupoMenuPersonalizado[]>(carregarMenuPersonalizado);
+
+  useEffect(() => {
+    const aoAtualizarMenu = () => setGruposMenu(carregarMenuPersonalizado());
+    window.addEventListener(EVENTO_MENU_ATUALIZADO, aoAtualizarMenu);
+    return () => window.removeEventListener(EVENTO_MENU_ATUALIZADO, aoAtualizarMenu);
+  }, []);
+
+  // Ferramentas com títulos, ícones e cores personalizados pelo usuário no menu
+  const ferramentasPersonalizadas = useMemo(
+    () => obterFerramentasPersonalizadas(gruposMenu),
+    [gruposMenu]
+  );
+
   // Itens e ferramentas favoritados para exibição inicial
   const itensFavoritados = useMemo(() => {
     if (favoritos.length === 0) return { ferramentas: [], repoItens: [] };
 
     const favSet = new Set(favoritos);
-    const favFerramentas = LISTA_FERRAMENTAS_APP.filter((f) => favSet.has(f.id));
+    const favFerramentas = ferramentasPersonalizadas.filter((f) => favSet.has(f.id));
     const favRepoItens = acervo.filter((item) => favSet.has(item.caminho));
 
     return { ferramentas: favFerramentas, repoItens: favRepoItens };
-  }, [favoritos, acervo]);
+  }, [favoritos, acervo, ferramentasPersonalizadas]);
 
   // Lista de Documentos Recentes
   const documentosRecentes = useMemo(() => {
@@ -216,10 +239,10 @@ export function Busca({
     return documentosRecentes.slice(0, 8);
   }, [documentosRecentes, mostrarTodosRecentes]);
 
-  // Ferramentas e Ações encontradas pela busca
+  // Ferramentas e Ações encontradas pela busca (considerando nomes/ícones customizados)
   const ferramentasResultado = useMemo(
-    () => buscarFerramentas(termo, categoria),
-    [termo, categoria]
+    () => buscarFerramentas(termo, categoria, ferramentasPersonalizadas),
+    [termo, categoria, ferramentasPersonalizadas]
   );
 
   // Itens do repositório encontrados pela busca
@@ -401,7 +424,10 @@ export function Busca({
                           className="flex items-center justify-between p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer transition-colors group"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                            <div
+                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0"
+                              style={f.cor ? { color: f.cor, backgroundColor: `${f.cor}18` } : undefined}
+                            >
                               <IconeComp size={16} />
                             </div>
                             <div className="min-w-0">
@@ -535,7 +561,7 @@ export function Busca({
                   <span>Ferramentas & Conversões Rápidas</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {LISTA_FERRAMENTAS_APP.slice(0, 6).map((f) => {
+                  {ferramentasPersonalizadas.slice(0, 6).map((f) => {
                     const IconeComp = f.icone;
                     const ehFav = ehFavoritoBusca(f.id, favoritos);
                     return (
@@ -545,7 +571,10 @@ export function Busca({
                         className="flex items-center justify-between p-2.5 rounded-xl border border-border/80 bg-card hover:bg-accent/60 cursor-pointer transition-colors group"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                          <div
+                            className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0"
+                            style={f.cor ? { color: f.cor, backgroundColor: `${f.cor}18` } : undefined}
+                          >
                             <IconeComp size={16} />
                           </div>
                           <div className="min-w-0">
@@ -589,7 +618,10 @@ export function Busca({
                         className="flex items-center justify-between border-b border-border px-4 py-3 text-left transition-colors hover:bg-accent cursor-pointer group"
                       >
                         <div className="flex items-start gap-3 min-w-0">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0 mt-0.5">
+                          <div
+                            className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0 mt-0.5"
+                            style={f.cor ? { color: f.cor, backgroundColor: `${f.cor}18` } : undefined}
+                          >
                             <IconeComp size={18} />
                           </div>
                           <div className="min-w-0">

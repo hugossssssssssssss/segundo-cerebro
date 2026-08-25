@@ -55,4 +55,31 @@ describe("ferramentasApp", () => {
       }
     }
   });
+
+  it("obterFerramentasPersonalizadas reflete nomes, ícones e cores customizados no Personalizar Menu", async () => {
+    const { obterFerramentasPersonalizadas } = await import("./ferramentasApp");
+    const menuMock = [
+      {
+        id: "grupo-teste",
+        titulo: "Grupo Teste",
+        itens: [
+          {
+            id: "grafo",
+            para: "/grafo",
+            rotulo: "Constelação de Ideias",
+            iconeNome: "Sparkles",
+            cor: "#ec4899",
+          },
+        ],
+      },
+    ];
+
+    const personalizadas = obterFerramentasPersonalizadas(menuMock);
+    const grafo = personalizadas.find((f) => f.id === "grafo");
+
+    expect(grafo).toBeDefined();
+    expect(grafo?.titulo).toBe("Constelação de Ideias");
+    expect(grafo?.cor).toBe("#ec4899");
+    expect(grafo?.palavrasChave).toContain("constelação de ideias");
+  });
 });

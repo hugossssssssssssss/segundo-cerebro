@@ -276,12 +276,15 @@ export function agrupar(resultados: Resultado[]): [TipoItem, Resultado[]][] {
 
 export function buscarFerramentas(
   termo: string,
-  categoriaFilter?: CategoriaFiltroBusca
+  categoriaFilter?: CategoriaFiltroBusca,
+  listaFerramentas?: FerramentaApp[]
 ): FerramentaApp[] {
   const tNorm = normalizar(termo.trim());
   if (tNorm.length < 2) return [];
 
-  return LISTA_FERRAMENTAS_APP.filter((f) => {
+  const base = listaFerramentas || LISTA_FERRAMENTAS_APP;
+
+  return base.filter((f) => {
     if (categoriaFilter === "acoes" && f.categoria !== "acao") return false;
     if (categoriaFilter === "ferramentas" && f.categoria === "acao") return false;
     if (

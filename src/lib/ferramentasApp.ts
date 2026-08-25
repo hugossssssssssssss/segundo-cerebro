@@ -34,6 +34,12 @@ import {
   RefreshCw,
 } from "lucide-react";
 import type { ComponentType } from "react";
+import { obterIconePorNome } from "./icones";
+import {
+  carregarMenuPersonalizado,
+  type GrupoMenuPersonalizado,
+  type ItemMenuPersonalizado,
+} from "./menuPersonalizado";
 
 export interface FerramentaApp {
   id: string;
@@ -43,6 +49,9 @@ export interface FerramentaApp {
   rota: string;
   icone: ComponentType<{ size?: number; className?: string }>;
   palavrasChave: string[];
+  cor?: string;
+  destaque?: boolean;
+  oculto?: boolean;
 }
 
 export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
@@ -434,3 +443,49 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
     palavrasChave: ["pomodoro", "cronometro", "temporizador", "foco", "timer"],
   },
 ];
+
+/**
+ * Retorna o catálogo de ferramentas aplicando os nomes, ícones e cores
+ * personalizados pelo usuário no menu lateral ("Personalizar Menu").
+ */
+export function obterFerramentasPersonalizadas(
+  gruposMenu: GrupoMenuPersonalizado[] = carregarMenuPersonalizado()
+): FerramentaApp[] {
+  const mapaCustom = new Map<string, ItemMenuPersonalizado>();
+  for (const g of gruposMenu) {
+    for (const it of g.itens || []) {
+      if (it?.para) {
+        mapaCustom.set(it.para.toLowerCase(), it);
+      }
+    }
+  }
+
+  return LISTA_FERRAMENTAS_APP.map((f) => {
+    const rotaBase = f.rota.split("?")[0].toLowerCase();
+    const custom = mapaCustom.get(rotaBase);
+    if (!custom) return f;
+
+    const IconeCustom = custom.iconeNome ? obterIconePorNome(custom.iconeNome) : null;
+
+    // Se o usuário renomeou o módulo/ferramenta no Personalizar Menu
+    const titulo = custom.rotulo?.trim() || f.titulo;
+
+    // Se o usuário alterou o ícone
+    const icone = IconeCustom || f.icone;
+
+    // Adiciona o nome customizado nas palavras-chave para busca imediata
+    const palavrasChave = custom.rotulo && custom.rotulo !== f.titulo
+      ? [...f.palavrasChave, custom.rotulo.toLowerCase()]
+      : f.palavrasChave;
+
+    return {
+      ...f,
+      titulo,
+      icone,
+      cor: custom.cor,
+      destaque: custom.destaque,
+      oculto: custom.oculto,
+      palavrasChave,
+    };
+  });
+}
