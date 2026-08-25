@@ -21,11 +21,13 @@ import {
   Play,
   Pause,
   VolumeX,
+  Minimize2,
 } from "lucide-react";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 import { WorkspaceProvider, useWorkspace } from "@/components/workspace/WorkspaceContext";
 import { WorkspaceTelaCheia } from "@/components/workspace/WorkspaceTelaCheia";
+import { WorkspaceBarraAbas } from "@/components/workspace/WorkspaceBarraAbas";
 import { Busca } from "@/components/Busca";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { ToastsContainer } from "@/components/ToastsContainer";
@@ -84,7 +86,7 @@ const abasMobile = [
 
 function Estrutura({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  const { workspaceAberto, buscaGlobalAberta, setBuscaGlobalAberta } = useWorkspace();
+  const { workspaceAberto, fecharWorkspace, buscaGlobalAberta, setBuscaGlobalAberta } = useWorkspace();
   const [buscando, setBuscando] = useState(false);
   const [capturando, setCapturando] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
@@ -262,22 +264,42 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       />
 
       <div className="flex-1 flex flex-col min-w-0 h-dvh overflow-hidden">
-        {/* Cabeçalho Principal (Topbar Limpa) */}
-        <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur shrink-0">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 h-14">
+        {/* Cabeçalho Principal (Topbar Limpa / Integrada com Abas no Workspace) */}
+        <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur shrink-0">
+          <div
+            className={cn(
+              "flex items-center justify-between transition-all",
+              workspaceAberto
+                ? "w-full px-2 sm:px-3 h-12"
+                : "mx-auto max-w-6xl px-4 sm:px-6 h-14"
+            )}
+          >
             {/* Lado Esquerdo: Logo no Mobile */}
-            <div className="flex items-center gap-2">
-              <NavLink to="/home" className="flex sm:hidden items-center gap-2 font-bold tracking-tight text-sm hover:opacity-90 transition-opacity">
+            <div className="flex items-center gap-2 shrink-0">
+              <NavLink
+                to="/home"
+                onClick={() => {
+                  if (workspaceAberto) fecharWorkspace();
+                }}
+                className="flex sm:hidden items-center gap-2 font-bold tracking-tight text-sm hover:opacity-90 transition-opacity"
+              >
                 <LogoKlaus tamanho={24} />
                 <span>Klaus</span>
               </NavLink>
             </div>
 
-            {/* Lado Direito: Captura Rápida, Caixa de Som, Inbox e Busca */}
-            <div className="flex items-center gap-1">
+            {/* Centro: Abas do Workspace integradas diretamente no Header */}
+            {workspaceAberto && (
+              <div className="flex-1 min-w-0 mx-1 sm:mx-2 h-full flex items-end overflow-hidden">
+                <WorkspaceBarraAbas />
+              </div>
+            )}
+
+            {/* Lado Direito: Captura Rápida, Caixa de Som, Inbox, Busca e Sair da Tela Cheia */}
+            <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
               <button
                 onClick={() => setCapturando(true)}
-                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
                 title="Captura rápida (⌘J)"
                 aria-label="Captura rápida"
               >
@@ -290,7 +312,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                   <button
                     onClick={() => setSomMenuAberto(!somMenuAberto)}
                     className={cn(
-                      "rounded-lg p-2 transition-colors relative flex items-center justify-center cursor-pointer",
+                      "rounded-lg p-1.5 sm:p-2 transition-colors relative flex items-center justify-center cursor-pointer",
                       somAmbienteTocando 
                         ? "bg-primary/10 text-primary" 
                         : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -391,9 +413,12 @@ function Estrutura({ children }: { children: React.ReactNode }) {
 
               <NavLink
                 to="/inbox"
+                onClick={() => {
+                  if (workspaceAberto) fecharWorkspace();
+                }}
                 className={({ isActive }) =>
                   cn(
-                    "rounded-lg p-2 transition-colors relative cursor-pointer",
+                    "rounded-lg p-1.5 sm:p-2 transition-colors relative cursor-pointer",
                     isActive
                       ? "bg-primary/10 text-primary font-semibold"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -407,12 +432,24 @@ function Estrutura({ children }: { children: React.ReactNode }) {
 
               <button
                 onClick={() => setBuscando(true)}
-                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
                 title="Buscar (⌘K)"
                 aria-label="Buscar"
               >
                 <Search size={18} />
               </button>
+
+              {/* Botão de Sair do modo Workspace / Tela Cheia */}
+              {workspaceAberto && (
+                <button
+                  onClick={fecharWorkspace}
+                  className="rounded-lg p-1.5 sm:p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors ml-0.5 sm:ml-1 cursor-pointer"
+                  title="Sair do modo tela cheia"
+                  aria-label="Sair do modo tela cheia"
+                >
+                  <Minimize2 size={18} />
+                </button>
+              )}
             </div>
           </div>
         </header>

@@ -559,17 +559,44 @@ export function PainelNotionBase({
       return { indice: 0, total: 0, podeAnterior: false, podeProximo: false, anterior: null, proximo: null };
     }
 
-    const pasta = caminhoItem.split("/")[0]?.toLowerCase() || "";
-    const todosItens = (cache?.itens || []).filter((i) => {
-      if (!pasta) return false;
-      return i.caminho.startsWith(pasta + "/") && !i.caminho.endsWith(".excalidraw.json");
+    const pasta = caminhoItem.includes("/")
+      ? caminhoItem.substring(0, caminhoItem.lastIndexOf("/"))
+      : "";
+
+    // Agrega todos os itens conhecidos (opções de relacionamento + cache global)
+    const mapaItens = new Map<string, { caminho: string; titulo: string }>();
+
+    if (Array.isArray(opcoesRelacionamento)) {
+      for (const op of opcoesRelacionamento) {
+        if (op?.caminho) {
+          mapaItens.set(op.caminho, { caminho: op.caminho, titulo: op.titulo });
+        }
+      }
+    }
+
+    if (cache?.itens) {
+      for (const it of cache.itens) {
+        if (it?.caminho && !mapaItens.has(it.caminho)) {
+          mapaItens.set(it.caminho, { caminho: it.caminho, titulo: it.nome });
+        }
+      }
+    }
+
+    const todosItens = Array.from(mapaItens.values()).filter((i) => {
+      if (!pasta) return true;
+      return (
+        i.caminho.startsWith(pasta + "/") &&
+        !i.caminho.endsWith(".excalidraw.json") &&
+        !i.caminho.endsWith(".png") &&
+        !i.caminho.endsWith(".jpg")
+      );
     });
 
     const ordenados = [...todosItens].sort((a, b) => a.caminho.localeCompare(b.caminho));
     const idx = ordenados.findIndex((i) => i.caminho === caminhoItem);
 
     if (idx === -1) {
-      return { indice: 0, total: ordenados.length, podeAnterior: false, podeProximo: false, anterior: null, proximo: null };
+      return { indice: 1, total: Math.max(1, ordenados.length), podeAnterior: false, podeProximo: false, anterior: null, proximo: null };
     }
 
     return {
@@ -580,7 +607,7 @@ export function PainelNotionBase({
       anterior: idx > 0 ? ordenados[idx - 1] : null,
       proximo: idx < ordenados.length - 1 ? ordenados[idx + 1] : null,
     };
-  }, [caminhoItem]);
+  }, [caminhoItem, opcoesRelacionamento]);
 
   const navegarSequencial = async (direcao: "anterior" | "proximo") => {
     const itemAlvo = direcao === "anterior" ? infoSequencial.anterior : infoSequencial.proximo;
@@ -612,12 +639,12 @@ export function PainelNotionBase({
         </span>
 
         {/* Controles de Navegação Sequencial no Cabeçalho */}
-        {infoSequencial.total > 1 && (
+        {infoSequencial.total > 0 && (
           <div className="flex items-center gap-0.5 rounded-lg border border-border/80 bg-muted/40 p-0.5 shrink-0">
             <button
               onClick={() => navegarSequencial("anterior")}
               disabled={!infoSequencial.podeAnterior}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
               title="Documento anterior"
             >
               <ChevronLeft size={13} />
@@ -630,7 +657,7 @@ export function PainelNotionBase({
             <button
               onClick={() => navegarSequencial("proximo")}
               disabled={!infoSequencial.podeProximo}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
               title="Próximo documento"
             >
               <ChevronRight size={13} />
@@ -811,7 +838,7 @@ export function PainelNotionBase({
       </div>
 
       {/* Controles Sequenciais no Rodapé (Ex: "< 3 de 100 >") */}
-      {infoSequencial.total > 1 && (
+      {infoSequencial.total > 0 && (
         <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-lg border border-border/60">
           <button
             onClick={() => navegarSequencial("anterior")}
@@ -823,7 +850,7 @@ export function PainelNotionBase({
           </button>
 
           <span className="text-[11px] font-medium text-muted-foreground px-1 select-none">
-            {infoSequencial.indice} de {infoSequencial.total}
+            {infoSequencial.indice || 1} de {infoSequencial.total}
           </span>
 
           <button

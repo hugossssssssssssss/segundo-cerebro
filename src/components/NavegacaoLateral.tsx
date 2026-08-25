@@ -46,14 +46,25 @@ export function NavegacaoLateral({
 
   const workspaceAberto = !!workspace?.workspaceAberto;
 
+  const [avisoVisivel, setAvisoVisivel] = useState(false);
+
   const lidarToggleColapsada = () => {
     if (colapsada && workspaceAberto) {
+      setAvisoVisivel(true);
+      setTimeout(() => setAvisoVisivel(false), 3500);
       toast("Para expandir a barra lateral, saia do modo tela cheia (Workspace).", {
         tipo: "info",
       });
       return;
     }
     setColapsada((v) => !v);
+  };
+
+  const lidarCliqueItem = () => {
+    if (workspaceAberto && workspace?.fecharWorkspace) {
+      workspace.fecharWorkspace();
+    }
+    if (aoNavegar) aoNavegar();
   };
 
   useEffect(() => {
@@ -99,7 +110,7 @@ export function NavegacaoLateral({
             <>
               <NavLink
                 to="/home"
-                onClick={aoNavegar}
+                onClick={lidarCliqueItem}
                 className="flex items-center gap-2 font-semibold tracking-tight text-foreground truncate min-w-0"
               >
                 <LogoKlaus tamanho={28} />
@@ -110,7 +121,7 @@ export function NavegacaoLateral({
               </NavLink>
               <button
                 onClick={() => setColapsada(true)}
-                className="hidden sm:flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                className="hidden sm:flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
                 title="Recolher barra lateral (⌘B)"
                 aria-label="Recolher barra lateral"
               >
@@ -118,21 +129,30 @@ export function NavegacaoLateral({
               </button>
             </>
           ) : (
-            <button
-              onClick={lidarToggleColapsada}
-              className={cn(
-                "mx-auto flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors relative group",
-                workspaceAberto && "hover:text-primary"
+            <div className="relative mx-auto flex items-center justify-center">
+              <button
+                onClick={lidarToggleColapsada}
+                onMouseEnter={() => {
+                  if (workspaceAberto) setAvisoVisivel(true);
+                }}
+                onMouseLeave={() => setAvisoVisivel(false)}
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer",
+                  workspaceAberto && "hover:text-primary"
+                )}
+                aria-label="Expandir barra lateral"
+              >
+                <ChevronRight size={18} />
+              </button>
+
+              {/* Aviso flutuante que nunca corta a tela */}
+              {workspaceAberto && avisoVisivel && (
+                <div className="fixed left-18 top-3.5 z-[9999] flex items-center gap-2 rounded-xl border border-border bg-popover/95 backdrop-blur-md px-3.5 py-2 text-xs font-medium text-popover-foreground shadow-2xl animate-in fade-in slide-in-from-left-2 duration-150 pointer-events-none whitespace-nowrap">
+                  <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
+                  <span>Para expandir a barra, saia do modo tela cheia (Workspace).</span>
+                </div>
               )}
-              title={
-                workspaceAberto
-                  ? "Para expandir a barra lateral, saia do modo tela cheia (Workspace)."
-                  : `Expandir barra lateral (Klaus v${versao})`
-              }
-              aria-label="Expandir barra lateral"
-            >
-              <ChevronRight size={18} />
-            </button>
+            </div>
           )}
         </div>
 
@@ -156,10 +176,10 @@ export function NavegacaoLateral({
                       <NavLink
                         key={item.id || item.para}
                         to={item.para || "/home"}
-                        onClick={aoNavegar}
+                        onClick={lidarCliqueItem}
                         className={({ isActive }) =>
                           cn(
-                            "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors relative group",
+                            "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors relative group cursor-pointer",
                             isActive
                               ? "bg-primary/10 text-primary font-semibold"
                               : "text-muted-foreground hover:bg-accent/80 hover:text-foreground",

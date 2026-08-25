@@ -9,7 +9,6 @@ import { sincronizarRelacionamentos } from "@/lib/links";
 import { lerMarkdown, escreverMarkdown } from "@/lib/markdown";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
 import { useWorkspace } from "./WorkspaceContext";
-import { WorkspaceBarraAbas } from "./WorkspaceBarraAbas";
 import { WorkspaceBreadcrumbs } from "./WorkspaceBreadcrumbs";
 import { WorkspaceRodape } from "./WorkspaceRodape";
 import { WorkspaceVazio } from "./WorkspaceVazio";
@@ -149,9 +148,6 @@ export function WorkspaceTelaCheia() {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-card overflow-hidden animate-in fade-in duration-150">
-      {/* Barra de Abas Superior */}
-      <WorkspaceBarraAbas />
-
       {/* Corpo do Workspace */}
       {abas.length === 0 || !abaAtiva ? (
         <WorkspaceVazio />

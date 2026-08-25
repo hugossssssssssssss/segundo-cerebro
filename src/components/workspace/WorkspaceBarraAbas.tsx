@@ -9,7 +9,6 @@ import {
   Image as ImageIcon,
   User,
   ExternalLink,
-  Minimize2,
   Square,
   Sparkles,
 } from "lucide-react";
@@ -220,13 +219,12 @@ const AbaItem = memo(function AbaItem({
   );
 });
 
-export function WorkspaceBarraAbas() {
+export function WorkspaceBarraAbas({ className }: { className?: string }) {
   const {
     abas,
     abaAtivaId,
     selecionarAba,
     fecharAba,
-    fecharWorkspace,
     reordenarAbas,
     migrarParaPopup,
     setBuscaGlobalAberta,
@@ -266,48 +264,34 @@ export function WorkspaceBarraAbas() {
   };
 
   return (
-    <div className="flex items-center justify-between border-b border-border/80 bg-muted/30 px-2 select-none shrink-0 h-11 overflow-hidden">
-      {/* Lista de Abas com drag-and-drop */}
-      <div className="flex items-end min-w-0 flex-1 overflow-x-auto no-scrollbar h-full pt-1.5">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={lidarDragEnd}>
-          <SortableContext items={abas.map((a) => a.id)} strategy={horizontalListSortingStrategy}>
-            <div className="flex items-end gap-1">
-              {abas.map((aba) => (
-                <AbaItem
-                  key={aba.id}
-                  aba={aba}
-                  ativa={aba.id === abaAtivaId}
-                  onSelecionar={() => selecionarAba(aba.id)}
-                  onFechar={() => fecharAba(aba.id)}
-                  onMigrarPopup={() => migrarParaPopup(aba.id)}
-                  onAbrirNovaGuia={() => abrirEmNovaGuiaNavegador(aba)}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+    <div className={cn("flex items-end min-w-0 flex-1 overflow-x-auto no-scrollbar h-full", className)}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={lidarDragEnd}>
+        <SortableContext items={abas.map((a) => a.id)} strategy={horizontalListSortingStrategy}>
+          <div className="flex items-end gap-1">
+            {abas.map((aba) => (
+              <AbaItem
+                key={aba.id}
+                aba={aba}
+                ativa={aba.id === abaAtivaId}
+                onSelecionar={() => selecionarAba(aba.id)}
+                onFechar={() => fecharAba(aba.id)}
+                onMigrarPopup={() => migrarParaPopup(aba.id)}
+                onAbrirNovaGuia={() => abrirEmNovaGuiaNavegador(aba)}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
-        {/* Botão de Adicionar / Abrir Documento */}
-        <button
-          onClick={() => setBuscaGlobalAberta(true)}
-          className="flex items-center gap-1.5 h-8 px-2.5 mb-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card border border-border/40 hover:border-border/80 rounded-lg transition-all shrink-0 ml-1.5 shadow-2xs cursor-pointer"
-          title="Abrir ou pesquisar documento (⌘K)"
-        >
-          <Plus size={13} />
-          <span className="hidden sm:inline">Nova aba</span>
-        </button>
-      </div>
-
-      {/* Controles do Workspace */}
-      <div className="flex items-center gap-1 shrink-0 pl-2">
-        <button
-          onClick={fecharWorkspace}
-          className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-          title="Sair do Workspace / Fechar tela cheia"
-        >
-          <Minimize2 size={15} />
-        </button>
-      </div>
+      {/* Botão de Adicionar / Abrir Documento */}
+      <button
+        onClick={() => setBuscaGlobalAberta(true)}
+        className="flex items-center gap-1.5 h-8 px-2.5 mb-0.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card border border-border/40 hover:border-border/80 rounded-lg transition-all shrink-0 ml-1 shadow-2xs cursor-pointer"
+        title="Abrir ou pesquisar documento (⌘K)"
+      >
+        <Plus size={13} />
+        <span className="hidden sm:inline">Nova aba</span>
+      </button>
     </div>
   );
 }

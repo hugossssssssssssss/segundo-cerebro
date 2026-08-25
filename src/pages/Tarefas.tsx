@@ -128,6 +128,21 @@ export default function Tarefas() {
     }
   }, [location.pathname, location.search, location.hash, tarefas.length > 0]);
 
+  useEffect(() => {
+    const aoAbrirItem = (e: Event) => {
+      const detalhe = (e as CustomEvent)?.detail;
+      const caminho = detalhe?.caminho;
+      if (!caminho || !caminho.startsWith(`${PASTAS.tarefas}/`)) return;
+      const alvo = tarefas.find((t) => t.caminho === caminho);
+      if (alvo) {
+        setEditando(alvo);
+        setOriginal(alvo);
+      }
+    };
+    window.addEventListener("klaus-abrir-item", aoAbrirItem);
+    return () => window.removeEventListener("klaus-abrir-item", aoAbrirItem);
+  }, [tarefas]);
+
   // ── Modo flutuante ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (modoVisao === "flutuante" && editando) {

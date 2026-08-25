@@ -186,6 +186,21 @@ export default function Notas() {
   }, [aberta !== null]);
 
   useEffect(() => {
+    const aoAbrirItem = (e: Event) => {
+      const detalhe = (e as CustomEvent)?.detail;
+      const caminho = detalhe?.caminho;
+      if (!caminho || !caminho.startsWith(`${PASTAS.notas}/`)) return;
+      const alvo = acervo.find((a) => a.caminho === caminho);
+      if (alvo) {
+        const nota = comoNota(alvo.doc, alvo.caminho, alvo.sha, tituloProvavel(alvo.doc, alvo.nome));
+        setAberta({ ...nota, original: { titulo: nota.titulo, corpo: nota.corpo, bruto: nota.bruto } });
+      }
+    };
+    window.addEventListener("klaus-abrir-item", aoAbrirItem);
+    return () => window.removeEventListener("klaus-abrir-item", aoAbrirItem);
+  }, [acervo]);
+
+  useEffect(() => {
     if (!mudou) return;
     const aoSair = (e: BeforeUnloadEvent) => e.preventDefault();
     addEventListener("beforeunload", aoSair);
