@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { LogoKlaus } from "./LogoKlaus";
 import { versao } from "@/lib/versao";
 import {
@@ -151,20 +152,21 @@ export function NavegacaoLateral({
                 <ChevronRight size={18} />
               </button>
 
-              {/* Aviso flutuante que acompanha o mouse onde o usuário clica/passa */}
-              {workspaceAberto && avisoVisivel && mousePos && (
+              {/* Aviso flutuante que acompanha o mouse e NUNCA fica por baixo de nada */}
+              {workspaceAberto && avisoVisivel && mousePos && typeof document !== "undefined" && createPortal(
                 <div
                   style={{
                     position: "fixed",
-                    left: `${mousePos.x + 12}px`,
-                    top: `${mousePos.y - 14}px`,
-                    zIndex: 99999,
+                    left: `${mousePos.x + 14}px`,
+                    top: `${mousePos.y - 12}px`,
+                    zIndex: 9999999,
                   }}
-                  className="pointer-events-none flex items-center gap-1.5 rounded-lg border border-border/90 bg-popover/95 px-3 py-1.5 text-xs font-medium text-popover-foreground shadow-2xl backdrop-blur-md animate-in fade-in duration-100 whitespace-nowrap"
+                  className="pointer-events-none flex items-center gap-1.5 rounded-lg border border-border bg-popover/98 px-3 py-1.5 text-xs font-semibold text-popover-foreground shadow-[0_10px_38px_rgba(0,0,0,0.5)] backdrop-blur-md animate-in fade-in duration-100 whitespace-nowrap"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />
                   <span>Para expandir a barra, saia do modo tela cheia</span>
-                </div>
+                </div>,
+                document.body
               )}
             </div>
           )}

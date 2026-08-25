@@ -146,6 +146,60 @@ async function buscar(url: string, init?: RequestInit): Promise<Response> {
   }
 }
 
+/**
+ * Arquivos internos do repositório/sistema que NÃO devem ser tratados como documentos do usuário.
+ * Ex: documentação técnica da IA (AGENTS.md), arquitetura (ARCHITECTURE.md),
+ * README, design system, configs e arquivos fora das pastas de dados do Klaus.
+ */
+export function ehArquivoInternoOuSistema(caminho: string): boolean {
+  if (!caminho) return true;
+  const c = caminho.toLowerCase().trim();
+
+  // Arquivos e diretórios ocultos ou de build/código do app
+  if (c.startsWith(".") || c.includes("/.")) return true;
+  if (
+    c.startsWith("node_modules/") ||
+    c.startsWith(".github/") ||
+    c.startsWith(".agents/") ||
+    c.startsWith(".gemini/") ||
+    c.startsWith(".vscode/") ||
+    c.startsWith("src/") ||
+    c.startsWith("public/") ||
+    c.startsWith("dist/")
+  ) {
+    return true;
+  }
+
+  const nome = c.split("/").pop() || "";
+  const nomesInternos = [
+    "agents.md",
+    "architecture.md",
+    "design_system.md",
+    "readme.md",
+    "contributing.md",
+    "license.md",
+    "security.md",
+    "changelog.md",
+    "todo.md",
+    "package.json",
+    "package-lock.json",
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.node.json",
+    "vite.config.ts",
+    "estado.json",
+  ];
+
+  if (nomesInternos.includes(nome)) return true;
+
+  // Arquivos soltos diretamente na raiz do repositório (sem subpasta)
+  if (!c.includes("/")) {
+    return true;
+  }
+
+  return false;
+}
+
 /* ------------------------------------------------------------------ árvore */
 
 type Folha = { path: string; sha: string; size: number };
@@ -171,7 +225,8 @@ async function arvore(cfg: Settings): Promise<Folha[]> {
       (n: { type: string; path: string }) =>
         n.type === "blob" &&
         (n.path.endsWith(".md") || n.path.endsWith(".json")) &&
-        !n.path.split("/").pop()!.startsWith("."),
+        !n.path.split("/").pop()!.startsWith(".") &&
+        !ehArquivoInternoOuSistema(n.path),
     )
     .map((n: Folha) => ({ path: n.path, sha: n.sha, size: n.size }));
 }
@@ -288,8 +343,10 @@ async function carregarDeVerdade(
     }
   }
 
-  // Remove da lista as folhas que sabemos que foram deletadas localmente (contorna eventual consistency)
-  let folhasFiltradas = folhas.filter((f) => !delecoesRecentes.has(f.path));
+  // Remove da lista as folhas que sabemos que foram deletadas localmente ou que são arquivos técnicos/internos
+  let folhasFiltradas = folhas
+    .filter((f) => !delecoesRecentes.has(f.path))
+    .filter((f) => !ehArquivoInternoOuSistema(f.path));
 
   // Mescla alterações locais recentes na árvore para dar consistência imediata
   for (const alt of alteracoesRecentes.values()) {

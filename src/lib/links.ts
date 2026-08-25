@@ -7,7 +7,7 @@
  * - URLs completas contendo `?abrir=tarefas%2F...` ou `?abrir=notas%2F...`
  */
 
-import type { ItemRepo } from "./repo";
+import { type ItemRepo, ehArquivoInternoOuSistema } from "./repo";
 import { gravar } from "./github";
 import { tituloProvavel } from "./markdown";
 import { tipoDoItem, type TipoItem } from "./busca";
@@ -92,6 +92,7 @@ export function montarIndice(itens: ItemRepo[]): Map<string, Alvo> {
   const ordenados = [...itens].sort((a, b) => b.nome.localeCompare(a.nome));
 
   for (const item of ordenados) {
+    if (ehArquivoInternoOuSistema(item.caminho)) continue;
     const titulo = tituloProvavel(item.doc, item.nome);
     const alvo: Alvo = {
       caminho: item.caminho,

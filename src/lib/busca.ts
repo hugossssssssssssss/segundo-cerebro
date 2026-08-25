@@ -17,7 +17,7 @@
  */
 
 import MiniSearch from "minisearch";
-import type { ItemRepo } from "./repo";
+import { type ItemRepo, ehArquivoInternoOuSistema } from "./repo";
 import { tituloProvavel, comoLista } from "./markdown";
 import { LISTA_FERRAMENTAS_APP, type FerramentaApp } from "./ferramentasApp";
 
@@ -122,8 +122,10 @@ function novoIndice(itens: ItemRepo[]): MiniSearch<Fichado> {
     processTerm: (termo) => normalizar(termo),
   });
 
+  const itensValidos = itens.filter((i) => !ehArquivoInternoOuSistema(i.caminho));
+
   mini.addAll(
-    itens.map((item) => {
+    itensValidos.map((item) => {
       const d = item.doc.dados;
       const extrasContato = [
         typeof d.cargo === "string" ? d.cargo : "",
