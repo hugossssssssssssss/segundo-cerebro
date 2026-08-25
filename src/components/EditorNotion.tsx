@@ -534,6 +534,32 @@ export function EditorNotion({
           color: #89dceb;
           background-color: rgba(137, 220, 235, 0.2);
         }
+
+        /* Correção de rolagem completa do Menu Slash "/" e "@" */
+        .bn-mantine .bn-suggestion-menu,
+        .bn-suggestion-menu,
+        .bn-grid-suggestion-menu {
+          max-height: min(320px, 50vh) !important;
+          height: auto !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          overscroll-behavior: contain !important;
+          padding: 6px 4px 16px 4px !important;
+          scroll-behavior: smooth !important;
+          box-sizing: border-box !important;
+        }
+
+        .bn-mantine .bn-suggestion-menu > *:last-child,
+        .bn-suggestion-menu > *:last-child {
+          margin-bottom: 12px !important;
+        }
+
+        .bn-popover,
+        .tippy-box,
+        [data-floating-ui-portal] {
+          max-height: min(360px, 75vh) !important;
+          overflow: visible !important;
+        }
       `}</style>
     </div>
   );

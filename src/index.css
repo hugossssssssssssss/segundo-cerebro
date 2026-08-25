@@ -180,3 +180,39 @@
     display: none !important;
   }
 }
+
+/* 
+ * Correção do Menu de Opções / Sugestões do BlockNote (Slash Menu "/" e Menções "@")
+ * Garante que o menu tenha altura máxima contida, rolagem suave e nunca corte o final.
+ */
+.bn-mantine .bn-suggestion-menu,
+.bn-suggestion-menu,
+.bn-grid-suggestion-menu {
+  max-height: min(320px, 50vh) !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  padding: 6px 4px 16px 4px !important;
+  scroll-behavior: smooth !important;
+  scrollbar-width: thin !important;
+  scrollbar-gutter: stable !important;
+  box-sizing: border-box !important;
+}
+
+.bn-mantine .bn-suggestion-menu > *:last-child,
+.bn-suggestion-menu > *:last-child {
+  margin-bottom: 12px !important;
+}
+
+.bn-mantine .bn-suggestion-menu-item,
+.bn-suggestion-menu-item {
+  flex-shrink: 0 !important;
+}
+
+.bn-popover,
+.tippy-box,
+[data-floating-ui-portal] {
+  max-height: min(360px, 75vh) !important;
+  overflow: visible !important;
+}
