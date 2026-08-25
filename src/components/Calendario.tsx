@@ -127,6 +127,29 @@ export function Calendario({
         mapa.set(chave, lista);
       }
     }
+
+    // Ordenação consistente em todas as células para manter as barras na mesma linha horizontal
+    for (const [, lista] of mapa.entries()) {
+      lista.sort((a, b) => {
+        const intA = extrairIntervaloTarefa(a);
+        const intB = extrairIntervaloTarefa(b);
+        const ehIntA = intA?.ehIntervalo ? 1 : 0;
+        const ehIntB = intB?.ehIntervalo ? 1 : 0;
+
+        if (ehIntA !== ehIntB) {
+          return ehIntB - ehIntA; // Tarefas de múltiplos dias ficam no topo
+        }
+        if (intA && intB && ehIntA && ehIntB) {
+          const tInicio = intA.inicio.getTime() - intB.inicio.getTime();
+          if (tInicio !== 0) return tInicio;
+          const durA = intA.fim.getTime() - intA.inicio.getTime();
+          const durB = intB.fim.getTime() - intB.inicio.getTime();
+          return durB - durA; // Intervalos mais longos primeiro
+        }
+        return a.titulo.localeCompare(b.titulo);
+      });
+    }
+
     return mapa;
   }, [tarefasFiltradas]);
 
@@ -251,6 +274,7 @@ export function Calendario({
               const ehMesAtual = isSameMonth(d, mesAtual);
               const ehHoje = isToday(d);
               const ehSelecionado = isSameDay(d, selecionado);
+              const diaSemana = d.getDay(); // 0 = Domingo, 6 = Sábado
 
               return (
                 <div
@@ -260,7 +284,7 @@ export function Calendario({
                     if (!ehMesAtual) setMesAtual(d);
                   }}
                   className={cn(
-                    "min-h-[72px] sm:min-h-[95px] p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden",
+                    "min-h-[72px] sm:min-h-[95px] p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group relative",
                     !ehMesAtual && "opacity-35 bg-secondary/10 border-transparent",
                     ehMesAtual && !ehSelecionado && "bg-card border-border/60 hover:border-primary/50 hover:bg-accent/40",
                     ehHoje && !ehSelecionado && "border-primary/70 bg-primary/5 font-bold",
@@ -286,9 +310,9 @@ export function Calendario({
                     )}
                   </div>
 
-                  {/* Indicadores Visuais de Tarefas no Dia com suporte a Intervalo e Cores de Tags */}
+                  {/* Indicadores Visuais de Tarefas no Dia com suporte a Intervalo Contínuo e Cores de Tags */}
                   <div className="space-y-1 mt-1">
-                    {/* Exibe mini títulos em telas médias/grandes */}
+                    {/* Exibe barra unificada contínua em telas médias/grandes */}
                     <div className="hidden sm:block space-y-1">
                       {tarefasDia.slice(0, 2).map((t) => {
                         const intervalo = extrairIntervaloTarefa(t);
@@ -296,22 +320,27 @@ export function Calendario({
                         const ehFeito = t.status === "feito";
                         const ehAtrasada = !ehFeito && urgencia(t) === "atrasada";
 
-                        let formaIntervalo = "rounded-md";
-                        let ehInicio = true;
-                        let ehFim = true;
+                        let formaIntervalo = "rounded-md px-1.5";
+                        let deveExibirTitulo = true;
                         let ehIntervalo = false;
 
                         if (intervalo && intervalo.ehIntervalo) {
                           ehIntervalo = true;
-                          ehInicio = isSameDay(d, intervalo.inicio);
-                          ehFim = isSameDay(d, intervalo.fim);
+                          const ehInicio = isSameDay(d, intervalo.inicio);
+                          const ehFim = isSameDay(d, intervalo.fim);
+                          const ehInicioLinha = ehInicio || diaSemana === 0;
+                          const ehFimLinha = ehFim || diaSemana === 6;
 
-                          if (ehInicio && !ehFim) {
-                            formaIntervalo = "rounded-l-md rounded-r-none border-r-0 mr-[-5px] pr-2 shadow-2xs";
-                          } else if (!ehInicio && !ehFim) {
-                            formaIntervalo = "rounded-none border-x-0 mx-[-5px] px-2 shadow-2xs";
-                          } else if (!ehInicio && ehFim) {
-                            formaIntervalo = "rounded-r-md rounded-l-none border-l-0 ml-[-5px] pl-2 shadow-2xs";
+                          deveExibirTitulo = ehInicioLinha;
+
+                          if (ehInicioLinha && ehFimLinha) {
+                            formaIntervalo = "rounded-md px-1.5";
+                          } else if (ehInicioLinha && !ehFimLinha) {
+                            formaIntervalo = "rounded-l-md rounded-r-none border-r-0 mr-[-7px] sm:mr-[-9px] pr-2 px-1.5 z-10 relative";
+                          } else if (!ehInicioLinha && ehFimLinha) {
+                            formaIntervalo = "rounded-r-md rounded-l-none border-l-0 ml-[-7px] sm:ml-[-9px] pl-2 px-1 z-10 relative";
+                          } else {
+                            formaIntervalo = "rounded-none border-x-0 mx-[-7px] sm:mx-[-9px] px-0 z-10 relative";
                           }
                         }
 
@@ -319,9 +348,8 @@ export function Calendario({
                           <div
                             key={t.caminho}
                             className={cn(
-                              "truncate text-[10px] py-0.5 font-medium border leading-tight transition-all",
+                              "h-5 flex items-center text-[10px] font-medium border leading-tight transition-all",
                               formaIntervalo,
-                              ehInicio || !ehIntervalo ? "px-1.5" : "px-1",
                               ehFeito
                                 ? "bg-secondary/40 text-muted-foreground border-transparent line-through opacity-65"
                                 : ehAtrasada
@@ -334,10 +362,10 @@ export function Calendario({
                                 : t.titulo
                             }
                           >
-                            {ehIntervalo && !ehInicio ? (
-                              <span className="opacity-75">↳ {t.titulo}</span>
+                            {deveExibirTitulo ? (
+                              <span className="truncate">{t.titulo}</span>
                             ) : (
-                              t.titulo
+                              <span className="invisible select-none">&nbsp;</span>
                             )}
                           </div>
                         );

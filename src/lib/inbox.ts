@@ -14,6 +14,8 @@ import { salvarRascunhoLocal } from "./offlineQueue";
 import type { ItemInbox, Lembrete } from "./tipos";
 import type { Settings } from "./settings";
 import { lerMarkdown, tituloProvavel } from "./markdown";
+import { comoTarefa } from "./entidades";
+import { extrairIntervaloTarefa } from "./tarefas";
 import { ler } from "./github";
 import { formatarDataPtBR, rotuloStatusAmigavel } from "./utils";
 
@@ -219,38 +221,49 @@ export function compilarItensInbox(
     // 1. Tarefas com Prazo/Data (em tarefas/)
     if (item.caminho.startsWith("tarefas/")) {
       const status = doc.dados.status;
-      const prazo = doc.dados.prazo;
+      if (status !== "feito") {
+        const t = comoTarefa(doc, item.caminho, item.sha, tituloDoc);
+        const intervalo = extrairIntervaloTarefa(t);
 
-      if (status !== "feito" && prazo) {
-        const prazoStr = String(prazo).trim();
-        if (prazoStr) {
-          const id = `tarefa-atrasada-${item.caminho}`;
+        if (intervalo) {
+          const id = `tarefa-${item.caminho}`;
           const estado = mapaEstado[id];
 
           if (!estado?.descartado) {
-            const ehAtrasada = prazoStr <= hojeIso;
-            if (ehAtrasada) {
-              const dataPt = formatarDataPtBR(prazoStr);
-              const statusAmigavel = rotuloStatusAmigavel(typeof status === "string" ? status : undefined);
-              const descricao = prazoStr === hojeIso
-                ? `Prazo vence HOJE • Status: ${statusAmigavel}`
-                : `Prazo venceu em ${dataPt} • Status: ${statusAmigavel}`;
+            const anoF = intervalo.fim.getFullYear();
+            const mesF = String(intervalo.fim.getMonth() + 1).padStart(2, "0");
+            const diaF = String(intervalo.fim.getDate()).padStart(2, "0");
+            const fimIso = `${anoF}-${mesF}-${diaF}`;
 
-              resultado.push({
-                id,
-                tipo: "tarefa_atrasada",
-                titulo: tituloDoc,
-                descricao,
-                caminhoOrigem: item.caminho,
-                tituloOrigem: tituloDoc,
-                dataVencimento: prazoStr,
-                visto: Boolean(estado?.visto),
-                vistoEm: estado?.vistoEm,
-                notificadoTelegram: estado?.notificadoTelegram,
-                notificadoEmail: estado?.notificadoEmail,
-                tags: tagsDoc,
-              });
-            }
+            const anoI = intervalo.inicio.getFullYear();
+            const mesI = String(intervalo.inicio.getMonth() + 1).padStart(2, "0");
+            const diaI = String(intervalo.inicio.getDate()).padStart(2, "0");
+            const inicioIso = `${anoI}-${mesI}-${diaI}`;
+
+            const ehAtrasada = fimIso < hojeIso;
+            const ehHoje = hojeIso >= inicioIso && hojeIso <= fimIso;
+            const statusAmigavel = rotuloStatusAmigavel(typeof status === "string" ? status : undefined);
+
+            const descricao = ehAtrasada
+              ? `Prazo venceu em ${formatarDataPtBR(fimIso)} • Status: ${statusAmigavel}`
+              : ehHoje
+              ? `Em andamento hoje (${intervalo.textoFormatado}) • Status: ${statusAmigavel}`
+              : `Agendada para ${intervalo.textoFormatado} • Status: ${statusAmigavel}`;
+
+            resultado.push({
+              id,
+              tipo: ehAtrasada ? "tarefa_atrasada" : "lembrete",
+              titulo: tituloDoc,
+              descricao,
+              caminhoOrigem: item.caminho,
+              tituloOrigem: tituloDoc,
+              dataVencimento: intervalo.textoFormatado,
+              visto: Boolean(estado?.visto),
+              vistoEm: estado?.vistoEm,
+              notificadoTelegram: estado?.notificadoTelegram,
+              notificadoEmail: estado?.notificadoEmail,
+              tags: tagsDoc,
+            });
           }
         }
       }

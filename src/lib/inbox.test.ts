@@ -195,4 +195,32 @@ data: 2026-08-22
     expect(titulos).not.toContain("Evento Amanha");
     expect(caixa).toHaveLength(2);
   });
+
+  it("compilarItensInbox inclui tarefas com intervalo de datas", () => {
+    const itensRepo: ItemRepo[] = [
+      {
+        caminho: "tarefas/redesign.md",
+        nome: "redesign.md",
+        sha: "123",
+        tamanho: 100,
+        texto: `---
+status: fazendo
+prazo: 2026-08-20 → 2026-08-25
+---
+# Redesign Geral`,
+        doc: {
+          dados: { status: "fazendo", prazo: "2026-08-20 → 2026-08-25" },
+          corpo: "# Redesign Geral",
+        },
+      },
+    ];
+
+    const agora = new Date(2026, 7, 22, 10, 0, 0);
+    const caixa = compilarItensInbox(itensRepo, {}, agora);
+
+    expect(caixa).toHaveLength(1);
+    expect(caixa[0].dataVencimento).toBe("2026-08-20 → 2026-08-25");
+    expect(caixa[0].descricao).toContain("Em andamento hoje");
+  });
 });
+

@@ -157,7 +157,16 @@ export default function Inbox() {
       const iso = `${ano}-${mes}-${dia}`;
       
       const diaDaSemana = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
-      const total = itensCompilados.filter((item) => item.dataVencimento.startsWith(iso) && !item.visto).length;
+      const total = itensCompilados.filter((item) => {
+        if (item.visto) return false;
+        if (item.dataVencimento.includes("→") || item.dataVencimento.includes("->")) {
+          const partes = item.dataVencimento.split(/→|->/).map((p) => p.trim());
+          const inicio = partes[0] || "";
+          const fim = partes[1] || inicio;
+          return iso >= inicio && iso <= fim;
+        }
+        return item.dataVencimento.startsWith(iso);
+      }).length;
 
       dias.push({
         dataIso: iso,
@@ -459,8 +468,17 @@ export default function Inbox() {
       }
 
       // Filtro por dia selecionado no painel semanal
-      if (diaFiltro && item.dataVencimento.slice(0, 10) !== diaFiltro) {
-        return false;
+      if (diaFiltro) {
+        if (item.dataVencimento.includes("→") || item.dataVencimento.includes("->")) {
+          const partes = item.dataVencimento.split(/→|->/).map((p) => p.trim());
+          const inicio = partes[0] || "";
+          const fim = partes[1] || inicio;
+          if (diaFiltro < inicio || diaFiltro > fim) {
+            return false;
+          }
+        } else if (item.dataVencimento.slice(0, 10) !== diaFiltro) {
+          return false;
+        }
       }
 
       if (aba === "nao_vistos") return !item.visto && item.tipo !== "nota_inativa";
