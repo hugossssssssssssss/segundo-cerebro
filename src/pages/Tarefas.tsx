@@ -450,13 +450,15 @@ export default function Tarefas() {
                 key={p}
                 onClick={() => setPastaSelecionada(p === pastaSelecionada ? null : p)}
                 className={cn(
-                  "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer flex items-center gap-1",
+                  "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5",
                   pastaSelecionada === p
                     ? "bg-primary text-primary-foreground font-semibold"
                     : "bg-secondary/60 text-muted-foreground hover:bg-accent",
                 )}
               >
-                📁 {nomeAmigavel} ({total})
+                <Folder size={12} className="shrink-0 opacity-80" />
+                <span>{nomeAmigavel}</span>
+                <span className="opacity-70 text-[11px]">({total})</span>
               </button>
             );
           })}
