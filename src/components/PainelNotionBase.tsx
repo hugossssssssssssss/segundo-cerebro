@@ -1002,6 +1002,7 @@ export function PainelNotionBase({
           camposFixos={camposFixosProps}
           opcoesRelacionamento={opcoesRelacionamento}
           caminhoItem={caminhoItem}
+          rotuloTipo={rotuloTipo}
           aoMoverPasta={moverParaPasta}
         />
       </div>

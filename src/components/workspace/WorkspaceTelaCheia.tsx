@@ -215,6 +215,7 @@ export function WorkspaceTelaCheia() {
                     camposFixos={abaAtiva.camposFixosProps}
                     opcoesRelacionamento={abaAtiva.opcoesRelacionamento}
                     caminhoItem={abaAtiva.caminho}
+                    rotuloTipo={abaAtiva.rotuloTipo}
                     aoMoverPasta={moverParaPasta}
                   />
                 </div>
