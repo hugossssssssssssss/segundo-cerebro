@@ -7,6 +7,7 @@ import {
   ListTodo,
   Calendar,
   Tag,
+  Folder,
 } from "lucide-react";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -49,10 +50,11 @@ export default function Tarefas() {
   const navegar = useNavigate();
   const { abrirFlutuante, focarFlutuante } = useItemFlutuante();
 
-  // ── Carregamento ──────────────────────────────────────────────────────────
+  // ── Carregamento Recursivo (todas as subpastas de tarefas/) ───────────────
   const { itens: tarefas, acervo, carregando, erro: erroCarregar, recarregar } =
     useItemRepo(cfg, PASTAS.tarefas, (item) =>
       comoTarefa(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+      { recursivo: true }
     );
 
   // ── Salvamento ────────────────────────────────────────────────────────────
@@ -67,6 +69,7 @@ export default function Tarefas() {
   const { iniciar } = useCronometro();
   const modelosTarefa = useMemo(() => obterTodosModelos().filter((m) => m.categoria === "tarefa"), []);
   const [tagSelecionada, setTagSelecionada] = useState<string | null>(null);
+  const [pastaSelecionada, setPastaSelecionada] = useState<string | null>(null);
   const [visao, setVisao] = useState<"quadro" | "calendario">(() => {
     const salvo = localStorage.getItem("tarefa-visao");
     return salvo === "calendario" ? salvo : "quadro";
@@ -81,6 +84,20 @@ export default function Tarefas() {
     setModoVisao(novo);
     localStorage.setItem("tarefa-modo-visao", novo);
   };
+
+  // ── Pastas existentes para filtro e organização ────────────────────────────
+  const pastasExistentes = useMemo(() => {
+    const conjunto = new Set<string>();
+    for (const t of tarefas) {
+      const partes = t.caminho.split("/").slice(1, -1);
+      if (partes.length > 0) {
+        for (let i = 1; i <= partes.length; i++) {
+          conjunto.add(partes.slice(0, i).join("/"));
+        }
+      }
+    }
+    return Array.from(conjunto).sort((a, b) => a.localeCompare(b));
+  }, [tarefas]);
 
   // ── Tags para filtro ───────────────────────────────────────────────────────
   const todasTags = useMemo(() => {
@@ -206,7 +223,8 @@ export default function Tarefas() {
   async function gravarTarefa(t: Tarefa, mensagemCommit?: string): Promise<Tarefa> {
     const { dados, corpo } = tarefaParaArquivo(t);
     const texto = escreverMarkdown({ dados, corpo });
-    const caminho = t.caminho || nomeLivre(PASTAS.tarefas, t.titulo, tarefas.map((x) => x.caminho));
+    const prefixo = pastaSelecionada ? `${PASTAS.tarefas}/${pastaSelecionada}` : PASTAS.tarefas;
+    const caminho = t.caminho || nomeLivre(prefixo, t.titulo, tarefas.map((x) => x.caminho));
     const sha = await salvarTexto(caminho, texto, t.sha || undefined, mensagemCommit);
     return { ...t, caminho, sha };
   }
@@ -337,6 +355,10 @@ export default function Tarefas() {
   }
 
   const tarefasExibidas = tarefas.filter((t) => {
+    if (pastaSelecionada) {
+      const prefixo = `${PASTAS.tarefas}/${pastaSelecionada}/`;
+      if (!t.caminho.startsWith(prefixo)) return false;
+    }
     if (tagSelecionada && (!t.tags || !t.tags.includes(tagSelecionada))) {
       return false;
     }
@@ -402,6 +424,44 @@ export default function Tarefas() {
           />
         }
       />
+
+      {/* Filtro por Pastas */}
+      {pastasExistentes.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap py-1">
+          <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+            <Folder size={12} /> Pastas:
+          </span>
+          <button
+            onClick={() => setPastaSelecionada(null)}
+            className={cn(
+              "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer flex items-center gap-1",
+              pastaSelecionada === null
+                ? "bg-primary text-primary-foreground font-semibold"
+                : "bg-secondary/60 text-muted-foreground hover:bg-accent",
+            )}
+          >
+            Todas ({tarefas.length})
+          </button>
+          {pastasExistentes.map((p) => {
+            const total = tarefas.filter((t) => t.caminho.startsWith(`${PASTAS.tarefas}/${p}/`)).length;
+            const nomeAmigavel = p.split("/").pop() || p;
+            return (
+              <button
+                key={p}
+                onClick={() => setPastaSelecionada(p === pastaSelecionada ? null : p)}
+                className={cn(
+                  "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer flex items-center gap-1",
+                  pastaSelecionada === p
+                    ? "bg-primary text-primary-foreground font-semibold"
+                    : "bg-secondary/60 text-muted-foreground hover:bg-accent",
+                )}
+              >
+                📁 {nomeAmigavel} ({total})
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Filtro por Tags */}
       {todasTags.length > 0 && (

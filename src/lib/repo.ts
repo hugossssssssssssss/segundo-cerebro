@@ -447,16 +447,21 @@ async function carregarDeVerdade(
 }
 
 /** Só os arquivos de uma pasta, já ordenados do mais recente para o mais antigo. */
-export function daPasta(itens: ItemRepo[], pasta: string): ItemRepo[] {
+export function daPasta(itens: ItemRepo[], pasta: string, recursivo = false): ItemRepo[] {
   const prefixo = `${pasta}/`;
   return itens
-    .filter(
-      (i) =>
-        i.caminho.startsWith(prefixo) &&
-        // só o nível direto: `pdi/metas/x.md` não entra em `pdi`
-        !i.caminho.slice(prefixo.length).includes("/"),
-    )
+    .filter((i) => {
+      if (!i.caminho.startsWith(prefixo)) return false;
+      if (ehArquivoInternoOuSistema(i.caminho)) return false;
+      if (!recursivo && i.caminho.slice(prefixo.length).includes("/")) return false;
+      return true;
+    })
     .sort((a, b) => b.nome.localeCompare(a.nome));
+}
+
+/** Todos os arquivos de uma pasta e suas subpastas recursivamente. */
+export function daPastaRecursiva(itens: ItemRepo[], pasta: string): ItemRepo[] {
+  return daPasta(itens, pasta, true);
 }
 
 /**

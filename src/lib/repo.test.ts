@@ -28,7 +28,7 @@ describe("daPasta", () => {
     ]);
   });
 
-  it("não inclui arquivos de subpastas mais profundas", () => {
+  it("não inclui arquivos de subpastas mais profundas quando não recursivo", () => {
     const todos = [
       itemMock("pdi/meta.md"),
       itemMock("pdi/metas/meta-profunda.md"),
@@ -37,6 +37,23 @@ describe("daPasta", () => {
     const pdi = daPasta(todos, "pdi");
     expect(pdi).toHaveLength(1);
     expect(pdi[0].caminho).toBe("pdi/meta.md");
+  });
+
+  it("inclui subpastas quando recursivo é true ou usa daPastaRecursiva", () => {
+    const todos = [
+      itemMock("tarefas/geral.md"),
+      itemMock("tarefas/klaus/ajuste.md"),
+      itemMock("tarefas/pessoal/compras.md"),
+      itemMock("notas/nota.md"),
+    ];
+
+    const tarefas = daPasta(todos, "tarefas", true);
+    expect(tarefas).toHaveLength(3);
+    expect(tarefas.map((t) => t.caminho)).toEqual([
+      "tarefas/geral.md",
+      "tarefas/pessoal/compras.md",
+      "tarefas/klaus/ajuste.md",
+    ]);
   });
 });
 

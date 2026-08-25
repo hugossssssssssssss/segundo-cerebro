@@ -43,6 +43,7 @@ export function useItemRepo<T>(
   cfg: Settings,
   pasta: Pasta,
   converter: (item: ItemRepo) => T,
+  opcoes?: { recursivo?: boolean },
 ): EstadoRepo<T> {
   const [itens, setItens] = useState<T[]>([]);
   const [acervo, setAcervo] = useState<ItemRepo[]>([]);
@@ -109,7 +110,7 @@ export function useItemRepo<T>(
         setIlegiveis(arquivosIlegiveis());
         setAcervo(todos);
 
-        const lista = daPasta(todos, pasta);
+        const lista = daPasta(todos, pasta, Boolean(opcoes?.recursivo));
         setItens(lista.map(converter));
         setTitulos(
           Object.fromEntries(
@@ -172,7 +173,7 @@ export function useItemRepo<T>(
         setIlegiveis(arquivosIlegiveis());
         setAcervo(todos);
 
-        const lista = daPasta(todos, pasta);
+        const lista = daPasta(todos, pasta, Boolean(opcoes?.recursivo));
         setItens(lista.map(converter));
         setTitulos(
           Object.fromEntries(
@@ -190,7 +191,7 @@ export function useItemRepo<T>(
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cfg.githubToken, cfg.repoOwner, cfg.repoName, cfg.branch, pasta],
+    [cfg.githubToken, cfg.repoOwner, cfg.repoName, cfg.branch, pasta, opcoes?.recursivo],
   );
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
   Plus,
+  Folder,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
@@ -80,16 +81,16 @@ export default function PDI() {
   const { abrirFlutuante, fecharFlutuante, estaAbertoFlutuante, focarFlutuante } = useItemFlutuante();
 
   // ── Carregamento — dois hooks, um repositório (cache por sha) ─────────────
-  // Os dois hooks chamam carregarRepo() que tem cache interno — a segunda
-  // chamada não faz nova requisição se o sha não mudou.
   const { itens: metas, recarregar: recarregarMetas, carregando: carregandoMetas, erro: erroMetas } =
     useItemRepo(cfg, PASTAS.metas as typeof PASTA_METAS, (item) =>
       comoMeta(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+      { recursivo: true }
     );
 
   const { itens: entregas, recarregar: recarregarEntregas, carregando: carregandoEntregas, erro: erroEntregas } =
     useItemRepo(cfg, PASTAS.entregas as typeof PASTA_ENTREGAS, (item) =>
       comoEntrega(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+      { recursivo: true }
     );
 
   const carregando = carregandoMetas || carregandoEntregas;
@@ -113,6 +114,21 @@ export default function PDI() {
   const [origEntrega, setOrigEntrega] = useState<Entrega | null>(null);
   const [esconderEntregas, setEsconderEntregas] = useState(() => localStorage.getItem("klaus-pdi-esconder-entregas") === "true");
   const [dropHoverId, setDropHoverId] = useState<string | null>(null);
+  const [pastaMetaSelecionada, setPastaMetaSelecionada] = useState<string | null>(null);
+
+  // Pastas de metas existentes
+  const pastasMetasExistentes = useMemo(() => {
+    const conjunto = new Set<string>();
+    for (const m of metas) {
+      const partes = m.caminho.split("/").slice(2, -1);
+      if (partes.length > 0) {
+        for (let i = 1; i <= partes.length; i++) {
+          conjunto.add(partes.slice(0, i).join("/"));
+        }
+      }
+    }
+    return Array.from(conjunto).sort((a, b) => a.localeCompare(b));
+  }, [metas]);
 
   const alternarEsconderEntregas = () => {
     const novo = !esconderEntregas;
@@ -392,16 +408,24 @@ export default function PDI() {
     );
   }
 
-  const resumos = resumir(metas, entregas);
+  const metasExibidas = useMemo(() => {
+    if (!pastaMetaSelecionada) return metas;
+    const prefixo = `${PASTA_METAS}/${pastaMetaSelecionada}/`;
+    return metas.filter((m) => m.caminho.startsWith(prefixo));
+  }, [metas, pastaMetaSelecionada]);
+
+  const resumos = resumir(metasExibidas, entregas);
   const semAtencao = paradas(resumos);
   const soltas = semMeta(entregas);
   const conferir = aConferir(entregas);
 
   const novaMeta = () => {
+    const prefixo = pastaMetaSelecionada ? `${PASTA_METAS}/${pastaMetaSelecionada}` : PASTA_METAS;
+    const caminhoNovo = nomeLivreSemData(prefixo, "Nova Meta", metas.map((m) => m.caminho));
     const vazia: Meta = {
       bruto: {},
-      caminho: "",
-      id: "",
+      caminho: caminhoNovo,
+      id: "nova-meta",
       sha: "",
       titulo: "",
       status: "a-fazer",
@@ -468,6 +492,44 @@ const novaEntregaParaMeta = (meta: Meta) => {
           </>
         }
       />
+
+      {/* Filtro por Pastas / Ciclos de Metas */}
+      {pastasMetasExistentes.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap py-1">
+          <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+            <Folder size={12} /> Pastas:
+          </span>
+          <button
+            onClick={() => setPastaMetaSelecionada(null)}
+            className={cn(
+              "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer flex items-center gap-1",
+              pastaMetaSelecionada === null
+                ? "bg-primary text-primary-foreground font-semibold"
+                : "bg-secondary/60 text-muted-foreground hover:bg-accent",
+            )}
+          >
+            Todas ({metas.length})
+          </button>
+          {pastasMetasExistentes.map((p) => {
+            const total = metas.filter((m) => m.caminho.startsWith(`${PASTA_METAS}/${p}/`)).length;
+            const nomeAmigavel = p.split("/").pop() || p;
+            return (
+              <button
+                key={p}
+                onClick={() => setPastaMetaSelecionada(p === pastaMetaSelecionada ? null : p)}
+                className={cn(
+                  "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer flex items-center gap-1",
+                  pastaMetaSelecionada === p
+                    ? "bg-primary text-primary-foreground font-semibold"
+                    : "bg-secondary/60 text-muted-foreground hover:bg-accent",
+                )}
+              >
+                📁 {nomeAmigavel} ({total})
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 

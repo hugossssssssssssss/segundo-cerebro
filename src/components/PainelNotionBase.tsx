@@ -251,6 +251,33 @@ export function PainelNotionBase({
     }
   }, [caminhoItem, titulo, dadosProps, corpo, aoFechar, salvarTexto, apagarItem]);
 
+  const moverParaPasta = useCallback(async (novaSubpasta: string) => {
+    if (!caminhoItem) return;
+    const partes = caminhoItem.split("/");
+    const pastaRaiz = partes[0] === "pdi" ? `pdi/${partes[1]}` : partes[0];
+    const nomeArquivo = partes[partes.length - 1];
+    const prefixoDestino = novaSubpasta ? `${pastaRaiz}/${novaSubpasta}` : pastaRaiz;
+    const novoCaminho = `${prefixoDestino}/${nomeArquivo}`;
+
+    if (novoCaminho === caminhoItem) return;
+
+    try {
+      const texto = escreverMarkdown({ dados: dadosProps, corpo });
+      await salvarTexto(novoCaminho, texto, undefined, `mover: ${nomeArquivo} para ${novaSubpasta || "raiz"}`);
+      const itemOrigem = cache?.itens.find((i) => i.caminho === caminhoItem);
+      if (itemOrigem?.sha) {
+        await apagarItem(caminhoItem, itemOrigem.sha);
+      }
+      invalidarCache();
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+      toast(`Documento movido para "${novaSubpasta || pastaRaiz}" com sucesso!`, { tipo: "sucesso" });
+      aoFechar();
+      abrirItemSpa(novoCaminho);
+    } catch (err: any) {
+      toast(`Erro ao mover o item: ${err?.message || err}`, { tipo: "erro" });
+    }
+  }, [caminhoItem, dadosProps, corpo, salvarTexto, apagarItem, aoFechar]);
+
   const painelRef = useRef<HTMLDivElement>(null);
   const miniRef = useRef<HTMLDivElement>(null);
 
@@ -974,6 +1001,8 @@ export function PainelNotionBase({
           onChange={onChangeProps}
           camposFixos={camposFixosProps}
           opcoesRelacionamento={opcoesRelacionamento}
+          caminhoItem={caminhoItem}
+          aoMoverPasta={moverParaPasta}
         />
       </div>
 

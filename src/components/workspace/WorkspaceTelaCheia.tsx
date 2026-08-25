@@ -12,6 +12,10 @@ import { useWorkspace } from "./WorkspaceContext";
 import { WorkspaceBreadcrumbs } from "./WorkspaceBreadcrumbs";
 import { WorkspaceRodape } from "./WorkspaceRodape";
 import { WorkspaceVazio } from "./WorkspaceVazio";
+import { useSalvar } from "@/lib/useSalvar";
+import { lerConfig } from "@/lib/settings";
+import { cache, invalidarCache } from "@/lib/repo";
+import { toast } from "@/lib/toast";
 
 const HistoricoDiffModal = lazy(() =>
   import("@/components/HistoricoDiffModal").then((m) => ({
@@ -48,6 +52,36 @@ export function WorkspaceTelaCheia() {
   const temMudancasGlobal = useMemo(() => {
     return abas.some((a) => a.temMudancas);
   }, [abas]);
+
+  const cfg = useMemo(() => lerConfig(), []);
+  const { salvarTexto, apagarItem } = useSalvar(cfg);
+
+  const moverParaPasta = useCallback(async (novaSubpasta: string) => {
+    if (!abaAtiva?.caminho) return;
+    const caminhoItem = abaAtiva.caminho;
+    const partes = caminhoItem.split("/");
+    const pastaRaiz = partes[0] === "pdi" ? `pdi/${partes[1]}` : partes[0];
+    const nomeArquivo = partes[partes.length - 1];
+    const prefixoDestino = novaSubpasta ? `${pastaRaiz}/${novaSubpasta}` : pastaRaiz;
+    const novoCaminho = `${prefixoDestino}/${nomeArquivo}`;
+
+    if (novoCaminho === caminhoItem) return;
+
+    try {
+      const texto = escreverMarkdown({ dados: abaAtiva.dadosProps || {}, corpo: abaAtiva.corpo || "" });
+      await salvarTexto(novoCaminho, texto, undefined, `mover: ${nomeArquivo} para ${novaSubpasta || "raiz"}`);
+      const itemOrigem = cache?.itens?.find((i) => i.caminho === caminhoItem);
+      if (itemOrigem?.sha) {
+        await apagarItem(caminhoItem, itemOrigem.sha);
+      }
+      invalidarCache();
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+      toast(`Documento movido para "${novaSubpasta || pastaRaiz}" com sucesso!`, { tipo: "sucesso" });
+      atualizarAbaAtiva({ caminho: novoCaminho, id: novoCaminho });
+    } catch (err: any) {
+      toast(`Erro ao mover o item: ${err?.message || err}`, { tipo: "erro" });
+    }
+  }, [abaAtiva, salvarTexto, apagarItem, atualizarAbaAtiva]);
 
   useEffect(() => {
     if (!temMudancasGlobal) return;
@@ -180,6 +214,8 @@ export function WorkspaceTelaCheia() {
                     onChange={(novosDados) => atualizarAbaAtiva({ dadosProps: novosDados })}
                     camposFixos={abaAtiva.camposFixosProps}
                     opcoesRelacionamento={abaAtiva.opcoesRelacionamento}
+                    caminhoItem={abaAtiva.caminho}
+                    aoMoverPasta={moverParaPasta}
                   />
                 </div>
 

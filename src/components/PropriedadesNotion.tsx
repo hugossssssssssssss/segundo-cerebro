@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   Type, 
   Hash, 
@@ -14,7 +14,8 @@ import {
   ChevronRight,
   User,
   Clock,
-  X
+  X,
+  Folder,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -201,6 +202,8 @@ type PropriedadesNotionProps = {
     };
   };
   opcoesRelacionamento?: { titulo: string; caminho: string }[];
+  caminhoItem?: string;
+  aoMoverPasta?: (novaPasta: string) => Promise<any> | void;
 };
 
 export function PropriedadesNotion({ 
@@ -208,13 +211,16 @@ export function PropriedadesNotion({
   onChange, 
   corpoTexto = "",
   camposFixos = {}, 
-  opcoesRelacionamento = [] 
+  opcoesRelacionamento = [],
+  caminhoItem,
+  aoMoverPasta,
 }: PropriedadesNotionProps) {
   // Controle estrito de um ÚNICO menu aberto por vez
   const [menuAberto, setMenuAberto] = useState<string | null>(null);
 
   const [nomeNovoCampo, setNomeNovoCampo] = useState("");
   const [tipoNovoCampo, setTipoNovoCampo] = useState<TipoPropriedade>("texto");
+  const [novaSubpastaInput, setNovaSubpastaInput] = useState("");
 
   const [renomearPara, setRenomearPara] = useState("");
   const [copiado, setCopiado] = useState<string | null>(null);
@@ -228,6 +234,54 @@ export function PropriedadesNotion({
   useEffect(() => {
     setGlobalConfig(lerConfigPropriedadesGlobais());
   }, []);
+
+  const { pastaRaiz, subpastaAtualTexto, nomeAmigavelRaiz, trilhaAmigavel } = useMemo(() => {
+    if (!caminhoItem) {
+      return { pastaRaiz: "", subpastaAtualTexto: "", nomeAmigavelRaiz: "", trilhaAmigavel: "" };
+    }
+    const partes = caminhoItem.split("/");
+    const raiz = partes[0] === "pdi" ? `pdi/${partes[1]}` : partes[0];
+    const subpastas = partes.slice(raiz.split("/").length, -1);
+    const subpastaAtual = subpastas.join("/");
+
+    const mapaNomes: Record<string, string> = {
+      notas: "Notas",
+      tarefas: "Tarefas",
+      "pdi/metas": "PDI / Metas",
+      "pdi/entregas": "PDI / Entregas",
+      referencias: "Referências",
+      reunioes: "Reuniões",
+      processos: "Processos",
+      contatos: "Contatos",
+    };
+
+    const nomeRaiz = mapaNomes[raiz] || raiz;
+    const trilha = subpastas.length > 0 ? `${nomeRaiz} › ${subpastas.join(" › ")}` : `${nomeRaiz} (Raiz)`;
+
+    return {
+      pastaRaiz: raiz,
+      subpastaAtualTexto: subpastaAtual,
+      nomeAmigavelRaiz: nomeRaiz,
+      trilhaAmigavel: trilha,
+    };
+  }, [caminhoItem]);
+
+  const pastasDaCategoria = useMemo(() => {
+    if (!pastaRaiz || !cache || !cache.itens) return [];
+    const prefixo = `${pastaRaiz}/`;
+    const conjunto = new Set<string>();
+    for (const item of cache.itens) {
+      if (item.caminho.startsWith(prefixo)) {
+        const pedacos = item.caminho.slice(prefixo.length).split("/").slice(0, -1);
+        if (pedacos.length > 0) {
+          for (let i = 1; i <= pedacos.length; i++) {
+            conjunto.add(pedacos.slice(0, i).join("/"));
+          }
+        }
+      }
+    }
+    return Array.from(conjunto).sort((a, b) => a.localeCompare(b));
+  }, [pastaRaiz]);
 
   // Garante o fechamento imediato de qualquer menu de propriedade aberto ao clicar fora em qualquer lugar da tela
   useEffect(() => {
@@ -1144,6 +1198,124 @@ export function PropriedadesNotion({
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
+      {/* Propriedade Fixa Universal: Localização / Pasta */}
+      {caminhoItem && (
+        <div className="flex min-h-8 items-center gap-4 text-xs group">
+          <div className="flex items-center gap-2 text-muted-foreground w-36 shrink-0 select-none">
+            <Folder className="h-4 w-4 opacity-75 shrink-0" />
+            <span className="truncate font-medium">Pasta</span>
+          </div>
+
+          <div className="flex-1 flex items-center min-h-8">
+            <Popover open={menuAberto === "mover_pasta"} onOpenChange={(open) => setMenuAberto(open ? "mover_pasta" : null)}>
+              <PopoverTrigger asChild>
+                <button
+                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-foreground bg-accent/30 hover:bg-accent hover:text-foreground transition-colors cursor-pointer border border-border/40"
+                  title="Clique para mover este item de pasta"
+                >
+                  <Folder className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span>{trilhaAmigavel}</span>
+                  <ChevronDown className="h-3 w-3 opacity-60 ml-0.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-2 shadow-2xl border-border space-y-2" align="start" onInteractOutside={() => setMenuAberto(null)}>
+                <div className="px-1.5 pt-1 pb-1 border-b border-border/60">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                    Mover para outra pasta
+                  </span>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Pasta atual: <strong className="text-foreground">{subpastaAtualTexto || "Raiz"}</strong>
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto">
+                  {/* Opção Raiz */}
+                  <button
+                    onClick={() => {
+                      if (aoMoverPasta) aoMoverPasta("");
+                      setMenuAberto(null);
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-left transition-colors cursor-pointer",
+                      !subpastaAtualTexto
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-foreground hover:bg-accent"
+                    )}
+                  >
+                    <Folder className="h-3.5 w-3.5 shrink-0" />
+                    <span>Raiz de {nomeAmigavelRaiz}</span>
+                    {!subpastaAtualTexto && <span className="ml-auto text-[10px] text-primary">Atual</span>}
+                  </button>
+
+                  {/* Pastas Existentes */}
+                  {pastasDaCategoria.map((p) => {
+                    const ehAtual = subpastaAtualTexto === p;
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => {
+                          if (aoMoverPasta) aoMoverPasta(p);
+                          setMenuAberto(null);
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-left transition-colors cursor-pointer",
+                          ehAtual
+                            ? "bg-primary/10 text-primary font-semibold"
+                            : "text-foreground hover:bg-accent"
+                        )}
+                      >
+                        <Folder className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{p}</span>
+                        {ehAtual && <span className="ml-auto text-[10px] text-primary">Atual</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Criar nova subpasta e mover */}
+                <div className="pt-2 border-t border-border/60">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      placeholder="Nova subpasta..."
+                      value={novaSubpastaInput}
+                      onChange={(e) => setNovaSubpastaInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && novaSubpastaInput.trim()) {
+                          const normalizado = novaSubpastaInput.trim().replace(/[^a-zA-Z0-9\s-_/]/g, "").toLowerCase();
+                          if (normalizado && aoMoverPasta) {
+                            aoMoverPasta(normalizado);
+                            setNovaSubpastaInput("");
+                            setMenuAberto(null);
+                          }
+                        }
+                      }}
+                      className="flex-1 bg-accent/40 border border-border text-xs px-2 py-1 rounded-md outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={!novaSubpastaInput.trim()}
+                      onClick={() => {
+                        const normalizado = novaSubpastaInput.trim().replace(/[^a-zA-Z0-9\s-_/]/g, "").toLowerCase();
+                        if (normalizado && aoMoverPasta) {
+                          aoMoverPasta(normalizado);
+                          setNovaSubpastaInput("");
+                          setMenuAberto(null);
+                        }
+                      }}
+                      className="h-7 text-xs px-2 cursor-pointer"
+                    >
+                      Mover
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      )}
+
       {/* Lista de Propriedades Visíveis */}
       {chavesVisiveis.map((chave) => {
         const fixo = camposFixos[chave];

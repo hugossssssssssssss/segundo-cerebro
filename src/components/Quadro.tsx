@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Timer, GripVertical, Pause } from "lucide-react";
+import { Timer, GripVertical, Pause, ChevronDown, ChevronUp, ChevronRight, ChevronsRight, Folder } from "lucide-react";
 import {
   urgencia,
   textoPrazo,
@@ -29,8 +29,9 @@ import {
   type Tarefa,
   type Status,
 } from "@/lib/tarefas";
-import { Botao, Cartao, Selo } from "@/components/ui";
+import { Cartao, Selo, Tooltip } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { PrismasFoco } from "@/components/PrismasFoco";
 
 /**
  * Quadro de tarefas em colunas — a fazer, fazendo, feito.
@@ -64,13 +65,16 @@ const COR_COLUNA: Record<Status, string> = {
   feito: "bg-[var(--success)]",
 };
 
-import { PrismasFoco } from "@/components/PrismasFoco";
+const LIMITE_PADRAO_COLUNA = 8;
 
 function ConteudoDoCartao({ t }: { t: Tarefa }) {
   const u = urgencia(t);
   const min = minutosRegistrados(t.corpo);
   const passos = progressoSubtarefas(t.corpo);
   const focosConcluidos = Math.floor(min / 25);
+
+  const pedacosCaminho = t.caminho ? t.caminho.split("/").slice(1, -1) : [];
+  const subpasta = pedacosCaminho.length > 0 ? pedacosCaminho.join(" › ") : null;
 
   return (
     <>
@@ -92,8 +96,14 @@ function ConteudoDoCartao({ t }: { t: Tarefa }) {
         tamanho={13}
       />
 
-      {(u !== "nenhuma" || min > 0 || passos.total > 0 || t.tags.length > 0) && (
+      {(u !== "nenhuma" || min > 0 || passos.total > 0 || t.tags.length > 0 || subpasta) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {subpasta && (
+            <Selo className="opacity-75 flex items-center gap-1 text-[10px]">
+              <Folder size={10} />
+              <span>{subpasta}</span>
+            </Selo>
+          )}
           {u !== "nenhuma" && <Selo tom={CORES_URGENCIA[u]}>{textoPrazo(t)}</Selo>}
           {min > 0 && (
             <Selo className="flex items-center gap-1">
@@ -128,13 +138,20 @@ function CartaoArrastavel({
   aoCronometrar: (t: Tarefa) => void;
   gravando: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: t.caminho });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: t.caminho });
 
   const { tarefa: tarefaAtiva, rodando, pausar, retomar } = useCronometro();
   const isAtivo = tarefaAtiva?.caminho === t.caminho;
 
-  const aoClicarCronometro = () => {
+  const aoClicarCronometro = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (isAtivo) {
       if (rodando) pausar();
       else retomar();
@@ -143,62 +160,80 @@ function CartaoArrastavel({
     }
   };
 
+  const estilo = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+  };
+
   return (
     <Cartao
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      style={estilo}
       className={cn(
-        "flex items-start gap-1.5 p-3 relative overflow-hidden transition-all duration-300",
-        isDragging && "opacity-40",
-        gravando && "opacity-60",
-        isAtivo && "border-indigo-500/50 bg-indigo-500/5 shadow-md",
+        "group relative flex flex-col gap-1 p-3 text-xs select-none cursor-pointer transition-all hover:shadow-md",
+        isDragging && "opacity-30",
+        gravando && "animate-pulse border-primary",
+        isAtivo && "border-primary/60 bg-primary/5 shadow-md",
       )}
+      onClick={() => aoAbrir(t)}
     >
-      {/* Sutil linha de indicação de foco ativo na lateral esquerda */}
       {isAtivo && (
-        <span className={cn(
-          "absolute left-0 top-0 bottom-0 w-1 rounded-r bg-indigo-500",
-          rodando && "animate-pulse"
-        )} />
+        <span
+          className={cn(
+            "absolute left-0 top-0 bottom-0 w-1 rounded-r bg-primary",
+            rodando && "animate-pulse",
+          )}
+        />
       )}
 
-      {/* A alça é só dela: o cartão inteiro arrastável impedia o toque de
-          abrir a tarefa no celular, onde não existe "clicar sem arrastar". */}
-      <button
-        {...attributes}
-        {...listeners}
-        className="-ml-1 shrink-0 cursor-grab touch-none rounded p-1 text-muted-foreground/50 hover:bg-accent hover:text-muted-foreground active:cursor-grabbing"
-        aria-label={`Mover ${t.titulo}`}
-      >
-        <GripVertical size={16} />
-      </button>
+      <div className="flex items-start justify-between gap-1">
+        <div className="flex-1 min-w-0">
+          <ConteudoDoCartao t={t} />
+        </div>
 
-      <button
-        onClick={() => aoAbrir(t)}
-        onPointerDown={(e) => e.stopPropagation()}
-        className="min-w-0 flex-1 text-left cursor-pointer"
-      >
-        <ConteudoDoCartao t={t} />
-      </button>
-
-      {t.status !== "feito" && (
-        <Botao
-          variante={isAtivo ? "neutro" : "fantasma"}
-          tamanho="icone"
-          onClick={aoClicarCronometro}
-          onPointerDown={(e) => e.stopPropagation()}
-          title={isAtivo ? (rodando ? "Pausar pomodoro" : "Retomar pomodoro") : "Iniciar pomodoro"}
-          className={cn(
-            "transition-colors shrink-0",
-            isAtivo && (rodando ? "text-indigo-500 bg-indigo-500/10 hover:bg-indigo-500/20" : "text-muted-foreground")
-          )}
+        {/* Alça de arrasto visível no hover */}
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="shrink-0 p-1 text-muted-foreground/40 hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded"
+          title="Arrastar tarefa"
+          aria-label={`Mover ${t.titulo}`}
+          onClick={(e) => e.stopPropagation()}
         >
-          {isAtivo && rodando ? (
-            <Pause size={14} className="animate-pulse" />
-          ) : (
-            <Timer size={14} />
-          )}
-        </Botao>
+          <GripVertical size={14} />
+        </button>
+      </div>
+
+      {/* Botão de foco rápido */}
+      {t.status !== "feito" && (
+        <div className="mt-1 flex justify-end">
+          <button
+            type="button"
+            onClick={aoClicarCronometro}
+            className={cn(
+              "flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer",
+              isAtivo
+                ? rodando
+                  ? "bg-primary/20 text-primary font-semibold"
+                  : "bg-muted text-muted-foreground"
+                : "text-muted-foreground hover:bg-primary/10 hover:text-primary",
+            )}
+            title={isAtivo ? (rodando ? "Pausar pomodoro" : "Retomar pomodoro") : "Iniciar pomodoro"}
+          >
+            {isAtivo && rodando ? (
+              <>
+                <Pause size={11} className="animate-pulse" />
+                <span>Pausar</span>
+              </>
+            ) : (
+              <>
+                <Timer size={11} />
+                <span>{isAtivo ? "Retomar" : "Focar"}</span>
+              </>
+            )}
+          </button>
+        </div>
       )}
     </Cartao>
   );
@@ -210,40 +245,84 @@ function Coluna({
   aoAbrir,
   aoCronometrar,
   gravandoCaminho,
+  colapsada,
+  aoAlternarColapso,
 }: {
   status: Status;
   tarefas: Tarefa[];
   aoAbrir: (t: Tarefa) => void;
   aoCronometrar: (t: Tarefa) => void;
   gravandoCaminho: string | null;
+  colapsada: boolean;
+  aoAlternarColapso: () => void;
 }) {
-  // `useDroppable` na coluna inteira, e não só na lista de cartões: sem isso
-  // uma coluna VAZIA não aceitaria nada, que é justamente quando você mais
-  // precisa soltar algo nela.
   const { setNodeRef, isOver } = useDroppable({ id: status });
+  const [expandida, setExpandida] = useState(false);
+
+  const tarefasExibidas = expandida ? tarefas : tarefas.slice(0, LIMITE_PADRAO_COLUNA);
+  const temMais = tarefas.length > LIMITE_PADRAO_COLUNA;
+
+  if (colapsada) {
+    return (
+      <div
+        ref={setNodeRef}
+        onClick={aoAlternarColapso}
+        className={cn(
+          "flex w-12 shrink-0 flex-col items-center justify-between rounded-2xl border border-border bg-secondary/30 py-4 transition-all cursor-pointer hover:bg-accent/60 select-none",
+          isOver && "border-primary/50 bg-primary/10",
+        )}
+        title={`Coluna ${ROTULO_STATUS[status]} recolhida. Clique para expandir.`}
+      >
+        <div className="flex flex-col items-center gap-2">
+          <span className={cn("h-2.5 w-2.5 rounded-full", COR_COLUNA[status])} />
+          <span className="text-[11px] font-bold tabular-nums px-1.5 py-0.5 rounded-full bg-card shadow-2xs">
+            {tarefas.length}
+          </span>
+        </div>
+
+        <span className="[writing-mode:vertical-rl] rotate-180 text-xs font-semibold text-muted-foreground tracking-wide py-2">
+          {ROTULO_STATUS[status]}
+        </span>
+
+        <ChevronRight size={14} className="text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "flex min-w-[260px] flex-1 flex-col rounded-2xl border border-border bg-secondary/40 p-2.5 transition-colors",
+        "flex min-w-[280px] flex-1 flex-col rounded-2xl border border-border bg-secondary/40 p-2.5 transition-colors",
         isOver && "border-primary/40 bg-accent",
       )}
     >
-      <div className="mb-2.5 flex items-center gap-2 px-1">
-        <span className={cn("h-2 w-2 rounded-full", COR_COLUNA[status])} />
-        <p className="text-sm font-semibold">{ROTULO_STATUS[status]}</p>
-        <span className="ml-auto text-xs tabular-nums text-muted-foreground">
-          {tarefas.length}
-        </span>
+      <div className="mb-2.5 flex items-center justify-between gap-2 px-1">
+        <div className="flex items-center gap-2">
+          <span className={cn("h-2.5 w-2.5 rounded-full", COR_COLUNA[status])} />
+          <p className="text-sm font-semibold text-foreground">{ROTULO_STATUS[status]}</p>
+          <span className="text-xs font-medium tabular-nums text-muted-foreground px-1.5 py-0.5 rounded-md bg-card/60">
+            {tarefas.length}
+          </span>
+        </div>
+
+        <Tooltip conteudo="Recolher coluna" posicao="top">
+          <button
+            onClick={aoAlternarColapso}
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+            aria-label={`Recolher coluna ${ROTULO_STATUS[status]}`}
+          >
+            <ChevronsRight size={14} />
+          </button>
+        </Tooltip>
       </div>
 
       <SortableContext
-        items={tarefas.map((t) => t.caminho)}
+        items={tarefasExibidas.map((t) => t.caminho)}
         strategy={verticalListSortingStrategy}
       >
         <div className="flex min-h-16 flex-col gap-2">
-          {tarefas.map((t) => (
+          {tarefasExibidas.map((t) => (
             <CartaoArrastavel
               key={t.caminho}
               t={t}
@@ -252,10 +331,30 @@ function Coluna({
               gravando={gravandoCaminho === t.caminho}
             />
           ))}
+
           {tarefas.length === 0 && (
-            <p className="px-1 py-4 text-center text-xs text-muted-foreground">
+            <p className="px-1 py-6 text-center text-xs text-muted-foreground">
               Arraste algo para cá
             </p>
+          )}
+
+          {temMais && (
+            <button
+              onClick={() => setExpandida(!expandida)}
+              className="w-full mt-1 py-1.5 text-center text-xs font-semibold text-primary hover:bg-primary/10 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1"
+            >
+              {expandida ? (
+                <>
+                  <ChevronUp size={13} />
+                  <span>Mostrar menos</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown size={13} />
+                  <span>Mostrar mais ({tarefas.length - LIMITE_PADRAO_COLUNA} tarefas)</span>
+                </>
+              )}
+            </button>
           )}
         </div>
       </SortableContext>
@@ -277,10 +376,24 @@ export function Quadro({
   gravandoCaminho: string | null;
 }) {
   const [arrastando, setArrastando] = useState<Tarefa | null>(null);
+  const [colapsadas, setColapsadas] = useState<Record<Status, boolean>>(() => {
+    try {
+      const salvo = localStorage.getItem("klaus_kanban_colapsadas");
+      return salvo ? JSON.parse(salvo) : { "a-fazer": false, fazendo: false, feito: false };
+    } catch {
+      return { "a-fazer": false, fazendo: false, feito: false };
+    }
+  });
+
+  const alternarColapso = (s: Status) => {
+    setColapsadas((prev) => {
+      const proximo = { ...prev, [s]: !prev[s] };
+      localStorage.setItem("klaus_kanban_colapsadas", JSON.stringify(proximo));
+      return proximo;
+    });
+  };
 
   const sensores = useSensors(
-    // 6px de folga antes de considerar arrasto: sem isso, um toque com o dedo
-    // trêmulo no celular virava arrasto e a tarefa nunca abria
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
@@ -297,8 +410,6 @@ export function Quadro({
     const movida = tarefas.find((t) => t.caminho === active.id);
     if (!movida) return;
 
-    // O alvo pode ser a coluna (id = status) ou um cartão dentro dela — nesse
-    // caso o destino é o status DAQUELE cartão.
     const destino = STATUS.includes(over.id as Status)
       ? (over.id as Status)
       : tarefas.find((t) => t.caminho === over.id)?.status;
@@ -315,8 +426,7 @@ export function Quadro({
       onDragEnd={aoTerminar}
       onDragCancel={() => setArrastando(null)}
     >
-      {/* rola na horizontal no celular, onde três colunas não cabem */}
-      <div className="flex gap-3 overflow-x-auto pb-2">
+      <div className="flex gap-3 overflow-x-auto pb-2 items-start">
         {STATUS.map((s) => (
           <Coluna
             key={s}
@@ -325,14 +435,15 @@ export function Quadro({
             aoAbrir={aoAbrir}
             aoCronometrar={aoCronometrar}
             gravandoCaminho={gravandoCaminho}
+            colapsada={Boolean(colapsadas[s])}
+            aoAlternarColapso={() => alternarColapso(s)}
           />
         ))}
       </div>
 
-      {/* a cópia que segue o dedo/cursor */}
       <DragOverlay>
         {arrastando && (
-          <Cartao className="cursor-grabbing p-3 shadow-lg">
+          <Cartao className="cursor-grabbing p-3 shadow-xl ring-2 ring-primary/20 max-w-xs">
             <ConteudoDoCartao t={arrastando} />
           </Cartao>
         )}
