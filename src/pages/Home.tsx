@@ -30,6 +30,7 @@ import {
   Settings,
   GitMerge,
   Video,
+  Globe,
 } from "lucide-react";
 import {
   DndContext,
@@ -61,6 +62,7 @@ import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
+import { WebSearchWidget } from "@/components/WebSearchWidget";
 
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -92,6 +94,14 @@ export interface InfoGadgetDisponivel {
 
 const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
   // --- MÓDULOS DE CONTEÚDO ---
+  {
+    id: "busca_web",
+    titulo: "Busca Web Avançada",
+    descricao: "Pesquise no Google, Bing ou DuckDuckGo com construtor de filtros Dorks",
+    icone: Globe,
+    colunasPadrao: 2,
+    corIcone: "text-blue-500 bg-blue-500/10",
+  },
   {
     id: "hoje",
     titulo: "Revisão Diária (Visão 'Hoje' — 2 Minutos)",
@@ -289,6 +299,7 @@ const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
 ];
 
 const GADGETS_PADRAO: Gadget[] = [
+  { id: "busca_web", colunas: 2 },
   { id: "kpi_tarefas", colunas: 1 },
   { id: "kpi_notas", colunas: 1 },
   { id: "kpi_referencias", colunas: 1 },
@@ -1223,6 +1234,13 @@ export default function Home() {
                 </div>
               </CardContent>
             </Card>
+          </GadgetWrapper>
+        );
+
+      case "busca_web":
+        return (
+          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
+            <WebSearchWidget />
           </GadgetWrapper>
         );
 

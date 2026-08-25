@@ -54,6 +54,8 @@ export type Settings = {
   googleEmailAtivo?: boolean;
   /** Se o modo desenvolvedor (console de logs) está ativo */
   modoDesenvolvedor?: boolean;
+  /** Motor de busca web padrão ('google' | 'bing' | 'duckduckgo') */
+  defaultWebSearchEngine?: "google" | "bing" | "duckduckgo";
 };
 
 const CHAVE = "segundo-cerebro:config";
@@ -212,6 +214,7 @@ export const PADRAO: Settings = {
   googleAppsScriptUrl: "",
   googleEmailAtivo: false,
   modoDesenvolvedor: false,
+  defaultWebSearchEngine: "google",
 };
 
 /**
@@ -246,6 +249,9 @@ function limpar(s: Settings): Settings {
     googleAppsScriptUrl: (s.googleAppsScriptUrl || "").trim(),
     googleEmailAtivo: Boolean(s.googleEmailAtivo),
     modoDesenvolvedor: Boolean(s.modoDesenvolvedor),
+    defaultWebSearchEngine: (["google", "bing", "duckduckgo"].includes(s.defaultWebSearchEngine as string)
+      ? s.defaultWebSearchEngine
+      : "google") as "google" | "bing" | "duckduckgo",
   };
 }
 

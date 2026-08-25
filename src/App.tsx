@@ -29,6 +29,7 @@ import { WorkspaceProvider, useWorkspace } from "@/components/workspace/Workspac
 import { WorkspaceTelaCheia } from "@/components/workspace/WorkspaceTelaCheia";
 import { WorkspaceBarraAbas } from "@/components/workspace/WorkspaceBarraAbas";
 import { Busca } from "@/components/Busca";
+import { WebSearchHeader } from "@/components/WebSearchHeader";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { ToastsContainer } from "@/components/ToastsContainer";
 import { NavegacaoLateral } from "@/components/NavegacaoLateral";
@@ -444,6 +445,9 @@ function Estrutura({ children }: { children: React.ReactNode }) {
               >
                 <Bell size={18} />
               </NavLink>
+
+              {/* Busca Web Externa (Google, Bing, DuckDuckGo) */}
+              <WebSearchHeader />
 
               <button
                 onClick={() => setBuscando(true)}
