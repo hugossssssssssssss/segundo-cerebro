@@ -28,6 +28,10 @@ import {
   Timer,
   BookOpen,
   Video,
+  Newspaper,
+  Headphones,
+  Network,
+  RefreshCw,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -300,6 +304,51 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
     rota: "/config",
     icone: Settings,
     palavrasChave: ["ajustes", "configuração", "token", "github", "gemini", "senha"],
+  },
+  {
+    id: "ferramentas_pdf",
+    titulo: "Suíte de Ferramentas PDF (iLovePDF)",
+    descricao: "Juntar, dividir, comprimir, recortar, desbloquear e organizar páginas de PDF",
+    categoria: "ferramenta",
+    rota: "/pdf",
+    icone: FilePlus,
+    palavrasChave: ["pdf", "ilovepdf", "mesclar", "dividir", "comprimir", "recortar", "desbloquear", "organizar"],
+  },
+  {
+    id: "conversor",
+    titulo: "Conversor Universal & Utilitários",
+    descricao: "Conversões de imagem (PNG, JPG, WebP), OCR, Markdown e livros EPUB",
+    categoria: "ferramenta",
+    rota: "/conversor",
+    icone: RefreshCw,
+    palavrasChave: ["conversor", "converter", "imagem", "ocr", "texto", "epub", "markdown"],
+  },
+  {
+    id: "sons",
+    titulo: "Sons Ambiente & Foco",
+    descricao: "Sons relaxantes de chuva, cafeteria, ruído branco e ondas para concentração",
+    categoria: "ferramenta",
+    rota: "/sons",
+    icone: Headphones,
+    palavrasChave: ["sons", "foco", "ruído branco", "chuva", "cafeteria", "áudio", "ambiente", "concentração", "música"],
+  },
+  {
+    id: "noticias",
+    titulo: "Radar de Notícias & Feed RSS",
+    descricao: "Acompanhe novidades, tendências e feeds RSS em tempo real",
+    categoria: "modulo",
+    rota: "/noticias",
+    icone: Newspaper,
+    palavrasChave: ["notícias", "radar", "feed", "rss", "novidades", "artigos", "design"],
+  },
+  {
+    id: "grafo",
+    titulo: "Grafo Neural de Conhecimento",
+    descricao: "Explore as conexões e relacionamentos visuais entre todas as suas notas e ideias",
+    categoria: "modulo",
+    rota: "/grafo",
+    icone: Network,
+    palavrasChave: ["grafo", "neural", "rede", "conexões", "mapa mental", "relacionamentos", "obsidian"],
   },
 
   // --- AÇÕES RÁPIDAS (QUICK ACTIONS) ---

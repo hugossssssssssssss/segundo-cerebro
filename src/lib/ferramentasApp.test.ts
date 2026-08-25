@@ -25,6 +25,8 @@ const ROTAS_VALIDAS_APP = new Set([
   "/camadas-imagens",
   "/ocr",
   "/testador",
+  "/sons",
+  "/home",
 ]);
 
 const ACOES_TRATADAS_BUSCA = new Set([

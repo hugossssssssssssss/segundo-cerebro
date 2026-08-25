@@ -8,6 +8,9 @@ const Transcritor = lazy(() => import("@/pages/Transcritor"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const TestadorHardware = lazy(() => import("@/pages/TestadorHardware"));
+const FerramentasPDF = lazy(() => import("@/pages/FerramentasPDF"));
+const PesquisaLivros = lazy(() => import("@/pages/PesquisaLivros"));
+const Sons = lazy(() => import("@/pages/Sons"));
 
 interface ContextoFerramentasFlutuantesTipo {
   ferramentaAtiva: string | null;
@@ -47,6 +50,10 @@ export function ProvedorFerramentasFlutuantes({ children }: { children: ReactNod
   const infoFerramenta = LISTA_FERRAMENTAS_APP.find((f) => f.id === ferramentaAtiva);
   const IconeComp = infoFerramenta?.icone || Wrench;
 
+  const ehPDF =
+    ferramentaAtiva?.startsWith("pdf_") ||
+    ferramentaAtiva === "ferramentas_pdf";
+
   return (
     <ContextoFerramentasFlutuantes.Provider
       value={{ ferramentaAtiva, abrirFerramentaFlutuante, fecharFerramentaFlutuante }}
@@ -81,7 +88,7 @@ export function ProvedorFerramentasFlutuantes({ children }: { children: ReactNod
 
               <button
                 onClick={fecharFerramentaFlutuante}
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
                 aria-label="Fechar janela da ferramenta"
               >
                 <X size={20} />
@@ -98,7 +105,13 @@ export function ProvedorFerramentasFlutuantes({ children }: { children: ReactNod
                   </div>
                 }
               >
-                {ferramentaAtiva === "transcritor" ? (
+                {ehPDF ? (
+                  <FerramentasPDF />
+                ) : ferramentaAtiva === "pesquisa_livros" ? (
+                  <PesquisaLivros />
+                ) : ferramentaAtiva === "sons" ? (
+                  <Sons />
+                ) : ferramentaAtiva === "transcritor" ? (
                   <Transcritor />
                 ) : ferramentaAtiva === "configuracoes" ? (
                   <Configuracoes />
