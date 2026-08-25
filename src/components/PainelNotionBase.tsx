@@ -3,7 +3,7 @@ import {
   Square,
   PanelRight,
   Maximize2,
-  StickyNote,
+  PictureInPicture2,
   X,
   Trash2,
   Minimize2,
@@ -696,7 +696,7 @@ export function PainelNotionBase({
             </button>
           </Tooltip>
 
-          <Tooltip conteudo="Janela Flutuante Livre" posicao="bottom">
+          <Tooltip conteudo="Janela Flutuante Livre (PiP)" posicao="bottom">
             <button
               onClick={() => { setModoVisao("flutuante"); setMinimizadoFlutuante(false); }}
               className={cn(
@@ -707,7 +707,7 @@ export function PainelNotionBase({
               )}
               aria-label="Janela Flutuante"
             >
-              <StickyNote size={15} />
+              <PictureInPicture2 size={15} />
             </button>
           </Tooltip>
         </div>
