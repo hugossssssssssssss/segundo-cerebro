@@ -34,7 +34,12 @@ const CHAVE_RASCUNHOS = "klaus:rascunhos_offline";
 export function obterRascunhosLocais(): RascunhoOffline[] {
   try {
     const salvo = localStorage.getItem(CHAVE_RASCUNHOS);
-    return salvo ? JSON.parse(salvo) : [];
+    const lista: RascunhoOffline[] = salvo ? JSON.parse(salvo) : [];
+    if (!sincronizandoFila) {
+      // Se a fila não está rodando no momento, nenhum rascunho deve ficar preso em "sincronizando"
+      return lista.map((r) => (r.status === "sincronizando" ? { ...r, status: "pendente" } : r));
+    }
+    return lista;
   } catch {
     return [];
   }

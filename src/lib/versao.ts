@@ -6,4 +6,4 @@
  * você DEVE incrementar esta versão (ex: 1.1.0 -> 1.1.1 ou 1.2.0) e atualizar
  * também o campo "version" no package.json.
  */
-export const versao = "1.48.3";
+export const versao = "1.48.4";

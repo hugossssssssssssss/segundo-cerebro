@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   Sun,
@@ -50,7 +50,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
+import { carregarRepo, daPasta, invalidarCache, cache } from "@/lib/repo";
 import { ler, apagar } from "@/lib/github";
 import { useSalvar } from "@/lib/useSalvar";
 import { comoTarefa, ordenar, textoPrazo, urgencia, paraFrontmatter, type Tarefa } from "@/lib/tarefas";
@@ -397,13 +397,13 @@ function GadgetWrapper({
 }
 
 export default function Home() {
-  const cfg = lerConfig();
+  const cfg = useMemo(() => lerConfig(), []);
   const pronto = configCompleta(cfg);
 
   const { abrirFerramentaFlutuante } = useFerramentasFlutuantes();
   const { salvarTexto } = useSalvar(cfg);
 
-  const [carregando, setCarregando] = useState(true);
+  const [carregando, setCarregando] = useState(() => !cache?.itens || cache.itens.length === 0);
   const [erro, setErro] = useState("");
   const [tarefasPendentes, setTarefasPendentes] = useState<Tarefa[]>([]);
   const [tarefasUrgentesCount, setTarefasUrgentesCount] = useState(0);
@@ -606,15 +606,21 @@ export default function Home() {
 
   const carregar = useCallback(
     async (silencioso = false) => {
-      if (!pronto) return;
-      if (!silencioso) setCarregando(true);
+      if (!pronto) {
+        setCarregando(false);
+        return;
+      }
+      const temCache = Boolean(cache?.itens && cache.itens.length > 0);
+      if (!silencioso && !temCache) {
+        setCarregando(true);
+      }
       setErro("");
 
       try {
-        const todos = await carregarRepo(cfg);
+        const todos = await carregarRepo(cfg, { memoria: 30_000 });
 
-        // 1. Tarefas
-        const arqTarefas = daPasta(todos, "tarefas");
+        // 1. Tarefas (com suporte recursivo a subpastas)
+        const arqTarefas = daPasta(todos, "tarefas", true);
         const listaTarefas = ordenar(
           arqTarefas.map((i) =>
             comoTarefa(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
@@ -627,8 +633,8 @@ export default function Home() {
           pendentes.filter((t) => urgencia(t) === "atrasada" || urgencia(t) === "hoje").length
         );
 
-        // 2. Notas
-        const arqNotas = daPasta(todos, "notas");
+        // 2. Notas (com suporte recursivo a subpastas)
+        const arqNotas = daPasta(todos, "notas", true);
         setTotalNotas(arqNotas.length);
         setNotasRecentes(
           arqNotas.slice(0, 5).map((i) => ({
@@ -639,7 +645,7 @@ export default function Home() {
         );
 
         // 3. Referências
-        const arqRefs = daPasta(todos, "referencias").filter(
+        const arqRefs = daPasta(todos, "referencias", true).filter(
           (i) => !i.caminho.startsWith("referencias/imagens/")
         );
         setTotalRefs(arqRefs.length);
@@ -649,9 +655,9 @@ export default function Home() {
           )
         );
 
-        // 4. PDI
-        const arqMetas = daPasta(todos, "pdi/metas");
-        const arqEntregas = daPasta(todos, "pdi/entregas");
+        // 4. PDI (com suporte recursivo)
+        const arqMetas = daPasta(todos, "pdi/metas", true);
+        const arqEntregas = daPasta(todos, "pdi/entregas", true);
         const metas = arqMetas.map((i) =>
           comoMeta(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
         );
