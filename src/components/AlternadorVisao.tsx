@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export interface OpcaoVisao<T extends string = string> {
   id: T;
@@ -34,21 +35,25 @@ export function AlternadorVisao<T extends string = string>({
       {opcoes.map((opcao) => {
         const ativa = valorAtivo === opcao.id;
         return (
-          <button
+          <Tooltip
             key={opcao.id}
-            type="button"
-            onClick={() => aoAlternar(opcao.id)}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer select-none",
-              ativa
-                ? "bg-primary text-primary-foreground shadow-xs font-bold"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
-            )}
-            title={`Visão ${opcao.rotulo}`}
+            conteudo={`Alternar para visão ${opcao.rotulo}`}
+            posicao="top"
           >
-            {opcao.icone}
-            <span>{opcao.rotulo}</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => aoAlternar(opcao.id)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer select-none",
+                ativa
+                  ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+              )}
+            >
+              {opcao.icone}
+              <span>{opcao.rotulo}</span>
+            </button>
+          </Tooltip>
         );
       })}
     </div>

@@ -522,3 +522,7 @@ export function ModalConfirmacao({
     </div>
   );
 }
+
+export { Tooltip } from "./ui/tooltip";
+export type { TooltipProps, PosicaoTooltip } from "./ui/tooltip";
+

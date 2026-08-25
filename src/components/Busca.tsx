@@ -40,7 +40,7 @@ import {
   EVENTO_MENU_ATUALIZADO,
   type GrupoMenuPersonalizado,
 } from "@/lib/menuPersonalizado";
-import { Campo, Selo } from "@/components/ui";
+import { Campo, Selo, Tooltip } from "@/components/ui";
 import { cn, formatarCaminhoAmigavel, formatarTituloAmigavel } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { alternarTema } from "@/lib/tema";
@@ -361,20 +361,25 @@ export function Busca({
             autoFocus
           />
           {termo && (
-            <button
-              onClick={() => setTermo("")}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              <X size={16} />
-            </button>
+            <Tooltip conteudo="Limpar busca" posicao="bottom">
+              <button
+                onClick={() => setTermo("")}
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
+                aria-label="Limpar busca"
+              >
+                <X size={16} />
+              </button>
+            </Tooltip>
           )}
-          <button
-            onClick={aoFechar}
-            className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-            aria-label="Fechar busca"
-          >
-            <X size={18} />
-          </button>
+          <Tooltip conteudo="Fechar busca" atalho="Esc" posicao="bottom">
+            <button
+              onClick={aoFechar}
+              className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Fechar busca"
+            >
+              <X size={18} />
+            </button>
+          </Tooltip>
         </div>
 
         {/* Filtros por Categoria sem rolagem horizontal */}
@@ -435,13 +440,15 @@ export function Busca({
                               <p className="text-[11px] text-muted-foreground truncate">{f.descricao}</p>
                             </div>
                           </div>
-                          <button
-                            onClick={(e) => toggleFavorito(f.id, e)}
-                            className="p-1 rounded-md text-amber-500 hover:bg-amber-500/20"
-                            title="Remover dos Favoritos"
-                          >
-                            <Star size={15} className="fill-amber-500" />
-                          </button>
+                          <Tooltip conteudo="Remover dos Favoritos" posicao="left">
+                            <button
+                              onClick={(e) => toggleFavorito(f.id, e)}
+                              className="p-1 rounded-md text-amber-500 hover:bg-amber-500/20 cursor-pointer"
+                              aria-label="Remover dos Favoritos"
+                            >
+                              <Star size={15} className="fill-amber-500" />
+                            </button>
+                          </Tooltip>
                         </div>
                       );
                     })}
@@ -465,13 +472,15 @@ export function Busca({
                               <p className="text-[11px] text-muted-foreground truncate">{caminhoFormatado}</p>
                             </div>
                           </div>
-                          <button
-                            onClick={(e) => toggleFavorito(item.caminho, e)}
-                            className="p-1 rounded-md text-amber-500 hover:bg-amber-500/20 shrink-0 ml-1"
-                            title="Remover dos Favoritos"
-                          >
-                            <Star size={15} className="fill-amber-500" />
-                          </button>
+                          <Tooltip conteudo="Remover dos Favoritos" posicao="left">
+                            <button
+                              onClick={(e) => toggleFavorito(item.caminho, e)}
+                              className="p-1 rounded-md text-amber-500 hover:bg-amber-500/20 shrink-0 ml-1 cursor-pointer"
+                              aria-label="Remover dos Favoritos"
+                            >
+                              <Star size={15} className="fill-amber-500" />
+                            </button>
+                          </Tooltip>
                         </div>
                       );
                     })}
@@ -528,13 +537,15 @@ export function Busca({
                               <p className="text-[11px] text-muted-foreground truncate">{caminhoFormatado}</p>
                             </div>
                           </div>
-                          <button
-                            onClick={(e) => toggleFavorito(item.caminho, e)}
-                            className="p-1.5 rounded-md text-muted-foreground hover:text-amber-500 hover:bg-accent opacity-60 group-hover:opacity-100 transition-opacity shrink-0 ml-1"
-                            title={ehFav ? "Remover dos Favoritos" : "Favoritar"}
-                          >
-                            <Star size={14} className={cn(ehFav && "fill-amber-500 text-amber-500")} />
-                          </button>
+                          <Tooltip conteudo={ehFav ? "Remover dos Favoritos" : "Fixar nos Favoritos"} posicao="left">
+                            <button
+                              onClick={(e) => toggleFavorito(item.caminho, e)}
+                              className="p-1.5 rounded-md text-muted-foreground hover:text-amber-500 hover:bg-accent opacity-60 group-hover:opacity-100 transition-opacity shrink-0 ml-1 cursor-pointer"
+                              aria-label={ehFav ? "Remover dos Favoritos" : "Favoritar"}
+                            >
+                              <Star size={14} className={cn(ehFav && "fill-amber-500 text-amber-500")} />
+                            </button>
+                          </Tooltip>
                         </div>
                       );
                     })}
@@ -582,13 +593,15 @@ export function Busca({
                             <p className="text-[11px] text-muted-foreground truncate">{f.descricao}</p>
                           </div>
                         </div>
-                        <button
-                          onClick={(e) => toggleFavorito(f.id, e)}
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-amber-500 hover:bg-accent opacity-60 group-hover:opacity-100 transition-opacity"
-                          title={ehFav ? "Remover dos Favoritos" : "Favoritar Ferramenta"}
-                        >
-                          <Star size={15} className={cn(ehFav && "fill-amber-500 text-amber-500")} />
-                        </button>
+                        <Tooltip conteudo={ehFav ? "Remover dos Favoritos" : "Fixar nos Favoritos"} posicao="left">
+                          <button
+                            onClick={(e) => toggleFavorito(f.id, e)}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-amber-500 hover:bg-accent opacity-60 group-hover:opacity-100 transition-opacity cursor-pointer"
+                            aria-label={ehFav ? "Remover dos Favoritos" : "Favoritar Ferramenta"}
+                          >
+                            <Star size={15} className={cn(ehFav && "fill-amber-500 text-amber-500")} />
+                          </button>
+                        </Tooltip>
                       </div>
                     );
                   })}
@@ -634,13 +647,15 @@ export function Busca({
                             </p>
                           </div>
                         </div>
-                        <button
-                          onClick={(e) => toggleFavorito(f.id, e)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-amber-500 hover:bg-accent shrink-0 ml-2"
-                          title={ehFav ? "Remover dos Favoritos" : "Favoritar"}
-                        >
-                          <Star size={16} className={cn(ehFav && "fill-amber-500 text-amber-500")} />
-                        </button>
+                        <Tooltip conteudo={ehFav ? "Remover dos Favoritos" : "Fixar nos Favoritos"} posicao="left">
+                          <button
+                            onClick={(e) => toggleFavorito(f.id, e)}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-amber-500 hover:bg-accent shrink-0 ml-2 cursor-pointer"
+                            aria-label={ehFav ? "Remover dos Favoritos" : "Favoritar"}
+                          >
+                            <Star size={16} className={cn(ehFav && "fill-amber-500 text-amber-500")} />
+                          </button>
+                        </Tooltip>
                       </div>
                     );
                   })}
@@ -674,13 +689,15 @@ export function Busca({
                             </p>
                           )}
                         </div>
-                        <button
-                          onClick={(e) => toggleFavorito(r.caminho, e)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-amber-500 hover:bg-accent shrink-0"
-                          title={ehFav ? "Remover dos Favoritos" : "Favoritar"}
-                        >
-                          <Star size={16} className={cn(ehFav && "fill-amber-500 text-amber-500")} />
-                        </button>
+                        <Tooltip conteudo={ehFav ? "Remover dos Favoritos" : "Fixar nos Favoritos"} posicao="left">
+                          <button
+                            onClick={(e) => toggleFavorito(r.caminho, e)}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-amber-500 hover:bg-accent shrink-0 cursor-pointer"
+                            aria-label={ehFav ? "Remover dos Favoritos" : "Favoritar"}
+                          >
+                            <Star size={16} className={cn(ehFav && "fill-amber-500 text-amber-500")} />
+                          </button>
+                        </Tooltip>
                       </div>
                     );
                   })}

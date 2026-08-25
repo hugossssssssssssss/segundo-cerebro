@@ -18,7 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { Botao, Aviso, ModalConfirmacao } from "@/components/ui";
+import { Botao, Aviso, ModalConfirmacao, Tooltip } from "@/components/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PropriedadesNotion, abrirItemSpa } from "@/components/PropriedadesNotion";
 import { EditorNotion } from "@/components/EditorNotion";
@@ -651,79 +651,91 @@ export function PainelNotionBase({
 
       <div className="flex items-center gap-1.5 shrink-0">
         <div className="flex items-center gap-0.5 rounded-lg border border-border/80 bg-muted/40 p-0.5 sm:p-1">
-          <button
-            onClick={() => { setModoVisao("popup"); setMinimizadoFlutuante(false); }}
-            className={cn(
-              "p-1.5 rounded-md transition-colors flex items-center justify-center",
-              modoVisao === "popup"
-                ? "bg-background text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            title="Pop-up central"
-          >
-            <Square size={15} />
-          </button>
+          <Tooltip conteudo="Modo Pop-up Central" posicao="bottom">
+            <button
+              onClick={() => { setModoVisao("popup"); setMinimizadoFlutuante(false); }}
+              className={cn(
+                "p-1.5 rounded-md transition-colors flex items-center justify-center cursor-pointer",
+                modoVisao === "popup"
+                  ? "bg-background text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-label="Pop-up central"
+            >
+              <Square size={15} />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => { setModoVisao("lado"); setMinimizadoFlutuante(false); }}
-            className={cn(
-              "p-1.5 rounded-md transition-colors flex items-center justify-center",
-              modoVisao === "lado"
-                ? "bg-background text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            title="Painel lateral (Do lado)"
-          >
-            <PanelRight size={15} />
-          </button>
+          <Tooltip conteudo="Painel Lateral (Do lado)" posicao="bottom">
+            <button
+              onClick={() => { setModoVisao("lado"); setMinimizadoFlutuante(false); }}
+              className={cn(
+                "p-1.5 rounded-md transition-colors flex items-center justify-center cursor-pointer",
+                modoVisao === "lado"
+                  ? "bg-background text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-label="Painel lateral"
+            >
+              <PanelRight size={15} />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={abrirEmTelaCheiaWorkspace}
-            className={cn(
-              "p-1.5 rounded-md transition-colors flex items-center justify-center",
-              modoVisao === "telacheia"
-                ? "bg-background text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            title="Workspace em Tela Cheia (com abas)"
-          >
-            <Maximize2 size={15} />
-          </button>
+          <Tooltip conteudo="Workspace em Tela Cheia (com abas)" posicao="bottom">
+            <button
+              onClick={abrirEmTelaCheiaWorkspace}
+              className={cn(
+                "p-1.5 rounded-md transition-colors flex items-center justify-center cursor-pointer",
+                modoVisao === "telacheia"
+                  ? "bg-background text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-label="Workspace em Tela Cheia"
+            >
+              <Maximize2 size={15} />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => { setModoVisao("flutuante"); setMinimizadoFlutuante(false); }}
-            className={cn(
-              "p-1.5 rounded-md transition-colors flex items-center justify-center",
-              modoVisao === "flutuante"
-                ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            title="Janela Flutuante (Permanece visível pelo app)"
-          >
-            <StickyNote size={15} />
-          </button>
+          <Tooltip conteudo="Janela Flutuante Livre" posicao="bottom">
+            <button
+              onClick={() => { setModoVisao("flutuante"); setMinimizadoFlutuante(false); }}
+              className={cn(
+                "p-1.5 rounded-md transition-colors flex items-center justify-center cursor-pointer",
+                modoVisao === "flutuante"
+                  ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-label="Janela Flutuante"
+            >
+              <StickyNote size={15} />
+            </button>
+          </Tooltip>
         </div>
 
         {modoVisao === "flutuante" && (
-          <button
-            onClick={() => setMinimizadoFlutuante(!minimizadoFlutuante)}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            title={minimizadoFlutuante ? "Expandir janela" : "Minimizar janela"}
-          >
-            {minimizadoFlutuante ? <Maximize size={15} /> : <Minimize2 size={15} />}
-          </button>
+          <Tooltip conteudo={minimizadoFlutuante ? "Expandir janela" : "Minimizar janela"} posicao="bottom">
+            <button
+              onClick={() => setMinimizadoFlutuante(!minimizadoFlutuante)}
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              aria-label={minimizadoFlutuante ? "Expandir janela" : "Minimizar janela"}
+            >
+              {minimizadoFlutuante ? <Maximize size={15} /> : <Minimize2 size={15} />}
+            </button>
+          </Tooltip>
         )}
 
         {caminhoItem && (
           <Popover open={menuAcoesAberto} onOpenChange={setMenuAcoesAberto}>
-            <PopoverTrigger asChild>
-              <button
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                title="Ações do item"
-              >
-                <MoreVertical size={16} />
-              </button>
-            </PopoverTrigger>
+            <Tooltip conteudo="Ações do documento" posicao="bottom">
+              <PopoverTrigger asChild>
+                <button
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+                  aria-label="Ações do item"
+                >
+                  <MoreVertical size={16} />
+                </button>
+              </PopoverTrigger>
+            </Tooltip>
             <PopoverContent className="w-56 p-1.5 shadow-xl border-border" align="end">
               <div className="flex flex-col gap-0.5">
                 <button
@@ -798,42 +810,47 @@ export function PainelNotionBase({
         ) : null}
 
         {caminhoItem && (
-          <Botao
-            variante="fantasma"
-            onClick={() => setVendoHistorico(true)}
-            className="text-xs text-muted-foreground"
-            title="Ver as versões anteriores deste arquivo"
-          >
-            <IconeHistorico size={14} />
-            <span>Histórico</span>
-          </Botao>
+          <Tooltip conteudo="Ver histórico de alterações e versões no Git" posicao="top">
+            <Botao
+              variante="fantasma"
+              onClick={() => setVendoHistorico(true)}
+              className="text-xs text-muted-foreground cursor-pointer"
+            >
+              <IconeHistorico size={14} />
+              <span>Histórico</span>
+            </Botao>
+          </Tooltip>
         )}
       </div>
 
       {/* Controles Sequenciais no Rodapé (Ex: "< 3 de 100 >") */}
       {infoSequencial.total > 0 && (
         <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-lg border border-border/60">
-          <button
-            onClick={() => navegarSequencial("anterior")}
-            disabled={!infoSequencial.podeAnterior}
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-            title="Documento anterior"
-          >
-            <ChevronLeft size={14} />
-          </button>
+          <Tooltip conteudo="Documento anterior" atalho="←" posicao="top" desabilitado={!infoSequencial.podeAnterior}>
+            <button
+              onClick={() => navegarSequencial("anterior")}
+              disabled={!infoSequencial.podeAnterior}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+              aria-label="Documento anterior"
+            >
+              <ChevronLeft size={14} />
+            </button>
+          </Tooltip>
 
           <span className="text-[11px] font-medium text-muted-foreground px-1 select-none">
             {infoSequencial.indice || 1} de {infoSequencial.total}
           </span>
 
-          <button
-            onClick={() => navegarSequencial("proximo")}
-            disabled={!infoSequencial.podeProximo}
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-            title="Próximo documento"
-          >
-            <ChevronRight size={14} />
-          </button>
+          <Tooltip conteudo="Próximo documento" atalho="→" posicao="top" desabilitado={!infoSequencial.podeProximo}>
+            <button
+              onClick={() => navegarSequencial("proximo")}
+              disabled={!infoSequencial.podeProximo}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+              aria-label="Próximo documento"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </Tooltip>
         </div>
       )}
 

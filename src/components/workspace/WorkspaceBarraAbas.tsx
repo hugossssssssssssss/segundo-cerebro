@@ -27,6 +27,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useWorkspace, type WorkspaceAba } from "./WorkspaceContext";
 import { cn, formatarTituloAmigavel } from "@/lib/utils";
 
@@ -139,27 +140,33 @@ const AbaItem = memo(function AbaItem({
 
       {/* Indicador de Status (Salvando / Modificado) */}
       {aba.salvando ? (
-        <span className="h-2 w-2 rounded-full bg-blue-500 animate-ping shrink-0" title="Salvando..." />
+        <Tooltip conteudo="Salvando alterações no repositório..." posicao="bottom">
+          <span className="h-2 w-2 rounded-full bg-blue-500 animate-ping shrink-0" />
+        </Tooltip>
       ) : aba.temMudancas ? (
-        <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" title="Modificado (Salva automaticamente)" />
+        <Tooltip conteudo="Alterações salvas localmente (gravando no Git...)" posicao="bottom">
+          <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+        </Tooltip>
       ) : null}
 
       {/* Menu dropdown de opções da aba */}
       <Popover open={menuAberto} onOpenChange={setMenuAberto}>
-        <PopoverTrigger asChild>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            className={cn(
-              "rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-opacity shrink-0 cursor-pointer",
-              ativa ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-70 hover:!opacity-100"
-            )}
-            title="Opções da aba"
-          >
-            <MoreVertical size={13} />
-          </button>
-        </PopoverTrigger>
+        <Tooltip conteudo="Opções da aba" posicao="bottom">
+          <PopoverTrigger asChild>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              className={cn(
+                "rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-opacity shrink-0 cursor-pointer",
+                ativa ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-70 hover:!opacity-100"
+              )}
+              aria-label="Opções da aba"
+            >
+              <MoreVertical size={13} />
+            </button>
+          </PopoverTrigger>
+        </Tooltip>
         <PopoverContent
           className="w-52 p-1 shadow-xl border-border"
           align="start"
@@ -203,19 +210,21 @@ const AbaItem = memo(function AbaItem({
       </Popover>
 
       {/* Botão de Fechar Aba */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onFechar();
-        }}
-        className={cn(
-          "rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all shrink-0 cursor-pointer",
-          ativa ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-70 hover:!opacity-100"
-        )}
-        title="Fechar aba"
-      >
-        <X size={13} />
-      </button>
+      <Tooltip conteudo="Fechar esta aba" posicao="bottom">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onFechar();
+          }}
+          className={cn(
+            "rounded-md p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all shrink-0 cursor-pointer",
+            ativa ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-70 hover:!opacity-100"
+          )}
+          aria-label="Fechar aba"
+        >
+          <X size={13} />
+        </button>
+      </Tooltip>
     </div>
   );
 });
@@ -285,14 +294,16 @@ export function WorkspaceBarraAbas({ className }: { className?: string }) {
       </DndContext>
 
       {/* Botão de Adicionar / Abrir Documento */}
-      <button
-        onClick={() => setBuscaGlobalAberta(true)}
-        className="flex items-center gap-1.5 h-8 px-2.5 mb-0.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card border border-border/40 hover:border-border/80 rounded-lg transition-all shrink-0 ml-1 shadow-2xs cursor-pointer"
-        title="Abrir ou pesquisar documento (⌘K)"
-      >
-        <Plus size={13} />
-        <span className="hidden sm:inline">Nova aba</span>
-      </button>
+      <Tooltip conteudo="Abrir outro documento em nova aba" atalho="⌘K" posicao="bottom">
+        <button
+          onClick={() => setBuscaGlobalAberta(true)}
+          className="flex items-center gap-1.5 h-8 px-2.5 mb-0.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card border border-border/40 hover:border-border/80 rounded-lg transition-all shrink-0 ml-1 shadow-2xs cursor-pointer"
+          aria-label="Abrir documento em nova aba"
+        >
+          <Plus size={13} />
+          <span className="hidden sm:inline">Nova aba</span>
+        </button>
+      </Tooltip>
     </div>
   );
 }
