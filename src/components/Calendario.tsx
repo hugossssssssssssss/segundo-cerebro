@@ -24,9 +24,70 @@ import {
 } from "lucide-react";
 import { SeloStatus } from "@/components/SeloStatus";
 import { cn } from "@/lib/utils";
-import { urgencia, type Tarefa } from "@/lib/tarefas";
+import { urgencia, extrairIntervaloTarefa, type Tarefa } from "@/lib/tarefas";
+import { CORES_NOTION, lerConfigPropriedadesGlobais } from "@/components/PropriedadesNotion";
 
 type FiltroStatusCalendario = "todas" | "pendentes" | "atrasadas" | "concluidas";
+
+/**
+ * Obtém o estilo de cor para a tarefa no calendário baseado em sua tag primária.
+ * Se houver cor personalizada em coresTags ou CORES_NOTION, aplica ela.
+ * Se não houver tag, usa a cor padrão do Klaus.
+ */
+function obterEstiloTagCalendario(t: Tarefa): { bg: string; text: string; border: string; dot: string; tagNome?: string } {
+  const primeiraTag = t.tags && t.tags.length > 0 ? t.tags[0] : null;
+  if (!primeiraTag) {
+    return {
+      bg: "bg-primary/15",
+      text: "text-primary",
+      border: "border-primary/25",
+      dot: "bg-primary",
+    };
+  }
+
+  const globalConfig = lerConfigPropriedadesGlobais();
+  const corNome = (t.bruto?._coresTags as any)?.[primeiraTag] || globalConfig.coresTags?.[primeiraTag];
+
+  const dotMap: Record<string, string> = {
+    cinza: "bg-stone-500",
+    azul: "bg-blue-500",
+    verde: "bg-emerald-500",
+    amarelo: "bg-amber-500",
+    vermelho: "bg-rose-500",
+    roxo: "bg-purple-500",
+    rosa: "bg-pink-500",
+    laranja: "bg-orange-500",
+  };
+
+  if (corNome && CORES_NOTION[corNome]) {
+    const cnCor = CORES_NOTION[corNome];
+    return {
+      bg: cnCor.bg,
+      text: cnCor.text,
+      border: cnCor.border,
+      dot: dotMap[corNome] || "bg-primary",
+      tagNome: primeiraTag,
+    };
+  }
+
+  // Cor determinística baseada no nome da tag
+  const nomesCores = Object.keys(CORES_NOTION);
+  let hash = 0;
+  for (let i = 0; i < primeiraTag.length; i++) {
+    hash = (hash << 5) - hash + primeiraTag.charCodeAt(i);
+    hash |= 0;
+  }
+  const corEscolhida = nomesCores[Math.abs(hash) % nomesCores.length];
+  const cnCor = CORES_NOTION[corEscolhida];
+
+  return {
+    bg: cnCor.bg,
+    text: cnCor.text,
+    border: cnCor.border,
+    dot: dotMap[corEscolhida] || "bg-primary",
+    tagNome: primeiraTag,
+  };
+}
 
 export function Calendario({
   tarefas,
@@ -49,22 +110,29 @@ export function Calendario({
     });
   }, [tarefas, filtroStatus]);
 
-  // Mapa de tarefas agrupadas por data ISO (yyyy-MM-dd)
+  // Mapa de tarefas agrupadas por data ISO (yyyy-MM-dd), cobrindo todo o intervalo de dias
   const porDia = useMemo(() => {
     const mapa = new Map<string, Tarefa[]>();
     for (const t of tarefasFiltradas) {
-      if (!t.prazo) continue;
-      const chave = t.prazo.slice(0, 10);
-      const lista = mapa.get(chave) ?? [];
-      lista.push(t);
-      mapa.set(chave, lista);
+      const intervalo = extrairIntervaloTarefa(t);
+      if (!intervalo) continue;
+
+      const dias = eachDayOfInterval({ start: intervalo.inicio, end: intervalo.fim });
+      for (const d of dias) {
+        const chave = format(d, "yyyy-MM-dd");
+        const lista = mapa.get(chave) ?? [];
+        if (!lista.some((x) => x.caminho === t.caminho)) {
+          lista.push(t);
+        }
+        mapa.set(chave, lista);
+      }
     }
     return mapa;
   }, [tarefasFiltradas]);
 
   // Dias sem data marcada
   const semData = useMemo(() => {
-    return tarefasFiltradas.filter((t) => !t.prazo && t.status !== "feito");
+    return tarefasFiltradas.filter((t) => !extrairIntervaloTarefa(t) && t.status !== "feito");
   }, [tarefasFiltradas]);
 
   // Gerador da grade de dias do mês
@@ -184,9 +252,6 @@ export function Calendario({
               const ehHoje = isToday(d);
               const ehSelecionado = isSameDay(d, selecionado);
 
-              const temAtrasada = tarefasDia.some((t) => t.status !== "feito" && urgencia(t) === "atrasada");
-              const temPendente = tarefasDia.some((t) => t.status !== "feito");
-
               return (
                 <div
                   key={chave}
@@ -195,7 +260,7 @@ export function Calendario({
                     if (!ehMesAtual) setMesAtual(d);
                   }}
                   className={cn(
-                    "min-h-[70px] sm:min-h-[90px] p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden",
+                    "min-h-[72px] sm:min-h-[95px] p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden",
                     !ehMesAtual && "opacity-35 bg-secondary/10 border-transparent",
                     ehMesAtual && !ehSelecionado && "bg-card border-border/60 hover:border-primary/50 hover:bg-accent/40",
                     ehHoje && !ehSelecionado && "border-primary/70 bg-primary/5 font-bold",
@@ -221,26 +286,62 @@ export function Calendario({
                     )}
                   </div>
 
-                  {/* Indicadores Visuais de Tarefas no Dia */}
+                  {/* Indicadores Visuais de Tarefas no Dia com suporte a Intervalo e Cores de Tags */}
                   <div className="space-y-1 mt-1">
                     {/* Exibe mini títulos em telas médias/grandes */}
                     <div className="hidden sm:block space-y-1">
-                      {tarefasDia.slice(0, 2).map((t) => (
-                        <div
-                          key={t.caminho}
-                          className={cn(
-                            "truncate text-[10px] px-1.5 py-0.5 rounded-md font-medium border leading-tight",
-                            t.status === "feito"
-                              ? "bg-secondary/40 text-muted-foreground border-transparent line-through"
-                              : urgencia(t) === "atrasada"
-                              ? "bg-destructive/15 text-destructive border-destructive/30"
-                              : "bg-primary/15 text-primary border-primary/20",
-                          )}
-                          title={t.titulo}
-                        >
-                          {t.titulo}
-                        </div>
-                      ))}
+                      {tarefasDia.slice(0, 2).map((t) => {
+                        const intervalo = extrairIntervaloTarefa(t);
+                        const estiloTag = obterEstiloTagCalendario(t);
+                        const ehFeito = t.status === "feito";
+                        const ehAtrasada = !ehFeito && urgencia(t) === "atrasada";
+
+                        let formaIntervalo = "rounded-md";
+                        let ehInicio = true;
+                        let ehFim = true;
+                        let ehIntervalo = false;
+
+                        if (intervalo && intervalo.ehIntervalo) {
+                          ehIntervalo = true;
+                          ehInicio = isSameDay(d, intervalo.inicio);
+                          ehFim = isSameDay(d, intervalo.fim);
+
+                          if (ehInicio && !ehFim) {
+                            formaIntervalo = "rounded-l-md rounded-r-none border-r-0 mr-[-5px] pr-2 shadow-2xs";
+                          } else if (!ehInicio && !ehFim) {
+                            formaIntervalo = "rounded-none border-x-0 mx-[-5px] px-2 shadow-2xs";
+                          } else if (!ehInicio && ehFim) {
+                            formaIntervalo = "rounded-r-md rounded-l-none border-l-0 ml-[-5px] pl-2 shadow-2xs";
+                          }
+                        }
+
+                        return (
+                          <div
+                            key={t.caminho}
+                            className={cn(
+                              "truncate text-[10px] py-0.5 font-medium border leading-tight transition-all",
+                              formaIntervalo,
+                              ehInicio || !ehIntervalo ? "px-1.5" : "px-1",
+                              ehFeito
+                                ? "bg-secondary/40 text-muted-foreground border-transparent line-through opacity-65"
+                                : ehAtrasada
+                                ? "bg-destructive/15 text-destructive border-destructive/30"
+                                : cn(estiloTag.bg, estiloTag.text, estiloTag.border),
+                            )}
+                            title={
+                              ehIntervalo
+                                ? `${t.titulo} (${intervalo?.textoFormatado})`
+                                : t.titulo
+                            }
+                          >
+                            {ehIntervalo && !ehInicio ? (
+                              <span className="opacity-75">↳ {t.titulo}</span>
+                            ) : (
+                              t.titulo
+                            )}
+                          </div>
+                        );
+                      })}
                       {tarefasDia.length > 2 && (
                         <p className="text-[9px] font-bold text-muted-foreground px-1">
                           +{tarefasDia.length - 2} mais
@@ -248,11 +349,23 @@ export function Calendario({
                       )}
                     </div>
 
-                    {/* Indicador por pontos no celular */}
-                    <div className="sm:hidden flex items-center gap-1 justify-center pt-1">
-                      {temAtrasada && <span className="h-1.5 w-1.5 rounded-full bg-destructive" />}
-                      {temPendente && !temAtrasada && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
-                      {!temPendente && tarefasDia.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+                    {/* Indicador por pontos coloridos no celular */}
+                    <div className="sm:hidden flex items-center gap-1 justify-center pt-1 flex-wrap">
+                      {tarefasDia.slice(0, 4).map((t) => {
+                        const estilo = obterEstiloTagCalendario(t);
+                        const ehFeito = t.status === "feito";
+                        const ehAtrasada = !ehFeito && urgencia(t) === "atrasada";
+                        return (
+                          <span
+                            key={t.caminho}
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full shrink-0",
+                              ehFeito ? "bg-emerald-500" : ehAtrasada ? "bg-destructive" : estilo.dot,
+                            )}
+                            title={t.titulo}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -284,13 +397,15 @@ export function Calendario({
                   const ehFeito = t.status === "feito";
                   const ehFazendo = t.status === "fazendo";
                   const urg = urgencia(t);
+                  const intervalo = extrairIntervaloTarefa(t);
+                  const estiloTag = obterEstiloTagCalendario(t);
 
                   return (
                     <div
                       key={t.caminho}
                       onClick={() => aoAbrir(t)}
                       className={cn(
-                        "p-3.5 rounded-xl border bg-card hover:bg-accent/60 hover:border-primary/50 transition-all cursor-pointer space-y-2 group shadow-2xs",
+                        "p-3.5 rounded-xl border bg-card hover:bg-accent/60 hover:border-primary/50 transition-all cursor-pointer space-y-2.5 group shadow-2xs",
                         ehFeito ? "border-border/40 opacity-70" : "border-border/80",
                       )}
                     >
@@ -306,6 +421,14 @@ export function Calendario({
                         <ArrowRight size={14} className="text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 mt-0.5" />
                       </div>
 
+                      {/* Intervalo de Datas se houver */}
+                      {intervalo?.ehIntervalo && (
+                        <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md">
+                          <CalendarIcon size={12} className="text-primary" />
+                          <span>Período: <strong className="text-foreground">{intervalo.textoFormatado}</strong></span>
+                        </div>
+                      )}
+
                       <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
                         <SeloStatus
                           rotulo={ehFeito ? "Concluída" : ehFazendo ? "Fazendo" : "A fazer"}
@@ -315,7 +438,13 @@ export function Calendario({
                           <SeloStatus rotulo="Atrasada" tom="perigo" />
                         )}
                         {t.tags?.map((tag) => (
-                          <span key={tag} className="text-muted-foreground font-mono">
+                          <span
+                            key={tag}
+                            className={cn(
+                              "px-2 py-0.5 rounded-md font-mono border text-[10px] font-medium",
+                              cn(estiloTag.bg, estiloTag.text, estiloTag.border),
+                            )}
+                          >
                             #{tag}
                           </span>
                         ))}
@@ -362,3 +491,4 @@ export function Calendario({
     </div>
   );
 }
+

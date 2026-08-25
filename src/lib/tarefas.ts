@@ -79,6 +79,10 @@ export function urgencia(t: Tarefa): Urgencia {
 }
 
 export function textoPrazo(t: Tarefa): string {
+  const intervalo = extrairIntervaloTarefa(t);
+  if (intervalo?.ehIntervalo) {
+    return intervalo.textoFormatado;
+  }
   const d = diasAte(t.prazo);
   if (d === null) return "";
   if (d < 0) return d === -1 ? "atrasada 1 dia" : `atrasada ${-d} dias`;
@@ -86,6 +90,88 @@ export function textoPrazo(t: Tarefa): string {
   if (d === 1) return "amanhã";
   if (d <= 7) return `em ${d} dias`;
   return t.prazo ?? "";
+}
+
+export interface IntervaloTarefa {
+  inicio: Date;
+  fim: Date;
+  ehIntervalo: boolean;
+  textoFormatado: string;
+}
+
+/**
+ * Extrai e normaliza o intervalo de datas de uma tarefa.
+ * Suporta formatos:
+ * - "2026-08-20 → 2026-08-25"
+ * - "2026-08-20 -> 2026-08-25"
+ * - "2026-08-20 a 2026-08-25"
+ * - "2026-08-20"
+ * - Frontmatter com campos separados `inicio` / `data_inicio` e `prazo` / `data_fim`
+ */
+export function extrairIntervaloTarefa(t: Tarefa): IntervaloTarefa | null {
+  const prazoRaw = typeof t.prazo === "string" ? t.prazo.trim() : "";
+  const inicioRaw =
+    typeof t.bruto?.inicio === "string" ? t.bruto.inicio.trim() :
+    typeof t.bruto?.data_inicio === "string" ? t.bruto.data_inicio.trim() : "";
+  const fimRaw =
+    typeof t.bruto?.fim === "string" ? t.bruto.fim.trim() :
+    typeof t.bruto?.data_fim === "string" ? t.bruto.data_fim.trim() : "";
+
+  let strInicio = "";
+  let strFim = "";
+
+  if (prazoRaw.includes("→") || prazoRaw.includes("->") || prazoRaw.includes(" a ")) {
+    const separador = prazoRaw.includes("→") ? "→" : prazoRaw.includes("->") ? "->" : " a ";
+    const partes = prazoRaw.split(separador).map((p) => p.trim());
+    strInicio = partes[0] || "";
+    strFim = partes[1] || "";
+  } else if (inicioRaw && (fimRaw || prazoRaw)) {
+    strInicio = inicioRaw;
+    strFim = fimRaw || prazoRaw;
+  } else if (prazoRaw) {
+    strInicio = prazoRaw;
+    strFim = prazoRaw;
+  } else if (inicioRaw) {
+    strInicio = inicioRaw;
+    strFim = inicioRaw;
+  }
+
+  if (!strInicio) return null;
+
+  const extrairDataIso = (s: string): string => {
+    const match = s.match(/(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : s.slice(0, 10);
+  };
+
+  const isoInicio = extrairDataIso(strInicio);
+  const isoFim = strFim ? extrairDataIso(strFim) : isoInicio;
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoInicio)) return null;
+  const isoFimValido = /^\d{4}-\d{2}-\d{2}$/.test(isoFim) ? isoFim : isoInicio;
+
+  const [anoI, mesI, diaI] = isoInicio.split("-").map(Number);
+  const [anoF, mesF, diaF] = isoFimValido.split("-").map(Number);
+
+  let dataInicio = new Date(anoI, mesI - 1, diaI, 0, 0, 0, 0);
+  let dataFim = new Date(anoF, mesF - 1, diaF, 23, 59, 59, 999);
+
+  if (isNaN(dataInicio.getTime())) return null;
+  if (isNaN(dataFim.getTime())) dataFim = dataInicio;
+
+  if (dataFim < dataInicio) {
+    const temp = dataInicio;
+    dataInicio = dataFim;
+    dataFim = temp;
+  }
+
+  const ehIntervalo = isoInicio !== isoFimValido;
+
+  return {
+    inicio: dataInicio,
+    fim: dataFim,
+    ehIntervalo,
+    textoFormatado: ehIntervalo ? `${isoInicio} → ${isoFimValido}` : isoInicio,
+  };
 }
 
 /* --------------------------------------------------------------- pomodoro */

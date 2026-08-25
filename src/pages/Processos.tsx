@@ -279,41 +279,13 @@ export default function Processos() {
       let listaProc = arqProcessos.map((i) => comoProcesso(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)));
       const listaCards = arqCards.map((i) => comoCardProcesso(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome)));
 
-      if (listaProc.length === 0) {
-        const mod = MODELOS_PROCESSO_PADRAO[0];
-        const id = `proc_${Date.now()}`;
-        const caminho = `processos/${id}.md`;
-        const novoProc: Processo = {
-          caminho,
-          sha: "",
-          bruto: {},
-          id,
-          titulo: mod.titulo,
-          corpo: "",
-          descricao: mod.descricao,
-          etapas: mod.etapas,
-          regras: mod.regras,
-          atualizadoEm: new Date().toISOString(),
-        };
-
-        const texto = escreverMarkdown({
-          dados: processoParaFrontmatter(novoProc),
-          corpo: `Processo de ${mod.titulo}`,
-        });
-
-        const sha = `temp_${Math.random().toString(36).substring(7)}`;
-        salvarRascunhoLocal(caminho, texto, undefined, `Criar processo inicial: ${mod.titulo}`);
-        const doc = lerMarkdown(texto);
-        atualizarCacheLocal(caminho, texto, doc, sha);
-        const novoProcComSha = { ...novoProc, sha };
-        listaProc = [novoProcComSha];
-        setProcessos([novoProcComSha]);
-        setProcessoAtivoId(id);
-      } else {
-        setProcessos(listaProc);
-        if (!processoAtivoId) {
+      setProcessos(listaProc);
+      if (listaProc.length > 0) {
+        if (!processoAtivoId || !listaProc.some((p) => p.id === processoAtivoId)) {
           setProcessoAtivoId(listaProc[0].id);
         }
+      } else {
+        setProcessoAtivoId("");
       }
 
       setCards(listaCards);

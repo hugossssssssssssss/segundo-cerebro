@@ -57,6 +57,8 @@ import { lerParametroCriar, formatarDataPtBR, formatarNomeAmigavel } from "@/lib
 import {
   obterRascunhosLocais,
   removerRascunhoLocal,
+  limparTodosRascunhosLocais,
+  sincronizarFilaOffline,
   forcarResolverConflitoRascunho,
 } from "@/lib/offlineQueue";
 
@@ -770,6 +772,41 @@ export default function Inbox() {
           }
           return (
             <div className="space-y-3">
+              <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/80 text-xs">
+                <span className="text-muted-foreground font-medium">
+                  <strong className="text-foreground">{rascunhos.length}</strong> {rascunhos.length === 1 ? "rascunho pendente" : "rascunhos pendentes"}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Botao
+                    variante="neutro"
+                    tamanho="pequeno"
+                    onClick={async () => {
+                      toast("Sincronizando rascunhos...", { tipo: "info" });
+                      await sincronizarFilaOffline(cfg);
+                      carregar();
+                    }}
+                  >
+                    <RotateCcw size={13} />
+                    Sincronizar Todos
+                  </Botao>
+                  <Botao
+                    variante="fantasma"
+                    tamanho="pequeno"
+                    onClick={() => {
+                      if (confirm("Deseja realmente descartar todos os rascunhos locais?")) {
+                        limparTodosRascunhosLocais();
+                        toast("Todos os rascunhos locais foram descartados", { tipo: "info" });
+                        carregar();
+                      }
+                    }}
+                    className="text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 size={13} />
+                    Descartar Todos
+                  </Botao>
+                </div>
+              </div>
+
               {rascunhos.map((r) => {
                 const nomeAmigavel = formatarNomeAmigavel(r.caminho);
                 const dataFormatada = formatarDataPtBR(r.criadoEm);

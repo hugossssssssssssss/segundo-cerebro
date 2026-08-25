@@ -8,6 +8,7 @@ import {
   registrarCiclo,
   minutosRegistrados,
   statusValido,
+  extrairIntervaloTarefa,
   type Tarefa,
 } from "./tarefas";
 
@@ -141,3 +142,33 @@ describe("a data do pomodoro", () => {
     expect(registrarCiclo("", -10)).toContain("(1min)");
   });
 });
+
+describe("extrairIntervaloTarefa", () => {
+  it("extrai data única normalmente", () => {
+    const t = base({ prazo: "2026-08-20" });
+    const res = extrairIntervaloTarefa(t);
+    expect(res).not.toBeNull();
+    expect(res?.ehIntervalo).toBe(false);
+    expect(res?.textoFormatado).toBe("2026-08-20");
+  });
+
+  it("extrai intervalos com seta →", () => {
+    const t = base({ prazo: "2026-08-20 → 2026-08-25" });
+    const res = extrairIntervaloTarefa(t);
+    expect(res).not.toBeNull();
+    expect(res?.ehIntervalo).toBe(true);
+    expect(res?.textoFormatado).toBe("2026-08-20 → 2026-08-25");
+  });
+
+  it("extrai intervalos com campos separados no frontmatter", () => {
+    const t = base({
+      prazo: "2026-08-28",
+      bruto: { data_inicio: "2026-08-22" },
+    });
+    const res = extrairIntervaloTarefa(t);
+    expect(res).not.toBeNull();
+    expect(res?.ehIntervalo).toBe(true);
+    expect(res?.textoFormatado).toBe("2026-08-22 → 2026-08-28");
+  });
+});
+

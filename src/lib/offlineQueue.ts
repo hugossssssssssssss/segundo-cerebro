@@ -132,6 +132,15 @@ export function removerRascunhoLocal(idOuCaminho: string): void {
   window.dispatchEvent(new CustomEvent("acervo-atualizado"));
 }
 
+export function limparTodosRascunhosLocais(): void {
+  try {
+    localStorage.removeItem(CHAVE_RASCUNHOS);
+  } catch {
+    // Trata erro ao limpar
+  }
+  window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+}
+
 let sincronizandoFila = false;
 
 /** Tenta descarregar a fila de rascunhos offline para o GitHub */

@@ -3,6 +3,7 @@ import {
   obterRascunhosLocais,
   salvarRascunhoLocal,
   removerRascunhoLocal,
+  limparTodosRascunhosLocais,
 } from "./offlineQueue";
 
 describe("offlineQueue", () => {
@@ -51,4 +52,14 @@ describe("offlineQueue", () => {
 
     spy.mockRestore();
   });
+
+  it("limpa todos os rascunhos com limparTodosRascunhosLocais", () => {
+    salvarRascunhoLocal("notas/a.md", "A");
+    salvarRascunhoLocal("notas/b.md", "B");
+    expect(obterRascunhosLocais()).toHaveLength(2);
+
+    limparTodosRascunhosLocais();
+    expect(obterRascunhosLocais()).toHaveLength(0);
+  });
 });
+
