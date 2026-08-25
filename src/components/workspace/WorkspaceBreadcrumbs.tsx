@@ -1,7 +1,7 @@
 import React from "react";
 import { ChevronRight, Search, Folder } from "lucide-react";
 import { useWorkspace } from "./WorkspaceContext";
-import { formatarNomeAmigavel } from "@/lib/utils";
+import { formatarNomeAmigavel, formatarTituloAmigavel } from "@/lib/utils";
 
 interface WorkspaceBreadcrumbsProps {
   caminho?: string;
@@ -12,7 +12,7 @@ export function WorkspaceBreadcrumbs({ caminho, titulo }: WorkspaceBreadcrumbsPr
   const { setBuscaGlobalAberta } = useWorkspace();
 
   const partes = React.useMemo(() => {
-    if (!caminho) return ["Workspace", titulo || "Novo Documento"];
+    if (!caminho) return ["Workspace", formatarTituloAmigavel(titulo, "Novo Documento")];
 
     const pedacos = caminho.split("/").filter(Boolean);
     const pastaRaiz = pedacos[0] || "documento";
@@ -30,7 +30,7 @@ export function WorkspaceBreadcrumbs({ caminho, titulo }: WorkspaceBreadcrumbsPr
 
     const raizFormatada = nomeAmigavelPasta[pastaRaiz.toLowerCase()] || formatarNomeAmigavel(pastaRaiz);
     const subpastas = pedacos.slice(1, -1).map((s) => formatarNomeAmigavel(s));
-    const nomeDoc = titulo || formatarNomeAmigavel(pedacos[pedacos.length - 1].replace(/\.md$/, ""));
+    const nomeDoc = formatarTituloAmigavel(titulo, pedacos[pedacos.length - 1]);
 
     return [raizFormatada, ...subpastas, nomeDoc];
   }, [caminho, titulo]);

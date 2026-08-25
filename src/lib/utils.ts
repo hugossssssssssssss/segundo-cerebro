@@ -141,10 +141,79 @@ export function correspondeBusca(texto: string | undefined | null, termo: string
 export function formatarNomeAmigavel(caminhoOuNome: string): string {
   if (!caminhoOuNome) return "Item";
   const base = caminhoOuNome.split("/").pop() || caminhoOuNome;
-  let limpo = base.replace(/\.md$/i, "");
+  let limpo = base.replace(/\.(md|json)$/i, "");
   limpo = limpo.replace(/^\d{4}-\d{2}-\d{2}-/, "");
   limpo = limpo.replace(/[-_]/g, " ").trim();
   if (!limpo) return "Item";
   return limpo.charAt(0).toUpperCase() + limpo.slice(1);
+}
+
+/**
+ * Converte um caminho técnico (ex: "pdi/metas/2026-08-13-meta.md" ou "notas/projetos/klaus.md")
+ * em uma trilha de pastas amigável e legível (ex: "PDI › Metas" ou "Notas › Projetos").
+ */
+export function formatarCaminhoAmigavel(caminho: string): string {
+  if (!caminho) return "Raiz";
+  const pedacos = caminho.split("/").filter(Boolean);
+  const pastas = pedacos.slice(0, -1);
+  if (pastas.length === 0) {
+    const unica = pedacos[0]?.toLowerCase() || "";
+    const mapaRaiz: Record<string, string> = {
+      notas: "Notas",
+      tarefas: "Tarefas",
+      referencias: "Referências",
+      lousas: "Lousas",
+      contatos: "Contatos",
+      pdi: "PDI",
+    };
+    return mapaRaiz[unica] || "Geral";
+  }
+
+  const mapaPastas: Record<string, string> = {
+    notas: "Notas",
+    tarefas: "Tarefas",
+    pdi: "PDI",
+    metas: "Metas",
+    entregas: "Entregas",
+    referencias: "Referências",
+    lousas: "Lousas",
+    contatos: "Contatos",
+    processos: "Processos",
+    projetos: "Projetos",
+    estudos: "Estudos",
+    diario: "Diário",
+    livros: "Livros",
+    financas: "Finanças",
+    trabalho: "Trabalho",
+    pessoal: "Pessoal",
+  };
+
+  return pastas
+    .map((p) => mapaPastas[p.toLowerCase()] || formatarNomeAmigavel(p))
+    .join(" › ");
+}
+
+/**
+ * Garante um título limpo e legível para documentos, removendo extensões .md/.json,
+ * carimbos de data no nome e convertendo kebab-case para formato legível quando necessário.
+ */
+export function formatarTituloAmigavel(tituloOriginal?: string, nomeArquivo?: string): string {
+  let t = (tituloOriginal || "").trim();
+  if (!t && nomeArquivo) {
+    t = nomeArquivo;
+  }
+  if (!t) return "Sem título";
+
+  // Se o título for apenas o nome técnico do arquivo (ex: "2026-08-13-minha-tarefa.md")
+  if (
+    t.endsWith(".md") ||
+    t.endsWith(".json") ||
+    /^\d{4}-\d{2}-\d{2}-/.test(t) ||
+    (!t.includes(" ") && t.includes("-"))
+  ) {
+    return formatarNomeAmigavel(t);
+  }
+
+  return t;
 }
 

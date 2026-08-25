@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { hojeISO, dataISO, diasAte, dataCurta, correspondeBusca } from "./utils";
+import {
+  hojeISO,
+  dataISO,
+  diasAte,
+  dataCurta,
+  correspondeBusca,
+  formatarCaminhoAmigavel,
+  formatarTituloAmigavel,
+} from "./utils";
 import { nomeLivre, nomeDeArquivo } from "./markdown";
 import { dataDoNome } from "./pdi";
 
@@ -109,5 +117,21 @@ describe("correspondeBusca", () => {
   it("retorna false quando não encontra", () => {
     expect(correspondeBusca("Huguinho", "marcelo")).toBe(false);
     expect(correspondeBusca(null, "teste")).toBe(false);
+  });
+});
+
+describe("formatarCaminhoAmigavel e formatarTituloAmigavel", () => {
+  it("formata caminhos técnicos em trilhas limpas", () => {
+    expect(formatarCaminhoAmigavel("pdi/metas/2026-08-13-meta.md")).toBe("PDI › Metas");
+    expect(formatarCaminhoAmigavel("notas/projetos/klaus.md")).toBe("Notas › Projetos");
+    expect(formatarCaminhoAmigavel("tarefas/2026-08-13-fazer-capa.md")).toBe("Tarefas");
+    expect(formatarCaminhoAmigavel("referencias/logos/identidade.md")).toBe("Referências › Logos");
+  });
+
+  it("limpa títulos técnicos com carimbos e extensões", () => {
+    expect(formatarTituloAmigavel("", "2026-08-13-fazer-a-capa.md")).toBe("Fazer a capa");
+    expect(formatarTituloAmigavel("2026-08-13-minha-tarefa.md")).toBe("Minha tarefa");
+    expect(formatarTituloAmigavel("meu-projeto-klaus")).toBe("Meu projeto klaus");
+    expect(formatarTituloAmigavel("Documento Principal")).toBe("Documento Principal");
   });
 });

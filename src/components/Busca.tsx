@@ -32,7 +32,7 @@ import {
 } from "@/lib/busca";
 import { LISTA_FERRAMENTAS_APP, type FerramentaApp } from "@/lib/ferramentasApp";
 import { Campo, Selo } from "@/components/ui";
-import { cn } from "@/lib/utils";
+import { cn, formatarCaminhoAmigavel, formatarTituloAmigavel } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { alternarTema } from "@/lib/tema";
 import { tituloProvavel, lerMarkdown } from "@/lib/markdown";
@@ -421,27 +421,34 @@ export function Busca({
                     })}
 
                     {/* Itens do Repo Favoritados */}
-                    {itensFavoritados.repoItens.map((item) => (
-                      <div
-                        key={item.caminho}
-                        onClick={() => aoSelecionarItemRepo(item.caminho, undefined, tituloProvavel(item.doc, item.nome))}
-                        className="flex items-center justify-between p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer transition-colors group"
-                      >
-                        <div className="min-w-0">
-                          <p className="font-semibold text-xs text-foreground truncate">
-                            {tituloProvavel(item.doc, item.nome)}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground truncate">{item.caminho}</p>
-                        </div>
-                        <button
-                          onClick={(e) => toggleFavorito(item.caminho, e)}
-                          className="p-1 rounded-md text-amber-500 hover:bg-amber-500/20"
-                          title="Remover dos Favoritos"
+                    {itensFavoritados.repoItens.map((item) => {
+                      const titulo = formatarTituloAmigavel(tituloProvavel(item.doc, item.nome), item.nome);
+                      const caminhoFormatado = formatarCaminhoAmigavel(item.caminho);
+                      return (
+                        <div
+                          key={item.caminho}
+                          onClick={() => aoSelecionarItemRepo(item.caminho, undefined, titulo)}
+                          className="flex items-center justify-between p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer transition-colors group"
                         >
-                          <Star size={15} className="fill-amber-500" />
-                        </button>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                              {obterIconeItem(item.caminho)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-xs text-foreground truncate">{titulo}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{caminhoFormatado}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => toggleFavorito(item.caminho, e)}
+                            className="p-1 rounded-md text-amber-500 hover:bg-amber-500/20 shrink-0 ml-1"
+                            title="Remover dos Favoritos"
+                          >
+                            <Star size={15} className="fill-amber-500" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -476,8 +483,9 @@ export function Busca({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {recentesExibidos.map((item) => {
-                      const titulo = tituloProvavel(item.doc, item.nome);
+                      const titulo = formatarTituloAmigavel(tituloProvavel(item.doc, item.nome), item.nome);
                       const pasta = item.caminho.split("/")[0] || "";
+                      const caminhoFormatado = formatarCaminhoAmigavel(item.caminho);
                       const ehFav = ehFavoritoBusca(item.caminho, favoritos);
                       return (
                         <div
@@ -491,7 +499,7 @@ export function Busca({
                             </div>
                             <div className="min-w-0">
                               <p className="font-semibold text-xs text-foreground truncate">{titulo}</p>
-                              <p className="text-[11px] text-muted-foreground truncate">{item.caminho}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{caminhoFormatado}</p>
                             </div>
                           </div>
                           <button
@@ -615,16 +623,18 @@ export function Busca({
                   </p>
                   {lista.map((r) => {
                     const ehFav = ehFavoritoBusca(r.caminho, favoritos);
+                    const titulo = formatarTituloAmigavel(r.titulo, r.caminho);
+                    const caminhoFormatado = formatarCaminhoAmigavel(r.caminho);
                     return (
                       <div
                         key={r.caminho}
-                        onClick={() => aoSelecionarItemRepo(r.caminho, r.tipo, r.titulo)}
+                        onClick={() => aoSelecionarItemRepo(r.caminho, r.tipo, titulo)}
                         className="flex items-start justify-between border-b border-border px-4 py-3 text-left transition-colors hover:bg-accent cursor-pointer group"
                       >
                         <div className="min-w-0 flex-1 pr-2">
                           <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm text-foreground truncate">{r.titulo}</p>
-                            <Selo>{r.caminho.split("/")[0]}</Selo>
+                            <p className="font-medium text-sm text-foreground truncate">{titulo}</p>
+                            <Selo>{caminhoFormatado}</Selo>
                           </div>
                           {r.trecho && (
                             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
