@@ -446,34 +446,61 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
 
 /**
  * Retorna o catálogo de ferramentas aplicando os nomes, ícones e cores
- * personalizados pelo usuário no menu lateral ("Personalizar Menu").
+ * personalizados pelo usuário no menu lateral ("Personalizar Menu") aos
+ * módulos principais, preservando rigorosamente o título e ícone específico
+ * de cada sub-ferramenta (ex: Juntar PDF, PDF para PNG, etc.).
  */
 export function obterFerramentasPersonalizadas(
   gruposMenu: GrupoMenuPersonalizado[] = carregarMenuPersonalizado()
 ): FerramentaApp[] {
-  const mapaCustom = new Map<string, ItemMenuPersonalizado>();
+  const mapaCustomPorRota = new Map<string, ItemMenuPersonalizado>();
+  const mapaCustomPorId = new Map<string, ItemMenuPersonalizado>();
+
   for (const g of gruposMenu) {
     for (const it of g.itens || []) {
       if (it?.para) {
-        mapaCustom.set(it.para.toLowerCase(), it);
+        mapaCustomPorRota.set(it.para.toLowerCase(), it);
+      }
+      if (it?.id) {
+        mapaCustomPorId.set(it.id.toLowerCase(), it);
       }
     }
   }
 
   return LISTA_FERRAMENTAS_APP.map((f) => {
-    const rotaBase = f.rota.split("?")[0].toLowerCase();
-    const custom = mapaCustom.get(rotaBase);
-    if (!custom) return f;
+    const rotaLimpa = f.rota.toLowerCase();
+    // É módulo principal se a rota for direta (sem query params de ação ou sub-ferramenta)
+    const ehModuloPrincipal = !f.rota.includes("?") && !f.rota.startsWith("acao:");
+
+    // Busca customização direta correspondente
+    const custom =
+      mapaCustomPorRota.get(rotaLimpa) ||
+      mapaCustomPorId.get(f.id.toLowerCase()) ||
+      (f.id === "chat_ia" ? mapaCustomPorId.get("chat") : undefined) ||
+      (f.id === "ferramentas_pdf" ? (mapaCustomPorId.get("pdf") || mapaCustomPorRota.get("/pdf")) : undefined) ||
+      (f.id === "pesquisa_livros" ? (mapaCustomPorId.get("livros") || mapaCustomPorRota.get("/livros")) : undefined) ||
+      (f.id === "testador_hardware" ? (mapaCustomPorId.get("testador_hardware") || mapaCustomPorRota.get("/testador")) : undefined);
+
+    if (!custom) {
+      // Para sub-ferramentas (ex: /pdf?aba=juntar), herda opcionalmente a cor de destaque do módulo pai
+      const rotaBase = f.rota.split("?")[0].toLowerCase();
+      const customPai = mapaCustomPorRota.get(rotaBase);
+      if (customPai?.cor) {
+        return { ...f, cor: customPai.cor };
+      }
+      return f;
+    }
 
     const IconeCustom = custom.iconeNome ? obterIconePorNome(custom.iconeNome) : null;
 
-    // Se o usuário renomeou o módulo/ferramenta no Personalizar Menu
-    const titulo = custom.rotulo?.trim() || f.titulo;
+    // Apenas renomeia e altera ícone se for o módulo principal correspondente ao item do menu
+    const titulo = ehModuloPrincipal && custom.rotulo?.trim()
+      ? custom.rotulo.trim()
+      : f.titulo;
 
-    // Se o usuário alterou o ícone
-    const icone = IconeCustom || f.icone;
+    const icone = ehModuloPrincipal && IconeCustom ? IconeCustom : f.icone;
 
-    // Adiciona o nome customizado nas palavras-chave para busca imediata
+    // Adiciona o nome customizado nas palavras-chave para permitir busca direta
     const palavrasChave = custom.rotulo && custom.rotulo !== f.titulo
       ? [...f.palavrasChave, custom.rotulo.toLowerCase()]
       : f.palavrasChave;
@@ -482,9 +509,9 @@ export function obterFerramentasPersonalizadas(
       ...f,
       titulo,
       icone,
-      cor: custom.cor,
-      destaque: custom.destaque,
-      oculto: custom.oculto,
+      cor: custom.cor || f.cor,
+      destaque: ehModuloPrincipal ? custom.destaque : f.destaque,
+      oculto: ehModuloPrincipal ? custom.oculto : f.oculto,
       palavrasChave,
     };
   });

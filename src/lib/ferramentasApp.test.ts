@@ -81,5 +81,12 @@ describe("ferramentasApp", () => {
     expect(grafo?.titulo).toBe("Constelação de Ideias");
     expect(grafo?.cor).toBe("#ec4899");
     expect(grafo?.palavrasChave).toContain("constelação de ideias");
+
+    // Sub-ferramentas como Juntar PDF ou PDF para PNG devem manter seus títulos específicos
+    const pdfJuntar = personalizadas.find((f) => f.id === "pdf_juntar");
+    expect(pdfJuntar?.titulo).toBe("Juntar e Mesclar PDFs (iLovePDF)");
+
+    const pdfPng = personalizadas.find((f) => f.id === "pdf_para_png");
+    expect(pdfPng?.titulo).toBe("PDF para PNG");
   });
 });
