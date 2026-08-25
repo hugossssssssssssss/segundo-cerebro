@@ -102,11 +102,11 @@ const AbaItem = memo(function AbaItem({
     isDragging,
   } = useSortable({ id: aba.id });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition: isDragging ? "none" : transition || "transform 150ms cubic-bezier(0.25, 1, 0.5, 1)",
     zIndex: isDragging ? 50 : undefined,
-    opacity: isDragging ? 0.75 : 1,
+    opacity: isDragging ? 0.8 : 1,
   };
 
   const [menuAberto, setMenuAberto] = React.useState(false);
@@ -118,10 +118,11 @@ const AbaItem = memo(function AbaItem({
       style={style}
       {...attributes}
       className={cn(
-        "group relative flex items-center gap-2 px-3 py-1.5 text-xs font-medium cursor-pointer select-none transition-all duration-150 max-w-[200px] sm:max-w-[240px] shrink-0",
+        "group relative flex items-center gap-2 px-3 py-1.5 text-xs font-medium cursor-pointer select-none touch-none will-change-transform transition-colors duration-150 max-w-[200px] sm:max-w-[240px] shrink-0",
         ativa
           ? "bg-card text-foreground border-t-2 border-t-primary border-x border-x-border/70 border-b-transparent shadow-xs font-semibold rounded-t-xl -mb-[1px] z-10"
-          : "bg-transparent text-muted-foreground hover:bg-card/60 hover:text-foreground border border-transparent rounded-lg my-1 hover:shadow-2xs"
+          : "bg-transparent text-muted-foreground hover:bg-card/60 hover:text-foreground border border-transparent rounded-lg my-1 hover:shadow-2xs",
+        isDragging && "shadow-xl bg-card/90 ring-1 ring-primary/30 rounded-xl"
       )}
       onClick={onSelecionar}
       onContextMenu={(e) => {
@@ -233,7 +234,7 @@ export function WorkspaceBarraAbas({ className }: { className?: string }) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 3,
       },
     })
   );

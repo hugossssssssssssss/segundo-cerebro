@@ -213,16 +213,7 @@ export default function Tarefas() {
 
   // ── Ações ──────────────────────────────────────────────────────────────────
 
-  function fechar(ignorarSalvar = false) {
-    if (editando && !ignorarSalvar) {
-      const mudou = original !== null && JSON.stringify(editando) !== JSON.stringify(original);
-      if (mudou && editando.titulo.trim()) {
-        const tSalvar = { ...editando };
-        salvar(tSalvar).catch((err) => {
-          toast(`Erro ao salvar tarefa: ${err?.message || "Falha na gravação"}`, { tipo: "erro" });
-        });
-      }
-    }
+  function fechar() {
     setEditando(null);
     setOriginal(null);
     limparErro();
@@ -305,7 +296,7 @@ export default function Tarefas() {
 
   async function remover(t: Tarefa) {
     await apagarItem(t.caminho, t.sha);
-    fechar(true);
+    fechar();
     recarregar();
   }
 

@@ -125,9 +125,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         setCapturando(true);
       } else if (tecla === "b") {
         e.preventDefault();
-        if (workspaceAberto) {
-          toast("Para expandir a barra lateral, saia do modo tela cheia (Workspace).", { tipo: "info" });
-        } else {
+        if (!workspaceAberto) {
           setColapsada((v) => !v);
         }
       }

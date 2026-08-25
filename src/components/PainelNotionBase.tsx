@@ -638,33 +638,6 @@ export function PainelNotionBase({
           {rotuloTipo}
         </span>
 
-        {/* Controles de Navegação Sequencial no Cabeçalho */}
-        {infoSequencial.total > 0 && (
-          <div className="flex items-center gap-0.5 rounded-lg border border-border/80 bg-muted/40 p-0.5 shrink-0">
-            <button
-              onClick={() => navegarSequencial("anterior")}
-              disabled={!infoSequencial.podeAnterior}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-              title="Documento anterior"
-            >
-              <ChevronLeft size={13} />
-            </button>
-
-            <span className="text-[11px] font-medium text-muted-foreground px-1 select-none font-mono">
-              {infoSequencial.indice}/{infoSequencial.total}
-            </span>
-
-            <button
-              onClick={() => navegarSequencial("proximo")}
-              disabled={!infoSequencial.podeProximo}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
-              title="Próximo documento"
-            >
-              <ChevronRight size={13} />
-            </button>
-          </div>
-        )}
-
         <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-accent/60 flex items-center gap-1 shrink-0">
           {salvando || fechandoESalvando ? (
             <span className="text-blue-500 animate-pulse font-semibold">Salvando...</span>

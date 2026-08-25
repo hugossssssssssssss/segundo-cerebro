@@ -19,7 +19,6 @@ import {
 } from "@/lib/menuPersonalizado";
 import { obterIconePorNome } from "@/lib/icones";
 import { ModalPersonalizarMenu } from "./ModalPersonalizarMenu";
-import { toast } from "@/lib/toast";
 import { useWorkspace } from "@/components/workspace/WorkspaceContext";
 
 import { alternarTema, lerTemaSalvo, type Tema } from "@/lib/tema";
@@ -46,15 +45,14 @@ export function NavegacaoLateral({
 
   const workspaceAberto = !!workspace?.workspaceAberto;
 
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const [avisoVisivel, setAvisoVisivel] = useState(false);
 
-  const lidarToggleColapsada = () => {
+  const lidarToggleColapsada = (e: React.MouseEvent) => {
     if (colapsada && workspaceAberto) {
+      setMousePos({ x: e.clientX, y: e.clientY });
       setAvisoVisivel(true);
-      setTimeout(() => setAvisoVisivel(false), 3500);
-      toast("Para expandir a barra lateral, saia do modo tela cheia (Workspace).", {
-        tipo: "info",
-      });
+      setTimeout(() => setAvisoVisivel(false), 2500);
       return;
     }
     setColapsada((v) => !v);
@@ -132,8 +130,16 @@ export function NavegacaoLateral({
             <div className="relative mx-auto flex items-center justify-center">
               <button
                 onClick={lidarToggleColapsada}
-                onMouseEnter={() => {
-                  if (workspaceAberto) setAvisoVisivel(true);
+                onMouseEnter={(e) => {
+                  if (workspaceAberto) {
+                    setMousePos({ x: e.clientX, y: e.clientY });
+                    setAvisoVisivel(true);
+                  }
+                }}
+                onMouseMove={(e) => {
+                  if (workspaceAberto && avisoVisivel) {
+                    setMousePos({ x: e.clientX, y: e.clientY });
+                  }
                 }}
                 onMouseLeave={() => setAvisoVisivel(false)}
                 className={cn(
@@ -145,11 +151,19 @@ export function NavegacaoLateral({
                 <ChevronRight size={18} />
               </button>
 
-              {/* Aviso flutuante que nunca corta a tela */}
-              {workspaceAberto && avisoVisivel && (
-                <div className="fixed left-18 top-3.5 z-[9999] flex items-center gap-2 rounded-xl border border-border bg-popover/95 backdrop-blur-md px-3.5 py-2 text-xs font-medium text-popover-foreground shadow-2xl animate-in fade-in slide-in-from-left-2 duration-150 pointer-events-none whitespace-nowrap">
-                  <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
-                  <span>Para expandir a barra, saia do modo tela cheia (Workspace).</span>
+              {/* Aviso flutuante que acompanha o mouse onde o usuário clica/passa */}
+              {workspaceAberto && avisoVisivel && mousePos && (
+                <div
+                  style={{
+                    position: "fixed",
+                    left: `${mousePos.x + 12}px`,
+                    top: `${mousePos.y - 14}px`,
+                    zIndex: 99999,
+                  }}
+                  className="pointer-events-none flex items-center gap-1.5 rounded-lg border border-border/90 bg-popover/95 px-3 py-1.5 text-xs font-medium text-popover-foreground shadow-2xl backdrop-blur-md animate-in fade-in duration-100 whitespace-nowrap"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+                  <span>Para expandir a barra, saia do modo tela cheia</span>
                 </div>
               )}
             </div>
