@@ -149,11 +149,11 @@ export function WorkspaceTelaCheia() {
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex flex-col bg-black/40 backdrop-blur-[3px] p-2 sm:p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-[200] flex flex-col w-screen h-screen bg-background animate-in fade-in duration-150 overflow-hidden"
       onClick={fecharWorkspace}
     >
       <div
-        className="flex h-full w-full flex-col rounded-2xl sm:rounded-3xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+        className="flex h-full w-full flex-col bg-card overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Barra de Abas Superior */}

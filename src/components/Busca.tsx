@@ -1,6 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, X, Star, Zap, Wrench } from "lucide-react";
+import {
+  Search,
+  X,
+  Star,
+  Zap,
+  Wrench,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  CheckSquare,
+  Target,
+  Image as ImageIcon,
+  User,
+  Sparkles,
+} from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
 import {
@@ -23,6 +38,16 @@ import { alternarTema } from "@/lib/tema";
 import { tituloProvavel, lerMarkdown } from "@/lib/markdown";
 import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 import { useWorkspace } from "@/components/workspace/WorkspaceContext";
+
+function obterIconeItem(caminho: string) {
+  const p = (caminho || "").toLowerCase();
+  if (p.startsWith("tarefas")) return <CheckSquare size={15} className="text-emerald-500 shrink-0" />;
+  if (p.startsWith("pdi/metas") || p.startsWith("metas")) return <Target size={15} className="text-blue-500 shrink-0" />;
+  if (p.startsWith("pdi/entregas") || p.startsWith("entregas")) return <Sparkles size={15} className="text-purple-500 shrink-0" />;
+  if (p.startsWith("referencias")) return <ImageIcon size={15} className="text-pink-500 shrink-0" />;
+  if (p.startsWith("contatos")) return <User size={15} className="text-cyan-500 shrink-0" />;
+  return <FileText size={15} className="text-amber-500 shrink-0" />;
+}
 
 const OPCOES_FILTRO: Array<{ id: CategoriaFiltroBusca; rotulo: string }> = [
   { id: "tudo", rotulo: "Tudo" },
@@ -57,6 +82,7 @@ export function Busca({
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
   const [itemFocadoIndex, setItemFocadoIndex] = useState(0);
+  const [mostrarTodosRecentes, setMostrarTodosRecentes] = useState(false);
   const entrada = useRef<HTMLInputElement>(null);
 
   let workspace: any = null;
@@ -126,6 +152,7 @@ export function Busca({
     setErro("");
     setCategoria("tudo");
     setItemFocadoIndex(0);
+    setMostrarTodosRecentes(false);
     setFavoritos(lerFavoritosBusca());
     entrada.current?.focus();
 
@@ -156,6 +183,38 @@ export function Busca({
 
     return { ferramentas: favFerramentas, repoItens: favRepoItens };
   }, [favoritos, acervo]);
+
+  // Lista de Documentos Recentes
+  const documentosRecentes = useMemo(() => {
+    if (!acervo || acervo.length === 0) return [];
+
+    const lista = acervo.filter((i) => {
+      if (categoria === "tudo") return true;
+      if (categoria === "ferramentas" || categoria === "acoes") return false;
+      const pasta = i.caminho.split("/")[0]?.toLowerCase() || "";
+      if (categoria === "notas") return pasta === "notas";
+      if (categoria === "tarefas") return pasta === "tarefas";
+      if (categoria === "pdi") return pasta === "pdi" || pasta === "metas" || pasta === "entregas";
+      if (categoria === "referencias") return pasta === "referencias";
+      if (categoria === "lousas") return pasta === "lousas";
+      if (categoria === "contatos") return pasta === "contatos";
+      return true;
+    });
+
+    return [...lista].sort((a, b) => {
+      const dataA = a.doc?.dados?.atualizado || a.doc?.dados?.data || a.nome.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] || "";
+      const dataB = b.doc?.dados?.atualizado || b.doc?.dados?.data || b.nome.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] || "";
+      if (dataA && dataB) return String(dataB).localeCompare(String(dataA));
+      if (dataA) return -1;
+      if (dataB) return 1;
+      return a.caminho.localeCompare(b.caminho);
+    });
+  }, [acervo, categoria]);
+
+  const recentesExibidos = useMemo(() => {
+    if (mostrarTodosRecentes) return documentosRecentes;
+    return documentosRecentes.slice(0, 8);
+  }, [documentosRecentes, mostrarTodosRecentes]);
 
   // Ferramentas e Ações encontradas pela busca
   const ferramentasResultado = useMemo(
@@ -192,12 +251,27 @@ export function Busca({
     }
     const items: Array<{ id: string; tipo: "ferramenta" | "item"; f?: FerramentaApp; r?: any }> = [];
     itensFavoritados.ferramentas.forEach((f) => items.push({ id: f.id, tipo: "ferramenta", f }));
-    itensFavoritados.repoItens.forEach((item) => items.push({ id: item.caminho, tipo: "item", r: { caminho: item.caminho, tipo: item.caminho.split("/")[0] } }));
+    itensFavoritados.repoItens.forEach((item) =>
+      items.push({
+        id: item.caminho,
+        tipo: "item",
+        r: { caminho: item.caminho, tipo: item.caminho.split("/")[0], titulo: tituloProvavel(item.doc, item.nome) },
+      })
+    );
+    recentesExibidos.forEach((item) => {
+      if (!items.some((i) => i.id === item.caminho)) {
+        items.push({
+          id: item.caminho,
+          tipo: "item",
+          r: { caminho: item.caminho, tipo: item.caminho.split("/")[0], titulo: tituloProvavel(item.doc, item.nome) },
+        });
+      }
+    });
     LISTA_FERRAMENTAS_APP.slice(0, 6).forEach((f) => {
       if (!items.some((i) => i.id === f.id)) items.push({ id: f.id, tipo: "ferramenta", f });
     });
     return items;
-  }, [termo, ferramentasResultado, grupos, itensFavoritados]);
+  }, [termo, ferramentasResultado, grupos, itensFavoritados, recentesExibidos]);
 
   const toggleFavorito = (idOuCaminho: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -369,6 +443,80 @@ export function Busca({
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Seção de Documentos Recentes */}
+              {documentosRecentes.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      <Clock size={14} className="text-primary" />
+                      <span>Documentos Recentes ({documentosRecentes.length})</span>
+                    </div>
+                    {documentosRecentes.length > 8 && (
+                      <button
+                        onClick={() => setMostrarTodosRecentes((prev) => !prev)}
+                        className="text-xs text-primary hover:underline font-medium flex items-center gap-1 cursor-pointer"
+                      >
+                        {mostrarTodosRecentes ? (
+                          <>
+                            <span>Mostrar menos</span>
+                            <ChevronUp size={13} />
+                          </>
+                        ) : (
+                          <>
+                            <span>Mostrar todos ({documentosRecentes.length})</span>
+                            <ChevronDown size={13} />
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {recentesExibidos.map((item) => {
+                      const titulo = tituloProvavel(item.doc, item.nome);
+                      const pasta = item.caminho.split("/")[0] || "";
+                      const ehFav = ehFavoritoBusca(item.caminho, favoritos);
+                      return (
+                        <div
+                          key={item.caminho}
+                          onClick={() => aoSelecionarItemRepo(item.caminho, pasta, titulo)}
+                          className="flex items-center justify-between p-2.5 rounded-xl border border-border/80 bg-card hover:bg-accent/60 cursor-pointer transition-colors group"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted/60 shrink-0">
+                              {obterIconeItem(item.caminho)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-xs text-foreground truncate">{titulo}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{item.caminho}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => toggleFavorito(item.caminho, e)}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-amber-500 hover:bg-accent opacity-60 group-hover:opacity-100 transition-opacity shrink-0 ml-1"
+                            title={ehFav ? "Remover dos Favoritos" : "Favoritar"}
+                          >
+                            <Star size={14} className={cn(ehFav && "fill-amber-500 text-amber-500")} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {!mostrarTodosRecentes && documentosRecentes.length > 8 && (
+                    <div className="pt-1 flex justify-center">
+                      <button
+                        onClick={() => setMostrarTodosRecentes(true)}
+                        className="w-full py-2 px-3 text-xs font-medium text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-border/60 cursor-pointer"
+                      >
+                        <span>Mostrar mais ({documentosRecentes.length - 8} documentos)</span>
+                        <ChevronDown size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
