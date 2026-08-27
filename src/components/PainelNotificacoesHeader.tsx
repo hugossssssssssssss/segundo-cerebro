@@ -64,7 +64,7 @@ export function PainelNotificacoesHeader() {
       setShaEstado(estadoRes.sha);
 
       const agora = new Date();
-      const todosItens = compilarItensInbox(todos, estadoRes.mapa, agora);
+      const todosItens = compilarItensInbox(todos, estadoRes.mapa, agora, true);
 
       // Regra: filtrar lembretes com mais de 15 dias no passado
       const limite15DiasMs = 15 * 24 * 60 * 60 * 1000;
@@ -261,7 +261,7 @@ export function PainelNotificacoesHeader() {
                 title="Agendar novo lembrete"
               >
                 <Plus size={13} />
-                <span>Lembrete</span>
+                <span>Novo Lembrete</span>
               </button>
 
               {naoVistosCount > 0 && (
@@ -389,7 +389,7 @@ export function PainelNotificacoesHeader() {
                               : "text-muted-foreground bg-secondary/50"
                           )}
                         >
-                          {item.dataVencimento}
+                          {item.dataVencimento.replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1")}
                         </span>
                       )}
                     </div>

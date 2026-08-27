@@ -88,7 +88,7 @@ export function ModalLembrete({
         <div className="p-5 pb-3 border-b border-border/50 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Novo Compromisso / Lembrete
+              Novo Lembrete
             </span>
           </div>
 
@@ -257,18 +257,18 @@ export function ModalLembrete({
             <textarea
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
-              placeholder="Adicione notas ou contexto para este compromisso..."
+              placeholder="Adicione notas ou contexto para este lembrete..."
               className="w-full min-h-[90px] resize-none bg-background/50 border border-border rounded-xl p-3 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
 
           {/* Rodapé */}
           <div className="pt-2 flex items-center justify-end gap-2">
-            <Button variant="ghost" size="sm" type="button" onClick={aoFechar} className="text-xs">
+            <Button variant="ghost" size="sm" type="button" onClick={aoFechar} className="text-xs cursor-pointer">
               Cancelar
             </Button>
-            <Button size="sm" type="submit" disabled={!titulo.trim() || !data} className="text-xs font-semibold px-4">
-              Salvar Compromisso
+            <Button size="sm" type="submit" disabled={!titulo.trim() || !data} className="text-xs font-semibold px-4 cursor-pointer">
+              Salvar Lembrete
             </Button>
           </div>
         </form>

@@ -203,6 +203,7 @@ export function compilarItensInbox(
   itensRepo: ItemRepo[],
   mapaEstado: MapaEstadoInbox = {},
   agora: Date = new Date(),
+  incluirFuturos: boolean = false,
 ): ItemInbox[] {
   const resultado: ItemInbox[] = [];
   
@@ -279,7 +280,7 @@ export function compilarItensInbox(
       const dataIso = lembrete.dataHora.slice(0, 10);
       const venceu = dataIso <= hojeIso;
 
-      if (venceu && !estado?.descartado) {
+      if ((incluirFuturos || venceu) && !estado?.descartado) {
         resultado.push({
           id,
           tipo: "lembrete",
@@ -298,20 +299,28 @@ export function compilarItensInbox(
       }
     }
 
-    // 3. Outras entidades com campo de data ou prazo (Agenda do Dia - exclusivamente no dia)
+    // 3. Outras entidades com campo de data ou prazo (Metas PDI, Entregas, Notas)
     if (!item.caminho.startsWith("tarefas/")) {
-      const dataCampos = ["data", "prazo"];
+      const dataCampos = ["data", "prazo", "data_reuniao", "data_inicio", "data_fim"];
       let dataValor: string | undefined;
 
       for (const campo of dataCampos) {
         const val = doc.dados[campo];
-        if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
-          dataValor = val.trim();
-          break;
+        if (typeof val === "string") {
+          const match = val.trim().match(/\d{4}-\d{2}-\d{2}/);
+          if (match) {
+            dataValor = match[0];
+            break;
+          }
         }
       }
 
-      if (dataValor && dataValor <= hojeIso) {
+      if (!dataValor) {
+        const matchNome = item.nome.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (matchNome) dataValor = matchNome[1];
+      }
+
+      if (dataValor && (incluirFuturos || dataValor <= hojeIso)) {
         const id = `entidade-data-${item.caminho}`;
         const estado = mapaEstado[id];
 
@@ -328,13 +337,17 @@ export function compilarItensInbox(
                                : tipoEntidade === "referencia" ? "Referência"
                                : "Contato";
 
-          const descricao = dataValor === hojeIso
+          const ehAtrasado = dataValor < hojeIso;
+          const ehHoje = dataValor === hojeIso;
+          const descricao = ehHoje
             ? `${rotuloEntidade} agendada para HOJE.`
-            : `${rotuloEntidade} com data vencida em ${formatarDataPtBR(dataValor)}.`;
+            : ehAtrasado
+            ? `${rotuloEntidade} com data vencida em ${formatarDataPtBR(dataValor)}.`
+            : `${rotuloEntidade} agendada para ${formatarDataPtBR(dataValor)}.`;
 
           resultado.push({
             id,
-            tipo: "lembrete",
+            tipo: ehAtrasado ? "tarefa_atrasada" : "lembrete",
             titulo: tituloDoc,
             descricao,
             caminhoOrigem: item.caminho,
