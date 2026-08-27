@@ -1,22 +1,15 @@
-/**
- * ModalLembrete — Painel padronizado para Agendar Lembrete no estilo de propriedades de documentos do Klaus.
- */
-
 import { useState, useEffect } from "react";
 import {
-  Bell,
   Calendar as CalendarIcon,
   Clock,
   Send,
   Mail,
-  Zap,
-  Sunrise,
-  CalendarDays,
-  CalendarRange,
-  Check,
   Inbox,
+  Check,
+  Folder,
+  X,
 } from "lucide-react";
-import { Modal, Botao, Campo, Rotulo } from "./ui";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export interface ModalLembreteProps {
@@ -40,6 +33,7 @@ export function ModalLembrete({
   const [data, setData] = useState("");
   const [hora, setHora] = useState("09:00");
   const [canais, setCanais] = useState<("inbox" | "telegram" | "email")[]>(canaisIniciais);
+  const [observacoes, setObservacoes] = useState("");
 
   useEffect(() => {
     if (aberto) {
@@ -57,30 +51,9 @@ export function ModalLembrete({
         setHora("09:00");
       }
       setCanais(canaisIniciais);
+      setObservacoes("");
     }
   }, [aberto, tituloInicial, dataHoraInicial, canaisIniciais]);
-
-  const aplicarAtalho = (diasAdicionais: number, horaPadrao: string) => {
-    const d = new Date();
-    d.setDate(d.getDate() + diasAdicionais);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    setData(`${yyyy}-${mm}-${dd}`);
-    setHora(horaPadrao);
-  };
-
-  const aplicarProximaSegunda = () => {
-    const d = new Date();
-    const diaDaSemana = d.getDay();
-    const diasAteSegunda = (8 - diaDaSemana) % 7 || 7;
-    d.setDate(d.getDate() + diasAteSegunda);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    setData(`${yyyy}-${mm}-${dd}`);
-    setHora("09:00");
-  };
 
   const toggleCanal = (canal: "inbox" | "telegram" | "email") => {
     setCanais((prev) =>
@@ -97,219 +70,209 @@ export function ModalLembrete({
     aoFechar();
   };
 
+  if (!aberto) return null;
+
+  // Formata a data atual para exibição brasileira DD/MM/AAAA
+  const dataFormatadaBr = data ? data.split("-").reverse().join("/") : "";
+
   return (
-    <Modal
-      aberto={aberto}
-      aoFechar={aoFechar}
-      titulo="Agendar Lembrete"
-      rodape={
-        <div className="flex w-full items-center justify-between gap-2">
-          <Botao variante="fantasma" onClick={aoFechar} type="button">
-            Cancelar
-          </Botao>
-          <Botao
-            variante="primario"
-            onClick={() => submeter()}
-            type="button"
-            disabled={!titulo.trim() || !data}
-          >
-            <Bell size={15} />
-            Salvar Lembrete
-          </Botao>
-        </div>
-      }
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+      onClick={aoFechar}
     >
-      <form onSubmit={submeter} className="space-y-4">
-        {/* Título do lembrete */}
-        <div>
-          <Rotulo obrigatorio>O que você deseja lembrar?</Rotulo>
-          <Campo
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-            placeholder="Ex: Entregar proposta revisada para o cliente..."
-            autoFocus
-            className="text-sm"
-          />
-        </div>
-
-        {/* Atalhos Rápidos com Ícones */}
-        <div>
-          <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wider mb-1.5 block">
-            Atalhos Rápidos
-          </span>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <button
-              type="button"
-              onClick={() => aplicarAtalho(0, "18:00")}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-card/80 hover:bg-accent hover:border-amber-500/40 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
-            >
-              <Zap size={14} className="text-amber-500" />
-              <span>Hoje 18h</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => aplicarAtalho(1, "09:00")}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-card/80 hover:bg-accent hover:border-orange-500/40 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
-            >
-              <Sunrise size={14} className="text-orange-500" />
-              <span>Amanhã 9h</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => aplicarAtalho(3, "09:00")}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-card/80 hover:bg-accent hover:border-blue-500/40 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
-            >
-              <CalendarDays size={14} className="text-blue-500" />
-              <span>+3 dias</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={aplicarProximaSegunda}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-card/80 hover:bg-accent hover:border-purple-500/40 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
-            >
-              <CalendarRange size={14} className="text-purple-500" />
-              <span>Próx. Seg.</span>
-            </button>
+      <div
+        className="w-full max-w-xl bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Topo estilo Notion Documento */}
+        <div className="p-5 pb-3 border-b border-border/50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Novo Compromisso / Lembrete
+            </span>
           </div>
+
+          <button
+            type="button"
+            onClick={aoFechar}
+            className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        {/* Tabela de Propriedades do Lembrete */}
-        <div className="rounded-2xl border border-border/80 bg-card/60 divide-y divide-border/50 text-xs overflow-hidden shadow-xs">
-          {/* Data e Horário */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-border/50">
-            <div className="flex items-center px-3.5 py-2.5 gap-2.5">
-              <div className="flex items-center gap-1.5 text-muted-foreground font-semibold shrink-0">
+        {/* Formulário Notion */}
+        <form onSubmit={submeter} className="p-5 space-y-4 overflow-y-auto max-h-[75vh]">
+          {/* Título Estilo Notion H1 */}
+          <div>
+            <input
+              type="text"
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              placeholder="Título do compromisso ou lembrete..."
+              className="w-full text-lg font-bold text-foreground bg-transparent border-0 placeholder:text-muted-foreground/40 focus:outline-none"
+              autoFocus
+              required
+            />
+          </div>
+
+          {/* Tabela de Propriedades Padronizada Klaus Notion */}
+          <div className="rounded-xl border border-border/80 bg-background/50 divide-y divide-border/40 text-xs">
+            {/* Propriedade Data */}
+            <div className="flex items-center p-2.5 px-3 gap-3">
+              <div className="flex items-center gap-2 text-muted-foreground w-28 shrink-0 font-medium">
                 <CalendarIcon size={14} className="text-primary" />
-                <span>Data:</span>
+                <span>Data</span>
               </div>
-              <input
-                type="date"
-                value={data}
-                onChange={(e) => setData(e.target.value)}
-                className="flex-1 bg-background border border-border px-2.5 py-1.5 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer text-foreground"
-                required
-              />
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  type="date"
+                  value={data}
+                  onChange={(e) => setData(e.target.value)}
+                  className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-medium text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
+                  required
+                />
+                {dataFormatadaBr && (
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    ({dataFormatadaBr})
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center px-3.5 py-2.5 gap-2.5">
-              <div className="flex items-center gap-1.5 text-muted-foreground font-semibold shrink-0">
+            {/* Propriedade Horário */}
+            <div className="flex items-center p-2.5 px-3 gap-3">
+              <div className="flex items-center gap-2 text-muted-foreground w-28 shrink-0 font-medium">
                 <Clock size={14} className="text-primary" />
-                <span>Horário:</span>
+                <span>Horário</span>
               </div>
               <input
                 type="time"
                 value={hora}
                 onChange={(e) => setHora(e.target.value)}
-                className="flex-1 bg-background border border-border px-2.5 py-1.5 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer text-foreground"
+                className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-medium text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
-          </div>
 
-          {/* Canais de Notificação */}
-          <div className="p-3.5 space-y-2">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
-              Onde você deseja receber o aviso?
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => toggleCanal("inbox")}
-                className={cn(
-                  "p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition-all cursor-pointer text-left",
-                  canais.includes("inbox")
-                    ? "bg-primary/10 border-primary/50 text-foreground ring-1 ring-primary/30"
-                    : "bg-background border-border text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
-                    <Inbox size={13} />
-                  </div>
-                  <div>
-                    <p className="font-bold text-xs">Klaus Inbox</p>
-                    <p className="text-[10px] text-muted-foreground">Central web</p>
-                  </div>
-                </div>
-                <div
+            {/* Propriedade Canais de Notificação */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center p-2.5 px-3 gap-3">
+              <div className="flex items-center gap-2 text-muted-foreground w-28 shrink-0 font-medium">
+                <Inbox size={14} className="text-primary" />
+                <span>Avisos</span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap flex-1">
+                {/* Canal Inbox */}
+                <button
+                  type="button"
+                  onClick={() => toggleCanal("inbox")}
                   className={cn(
-                    "w-4 h-4 rounded-md flex items-center justify-center border",
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer",
                     canais.includes("inbox")
-                      ? "bg-primary border-primary text-primary-foreground"
-                      : "border-muted-foreground/40 bg-transparent"
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card border-border text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {canais.includes("inbox") && <Check size={11} strokeWidth={3} />}
-                </div>
-              </button>
+                  <div
+                    className={cn(
+                      "w-3.5 h-3.5 rounded flex items-center justify-center border",
+                      canais.includes("inbox")
+                        ? "bg-primary-foreground text-primary border-primary-foreground"
+                        : "border-border bg-transparent"
+                    )}
+                  >
+                    {canais.includes("inbox") && <Check size={10} strokeWidth={3} />}
+                  </div>
+                  <span>Caixa de Entrada</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => toggleCanal("telegram")}
-                className={cn(
-                  "p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition-all cursor-pointer text-left",
-                  canais.includes("telegram")
-                    ? "bg-sky-500/10 border-sky-500/50 text-foreground ring-1 ring-sky-500/30"
-                    : "bg-background border-border text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-lg bg-sky-500/15 text-sky-500 flex items-center justify-center">
-                    <Send size={13} />
-                  </div>
-                  <div>
-                    <p className="font-bold text-xs">Telegram</p>
-                    <p className="text-[10px] text-muted-foreground">No celular</p>
-                  </div>
-                </div>
-                <div
+                {/* Canal Telegram */}
+                <button
+                  type="button"
+                  onClick={() => toggleCanal("telegram")}
                   className={cn(
-                    "w-4 h-4 rounded-md flex items-center justify-center border",
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer",
                     canais.includes("telegram")
-                      ? "bg-sky-500 border-sky-500 text-white"
-                      : "border-muted-foreground/40 bg-transparent"
+                      ? "bg-sky-500 text-white border-sky-500"
+                      : "bg-card border-border text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {canais.includes("telegram") && <Check size={11} strokeWidth={3} />}
-                </div>
-              </button>
+                  <div
+                    className={cn(
+                      "w-3.5 h-3.5 rounded flex items-center justify-center border",
+                      canais.includes("telegram")
+                        ? "bg-white text-sky-500 border-white"
+                        : "border-border bg-transparent"
+                    )}
+                  >
+                    {canais.includes("telegram") && <Check size={10} strokeWidth={3} />}
+                  </div>
+                  <Send size={11} />
+                  <span>Telegram</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => toggleCanal("email")}
-                className={cn(
-                  "p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition-all cursor-pointer text-left",
-                  canais.includes("email")
-                    ? "bg-emerald-500/10 border-emerald-500/50 text-foreground ring-1 ring-emerald-500/30"
-                    : "bg-background border-border text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-lg bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
-                    <Mail size={13} />
-                  </div>
-                  <div>
-                    <p className="font-bold text-xs">E-mail</p>
-                    <p className="text-[10px] text-muted-foreground">Notificação</p>
-                  </div>
-                </div>
-                <div
+                {/* Canal E-mail */}
+                <button
+                  type="button"
+                  onClick={() => toggleCanal("email")}
                   className={cn(
-                    "w-4 h-4 rounded-md flex items-center justify-center border",
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer",
                     canais.includes("email")
-                      ? "bg-emerald-500 border-emerald-500 text-white"
-                      : "border-muted-foreground/40 bg-transparent"
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "bg-card border-border text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {canais.includes("email") && <Check size={11} strokeWidth={3} />}
-                </div>
-              </button>
+                  <div
+                    className={cn(
+                      "w-3.5 h-3.5 rounded flex items-center justify-center border",
+                      canais.includes("email")
+                        ? "bg-white text-emerald-600 border-white"
+                        : "border-border bg-transparent"
+                    )}
+                  >
+                    {canais.includes("email") && <Check size={10} strokeWidth={3} />}
+                  </div>
+                  <Mail size={11} />
+                  <span>E-mail</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Propriedade Tipo / Destino */}
+            <div className="flex items-center p-2.5 px-3 gap-3">
+              <div className="flex items-center gap-2 text-muted-foreground w-28 shrink-0 font-medium">
+                <Folder size={14} className="text-primary" />
+                <span>Destino</span>
+              </div>
+              <span className="text-xs text-foreground font-medium bg-card px-2 py-0.5 rounded border border-border">
+                Lembretes do Klaus
+              </span>
             </div>
           </div>
-        </div>
-      </form>
-    </Modal>
+
+          {/* Bloco de Observações / Corpo */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-medium text-muted-foreground">
+              Anotações / Detalhes adicionais (opcional):
+            </label>
+            <textarea
+              value={observacoes}
+              onChange={(e) => setObservacoes(e.target.value)}
+              placeholder="Adicione notas ou contexto para este compromisso..."
+              className="w-full min-h-[90px] resize-none bg-background/50 border border-border rounded-xl p-3 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          {/* Rodapé */}
+          <div className="pt-2 flex items-center justify-end gap-2">
+            <Button variant="ghost" size="sm" type="button" onClick={aoFechar} className="text-xs">
+              Cancelar
+            </Button>
+            <Button size="sm" type="submit" disabled={!titulo.trim() || !data} className="text-xs font-semibold px-4">
+              Salvar Compromisso
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

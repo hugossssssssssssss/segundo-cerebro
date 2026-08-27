@@ -1,68 +1,43 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
-  Check,
-  Filter,
+  ChevronLeft,
+  ChevronRight,
   Plus,
+  CheckSquare,
+  FileText,
+  Target,
   Sparkles,
-  Clock,
-  Tag,
-  Archive,
-  WifiOff,
-  RotateCcw,
-  ChevronDown,
-  Sun,
-  X,
-  ListTodo,
-  Timer,
-  Calendar,
-  AlertTriangle,
   Bell,
-  CheckCheck,
-  Trash2,
-  ExternalLink,
+  Check,
+  AlertCircle,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { carregarRepo, type ItemRepo } from "@/lib/repo";
-import {
-  compilarItensInbox,
-  compilarNotasInativas,
-  carregarEstadoInbox,
-  salvarEstadoInboxLocal,
-  gravarEstadoInbox,
-  enviarNotificacaoTelegram,
-  enviarNotificacaoEmailGoogle,
-  precisaEscalationInatividade,
-  formatarTagLembrete,
-  adiarDataHora,
-  type MapaEstadoInbox,
-} from "@/lib/inbox";
-import { extrairLembretesComIA } from "@/lib/gemini";
-import type { ItemInbox } from "@/lib/tipos";
-import { Botao, Cartao, Selo, Aviso, Vazio, Carregando, Modal } from "@/components/ui";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { CabecalhoPagina } from "@/components/CabecalhoPagina";
-import { CartaoItem } from "@/components/CartaoItem";
-import { SeloStatus } from "@/components/SeloStatus";
-import { ModalLembrete } from "@/components/ModalLembrete";
-import { Calendario } from "@/components/Calendario";
+import { carregarRepo, type ItemRepo, invalidarCache } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
-import { lerMarkdown, escreverMarkdown, tituloProvavel } from "@/lib/markdown";
-import { comoTarefa } from "@/lib/entidades";
+import { lerMarkdown, escreverMarkdown, tituloProvavel, nomeLivre } from "@/lib/markdown";
 import { toast } from "@/lib/toast";
-import { EditorNotion } from "@/components/EditorNotion";
-import { PropriedadesNotion } from "@/components/PropriedadesNotion";
+import { ModalLembrete } from "@/components/ModalLembrete";
+import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
+import { Carregando } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { format, startOfWeek, endOfWeek, addDays, addWeeks, subWeeks, isSameDay } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-import { lerParametroCriar, formatarDataPtBR, formatarNomeAmigavel } from "@/lib/utils";
-import {
-  obterRascunhosLocais,
-  removerRascunhoLocal,
-  limparTodosRascunhosLocais,
-  sincronizarFilaOffline,
-  forcarResolverConflitoRascunho,
-} from "@/lib/offlineQueue";
-
-type AbaFiltro = "nao_vistos" | "lembretes" | "atrasadas" | "inativas" | "rascunhos" | "todas" | "arquivados";
+export interface CompromissoSemana {
+  id: string;
+  tipo: "tarefa" | "nota" | "meta" | "entrega" | "lembrete";
+  titulo: string;
+  dataIso: string; // YYYY-MM-DD
+  hora?: string;
+  caminho: string;
+  sha: string;
+  corpo: string;
+  dados: Record<string, any>;
+  concluido?: boolean;
+  atrasado?: boolean;
+}
 
 export default function Inbox() {
   const cfg = lerConfig();
@@ -70,1176 +45,512 @@ export default function Inbox() {
   const { salvarTexto } = useSalvar(cfg);
 
   const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
   const [acervo, setAcervo] = useState<ItemRepo[]>([]);
-  const [mapaEstado, setMapaEstado] = useState<MapaEstadoInbox>({});
-  const [shaEstado, setShaEstado] = useState<string | undefined>(undefined);
-  const [aba, setAba] = useState<AbaFiltro>("nao_vistos");
-  const [tagSelecionada, setTagSelecionada] = useState<string | null>(null);
-  const [diaFiltro, setDiaFiltro] = useState<string | null>(null);
-  const [modalCalendarioAberto, setModalCalendarioAberto] = useState(false);
+  const [dataReferencia, setDataReferencia] = useState<Date>(new Date());
   const [modalNovoAberto, setModalNovoAberto] = useState(false);
-  const [extraindoIA, setExtraindoIA] = useState(false);
-  const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
-  const [itemVisualizado, setItemVisualizado] = useState<{
-    caminho: string;
-    titulo: string;
-    corpo: string;
-    dadosProps: Record<string, any>;
-    sha: string;
-  } | null>(null);
 
-  // Carrega repositório e estado da Inbox
+  // Estado do Painel Notion para abrir e editar qualquer documento
+  const [itemAberto, setItemAberto] = useState<CompromissoSemana | null>(null);
+  const [modoVisaoNotion, setModoVisaoNotion] = useState<ModoVisaoNotion>("lado");
+  const [tituloEditor, setTituloEditor] = useState("");
+  const [corpoEditor, setCorpoEditor] = useState("");
+  const [dadosPropsEditor, setDadosPropsEditor] = useState<Record<string, any>>({});
+  const [salvandoItem, setSalvandoItem] = useState(false);
+  const [temMudancasItem, setTemMudancasItem] = useState(false);
+
+  // Carrega repositório
   const carregar = useCallback(async () => {
     if (!pronto) return;
-    setCarregando(true);
-    setErro(null);
     try {
+      setCarregando(true);
       const todos = await carregarRepo(cfg);
-      const estadoRes = await carregarEstadoInbox(cfg, todos);
       setAcervo(todos);
-      setMapaEstado(estadoRes.mapa);
-      setShaEstado(estadoRes.sha);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Erro ao carregar Caixa de Entrada.");
+    } catch {
+      // Erro tratado silenciosamente
     } finally {
       setCarregando(false);
     }
-  }, [pronto, cfg.githubToken, cfg.repoOwner, cfg.repoName, cfg.branch]);
+  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
   useEffect(() => {
     carregar();
-    const aoAtualizar = () => carregar();
-    window.addEventListener("acervo-atualizado", aoAtualizar);
-    return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
   }, [carregar]);
 
-  const location = useLocation();
-  const processouUrlRef = useRef<string | null>(null);
+  // ── Compilação Abrangente de Todos os Compromissos ────────────────────────
+  const todosCompromissos = useMemo<CompromissoSemana[]>(() => {
+    const hojeStr = new Date().toISOString().split("T")[0];
+    const lista: CompromissoSemana[] = [];
 
-  useEffect(() => {
-    const urlAtual = `${location.pathname}${location.search}${location.hash}`;
-    if (processouUrlRef.current === urlAtual) return;
-    if (lerParametroCriar(location, ["novo", "nova"])) {
-      processouUrlRef.current = urlAtual;
-      setModalNovoAberto(true);
-    }
-  }, [location.pathname, location.search, location.hash]);
+    for (const item of acervo) {
+      if (!item.texto) continue;
+      const doc = lerMarkdown(item.texto);
+      const tituloDoc = tituloProvavel(doc, item.nome);
+      const dados = doc.dados || {};
 
-  // Lista compilada de itens da Inbox
-  const itensCompilados = useMemo(() => {
-    return compilarItensInbox(acervo, mapaEstado);
-  }, [acervo, mapaEstado]);
+      // 1. Tarefas (tarefas/)
+      if (item.caminho.startsWith("tarefas/")) {
+        const prazo = (dados.prazo as string) || (dados.data_fim as string) || (dados.data_inicio as string);
+        if (prazo && typeof prazo === "string") {
+          const dataIso = prazo.slice(0, 10);
+          const concluido = dados.status === "feito";
+          const atrasado = !concluido && dataIso < hojeStr;
 
-  // Extrai todas as tags únicas dos itens
-  const todasTags = useMemo(() => {
-    const tagsSet = new Set<string>();
-    for (const item of itensCompilados) {
-      if (item.tags) {
-        for (const t of item.tags) tagsSet.add(t);
-      }
-    }
-    return Array.from(tagsSet);
-  }, [itensCompilados]);
-
-  // Cálculo da Visão Semanal (próximos 7 dias)
-  const visaoSemanal = useMemo(() => {
-    const dias = [];
-    const hoje = new Date();
-
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(hoje);
-      d.setDate(hoje.getDate() + i);
-      
-      const ano = d.getFullYear();
-      const mes = String(d.getMonth() + 1).padStart(2, "0");
-      const dia = String(d.getDate()).padStart(2, "0");
-      const iso = `${ano}-${mes}-${dia}`;
-      
-      const diaDaSemana = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
-      const total = itensCompilados.filter((item) => {
-        if (item.visto) return false;
-        if (item.dataVencimento.includes("→") || item.dataVencimento.includes("->")) {
-          const partes = item.dataVencimento.split(/→|->/).map((p) => p.trim());
-          const inicio = partes[0] || "";
-          const fim = partes[1] || inicio;
-          return iso >= inicio && iso <= fim;
-        }
-        return item.dataVencimento.startsWith(iso);
-      }).length;
-
-      dias.push({
-        dataIso: iso,
-        diaDaSemana,
-        diaNumero: d.getDate(),
-        total,
-        ehHoje: i === 0,
-      });
-    }
-
-    return dias;
-  }, [itensCompilados]);
-
-  // Checagem automática de regras de escalonamento Telegram / Email
-  useEffect(() => {
-    if (!itensCompilados.length || (!cfg.inboxTelegramAtivo && !cfg.googleEmailAtivo)) return;
-
-    const verificarEscalation = async () => {
-      let alterado = false;
-      const novoMapa = { ...mapaEstado };
-
-      for (const item of itensCompilados) {
-        if (precisaEscalationInatividade(item, cfg.inboxEscalaHoras)) {
-          const mensagem = `⚠️ *Klaus - Lembrete Não Visto*\n\n📌 *${item.titulo}*\n📅 Venceu em: ${item.dataVencimento}\n📄 Origem: ${item.tituloOrigem}`;
-
-          if (cfg.inboxTelegramAtivo && cfg.telegramBotToken && cfg.telegramChatId) {
-            const enviou = await enviarNotificacaoTelegram(
-              cfg.telegramBotToken,
-              cfg.telegramChatId,
-              mensagem,
-            );
-            if (enviou) {
-              novoMapa[item.id] = { ...novoMapa[item.id], notificadoTelegram: true };
-              alterado = true;
-            }
-          }
-
-          if (cfg.googleEmailAtivo && cfg.googleAppsScriptUrl) {
-            const enviouEmail = await enviarNotificacaoEmailGoogle(
-              cfg.googleAppsScriptUrl,
-              `[Klaus] Lembrete Atrasado: ${item.titulo}`,
-              mensagem,
-            );
-            if (enviouEmail) {
-              novoMapa[item.id] = { ...novoMapa[item.id], notificadoEmail: true };
-              alterado = true;
-            }
-          }
+          lista.push({
+            id: `tarefa-${item.caminho}`,
+            tipo: "tarefa",
+            titulo: tituloDoc,
+            dataIso,
+            caminho: item.caminho,
+            sha: item.sha,
+            corpo: doc.corpo,
+            dados,
+            concluido,
+            atrasado,
+          });
         }
       }
 
-      if (alterado) {
-        setMapaEstado(novoMapa);
-        const res = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
-        if (res.ok && res.sha) setShaEstado(res.sha);
+      // 2. Metas do PDI (pdi/metas/)
+      else if (item.caminho.startsWith("pdi/metas/")) {
+        const prazo = dados.prazo as string;
+        if (prazo && typeof prazo === "string") {
+          const dataIso = prazo.slice(0, 10);
+          const concluido = dados.status === "concluida";
+          const atrasado = !concluido && dataIso < hojeStr;
+
+          lista.push({
+            id: `meta-${item.caminho}`,
+            tipo: "meta",
+            titulo: `Meta: ${tituloDoc}`,
+            dataIso,
+            caminho: item.caminho,
+            sha: item.sha,
+            corpo: doc.corpo,
+            dados,
+            concluido,
+            atrasado,
+          });
+        }
       }
-    };
 
-    verificarEscalation();
-  }, [itensCompilados, cfg.inboxTelegramAtivo, cfg.inboxEscalaHoras, cfg.telegramBotToken, cfg.telegramChatId, cfg.googleEmailAtivo, cfg.googleAppsScriptUrl]);
+      // 3. Entregas do PDI (pdi/entregas/)
+      else if (item.caminho.startsWith("pdi/entregas/")) {
+        const data = dados.data as string;
+        if (data && typeof data === "string") {
+          const dataIso = data.slice(0, 10);
+          lista.push({
+            id: `entrega-${item.caminho}`,
+            tipo: "entrega",
+            titulo: `Entrega: ${tituloDoc}`,
+            dataIso,
+            caminho: item.caminho,
+            sha: item.sha,
+            corpo: doc.corpo,
+            dados,
+            concluido: true,
+          });
+        }
+      }
 
-  // Alternar visto/não visto
-  const alternarVisto = async (id: string) => {
-    const mapaAnterior = { ...mapaEstado };
-    const atual = mapaEstado[id]?.visto;
-    const novoMapa: MapaEstadoInbox = {
-      ...mapaEstado,
-      [id]: {
-        ...mapaEstado[id],
-        visto: !atual,
-        vistoEm: !atual ? new Date().toISOString() : undefined,
-      },
-    };
-    setMapaEstado(novoMapa);
-    const res = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
-    if (res.ok && res.sha) {
-      setShaEstado(res.sha);
-    } else if (!res.ok) {
-      setMapaEstado(mapaAnterior);
-      salvarEstadoInboxLocal(mapaAnterior);
-      toast(`Erro ao sincronizar com GitHub: ${res.erro || "Falha na gravação"}`, { tipo: "erro" });
+      // 4. Notas com Data/Compromisso (notas/)
+      else if (item.caminho.startsWith("notas/")) {
+        const dataNota = (dados.data as string) || (dados.prazo as string) || (dados.data_reuniao as string);
+        if (dataNota && typeof dataNota === "string" && /^\d{4}-\d{2}-\d{2}/.test(dataNota)) {
+          const dataIso = dataNota.slice(0, 10);
+          lista.push({
+            id: `nota-${item.caminho}`,
+            tipo: "nota",
+            titulo: tituloDoc,
+            dataIso,
+            caminho: item.caminho,
+            sha: item.sha,
+            corpo: doc.corpo,
+            dados,
+          });
+        }
+      }
+
+      // 5. Lembretes inline no texto [⏰ Lembrete: Título | Data]
+      const matches = item.texto.matchAll(/\[⏰\s*Lembrete:\s*([^|]+)\|\s*([\d\s\-\:T]+)\]/gi);
+      for (const m of matches) {
+        const tit = m[1]?.trim();
+        const dh = m[2]?.trim();
+        if (tit && dh) {
+          const partes = dh.split(" ");
+          const dataIso = partes[0] || "";
+          const hora = partes[1] || "";
+
+          if (/^\d{4}-\d{2}-\d{2}/.test(dataIso)) {
+            lista.push({
+              id: `lembrete-${item.caminho}-${tit}`,
+              tipo: "lembrete",
+              titulo: `Lembrete: ${tit}`,
+              dataIso,
+              hora,
+              caminho: item.caminho,
+              sha: item.sha,
+              corpo: doc.corpo,
+              dados,
+              atrasado: dataIso < hojeStr,
+            });
+          }
+        }
+      }
     }
+
+    return lista;
+  }, [acervo]);
+
+  // ── Dias da Semana Atual (Segunda a Domingo) ──────────────────────────────
+  const inicioSemana = useMemo(() => {
+    return startOfWeek(dataReferencia, { weekStartsOn: 1 }); // Começa na segunda-feira
+  }, [dataReferencia]);
+
+  const diasDaSemana = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => addDays(inicioSemana, i));
+  }, [inicioSemana]);
+
+  const fimSemana = useMemo(() => {
+    return endOfWeek(dataReferencia, { weekStartsOn: 1 });
+  }, [dataReferencia]);
+
+  // Intervalo formatado: DD/MM/AAAA - DD/MM/AAAA
+  const intervaloSemanaFormatado = useMemo(() => {
+    const dInicio = format(inicioSemana, "dd/MM/yyyy");
+    const dFim = format(fimSemana, "dd/MM/yyyy");
+    return `${dInicio} – ${dFim}`;
+  }, [inicioSemana, fimSemana]);
+
+  // Compromissos Atrasados (anteriores ao início da semana exibida)
+  const atrasados = useMemo(() => {
+    const inicioIso = format(inicioSemana, "yyyy-MM-dd");
+    return todosCompromissos.filter((c) => c.dataIso < inicioIso && !c.concluido);
+  }, [todosCompromissos, inicioSemana]);
+
+  // ── Ações nos Compromissos ────────────────────────────────────────────────
+  const abrirDocumento = (c: CompromissoSemana) => {
+    setItemAberto(c);
+    setTituloEditor(c.titulo);
+    setCorpoEditor(c.corpo);
+    setDadosPropsEditor(c.dados);
+    setTemMudancasItem(false);
   };
 
-  // Snooze / Adiar lembrete em 1 clique (Ideia 1)
-  const adiarItem = async (
-    item: ItemInbox,
-    opcao: "1h" | "amanha" | "3dias" | "proxima_segunda",
-  ) => {
-    const novaDataHora = adiarDataHora(item.dataVencimento, opcao);
+  const salvarEdicaoItem = async () => {
+    if (!itemAberto) return;
+    setSalvandoItem(true);
 
-    // Se tiver arquivo de origem e tag de lembrete bruta, atualiza o arquivo no GitHub
-    if (item.lembreteBruto && item.caminhoOrigem) {
-      const docAlvo = acervo.find((i) => i.caminho === item.caminhoOrigem);
-      if (!docAlvo || !docAlvo.texto) {
-        toast(`Nota de origem (${item.caminhoOrigem}) não encontrada para adiar.`, { tipo: "erro" });
-        return;
-      }
-
-      const doc = lerMarkdown(docAlvo.texto);
-      const novaTag = formatarTagLembrete(item.titulo, novaDataHora);
-      const corpoAtualizado = doc.corpo.replace(item.lembreteBruto, novaTag);
-      const novoTexto = escreverMarkdown({ dados: doc.dados, corpo: corpoAtualizado });
-
-      try {
-        await salvarTexto(docAlvo.caminho, novoTexto, docAlvo.sha, `adiar lembrete: ${item.titulo}`);
-        setMensagemSucesso(`Lembrete adiado para ${novaDataHora}!`);
-        setTimeout(() => setMensagemSucesso(null), 3000);
-        carregar();
-      } catch (err: any) {
-        toast(`Erro ao adiar lembrete no GitHub: ${err?.message || "Falha na gravação"}`, { tipo: "erro" });
-      }
-    } else if (item.caminhoOrigem && item.caminhoOrigem.startsWith("tarefas/")) {
-      const docAlvo = acervo.find((i) => i.caminho === item.caminhoOrigem);
-      if (!docAlvo || !docAlvo.texto) {
-        toast(`Tarefa de origem (${item.caminhoOrigem}) não encontrada para adiar.`, { tipo: "erro" });
-        return;
-      }
-
-      const doc = lerMarkdown(docAlvo.texto);
-      const novaDataPrazo = novaDataHora.split(" ")[0];
-      const novoTexto = escreverMarkdown({
-        dados: { ...doc.dados, prazo: novaDataPrazo },
-        corpo: doc.corpo,
-      });
-
-      try {
-        await salvarTexto(docAlvo.caminho, novoTexto, docAlvo.sha, `adiar prazo de tarefa: ${item.titulo}`);
-        setMensagemSucesso(`Prazo de tarefa adiado para ${novaDataPrazo}!`);
-        setTimeout(() => setMensagemSucesso(null), 3000);
-        carregar();
-      } catch (err: any) {
-        toast(`Erro ao adiar prazo da tarefa no GitHub: ${err?.message || "Falha na gravação"}`, { tipo: "erro" });
-      }
-    } else {
-      // Para tarefas ou itens sem tag, atualiza o mapa de estado com visto
-      const mapaAnterior = { ...mapaEstado };
-      const novoMapa: MapaEstadoInbox = {
-        ...mapaEstado,
-        [item.id]: {
-          ...mapaEstado[item.id],
-          visto: true,
-          vistoEm: new Date().toISOString(),
-        },
-      };
-      setMapaEstado(novoMapa);
-      const res = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
-      if (res.ok && res.sha) {
-        setShaEstado(res.sha);
-        setMensagemSucesso(`Lembrete marcado como visto e adiado!`);
-        setTimeout(() => setMensagemSucesso(null), 3000);
-        carregar();
-      } else {
-        setMapaEstado(mapaAnterior);
-        salvarEstadoInboxLocal(mapaAnterior);
-        toast(`Erro ao salvar no GitHub: ${res.erro || "Falha na gravação"}`, { tipo: "erro" });
-      }
-    }
-  };
-
-  // Marcar todos como vistos
-  const marcarTodosComoVistos = async () => {
-    const mapaAnterior = { ...mapaEstado };
-    const agoraIso = new Date().toISOString();
-    const novoMapa: MapaEstadoInbox = { ...mapaEstado };
-
-    for (const item of itensCompilados) {
-      novoMapa[item.id] = {
-        ...novoMapa[item.id],
-        visto: true,
-        vistoEm: agoraIso,
-      };
-    }
-
-    setMapaEstado(novoMapa);
-    const res = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
-    if (res.ok && res.sha) {
-      setShaEstado(res.sha);
-      setMensagemSucesso("Todos os itens foram marcados como lidos!");
-      setTimeout(() => setMensagemSucesso(null), 3000);
-    } else {
-      setMapaEstado(mapaAnterior);
-      salvarEstadoInboxLocal(mapaAnterior);
-      toast(`Erro ao sincronizar com o GitHub: ${res.erro || "Falha na gravação"}`, { tipo: "erro" });
-    }
-  };
-
-  // Descartar/Arquivar um item
-  const descartarItem = async (id: string) => {
-    const mapaAnterior = { ...mapaEstado };
-    const novoMapa: MapaEstadoInbox = {
-      ...mapaEstado,
-      [id]: {
-        ...mapaEstado[id],
-        descartado: true,
-      },
-    };
-    setMapaEstado(novoMapa);
-    const res = await gravarEstadoInbox(cfg, novoMapa, shaEstado);
-    if (res.ok && res.sha) {
-      setShaEstado(res.sha);
-    } else {
-      setMapaEstado(mapaAnterior);
-      salvarEstadoInboxLocal(mapaAnterior);
-      toast(`Erro ao arquivar item no GitHub: ${res.erro || "Falha na gravação"}`, { tipo: "erro" });
-    }
-  };
-
-  // Extrair lembretes com a IA Gemini (Ideia 7)
-  const executarExtracaoIA = async () => {
-    if (!cfg.geminiKey) {
-      toast("Configure a chave do Gemini na tela de Ajustes para usar esta função!", { tipo: "aviso" });
-      return;
-    }
-    setExtraindoIA(true);
+    const textoFormatado = escreverMarkdown({
+      dados: dadosPropsEditor,
+      corpo: corpoEditor,
+    });
 
     try {
-      let totalExtraidos = 0;
-      // Examina até 5 notas recentes
-      const notasRecentes = acervo.filter((i) => i.caminho.startsWith("notas/")).slice(0, 5);
-
-      for (const item of notasRecentes) {
-        const extraidos = await extrairLembretesComIA(cfg, item.texto);
-        if (extraidos.length > 0) {
-          const doc = lerMarkdown(item.texto);
-          let corpoNovos = doc.corpo;
-          for (const ext of extraidos) {
-            const tag = formatarTagLembrete(ext.titulo, ext.dataHora);
-            corpoNovos += `\n\n${tag}`;
-            totalExtraidos++;
-          }
-          const novoTexto = escreverMarkdown({ dados: doc.dados, corpo: corpoNovos });
-          await salvarTexto(item.caminho, novoTexto, item.sha, "IA: extrair lembretes automaticamente");
-        }
-      }
-
-      if (totalExtraidos > 0) {
-        setMensagemSucesso(`✨ A IA encontrou e agendou ${totalExtraidos} lembretes em seus documentos!`);
-        carregar();
-      } else {
-        setMensagemSucesso("A IA analisou seus documentos recentes e não encontrou novos prazos pendentes.");
-      }
-    } catch (e) {
-      setErro("Falha ao extrair lembretes com a IA.");
-    } finally {
-      setExtraindoIA(false);
-      setTimeout(() => setMensagemSucesso(null), 4000);
-    }
-  };
-
-  // Criar um novo lembrete
-  const salvarNovoLembrete = async (
-    titulo: string,
-    dataHora: string,
-    canais: ("inbox" | "telegram" | "email")[],
-  ) => {
-    const notaAlvo = acervo.find((i) => i.caminho.startsWith("notas/")) || acervo[0];
-    if (!notaAlvo) return;
-
-    const tag = formatarTagLembrete(titulo, dataHora);
-    const doc = lerMarkdown(notaAlvo.texto);
-    const corpoAtualizado = doc.corpo ? `${doc.corpo}\n\n${tag}` : tag;
-    const novoTexto = escreverMarkdown({ dados: doc.dados, corpo: corpoAtualizado });
-
-    await salvarTexto(notaAlvo.caminho, novoTexto, notaAlvo.sha, `adicionar lembrete: ${titulo}`);
-
-    if (canais.includes("telegram") && cfg.telegramBotToken && cfg.telegramChatId) {
-      await enviarNotificacaoTelegram(
-        cfg.telegramBotToken,
-        cfg.telegramChatId,
-        `📌 *Novo Lembrete Agendado no Klaus*\n\n*${titulo}*\n📅 Data: ${dataHora}`,
+      const novoSha = await salvarTexto(
+        itemAberto.caminho,
+        textoFormatado,
+        itemAberto.sha,
+        `atualizar documento: ${tituloEditor}`
       );
-    }
-
-    setMensagemSucesso(`Lembrete "${titulo}" criado com sucesso!`);
-    setTimeout(() => setMensagemSucesso(null), 3000);
-    carregar();
-  };
-
-  const notasInativas = useMemo(() => {
-    return compilarNotasInativas(acervo, mapaEstado);
-  }, [acervo, mapaEstado]);
-
-  // Filtragem dos itens exibidos
-  const itensExibidos = useMemo(() => {
-    if (aba === "inativas") {
-      return notasInativas.filter((item) => {
-        if (tagSelecionada && (!item.tags || !item.tags.includes(tagSelecionada))) {
-          return false;
-        }
-        return true;
-      });
-    }
-
-    return itensCompilados.filter((item) => {
-      // Filtro por Tag (Ideia 6)
-      if (tagSelecionada && (!item.tags || !item.tags.includes(tagSelecionada))) {
-        return false;
-      }
-
-      // Filtro por dia selecionado no painel semanal
-      if (diaFiltro) {
-        if (item.dataVencimento.includes("→") || item.dataVencimento.includes("->")) {
-          const partes = item.dataVencimento.split(/→|->/).map((p) => p.trim());
-          const inicio = partes[0] || "";
-          const fim = partes[1] || inicio;
-          if (diaFiltro < inicio || diaFiltro > fim) {
-            return false;
-          }
-        } else if (item.dataVencimento.slice(0, 10) !== diaFiltro) {
-          return false;
-        }
-      }
-
-      if (aba === "nao_vistos") return !item.visto && item.tipo !== "nota_inativa";
-      if (aba === "lembretes") return item.tipo === "lembrete" && !item.visto;
-      if (aba === "atrasadas") return item.tipo === "tarefa_atrasada" && !item.visto;
-      if (aba === "todas") return true;
-      if (aba === "arquivados") return item.visto;
-      return true;
-    });
-  }, [itensCompilados, notasInativas, aba, tagSelecionada, diaFiltro]);
-
-  const contagemNaoVistos = itensCompilados.filter((i) => !i.visto && i.tipo !== "nota_inativa").length;
-  const contagemAtrasadas = itensCompilados.filter((i) => i.tipo === "tarefa_atrasada" && !i.visto).length;
-  const contagemLembretes = itensCompilados.filter((i) => i.tipo === "lembrete" && !i.visto).length;
-  const contagemInativas = notasInativas.length;
-
-  const navegarParaOrigem = (caminho: string) => {
-    const item = acervo.find((i) => i.caminho === caminho);
-    if (item) {
-      const doc = lerMarkdown(item.texto || "");
-      setItemVisualizado({
-        caminho: item.caminho,
-        titulo: tituloProvavel(doc, item.nome),
-        corpo: doc.corpo,
-        dadosProps: doc.dados,
-        sha: item.sha,
-      });
-
-      // Marca o item como visto silenciosamente ao abrir o pop-up
-      const itemInbox = itensCompilados.find((i) => i.caminhoOrigem === caminho);
-      if (itemInbox && !itemInbox.visto) {
-        const novoMapa: MapaEstadoInbox = {
-          ...mapaEstado,
-          [itemInbox.id]: {
-            ...mapaEstado[itemInbox.id],
-            visto: true,
-            vistoEm: new Date().toISOString(),
-          },
-        };
-        setMapaEstado(novoMapa);
-        gravarEstadoInbox(cfg, novoMapa, shaEstado).then((res) => {
-          if (res.ok && res.sha) setShaEstado(res.sha);
-        });
-      }
+      invalidarCache();
+      setItemAberto((prev) => prev ? { ...prev, sha: novoSha, corpo: corpoEditor, dados: dadosPropsEditor } : null);
+      setTemMudancasItem(false);
+      toast("Documento salvo com sucesso!");
+      carregar();
+    } catch (err: any) {
+      toast(`Erro ao salvar: ${err?.message || err}`, { tipo: "erro" });
+    } finally {
+      setSalvandoItem(false);
     }
   };
 
-  if (!pronto) {
-    return (
-      <Aviso tom="erro">
-        Para usar a Caixa de Entrada, preencha o Token do GitHub e as informações do repositório na tela de Ajustes.
-      </Aviso>
-    );
-  }
+  const alternarConclusaoTarefa = async (c: CompromissoSemana) => {
+    if (c.tipo !== "tarefa") return;
+    const novoStatus = c.concluido ? "a-fazer" : "feito";
+
+    const novosDados = { ...c.dados, status: novoStatus };
+    const textoFormatado = escreverMarkdown({ dados: novosDados, corpo: c.corpo });
+
+    try {
+      await salvarTexto(c.caminho, textoFormatado, c.sha, `atualizar status: ${c.titulo} (${novoStatus})`);
+      invalidarCache();
+      toast(novoStatus === "feito" ? `"${c.titulo}" concluída!` : `"${c.titulo}" reaberta.`);
+      carregar();
+    } catch (err: any) {
+      toast(`Erro ao salvar tarefa: ${err?.message || err}`, { tipo: "erro" });
+    }
+  };
+
+  // Salvar novo compromisso/lembrete
+  const salvarNovoLembrete = async (titulo: string, dataHora: string, canais: ("inbox" | "telegram" | "email")[]) => {
+    const dataIso = dataHora.slice(0, 10);
+    const hora = dataHora.slice(11) || "09:00";
+    const caminhosExistentes = acervo.map((i) => i.caminho);
+    const caminho = nomeLivre("tarefas", `lembrete-${titulo}`, caminhosExistentes);
+
+    const dados = {
+      titulo,
+      prazo: dataIso,
+      status: "a-fazer",
+      tags: ["lembrete", ...canais],
+      criado: new Date().toISOString().split("T")[0],
+    };
+
+    const corpo = `[⏰ Lembrete: ${titulo} | ${dataIso} ${hora}]\n\nLembrete criado via Caixa de Entrada do Klaus.`;
+    const textoFormatado = escreverMarkdown({ dados, corpo });
+
+    try {
+      await salvarTexto(caminho, textoFormatado, undefined, `criar lembrete: ${titulo}`);
+      invalidarCache();
+      toast(`Lembrete "${titulo}" agendado para ${dataIso.split("-").reverse().join("/")}!`);
+      carregar();
+    } catch (err: any) {
+      toast(`Erro ao criar lembrete: ${err?.message || err}`, { tipo: "erro" });
+    }
+  };
+
+  const hoje = new Date();
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      <CabecalhoPagina
-        titulo="Caixa de Entrada"
-        descricao="Lembretes agendados, tarefas atrasadas e sugestões de organização."
-        icone={<Bell size={20} />}
-        corIcone="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-        badge={
-          contagemNaoVistos > 0 ? (
-            <span className="rounded-full bg-destructive px-2.5 py-0.5 text-xs font-bold text-destructive-foreground">
-              {contagemNaoVistos} {contagemNaoVistos === 1 ? "novo" : "novos"}
-            </span>
-          ) : undefined
-        }
-        acoes={
-          <>
-            <Botao
-              variante="neutro"
-              tamanho="pequeno"
-              onClick={executarExtracaoIA}
-              disabled={extraindoIA}
-              title="Usar a IA Gemini para identificar compromissos nos documentos"
-            >
-              <Sparkles size={14} className={extraindoIA ? "animate-spin text-amber-500" : "text-amber-500"} />
-              {extraindoIA ? "Analisando..." : "IA Extrair Prazos"}
-            </Botao>
-
-            <Botao variante="primario" tamanho="pequeno" onClick={() => setModalNovoAberto(true)}>
-              <Plus size={16} />
-              Novo Lembrete
-            </Botao>
-          </>
-        }
-      />
-
-      {mensagemSucesso && <Aviso tom="sucesso">{mensagemSucesso}</Aviso>}
-      {erro && <Aviso tom="erro">{erro}</Aviso>}
-
-      {/* Visão Semanal / Linha do Tempo */}
-      <div className="rounded-xl border border-border/80 bg-card p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
-            <Calendar size={14} /> Próximos 7 Dias
-          </h2>
-          <button
-            onClick={() => setModalCalendarioAberto(true)}
-            className="text-[11px] font-medium text-primary hover:underline flex items-center gap-1 cursor-pointer"
-            title="Abrir mapa de tarefas do mês em formato calendário"
-          >
-            <Calendar size={13} /> Visão Geral
-          </button>
+    <div className="space-y-6 w-full max-w-none pb-16 animate-in fade-in duration-150">
+      {/* 1. Cabeçalho da Caixa de Entrada & Agenda Semanal */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-border/40">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Caixa de Entrada & Agenda da Semana
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Acompanhe todos os seus compromissos, tarefas com prazo, entregas e lembretes da semana.
+          </p>
         </div>
 
-        <div className="grid grid-cols-7 gap-1.5 text-center">
-          {visaoSemanal.map((d) => {
-            const estaAtivo = diaFiltro === d.dataIso;
-            return (
-              <button
-                key={d.dataIso}
-                onClick={() => setDiaFiltro(estaAtivo ? null : d.dataIso)}
-                className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all cursor-pointer ${
-                  estaAtivo
-                    ? "border-primary bg-primary text-primary-foreground font-bold shadow-xs scale-102"
-                    : d.ehHoje
-                    ? "border-primary/60 bg-primary/10 font-bold hover:bg-primary/20"
-                    : "border-border/60 bg-secondary/40 hover:bg-accent"
-                }`}
-                title={`Ver pendências do dia ${formatarDataPtBR(d.dataIso)}`}
-              >
-                <span className={`text-[10px] uppercase font-mono ${estaAtivo ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                  {d.diaDaSemana}
-                </span>
-                <span className="text-sm font-semibold">{d.diaNumero}</span>
-                {d.total > 0 ? (
-                  <span className={`mt-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${estaAtivo ? "bg-background text-foreground" : "bg-primary text-primary-foreground"}`}>
-                    {d.total}
-                  </span>
-                ) : (
-                  <span className="mt-1 text-[10px] opacity-40">-</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {diaFiltro && (
-          <div className="mt-3 pt-2 border-t border-border/40 flex items-center justify-between text-xs">
-            <span className="text-muted-foreground font-medium">
-              Filtrando tarefas do dia <strong className="text-foreground">{formatarDataPtBR(diaFiltro)}</strong>
-            </span>
+        <div className="flex items-center gap-2">
+          {/* Navegação Semanal */}
+          <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 shadow-2xs">
             <button
-              onClick={() => setDiaFiltro(null)}
-              className="text-primary hover:underline font-semibold text-xs"
+              type="button"
+              onClick={() => setDataReferencia((d) => subWeeks(d, 1))}
+              className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+              title="Semana anterior"
             >
-              Limpar filtro de data
+              <ChevronLeft size={16} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setDataReferencia(new Date())}
+              className="px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-accent rounded-lg transition-colors cursor-pointer"
+            >
+              Hoje
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setDataReferencia((d) => addWeeks(d, 1))}
+              className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+              title="Próxima semana"
+            >
+              <ChevronRight size={16} />
             </button>
           </div>
-        )}
-      </div>
 
-      {/* Abas Principais (Exibe apenas as abas com contagem > 0) */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
-        <div className="flex flex-wrap gap-1">
-          {(contagemNaoVistos > 0 || aba === "nao_vistos") && (
-            <button
-              onClick={() => setAba("nao_vistos")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                aba === "nao_vistos"
-                  ? "bg-primary text-primary-foreground font-semibold"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-            >
-              <Bell size={14} />
-              Não Vistas ({contagemNaoVistos})
-            </button>
-          )}
-
-          {(contagemAtrasadas > 0 || aba === "atrasadas") && (
-            <button
-              onClick={() => setAba("atrasadas")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                aba === "atrasadas"
-                  ? "bg-destructive text-destructive-foreground font-semibold"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-            >
-              <AlertTriangle size={14} />
-              Tarefas Atrasadas ({contagemAtrasadas})
-            </button>
-          )}
-
-          {(contagemLembretes > 0 || aba === "lembretes") && (
-            <button
-              onClick={() => setAba("lembretes")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                aba === "lembretes"
-                  ? "bg-primary text-primary-foreground font-semibold"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-            >
-              <Calendar size={14} />
-              Lembretes ({contagemLembretes})
-            </button>
-          )}
-
-          {(contagemInativas > 0 || aba === "inativas") && (
-            <button
-              onClick={() => setAba("inativas")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                aba === "inativas"
-                  ? "bg-amber-500 text-white font-semibold"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-            >
-              <Archive size={14} />
-              Notas Inativas ({contagemInativas})
-            </button>
-          )}
-
-          {(obterRascunhosLocais().length > 0 || aba === "rascunhos") && (
-            <button
-              onClick={() => setAba("rascunhos")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                aba === "rascunhos"
-                  ? "bg-purple-600 text-white font-semibold"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-            >
-              <WifiOff size={14} />
-              Rascunhos Offline ({obterRascunhosLocais().length})
-            </button>
-          )}
-
-          <button
-            onClick={() => setAba("todas")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              aba === "todas"
-                ? "bg-secondary text-secondary-foreground font-semibold"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
-          >
-            <Filter size={14} />
-            Todas ({itensCompilados.length})
-          </button>
-
-          <button
-            onClick={() => setAba("arquivados")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              aba === "arquivados"
-                ? "bg-secondary text-secondary-foreground font-semibold"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
-          >
-            <CheckCheck size={14} />
-            Arquivadas
-          </button>
-        </div>
-
-        {contagemNaoVistos > 0 && (
-          <button
-            onClick={marcarTodosComoVistos}
-            className="flex items-center gap-1.5 text-xs text-primary font-medium hover:underline px-2 py-1"
-          >
-            <CheckCheck size={14} />
-            Marcar todas como lidas
-          </button>
-        )}
-      </div>
-
-      {/* Filtro por Tags/Projetos (Ideia 6) */}
-      {todasTags.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap py-1">
-          <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-            <Tag size={12} /> Tags:
+          <span className="text-xs font-mono font-medium text-muted-foreground bg-secondary/50 px-2.5 py-1.5 rounded-xl border border-border/50">
+            {intervaloSemanaFormatado}
           </span>
-          <button
-            onClick={() => setTagSelecionada(null)}
-            className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${
-              tagSelecionada === null
-                ? "bg-primary text-primary-foreground font-semibold"
-                : "bg-secondary/60 text-muted-foreground hover:bg-accent"
-            }`}
-          >
-            Todas
-          </button>
-          {todasTags.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTagSelecionada(t === tagSelecionada ? null : t)}
-              className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                tagSelecionada === t
-                  ? "bg-primary text-primary-foreground font-semibold"
-                  : "bg-secondary/60 text-muted-foreground hover:bg-accent"
-              }`}
-            >
-              #{t}
-            </button>
-          ))}
-        </div>
-      )}
 
-      {/* Lista de Conteúdo */}
-      {aba === "rascunhos" ? (
-        (() => {
-          const rascunhos = obterRascunhosLocais();
-          if (rascunhos.length === 0) {
-            return (
-              <Vazio
-                icone={<WifiOff size={24} />}
-                titulo="Nenhum rascunho offline pendente"
-                descricao="Todas as suas edições e arquivos já foram sincronizados com o repositório remoto."
-              />
-            );
-          }
-          return (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/80 text-xs">
-                <span className="text-muted-foreground font-medium">
-                  <strong className="text-foreground">{rascunhos.length}</strong> {rascunhos.length === 1 ? "rascunho pendente" : "rascunhos pendentes"}
-                </span>
-                <div className="flex items-center gap-2">
-                  <Botao
-                    variante="neutro"
-                    tamanho="pequeno"
-                    onClick={async () => {
-                      toast("Sincronizando rascunhos...", { tipo: "info" });
-                      await sincronizarFilaOffline(cfg);
-                      carregar();
-                    }}
-                  >
-                    <RotateCcw size={13} />
-                    Sincronizar Todos
-                  </Botao>
-                  <Botao
-                    variante="fantasma"
-                    tamanho="pequeno"
-                    onClick={() => {
-                      if (confirm("Deseja realmente descartar todos os rascunhos locais?")) {
-                        limparTodosRascunhosLocais();
-                        toast("Todos os rascunhos locais foram descartados", { tipo: "info" });
-                        carregar();
-                      }
-                    }}
-                    className="text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 size={13} />
-                    Descartar Todos
-                  </Botao>
-                </div>
+          <Button
+            size="sm"
+            onClick={() => setModalNovoAberto(true)}
+            className="text-xs font-semibold h-9 rounded-xl gap-1.5 shadow-2xs cursor-pointer ml-1"
+          >
+            <Plus size={14} />
+            <span>Novo Compromisso</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* 2. Conteúdo da Agenda */}
+      {carregando ? (
+        <Carregando texto="Carregando compromissos da semana..." />
+      ) : (
+        <div className="space-y-6">
+          {/* Alerta de Itens Atrasados / Pendentes Anteriores */}
+          {atrasados.length > 0 && (
+            <div className="p-4 rounded-2xl border border-destructive/30 bg-destructive/5 space-y-2.5">
+              <div className="flex items-center gap-2 text-destructive font-bold text-xs">
+                <AlertCircle size={15} />
+                <span>Compromissos Atrasados ({atrasados.length})</span>
               </div>
 
-              {rascunhos.map((r) => {
-                const nomeAmigavel = formatarNomeAmigavel(r.caminho);
-                const dataFormatada = formatarDataPtBR(r.criadoEm);
-
-                return (
-                  <CartaoItem
-                    key={r.id}
-                    icone={<WifiOff size={18} />}
-                    titulo={nomeAmigavel}
-                    subtitulo={`Caminho: ${r.caminho} • Criado em ${dataFormatada}`}
-                    badge={
-                      <SeloStatus
-                        rotulo={
-                          r.status === "conflito"
-                            ? "Conflito (409)"
-                            : r.status === "erro"
-                            ? "Erro no Envio"
-                            : "Pendente"
-                        }
-                        tom={
-                          r.status === "conflito"
-                            ? "perigo"
-                            : r.status === "erro"
-                            ? "aviso"
-                            : "primario"
-                        }
-                      />
-                    }
-                    acoes={
-                      <div className="flex items-center gap-2">
-                        <Botao
-                          variante={r.status === "conflito" ? "perigo" : "primario"}
-                          tamanho="pequeno"
-                          onClick={async () => {
-                            try {
-                              await forcarResolverConflitoRascunho(cfg, r.id);
-                              toast(`"${nomeAmigavel}" salvo`, { tipo: "sucesso" });
-                              carregar();
-                            } catch (err: any) {
-                              const msg = err instanceof Error ? err.message : String(err);
-                              toast(`Erro ao sincronizar "${nomeAmigavel}": clique para ver`, {
-                                tipo: "erro",
-                                detalhes: msg,
-                              });
-                            }
-                          }}
-                        >
-                          <RotateCcw size={14} />
-                          {r.status === "conflito" ? "Forçar Regravação" : "Sincronizar"}
-                        </Botao>
-                        <Botao
-                          variante="fantasma"
-                          tamanho="icone"
-                          onClick={() => {
-                            removerRascunhoLocal(r.id);
-                            toast(`Rascunho de "${nomeAmigavel}" descartado`, { tipo: "info" });
-                            carregar();
-                          }}
-                          title="Descartar rascunho"
-                        >
-                          <Trash2 size={14} />
-                        </Botao>
-                      </div>
-                    }
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {atrasados.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => abrirDocumento(c)}
+                    className="p-2.5 rounded-xl border border-destructive/20 bg-background/80 hover:bg-card hover:border-destructive/40 transition-all cursor-pointer flex items-center justify-between gap-2 text-xs"
                   >
-                    {r.ultimoErro && (
-                      <div
-                        onClick={() =>
-                          toast(`Detalhes do erro em "${nomeAmigavel}"`, {
-                            tipo: "erro",
-                            detalhes: r.ultimoErro,
-                          })
-                        }
-                        className="cursor-pointer"
-                        title="Clique para ver o erro completo"
-                      >
-                        <Aviso tom="erro">
-                          {r.ultimoErro} (Clique para abrir detalhes)
-                        </Aviso>
-                      </div>
-                    )}
-                  </CartaoItem>
-                );
-              })}
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground truncate">{c.titulo}</p>
+                      <p className="text-[10px] text-destructive font-medium">
+                        Venceu em {c.dataIso.split("-").reverse().join("/")}
+                      </p>
+                    </div>
+                    <Badge variant="destructive" className="text-[9px] px-1.5 py-0 h-4 uppercase">
+                      {c.tipo}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
             </div>
-          );
-        })()
-      ) : carregando ? (
-        <Carregando texto="Buscando lembretes e tarefas..." />
-      ) : itensExibidos.length === 0 ? (
-        <Vazio
-          icone={<Bell size={24} />}
-          titulo="Nenhum item nesta caixa de entrada"
-          descricao={
-            aba === "nao_vistos"
-              ? "Você está em dia! Todos os lembretes e tarefas atrasadas foram visualizados."
-              : "Não há lembretes ou pendências correspondentes a este filtro."
-          }
-          acao={
-            <Botao variante="primario" tamanho="pequeno" onClick={() => setModalNovoAberto(true)}>
-              <Plus size={16} /> Criar Lembrete
-            </Botao>
-          }
-        />
-      ) : (
-        <div className="space-y-3">
-          {itensExibidos.map((item) => {
-            const ehAtrasada = item.tipo === "tarefa_atrasada";
-            const ehInativa = item.tipo === "nota_inativa";
-            const dataExibicao = formatarDataPtBR(item.dataVencimento);
+          )}
 
-            return (
-              <Cartao
-                key={item.id}
-                onClick={() => navegarParaOrigem(item.caminhoOrigem)}
-                className={`p-4 transition-all hover:shadow-md cursor-pointer group ${
-                  !item.visto
-                    ? ehAtrasada
-                      ? "border-destructive/40 bg-destructive/5 hover:border-destructive/60"
-                      : ehInativa
-                      ? "border-amber-500/40 bg-amber-500/5 hover:border-amber-500/60"
-                      : "border-primary/40 bg-primary/5 hover:border-primary/60"
-                    : "opacity-75 hover:opacity-100"
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div
-                      className={`rounded-xl p-2.5 shrink-0 ${
-                        ehAtrasada
-                          ? "bg-destructive/15 text-destructive"
-                          : ehInativa
-                          ? "bg-amber-500/15 text-amber-500"
-                          : "bg-primary/15 text-primary"
-                      }`}
-                    >
-                      {ehAtrasada ? (
-                        <AlertTriangle size={20} />
-                      ) : ehInativa ? (
-                        <Archive size={20} />
-                      ) : (
-                        <Bell size={20} />
-                      )}
-                    </div>
+          {/* Grade dos 7 Dias da Semana (Segunda a Domingo) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 items-start">
+            {diasDaSemana.map((dia) => {
+              const diaIso = format(dia, "yyyy-MM-dd");
+              const diaNome = format(dia, "EEEE", { locale: ptBR });
+              const diaNumeroBr = format(dia, "dd/MM");
+              const ehHoje = isSameDay(dia, hoje);
 
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-semibold text-base text-foreground leading-snug group-hover:text-primary transition-colors">
-                          {item.titulo}
-                        </h3>
-                        <Selo tom={ehAtrasada ? "perigo" : ehInativa ? "aviso" : "primario"}>
-                          {ehAtrasada ? "Tarefa Atrasada" : ehInativa ? "Nota Inativa" : "Lembrete"}
-                        </Selo>
-                        {item.notificadoTelegram && (
-                          <Selo tom="sucesso">Telegram Enviado</Selo>
-                        )}
-                        {item.tags?.map((t) => (
-                          <span key={t} className="text-[10px] font-mono text-muted-foreground">
-                            #{t}
-                          </span>
-                        ))}
-                      </div>
+              const itensDoDia = todosCompromissos.filter((c) => c.dataIso === diaIso);
 
-                      {item.descricao && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {item.descricao}
-                        </p>
-                      )}
-
-                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground pt-1">
-                        <span className="flex items-center gap-1 font-mono font-medium">
-                          <Calendar size={12} /> {dataExibicao}
-                        </span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1 font-medium text-primary">
-                          <ExternalLink size={12} /> {item.tituloOrigem}
-                        </span>
-                      </div>
-                    </div>
+              return (
+                <div
+                  key={diaIso}
+                  className={cn(
+                    "flex flex-col rounded-2xl border transition-all duration-150 overflow-hidden min-h-[380px]",
+                    ehHoje
+                      ? "bg-card border-primary/50 shadow-md ring-1 ring-primary/20"
+                      : "bg-card/60 border-border/70"
+                  )}
+                >
+                  {/* Cabeçalho do Dia */}
+                  <div
+                    className={cn(
+                      "p-3 border-b text-xs flex items-center justify-between",
+                      ehHoje
+                        ? "bg-primary/10 border-primary/30 text-primary font-bold"
+                        : "bg-secondary/20 border-border/40 text-muted-foreground font-medium"
+                    )}
+                  >
+                    <span className="capitalize">{diaNome.slice(0, 3)}</span>
+                    <span className="font-mono text-[11px]">{diaNumeroBr}</span>
                   </div>
 
-                  {/* Ações e Snooze em 1 Clique */}
-                  <div
-                    className="flex items-center gap-1.5 shrink-0 self-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40 w-full sm:w-auto justify-end flex-wrap"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {/* Menu Popover Elegante para Adiar (Snooze) */}
-                    {!item.visto && !ehInativa && (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/80 bg-secondary/60 hover:bg-accent text-xs font-semibold text-foreground transition-all cursor-pointer shadow-2xs mr-1"
-                            title="Adiar prazo ou lembrete"
+                  {/* Lista de Compromissos do Dia */}
+                  <div className="p-2 space-y-2 flex-1 overflow-y-auto">
+                    {itensDoDia.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground/40 text-center py-8">
+                        Sem eventos
+                      </p>
+                    ) : (
+                      itensDoDia.map((c) => {
+                        const Icone =
+                          c.tipo === "tarefa"
+                            ? CheckSquare
+                            : c.tipo === "meta"
+                            ? Target
+                            : c.tipo === "entrega"
+                            ? Sparkles
+                            : c.tipo === "nota"
+                            ? FileText
+                            : Bell;
+
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => abrirDocumento(c)}
+                            className={cn(
+                              "group p-2.5 rounded-xl border transition-all cursor-pointer space-y-1.5 text-xs",
+                              c.concluido
+                                ? "bg-secondary/20 border-border/40 opacity-60 hover:opacity-100"
+                                : "bg-background/80 border-border/70 hover:border-border hover:bg-card hover:shadow-xs"
+                            )}
                           >
-                            <Clock size={13} className="text-amber-500 shrink-0" />
-                            <span>Adiar</span>
-                            <ChevronDown size={12} className="opacity-60" />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          align="end"
-                          className="w-52 p-1.5 shadow-xl border border-border/80 bg-popover rounded-xl z-50"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border/40 mb-1">
-                            Adiar Pendência
+                            <div className="flex items-start justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                {c.tipo === "tarefa" ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      alternarConclusaoTarefa(c);
+                                    }}
+                                    className={cn(
+                                      "h-4 w-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0",
+                                      c.concluido
+                                        ? "bg-primary border-primary text-primary-foreground"
+                                        : "border-border hover:border-foreground bg-card"
+                                    )}
+                                  >
+                                    {c.concluido && <Check size={10} strokeWidth={3} />}
+                                  </button>
+                                ) : (
+                                  <Icone size={13} className="text-muted-foreground shrink-0" />
+                                )}
+
+                                <span
+                                  className={cn(
+                                    "font-semibold text-foreground truncate group-hover:text-primary transition-colors",
+                                    c.concluido && "line-through opacity-50"
+                                  )}
+                                >
+                                  {c.titulo}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-0.5">
+                              <span className="capitalize">{c.tipo}</span>
+                              {c.hora && <span>{c.hora}</span>}
+                            </div>
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              adiarItem(item, "1h");
-                            }}
-                            className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
-                          >
-                            <span className="flex items-center gap-2 font-medium">
-                              <Clock size={13} className="text-amber-500" /> +1 Hora
-                            </span>
-                            <span className="text-[10px] text-muted-foreground font-mono">+60min</span>
-                          </button>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              adiarItem(item, "amanha");
-                            }}
-                            className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
-                          >
-                            <span className="flex items-center gap-2 font-medium">
-                              <Sun size={13} className="text-orange-500" /> Amanhã
-                            </span>
-                            <span className="text-[10px] text-muted-foreground font-mono">09:00</span>
-                          </button>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              adiarItem(item, "3dias");
-                            }}
-                            className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
-                          >
-                            <span className="flex items-center gap-2 font-medium">
-                              <Calendar size={13} className="text-blue-500" /> +3 Dias
-                            </span>
-                            <span className="text-[10px] text-muted-foreground font-mono">+3d</span>
-                          </button>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              adiarItem(item, "proxima_segunda");
-                            }}
-                            className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-left cursor-pointer"
-                          >
-                            <span className="flex items-center gap-2 font-medium">
-                              <Calendar size={13} className="text-purple-500" /> Próxima Segunda
-                            </span>
-                            <span className="text-[10px] text-muted-foreground font-mono">09:00</span>
-                          </button>
-                        </PopoverContent>
-                      </Popover>
+                        );
+                      })
                     )}
-
-                    <Botao
-                      variante={item.visto ? "neutro" : "primario"}
-                      tamanho="pequeno"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        alternarVisto(item.id);
-                      }}
-                      title={item.visto ? "Restaurar como não visto" : "Marcar pendência como concluída"}
-                    >
-                      <Check size={14} />
-                      {item.visto ? "Concluído" : "Marcar Concluído"}
-                    </Botao>
-
-                    <Botao
-                      variante="fantasma"
-                      tamanho="icone"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        descartarItem(item.id);
-                      }}
-                      title="Arquivar alerta"
-                    >
-                      <Trash2 size={16} className="text-muted-foreground hover:text-destructive" />
-                    </Botao>
                   </div>
                 </div>
-              </Cartao>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {/* Modal do Calendário Completo do Mês */}
-      <Modal
-        aberto={modalCalendarioAberto}
-        aoFechar={() => setModalCalendarioAberto(false)}
-        titulo="Visão Geral do Calendário (Tarefas e Prazos do Mês)"
-        tamanho="extra-largo"
-      >
-        <div className="p-2 sm:p-4 overflow-y-auto max-h-[80dvh]">
-          <Calendario
-            tarefas={acervo.filter((i) => i.caminho.startsWith("tarefas/")).map((i) => comoTarefa(lerMarkdown(i.texto), i.caminho, i.sha, i.nome))}
-            aoAbrir={(t) => {
-              setModalCalendarioAberto(false);
-              navegarParaOrigem(t.caminho);
-            }}
-          />
-        </div>
-      </Modal>
+      {/* 3. Painel Notion Lateral para Visualizar e Editar Qualquer Documento */}
+      {itemAberto && (
+        <PainelNotionBase
+          rotuloTipo={itemAberto.tipo.toUpperCase()}
+          modoVisao={modoVisaoNotion}
+          setModoVisao={setModoVisaoNotion}
+          titulo={tituloEditor}
+          setTitulo={(t) => {
+            setTituloEditor(t);
+            setTemMudancasItem(true);
+          }}
+          corpo={corpoEditor}
+          setCorpo={(c) => {
+            setCorpoEditor(c);
+            setTemMudancasItem(true);
+          }}
+          dadosProps={dadosPropsEditor}
+          onChangeProps={(novos) => {
+            setDadosPropsEditor(novos);
+            setTemMudancasItem(true);
+          }}
+          caminhoItem={itemAberto.caminho}
+          salvando={salvandoItem}
+          temMudancas={temMudancasItem}
+          aoSalvar={salvarEdicaoItem}
+          aoFechar={() => setItemAberto(null)}
+        />
+      )}
 
-      {/* Modal de criação */}
+      {/* 4. Modal Padronizado de Agendar Lembrete */}
       <ModalLembrete
         aberto={modalNovoAberto}
         aoFechar={() => setModalNovoAberto(false)}
         aoSalvar={salvarNovoLembrete}
       />
-
-      {/* Pop-up de visualização e edição integrado para a Inbox */}
-      <Modal
-        aberto={itemVisualizado !== null}
-        aoFechar={() => setItemVisualizado(null)}
-        titulo={itemVisualizado?.titulo || "Visualização"}
-        tamanho="largo"
-      >
-        {itemVisualizado && (
-          <div className="flex flex-col max-h-[80vh] w-full bg-card rounded-xl overflow-hidden">
-            {/* Cabeçalho */}
-            <div className="flex items-center justify-between border-b border-border/60 p-4 shrink-0 bg-secondary/10">
-              <div className="min-w-0">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block select-none">
-                  Caixa de Entrada • Visualização de Item
-                </span>
-                <h2 className="text-base font-bold text-foreground truncate mt-0.5 select-none">
-                  {itemVisualizado.titulo}
-                </h2>
-              </div>
-              <button
-                onClick={() => setItemVisualizado(null)}
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors cursor-pointer"
-                title="Fechar visualização"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Conteúdo rolável */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Propriedades se for tarefa */}
-              {itemVisualizado.caminho.startsWith("tarefas/") && (
-                <div className="bg-secondary/20 p-3 rounded-lg border border-border/40 shrink-0">
-                  <h3 className="text-xs font-bold text-muted-foreground mb-2.5 uppercase tracking-wider select-none">
-                    Propriedades da Tarefa
-                  </h3>
-                  <PropriedadesNotion
-                    dados={itemVisualizado.dadosProps}
-                    onChange={async (novosDados: Record<string, any>) => {
-                      const novoTexto = escreverMarkdown({ dados: novosDados, corpo: itemVisualizado.corpo });
-                      
-                      // Salva local e agenda sincronização
-                      await salvarTexto(itemVisualizado.caminho, novoTexto, itemVisualizado.sha, "atualiza propriedade na inbox");
-                      setItemVisualizado({
-                        ...itemVisualizado,
-                        dadosProps: novosDados,
-                      });
-                      
-                      // Atualiza acervo em memória localmente
-                      setAcervo(prev => prev.map(i => i.caminho === itemVisualizado.caminho ? { ...i, texto: novoTexto } : i));
-                      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
-                    }}
-                    camposFixos={{
-                      status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
-                      prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
-                      tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" },
-                      Pomodoro: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Editor */}
-              <div className="border border-border/40 rounded-lg p-3 bg-card/40 flex-1 min-h-[300px]">
-                <h3 className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wider select-none">
-                  Conteúdo do Documento
-                </h3>
-                <EditorNotion
-                  markdown={itemVisualizado.corpo}
-                  acervo={acervo}
-                  onChange={async (novoCorpo) => {
-                    const novoTexto = escreverMarkdown({ dados: itemVisualizado.dadosProps, corpo: novoCorpo });
-                    
-                    await salvarTexto(itemVisualizado.caminho, novoTexto, itemVisualizado.sha, `edita corpo na inbox`);
-                    setItemVisualizado({
-                      ...itemVisualizado,
-                      corpo: novoCorpo,
-                    });
-                    
-                    setAcervo(prev => prev.map(i => i.caminho === itemVisualizado.caminho ? { ...i, texto: novoTexto } : i));
-                    window.dispatchEvent(new CustomEvent("acervo-atualizado"));
-                  }}
-                />
-              </div>
-            </div>
-            
-            {/* Rodapé simples */}
-            <div className="border-t border-border/60 p-3 shrink-0 bg-secondary/5 flex justify-end">
-              <Botao variante="neutro" tamanho="pequeno" onClick={() => setItemVisualizado(null)}>
-                Fechar
-              </Botao>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }
