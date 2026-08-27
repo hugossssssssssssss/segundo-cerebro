@@ -124,6 +124,7 @@
   textarea,
   select {
     touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   button,
   a,
@@ -135,10 +136,15 @@
     cursor: pointer !important;
   }
   
+  /* Rolagem com inércia no iOS e Android */
+  html, body, main, div {
+    -webkit-overflow-scrolling: touch;
+  }
+
   /* Scrollbar elegante e minimalista adaptada para o tema */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;

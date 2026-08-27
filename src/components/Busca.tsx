@@ -342,11 +342,11 @@ export function Busca({
 
   return (
     <div
-      className="fixed inset-0 z-[600] flex items-start justify-center bg-black/60 p-0 pt-0 sm:p-4 sm:pt-20 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[600] flex items-start justify-center bg-black/60 p-0 sm:p-4 sm:pt-20 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={aoFechar}
     >
       <div
-        className="flex max-h-[100dvh] w-full flex-col border-border bg-card shadow-2xl sm:max-h-[85dvh] sm:max-w-3xl lg:max-w-4xl sm:rounded-2xl sm:border overflow-hidden overflow-x-hidden"
+        className="flex h-[100dvh] max-h-[100dvh] w-full flex-col border-border bg-card shadow-2xl sm:h-auto sm:max-h-[85dvh] sm:max-w-3xl lg:max-w-4xl sm:rounded-2xl sm:border overflow-hidden overflow-x-hidden pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Campo de Entrada */}

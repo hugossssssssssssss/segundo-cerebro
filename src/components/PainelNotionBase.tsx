@@ -643,7 +643,7 @@ export function PainelNotionBase({
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
-        <div className="flex items-center gap-0.5 rounded-lg border border-border/80 bg-muted/40 p-0.5 sm:p-1">
+        <div className="hidden sm:flex items-center gap-0.5 rounded-lg border border-border/80 bg-muted/40 p-0.5 sm:p-1">
           <Tooltip conteudo="Modo Pop-up Central" posicao="bottom">
             <button
               onClick={() => { setModoVisao("popup"); setMinimizadoFlutuante(false); }}
@@ -793,7 +793,7 @@ export function PainelNotionBase({
   );
 
   const rodape = (
-    <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-4 sm:px-5 py-2.5 bg-card">
+    <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-4 sm:px-5 py-2 sm:py-2.5 pb-[max(env(safe-area-inset-bottom),10px)] sm:pb-2.5 bg-card">
       <div className="flex items-center gap-1">
         {aoRemover ? (
           <Botao variante="fantasma" onClick={() => setConfirmandoApagar(true)} className="text-destructive hover:bg-destructive/10 text-xs">
@@ -1136,15 +1136,15 @@ export function PainelNotionBase({
   if (modoVisao === "lado") {
     return (
       <div
-        className="fixed inset-0 z-50 flex justify-end bg-black/20 backdrop-blur-[2px] p-0 sm:p-3 animate-in fade-in duration-150"
+        className="fixed inset-0 z-50 flex justify-end bg-black/40 sm:bg-black/20 backdrop-blur-none sm:backdrop-blur-[2px] p-0 sm:p-3 animate-in fade-in duration-150"
         onClick={tentarFechar}
       >
         <div
-          className="flex h-full w-full sm:w-[560px] md:w-[680px] lg:w-[760px] flex-col rounded-t-2xl sm:rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in slide-in-from-right duration-200"
+          className="flex h-full w-full sm:w-[560px] md:w-[680px] lg:w-[760px] flex-col rounded-none sm:rounded-2xl border-0 sm:border border-border bg-card shadow-2xl overflow-hidden animate-in slide-in-from-right duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           {cabecalho}
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 sm:px-8 py-6">{conteudo}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6">{conteudo}</div>
           {rodape}
         </div>
         {modaisConfirmacao}
@@ -1164,7 +1164,7 @@ export function PainelNotionBase({
           onClick={(e) => e.stopPropagation()}
         >
           {cabecalho}
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 sm:px-12 py-8">{conteudo}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-12 py-5 sm:py-8">{conteudo}</div>
           {rodape}
         </div>
         {modaisConfirmacao}
@@ -1172,18 +1172,18 @@ export function PainelNotionBase({
     );
   }
 
-  // MODO 1: POP-UP CENTRALIZADO (Padrão)
+  // MODO 1: POP-UP CENTRALIZADO (Padrão) - no mobile vira tela cheia imersiva
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-[2px] p-3 sm:p-6 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background sm:bg-black/30 backdrop-blur-none sm:backdrop-blur-[2px] p-0 sm:p-6 animate-in fade-in duration-150"
       onClick={tentarFechar}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+        className="flex h-full sm:h-auto sm:max-h-[90vh] w-full max-w-3xl flex-col rounded-none sm:rounded-2xl border-0 sm:border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {cabecalho}
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 sm:px-8 py-6">{conteudo}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6">{conteudo}</div>
         {rodape}
       </div>
       {modaisConfirmacao}

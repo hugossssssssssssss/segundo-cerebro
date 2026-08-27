@@ -58,9 +58,12 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
         <div className="flex-1" onClick={aoFechar} />
 
         {/* Conteúdo da Gaveta estilo Bottom Sheet */}
-        <div className="rounded-t-2xl border-t border-border bg-background p-4 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom duration-200">
+        <div className="rounded-t-3xl border-t border-border bg-card/95 p-4 pb-[max(env(safe-area-inset-bottom),16px)] shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto backdrop-blur-xl animate-in slide-in-from-bottom duration-200">
+          {/* Puxador nativo de Bottom Sheet */}
+          <div className="w-10 h-1.5 rounded-full bg-muted-foreground/30 mx-auto -mt-1 mb-2 select-none" />
+
           {/* Topo da Gaveta */}
-          <div className="flex items-center justify-between pb-2 border-b border-border">
+          <div className="flex items-center justify-between pb-2 border-b border-border/80">
             <div className="flex items-center gap-2">
               <LogoKlaus tamanho={24} />
               <span className="font-bold text-sm tracking-tight text-foreground">
@@ -69,7 +72,7 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
             </div>
             <button
               onClick={aoFechar}
-              className="rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              className="rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
               aria-label="Fechar menu"
             >
               <X size={20} />

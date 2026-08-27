@@ -28,7 +28,7 @@ export function AlternadorVisao<T extends string = string>({
   return (
     <div
       className={cn(
-        "flex items-center rounded-xl border border-border bg-card/80 p-1 shadow-2xs backdrop-blur-xs",
+        "flex items-center rounded-xl border border-border bg-card/80 p-0.5 sm:p-1 shadow-2xs backdrop-blur-xs max-w-full overflow-x-auto select-none",
         className
       )}
     >
@@ -44,14 +44,14 @@ export function AlternadorVisao<T extends string = string>({
               type="button"
               onClick={() => aoAlternar(opcao.id)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer select-none",
+                "flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer select-none whitespace-nowrap shrink-0",
                 ativa
                   ? "bg-primary text-primary-foreground shadow-xs font-bold"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
               )}
             >
               {opcao.icone}
-              <span>{opcao.rotulo}</span>
+              <span className="text-[11px] sm:text-xs">{opcao.rotulo}</span>
             </button>
           </Tooltip>
         );

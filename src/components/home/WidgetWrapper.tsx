@@ -107,9 +107,11 @@ export function WidgetWrapper({
   return (
     <div
       ref={cardRef}
-      style={{ minHeight: `${alturaLocal}px` }}
+      style={{
+        minHeight: typeof window !== "undefined" && window.innerWidth < 640 ? "auto" : `${alturaLocal}px`,
+      }}
       className={cn(
-        "group relative flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-4 transition-all duration-150 overflow-hidden",
+        "group relative flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-3.5 sm:p-4 transition-all duration-150 overflow-hidden",
         classeGrid,
         modoEdicao && "ring-1 ring-primary/40",
         redimensionando && "select-none ring-2 ring-primary shadow-2xl opacity-95",

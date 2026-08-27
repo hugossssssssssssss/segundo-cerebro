@@ -27,7 +27,7 @@ export function CabecalhoPagina({
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-4 sm:pb-5",
+        "flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 border-b border-border/60 pb-3.5 sm:pb-5",
         className
       )}
     >
@@ -35,7 +35,7 @@ export function CabecalhoPagina({
         {icone && (
           <div
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-xs transition-colors",
+              "flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl shadow-xs transition-colors",
               corIcone
             )}
           >
@@ -43,8 +43,8 @@ export function CabecalhoPagina({
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-tight">
               {titulo}
             </h1>
             {badge}

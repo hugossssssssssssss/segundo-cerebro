@@ -185,14 +185,15 @@ export function CapturaRapida({
       onClick={aoFechar}
     >
       <Cartao
-        className="w-full rounded-b-none p-4 sm:max-w-lg sm:rounded-2xl"
+        className="w-full rounded-t-3xl rounded-b-none p-4 pb-[max(env(safe-area-inset-bottom),16px)] sm:max-w-lg sm:rounded-2xl border-t border-border shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="w-10 h-1.5 rounded-full bg-muted-foreground/30 mx-auto -mt-1 mb-2.5 sm:hidden select-none" />
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-medium">Captura rápida</span>
+          <span className="text-sm font-bold tracking-tight">Captura rápida</span>
           <button
             onClick={aoFechar}
-            className="-m-1.5 rounded-md p-1.5 text-muted-foreground hover:bg-accent"
+            className="-m-1.5 rounded-md p-1.5 text-muted-foreground hover:bg-accent cursor-pointer transition-colors"
             aria-label="Fechar"
           >
             <X size={16} />

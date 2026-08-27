@@ -1337,8 +1337,8 @@ export function PropriedadesNotion({
         }
       }}>
         <PopoverTrigger asChild>
-          <button className="w-36 flex items-center gap-2 text-muted-foreground px-2 py-1 -ml-2 rounded hover:bg-accent/60 transition-colors text-left group/prop">
-            <IconeAtual className="h-4 w-4 opacity-60 shrink-0" />
+          <button className="w-28 sm:w-36 shrink-0 flex items-center gap-1.5 sm:gap-2 text-muted-foreground px-1.5 sm:px-2 py-1 -ml-1 sm:-ml-2 rounded hover:bg-accent/60 transition-colors text-left group/prop">
+            <IconeAtual className="h-3.5 w-3.5 sm:h-4 sm:w-4 opacity-60 shrink-0" />
             <span className="truncate flex-1 font-medium text-xs">{rotuloAtual}</span>
           </button>
         </PopoverTrigger>
@@ -1539,9 +1539,9 @@ export function PropriedadesNotion({
       {chavesVisiveis.map((chave) => {
         const fixo = camposFixos[chave];
         return (
-          <div key={chave} className="flex min-h-8 items-center gap-4 text-xs group">
+          <div key={chave} className="flex min-h-8 items-center gap-2 sm:gap-4 text-xs group">
             {renderizarMenuPropriedade(chave, fixo)}
-            <div className="flex-1 flex items-center min-h-8">
+            <div className="flex-1 flex items-center min-h-8 min-w-0">
               {renderizarValor(chave)}
             </div>
           </div>
@@ -1549,17 +1549,17 @@ export function PropriedadesNotion({
       })}
 
       {/* Botão de Adicionar Nova Propriedade perfeitamente alinhado acima das ocultas */}
-      <div className="flex items-center gap-4 text-xs mt-1 pt-1 border-t border-border/30">
-        <div className="w-36">
+      <div className="flex items-center gap-2 sm:gap-4 text-xs mt-1 pt-1 border-t border-border/30">
+        <div className="w-28 sm:w-36 shrink-0">
           <Popover open={menuAberto === "novo_campo"} onOpenChange={(open) => setMenuAberto(open ? "novo_campo" : null)}>
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 -ml-2 text-muted-foreground hover:text-foreground font-normal text-xs flex items-center gap-1.5 rounded-md hover:bg-accent/60"
+                className="h-7 px-1.5 sm:px-2 -ml-1 sm:-ml-2 text-muted-foreground hover:text-foreground font-normal text-xs flex items-center gap-1.5 rounded-md hover:bg-accent/60 w-full justify-start"
               >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Adicionar propriedade</span>
+                <Plus className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Adicionar</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[280px] p-3 shadow-2xl border-border space-y-3" align="start" onInteractOutside={() => setMenuAberto(null)}>
@@ -1627,9 +1627,9 @@ export function PropriedadesNotion({
               {chavesOcultas.map((chave) => {
                 const fixo = camposFixos[chave];
                 return (
-                  <div key={chave} className="flex min-h-8 items-center gap-4 text-xs group opacity-75 hover:opacity-100">
+                  <div key={chave} className="flex min-h-8 items-center gap-2 sm:gap-4 text-xs group opacity-75 hover:opacity-100">
                     {renderizarMenuPropriedade(chave, fixo)}
-                    <div className="flex-1 flex items-center min-h-8">
+                    <div className="flex-1 flex items-center min-h-8 min-w-0">
                       {renderizarValor(chave)}
                     </div>
                   </div>

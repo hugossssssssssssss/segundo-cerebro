@@ -293,7 +293,7 @@ function Coluna({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex min-w-[280px] flex-1 flex-col rounded-2xl border border-border bg-secondary/40 p-2.5 transition-colors",
+        "flex min-w-[84vw] sm:min-w-[280px] flex-1 flex-col rounded-2xl border border-border bg-secondary/40 p-2.5 transition-colors snap-center",
         isOver && "border-primary/40 bg-accent",
       )}
     >
@@ -376,6 +376,7 @@ export function Quadro({
   gravandoCaminho: string | null;
 }) {
   const [arrastando, setArrastando] = useState<Tarefa | null>(null);
+  const [colunaAtivaMobile, setColunaAtivaMobile] = useState<Status | "todas">("todas");
   const [colapsadas, setColapsadas] = useState<Record<Status, boolean>>(() => {
     try {
       const salvo = localStorage.getItem("klaus_kanban_colapsadas");
@@ -418,6 +419,10 @@ export function Quadro({
     aoMudarStatus(movida, destino);
   }
 
+  const statusExibidos = colunaAtivaMobile === "todas" 
+    ? STATUS 
+    : STATUS.filter((s) => s === colunaAtivaMobile);
+
   return (
     <DndContext
       sensors={sensores}
@@ -426,8 +431,45 @@ export function Quadro({
       onDragEnd={aoTerminar}
       onDragCancel={() => setArrastando(null)}
     >
-      <div className="flex gap-3 overflow-x-auto pb-2 items-start">
-        {STATUS.map((s) => (
+      {/* Seletor rápido de coluna no mobile para visualização simplificada */}
+      <div className="flex sm:hidden items-center gap-1 p-1 bg-card rounded-xl border border-border/80 mb-3 shadow-2xs overflow-x-auto">
+        <button
+          type="button"
+          onClick={() => setColunaAtivaMobile("todas")}
+          className={cn(
+            "flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-all text-center whitespace-nowrap cursor-pointer",
+            colunaAtivaMobile === "todas"
+              ? "bg-primary text-primary-foreground shadow-xs font-bold"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Todas ({tarefas.length})
+        </button>
+        {STATUS.map((s) => {
+          const qtd = tarefas.filter((t) => t.status === s).length;
+          const ativa = colunaAtivaMobile === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setColunaAtivaMobile(s)}
+              className={cn(
+                "flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-all text-center whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer",
+                ativa
+                  ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span className={cn("h-2 w-2 rounded-full", COR_COLUNA[s])} />
+              <span>{ROTULO_STATUS[s]}</span>
+              <span className="text-[10px] opacity-80">({qtd})</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto pb-2 items-start snap-x snap-mandatory">
+        {statusExibidos.map((s) => (
           <Coluna
             key={s}
             status={s}

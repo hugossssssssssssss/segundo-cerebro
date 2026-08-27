@@ -49,9 +49,9 @@ function montar(props?: Partial<React.ComponentProps<typeof Quadro>>) {
 describe("Quadro", () => {
   it("mostra as três colunas com a contagem certa", () => {
     montar();
-    expect(screen.getByText("A fazer")).toBeTruthy();
-    expect(screen.getByText("Fazendo")).toBeTruthy();
-    expect(screen.getByText("Feito")).toBeTruthy();
+    expect(screen.getAllByText("A fazer")[0]).toBeTruthy();
+    expect(screen.getAllByText("Fazendo")[0]).toBeTruthy();
+    expect(screen.getAllByText("Feito")[0]).toBeTruthy();
   });
 
   it("põe cada tarefa na coluna do seu status", () => {

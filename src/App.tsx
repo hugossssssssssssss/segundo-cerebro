@@ -489,51 +489,53 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         {workspaceAberto ? (
           <WorkspaceTelaCheia />
         ) : (
-          <main className="mx-auto w-full flex-1 py-6 pb-28 sm:pb-8 px-4 sm:px-6 lg:px-8 overflow-y-auto max-w-none">
+          <main className="mx-auto w-full flex-1 py-4 sm:py-6 pb-24 sm:pb-8 px-3.5 sm:px-6 lg:px-8 overflow-y-auto max-w-none">
             <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
           </main>
         )}
       </div>
 
-      {/* Navegação inferior no celular */}
+      {/* Navegação inferior no celular com visual dock moderno e frosted glass */}
       {!workspaceAberto && (
-        <nav className="fixed bottom-0 inset-x-0 z-40 flex border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden">
+        <nav className="fixed bottom-0 inset-x-0 z-40 flex border-t border-border/80 bg-card/90 pb-[max(env(safe-area-inset-bottom),8px)] pt-1.5 backdrop-blur-xl sm:hidden shadow-lg">
           {abasMobile.map(({ para, rotulo, Icone }) => (
             <NavLink
               key={para}
               to={para}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium transition-colors min-w-0 truncate px-0.5",
-                  isActive ? "text-primary font-semibold" : "text-muted-foreground",
+                  "flex flex-1 flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-medium transition-all min-w-0 truncate px-1 rounded-xl mx-0.5 relative group active:scale-95",
+                  isActive
+                    ? "text-primary font-bold bg-primary/10"
+                    : "text-muted-foreground hover:text-foreground",
                 )
               }
             >
-              <Icone size={18} className="shrink-0" />
-              <span className="truncate max-w-full">{rotulo}</span>
+              <Icone size={19} className="shrink-0 transition-transform group-active:scale-90" />
+              <span className="truncate max-w-full tracking-tight">{rotulo}</span>
             </NavLink>
           ))}
 
           {/* Botão Mais no celular */}
           <button
             onClick={() => setGavetaAberta(true)}
-            className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium text-muted-foreground transition-colors min-w-0 truncate px-0.5"
+            className="flex flex-1 flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-medium text-muted-foreground transition-all min-w-0 truncate px-1 rounded-xl mx-0.5 hover:text-foreground active:scale-95 cursor-pointer"
             aria-label="Mais opções"
           >
-            <MoreHorizontal size={18} className="shrink-0" />
-            <span className="truncate max-w-full">Mais</span>
+            <MoreHorizontal size={19} className="shrink-0" />
+            <span className="truncate max-w-full tracking-tight">Mais</span>
           </button>
         </nav>
       )}
 
-      {/* Botão flutuante de captura no celular */}
+      {/* Botão flutuante de captura no celular com sombra suave e efeito tátil */}
       {!workspaceAberto && !pathname.startsWith("/chat") && (
         <button
           onClick={() => setCapturando(true)}
-          className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95 sm:hidden"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+68px)] right-4 z-30 flex h-13 w-13 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/25 transition-transform active:scale-90 sm:hidden cursor-pointer hover:shadow-2xl"
           aria-label="Captura rápida"
         >
-          <Plus size={24} />
+          <Plus size={22} className="stroke-[2.5]" />
         </button>
       )}
 
