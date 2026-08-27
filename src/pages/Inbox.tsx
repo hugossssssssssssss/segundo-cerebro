@@ -58,6 +58,44 @@ export interface CompromissoSemana {
 
 type AbaInbox = "agenda" | "rascunhos";
 
+const ESTILOS_TIPO: Record<string, { border: string; bg: string; text: string; badgeBg: string; rotulo: string }> = {
+  tarefa: {
+    border: "border-blue-500/30 hover:border-blue-500/60",
+    bg: "bg-blue-500/5",
+    text: "text-blue-600 dark:text-blue-400",
+    badgeBg: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    rotulo: "Tarefa",
+  },
+  meta: {
+    border: "border-violet-500/30 hover:border-violet-500/60",
+    bg: "bg-violet-500/5",
+    text: "text-violet-600 dark:text-violet-400",
+    badgeBg: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+    rotulo: "Meta PDI",
+  },
+  entrega: {
+    border: "border-emerald-500/30 hover:border-emerald-500/60",
+    bg: "bg-emerald-500/5",
+    text: "text-emerald-600 dark:text-emerald-400",
+    badgeBg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    rotulo: "Entrega",
+  },
+  nota: {
+    border: "border-amber-500/30 hover:border-amber-500/60",
+    bg: "bg-amber-500/5",
+    text: "text-amber-600 dark:text-amber-400",
+    badgeBg: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    rotulo: "Nota",
+  },
+  lembrete: {
+    border: "border-sky-500/30 hover:border-sky-500/60",
+    bg: "bg-sky-500/5",
+    text: "text-sky-600 dark:text-sky-400",
+    badgeBg: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+    rotulo: "Lembrete",
+  },
+};
+
 export default function Inbox() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
@@ -104,9 +142,12 @@ export default function Inbox() {
 
   useEffect(() => {
     carregar();
-    window.addEventListener("acervo-atualizado", atualizarRascunhos);
-    return () => window.removeEventListener("acervo-atualizado", atualizarRascunhos);
-  }, [carregar, atualizarRascunhos]);
+    const aoAtualizarAcervo = () => {
+      carregar();
+    };
+    window.addEventListener("acervo-atualizado", aoAtualizarAcervo);
+    return () => window.removeEventListener("acervo-atualizado", aoAtualizarAcervo);
+  }, [carregar]);
 
   // Formata data ISO para DD/MM/AAAA com barras
   const formatarBr = (iso: string) => {
@@ -280,13 +321,6 @@ export default function Inbox() {
     return endOfWeek(dataReferencia, { weekStartsOn: 1 });
   }, [dataReferencia]);
 
-  // Intervalo formatado com barras: DD/MM/AAAA – DD/MM/AAAA
-  const intervaloSemanaFormatado = useMemo(() => {
-    const dInicio = format(inicioSemana, "dd/MM/yyyy");
-    const dFim = format(fimSemana, "dd/MM/yyyy");
-    return `Semana de ${dInicio} a ${dFim}`;
-  }, [inicioSemana, fimSemana]);
-
   // Compromissos Atrasados: APENAS o que venceu antes de hoje
   const hojeRealIso = useMemo(() => new Date().toISOString().split("T")[0], []);
 
@@ -388,7 +422,7 @@ export default function Inbox() {
         aviso_inbox: true,
         aviso_telegram: true,
         aviso_email: false,
-        tags: ["lembrete"],
+        tags: [],
         criado: hojeStr,
         esquema: {
           prazo: "data",
@@ -440,7 +474,7 @@ export default function Inbox() {
         caminhoReal,
         textoFormatado,
         itemAberto.sha || undefined,
-        `salvar lembrete: ${tituloEditor}`
+        `salvar documento: ${tituloEditor}`
       );
       invalidarCache();
       setItemAberto({
@@ -452,7 +486,8 @@ export default function Inbox() {
         dados: novosDados,
       });
       setTemMudancasItem(false);
-      toast("Lembrete salvo com sucesso!");
+      toast("Salvo com sucesso!");
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
       carregar();
     } catch (err: any) {
       toast(`Erro ao salvar: ${err?.message || err}`, { tipo: "erro" });
@@ -472,6 +507,7 @@ export default function Inbox() {
       await salvarTexto(c.caminho, textoFormatado, c.sha, `atualizar status: ${c.titulo} (${novoStatus})`);
       invalidarCache();
       toast(novoStatus === "feito" ? `"${c.titulo}" concluída!` : `"${c.titulo}" reaberta.`);
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
       carregar();
     } catch (err: any) {
       toast(`Erro ao salvar tarefa: ${err?.message || err}`, { tipo: "erro" });
@@ -531,12 +567,6 @@ export default function Inbox() {
               )}
             </button>
           </div>
-
-          {abaAtiva === "agenda" && (
-            <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2.5 py-1 rounded-lg border border-border/40">
-              {intervaloSemanaFormatado}
-            </span>
-          )}
 
           {/* Tag Minimalista de Pendências Anteriores */}
           {abaAtiva === "agenda" && atrasadosReais.length > 0 && (
@@ -663,21 +693,28 @@ export default function Inbox() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-            {atrasadosReais.map((c) => (
-              <div
-                key={c.id}
-                onClick={() => abrirDocumento(c)}
-                className="p-2.5 rounded-lg border border-border/60 bg-card hover:border-border transition-all cursor-pointer flex items-center justify-between gap-2 text-xs shadow-2xs"
-              >
-                <div className="min-w-0">
-                  <p className="font-semibold text-foreground truncate">{c.titulo}</p>
-                  <p className="text-[10px] text-muted-foreground">Prazo: {c.dataBr}</p>
+            {atrasadosReais.map((c) => {
+              const estilo = ESTILOS_TIPO[c.tipo] || ESTILOS_TIPO.lembrete;
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => abrirDocumento(c)}
+                  className={cn(
+                    "p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 text-xs shadow-2xs",
+                    estilo.bg,
+                    estilo.border
+                  )}
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground truncate">{c.titulo}</p>
+                    <p className="text-[10px] text-muted-foreground">Prazo: {c.dataBr}</p>
+                  </div>
+                  <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", estilo.badgeBg)}>
+                    {estilo.rotulo}
+                  </span>
                 </div>
-                <span className="text-[10px] capitalize text-muted-foreground font-mono bg-secondary px-1.5 py-0.5 rounded">
-                  {c.tipo}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -731,6 +768,7 @@ export default function Inbox() {
                         </p>
                       ) : (
                         itensDoDia.map((c) => {
+                          const estilo = ESTILOS_TIPO[c.tipo] || ESTILOS_TIPO.lembrete;
                           const Icone =
                             c.tipo === "tarefa"
                               ? CheckSquare
@@ -748,12 +786,12 @@ export default function Inbox() {
                               onClick={() => abrirDocumento(c)}
                               className={cn(
                                 "group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 shadow-2xs text-xs",
-                                c.concluido
-                                  ? "bg-secondary/20 border-border/40 opacity-60 hover:opacity-100"
-                                  : "bg-background border-border/70 hover:border-border hover:bg-card"
+                                estilo.bg,
+                                estilo.border,
+                                c.concluido && "opacity-60 hover:opacity-100"
                               )}
                             >
-                              <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
                                 {c.tipo === "tarefa" ? (
                                   <button
                                     type="button"
@@ -771,10 +809,10 @@ export default function Inbox() {
                                     {c.concluido && <Check size={10} strokeWidth={3} />}
                                   </button>
                                 ) : (
-                                  <Icone size={13} className="text-muted-foreground shrink-0" />
+                                  <Icone size={13} className={cn("shrink-0", estilo.text)} />
                                 )}
 
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                   <p
                                     className={cn(
                                       "font-semibold text-foreground truncate group-hover:text-primary transition-colors",
@@ -783,11 +821,15 @@ export default function Inbox() {
                                   >
                                     {c.titulo}
                                   </p>
-                                  <span className="text-[10px] text-muted-foreground capitalize">
-                                    {c.tipo} {c.hora && `• ${c.hora}`}
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {c.hora ? c.hora : c.dataBr}
                                   </span>
                                 </div>
                               </div>
+
+                              <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded shrink-0", estilo.badgeBg)}>
+                                {estilo.rotulo}
+                              </span>
                             </div>
                           );
                         })
@@ -841,6 +883,7 @@ export default function Inbox() {
                         </p>
                       ) : (
                         itensDoDia.map((c) => {
+                          const estilo = ESTILOS_TIPO[c.tipo] || ESTILOS_TIPO.lembrete;
                           const Icone =
                             c.tipo === "tarefa"
                               ? CheckSquare
@@ -858,12 +901,12 @@ export default function Inbox() {
                               onClick={() => abrirDocumento(c)}
                               className={cn(
                                 "group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 shadow-2xs text-xs",
-                                c.concluido
-                                  ? "bg-secondary/20 border-border/40 opacity-60 hover:opacity-100"
-                                  : "bg-background border-border/70 hover:border-border hover:bg-card"
+                                estilo.bg,
+                                estilo.border,
+                                c.concluido && "opacity-60 hover:opacity-100"
                               )}
                             >
-                              <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
                                 {c.tipo === "tarefa" ? (
                                   <button
                                     type="button"
@@ -881,10 +924,10 @@ export default function Inbox() {
                                     {c.concluido && <Check size={10} strokeWidth={3} />}
                                   </button>
                                 ) : (
-                                  <Icone size={13} className="text-muted-foreground shrink-0" />
+                                  <Icone size={13} className={cn("shrink-0", estilo.text)} />
                                 )}
 
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                   <p
                                     className={cn(
                                       "font-semibold text-foreground truncate group-hover:text-primary transition-colors",
@@ -893,11 +936,15 @@ export default function Inbox() {
                                   >
                                     {c.titulo}
                                   </p>
-                                  <span className="text-[10px] text-muted-foreground capitalize">
-                                    {c.tipo} {c.hora && `• ${c.hora}`}
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {c.hora ? c.hora : c.dataBr}
                                   </span>
                                 </div>
                               </div>
+
+                              <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded shrink-0", estilo.badgeBg)}>
+                                {estilo.rotulo}
+                              </span>
                             </div>
                           );
                         })
@@ -1098,6 +1145,7 @@ export default function Inbox() {
                   await apagarItem(itemAberto.caminho, itemAberto.sha);
                   setItemAberto(null);
                   toast("Lembrete removido com sucesso!");
+                  window.dispatchEvent(new CustomEvent("acervo-atualizado"));
                   carregar();
                 }
               : undefined

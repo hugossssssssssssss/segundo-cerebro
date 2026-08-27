@@ -321,8 +321,10 @@ export function PropriedadesNotion({
   const coresMap = { ...globalConfig.coresTags, ...((dados._coresTags as Record<string, string>) || {}) };
   const rotulosMap = { ...globalConfig.rotulos, ...((dados._rotulos as Record<string, string>) || {}) };
 
+  const ehLembrete = rotuloTipo?.toLowerCase().includes("lembrete") || dados.tipo === "lembrete";
+
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
-    .filter(k => !["titulo", "tipo", "atualizado", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "c", "pomodoro", "pomodoros", "estimativa", "porque", "anotacoes"].includes(k));
+    .filter(k => !["titulo", "tipo", "atualizado", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "c", "pomodoro", "pomodoros", "estimativa", "porque", "anotacoes", ...(ehLembrete ? ["caminho", "pasta", "status"] : [])].includes(k));
     
   const temRelacionamentos = (Array.isArray(dados.relacionamentos) && dados.relacionamentos.length > 0) ||
     (Array.isArray(dados.relacao) && dados.relacao.length > 0);
@@ -330,7 +332,7 @@ export function PropriedadesNotion({
     todasAsChaves.push("relacionamentos");
   }
   if (!todasAsChaves.includes("tags")) todasAsChaves.push("tags");
-  if (!todasAsChaves.includes("caminho")) todasAsChaves.push("caminho");
+  if (!ehLembrete && !todasAsChaves.includes("caminho")) todasAsChaves.push("caminho");
   if (!todasAsChaves.includes("criado_por")) todasAsChaves.push("criado_por");
   if (!todasAsChaves.includes("criado_em")) todasAsChaves.push("criado_em");
   if (!todasAsChaves.includes("ultima_edicao")) todasAsChaves.push("ultima_edicao");
