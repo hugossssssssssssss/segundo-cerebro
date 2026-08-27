@@ -1,1562 +1,490 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
-  Sun,
-  Sunrise,
-  Sunset,
   CheckSquare,
   FileText,
   Image as ImageIcon,
   Target,
-  ArrowRight,
-  Clock,
-  Timer,
-  AlertTriangle,
-  GripVertical,
-  RotateCcw,
-  Calendar,
-  Tag,
-  ListTodo,
-  Plus,
-  Trash2,
-  Mic,
-  Layout,
-  MessageCircle,
-  X,
   Layers,
-  FileImage,
-  FileType,
-  Settings,
   GitMerge,
-  Video,
+  Layout,
   Globe,
-  Move,
+  Edit3,
 } from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  rectSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { carregarRepo, daPasta, invalidarCache, cache } from "@/lib/repo";
-import { ler, apagar } from "@/lib/github";
+import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
-import { comoTarefa, ordenar, textoPrazo, urgencia, paraFrontmatter, type Tarefa } from "@/lib/tarefas";
-import { tituloProvavel, escreverMarkdown, nomeLivre, lerMarkdown, mesclarFrontmatter } from "@/lib/markdown";
+import { comoTarefa, type Tarefa } from "@/lib/tarefas";
+import { tarefaParaArquivo } from "@/lib/entidades";
 import { comoReferencia, type Referencia } from "@/lib/referencias";
-import { comoMeta, comoEntrega, resumir, metaParaFrontmatter, type Meta, type ResumoMeta } from "@/lib/pdi";
-import { ImagemPrivada } from "@/components/ImagemPrivada";
-import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
-import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
-import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
-import { WebSearchWidget } from "@/components/WebSearchWidget";
+import { comoMeta, comoEntrega, resumir, type ResumoMeta } from "@/lib/pdi";
+import { tituloProvavel, escreverMarkdown, nomeLivre } from "@/lib/markdown";
+import { PASTAS } from "@/lib/tipos";
+import { toast } from "@/lib/toast";
 
+import { Vazio, Carregando } from "@/components/ui";
+import { CapturaRapida } from "@/components/CapturaRapida";
+import { Busca } from "@/components/Busca";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Carregando, Vazio } from "@/components/ui";
-import { CabecalhoPagina } from "@/components/CabecalhoPagina";
-import { cn } from "@/lib/utils";
-
-type NotaRecente = {
-  caminho: string;
-  titulo: string;
-  nome: string;
-};
-
-export interface Gadget {
-  id: string;
-  colunas: 1 | 2 | 3 | 4;
-}
-
-export interface InfoGadgetDisponivel {
-  id: string;
-  titulo: string;
-  descricao: string;
-  icone: any;
-  colunasPadrao: 1 | 2 | 3 | 4;
-  corIcone?: string;
-  categoria?: "produtividade" | "conteudo" | "ferramentas" | "kpis";
-}
-
-const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
-  // --- MÓDULOS DE CONTEÚDO ---
-  {
-    id: "busca_web",
-    titulo: "Busca Web Inteligente",
-    descricao: "Pesquise na internet com construtor visual de filtros e operadores avançados",
-    icone: Globe,
-    colunasPadrao: 3,
-  },
-  {
-    id: "hoje",
-    titulo: "Revisão Diária (Visão 'Hoje' — 2 Minutos)",
-    descricao: "Painel de foco diário: tarefas do dia, entregas do PDI e notas rápidas",
-    icone: Sun,
-    colunasPadrao: 2,
-  },
-  {
-    id: "kpi_tarefas",
-    titulo: "KPI: Tarefas Pendentes",
-    descricao: "Métrica rápida de tarefas pendentes e urgentes",
-    icone: CheckSquare,
-    colunasPadrao: 1,
-    corIcone: "text-primary bg-primary/10",
-  },
-  {
-    id: "kpi_notas",
-    titulo: "KPI: Notas Criadas",
-    descricao: "Métrica de notas e acervo de conhecimento",
-    icone: FileText,
-    colunasPadrao: 1,
-    corIcone: "text-blue-500 bg-blue-500/10",
-  },
-  {
-    id: "kpi_referencias",
-    titulo: "KPI: Referências",
-    descricao: "Métrica de galeria visual e inspirações",
-    icone: ImageIcon,
-    colunasPadrao: 1,
-    corIcone: "text-purple-500 bg-purple-500/10",
-  },
-  {
-    id: "kpi_pdi",
-    titulo: "KPI: Carreira / PDI",
-    descricao: "Métrica de metas e entregas ativas de carreira",
-    icone: Target,
-    colunasPadrao: 1,
-    corIcone: "text-emerald-500 bg-emerald-500/10",
-  },
-  {
-    id: "kpis",
-    titulo: "Resumo Geral dos 4 KPIs (Bloco Grupal)",
-    descricao: "Indicadores gerais agrupados de Tarefas, Notas, Referências e PDI",
-    icone: Layout,
-    colunasPadrao: 3,
-  },
-  {
-    id: "tarefas",
-    titulo: "Próximas Tarefas",
-    descricao: "Lista de tarefas pendentes e urgentes com edição rápida",
-    icone: CheckSquare,
-    colunasPadrao: 2,
-  },
-  {
-    id: "notas",
-    titulo: "Notas Recentes",
-    descricao: "Últimas notas criadas e rascunhos salvos",
-    icone: FileText,
-    colunasPadrao: 1,
-  },
-  {
-    id: "referencias",
-    titulo: "Referências Visuais",
-    descricao: "Mural de inspirações e galeria de fotos",
-    icone: ImageIcon,
-    colunasPadrao: 2,
-  },
-  {
-    id: "pdi",
-    titulo: "Metas de Carreira (PDI)",
-    descricao: "Acompanhamento de metas e entregas do PDI",
-    icone: Target,
-    colunasPadrao: 1,
-  },
-  {
-    id: "processos",
-    titulo: "Processos & Pipelines (CRM)",
-    descricao: "Funis de trabalho, checklists por etapa e automações",
-    icone: GitMerge,
-    colunasPadrao: 2,
-  },
-  {
-    id: "lousas",
-    titulo: "Lousas Visuais (Excalidraw)",
-    descricao: "Quadros de desenho e mapas mentais",
-    icone: Layout,
-    colunasPadrao: 1,
-  },
-
-  // --- FERRAMENTAS INDIVIDUAIS ---
-  {
-    id: "pdf_para_png",
-    titulo: "PDF para PNG",
-    descricao: "Converte páginas de PDF em imagens PNG",
-    icone: FileImage,
-    colunasPadrao: 1,
-    corIcone: "text-blue-500 bg-blue-500/10",
-  },
-  {
-    id: "pdf_para_jpg",
-    titulo: "PDF para JPG",
-    descricao: "Converte páginas de PDF em imagens JPG",
-    icone: FileImage,
-    colunasPadrao: 1,
-    corIcone: "text-blue-500 bg-blue-500/10",
-  },
-  {
-    id: "img_para_pdf",
-    titulo: "Imagens para PDF",
-    descricao: "Junta imagens em um único PDF",
-    icone: FileText,
-    colunasPadrao: 1,
-    corIcone: "text-indigo-500 bg-indigo-500/10",
-  },
-  {
-    id: "img_para_webp",
-    titulo: "Converter para WebP",
-    descricao: "Otimize imagens para formato WebP",
-    icone: ImageIcon,
-    colunasPadrao: 1,
-    corIcone: "text-purple-500 bg-purple-500/10",
-  },
-  {
-    id: "img_para_png",
-    titulo: "Converter para PNG",
-    descricao: "Transforme imagens em formato PNG",
-    icone: ImageIcon,
-    colunasPadrao: 1,
-    corIcone: "text-purple-500 bg-purple-500/10",
-  },
-  {
-    id: "img_para_jpg",
-    titulo: "Converter para JPG",
-    descricao: "Transforme imagens em formato JPG",
-    icone: ImageIcon,
-    colunasPadrao: 1,
-    corIcone: "text-purple-500 bg-purple-500/10",
-  },
-  {
-    id: "pdf_para_epub",
-    titulo: "PDF para EPUB",
-    descricao: "Extrai texto de PDF e gera um EPUB fluido",
-    icone: FileText,
-    colunasPadrao: 1,
-    corIcone: "text-emerald-500 bg-emerald-500/10",
-  },
-  {
-    id: "epub_trocar_capa",
-    titulo: "Trocar Capa de EPUB",
-    descricao: "Substitua a capa de um livro EPUB existente",
-    icone: FileImage,
-    colunasPadrao: 1,
-    corIcone: "text-orange-500 bg-orange-500/10",
-  },
-  {
-    id: "texto_para_md",
-    titulo: "Texto para Markdown",
-    descricao: "Converte textos colados ou HTML para Markdown",
-    icone: FileType,
-    colunasPadrao: 1,
-    corIcone: "text-amber-500 bg-amber-500/10",
-  },
-  {
-    id: "transcritor",
-    titulo: "Transcritor de Voz",
-    descricao: "Grave áudio ou transcreva reuniões com IA",
-    icone: Mic,
-    colunasPadrao: 1,
-    corIcone: "text-purple-600 bg-purple-600/10",
-  },
-  {
-    id: "chat_ia",
-    titulo: "Assistente IA",
-    descricao: "Conversa e tira-dúvidas com o Gemini",
-    icone: MessageCircle,
-    colunasPadrao: 1,
-    corIcone: "text-pink-500 bg-pink-500/10",
-  },
-  {
-    id: "config_ajustes",
-    titulo: "Configurações e Ajustes",
-    descricao: "Ajuste conexões com o GitHub e tokens de API",
-    icone: Settings,
-    colunasPadrao: 1,
-    corIcone: "text-slate-500 bg-slate-500/10",
-  },
-  {
-    id: "testador_hardware",
-    titulo: "Diagnóstico de Hardware",
-    descricao: "Verifique sua câmera, microfone e alto-falantes rapidamente",
-    icone: Video,
-    colunasPadrao: 1,
-    corIcone: "text-red-500 bg-red-500/10",
-  },
-];
-
-const GADGETS_PADRAO: Gadget[] = [
-  { id: "busca_web", colunas: 3 },
-  { id: "kpi_tarefas", colunas: 1 },
-  { id: "kpi_notas", colunas: 1 },
-  { id: "kpi_referencias", colunas: 1 },
-  { id: "kpi_pdi", colunas: 1 },
-  { id: "tarefas", colunas: 2 },
-  { id: "notas", colunas: 1 },
-  { id: "referencias", colunas: 2 },
-  { id: "pdi", colunas: 1 },
-  { id: "testador_hardware", colunas: 1 },
-];
-
-function GadgetWrapper({
-  gadget,
-  aoMudarColunas,
-  aoRemover,
-  children,
-}: {
-  gadget: Gadget;
-  aoMudarColunas: (id: string, colunas: 1 | 2 | 3 | 4) => void;
-  aoRemover: (id: string) => void;
-  children: React.ReactNode;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: gadget.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.35 : 1,
-  };
-
-  const classeGrid =
-    gadget.colunas === 4
-      ? "col-span-1 md:col-span-2 lg:col-span-4"
-      : gadget.colunas === 3
-      ? "col-span-1 md:col-span-2 lg:col-span-3"
-      : gadget.colunas === 2
-      ? "col-span-1 md:col-span-2"
-      : "col-span-1";
-
-  const proximaColuna = (atual: 1 | 2 | 3 | 4): 1 | 2 | 3 | 4 => {
-    if (atual === 1) return 2;
-    if (atual === 2) return 3;
-    if (atual === 3) return 4;
-    return 1;
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "relative transition-all h-full flex flex-col group/gadget rounded-3xl",
-        classeGrid,
-        isDragging && "z-50 ring-2 ring-primary/60 shadow-2xl scale-[1.01]"
-      )}
-    >
-      {/* Barra de Controles Flutuante do Gadget (Redimensionar livre + Arrastar + Excluir) */}
-      <div className="absolute top-3 right-3 z-30 opacity-0 group-hover/gadget:opacity-100 transition-opacity duration-200 pointer-events-auto">
-        <div className="flex items-center gap-1 bg-card/90 backdrop-blur-xl rounded-2xl p-1 border border-border/80 shadow-xl whitespace-nowrap">
-          {/* Seletor Livre de Colunas */}
-          <div className="flex items-center gap-0.5 bg-secondary/60 p-0.5 rounded-xl">
-            {([1, 2, 3, 4] as const).map((col) => (
-              <button
-                key={col}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  aoMudarColunas(gadget.id, col);
-                }}
-                className={cn(
-                  "px-2 py-0.5 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer",
-                  gadget.colunas === col
-                    ? "bg-primary text-primary-foreground shadow-xs scale-105"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                )}
-                title={`Definir largura para ${col} coluna(s)`}
-              >
-                {col === 4 ? "Full" : `${col}x`}
-              </button>
-            ))}
-          </div>
-
-          <div className="h-4 w-px bg-border/80 mx-0.5" />
-
-          {/* Alça de Arrastar */}
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            className="p-1.5 rounded-xl hover:bg-accent text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing transition-colors"
-            title="Arraste para reposicionar widget"
-            aria-label="Reordenar widget"
-          >
-            <GripVertical size={13} />
-          </button>
-
-          {/* Ocultar */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              aoRemover(gadget.id);
-            }}
-            className="p-1.5 rounded-xl hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-            title="Ocultar widget do Dashboard"
-            aria-label="Ocultar widget"
-          >
-            <Trash2 size={13} />
-          </button>
-        </div>
-      </div>
-
-      {children}
-
-      {/* Alça de Redimensionamento Rápido no Canto Inferior Direito */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          aoMudarColunas(gadget.id, proximaColuna(gadget.colunas));
-        }}
-        className="absolute bottom-2.5 right-2.5 z-20 opacity-0 group-hover/gadget:opacity-100 transition-opacity p-1 rounded-lg text-muted-foreground/50 hover:text-primary hover:bg-primary/10 cursor-pointer"
-        title={`Clique para expandir tamanho (${gadget.colunas}x → ${proximaColuna(gadget.colunas)}x)`}
-        aria-label="Redimensionar widget"
-      >
-        <Move size={12} className="rotate-45" />
-      </button>
-    </div>
-  );
-}
+// Suíte Modular Bento Home
+import {
+  type WidgetConfig,
+  CONFIG_PADRAO_WIDGETS,
+  CATALOGO_WIDGETS,
+} from "@/components/home/types";
+import { CabecalhoHome } from "@/components/home/CabecalhoHome";
+import { PulseKPIs } from "@/components/home/PulseKPIs";
+import { WidgetWrapper } from "@/components/home/WidgetWrapper";
+import { WidgetFocoHoje } from "@/components/home/WidgetFocoHoje";
+import { WidgetNotasRecentes, type NotaItemHome } from "@/components/home/WidgetNotasRecentes";
+import { WidgetReferenciasMural } from "@/components/home/WidgetReferenciasMural";
+import { WidgetMetasPDI } from "@/components/home/WidgetMetasPDI";
+import { WidgetScratchpad } from "@/components/home/WidgetScratchpad";
+import { WidgetHubFerramentas } from "@/components/home/WidgetHubFerramentas";
+import { WidgetProcessosCRM, type ProcessoItemHome } from "@/components/home/WidgetProcessosCRM";
+import { WidgetLousasRecentes, type LousaItemHome } from "@/components/home/WidgetLousasRecentes";
+import { WidgetBuscaWeb } from "@/components/home/WidgetBuscaWeb";
+import { PainelPersonalizarHome } from "@/components/home/PainelPersonalizarHome";
 
 export default function Home() {
-  const cfg = useMemo(() => lerConfig(), []);
+  const cfg = lerConfig();
   const pronto = configCompleta(cfg);
-
-  const { abrirFerramentaFlutuante } = useFerramentasFlutuantes();
+  const navegar = useNavigate();
   const { salvarTexto } = useSalvar(cfg);
 
-  const [carregando, setCarregando] = useState(() => !cache?.itens || cache.itens.length === 0);
-  const [erro, setErro] = useState("");
-  const [tarefasPendentes, setTarefasPendentes] = useState<Tarefa[]>([]);
-  const [tarefasUrgentesCount, setTarefasUrgentesCount] = useState(0);
-  const [notasRecentes, setNotasRecentes] = useState<NotaRecente[]>([]);
-  const [referenciasRecentes, setReferenciasRecentes] = useState<Referencia[]>([]);
-  const [resumoPdi, setResumoPdi] = useState<ResumoMeta[]>([]);
-  const [saudacao, setSaudacao] = useState("");
-  const [IconeTempo, setIconeTempo] = useState<any>(Sun);
-  const [totalTarefas, setTotalTarefas] = useState(0);
-  const [totalNotas, setTotalNotas] = useState(0);
-  const [totalRefs, setTotalRefs] = useState(0);
+  // ── Estados de Dados ──────────────────────────────────────────────────────
+  const [carregando, setCarregando] = useState(true);
+  const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+  const [notas, setNotas] = useState<NotaItemHome[]>([]);
+  const [referencias, setReferencias] = useState<Referencia[]>([]);
+  const [resumosPdi, setResumosPdi] = useState<ResumoMeta[]>([]);
+  const [processos, setProcessos] = useState<ProcessoItemHome[]>([]);
+  const [lousas, setLousas] = useState<LousaItemHome[]>([]);
 
-  const [salvandoItem, setSalvandoItem] = useState(false);
-  const [editandoTarefa, setEditandoTarefa] = useState<Tarefa | null>(null);
-  const [origTarefa, setOrigTarefa] = useState<Tarefa | null>(null);
-  const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>("popup");
-  const [modalAdicionarAberto, setModalAdicionarAberto] = useState(false);
-
-  const [editandoNota, setEditandoNota] = useState<{
-    caminho: string;
-    sha: string;
-    titulo: string;
-    corpo: string;
-    bruto: Record<string, any>;
-  } | null>(null);
-  const [origNota, setOrigNota] = useState<any>(null);
-
-  const [editandoMeta, setEditandoMeta] = useState<Meta | null>(null);
-  const [origMeta, setOrigMeta] = useState<Meta | null>(null);
-
-  const { focarFlutuante } = useItemFlutuante();
-
-  async function salvarTarefaHome(t: Tarefa, fechar = true) {
-    setSalvandoItem(true);
-    try {
-      const texto = escreverMarkdown({
-        dados: paraFrontmatter(t),
-        corpo: t.corpo,
-      });
-      const caminho = t.caminho || nomeLivre("tarefas", t.titulo, tarefasPendentes.map((x) => x.caminho));
-      const novaSha = await salvarTexto(caminho, texto, t.sha || undefined, undefined, true);
-      const tSalva = { ...t, caminho, sha: novaSha };
-      setEditandoTarefa(fechar ? null : tSalva);
-      setOrigTarefa(fechar ? null : tSalva);
-      await carregar(true);
-    } catch (e) {
-      setOrigTarefa(t);
-      setErro(e instanceof Error ? e.message : String(e));
-      throw e;
-    } finally {
-      setSalvandoItem(false);
-    }
-  }
-
-  async function abrirNotaHome(caminho: string) {
-    if (focarFlutuante(caminho)) return;
-    try {
-      const res = await ler(cfg, caminho);
-      const doc = lerMarkdown(res.texto);
-      const docTitulo = typeof doc.dados.titulo === "string" ? doc.dados.titulo : "";
-      const tituloFinal = docTitulo || tituloProvavel(doc, caminho);
-      setEditandoNota({
-        caminho,
-        sha: res.sha,
-        titulo: tituloFinal,
-        corpo: doc.corpo,
-        bruto: doc.dados,
-      });
-      setOrigNota({ titulo: tituloFinal, corpo: doc.corpo, bruto: doc.dados });
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    }
-  }
-
-  async function salvarNotaHome(fechar = true) {
-    if (!editandoNota) return;
-    setSalvandoItem(true);
-    try {
-      const texto = escreverMarkdown({
-        dados: mesclarFrontmatter(editandoNota.bruto, {
-          titulo: editandoNota.titulo || "Sem título",
-          tipo: "nota",
-        }),
-        corpo: editandoNota.corpo,
-      });
-      const novaSha = await salvarTexto(editandoNota.caminho, texto, editandoNota.sha, undefined, true);
-      const nSalva = { ...editandoNota, sha: novaSha };
-      setEditandoNota(fechar ? null : nSalva);
-      setOrigNota(fechar ? null : { titulo: nSalva.titulo, corpo: nSalva.corpo, bruto: nSalva.bruto });
-      await carregar(true);
-    } catch (e) {
-      setOrigNota({ titulo: editandoNota.titulo, corpo: editandoNota.corpo, bruto: editandoNota.bruto });
-      setErro(e instanceof Error ? e.message : String(e));
-      throw e;
-    } finally {
-      setSalvandoItem(false);
-    }
-  }
-
-  async function salvarMetaHome(m: Meta, fechar = true) {
-    setSalvandoItem(true);
-    try {
-      const texto = escreverMarkdown({
-        dados: metaParaFrontmatter(m),
-        corpo: m.corpo,
-      });
-      const novaSha = await salvarTexto(m.caminho, texto, m.sha, undefined, true);
-      const mSalva = { ...m, sha: novaSha };
-      setEditandoMeta(fechar ? null : mSalva);
-      setOrigMeta(fechar ? null : mSalva);
-      await carregar(true);
-    } catch (e) {
-      setOrigMeta(m);
-      setErro(e instanceof Error ? e.message : String(e));
-      throw e;
-    } finally {
-      setSalvandoItem(false);
-    }
-  }
-
-  // Auto-save em 2.5s para itens abertos na Home
-  useEffect(() => {
-    const mudouTarefa = editandoTarefa !== null && origTarefa !== null && JSON.stringify(editandoTarefa) !== JSON.stringify(origTarefa);
-    if (!mudouTarefa || salvandoItem || !editandoTarefa) return;
-    const timer = setTimeout(() => {
-      salvarTarefaHome(editandoTarefa, false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [editandoTarefa, origTarefa, salvandoItem]);
-
-  useEffect(() => {
-    const mudouNota = editandoNota !== null && origNota !== null && JSON.stringify(editandoNota) !== JSON.stringify(origNota);
-    if (!mudouNota || salvandoItem || !editandoNota) return;
-    const timer = setTimeout(() => {
-      salvarNotaHome(false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [editandoNota, origNota, salvandoItem]);
-
-  useEffect(() => {
-    const mudouMeta = editandoMeta !== null && origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta);
-    if (!mudouMeta || salvandoItem || !editandoMeta) return;
-    const timer = setTimeout(() => {
-      salvarMetaHome(editandoMeta, false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [editandoMeta, origMeta, salvandoItem]);
-
-  const [gadgets, setGadgets] = useState<Gadget[]>(() => {
-    const salvo = localStorage.getItem("home-gadgets");
+  // ── Configuração dos Widgets (Bento Grid) ──────────────────────────────────
+  const [configWidgets, setConfigWidgets] = useState<WidgetConfig[]>(() => {
+    const salvo = localStorage.getItem("klaus_home_bento_config");
     if (salvo) {
       try {
-        const parsed: Gadget[] = JSON.parse(salvo);
-        // Garante que a Busca Web apareça no topo da Home mesmo se o usuário já tiver layout antigo salvo
-        if (Array.isArray(parsed) && !parsed.some((g) => g.id === "busca_web")) {
-          return [{ id: "busca_web", colunas: 3 }, ...parsed];
-        }
-        return parsed;
-      } catch {
-        return GADGETS_PADRAO;
-      }
+        const parsed = JSON.parse(salvo);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
     }
-    return GADGETS_PADRAO;
+    return CONFIG_PADRAO_WIDGETS;
   });
 
-  const salvarGadgets = (novos: Gadget[]) => {
-    setGadgets(novos);
-    localStorage.setItem("home-gadgets", JSON.stringify(novos));
+  const [modoEdicaoRapida, setModoEdicaoRapida] = useState(() => {
+    return localStorage.getItem("klaus_home_modo_edicao") === "true";
+  });
+
+  const [painelPersonalizarAberto, setPainelPersonalizarAberto] = useState(false);
+  const [capturaAberta, setCapturaAberta] = useState(false);
+  const [buscaAberta, setBuscaAberta] = useState(false);
+
+  // Salva configurações de widgets no localStorage
+  const salvarConfigWidgets = (novaConfig: WidgetConfig[]) => {
+    setConfigWidgets(novaConfig);
+    localStorage.setItem("klaus_home_bento_config", JSON.stringify(novaConfig));
   };
 
-  const restaurarLayout = () => {
-    setGadgets(GADGETS_PADRAO);
-    localStorage.removeItem("home-gadgets");
+  const alternarModoEdicao = () => {
+    const novoValor = !modoEdicaoRapida;
+    setModoEdicaoRapida(novoValor);
+    localStorage.setItem("klaus_home_modo_edicao", String(novoValor));
   };
 
-  const alternarColunas = (id: string, colunas: 1 | 2 | 3 | 4) => {
-    salvarGadgets(
-      gadgets.map((g) => (g.id === id ? { ...g, colunas } : g))
-    );
+  const restaurarPadrao = () => {
+    salvarConfigWidgets(CONFIG_PADRAO_WIDGETS);
+    toast("Layout da tela inicial restaurado para o padrão!");
   };
 
-  const removerGadget = (id: string) => {
-    salvarGadgets(gadgets.filter((g) => g.id !== id));
-  };
-
-  const adicionarGadget = (info: InfoGadgetDisponivel) => {
-    if (gadgets.some((g) => g.id === info.id)) return;
-    salvarGadgets([...gadgets, { id: info.id, colunas: info.colunasPadrao }]);
-    setModalAdicionarAberto(false);
-  };
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const aoArrastarFim = (e: DragEndEvent) => {
-    const { active, over } = e;
-    if (over && active.id !== over.id) {
-      const antigoIndex = gadgets.findIndex((g) => g.id === active.id);
-      const novoIndex = gadgets.findIndex((g) => g.id === over.id);
-      salvarGadgets(arrayMove(gadgets, antigoIndex, novoIndex));
+  // ── Carregamento do Repositório ───────────────────────────────────────────
+  const carregarDados = useCallback(async () => {
+    if (!pronto) {
+      setCarregando(false);
+      return;
     }
-  };
 
-  const carregar = useCallback(
-    async (silencioso = false) => {
-      if (!pronto) {
-        setCarregando(false);
-        return;
-      }
-      const temCache = Boolean(cache?.itens && cache.itens.length > 0);
-      if (!silencioso && !temCache) {
-        setCarregando(true);
-      }
-      setErro("");
+    try {
+      setCarregando(true);
+      const todos = await carregarRepo(cfg);
 
-      try {
-        const todos = await carregarRepo(cfg, { memoria: 30_000 });
+      // 1. Tarefas
+      const docsTarefas = daPasta(todos, PASTAS.tarefas);
+      const listaTarefas = docsTarefas.map((i) =>
+        comoTarefa(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
+      );
+      setTarefas(listaTarefas);
 
-        // 1. Tarefas (com suporte recursivo a subpastas)
-        const arqTarefas = daPasta(todos, "tarefas", true);
-        const listaTarefas = ordenar(
-          arqTarefas.map((i) =>
-            comoTarefa(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
-          )
-        );
-        setTotalTarefas(listaTarefas.length);
-        const pendentes = listaTarefas.filter((t) => t.status !== "feito");
-        setTarefasPendentes(pendentes.slice(0, 5));
-        setTarefasUrgentesCount(
-          pendentes.filter((t) => urgencia(t) === "atrasada" || urgencia(t) === "hoje").length
-        );
+      // 2. Notas
+      const docsNotas = daPasta(todos, PASTAS.notas);
+      const listaNotas: NotaItemHome[] = docsNotas.map((i) => ({
+        caminho: i.caminho,
+        sha: i.sha,
+        titulo: tituloProvavel(i.doc, i.nome),
+        corpo: i.doc.corpo,
+        tags: Array.isArray(i.doc.dados.tags) ? i.doc.dados.tags : [],
+        atualizadoEm: (i.doc.dados.atualizado as string) || (i.doc.dados.criado as string),
+      }));
+      setNotas(listaNotas);
 
-        // 2. Notas (com suporte recursivo a subpastas)
-        const arqNotas = daPasta(todos, "notas", true);
-        setTotalNotas(arqNotas.length);
-        setNotasRecentes(
-          arqNotas.slice(0, 5).map((i) => ({
-            caminho: i.caminho,
-            titulo: tituloProvavel(i.doc, i.nome),
-            nome: i.nome,
-          }))
-        );
+      // 3. Referências
+      const docsRefs = daPasta(todos, PASTAS.referencias);
+      const listaRefs = docsRefs.map((i) =>
+        comoReferencia(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
+      );
+      setReferencias(listaRefs);
 
-        // 3. Referências
-        const arqRefs = daPasta(todos, "referencias", true).filter(
-          (i) => !i.caminho.startsWith("referencias/imagens/")
-        );
-        setTotalRefs(arqRefs.length);
-        setReferenciasRecentes(
-          arqRefs.slice(0, 6).map((i) =>
-            comoReferencia(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
-          )
-        );
+      // 4. PDI (Metas e Entregas)
+      const docsMetas = daPasta(todos, PASTAS.metas);
+      const docsEntregas = daPasta(todos, PASTAS.entregas);
+      const metas = docsMetas.map((i) =>
+        comoMeta(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
+      );
+      const entregas = docsEntregas.map((i) =>
+        comoEntrega(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
+      );
+      setResumosPdi(resumir(metas, entregas));
 
-        // 4. PDI (com suporte recursivo)
-        const arqMetas = daPasta(todos, "pdi/metas", true);
-        const arqEntregas = daPasta(todos, "pdi/entregas", true);
-        const metas = arqMetas.map((i) =>
-          comoMeta(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
-        );
-        const entregas = arqEntregas.map((i) =>
-          comoEntrega(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
-        );
-        setResumoPdi(resumir(metas, entregas));
-      } catch (e) {
-        setErro(e instanceof Error ? e.message : String(e));
-      } finally {
-        setCarregando(false);
-      }
-    },
-    [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]
-  );
+      // 5. Processos
+      const docsProcessos = daPasta(todos, "processos");
+      setProcessos(
+        docsProcessos.map((i) => ({
+          caminho: i.caminho,
+          titulo: tituloProvavel(i.doc, i.nome),
+        }))
+      );
+
+      // 6. Lousas
+      const docsLousas = daPasta(todos, "lousas");
+      setLousas(
+        docsLousas.map((i) => ({
+          caminho: i.caminho,
+          titulo: tituloProvavel(i.doc, i.nome),
+        }))
+      );
+    } catch {
+      // Erro silencioso ou gerenciado
+    } finally {
+      setCarregando(false);
+    }
+  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
   useEffect(() => {
-    const hora = new Date().getHours();
-    if (hora >= 5 && hora < 12) {
-      setSaudacao("Bom dia");
-      setIconeTempo(Sunrise);
-    } else if (hora >= 12 && hora < 18) {
-      setSaudacao("Boa tarde");
-      setIconeTempo(Sun);
-    } else {
-      setSaudacao("Boa noite");
-      setIconeTempo(Sunset);
+    carregarDados();
+  }, [carregarDados]);
+
+  // ── Atalho Global ⌘K para Busca ───────────────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setBuscaAberta((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // ── Ações Rápidas nos Widgets ─────────────────────────────────────────────
+
+  // Alternar conclusão de tarefa diretamente no widget da Home
+  const aoAlternarConclusaoTarefa = async (tarefa: Tarefa) => {
+    const novoStatus: Tarefa["status"] = tarefa.status === "feito" ? "a-fazer" : "feito";
+    const atualizada: Tarefa = { ...tarefa, status: novoStatus };
+
+    // Atualização otimista
+    setTarefas((prev) =>
+      prev.map((t) => (t.caminho === tarefa.caminho ? atualizada : t))
+    );
+
+    const { dados, corpo } = tarefaParaArquivo(atualizada);
+    const texto = escreverMarkdown({ dados, corpo });
+
+    try {
+      await salvarTexto(
+        tarefa.caminho,
+        texto,
+        tarefa.sha,
+        `atualizar status: ${tarefa.titulo} (${novoStatus})`
+      );
+      invalidarCache();
+      toast(
+        novoStatus === "feito"
+          ? `Tarefa "${tarefa.titulo}" concluída!`
+          : `Tarefa reaberta.`
+      );
+    } catch (err: any) {
+      toast(`Erro ao salvar tarefa: ${err?.message || err}`, { tipo: "erro" });
+      carregarDados();
     }
+  };
 
-    carregar();
+  // Criar tarefa rápida
+  const aoCriarTarefaRapida = async (titulo: string) => {
+    const hoje = new Date().toISOString().split("T")[0];
+    const nova: Tarefa = {
+      bruto: {},
+      caminho: "",
+      sha: "",
+      titulo,
+      status: "a-fazer",
+      prazo: hoje,
+      tags: [],
+      corpo: "",
+    };
 
-    const aoAtualizar = () => carregar();
-    window.addEventListener("acervo-atualizado", aoAtualizar);
-    return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
-  }, [carregar]);
+    const caminhosExistentes = tarefas.map((t) => t.caminho);
+    const caminho = nomeLivre(PASTAS.tarefas, titulo, caminhosExistentes);
+    const { dados, corpo } = tarefaParaArquivo(nova);
+    const texto = escreverMarkdown({ dados, corpo });
 
+    try {
+      const sha = await salvarTexto(caminho, texto, undefined, `criar tarefa: ${titulo}`);
+      invalidarCache();
+      setTarefas((prev) => [{ ...nova, caminho, sha }, ...prev]);
+      toast(`Tarefa "${titulo}" criada!`);
+    } catch (err: any) {
+      toast(`Erro ao criar tarefa: ${err?.message || err}`, { tipo: "erro" });
+    }
+  };
+
+  // Converter scratchpad em nota completa
+  const aoConverterScratchpadEmNota = async (conteudo: string) => {
+    const linhas = conteudo.trim().split("\n");
+    const primeiraLinha = linhas[0].replace(/^[#>\s-]+/, "").trim();
+    const titulo = primeiraLinha.slice(0, 50) || `Nota Rápida ${new Date().toLocaleDateString("pt-BR")}`;
+    const corpo = linhas.length > 1 ? linhas.slice(1).join("\n").trim() : conteudo;
+
+    const caminhosExistentes = notas.map((n) => n.caminho);
+    const caminho = nomeLivre(PASTAS.notas, titulo, caminhosExistentes);
+    const texto = escreverMarkdown({
+      dados: {
+        titulo,
+        criado: new Date().toISOString().split("T")[0],
+        tags: ["rascunho"],
+      },
+      corpo,
+    });
+
+    try {
+      const sha = await salvarTexto(caminho, texto, undefined, `criar nota do scratchpad: ${titulo}`);
+      invalidarCache();
+      setNotas((prev) => [
+        { caminho, sha, titulo, corpo, tags: ["rascunho"] },
+        ...prev,
+      ]);
+      toast(`Nota "${titulo}" criada com sucesso!`);
+    } catch (err: any) {
+      toast(`Erro ao converter nota: ${err?.message || err}`, { tipo: "erro" });
+    }
+  };
+
+  // ── Métricas de Topo (KPIs) ───────────────────────────────────────────────
+  const hojeStr = new Date().toISOString().split("T")[0];
+
+  const tarefasHojeCount = useMemo(() => {
+    return tarefas.filter((t) => t.status !== "feito" && (!t.prazo || t.prazo <= hojeStr)).length;
+  }, [tarefas, hojeStr]);
+
+  const tarefasUrgentesCount = useMemo(() => {
+    return tarefas.filter((t) => t.status !== "feito" && t.prazo && t.prazo < hojeStr).length;
+  }, [tarefas, hojeStr]);
+
+  const progressoPdiGeral = useMemo(() => {
+    if (resumosPdi.length === 0) return 0;
+    const concluidas = resumosPdi.filter((r) => r.meta.status === "concluida").length;
+    return Math.round((concluidas / resumosPdi.length) * 100);
+  }, [resumosPdi]);
+
+  const metasAtivasCount = useMemo(() => {
+    return resumosPdi.filter((r) => r.meta.status !== "concluida").length;
+  }, [resumosPdi]);
+
+  // ── Sem Configuração ──────────────────────────────────────────────────────
   if (!pronto) {
     return (
       <Vazio
-        titulo="Bem-vindo ao Klaus"
-        descricao="Conecte sua conta do GitHub para começar a organizar suas tarefas e notas num lugar só."
+        titulo="Falta conectar seu repositório"
+        descricao="Configure o GitHub Token e o Repositório de dados em Ajustes para carregar sua tela inicial."
         acao={
-          <Link to="/config">
-            <Button>Ir para Ajustes</Button>
+          <Link
+            to="/config"
+            className="px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-xl text-xs shadow-md hover:bg-primary/95 transition-all"
+          >
+            Configurar Conexão
           </Link>
         }
       />
     );
   }
 
-  if (carregando) {
-    return <Carregando texto="Sincronizando seu centro de comando..." />;
-  }
-
-  // Renderização responsiva de qualquer gadget individual do acervo
-  const renderizarGadget = (gadget: Gadget) => {
-    // 1. Ferramenta ou Conversão Individual: Cartão clicável elegante e sem botões pretos
-    const infoCat = CATALOGO_GADGETS.find((c) => c.id === gadget.id);
-
-    if (infoCat && infoCat.corIcone) {
-      const IconeComp = infoCat.icone;
-      return (
-        <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-          <div
-            onClick={() => abrirFerramentaFlutuante(gadget.id)}
-            className="group relative flex flex-col justify-between h-full p-5 rounded-2xl border border-border/80 bg-card hover:bg-accent/60 hover:border-primary/40 cursor-pointer transition-all shadow-xs overflow-hidden pr-10"
-          >
-            <div className="space-y-3">
-              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition-transform group-hover:scale-105", infoCat.corIcone)}>
-                <IconeComp size={20} />
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">
-                  {infoCat.titulo}
-                </h3>
-                <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                  {infoCat.descricao}
-                </p>
-              </div>
-            </div>
-            <div className="pt-4 flex items-center gap-1.5 text-xs font-semibold text-primary">
-              <span>Usar ferramenta</span>
-              <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
-            </div>
-          </div>
-        </GadgetWrapper>
-      );
-    }
-
-    // 2. Módulos de Conteúdo (KPIs, Tarefas, Notas, Referências, PDI, Lousas)
-    switch (gadget.id) {
-      case "kpi_tarefas":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Link to="/tarefas" className="block group h-full">
-              <Card className="hover:border-primary/50 transition-all hover:shadow-lg cursor-pointer h-full border border-border/80 bg-card/80 backdrop-blur-md rounded-2xl overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
-                  <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Tarefas Pendentes</CardTitle>
-                  <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                    <CheckSquare className="h-4 w-4" />
-                  </div>
-                </CardHeader>
-                <CardContent className="p-5 pt-0">
-                  <div className="text-3xl font-extrabold tracking-tight text-foreground">{totalTarefas}</div>
-                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
-                    {tarefasUrgentesCount > 0 ? (
-                      <span className="text-amber-500 font-semibold flex items-center gap-1">
-                        <AlertTriangle size={12} /> {tarefasUrgentesCount} urgente{tarefasUrgentesCount > 1 ? "s" : ""}
-                      </span>
-                    ) : (
-                      <span className="text-emerald-500 font-medium">✓ Tudo em dia</span>
-                    )}
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          </GadgetWrapper>
-        );
-
-      case "kpi_notas":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Link to="/notas" className="block group h-full">
-              <Card className="hover:border-blue-500/50 transition-all hover:shadow-lg cursor-pointer h-full border border-border/80 bg-card/80 backdrop-blur-md rounded-2xl overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
-                  <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Notas & Ideias</CardTitle>
-                  <div className="h-8 w-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                    <FileText className="h-4 w-4" />
-                  </div>
-                </CardHeader>
-                <CardContent className="p-5 pt-0">
-                  <div className="text-3xl font-extrabold tracking-tight text-foreground">{totalNotas}</div>
-                  <p className="text-xs text-muted-foreground mt-2 font-medium">Acervo de conhecimento</p>
-                </CardContent>
-              </Card>
-            </Link>
-          </GadgetWrapper>
-        );
-
-      case "kpi_referencias":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Link to="/referencias" className="block group h-full">
-              <Card className="hover:border-purple-500/50 transition-all hover:shadow-lg cursor-pointer h-full border border-border/80 bg-card/80 backdrop-blur-md rounded-2xl overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
-                  <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Referências Visuais</CardTitle>
-                  <div className="h-8 w-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
-                    <ImageIcon className="h-4 w-4" />
-                  </div>
-                </CardHeader>
-                <CardContent className="p-5 pt-0">
-                  <div className="text-3xl font-extrabold tracking-tight text-foreground">{totalRefs}</div>
-                  <p className="text-xs text-muted-foreground mt-2 font-medium">Galeria de inspirações</p>
-                </CardContent>
-              </Card>
-            </Link>
-          </GadgetWrapper>
-        );
-
-      case "kpi_pdi":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Link to="/pdi" className="block group h-full">
-              <Card className="hover:border-emerald-500/50 transition-all hover:shadow-lg cursor-pointer h-full border border-border/80 bg-card/80 backdrop-blur-md rounded-2xl overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
-                  <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Carreira (PDI)</CardTitle>
-                  <div className="h-8 w-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                    <Target className="h-4 w-4" />
-                  </div>
-                </CardHeader>
-                <CardContent className="p-5 pt-0">
-                  <div className="text-3xl font-extrabold tracking-tight text-foreground">{resumoPdi.length}</div>
-                  <p className="text-xs text-muted-foreground mt-2 font-medium">Metas ativas em progresso</p>
-                </CardContent>
-              </Card>
-            </Link>
-          </GadgetWrapper>
-        );
-
-      case "kpis": {
-        const gridKpisClass =
-          gadget.colunas === 3
-            ? "grid gap-4 sm:gap-6 grid-cols-2 md:grid-cols-4"
-            : gadget.colunas === 2
-            ? "grid gap-4 sm:gap-5 grid-cols-2"
-            : "grid gap-4 grid-cols-1 sm:grid-cols-2";
-
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <div className={gridKpisClass}>
-              <Link to="/tarefas" className="block group">
-                <Card className="hover:border-primary/50 transition-all hover:shadow-md cursor-pointer h-full">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 sm:p-6 pb-2 sm:pb-3">
-                    <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tarefas Pendentes</CardTitle>
-                    <CheckSquare className="h-4 w-4 text-primary" />
-                  </CardHeader>
-                  <CardContent className="p-5 sm:p-6 pt-0 sm:pt-0">
-                    <div className="text-2xl sm:text-3xl font-bold tracking-tight">{totalTarefas}</div>
-                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                      {tarefasUrgentesCount > 0 ? (
-                        <span className="text-amber-600 font-semibold">{tarefasUrgentesCount} urgentes</span>
-                      ) : (
-                        "Tudo sob controle"
-                      )}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-
-              <Link to="/notas" className="block group">
-                <Card className="hover:border-primary/50 transition-all hover:shadow-md cursor-pointer h-full">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 sm:p-6 pb-2 sm:pb-3">
-                    <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Notas Criadas</CardTitle>
-                    <FileText className="h-4 w-4 text-blue-500" />
-                  </CardHeader>
-                  <CardContent className="p-5 sm:p-6 pt-0 sm:pt-0">
-                    <div className="text-2xl sm:text-3xl font-bold tracking-tight">{totalNotas}</div>
-                    <p className="text-xs text-muted-foreground mt-2">Conhecimento salvo</p>
-                  </CardContent>
-                </Card>
-              </Link>
-
-              <Link to="/referencias" className="block group">
-                <Card className="hover:border-primary/50 transition-all hover:shadow-md cursor-pointer h-full">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 sm:p-6 pb-2 sm:pb-3">
-                    <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Referências</CardTitle>
-                    <ImageIcon className="h-4 w-4 text-purple-500" />
-                  </CardHeader>
-                  <CardContent className="p-5 sm:p-6 pt-0 sm:pt-0">
-                    <div className="text-2xl sm:text-3xl font-bold tracking-tight">{totalRefs}</div>
-                    <p className="text-xs text-muted-foreground mt-2">Galeria de inspirações</p>
-                  </CardContent>
-                </Card>
-              </Link>
-
-              <Link to="/pdi" className="block group">
-                <Card className="hover:border-primary/50 transition-all hover:shadow-md cursor-pointer h-full">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 sm:p-6 pb-2 sm:pb-3">
-                    <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Carreira (PDI)</CardTitle>
-                    <Target className="h-4 w-4 text-emerald-500" />
-                  </CardHeader>
-                  <CardContent className="p-5 sm:p-6 pt-0 sm:pt-0">
-                    <div className="text-2xl sm:text-3xl font-bold tracking-tight">{resumoPdi.length}</div>
-                    <p className="text-xs text-muted-foreground mt-2">Metas em progresso</p>
-                  </CardContent>
-                </Card>
-              </Link>
-            </div>
-          </GadgetWrapper>
-        );
-      }
-
-      case "tarefas":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Card className="shadow-sm h-full flex flex-col border border-border/80">
-              <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <CheckSquare size={18} className="text-primary" />
-                    Próximas Tarefas
-                  </CardTitle>
-                  <CardDescription className="text-xs">O que precisa da sua atenção agora.</CardDescription>
-                </div>
-                <Link to="/tarefas">
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-primary hover:bg-primary/10">
-                    <span>Ver todas</span>
-                    <ArrowRight size={14} />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="p-5 sm:p-6 pt-0 flex-1">
-                {tarefasPendentes.length === 0 ? (
-                  <div className="flex h-40 flex-col items-center justify-center rounded-xl border border-dashed border-border/70 text-center p-4">
-                    <CheckSquare className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                    <p className="text-xs text-muted-foreground">Nenhuma tarefa pendente! Excelente 🎉</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3.5 sm:gap-4">
-                    {tarefasPendentes.map((t) => {
-                      const prazoTexto = textoPrazo(t);
-                      const urgente = urgencia(t) === "atrasada" || urgencia(t) === "hoje" || urgencia(t) === "proxima";
-                      return (
-                        <button
-                          key={t.caminho}
-                          onClick={() => {
-                            if (focarFlutuante(t.caminho)) return;
-                            setEditandoTarefa(t);
-                            setOrigTarefa(t);
-                          }}
-                          className="block group w-full text-left"
-                        >
-                          <div className="flex items-center justify-between rounded-xl border border-border/80 bg-card p-4 transition-all hover:bg-accent/70 hover:border-primary/40 shadow-xs">
-                            <div className="space-y-1.5 min-w-0 pr-3">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-semibold group-hover:text-primary transition-colors truncate">
-                                  {t.titulo}
-                                </span>
-                                {urgente && (
-                                  <Badge variant="destructive" className="text-[10px] py-0 px-2 h-4.5 font-medium">
-                                    Urgente
-                                  </Badge>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {prazoTexto && (
-                                  <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
-                                    <Clock size={12} />
-                                    {prazoTexto}
-                                  </span>
-                                )}
-                                {t.tags.map((tag) => (
-                                  <Badge variant="secondary" key={tag} className="text-[10px] py-0 px-2">
-                                    #{tag}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                            <ArrowRight size={16} className="text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </GadgetWrapper>
-        );
-
-      case "notas":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Card className="shadow-sm h-full flex flex-col border border-border/80">
-              <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <FileText size={18} className="text-blue-500" />
-                    Notas Recentes
-                  </CardTitle>
-                  <CardDescription className="text-xs">Seus últimos rascunhos e conhecimentos.</CardDescription>
-                </div>
-                <Link to="/notas">
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-blue-500 hover:bg-blue-500/10">
-                    <span>Ver acervo</span>
-                    <ArrowRight size={14} />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="p-5 sm:p-6 pt-0 flex-1">
-                {notasRecentes.length === 0 ? (
-                  <div className="flex h-36 flex-col items-center justify-center rounded-xl border border-dashed border-border/70 text-center p-3">
-                    <p className="text-xs text-muted-foreground">Nenhuma nota criada ainda.</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {notasRecentes.map((n) => (
-                      <button
-                        key={n.caminho}
-                        onClick={() => abrirNotaHome(n.caminho)}
-                        className="block group w-full text-left"
-                      >
-                        <div className="flex items-center justify-between p-3 rounded-xl border border-border/80 bg-card hover:bg-accent/70 hover:border-blue-500/40 transition-all shadow-xs">
-                          <span className="text-xs font-semibold group-hover:text-blue-500 transition-colors truncate pr-2">
-                            {n.titulo}
-                          </span>
-                          <ArrowRight size={14} className="text-muted-foreground/40 group-hover:text-blue-500 transition-colors shrink-0" />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </GadgetWrapper>
-        );
-
-      case "referencias":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Card className="shadow-sm h-full flex flex-col border border-border/80">
-              <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <ImageIcon size={18} className="text-purple-500" />
-                    Inspirações & Referências
-                  </CardTitle>
-                  <CardDescription className="text-xs">Galeria visual do seu acervo.</CardDescription>
-                </div>
-                <Link to="/referencias">
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-purple-500 hover:bg-purple-500/10">
-                    <span>Galeria</span>
-                    <ArrowRight size={14} />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="p-5 sm:p-6 pt-0 flex-1">
-                {referenciasRecentes.length === 0 ? (
-                  <div className="flex h-36 flex-col items-center justify-center rounded-xl border border-dashed border-border/70 text-center p-3">
-                    <p className="text-xs text-muted-foreground">Nenhuma referência adicionada.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {referenciasRecentes.map((r) => (
-                      <Link
-                        key={r.caminho}
-                        to={`/referencias?abrir=${encodeURIComponent(r.caminho)}`}
-                        className="group relative overflow-hidden rounded-xl border border-border/80 bg-card hover:border-purple-500/50 transition-all aspect-video shadow-xs"
-                      >
-                        {r.imagem ? (
-                          <ImagemPrivada
-                            caminho={r.imagem}
-                            alt={r.titulo}
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-secondary/50 p-2 text-center text-[11px] font-semibold text-muted-foreground">
-                            {r.titulo}
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                          <span className="text-[11px] font-semibold text-white truncate">
-                            {r.titulo}
-                          </span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </GadgetWrapper>
-        );
-
-      case "pdi":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Card className="shadow-sm h-full flex flex-col border border-border/80">
-              <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <Target size={18} className="text-emerald-500" />
-                    Carreira & PDI
-                  </CardTitle>
-                  <CardDescription className="text-xs">Acompanhamento das suas metas.</CardDescription>
-                </div>
-                <Link to="/pdi">
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10">
-                    <span>Ver PDI</span>
-                    <ArrowRight size={14} />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="p-5 sm:p-6 pt-0 flex-1">
-                {resumoPdi.length === 0 ? (
-                  <div className="flex h-36 flex-col items-center justify-center rounded-xl border border-dashed border-border/70 text-center p-3">
-                    <p className="text-xs text-muted-foreground">Nenhuma meta cadastrada ainda.</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3.5 sm:gap-4">
-                    {resumoPdi.map((r) => (
-                      <button
-                        key={r.meta.caminho}
-                        onClick={() => {
-                          if (focarFlutuante(r.meta.caminho)) return;
-                          setEditandoMeta(r.meta);
-                          setOrigMeta(r.meta);
-                        }}
-                        className="block group w-full text-left"
-                      >
-                        <div className="p-4 rounded-xl border border-border/80 bg-card hover:bg-accent/70 hover:border-emerald-500/40 transition-all shadow-xs space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-semibold group-hover:text-emerald-500 transition-colors truncate">
-                              {r.meta.titulo}
-                            </span>
-                            <Badge
-                              variant={r.meta.status === "concluida" ? "default" : "secondary"}
-                              className="text-[9px] py-0.5 px-2 shrink-0 font-medium"
-                            >
-                              {r.meta.status === "em-andamento" ? "Em andamento" : r.meta.status === "concluida" ? "Concluída" : "A começar"}
-                            </Badge>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground">
-                            {r.entregas.length} entrega{r.entregas.length !== 1 ? "s" : ""} registrada{r.entregas.length !== 1 ? "s" : ""}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </GadgetWrapper>
-        );
-
-      case "processos":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Link to="/processos" className="block h-full group">
-              <Card className="shadow-sm h-full flex flex-col border border-border/80 hover:border-primary/50 transition-all">
-                <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
-                  <div className="space-y-1">
-                    <CardTitle className="text-base font-bold flex items-center gap-2 group-hover:text-primary transition-colors">
-                      <GitMerge size={18} className="text-primary" />
-                      Processos & Funis (CRM)
-                    </CardTitle>
-                    <CardDescription className="text-xs">Gerencie pipelines, automações e etapas de projetos.</CardDescription>
-                  </div>
-                  <ArrowRight size={16} className="text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
-                </CardHeader>
-              </Card>
-            </Link>
-          </GadgetWrapper>
-        );
-
-      case "lousas":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Link to="/lousas" className="block h-full group">
-              <Card className="shadow-sm h-full flex flex-col border border-border/80 hover:border-indigo-500/50 transition-all">
-                <CardHeader className="flex flex-row items-center justify-between p-5 sm:p-6 pb-4">
-                  <div className="space-y-1">
-                    <CardTitle className="text-base font-bold flex items-center gap-2 group-hover:text-indigo-500 transition-colors">
-                      <Layout size={18} className="text-indigo-500" />
-                      Lousas & Esboços
-                    </CardTitle>
-                    <CardDescription className="text-xs">Desenhe e esquematize suas ideias no Excalidraw.</CardDescription>
-                  </div>
-                  <ArrowRight size={16} className="text-muted-foreground/40 group-hover:text-indigo-500 transition-colors shrink-0" />
-                </CardHeader>
-              </Card>
-            </Link>
-          </GadgetWrapper>
-        );
-
-      case "hoje":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <Card className="shadow-sm h-full flex flex-col border border-amber-500/30 bg-amber-500/5">
-              <CardHeader className="flex flex-row items-center justify-between p-5 pb-3">
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-bold flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                    <Sun size={18} />
-                    Revisão Diária (Visão "Hoje" — 2 Minutos)
-                  </CardTitle>
-                  <CardDescription className="text-xs">Foco diário: prioridades do dia e tarefas pendentes.</CardDescription>
-                </div>
-                <Link to="/inbox">
-                  <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 cursor-pointer">
-                    Abrir Inbox
-                  </Badge>
-                </Link>
-              </CardHeader>
-              <CardContent className="p-5 pt-0 space-y-3 flex-1 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <ListTodo size={14} className="text-amber-500" />
-                    <span>Tarefas para Hoje ({tarefasPendentes.filter((t: Tarefa) => t.status !== "feito").length})</span>
-                  </p>
-                  {tarefasPendentes.filter((t: Tarefa) => t.status !== "feito").slice(0, 3).map((t: Tarefa) => (
-                    <div key={t.caminho} className="flex items-center justify-between p-2 rounded-lg border border-border/60 bg-card text-xs">
-                      <span className="truncate font-medium">{t.titulo}</span>
-                      <Badge variant="secondary" className="text-[10px]">{t.prazo || "Sem prazo"}</Badge>
-                    </div>
-                  ))}
-                  {tarefasPendentes.filter((t: Tarefa) => t.status !== "feito").length === 0 && (
-                    <p className="text-xs text-muted-foreground italic">Nenhuma tarefa pendente para hoje! 🎉</p>
-                  )}
-                </div>
-                <div className="pt-2 border-t border-amber-500/20 flex items-center justify-between text-xs text-amber-700 dark:text-amber-300">
-                  <span>💡 Dica de 2 min: Revise seu Kanban de Processos e confirme os prazos da Inbox.</span>
-                </div>
-              </CardContent>
-            </Card>
-          </GadgetWrapper>
-        );
-
-      case "busca_web":
-        return (
-          <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
-            <WebSearchWidget />
-          </GadgetWrapper>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  const gadgetsFaltantes = CATALOGO_GADGETS.filter(
-    (c) => !gadgets.some((g) => g.id === c.id)
-  );
+  const nomeExibicao = cfg.repoOwner || "Hugo";
 
   return (
-    <div className="flex-1 space-y-8 animate-in fade-in duration-200 w-full pb-10">
-      <CabecalhoPagina
-        titulo={`${saudacao}!`}
-        descricao="Seu centro de comando do Klaus. Adicione e organize seus gadgets como preferir."
-        icone={<IconeTempo size={20} />}
-        corIcone="bg-amber-500/10 text-amber-600 dark:text-amber-400"
-        acoes={
-          <>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setModalAdicionarAberto(true)}
-              className="gap-2 text-xs font-semibold shadow-2xs"
-            >
-              <Plus size={15} />
-              <span>Adicionar Gadget</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={restaurarLayout}
-              className="gap-2 text-xs text-muted-foreground hover:text-foreground bg-background shadow-2xs"
-              title="Restaurar o layout padrão dos gadgets"
-            >
-              <RotateCcw size={14} />
-              <span>Restaurar Layout</span>
-            </Button>
-          </>
-        }
+    <div className="space-y-6 animate-in fade-in duration-200 w-full pb-12">
+      {/* 1. Cockpit de Saudação e Comandos Rápidos */}
+      <CabecalhoHome
+        nomeUsuario={nomeExibicao}
+        aoAbrirCapturaRapida={() => setCapturaAberta(true)}
+        aoCriarNota={() => navegar("/notas?criar=true")}
+        aoCriarTarefa={() => navegar("/tarefas?criar=true")}
+        aoAbrirPersonalizar={() => setPainelPersonalizarAberto(true)}
+        aoAbrirBusca={() => setBuscaAberta(true)}
       />
 
-      {erro && (
-        <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center gap-2">
-          <AlertTriangle size={16} />
-          <span>{erro}</span>
+      {/* 2. Pulso de Indicadores Essenciais (KPIs de Topo) */}
+      <PulseKPIs
+        tarefasHoje={tarefasHojeCount}
+        tarefasUrgentes={tarefasUrgentesCount}
+        totalNotas={notas.length}
+        totalReferencias={referencias.length}
+        progressoPdi={progressoPdiGeral}
+        metasAtivas={metasAtivasCount}
+      />
+
+      {/* 3. Grid Principal Bento da Tela Inicial */}
+      {carregando ? (
+        <Carregando texto="Carregando seu segundo cérebro..." />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+          {configWidgets
+            .filter((w) => w.ativo)
+            .sort((a, b) => a.ordem - b.ordem)
+            .map((widget) => {
+              const info = CATALOGO_WIDGETS.find((c) => c.id === widget.id);
+              if (!info) return null;
+
+              const Icone = {
+                CheckSquare,
+                FileText,
+                ImageIcon,
+                Target,
+                Layers,
+                GitMerge,
+                Layout,
+                Globe,
+                Edit3,
+              }[info.icone as string] || SparklesIcon;
+
+              return (
+                <WidgetWrapper
+                  key={widget.id}
+                  id={widget.id}
+                  titulo={info.titulo}
+                  icone={Icone}
+                  corIcone={info.corIcone}
+                  tamanho={widget.tamanho}
+                  linkVerMais={
+                    widget.id === "foco_hoje"
+                      ? "/tarefas"
+                      : widget.id === "notas_recentes"
+                      ? "/notas"
+                      : widget.id === "referencias_mural"
+                      ? "/referencias"
+                      : widget.id === "metas_pdi"
+                      ? "/pdi"
+                      : widget.id === "processos_crm"
+                      ? "/processos"
+                      : widget.id === "lousas_recentes"
+                      ? "/lousas"
+                      : undefined
+                  }
+                  modoEdicao={modoEdicaoRapida}
+                  aoMudarTamanho={(novoTam) => {
+                    salvarConfigWidgets(
+                      configWidgets.map((c) =>
+                        c.id === widget.id ? { ...c, tamanho: novoTam } : c
+                      )
+                    );
+                  }}
+                  aoRemover={() => {
+                    salvarConfigWidgets(
+                      configWidgets.map((c) =>
+                        c.id === widget.id ? { ...c, ativo: false } : c
+                      )
+                    );
+                  }}
+                >
+                  {/* Renderização Dinâmica do Conteúdo dos Widgets */}
+                  {widget.id === "foco_hoje" && (
+                    <WidgetFocoHoje
+                      tarefas={tarefas}
+                      aoAlternarConclusao={aoAlternarConclusaoTarefa}
+                      aoAbrirTarefa={(t) => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
+                      aoCriarRapida={aoCriarTarefaRapida}
+                    />
+                  )}
+
+                  {widget.id === "scratchpad" && (
+                    <WidgetScratchpad aoConverterEmNota={aoConverterScratchpadEmNota} />
+                  )}
+
+                  {widget.id === "notas_recentes" && (
+                    <WidgetNotasRecentes
+                      notas={notas}
+                      aoAbrirNota={(caminho) => navegar(`/notas?abrir=${encodeURIComponent(caminho)}`)}
+                    />
+                  )}
+
+                  {widget.id === "referencias_mural" && (
+                    <WidgetReferenciasMural
+                      referencias={referencias}
+                      aoAbrirReferencia={(ref) => navegar(`/referencias?abrir=${encodeURIComponent(ref.caminho)}`)}
+                    />
+                  )}
+
+                  {widget.id === "metas_pdi" && (
+                    <WidgetMetasPDI
+                      resumos={resumosPdi}
+                      aoAbrirMeta={(caminho) => navegar(`/pdi?abrir=${encodeURIComponent(caminho)}`)}
+                    />
+                  )}
+
+                  {widget.id === "hub_ferramentas" && <WidgetHubFerramentas />}
+
+                  {widget.id === "processos_crm" && (
+                    <WidgetProcessosCRM
+                      processos={processos}
+                      aoAbrirProcesso={() => navegar("/processos")}
+                    />
+                  )}
+
+                  {widget.id === "lousas_recentes" && (
+                    <WidgetLousasRecentes
+                      lousas={lousas}
+                      aoAbrirLousa={() => navegar("/lousas")}
+                    />
+                  )}
+
+                  {widget.id === "busca_web" && <WidgetBuscaWeb />}
+                </WidgetWrapper>
+              );
+            })}
         </div>
       )}
 
-      {/* DndContext & Sortable Grid de Gadgets */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={aoArrastarFim}>
-        <SortableContext items={gadgets.map((g) => g.id)} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7">
-            {gadgets.map((gadget) => renderizarGadget(gadget))}
-          </div>
-        </SortableContext>
-      </DndContext>
+      {/* Painel Lateral de Personalização */}
+      <PainelPersonalizarHome
+        aberto={painelPersonalizarAberto}
+        aoFechar={() => setPainelPersonalizarAberto(false)}
+        configWidgets={configWidgets}
+        aoMudarConfig={salvarConfigWidgets}
+        aoRestaurarPadrao={restaurarPadrao}
+        modoEdicaoRapida={modoEdicaoRapida}
+        aoAlternarModoEdicao={alternarModoEdicao}
+      />
 
-      {/* Modal de Adicionar Gadget Limpo e Intuitivo */}
-      {modalAdicionarAberto && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
-          onClick={() => setModalAdicionarAberto(false)}
-        >
-          <div
-            className="flex max-h-[80dvh] w-full max-w-lg flex-col border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-border p-4">
-              <div className="flex items-center gap-2">
-                <Layers size={18} className="text-primary" />
-                <h2 className="font-bold text-base text-foreground">Adicionar Gadget ao Dashboard</h2>
-              </div>
-              <button
-                onClick={() => setModalAdicionarAberto(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
+      {/* Modal de Captura Rápida */}
+      <CapturaRapida aberta={capturaAberta} aoFechar={() => setCapturaAberta(false)} />
 
-            <div className="p-4 overflow-y-auto space-y-2 min-h-0 flex-1">
-              {gadgetsFaltantes.length === 0 ? (
-                <div className="p-8 text-center space-y-1">
-                  <p className="text-sm font-semibold text-foreground">Todos os gadgets já foram adicionados!</p>
-                  <p className="text-xs text-muted-foreground">Você pode reordenar ou redimensionar os blocos na tela inicial.</p>
-                </div>
-              ) : (
-                gadgetsFaltantes.map((info) => {
-                  const IconeComp = info.icone;
-                  return (
-                    <div
-                      key={info.id}
-                      onClick={() => adicionarGadget(info)}
-                      className="flex items-center justify-between p-3 rounded-xl border border-border/80 bg-card hover:bg-accent/70 cursor-pointer transition-colors group"
-                    >
-                      <div className="flex items-center gap-3 min-w-0 pr-2">
-                        <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg text-primary shrink-0", info.corIcone || "bg-primary/10")}>
-                          <IconeComp size={16} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-xs text-foreground group-hover:text-primary transition-colors">{info.titulo}</p>
-                          <p className="text-[11px] text-muted-foreground truncate">{info.descricao}</p>
-                        </div>
-                      </div>
-
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="gap-1 text-xs text-primary group-hover:bg-primary group-hover:text-primary-foreground shrink-0 transition-colors"
-                      >
-                        <Plus size={14} />
-                        <span>Adicionar</span>
-                      </Button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Painel Notion para edição direta na Home sem pulos de tela */}
-      {editandoTarefa !== null && (
-        <PainelNotionBase
-          rotuloTipo={editandoTarefa.caminho ? "Tarefa" : "Nova tarefa"}
-          modoVisao={modoVisao}
-          setModoVisao={setModoVisao}
-          titulo={editandoTarefa.titulo}
-          setTitulo={(t) => setEditandoTarefa({ ...editandoTarefa, titulo: t })}
-          corpo={editandoTarefa.corpo}
-          setCorpo={(c) => setEditandoTarefa({ ...editandoTarefa, corpo: c })}
-          caminhoItem={editandoTarefa.caminho}
-          dadosProps={{
-            ...editandoTarefa.bruto,
-            status: editandoTarefa.status,
-            prazo: editandoTarefa.prazo,
-            tags: editandoTarefa.tags,
-            Pomodoro: editandoTarefa.Pomodoro,
-          }}
-          onChangeProps={(nProps) => {
-            setEditandoTarefa({
-              ...editandoTarefa,
-              bruto: nProps,
-              status: (nProps.status as Tarefa["status"]) || editandoTarefa.status,
-              prazo: nProps.prazo as string | undefined,
-              tags: Array.isArray(nProps.tags)
-                ? (nProps.tags as string[])
-                : editandoTarefa.tags,
-              Pomodoro: typeof nProps.Pomodoro === "number"
-                ? nProps.Pomodoro
-                : (nProps.Pomodoro ? Number(nProps.Pomodoro) : undefined),
-            });
-          }}
-          camposFixosProps={{
-            status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
-            prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
-            tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" },
-            Pomodoro: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
-          }}
-          salvando={salvandoItem}
-          temMudancas={
-            origTarefa !== null &&
-            JSON.stringify(editandoTarefa) !== JSON.stringify(origTarefa)
-          }
-          aoFechar={() => {
-            setEditandoTarefa(null);
-            setOrigTarefa(null);
-          }}
-          aoSalvar={async () => {
-            await salvarTarefaHome(editandoTarefa);
-          }}
-          aoRemover={
-            editandoTarefa.caminho
-              ? async () => {
-                  await apagar(cfg, editandoTarefa.caminho, editandoTarefa.sha);
-                  invalidarCache();
-                  setEditandoTarefa(null);
-                  setOrigTarefa(null);
-                  await carregar();
-                }
-              : undefined
-          }
-          erro={erro}
-          mencoes={[]}
-          opcoesRelacionamento={[]}
-        />
-      )}
-
-      {/* Painel para Nota na Home */}
-      {editandoNota !== null && (
-        <PainelNotionBase
-          rotuloTipo="Nota"
-          modoVisao={modoVisao}
-          setModoVisao={setModoVisao}
-          titulo={editandoNota.titulo}
-          setTitulo={(t) => setEditandoNota({ ...editandoNota, titulo: t })}
-          corpo={editandoNota.corpo}
-          setCorpo={(c) => setEditandoNota({ ...editandoNota, corpo: c })}
-          dadosProps={editandoNota.bruto}
-          onChangeProps={(novosDados) => setEditandoNota({ ...editandoNota, bruto: novosDados })}
-          camposFixosProps={{
-            tipo: { icone: <FileText className="h-4 w-4 opacity-50 text-orange-500" />, tipo: "select", opcoes: ["nota", "referencia", "rascunho"] },
-            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
-          }}
-          salvando={salvandoItem}
-          temMudancas={origNota !== null && JSON.stringify(editandoNota) !== JSON.stringify(origNota)}
-          aoFechar={() => salvarNotaHome(true)}
-          aoSalvar={async () => { await salvarNotaHome(false); }}
-          aoRemover={async () => {
-            await apagar(cfg, editandoNota.caminho, editandoNota.sha);
-            invalidarCache();
-            setEditandoNota(null);
-            setOrigNota(null);
-            await carregar();
-          }}
-          erro={erro}
-        />
-      )}
-
-      {/* Painel para Meta na Home */}
-      {editandoMeta !== null && (
-        <PainelNotionBase
-          rotuloTipo="Meta da Carreira"
-          modoVisao={modoVisao}
-          setModoVisao={setModoVisao}
-          titulo={editandoMeta.titulo}
-          setTitulo={(t) => setEditandoMeta({ ...editandoMeta, titulo: t })}
-          corpo={editandoMeta.corpo}
-          setCorpo={(c) => setEditandoMeta({ ...editandoMeta, corpo: c })}
-          dadosProps={{
-            status: editandoMeta.status,
-            prazo: editandoMeta.prazo,
-            indicador: editandoMeta.indicador,
-          }}
-          onChangeProps={(novosDados) =>
-            setEditandoMeta({
-              ...editandoMeta,
-              status: (novosDados.status as any) || editandoMeta.status,
-              prazo: novosDados.prazo,
-              indicador: novosDados.indicador || editandoMeta.indicador,
-            })
-          }
-          camposFixosProps={{
-            status: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
-            prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
-            indicador: { icone: <CheckSquare className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" },
-          }}
-          salvando={salvandoItem}
-          temMudancas={origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}
-          aoFechar={() => salvarMetaHome(editandoMeta, true)}
-          aoSalvar={async () => { await salvarMetaHome(editandoMeta, false); }}
-          aoRemover={async () => {
-            await apagar(cfg, editandoMeta.caminho, editandoMeta.sha);
-            invalidarCache();
-            setEditandoMeta(null);
-            setOrigMeta(null);
-            await carregar();
-          }}
-          erro={erro}
-        />
-      )}
+      {/* Modal de Busca Global Avançada */}
+      <Busca aberta={buscaAberta} aoFechar={() => setBuscaAberta(false)} />
     </div>
   );
+}
+
+function SparklesIcon(props: any) {
+  return <Layers {...props} />;
 }
