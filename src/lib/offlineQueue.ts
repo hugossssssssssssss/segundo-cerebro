@@ -215,7 +215,30 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
           continue;
         }
 
-        if (status === 409 || msg.includes("409") || msg.includes("conflito")) {
+        if (status === 409 || msg.includes("409") || msg.includes("conflito") || msg.includes("does not match")) {
+          // Tenta auto-recuperação buscando a SHA mais recente no GitHub
+          try {
+            const remoto = await ler(cfg, item.caminho);
+            if (remoto && remoto.sha) {
+              if (acao === "apagar") {
+                await apagar(cfg, item.caminho, remoto.sha);
+                removerRascunhoLocal(item.id);
+                removerDoCacheLocal(item.caminho);
+                concluidos++;
+                continue;
+              } else {
+                const novoSha = await gravar(cfg, item.caminho, item.texto, remoto.sha, item.mensagemCommit);
+                removerRascunhoLocal(item.id);
+                const doc = lerMarkdown(item.texto);
+                atualizarCacheLocal(item.caminho, item.texto, doc, novoSha);
+                concluidos++;
+                continue;
+              }
+            }
+          } catch {
+            // Se a leitura também falhar, marca como conflito para resolução manual
+          }
+
           const erroTxt = "Conflito de edição no GitHub (HTTP 409). O arquivo foi modificado diretamente no repositório.";
           atualizarRascunhoLocal({
             ...item,
@@ -224,7 +247,7 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
             ultimoErro: erroTxt,
             acao,
           });
-          toast(`Conflito no rascunho de "${nomeAmigavel}": clique para ver o erro`, {
+          toast(`Conflito no rascunho de "${nomeAmigavel}": clique para resolver`, {
             tipo: "erro",
             detalhes: `${erroTxt}\n\nAcesse a Caixa de Entrada > Rascunhos Offline para aceitar a versão local ou descartar.`,
           });
