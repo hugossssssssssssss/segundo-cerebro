@@ -1049,7 +1049,7 @@ export default function Notas() {
           ref={gridRef}
           onMouseDown={iniciarArrasto}
           onContextMenu={(e) => abrirMenuContexto(e, false)}
-          className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 select-none min-h-[60vh] pb-24 content-start"
+          className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 select-none min-h-[60vh] pb-24 content-start"
         >
           {subpastas.map((pasta) => {
             const caminhoPasta = pastaAtual ? `${pastaAtual}/${pasta}` : pasta;

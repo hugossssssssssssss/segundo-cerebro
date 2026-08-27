@@ -850,7 +850,7 @@ export default function Processos() {
       {/* MODALIDADE 1: VISÃO QUADRO KANBAN */}
       {modoVisao === "kanban" && processoAtivo && (
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={aoArrastarInicio} onDragEnd={aoArrastarFim}>
-          <div className="flex sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-start overflow-x-auto pb-4">
+          <div className="flex sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 items-start overflow-x-auto pb-4">
             {processoAtivo.etapas.map((etapa) => {
               const cardsDaEtapa = cardsFiltrados.filter((c) => c.etapaId === etapa.id);
               return (

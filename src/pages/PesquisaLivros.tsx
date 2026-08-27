@@ -186,7 +186,7 @@ export default function PesquisaLivros() {
             <span>Busca Efêmera</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
             {livros.map((livro) => (
               <Cartao key={livro.id} className="flex p-4 gap-4 items-stretch group hover:border-primary/50 transition-colors shadow-2xs hover:shadow-xs">
                 {/* Capa */}

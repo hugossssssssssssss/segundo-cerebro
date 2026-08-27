@@ -571,9 +571,9 @@ export default function Referencias() {
             <Masonry
               items={visiveis}
               config={{
-                columns: [1, 2, 3, 4],
-                gap: [16, 16, 20, 20],
-                media: [640, 768, 1024, 1280],
+                columns: [1, 2, 3, 4, 5, 6],
+                gap: [16, 16, 20, 20, 24, 24],
+                media: [640, 768, 1024, 1280, 1600, 1920],
               }}
               render={(r) => (
                 <div
@@ -624,7 +624,7 @@ export default function Referencias() {
               )}
             />
           ) : modoVisao === "grade" ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
               {visiveis.map((r) => (
                 <div
                   key={r.caminho}
