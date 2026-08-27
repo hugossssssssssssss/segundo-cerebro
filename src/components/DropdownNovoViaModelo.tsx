@@ -131,6 +131,30 @@ export function DropdownNovoViaModelo({
     }
   };
 
+  const handleCriarNovoModelo = async () => {
+    setAberto(false);
+    try {
+      const novoNome = `Novo Modelo ${Date.now().toString().slice(-4)}`;
+      const novoTemplate: TemplateItem = {
+        id: `custom_${Date.now()}`,
+        titulo: novoNome,
+        categoria: categoria || "design",
+        descricao: "Modelo personalizado",
+        frontmatter: {
+          tipo: categoria === "tarefa" ? "tarefa" : "nota",
+          tags: ["modelo"],
+        },
+        corpoPadrao: "## Seção Principal\n\nEscreva o conteúdo do modelo aqui...",
+      };
+      const caminho = await salvarTemplateNoRepo(cfg, novoTemplate);
+      await atualizarLista();
+      toast("Novo modelo criado em .klaus/templates!");
+      abrirItemSpa(caminho);
+    } catch (err: any) {
+      toast(`Erro ao criar novo modelo: ${err?.message || err}`, { tipo: "erro" });
+    }
+  };
+
   return (
     <div className={`flex items-center ${className || ""}`}>
       <Botao onClick={aoCriarNovo} className="rounded-r-none">
@@ -151,9 +175,20 @@ export function DropdownNovoViaModelo({
 
         <PopoverContent className="w-72 p-1 shadow-xl border-border" align="end">
           <div className="py-1">
-            <p className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Novo via Modelo
-            </p>
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Novo via Modelo
+              </p>
+              <button
+                type="button"
+                onClick={handleCriarNovoModelo}
+                className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                title="Criar um novo modelo personalizado"
+              >
+                <Plus size={12} />
+                <span>Novo Modelo</span>
+              </button>
+            </div>
 
             {modelosFiltrados.length === 0 ? (
               <div className="px-3 py-4 text-center text-xs text-muted-foreground">

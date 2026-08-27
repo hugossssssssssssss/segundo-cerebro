@@ -216,3 +216,42 @@
   max-height: min(360px, 75vh) !important;
   overflow: visible !important;
 }
+
+/* ── Estilos de Impressão e Exportação PDF Limpa ───────────────────────── */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-size: 12pt !important;
+  }
+
+  nav,
+  aside,
+  header,
+  button,
+  .nao-imprimir,
+  [role="dialog"],
+  .sonner-toast,
+  .group\\/gadget .group-hover\\/gadget\\:opacity-100 {
+    display: none !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  #conteudo-pdi-pdf,
+  .folha-impressao {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    page-break-inside: avoid;
+  }
+
+  a {
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+}

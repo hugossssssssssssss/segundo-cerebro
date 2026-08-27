@@ -1,6 +1,6 @@
 # Arquitetura do Klaus
 
-> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-23.**
+> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-27.**
 > Não edite este arquivo à mão — ele é reescrito a cada `npm run build`.
 > Para mudar o que está aqui, mude `src/lib/tipos.ts` e `src/lib/entidades.ts`.
 
@@ -80,6 +80,7 @@ Uma meta do PDI em `pdi/metas/`.
 | `status` | `StatusMeta` | sim | — |
 | `prazo` | `string` | não | — |
 | `indicador` | `string` | sim | Como você vai saber que chegou lá. |
+| `tags` | `string[]` | não | — |
 
 ### Entrega
 

@@ -15,7 +15,6 @@ import {
   Home as HomeIcon,
   Plus,
   MoreHorizontal,
-  Bell,
   Headphones,
   Music,
   Play,
@@ -39,6 +38,7 @@ import { toast } from "@/lib/toast";
 import { GavetaMais } from "@/components/GavetaMais";
 import { LogoKlaus } from "@/components/LogoKlaus";
 import { Carregando } from "@/components/ui";
+import { PainelNotificacoesHeader } from "@/components/PainelNotificacoesHeader";
 import { cn } from "@/lib/utils";
 import { lerConfig, configCompleta, precisaOnboarding } from "@/lib/settings";
 import { carregarRepo } from "@/lib/repo";
@@ -440,24 +440,8 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                 </div>
               )}
 
-              <NavLink
-                to="/inbox"
-                onClick={() => {
-                  if (workspaceAberto) fecharWorkspace();
-                }}
-                className={({ isActive }) =>
-                  cn(
-                    "rounded-lg p-1.5 sm:p-2 transition-colors relative cursor-pointer",
-                    isActive
-                      ? "bg-primary/10 text-primary font-semibold"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                  )
-                }
-                title="Caixa de Entrada"
-                aria-label="Caixa de Entrada"
-              >
-                <Bell size={18} />
-              </NavLink>
+              {/* Painel de Notificações Popover (Estilo Central de Notificações) */}
+              <PainelNotificacoesHeader />
 
               {/* Busca Web Externa */}
               <button

@@ -8,7 +8,7 @@ import React, {
   useEffect,
 } from "react";
 import { cache, invalidarCache } from "@/lib/repo";
-import { lerMarkdown, escreverMarkdown, tituloProvavel } from "@/lib/markdown";
+import { lerMarkdown, escreverMarkdown, tituloProvavel, nomeLivre } from "@/lib/markdown";
 import { lerConfig } from "@/lib/settings";
 import { useSalvar } from "@/lib/useSalvar";
 import { toast } from "@/lib/toast";
@@ -110,8 +110,18 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Se a aba tem caminho do GitHub
-      if (!aba.caminho) return;
+      // Se a aba não tem caminho do GitHub, gera nome livre seguro
+      let caminhoAlvo = aba.caminho;
+      if (!caminhoAlvo) {
+        const pasta = aba.rotuloTipo?.toLowerCase().includes("tarefa")
+          ? "tarefas"
+          : aba.rotuloTipo?.toLowerCase().includes("ref")
+          ? "referencias"
+          : "notas";
+        const tit = aba.titulo?.trim() || "Nova Nota";
+        const ocupados = cache?.itens ? cache.itens.map((i) => i.caminho) : [];
+        caminhoAlvo = nomeLivre(pasta, tit, ocupados);
+      }
 
       try {
         setAbas((prev) =>
@@ -128,7 +138,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
           corpo: aba.corpo || "",
         });
 
-        const novoSha = await salvarTexto(aba.caminho, texto, aba.sha, `atualizar ${aba.caminho}`);
+        const novoSha = await salvarTexto(caminhoAlvo, texto, aba.sha, `atualizar ${caminhoAlvo}`);
         invalidarCache();
 
         setAbas((prev) =>
@@ -136,6 +146,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
             a.id === id
               ? {
                   ...a,
+                  caminho: caminhoAlvo,
                   sha: novoSha || a.sha,
                   salvando: false,
                   temMudancas: false,

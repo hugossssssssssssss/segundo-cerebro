@@ -94,7 +94,6 @@ export default function Referencias() {
   }, [location.pathname]);
 
   const [enviando, setEnviando] = useState(false);
-  const [encolhendo, setEncolhendo] = useState(false);
   const [nota, setNota] = useState("");
   const [editando, setEditando] = useState<Referencia | null>(null);
   const [previa, setPrevia] = useState<string | null>(null);
@@ -143,13 +142,7 @@ export default function Referencias() {
     setNota("");
 
     try {
-      setEncolhendo(true);
-      let preparada;
-      try {
-        preparada = await prepararImagem(escolhido);
-      } finally {
-        setEncolhendo(false);
-      }
+      const preparada = await prepararImagem(escolhido);
 
       const excedeu = erroDeTamanho(preparada);
       if (excedeu) {
@@ -231,10 +224,11 @@ export default function Referencias() {
     setFonteOcrUrl(null);
   }
 
-  async function salvar() {
-    const titulo = editando?.titulo?.trim() || "Sem Título";
-    const ref = editando ? { ...editando, titulo } : editando;
-    if (!ref) return;
+  async function salvar(fechar = true) {
+    if (!editando) return;
+    const agoraFormatado = `${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    const titulo = editando.titulo?.trim() || `Referência ${agoraFormatado}`;
+    const ref = { ...editando, titulo };
     setErroLocal("");
     try {
       const { dados, corpo } = referenciaParaArquivo(ref);
@@ -242,8 +236,12 @@ export default function Referencias() {
       const pastaRef = pastaAtual ? `${PASTA_REFS}/${pastaAtual}` : PASTA_REFS;
       const caminho = ref.caminho ||
         nomeLivre(pastaRef, titulo, refs.map((x) => x.caminho));
-      await salvarTexto(caminho, texto, ref.sha || undefined);
-      fecharModal();
+      const novaSha = await salvarTexto(caminho, texto, ref.sha || undefined);
+      if (fechar) {
+        fecharModal();
+      } else {
+        setEditando({ ...ref, caminho, sha: novaSha });
+      }
       recarregar();
     } catch {
       // erro gerenciado por useSalvar
@@ -265,6 +263,10 @@ export default function Referencias() {
   }
 
   function fecharModal() {
+    // Auto-salva se estiver editando uma referência com imagem
+    if (editando && (editando.imagem || previa)) {
+      salvar(false).catch(() => {});
+    }
     setEditando(null);
     setNota("");
     setModoOcr(false);
@@ -294,6 +296,22 @@ export default function Referencias() {
     setEditando(vazia);
   };
 
+  const novaComMidia = async (arquivo: File) => {
+    const agoraFormatado = `${new Date().toLocaleDateString("pt-BR")} ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    const novaRef: Referencia = {
+      bruto: { tipo: "referencia" },
+      caminho: "",
+      id: "",
+      sha: "",
+      titulo: `Referência ${agoraFormatado}`,
+      tags: [],
+      porque: "",
+      corpo: "",
+    };
+    setEditando(novaRef);
+    await enviarImagem(arquivo);
+  };
+
   const processouUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -319,7 +337,7 @@ export default function Referencias() {
     }
   }, [location.pathname, location.search, location.hash, refs.length > 0]);
 
-  // ── Drag & drop listeners para a área de imagem ─────────────────────────
+  // ── Drag & drop listeners para a área de imagem e para toda a janela ───
   function aoArrastarSobre(e: React.DragEvent) {
     e.preventDefault();
     e.stopPropagation();
@@ -342,23 +360,59 @@ export default function Referencias() {
     }
   }
 
-  // Colar imagem do clipboard
+  // Colar imagem ou vídeo em qualquer lugar da tela
   useEffect(() => {
-    if (!editando) return;
-    const aoColar = (e: ClipboardEvent) => {
+    const aoColarGlobal = (e: ClipboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+
       const items = e.clipboardData?.items;
       if (!items) return;
-      for (const item of items) {
-        if (item.type.startsWith("image/")) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith("image/") || items[i].type.startsWith("video/")) {
           e.preventDefault();
-          const arquivo = item.getAsFile();
-          if (arquivo) enviarImagem(arquivo);
+          const arquivo = items[i].getAsFile();
+          if (arquivo) {
+            if (editando) {
+              enviarImagem(arquivo);
+            } else {
+              novaComMidia(arquivo);
+            }
+          }
           return;
         }
       }
     };
-    window.addEventListener("paste", aoColar);
-    return () => window.removeEventListener("paste", aoColar);
+
+    const aoSoltarGlobal = (e: DragEvent) => {
+      const tag = (e.target as HTMLElement)?.closest(".modal-container");
+      if (tag) return; // Se já está dentro da zona do modal
+      e.preventDefault();
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0];
+        if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+          if (editando) {
+            enviarImagem(file);
+          } else {
+            novaComMidia(file);
+          }
+        }
+      }
+    };
+
+    const aoArrastarSobreGlobal = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    window.addEventListener("paste", aoColarGlobal);
+    window.addEventListener("dragover", aoArrastarSobreGlobal);
+    window.addEventListener("drop", aoSoltarGlobal);
+
+    return () => {
+      window.removeEventListener("paste", aoColarGlobal);
+      window.removeEventListener("dragover", aoArrastarSobreGlobal);
+      window.removeEventListener("drop", aoSoltarGlobal);
+    };
   }, [editando]);
 
   // ── Criar pasta ────────────────────────────────────────────────────────────
@@ -630,7 +684,7 @@ export default function Referencias() {
             <Botao variante="neutro" onClick={fecharModal}>
               Cancelar
             </Botao>
-            <Botao onClick={salvar} disabled={salvando || enviando}>
+            <Botao onClick={() => salvar(true)} disabled={salvando || enviando}>
               {salvando ? "Salvando…" : "Salvar"}
             </Botao>
           </>
@@ -714,36 +768,25 @@ export default function Referencias() {
               }}
             />
 
-            {/* Ações da Mídia: OCR por seleção e Paleta */}
+            {/* Ações da Mídia: OCR por seleção de área */}
             {!modoOcr && (previa || editando.imagem) && (
-              <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center justify-start gap-2 flex-wrap">
                 <Botao
                   variante="neutro"
                   tamanho="pequeno"
                   onClick={abrirOcr}
                   disabled={enviando}
-                  title="Selecione um trecho da imagem para ler o texto via OCR"
+                  title="Arraste sobre a imagem para selecionar a área e ler o texto via OCR"
                 >
                   <ScanText size={15} />
-                  Ler texto da imagem (OCR)
-                </Botao>
-
-                <Botao
-                  variante="fantasma"
-                  tamanho="pequeno"
-                  onClick={() => inputArquivo.current?.click()}
-                  disabled={enviando}
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  <ImagePlus size={14} />
-                  {encolhendo ? "Processando…" : enviando ? "Enviando…" : "Substituir arquivo"}
+                  Ler texto da imagem (OCR por seleção)
                 </Botao>
               </div>
             )}
 
             {nota && <Aviso tom="sucesso">{nota}</Aviso>}
 
-            {/* Propriedades do Documento: Título, Fonte, Tags */}
+            {/* Propriedades do Documento: Título, Por que salvei, Link da Fonte, Tags */}
             <div className="space-y-3 pt-2">
               <div>
                 <Rotulo>Título</Rotulo>
@@ -752,8 +795,19 @@ export default function Referencias() {
                   onChange={(e) =>
                     setEditando({ ...editando, titulo: e.target.value })
                   }
-                  placeholder="Sem Título"
+                  placeholder="Sem Título (gerado automaticamente)"
                   autoFocus
+                />
+              </div>
+
+              <div>
+                <Rotulo>Por que salvei</Rotulo>
+                <Campo
+                  value={editando.porque ?? ""}
+                  onChange={(e) =>
+                    setEditando({ ...editando, porque: e.target.value })
+                  }
+                  placeholder="Ex: Inspiração para a paleta de cores e tipografia do projeto..."
                 />
               </div>
 

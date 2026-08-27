@@ -12,6 +12,7 @@ import {
   ChevronUp,
   Plus,
   Folder,
+  Tag,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
@@ -831,6 +832,7 @@ const novaEntregaParaMeta = (meta: Meta) => {
             status: editandoMeta.status,
             prazo: editandoMeta.prazo,
             indicador: editandoMeta.indicador,
+            tags: editandoMeta.tags || [],
           }}
           onChangeProps={(novosDados) => {
             setEditandoMeta({
@@ -838,12 +840,14 @@ const novaEntregaParaMeta = (meta: Meta) => {
               status: (novosDados.status as StatusMeta) || editandoMeta.status,
               prazo: novosDados.prazo as string | undefined,
               indicador: (novosDados.indicador as string) || editandoMeta.indicador,
+              tags: (novosDados.tags as string[]) || editandoMeta.tags || [],
             });
           }}
           camposFixosProps={{
             status: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
             prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
             indicador: { icone: <CheckSquare className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" },
+            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "multiselect" },
           }}
           salvando={salvando}
           temMudancas={origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}

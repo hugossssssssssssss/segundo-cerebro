@@ -14,7 +14,6 @@ import {
   AlertTriangle,
   GripVertical,
   RotateCcw,
-  Settings2,
   Calendar,
   Tag,
   ListTodo,
@@ -333,7 +332,7 @@ function GadgetWrapper({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0.35 : 1,
   };
 
   const classeGrid =
@@ -347,56 +346,64 @@ function GadgetWrapper({
     <div
       ref={setNodeRef}
       style={style}
-      className={cn("relative transition-all h-full flex flex-col group/gadget", classeGrid, isDragging && "z-50")}
+      className={cn(
+        "relative transition-all h-full flex flex-col group/gadget rounded-2xl",
+        classeGrid,
+        isDragging && "z-50 ring-2 ring-primary/60 shadow-2xl scale-[1.01]"
+      )}
     >
-      {/* Controles do Gadget: Botão discreto no canto superior direito */}
-      <div className="absolute top-2.5 right-2.5 z-30 group/canto">
-        <div className="p-1.5 rounded-lg text-muted-foreground/20 group-hover/gadget:text-muted-foreground hover:text-foreground hover:bg-accent/80 transition-colors cursor-pointer flex items-center gap-1">
-          <Settings2 size={14} />
-        </div>
+      {/* Barra de Controles Flutuante do Gadget (Redimensionar livre + Arrastar + Excluir) */}
+      <div className="absolute top-2.5 right-2.5 z-30 opacity-0 group-hover/gadget:opacity-100 transition-opacity duration-150">
+        <div className="flex items-center gap-1 bg-card/95 backdrop-blur-md rounded-xl p-1 border border-border/80 shadow-lg whitespace-nowrap">
+          {/* Seletor Livre de Colunas */}
+          <div className="flex items-center gap-0.5 bg-secondary/50 p-0.5 rounded-lg">
+            {([1, 2, 3] as const).map((col) => (
+              <button
+                key={col}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  aoMudarColunas(gadget.id, col);
+                }}
+                className={cn(
+                  "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                  gadget.colunas === col
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                )}
+                title={`Largura: ${col} coluna(s)`}
+              >
+                {col}x
+              </button>
+            ))}
+          </div>
 
-        <div className="absolute top-0 right-0 hidden group-hover/canto:flex items-center gap-1 bg-card/95 backdrop-blur-md rounded-xl p-1.5 border border-border shadow-lg whitespace-nowrap">
-          {([1, 2, 3] as const).map((col) => (
-            <button
-              key={col}
-              onClick={(e) => {
-                e.stopPropagation();
-                aoMudarColunas(gadget.id, col);
-              }}
-              className={cn(
-                "px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors",
-                gadget.colunas === col
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent text-muted-foreground hover:text-foreground"
-              )}
-              title={`Redimensionar para ${col} coluna(s)`}
-            >
-              {col}x
-            </button>
-          ))}
+          <div className="h-3.5 w-px bg-border/60 mx-0.5" />
 
-          <div className="h-3 w-px bg-border my-auto mx-0.5" />
-
+          {/* Arrastar */}
           <button
+            type="button"
             {...attributes}
             {...listeners}
-            className="p-1 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing transition-colors"
-            title="Arraste para reordenar este gadget"
-            aria-label="Reordenar gadget"
+            className="p-1 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing transition-colors"
+            title="Arraste para mover"
+            aria-label="Reordenar widget"
           >
-            <GripVertical size={14} />
+            <GripVertical size={13} />
           </button>
 
+          {/* Remover */}
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               aoRemover(gadget.id);
             }}
-            className="p-1 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors ml-0.5"
-            title="Excluir este gadget do Dashboard"
-            aria-label="Excluir gadget"
+            className="p-1 rounded-lg hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors"
+            title="Ocultar widget do Dashboard"
+            aria-label="Ocultar widget"
           >
-            <Trash2 size={14} />
+            <Trash2 size={13} />
           </button>
         </div>
       </div>
@@ -768,18 +775,23 @@ export default function Home() {
         return (
           <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
             <Link to="/tarefas" className="block group h-full">
-              <Card className="hover:border-primary/50 transition-all hover:shadow-md cursor-pointer h-full border border-border/80">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 sm:p-6 pb-2 sm:pb-3">
-                  <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tarefas Pendentes</CardTitle>
-                  <CheckSquare className="h-4 w-4 text-primary" />
+              <Card className="hover:border-primary/50 transition-all hover:shadow-lg cursor-pointer h-full border border-border/80 bg-card/80 backdrop-blur-md rounded-2xl overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
+                  <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Tarefas Pendentes</CardTitle>
+                  <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                    <CheckSquare className="h-4 w-4" />
+                  </div>
                 </CardHeader>
-                <CardContent className="p-5 sm:p-6 pt-0 sm:pt-0">
-                  <div className="text-2xl sm:text-3xl font-bold tracking-tight">{totalTarefas}</div>
-                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                <CardContent className="p-5 pt-0">
+                  <div className="text-3xl font-extrabold tracking-tight text-foreground">{totalTarefas}</div>
+                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
                     {tarefasUrgentesCount > 0 ? (
-                      <span className="text-amber-600 font-semibold">{tarefasUrgentesCount} urgentes</span>
+                      <span className="text-amber-500 font-semibold flex items-center gap-1">
+                        <AlertTriangle size={12} /> {tarefasUrgentesCount} urgente{tarefasUrgentesCount > 1 ? "s" : ""}
+                      </span>
                     ) : (
-                      "Tudo sob controle"
+                      <span className="text-emerald-500 font-medium">✓ Tudo em dia</span>
                     )}
                   </p>
                 </CardContent>
@@ -792,14 +804,17 @@ export default function Home() {
         return (
           <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
             <Link to="/notas" className="block group h-full">
-              <Card className="hover:border-blue-500/50 transition-all hover:shadow-md cursor-pointer h-full border border-border/80">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 sm:p-6 pb-2 sm:pb-3">
-                  <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Notas Criadas</CardTitle>
-                  <FileText className="h-4 w-4 text-blue-500" />
+              <Card className="hover:border-blue-500/50 transition-all hover:shadow-lg cursor-pointer h-full border border-border/80 bg-card/80 backdrop-blur-md rounded-2xl overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
+                  <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Notas & Ideias</CardTitle>
+                  <div className="h-8 w-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                    <FileText className="h-4 w-4" />
+                  </div>
                 </CardHeader>
-                <CardContent className="p-5 sm:p-6 pt-0 sm:pt-0">
-                  <div className="text-2xl sm:text-3xl font-bold tracking-tight">{totalNotas}</div>
-                  <p className="text-xs text-muted-foreground mt-2">Conhecimento salvo</p>
+                <CardContent className="p-5 pt-0">
+                  <div className="text-3xl font-extrabold tracking-tight text-foreground">{totalNotas}</div>
+                  <p className="text-xs text-muted-foreground mt-2 font-medium">Acervo de conhecimento</p>
                 </CardContent>
               </Card>
             </Link>
@@ -810,14 +825,17 @@ export default function Home() {
         return (
           <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
             <Link to="/referencias" className="block group h-full">
-              <Card className="hover:border-purple-500/50 transition-all hover:shadow-md cursor-pointer h-full border border-border/80">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 sm:p-6 pb-2 sm:pb-3">
-                  <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Referências</CardTitle>
-                  <ImageIcon className="h-4 w-4 text-purple-500" />
+              <Card className="hover:border-purple-500/50 transition-all hover:shadow-lg cursor-pointer h-full border border-border/80 bg-card/80 backdrop-blur-md rounded-2xl overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
+                  <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Referências Visuais</CardTitle>
+                  <div className="h-8 w-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
+                    <ImageIcon className="h-4 w-4" />
+                  </div>
                 </CardHeader>
-                <CardContent className="p-5 sm:p-6 pt-0 sm:pt-0">
-                  <div className="text-2xl sm:text-3xl font-bold tracking-tight">{totalRefs}</div>
-                  <p className="text-xs text-muted-foreground mt-2">Galeria de inspirações</p>
+                <CardContent className="p-5 pt-0">
+                  <div className="text-3xl font-extrabold tracking-tight text-foreground">{totalRefs}</div>
+                  <p className="text-xs text-muted-foreground mt-2 font-medium">Galeria de inspirações</p>
                 </CardContent>
               </Card>
             </Link>
@@ -828,14 +846,17 @@ export default function Home() {
         return (
           <GadgetWrapper key={gadget.id} gadget={gadget} aoMudarColunas={alternarColunas} aoRemover={removerGadget}>
             <Link to="/pdi" className="block group h-full">
-              <Card className="hover:border-emerald-500/50 transition-all hover:shadow-md cursor-pointer h-full border border-border/80">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 sm:p-6 pb-2 sm:pb-3">
-                  <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Carreira & PDI</CardTitle>
-                  <Target className="h-4 w-4 text-emerald-500" />
+              <Card className="hover:border-emerald-500/50 transition-all hover:shadow-lg cursor-pointer h-full border border-border/80 bg-card/80 backdrop-blur-md rounded-2xl overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
+                  <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Carreira (PDI)</CardTitle>
+                  <div className="h-8 w-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                    <Target className="h-4 w-4" />
+                  </div>
                 </CardHeader>
-                <CardContent className="p-5 sm:p-6 pt-0 sm:pt-0">
-                  <div className="text-2xl sm:text-3xl font-bold tracking-tight">{resumoPdi.length}</div>
-                  <p className="text-xs text-muted-foreground mt-2">Metas ativas</p>
+                <CardContent className="p-5 pt-0">
+                  <div className="text-3xl font-extrabold tracking-tight text-foreground">{resumoPdi.length}</div>
+                  <p className="text-xs text-muted-foreground mt-2 font-medium">Metas ativas em progresso</p>
                 </CardContent>
               </Card>
             </Link>

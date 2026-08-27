@@ -99,6 +99,7 @@ export interface Meta extends ItemBase {
   prazo?: string;
   /** Como você vai saber que chegou lá. */
   indicador: string;
+  tags?: string[];
 }
 
 /** Uma entrega do PDI em `pdi/entregas/`. */

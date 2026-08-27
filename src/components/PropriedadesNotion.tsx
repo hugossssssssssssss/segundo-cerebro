@@ -31,6 +31,7 @@ import { extrairMencoesTexto } from "@/lib/links";
 // frontmatter em rótulo — coisa sem relação nenhuma com o nome do usuário.
 import { lerConfig, nomeExibido as nomeDoUsuario } from "@/lib/settings";
 import { cache } from "@/lib/repo";
+import { toast } from "@/lib/toast";
 
 export function obterTagsDisponiveis(dadosTagsAtuais: string[], coresTagsGlobais: Record<string, string>): string[] {
   const tagsSet = new Set<string>();
@@ -897,6 +898,18 @@ export function PropriedadesNotion({
         setEditandoTag(null);
       };
 
+      const processarExcluirTag = (tagParaExcluir: string) => {
+        if (fixo?.opcoes) return;
+        const novasTags = tags.filter((t: string) => t !== tagParaExcluir);
+        atualizar(chave, novasTags);
+
+        const novasCores = { ...globalConfig.coresTags };
+        delete novasCores[tagParaExcluir];
+        salvarConfigPropriedadesGlobais(undefined, novasCores);
+        setGlobalConfig(lerConfigPropriedadesGlobais());
+        toast(`Tag "${tagParaExcluir}" excluída.`);
+      };
+
       return (
         <div className="flex items-center gap-1.5 flex-wrap py-1 min-h-7">
           {tags.map((t: string) => (
@@ -905,7 +918,7 @@ export function PropriedadesNotion({
               <button
                 onClick={() => atualizar(chave, tags.filter((x: string) => x !== t))}
                 className="ml-0.5 text-muted-foreground hover:text-destructive opacity-50 hover:opacity-100 transition-all"
-                title="Remover tag"
+                title="Remover tag deste item"
               >
                 <X size={11} />
               </button>
@@ -929,7 +942,7 @@ export function PropriedadesNotion({
                 <span>{nomeExibido(chave)}</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[240px] p-2 flex flex-col gap-2 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
+            <PopoverContent className="w-[260px] p-2 flex flex-col gap-2 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
               {editandoTag ? (
                 <div className="space-y-2 p-1">
                   <p className="text-[11px] font-semibold text-muted-foreground">Renomear tag "{editandoTag}"</p>
@@ -976,36 +989,51 @@ export function PropriedadesNotion({
                           <button
                             onClick={() => {
                               if (selecionada) {
-                                atualizar(chave, tags.filter(t => t !== tag));
+                                atualizar(chave, tags.filter((t: string) => t !== tag));
                               } else {
                                 atualizar(chave, [...tags, tag]);
                               }
                             }}
-                            className="flex-1 flex items-center gap-2 text-left"
+                            className="flex-1 flex items-center gap-2 text-left min-w-0"
                           >
                             <input
                               type="checkbox"
                               checked={selecionada}
                               readOnly
-                              className="w-3.5 h-3.5 rounded border-border text-primary focus:ring-0 cursor-pointer"
+                              className="w-3.5 h-3.5 rounded border-border text-primary focus:ring-0 cursor-pointer shrink-0"
                             />
-                            {renderizarBadgeTag(tag)}
+                            <div className="truncate flex-1">
+                              {renderizarBadgeTag(tag)}
+                            </div>
                           </button>
 
                           {!fixo?.opcoes && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditandoTag(tag);
-                                setNovoNomeTag(tag);
-                              }}
-                              className="opacity-0 group-hover/item:opacity-100 p-1 text-muted-foreground hover:text-foreground hover:bg-accent-foreground/10 rounded transition-all"
-                              title="Editar tag"
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-                              </svg>
-                            </button>
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditandoTag(tag);
+                                  setNovoNomeTag(tag);
+                                }}
+                                className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent-foreground/10 rounded transition-all"
+                                title="Renomear tag"
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                                </svg>
+                              </button>
+
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  processarExcluirTag(tag);
+                                }}
+                                className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-all"
+                                title="Excluir tag permanentemente"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
                           )}
                         </div>
                       );

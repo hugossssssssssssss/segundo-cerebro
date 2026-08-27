@@ -172,27 +172,35 @@ export function construirGrafo3D(
 
     // 3. Conexões por Tags Compartilhadas
     if (incluirTags && no.tags.length > 0) {
+      const configGlob = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("klaus-propriedades-globais") || "{}") : {};
+      const coresTagsGlobais: Record<string, string> = configGlob.coresTags || {};
+
       for (const tag of no.tags) {
-        const tagId = `tag_${tag.toLowerCase()}`;
+        if (!tag || typeof tag !== "string") continue;
+        const tagNomeLimpo = tag.trim().replace(/^#+/, "");
+        if (!tagNomeLimpo) continue;
+
+        const tagId = `tag_${tagNomeLimpo.toLowerCase()}`;
         if (!nosMap.has(tagId)) {
           const r = 300 * Math.cbrt(Math.random());
           const theta = Math.random() * 2 * Math.PI;
           const phi = Math.acos(2 * Math.random() - 1);
+          const corTag = coresTagsGlobais[tagNomeLimpo] || CORES_TIPOS_GRAFO.tag;
 
           nosMap.set(tagId, {
             id: tagId,
             caminho: tagId,
-            titulo: `#${tag}`,
+            titulo: `#${tagNomeLimpo}`,
             tipo: "tag",
-            tags: [tag],
+            tags: [tagNomeLimpo],
             x: r * Math.sin(phi) * Math.cos(theta),
             y: r * Math.sin(phi) * Math.sin(theta),
             z: r * Math.cos(phi),
             vx: 0,
             vy: 0,
             vz: 0,
-            raio: 7,
-            cor: CORES_TIPOS_GRAFO.tag,
+            raio: 8,
+            cor: corTag,
             conexoesCount: 0,
           });
         }
@@ -204,7 +212,7 @@ export function construirGrafo3D(
             id: arestaTagKey,
             origem: caminho,
             destino: tagId,
-            forca: 0.5,
+            forca: 0.8,
             rotulo: "tag",
           });
 

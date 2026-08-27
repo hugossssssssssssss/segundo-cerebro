@@ -12,6 +12,8 @@ import {
   Copy,
   Check,
   Link as LinkIcon,
+  MoreVertical,
+  FileEdit,
 } from "lucide-react";
 import "@excalidraw/excalidraw/index.css";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -23,6 +25,7 @@ import { PASTAS } from "@/lib/tipos";
 import { tituloProvavel, nomeLivre, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
 import { propagarRenomeacao } from "@/lib/links";
 import { Botao, Campo, Aviso, Vazio, Carregando, ModalConfirmacao } from "@/components/ui";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { CartaoItem } from "@/components/CartaoItem";
 import { toast } from "@/lib/toast";
@@ -65,7 +68,6 @@ export default function Lousas() {
 
   // ── Estado da UI ──────────────────────────────────────────────────────────
   const [erroLocal, setErroLocal] = useState("");
-  const [mensagemSucesso, setMensagemSucesso] = useState("");
   /** Falha ao propagar um renomeio pelo repositório — separada do erro de salvar,
    *  porque aqui a lousa FOI salva e só as menções nos outros arquivos ficaram para trás. */
   const [erroRenomeacao, setErroRenomeacao] = useState("");
@@ -84,7 +86,6 @@ export default function Lousas() {
   // ── Abre uma lousa (carrega JSON do corpo) ─────────────────────────────────
   async function abrir(item: ItemRepo) {
     setErroLocal("");
-    setMensagemSucesso("");
     setErroRenomeacao("");
     try {
       let conteudo = item.texto || "";
@@ -184,7 +185,6 @@ export default function Lousas() {
   async function salvar() {
     if (!aberta) return;
     setErroLocal("");
-    setMensagemSucesso("");
     setErroRenomeacao("");
 
     try {
@@ -256,7 +256,7 @@ export default function Lousas() {
       });
 
       const baseSucesso = `Lousa "${tituloLimpo}" salva com sucesso! (${elementosValidos.length} elementos gravados)`;
-      setMensagemSucesso(baseSucesso);
+      toast(baseSucesso, { tipo: "sucesso" });
 
       // Renomear uma lousa reescreve as menções dela em TODO o repositório. Se
       // parte dessas gravações falhar, o acervo fica misto — metade dos links
@@ -278,8 +278,9 @@ export default function Lousas() {
                 `Esses arquivos ainda apontam para o nome antigo — renomeie de novo para tentar outra vez.`,
             );
           } else if (atualizados > 0) {
-            setMensagemSucesso(
+            toast(
               `${baseSucesso} Menções atualizadas em ${atualizados} arquivo(s).`,
+              { tipo: "sucesso" }
             );
           }
         } catch (e) {
@@ -321,6 +322,33 @@ export default function Lousas() {
     navigator.clipboard.writeText(link);
     setCopiadoId(caminho);
     setTimeout(() => setCopiadoId(null), 2000);
+  }
+
+  // Duplicar lousa
+  async function duplicarLousa(item: ItemRepo, e?: React.MouseEvent) {
+    if (e) e.stopPropagation();
+    try {
+      const conteudo = item.texto || (await lerOuVazio(cfg, item.caminho, item.sha));
+      const tituloOriginal = (item.doc.dados.titulo as string) || tituloProvavel(item.doc, item.nome);
+      const novoTitulo = `${tituloOriginal} (Cópia)`;
+      const novoCaminho = nomeLivre(PASTA, novoTitulo, lousas.map((a) => a.caminho));
+      
+      const docParsed = lerMarkdown(conteudo);
+      const textoParaGravar = escreverMarkdown({
+        dados: {
+          ...docParsed.dados,
+          titulo: novoTitulo,
+          tipo: "lousa",
+        },
+        corpo: docParsed.corpo,
+      });
+
+      await salvarTexto(novoCaminho, textoParaGravar, undefined, `duplicar lousa: ${novoTitulo}`);
+      recarregar();
+      toast(`Lousa "${novoTitulo}" criada com sucesso!`, { tipo: "sucesso" });
+    } catch (err: any) {
+      toast(`Erro ao duplicar lousa: ${err?.message || err}`, { tipo: "erro" });
+    }
   }
 
   // ── Sem configuração ────────────────────────────────────────────────────────
@@ -365,26 +393,14 @@ export default function Lousas() {
           </div>
 
           <div className="flex items-center gap-2">
-            {aberta.caminho && (
-              <Botao
-                variante="neutro"
-                tamanho="pequeno"
-                onClick={(e) => copiarWikilink(aberta.caminho, aberta.titulo, e)}
-                className="flex items-center gap-1.5"
-              >
-                {copiadoId === aberta.caminho ? <Check size={14} /> : <LinkIcon size={14} />}
-                <span>{copiadoId === aberta.caminho ? "Copiado!" : `Copiar @${aberta.titulo}`}</span>
-              </Botao>
-            )}
-
             <Botao
               variante="neutro"
-              tamanho="pequeno"
+              tamanho="icone"
               onClick={() => setTelaCheia(!telaCheia)}
-              className="flex items-center gap-1.5"
+              title={telaCheia ? "Sair da Tela Cheia" : "Tela Cheia"}
+              aria-label="Tela Cheia"
             >
-              {telaCheia ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-              <span>{telaCheia ? "Sair da Tela Cheia" : "Tela Cheia"}</span>
+              {telaCheia ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </Botao>
 
             {aberta.caminho && (
@@ -393,6 +409,7 @@ export default function Lousas() {
                 tamanho="icone"
                 onClick={() => setLousaParaDeletar({ caminho: aberta.caminho, sha: aberta.sha, titulo: aberta.titulo })}
                 title="Apagar lousa"
+                aria-label="Apagar lousa"
               >
                 <Trash2 size={16} className="text-red-500" />
               </Botao>
@@ -406,7 +423,6 @@ export default function Lousas() {
         </div>
 
         {erro && <Aviso tom="erro">{erro}</Aviso>}
-        {mensagemSucesso && <Aviso tom="sucesso">{mensagemSucesso}</Aviso>}
         {erroRenomeacao && <Aviso tom="erro">{erroRenomeacao}</Aviso>}
 
         {/* Canvas do Excalidraw */}
@@ -421,13 +437,6 @@ export default function Lousas() {
                 appStateRef.current = appState;
                 filesRef.current = files;
               }}
-              /*
-               * A cena vem de um .md que pode ter sido editado à mão, então o
-               * tipo interno é deliberadamente frouxo (`unknown`). Aqui é a
-               * fronteira com a biblioteca: um cast só, explícito, em vez de
-               * `any` espalhado pelo arquivo. O Excalidraw valida em runtime e
-               * cai para uma cena vazia se o JSON não servir.
-               */
               initialData={{
                 elements: aberta.dados.elements ?? [],
                 appState: {
@@ -485,8 +494,7 @@ export default function Lousas() {
       />
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
-      {mensagemSucesso && <Aviso tom="sucesso">{mensagemSucesso}</Aviso>}
-        {erroRenomeacao && <Aviso tom="erro">{erroRenomeacao}</Aviso>}
+      {erroRenomeacao && <Aviso tom="erro">{erroRenomeacao}</Aviso>}
 
       {carregando ? (
         <Carregando texto="Carregando suas lousas e mapas mentais..." />
@@ -506,31 +514,64 @@ export default function Lousas() {
                 key={item.caminho}
                 icone={<Layout size={18} />}
                 titulo={titulo}
-                subtitulo={`Excalidraw • ${item.caminho.split("/").pop()}`}
                 onClick={() => abrir(item)}
                 acoes={
-                  <>
-                    <Botao
-                      variante="neutro"
-                      tamanho="icone"
-                      onClick={(e) => copiarWikilink(item.caminho, titulo, e)}
-                      title="Copiar @nome para vincular em notas e metas"
-                    >
-                      {copiadoId === item.caminho ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-                    </Botao>
-                    <Botao
-                      variante="fantasma"
-                      tamanho="icone"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLousaParaDeletar({ caminho: item.caminho, sha: item.sha, titulo });
-                      }}
-                      title="Apagar lousa"
-                      className="hover:bg-red-500/10 text-muted-foreground hover:text-red-500"
-                    >
-                      <Trash2 size={14} />
-                    </Botao>
-                  </>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                        title="Opções da lousa"
+                        aria-label="Opções da lousa"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-44 p-1 shadow-xl border-border" align="end" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
+                        onClick={() => abrir(item)}
+                      >
+                        <FileEdit size={13} />
+                        <span>Editar</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
+                        onClick={(e) => duplicarLousa(item, e)}
+                      >
+                        <Copy size={13} />
+                        <span>Duplicar</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
+                        onClick={(e) => copiarWikilink(item.caminho, titulo, e)}
+                      >
+                        {copiadoId === item.caminho ? <Check size={13} className="text-emerald-500" /> : <LinkIcon size={13} />}
+                        <span>{copiadoId === item.caminho ? "Copiado!" : "Copiar @menção"}</span>
+                      </button>
+
+                      <div className="h-px bg-border/50 my-1" />
+
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-destructive hover:bg-destructive/10 transition-colors cursor-pointer text-left"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLousaParaDeletar({ caminho: item.caminho, sha: item.sha, titulo });
+                        }}
+                      >
+                        <Trash2 size={13} />
+                        <span>Excluir</span>
+                      </button>
+                    </PopoverContent>
+                  </Popover>
                 }
               />
             );

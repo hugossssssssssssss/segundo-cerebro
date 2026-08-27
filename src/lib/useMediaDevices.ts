@@ -23,6 +23,7 @@ export function useMediaDevices() {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -146,7 +147,7 @@ export function useMediaDevices() {
           const source = audioCtx.createMediaStreamSource(streamLocal);
           sourceRef.current = source;
           source.connect(analyserRef.current);
-          // IMPORTANTE: NÃO conectar o analyser ao audioCtx.destination para evitar eco / realimentação.
+          setAnalyserNode(analyserRef.current);
         } catch (audioErr) {
           console.warn("Erro ao inicializar visualização de áudio:", audioErr);
         }
@@ -257,7 +258,7 @@ export function useMediaDevices() {
     erro,
     permitido,
     solicitarPermissao,
-    analyserNode: analyserRef.current,
+    analyserNode,
     iniciarGravacao,
     pararGravacao,
     gravando,

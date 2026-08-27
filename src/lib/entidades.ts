@@ -174,6 +174,7 @@ export function comoMeta(
     status: statusMetaValido(d.status),
     prazo: typeof d.prazo === "string" ? d.prazo : undefined,
     indicador: typeof d.indicador === "string" ? d.indicador : "",
+    tags: comoLista(d.tags),
     corpo: doc.corpo,
   };
 }
@@ -186,6 +187,7 @@ export function metaParaArquivo(m: Meta): { dados: Frontmatter; corpo: string } 
       status:    m.status,
       prazo:     m.prazo,
       indicador: m.indicador || undefined,
+      tags:      m.tags?.length ? m.tags : undefined,
       atualizado: new Date().toISOString(),
     }),
     corpo: m.corpo,

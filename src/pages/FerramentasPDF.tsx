@@ -316,47 +316,49 @@ export default function FerramentasPDF() {
     label: string;
     descricao: string;
     Icone: any;
+    cor: string;
   }[] = [
     {
       id: "juntar",
       label: "Juntar PDF",
-      descricao: "Mesclar e juntar PDFs e colocá-los em qualquer ordem que desejar.",
+      descricao: "Mescle múltiplos documentos PDF em um único arquivo na ordem que preferir",
       Icone: Layers,
+      cor: "bg-red-500/10 text-red-600 dark:text-red-400",
     },
     {
       id: "dividir",
       label: "Dividir PDF",
-      descricao:
-        "Selecione um intervalo de páginas, separe uma página, ou converta cada página do documento em arquivo PDF independente.",
+      descricao: "Extraia páginas específicas ou separe cada página do documento PDF em arquivos individuais",
       Icone: Scissors,
+      cor: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
     },
     {
       id: "comprimir",
       label: "Comprimir PDF",
-      descricao:
-        "Diminua o tamanho do seu arquivo PDF, mantendo a melhor qualidade possível. Otimize seus arquivos PDF.",
+      descricao: "Reduza o peso do arquivo PDF preservando a legibilidade e qualidade visual",
       Icone: Minimize2,
+      cor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     },
     {
       id: "recortar",
-      label: "Recortar PDF",
-      descricao:
-        "Recorte as margens de documentos PDF ou selecione áreas específicas e depois aplique as alterações a uma página ou a todo o documento.",
+      label: "Recortar Margens",
+      descricao: "Apare as bordas em branco ou ajuste as margens de páginas selecionadas do PDF",
       Icone: Crop,
+      cor: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
     },
     {
       id: "desbloquear",
       label: "Desbloquear PDF",
-      descricao:
-        "Remova a senha de segurança dos PDF, assim você pode usá-los como quiser.",
+      descricao: "Remova senhas e restrições de edição de documentos PDF protegidos",
       Icone: Lock,
+      cor: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
     },
     {
       id: "organizar",
-      label: "Organizar PDF",
-      descricao:
-        "Ordene as páginas de seu arquivo PDF como pretender. Exclua ou adicione páginas PDF ao seu documento como lhe for mais conveniente.",
+      label: "Organizar Páginas",
+      descricao: "Reordene, exclua ou duplique páginas de forma visual e intuitiva",
       Icone: FileArchive,
+      cor: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
     },
   ];
 
@@ -366,33 +368,49 @@ export default function FerramentasPDF() {
     <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200">
       <CabecalhoPagina
         titulo="Ferramentas PDF"
-        descricao={abaInfo.descricao}
+        descricao="Manipule, mescle, divida e otimize documentos PDF diretamente no seu navegador."
         icone={<FileText size={20} />}
         corIcone="bg-red-500/10 text-red-600 dark:text-red-400"
       />
 
-      {/* Navegação por Abas das 6 Ferramentas Principais */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-        {abasFerramentas.map(({ id, label, Icone }) => (
-          <button
-            key={id}
-            onClick={() => {
-              setAbaAtiva(id);
-              setArquivos([]);
-              setErro("");
-              setMensagemSucesso("");
-            }}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-xs font-semibold border transition-all text-center",
-              abaAtiva === id
-                ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                : "bg-card text-muted-foreground border-border hover:bg-accent hover:text-foreground"
-            )}
-          >
-            <Icone size={18} />
-            <span>{label}</span>
-          </button>
-        ))}
+      {/* Grade de Ferramentas com Visual Unificado do Conversor */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+        {abasFerramentas.map((f) => {
+          const ativa = abaAtiva === f.id;
+          const IconeComp = f.Icone;
+
+          return (
+            <div
+              key={f.id}
+              onClick={() => {
+                setAbaAtiva(f.id);
+                setArquivos([]);
+                setErro("");
+                setMensagemSucesso("");
+              }}
+              className={cn(
+                "group relative flex flex-col justify-between p-4 rounded-2xl border transition-all cursor-pointer shadow-xs",
+                ativa
+                  ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                  : "border-border/80 bg-card hover:bg-accent/50 hover:border-primary/40"
+              )}
+            >
+              <div className="space-y-2.5">
+                <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl transition-transform group-hover:scale-105", f.cor)}>
+                  <IconeComp size={18} />
+                </div>
+                <div className="space-y-0.5">
+                  <h3 className="font-bold text-xs text-foreground group-hover:text-primary transition-colors">
+                    {f.label}
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                    {f.descricao}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Avisos */}
