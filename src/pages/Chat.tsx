@@ -291,7 +291,32 @@ export default function Chat() {
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 
-      <Cartao className="sticky bottom-20 sm:bottom-4 p-3">
+      {/* Sugestões Rápidas em Chips Roláveis */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 select-none snap-x snap-mandatory">
+        {[
+          { label: "🌅 Resumir meu dia", prompt: "O que tenho agendado e pendente para hoje? Faça um resumo rápido das minhas tarefas e prioridades." },
+          { label: "🎯 Minhas prioridades", prompt: "Analise minhas metas e tarefas da semana e sugira por onde devo começar hoje." },
+          { label: "💡 Ideias de design", prompt: "Com base nas minhas notas e referências visuais, me dê 3 ideias criativas para explorar." },
+          { label: "⚡ Criar tarefa rápida", prompt: "Crie uma tarefa para " },
+        ].map((chip, idx) => (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => {
+              if (chip.prompt.endsWith(" ")) {
+                setEntrada(chip.prompt);
+              } else {
+                enviar(chip.prompt);
+              }
+            }}
+            className="px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/80 border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors whitespace-nowrap shrink-0 snap-start cursor-pointer"
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
+
+      <Cartao className="sticky bottom-0 sm:bottom-4 p-3 shadow-xl backdrop-blur-lg bg-card/95 border-border/80 pb-[max(env(safe-area-inset-bottom),12px)] sm:pb-3">
         <AreaTexto
           value={entrada}
           onChange={(e) => setEntrada(e.target.value)}
@@ -307,7 +332,7 @@ export default function Chat() {
             }
           }}
           placeholder="Pergunte, cole uma transcrição, ou peça para criar algo…"
-          className="min-h-20 resize-none border-0 bg-transparent focus-visible:ring-0"
+          className="min-h-16 sm:min-h-20 resize-none border-0 bg-transparent focus-visible:ring-0 text-sm"
         />
         <div className="mt-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -315,11 +340,11 @@ export default function Chat() {
             {acervo.length > 0 && (
               <button
                 onClick={() => setAcervo([])}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                 title="Reler seus arquivos"
               >
                 <RefreshCw size={12} />
-                {acervo.length} arquivos lidos
+                <span className="hidden sm:inline">{acervo.length} arquivos</span>
               </button>
             )}
           </div>
@@ -327,9 +352,10 @@ export default function Chat() {
             tamanho="pequeno"
             onClick={() => enviar(entrada)}
             disabled={pensando || !entrada.trim()}
+            className="gap-1.5"
           >
-            <Send size={15} />
-            Enviar
+            <Send size={14} />
+            <span>Enviar</span>
           </Botao>
         </div>
       </Cartao>

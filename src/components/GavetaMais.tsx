@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { X, Sparkles, Settings, Moon, Sun, Palette } from "lucide-react";
+import { X, Sparkles, Settings, Moon, Sun, Palette, Smartphone } from "lucide-react";
 import {
   carregarMenuPersonalizado,
   EVENTO_MENU_ATUALIZADO,
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { LogoKlaus } from "./LogoKlaus";
 import { ModalPersonalizarMenu } from "./ModalPersonalizarMenu";
+import { ModalInstalarPwa } from "./ModalInstalarPwa";
 
 import { alternarTema, lerTemaSalvo, type Tema } from "@/lib/tema";
 
@@ -20,6 +21,7 @@ interface GavetaMaisProps {
 
 export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
   const [tema, setTema] = useState<Tema>(lerTemaSalvo);
+  const [modalInstalarAberta, setModalInstalarAberta] = useState(false);
 
   useEffect(() => {
     const aoMudar = () => setTema(lerTemaSalvo());
@@ -125,14 +127,23 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
             })}
           </div>
 
-          {/* Rodapé da Gaveta: Personalizar Menu, Ajustes e Tema */}
-          <div className="pt-2 border-t border-border grid grid-cols-3 gap-2">
+          {/* Rodapé da Gaveta: Instalar App, Personalizar Menu, Ajustes e Tema */}
+          <div className="pt-2 border-t border-border grid grid-cols-4 gap-1.5">
+            <button
+              onClick={() => setModalInstalarAberta(true)}
+              className="flex items-center justify-center gap-1 rounded-xl p-2 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent transition-colors cursor-pointer"
+              title="Instalar Klaus no celular"
+            >
+              <Smartphone size={15} className="text-primary shrink-0" />
+              <span className="truncate">App</span>
+            </button>
+
             <button
               onClick={() => setModalPersonalizarAberta(true)}
-              className="flex items-center justify-center gap-1.5 rounded-xl p-2.5 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent transition-colors"
+              className="flex items-center justify-center gap-1 rounded-xl p-2 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent transition-colors cursor-pointer"
             >
-              <Palette size={16} className="text-primary" />
-              <span>Menu</span>
+              <Palette size={15} className="text-primary shrink-0" />
+              <span className="truncate">Menu</span>
             </button>
 
             <NavLink
@@ -140,23 +151,23 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
               onClick={aoFechar}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center justify-center gap-1.5 rounded-xl p-2.5 text-xs font-medium border transition-colors",
+                  "flex items-center justify-center gap-1 rounded-xl p-2 text-xs font-medium border transition-colors",
                   isActive
                     ? "bg-primary/10 border-primary/30 text-primary font-semibold"
                     : "bg-card border-border text-foreground hover:bg-accent"
                 )
               }
             >
-              <Settings size={16} />
-              <span>Ajustes</span>
+              <Settings size={15} className="shrink-0" />
+              <span className="truncate">Ajustes</span>
             </NavLink>
 
             <button
               onClick={toggleTema}
-              className="flex items-center justify-center gap-1.5 rounded-xl p-2.5 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent transition-colors"
+              className="flex items-center justify-center gap-1 rounded-xl p-2 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent transition-colors cursor-pointer"
             >
-              {escuro ? <Sun size={16} /> : <Moon size={16} />}
-              <span>{escuro ? "Claro" : "Escuro"}</span>
+              {escuro ? <Sun size={15} className="shrink-0" /> : <Moon size={15} className="shrink-0" />}
+              <span className="truncate">{escuro ? "Claro" : "Escuro"}</span>
             </button>
           </div>
         </div>
@@ -169,6 +180,12 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
           setModalPersonalizarAberta(false);
           aoFechar();
         }}
+      />
+
+      {/* Modal de Instalação do App */}
+      <ModalInstalarPwa
+        aberta={modalInstalarAberta}
+        aoFechar={() => setModalInstalarAberta(false)}
       />
     </>
   );

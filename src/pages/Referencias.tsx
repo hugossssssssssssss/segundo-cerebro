@@ -14,6 +14,8 @@ import {
   Link as LinkIcon,
   Tag,
   ImageIcon,
+  Maximize2,
+  X,
 } from "lucide-react";
 import { lerConfig } from "@/lib/settings";
 import { correspondeBusca, lerParametroAbrir } from "@/lib/utils";
@@ -84,6 +86,7 @@ export default function Referencias() {
 
   const [editando, setEditando] = useState<Referencia | null>(null);
   const [origRef, setOrigRef] = useState<Referencia | null>(null);
+  const [lightboxRef, setLightboxRef] = useState<Referencia | null>(null);
   const [modoVisaoNotion, setModoVisaoNotion] = useState<ModoVisaoNotion>("popup");
   const [previa, setPrevia] = useState<string | null>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
@@ -571,8 +574,8 @@ export default function Referencias() {
             <Masonry
               items={visiveis}
               config={{
-                columns: [1, 2, 3, 4, 5, 6],
-                gap: [16, 16, 20, 20, 24, 24],
+                columns: [2, 2, 3, 4, 5, 6],
+                gap: [10, 12, 16, 20, 24, 24],
                 media: [640, 768, 1024, 1280, 1600, 1920],
               }}
               render={(r) => (
@@ -583,7 +586,7 @@ export default function Referencias() {
                     setEditando(r);
                     setOrigRef(r);
                   }}
-                  className="group relative rounded-3xl overflow-hidden border border-border/80 bg-card hover:bg-accent/20 hover:border-border transition-colors duration-200 cursor-pointer mb-4"
+                  className="group relative rounded-2xl sm:rounded-3xl overflow-hidden border border-border/80 bg-card hover:bg-accent/20 hover:border-border transition-colors duration-200 cursor-pointer mb-2.5 sm:mb-4"
                 >
                   {r.imagem ? (
                     <div className="relative aspect-auto overflow-hidden bg-black/5 dark:bg-black/20">
@@ -592,6 +595,19 @@ export default function Referencias() {
                         alt={r.titulo}
                         className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
+                      {/* Botão de Zoom / Lightbox */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLightboxRef(r);
+                        }}
+                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
+                        title="Ver em tela cheia"
+                        aria-label="Ver imagem em tela cheia"
+                      >
+                        <Maximize2 size={13} />
+                      </button>
                     </div>
                   ) : (
                     <div className="p-6 bg-secondary/30 flex items-center justify-center text-muted-foreground/50">
@@ -599,21 +615,21 @@ export default function Referencias() {
                     </div>
                   )}
 
-                  <div className="p-4 space-y-2">
-                    <h4 className="font-bold text-sm text-foreground transition-colors">
+                  <div className="p-2.5 sm:p-4 space-y-1.5 sm:space-y-2">
+                    <h4 className="font-bold text-xs sm:text-sm text-foreground transition-colors line-clamp-2">
                       {r.titulo}
                     </h4>
 
                     {r.porque && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                      <p className="text-[11px] sm:text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                         {r.porque}
                       </p>
                     )}
 
                     {r.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {r.tags.map((t) => (
-                          <Badge key={t} variant="secondary" className="text-[10px] py-0 px-2">
+                      <div className="flex flex-wrap gap-1 pt-0.5 sm:pt-1">
+                        {r.tags.slice(0, 3).map((t) => (
+                          <Badge key={t} variant="secondary" className="text-[9px] sm:text-[10px] py-0 px-1.5 sm:px-2">
                             #{t}
                           </Badge>
                         ))}
@@ -624,7 +640,7 @@ export default function Referencias() {
               )}
             />
           ) : modoVisao === "grade" ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 sm:gap-4">
               {visiveis.map((r) => (
                 <div
                   key={r.caminho}
@@ -633,18 +649,32 @@ export default function Referencias() {
                     setEditando(r);
                     setOrigRef(r);
                   }}
-                  className="group rounded-3xl overflow-hidden border border-border/80 bg-card hover:bg-accent/20 hover:border-border transition-colors cursor-pointer flex flex-col"
+                  className="group rounded-2xl sm:rounded-3xl overflow-hidden border border-border/80 bg-card hover:bg-accent/20 hover:border-border transition-colors cursor-pointer flex flex-col relative"
                 >
-                  <div className="aspect-square bg-black/5 overflow-hidden">
+                  <div className="aspect-square bg-black/5 overflow-hidden relative">
                     {r.imagem ? (
-                      <ImagemPrivada caminho={r.imagem} alt={r.titulo} className="w-full h-full object-cover transition-transform duration-300" />
+                      <>
+                        <ImagemPrivada caminho={r.imagem} alt={r.titulo} className="w-full h-full object-cover transition-transform duration-300" />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLightboxRef(r);
+                          }}
+                          className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
+                          title="Ver em tela cheia"
+                          aria-label="Ver imagem em tela cheia"
+                        >
+                          <Maximize2 size={13} />
+                        </button>
+                      </>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground/40">
                         <ImageIcon size={24} />
                       </div>
                     )}
                   </div>
-                  <div className="p-3">
+                  <div className="p-2 sm:p-3">
                     <p className="font-bold text-xs truncate text-foreground">{r.titulo}</p>
                   </div>
                 </div>
@@ -824,6 +854,79 @@ export default function Referencias() {
           aoRemover={editando.caminho ? async () => { await remover(editando); } : undefined}
           erro={erro}
         />
+      )}
+
+      {/* Visualizador Lightbox de Imagem em Tela Cheia no Mobile e Desktop */}
+      {lightboxRef && lightboxRef.imagem && (
+        <div
+          className="fixed inset-0 z-[700] bg-black/95 backdrop-blur-md flex flex-col justify-between p-3 sm:p-6 animate-in fade-in duration-200"
+          onClick={() => setLightboxRef(null)}
+        >
+          {/* Topo do Lightbox */}
+          <div className="flex items-center justify-between z-10 select-none pt-[env(safe-area-inset-top,0px)]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2 min-w-0 pr-2">
+              <span className="font-bold text-sm text-white/90 truncate max-w-[65vw]">
+                {lightboxRef.titulo}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  const ref = lightboxRef;
+                  setLightboxRef(null);
+                  setEditando(ref);
+                  setOrigRef(ref);
+                }}
+                className="text-xs h-8 gap-1.5 bg-white/15 hover:bg-white/25 text-white border-white/20 cursor-pointer"
+              >
+                <span>Abrir Nota</span>
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => setLightboxRef(null)}
+                className="p-2 rounded-full bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer"
+                aria-label="Fechar visualização"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Centro: Imagem em Alta Resolução */}
+          <div
+            className="flex-1 flex items-center justify-center p-2 sm:p-4 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ImagemPrivada
+              caminho={lightboxRef.imagem}
+              alt={lightboxRef.titulo}
+              className="max-h-[80vh] max-w-[95vw] object-contain rounded-2xl shadow-2xl transition-transform"
+            />
+          </div>
+
+          {/* Rodapé do Lightbox com detalhes e safe area */}
+          <div
+            className="flex items-center justify-between gap-2 p-3 pb-[max(env(safe-area-inset-bottom),12px)] rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md text-white/90 text-xs z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="truncate flex-1 text-[11px] sm:text-xs">
+              {lightboxRef.porque || "Toque fora ou no X para fechar"}
+            </p>
+            {lightboxRef.tags.length > 0 && (
+              <div className="flex items-center gap-1 shrink-0">
+                {lightboxRef.tags.map((t) => (
+                  <span key={t} className="px-2 py-0.5 rounded bg-white/15 text-[10px] font-medium">
+                    #{t}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -540,6 +540,7 @@ export default function Inbox() {
   };
 
   const hoje = new Date();
+  const [diaSelecionadoMobile, setDiaSelecionadoMobile] = useState<string | "todos">(() => format(new Date(), "yyyy-MM-dd"));
 
   // Dividindo os dias em dias úteis (Seg-Qui) e fim da semana (Sex-Dom) para grade ampla balanceada
   const diasLinha1 = diasDaSemana.slice(0, 4); // Seg, Ter, Qua, Qui
@@ -750,6 +751,62 @@ export default function Inbox() {
           <Carregando texto="Carregando compromissos..." />
         ) : (
           <div className="space-y-3.5">
+            {/* Seletor de Dias em Pílulas / Carrossel no Mobile */}
+            <div className="flex sm:hidden items-center gap-1.5 p-1 bg-card rounded-2xl border border-border/80 shadow-2xs overflow-x-auto select-none snap-x snap-mandatory">
+              <button
+                type="button"
+                onClick={() => setDiaSelecionadoMobile("todos")}
+                className={cn(
+                  "py-1.5 px-3 text-xs font-semibold rounded-xl transition-all whitespace-nowrap shrink-0 snap-start cursor-pointer",
+                  diaSelecionadoMobile === "todos"
+                    ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Todos ({todosCompromissos.length})
+              </button>
+
+              {diasDaSemana.map((dia) => {
+                const diaIso = format(dia, "yyyy-MM-dd");
+                const diaAbrev = format(dia, "EEE", { locale: ptBR });
+                const diaNum = format(dia, "d");
+                const ehHoje = isSameDay(dia, hoje);
+                const qtd = todosCompromissos.filter((c) => c.dataIso === diaIso).length;
+                const ativo = diaSelecionadoMobile === diaIso;
+
+                return (
+                  <button
+                    key={diaIso}
+                    type="button"
+                    onClick={() => setDiaSelecionadoMobile(diaIso)}
+                    className={cn(
+                      "py-1.5 px-2.5 text-xs font-semibold rounded-xl transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 snap-start cursor-pointer",
+                      ativo
+                        ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                        : ehHoje
+                        ? "bg-primary/10 text-primary border border-primary/30"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <span className="capitalize">{diaAbrev}</span>
+                    <span className="font-bold">{diaNum}</span>
+                    {qtd > 0 && (
+                      <span
+                        className={cn(
+                          "text-[10px] px-1.5 py-0.2 rounded-full",
+                          ativo
+                            ? "bg-primary-foreground/20 text-primary-foreground"
+                            : "bg-secondary text-foreground"
+                        )}
+                      >
+                        {qtd}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Linha 1: Segunda, Terça, Quarta, Quinta (4 Colunas Largas) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
               {diasLinha1.map((dia) => {
@@ -757,6 +814,9 @@ export default function Inbox() {
                 const diaNome = format(dia, "EEEE", { locale: ptBR });
                 const diaFormatadoBr = format(dia, "dd/MM/yyyy");
                 const ehHoje = isSameDay(dia, hoje);
+
+                const ocultarNoMobile = diaSelecionadoMobile !== "todos" && diaSelecionadoMobile !== diaIso;
+                if (ocultarNoMobile) return null;
 
                 const itensDoDia = todosCompromissos.filter((c) => c.dataIso === diaIso);
 
@@ -872,6 +932,9 @@ export default function Inbox() {
                 const diaNome = format(dia, "EEEE", { locale: ptBR });
                 const diaFormatadoBr = format(dia, "dd/MM/yyyy");
                 const ehHoje = isSameDay(dia, hoje);
+
+                const ocultarNoMobile = diaSelecionadoMobile !== "todos" && diaSelecionadoMobile !== diaIso;
+                if (ocultarNoMobile) return null;
 
                 const itensDoDia = todosCompromissos.filter((c) => c.dataIso === diaIso);
 

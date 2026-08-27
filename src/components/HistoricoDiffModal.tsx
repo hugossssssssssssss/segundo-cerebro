@@ -204,30 +204,30 @@ export function HistoricoDiffModal({
             </div>
 
             {/* Alternador de Modo de Visualização */}
-            <div className="flex border-b border-border/80">
+            <div className="flex border-b border-border/80 overflow-x-auto">
               <button
                 onClick={() => setModoVisualizacao("leitura")}
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-all duration-150 focus:outline-none",
+                  "flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-b-2 transition-all duration-150 focus:outline-none whitespace-nowrap cursor-pointer",
                   modoVisualizacao === "leitura"
-                    ? "border-primary text-primary"
+                    ? "border-primary text-primary font-semibold"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
-                <FileText size={15} />
-                Visualização Limpa
+                <FileText size={14} className="shrink-0" />
+                <span>Visualização Limpa</span>
               </button>
               <button
                 onClick={() => setModoVisualizacao("diff")}
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-all duration-150 focus:outline-none",
+                  "flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-b-2 transition-all duration-150 focus:outline-none whitespace-nowrap cursor-pointer",
                   modoVisualizacao === "diff"
-                    ? "border-primary text-primary"
+                    ? "border-primary text-primary font-semibold"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Code size={15} />
-                Comparação de Código (Diff)
+                <Code size={14} className="shrink-0" />
+                <span>Comparação (Diff)</span>
               </button>
             </div>
 
