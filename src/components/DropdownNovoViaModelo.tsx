@@ -155,11 +155,24 @@ export function DropdownNovoViaModelo({
     }
   };
 
+  const aoClicarPrincipal = () => {
+    if (modeloPadrao && aoCriarComTemplate) {
+      aoCriarComTemplate(modeloPadrao);
+    } else {
+      aoCriarNovo();
+    }
+  };
+
   return (
     <div className={`flex items-center ${className || ""}`}>
-      <Botao onClick={aoCriarNovo} className="rounded-r-none">
+      <Botao
+        onClick={aoClicarPrincipal}
+        className="rounded-r-none"
+        title={modeloPadrao ? `Criar novo usando modelo padrão: "${modeloPadrao.titulo}"` : undefined}
+      >
         {iconePrincipal}
         {rotuloPrincipal}
+        {modeloPadrao && <Star size={12} className="ml-1 text-amber-300 fill-amber-300 inline" />}
       </Botao>
 
       <Popover open={aberto} onOpenChange={setAberto}>
@@ -167,7 +180,7 @@ export function DropdownNovoViaModelo({
           <button
             type="button"
             className="flex items-center justify-center h-full px-2 py-2 rounded-r-xl bg-primary text-primary-foreground border-l border-primary-foreground/20 hover:bg-primary/90 transition-colors cursor-pointer"
-            title="Novo via Modelo"
+            title="Escolher modelo Markdown (.klaus/templates)"
           >
             <ChevronDown size={14} />
           </button>

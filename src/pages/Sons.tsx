@@ -85,21 +85,31 @@ export default function Sons() {
       {/* Painel Central de Controle */}
       <div className="bg-card/40 border border-border/60 rounded-2xl p-6 backdrop-blur-md">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className={`p-4 rounded-2xl shrink-0 ${somAmbienteTocando ? "bg-primary/20 text-primary animate-pulse" : "bg-secondary/40 text-muted-foreground"}`}>
-              <Headphones size={32} />
+            <div className="flex items-center gap-4">
+              <div className={`p-4 rounded-2xl shrink-0 ${somAmbienteTocando ? "bg-primary/20 text-primary" : "bg-secondary/40 text-muted-foreground"}`}>
+                <Headphones size={32} />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-foreground">
+                    {somAmbiente 
+                      ? `Tocando: ${LISTA_SONS_AMBIENTE.find(s => s.id === somAmbiente)?.nome}` 
+                      : "Nenhum som ativo"}
+                  </h2>
+                  {somAmbienteTocando && (
+                    <div className="flex items-end gap-0.5 h-4 ml-1">
+                      <span className="w-1 bg-primary rounded-full animate-[bounce_0.8s_infinite] h-3"></span>
+                      <span className="w-1 bg-primary rounded-full animate-[bounce_1.1s_infinite] h-4"></span>
+                      <span className="w-1 bg-primary rounded-full animate-[bounce_0.6s_infinite] h-2"></span>
+                      <span className="w-1 bg-primary rounded-full animate-[bounce_0.9s_infinite] h-3.5"></span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground select-none">
+                  {somAmbienteTocando ? "Bloqueando ruídos externos para estado de fluxo contínuo..." : "Sons de fundo silenciados"}
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-foreground">
-                {somAmbiente 
-                  ? `Tocando: ${LISTA_SONS_AMBIENTE.find(s => s.id === somAmbiente)?.nome}` 
-                  : "Nenhum som ativo"}
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5 select-none">
-                {somAmbienteTocando ? "Bloqueando distrações externas..." : "Sons de fundo silenciados"}
-              </p>
-            </div>
-          </div>
 
           {/* Slider de Volume e Botão de Mute */}
           <div className="flex items-center gap-4 w-full md:w-auto md:min-w-[300px]">

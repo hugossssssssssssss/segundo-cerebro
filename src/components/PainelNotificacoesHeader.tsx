@@ -1,13 +1,12 @@
 /**
- * PainelNotificacoesHeader — Central de Notificações Pop-up (estilo Facebook/Notion)
+ * PainelNotificacoesHeader — Central de Notificações Pop-up (Top-tier UX)
  *
- * Exibida ao clicar no ícone de sino no topo do Klaus.
- * Mostra os 6 principais compromissos e lembretes da semana:
- * - Itens não lidos com destaque visual (branco mais claro)
- * - Itens já vistos com tom neutro/mais escuro
- * - Botão "Marcar como lido" e "Limpar" em cada notificação
- * - Link "Ver todos os lembretes" para a página /inbox
- * - Lembretes com mais de 15 dias no passado expiram automaticamente
+ * Exibida ao clicar no sino do topo.
+ * - Abas: Esta Semana, Não Lidos, Todos
+ * - Destaque visual: itens novos têm fundo claro radiante com badge luminoso e texto destacado; itens já vistos têm tom neutro suave.
+ * - Ações diretas: "Marcar lido" e "Limpar" por notificação.
+ * - Lembretes com mais de 15 dias no passado são arquivados automaticamente.
+ * - Atalho para /inbox e botão de "Agendar Lembrete" com visual de propriedades Notion.
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -20,6 +19,10 @@ import {
   Clock,
   ChevronRight,
   Plus,
+  CalendarDays,
+  CalendarCheck,
+  Inbox,
+  CheckCheck,
 } from "lucide-react";
 import {
   type MapaEstadoInbox,
@@ -35,12 +38,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ModalLembrete } from "@/components/ModalLembrete";
 import { toast } from "@/lib/toast";
 
+type FiltroNotificacao = "semana" | "nao_vistos" | "todos";
+
 export function PainelNotificacoesHeader() {
   const [aberto, setAberto] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [itens, setItens] = useState<ItemInbox[]>([]);
   const [mapaEstado, setMapaEstado] = useState<MapaEstadoInbox>({});
   const [shaEstado, setShaEstado] = useState<string | undefined>();
+  const [filtro, setFiltro] = useState<FiltroNotificacao>("semana");
   const [modalLembreteAberto, setModalLembreteAberto] = useState(false);
 
   const cfg = useMemo(() => lerConfig(), []);
@@ -74,7 +80,7 @@ export function PainelNotificacoesHeader() {
         return true;
       });
 
-      // Ordenar: primeiro não lidos, depois mais recentes
+      // Ordenação inteligente: primeiro itens não lidos, depois mais recentes
       itensFiltrados.sort((a, b) => {
         if (a.visto !== b.visto) return a.visto ? 1 : -1;
         return (b.dataVencimento || "").localeCompare(a.dataVencimento || "");
@@ -82,7 +88,7 @@ export function PainelNotificacoesHeader() {
 
       setItens(itensFiltrados);
     } catch {
-      // Silencioso no header
+      // Silencioso no cabeçalho
     } finally {
       setCarregando(false);
     }
@@ -99,10 +105,34 @@ export function PainelNotificacoesHeader() {
     return itens.filter((i) => !i.visto).length;
   }, [itens]);
 
-  // Principais 6 itens para exibição no popup
+  // Filtragem por aba
+  const itensFiltradosAba = useMemo(() => {
+    const agora = new Date();
+    const seteDiasFrenteMs = 7 * 24 * 60 * 60 * 1000;
+    const agoraMs = agora.getTime();
+
+    if (filtro === "nao_vistos") {
+      return itens.filter((i) => !i.visto);
+    }
+
+    if (filtro === "semana") {
+      return itens.filter((i) => {
+        if (!i.dataVencimento) return !i.visto;
+        const d = new Date(i.dataVencimento);
+        if (isNaN(d.getTime())) return true;
+        const diff = d.getTime() - agoraMs;
+        // Compromissos entre hoje e próximos 7 dias ou atrasados pendentes
+        return diff >= -24 * 60 * 60 * 1000 && diff <= seteDiasFrenteMs;
+      });
+    }
+
+    return itens;
+  }, [itens, filtro]);
+
+  // Exibe até 6 itens no popup para manter a lista compacta e rápida
   const itensExibidos = useMemo(() => {
-    return itens.slice(0, 6);
-  }, [itens]);
+    return itensFiltradosAba.slice(0, 6);
+  }, [itensFiltradosAba]);
 
   // Marcar como visto / lido
   const marcarComoLido = async (id: string, e?: React.MouseEvent) => {
@@ -178,19 +208,19 @@ export function PainelNotificacoesHeader() {
           <button
             type="button"
             className={cn(
-              "rounded-lg p-1.5 sm:p-2 transition-colors relative cursor-pointer flex items-center justify-center",
+              "rounded-xl p-2 transition-all relative cursor-pointer flex items-center justify-center border",
               aberto
-                ? "bg-accent text-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                ? "bg-accent border-border/80 text-foreground shadow-xs"
+                : "border-transparent text-muted-foreground hover:bg-accent/80 hover:text-foreground"
             )}
-            title={naoVistosCount > 0 ? `${naoVistosCount} nova(s) notificação(ões)` : "Central de Notificações"}
+            title={naoVistosCount > 0 ? `${naoVistosCount} nova(s) notificação(ões)` : "Central de Notificações & Agenda"}
             aria-label="Notificações e Lembretes"
           >
             <Bell size={18} />
             {naoVistosCount > 0 && (
-              <span className="absolute top-1 right-1 flex h-2 w-2">
+              <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary ring-2 ring-background"></span>
               </span>
             )}
           </button>
@@ -198,21 +228,26 @@ export function PainelNotificacoesHeader() {
 
         <PopoverContent
           align="end"
-          className="w-[380px] sm:w-[420px] p-0 shadow-2xl border-border bg-card/95 backdrop-blur-xl rounded-2xl overflow-hidden"
+          className="w-[390px] sm:w-[440px] p-0 shadow-2xl border-border/80 bg-card/95 backdrop-blur-2xl rounded-2xl overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150"
           sideOffset={8}
         >
           {/* Cabeçalho da Central de Notificações */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-secondary/30">
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-border/50 bg-secondary/30">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                <Bell size={15} className="text-primary" />
-                Notificações & Agenda
-              </span>
-              {naoVistosCount > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-primary/20 text-primary">
-                  {naoVistosCount} nova{naoVistosCount > 1 ? "s" : ""}
-                </span>
-              )}
+              <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <Bell size={15} />
+              </div>
+              <div>
+                <h3 className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                  Notificações & Agenda
+                  {naoVistosCount > 0 && (
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-primary text-primary-foreground">
+                      {naoVistosCount}
+                    </span>
+                  )}
+                </h3>
+                <p className="text-[10px] text-muted-foreground">Compromissos e avisos em tempo real</p>
+              </div>
             </div>
 
             <div className="flex items-center gap-1">
@@ -222,40 +257,92 @@ export function PainelNotificacoesHeader() {
                   setAberto(false);
                   setModalLembreteAberto(true);
                 }}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                 title="Agendar novo lembrete"
               >
-                <Plus size={14} />
-                <span className="text-[11px] font-medium hidden sm:inline">Lembrete</span>
+                <Plus size={13} />
+                <span>Lembrete</span>
               </button>
 
               {naoVistosCount > 0 && (
                 <button
                   type="button"
                   onClick={marcarTodosComoLidos}
-                  className="p-1 text-[11px] text-muted-foreground hover:text-foreground hover:underline transition-colors cursor-pointer"
+                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                  title="Marcar todas como lidas"
+                  aria-label="Marcar todas como lidas"
                 >
-                  Ler todas
+                  <CheckCheck size={16} />
                 </button>
               )}
             </div>
           </div>
 
-          {/* Lista de Notificações (Até 6 itens) */}
-          <div className="max-h-[380px] overflow-y-auto divide-y divide-border/30">
+          {/* Abas de Filtragem Rápida */}
+          <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border/40 bg-secondary/15 text-xs">
+            <button
+              type="button"
+              onClick={() => setFiltro("semana")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                filtro === "semana"
+                  ? "bg-background text-foreground font-bold shadow-xs border border-border/60"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+            >
+              <CalendarDays size={13} className={filtro === "semana" ? "text-primary" : ""} />
+              <span>Esta Semana</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFiltro("nao_vistos")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                filtro === "nao_vistos"
+                  ? "bg-background text-foreground font-bold shadow-xs border border-border/60"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+            >
+              <Clock size={13} className={filtro === "nao_vistos" ? "text-primary" : ""} />
+              <span>Não Lidos</span>
+              {naoVistosCount > 0 && (
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFiltro("todos")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                filtro === "todos"
+                  ? "bg-background text-foreground font-bold shadow-xs border border-border/60"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+            >
+              <Inbox size={13} className={filtro === "todos" ? "text-primary" : ""} />
+              <span>Todos</span>
+            </button>
+          </div>
+
+          {/* Lista de Itens (Até 6 itens) */}
+          <div className="max-h-[380px] overflow-y-auto divide-y divide-border/25">
             {carregando ? (
               <div className="p-8 text-center text-xs text-muted-foreground flex flex-col items-center gap-2">
                 <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                 <span>Atualizando compromissos...</span>
               </div>
             ) : itensExibidos.length === 0 ? (
-              <div className="py-10 px-4 text-center text-muted-foreground flex flex-col items-center gap-2">
-                <div className="h-10 w-10 rounded-full bg-secondary/60 flex items-center justify-center text-muted-foreground/60">
-                  <Bell size={20} />
+              <div className="py-12 px-4 text-center text-muted-foreground flex flex-col items-center gap-2">
+                <div className="h-10 w-10 rounded-2xl bg-secondary/80 flex items-center justify-center text-muted-foreground/60 mb-1">
+                  <CalendarCheck size={20} />
                 </div>
-                <p className="text-xs font-semibold text-foreground">Tudo em dia!</p>
-                <p className="text-[11px] text-muted-foreground/80 max-w-xs">
-                  Você não possui compromissos pendentes ou lembretes para esta semana.
+                <p className="text-xs font-bold text-foreground">Tudo organizado!</p>
+                <p className="text-[11px] text-muted-foreground/80 max-w-xs leading-relaxed">
+                  {filtro === "nao_vistos"
+                    ? "Você não possui notificações não lidas pendentes."
+                    : "Nenhum compromisso agendado para o período selecionado."}
                 </p>
               </div>
             ) : (
@@ -268,18 +355,20 @@ export function PainelNotificacoesHeader() {
                     key={item.id}
                     onClick={() => aoAbrirItem(item)}
                     className={cn(
-                      "p-3.5 transition-all cursor-pointer group flex flex-col gap-1.5",
+                      "p-3.5 transition-all cursor-pointer group flex flex-col gap-1.5 relative",
                       ehNovo
                         ? "bg-card hover:bg-accent/40 border-l-4 border-l-primary"
-                        : "bg-muted/25 hover:bg-muted/45 opacity-80 hover:opacity-100"
+                        : "bg-secondary/20 hover:bg-secondary/40 opacity-80 hover:opacity-100"
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         {ehAtrasada ? (
-                          <AlertTriangle size={13} className="text-destructive shrink-0" />
+                          <AlertTriangle size={13} className="text-rose-500 shrink-0" />
+                        ) : ehNovo ? (
+                          <span className="h-2 w-2 rounded-full bg-primary shrink-0 animate-pulse" />
                         ) : (
-                          <Clock size={13} className="text-primary/70 shrink-0" />
+                          <Clock size={13} className="text-muted-foreground/60 shrink-0" />
                         )}
                         <p
                           className={cn(
@@ -292,7 +381,14 @@ export function PainelNotificacoesHeader() {
                       </div>
 
                       {item.dataVencimento && (
-                        <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
+                        <span
+                          className={cn(
+                            "text-[10px] shrink-0 font-mono px-1.5 py-0.5 rounded-md",
+                            ehAtrasada
+                              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold"
+                              : "text-muted-foreground bg-secondary/50"
+                          )}
+                        >
                           {item.dataVencimento}
                         </span>
                       )}
@@ -306,7 +402,7 @@ export function PainelNotificacoesHeader() {
 
                     {/* Rodapé com botões de Ação por item */}
                     <div className="flex items-center justify-between pt-1.5 mt-0.5 border-t border-border/20">
-                      <span className="text-[10px] text-muted-foreground/70 flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground/70 font-medium truncate max-w-[150px]">
                         {item.tituloOrigem || "Klaus"}
                       </span>
 
@@ -315,22 +411,22 @@ export function PainelNotificacoesHeader() {
                           <button
                             type="button"
                             onClick={(e) => marcarComoLido(item.id, e)}
-                            className="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-1 cursor-pointer"
+                            className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-1 cursor-pointer"
                             title="Marcar como lido"
                           >
                             <Check size={11} />
-                            Marcar lido
+                            <span>Lido</span>
                           </button>
                         )}
 
                         <button
                           type="button"
                           onClick={(e) => limparItem(item.id, e)}
-                          className="px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-1 cursor-pointer"
+                          className="p-1 rounded-md text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                           title="Limpar notificação"
+                          aria-label="Limpar notificação"
                         >
-                          <Trash2 size={11} />
-                          Limpar
+                          <Trash2 size={12} />
                         </button>
                       </div>
                     </div>
@@ -340,14 +436,17 @@ export function PainelNotificacoesHeader() {
             )}
           </div>
 
-          {/* Rodapé: Mostrar mais / Ver Caixa de Entrada completa */}
-          <div className="p-2.5 bg-secondary/40 border-t border-border/50 text-center">
+          {/* Rodapé: Mostrar mais e link para Inbox completa */}
+          <div className="p-2.5 bg-secondary/40 border-t border-border/50 flex items-center justify-between gap-2">
+            <span className="text-[10px] text-muted-foreground font-medium px-2">
+              {itens.length} item(ns) no total
+            </span>
             <Link
               to="/inbox"
               onClick={() => setAberto(false)}
-              className="w-full py-1.5 px-3 rounded-xl text-xs font-semibold text-primary hover:bg-primary/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              className="py-1.5 px-3 rounded-xl text-xs font-bold text-primary hover:bg-primary/10 transition-colors flex items-center gap-1 cursor-pointer"
             >
-              <span>Mostrar mais e gerenciar caixa de entrada</span>
+              <span>Ver Caixa de Entrada</span>
               <ChevronRight size={14} />
             </Link>
           </div>

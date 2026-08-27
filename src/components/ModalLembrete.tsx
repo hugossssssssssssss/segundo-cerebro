@@ -14,6 +14,7 @@ import {
   CalendarDays,
   CalendarRange,
   Check,
+  Inbox,
 } from "lucide-react";
 import { Modal, Botao, Campo, Rotulo } from "./ui";
 import { cn } from "@/lib/utils";
@@ -87,8 +88,8 @@ export function ModalLembrete({
     );
   };
 
-  const submeter = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submeter = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!titulo.trim() || !data) return;
 
     const dataHoraFormatada = hora ? `${data} ${hora}` : data;
@@ -108,7 +109,7 @@ export function ModalLembrete({
           </Botao>
           <Botao
             variante="primario"
-            onClick={submeter}
+            onClick={() => submeter()}
             type="button"
             disabled={!titulo.trim() || !data}
           >
@@ -125,7 +126,7 @@ export function ModalLembrete({
           <Campo
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
-            placeholder="Ex: Entregar arquivos finais para a gráfica..."
+            placeholder="Ex: Entregar proposta revisada para o cliente..."
             autoFocus
             className="text-sm"
           />
@@ -136,156 +137,174 @@ export function ModalLembrete({
           <span className="text-[11px] font-semibold uppercase text-muted-foreground tracking-wider mb-1.5 block">
             Atalhos Rápidos
           </span>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button
               type="button"
               onClick={() => aplicarAtalho(0, "18:00")}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-border bg-card hover:bg-accent hover:border-primary/40 text-xs font-medium transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-card/80 hover:bg-accent hover:border-amber-500/40 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
             >
-              <Zap size={13} className="text-amber-500" />
+              <Zap size={14} className="text-amber-500" />
               <span>Hoje 18h</span>
             </button>
 
             <button
               type="button"
               onClick={() => aplicarAtalho(1, "09:00")}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-border bg-card hover:bg-accent hover:border-primary/40 text-xs font-medium transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-card/80 hover:bg-accent hover:border-orange-500/40 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
             >
-              <Sunrise size={13} className="text-orange-500" />
+              <Sunrise size={14} className="text-orange-500" />
               <span>Amanhã 9h</span>
             </button>
 
             <button
               type="button"
               onClick={() => aplicarAtalho(3, "09:00")}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-border bg-card hover:bg-accent hover:border-primary/40 text-xs font-medium transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-card/80 hover:bg-accent hover:border-blue-500/40 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
             >
-              <CalendarDays size={13} className="text-blue-500" />
+              <CalendarDays size={14} className="text-blue-500" />
               <span>+3 dias</span>
             </button>
 
             <button
               type="button"
               onClick={aplicarProximaSegunda}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-border bg-card hover:bg-accent hover:border-primary/40 text-xs font-medium transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-card/80 hover:bg-accent hover:border-purple-500/40 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
             >
-              <CalendarRange size={13} className="text-purple-500" />
+              <CalendarRange size={14} className="text-purple-500" />
               <span>Próx. Seg.</span>
             </button>
           </div>
         </div>
 
         {/* Tabela de Propriedades do Lembrete */}
-        <div className="rounded-xl border border-border/80 bg-secondary/20 divide-y divide-border/50 text-xs overflow-hidden">
-          {/* Propriedade: Data */}
-          <div className="flex items-center px-3 py-2.5 gap-3">
-            <div className="w-28 flex items-center gap-1.5 text-muted-foreground font-medium shrink-0">
-              <CalendarIcon size={14} className="text-primary/70" />
-              <span>Data</span>
-            </div>
-            <div className="flex-1">
+        <div className="rounded-2xl border border-border/80 bg-card/60 divide-y divide-border/50 text-xs overflow-hidden shadow-xs">
+          {/* Data e Horário */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-border/50">
+            <div className="flex items-center px-3.5 py-2.5 gap-2.5">
+              <div className="flex items-center gap-1.5 text-muted-foreground font-semibold shrink-0">
+                <CalendarIcon size={14} className="text-primary" />
+                <span>Data:</span>
+              </div>
               <input
                 type="date"
                 value={data}
                 onChange={(e) => setData(e.target.value)}
-                className="w-full bg-background border border-border px-2.5 py-1 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                className="flex-1 bg-background border border-border px-2.5 py-1.5 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer text-foreground"
                 required
               />
             </div>
-          </div>
 
-          {/* Propriedade: Horário */}
-          <div className="flex items-center px-3 py-2.5 gap-3">
-            <div className="w-28 flex items-center gap-1.5 text-muted-foreground font-medium shrink-0">
-              <Clock size={14} className="text-primary/70" />
-              <span>Horário</span>
-            </div>
-            <div className="flex-1">
+            <div className="flex items-center px-3.5 py-2.5 gap-2.5">
+              <div className="flex items-center gap-1.5 text-muted-foreground font-semibold shrink-0">
+                <Clock size={14} className="text-primary" />
+                <span>Horário:</span>
+              </div>
               <input
                 type="time"
                 value={hora}
                 onChange={(e) => setHora(e.target.value)}
-                className="w-full bg-background border border-border px-2.5 py-1 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                className="flex-1 bg-background border border-border px-2.5 py-1.5 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer text-foreground"
               />
             </div>
           </div>
 
-          {/* Propriedade: Canais de Notificação */}
-          <div className="flex flex-col sm:flex-row sm:items-center px-3 py-2.5 gap-2 sm:gap-3">
-            <div className="w-28 flex items-center gap-1.5 text-muted-foreground font-medium shrink-0">
-              <Bell size={14} className="text-primary/70" />
-              <span>Canais</span>
-            </div>
-            <div className="flex-1 flex flex-wrap gap-1.5">
+          {/* Canais de Notificação */}
+          <div className="p-3.5 space-y-2">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+              Onde você deseja receber o aviso?
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => toggleCanal("inbox")}
                 className={cn(
-                  "px-2.5 py-1 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer",
+                  "p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition-all cursor-pointer text-left",
                   canais.includes("inbox")
-                    ? "bg-primary/15 border-primary/40 text-primary font-semibold shadow-xs"
+                    ? "bg-primary/10 border-primary/50 text-foreground ring-1 ring-primary/30"
                     : "bg-background border-border text-muted-foreground hover:text-foreground"
                 )}
               >
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
+                    <Inbox size={13} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-xs">Klaus Inbox</p>
+                    <p className="text-[10px] text-muted-foreground">Central web</p>
+                  </div>
+                </div>
                 <div
                   className={cn(
-                    "w-3.5 h-3.5 rounded flex items-center justify-center border",
+                    "w-4 h-4 rounded-md flex items-center justify-center border",
                     canais.includes("inbox")
                       ? "bg-primary border-primary text-primary-foreground"
                       : "border-muted-foreground/40 bg-transparent"
                   )}
                 >
-                  {canais.includes("inbox") && <Check size={10} strokeWidth={3} />}
+                  {canais.includes("inbox") && <Check size={11} strokeWidth={3} />}
                 </div>
-                <span>Klaus Inbox</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => toggleCanal("telegram")}
                 className={cn(
-                  "px-2.5 py-1 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer",
+                  "p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition-all cursor-pointer text-left",
                   canais.includes("telegram")
-                    ? "bg-sky-500/15 border-sky-500/40 text-sky-600 dark:text-sky-400 font-semibold shadow-xs"
+                    ? "bg-sky-500/10 border-sky-500/50 text-foreground ring-1 ring-sky-500/30"
                     : "bg-background border-border text-muted-foreground hover:text-foreground"
                 )}
               >
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-lg bg-sky-500/15 text-sky-500 flex items-center justify-center">
+                    <Send size={13} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-xs">Telegram</p>
+                    <p className="text-[10px] text-muted-foreground">No celular</p>
+                  </div>
+                </div>
                 <div
                   className={cn(
-                    "w-3.5 h-3.5 rounded flex items-center justify-center border",
+                    "w-4 h-4 rounded-md flex items-center justify-center border",
                     canais.includes("telegram")
                       ? "bg-sky-500 border-sky-500 text-white"
                       : "border-muted-foreground/40 bg-transparent"
                   )}
                 >
-                  {canais.includes("telegram") && <Check size={10} strokeWidth={3} />}
+                  {canais.includes("telegram") && <Check size={11} strokeWidth={3} />}
                 </div>
-                <Send size={11} className="text-sky-500" />
-                <span>Telegram (Celular)</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => toggleCanal("email")}
                 className={cn(
-                  "px-2.5 py-1 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer",
+                  "p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition-all cursor-pointer text-left",
                   canais.includes("email")
-                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-semibold shadow-xs"
+                    ? "bg-emerald-500/10 border-emerald-500/50 text-foreground ring-1 ring-emerald-500/30"
                     : "bg-background border-border text-muted-foreground hover:text-foreground"
                 )}
               >
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-lg bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
+                    <Mail size={13} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-xs">E-mail</p>
+                    <p className="text-[10px] text-muted-foreground">Notificação</p>
+                  </div>
+                </div>
                 <div
                   className={cn(
-                    "w-3.5 h-3.5 rounded flex items-center justify-center border",
+                    "w-4 h-4 rounded-md flex items-center justify-center border",
                     canais.includes("email")
                       ? "bg-emerald-500 border-emerald-500 text-white"
                       : "border-muted-foreground/40 bg-transparent"
                   )}
                 >
-                  {canais.includes("email") && <Check size={10} strokeWidth={3} />}
+                  {canais.includes("email") && <Check size={11} strokeWidth={3} />}
                 </div>
-                <Mail size={11} className="text-emerald-500" />
-                <span>E-mail</span>
               </button>
             </div>
           </div>

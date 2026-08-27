@@ -30,6 +30,7 @@ import {
   GitMerge,
   Video,
   Globe,
+  Move,
 } from "lucide-react";
 import {
   DndContext,
@@ -79,7 +80,7 @@ type NotaRecente = {
 
 export interface Gadget {
   id: string;
-  colunas: 1 | 2 | 3;
+  colunas: 1 | 2 | 3 | 4;
 }
 
 export interface InfoGadgetDisponivel {
@@ -87,8 +88,9 @@ export interface InfoGadgetDisponivel {
   titulo: string;
   descricao: string;
   icone: any;
-  colunasPadrao: 1 | 2 | 3;
+  colunasPadrao: 1 | 2 | 3 | 4;
   corIcone?: string;
+  categoria?: "produtividade" | "conteudo" | "ferramentas" | "kpis";
 }
 
 const CATALOGO_GADGETS: InfoGadgetDisponivel[] = [
@@ -316,7 +318,7 @@ function GadgetWrapper({
   children,
 }: {
   gadget: Gadget;
-  aoMudarColunas: (id: string, colunas: 1 | 2 | 3) => void;
+  aoMudarColunas: (id: string, colunas: 1 | 2 | 3 | 4) => void;
   aoRemover: (id: string) => void;
   children: React.ReactNode;
 }) {
@@ -336,28 +338,37 @@ function GadgetWrapper({
   };
 
   const classeGrid =
-    gadget.colunas === 3
-      ? "col-span-1 md:col-span-3"
+    gadget.colunas === 4
+      ? "col-span-1 md:col-span-2 lg:col-span-4"
+      : gadget.colunas === 3
+      ? "col-span-1 md:col-span-2 lg:col-span-3"
       : gadget.colunas === 2
       ? "col-span-1 md:col-span-2"
       : "col-span-1";
+
+  const proximaColuna = (atual: 1 | 2 | 3 | 4): 1 | 2 | 3 | 4 => {
+    if (atual === 1) return 2;
+    if (atual === 2) return 3;
+    if (atual === 3) return 4;
+    return 1;
+  };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        "relative transition-all h-full flex flex-col group/gadget rounded-2xl",
+        "relative transition-all h-full flex flex-col group/gadget rounded-3xl",
         classeGrid,
         isDragging && "z-50 ring-2 ring-primary/60 shadow-2xl scale-[1.01]"
       )}
     >
       {/* Barra de Controles Flutuante do Gadget (Redimensionar livre + Arrastar + Excluir) */}
-      <div className="absolute top-2.5 right-2.5 z-30 opacity-0 group-hover/gadget:opacity-100 transition-opacity duration-150">
-        <div className="flex items-center gap-1 bg-card/95 backdrop-blur-md rounded-xl p-1 border border-border/80 shadow-lg whitespace-nowrap">
+      <div className="absolute top-3 right-3 z-30 opacity-0 group-hover/gadget:opacity-100 transition-opacity duration-200 pointer-events-auto">
+        <div className="flex items-center gap-1 bg-card/90 backdrop-blur-xl rounded-2xl p-1 border border-border/80 shadow-xl whitespace-nowrap">
           {/* Seletor Livre de Colunas */}
-          <div className="flex items-center gap-0.5 bg-secondary/50 p-0.5 rounded-lg">
-            {([1, 2, 3] as const).map((col) => (
+          <div className="flex items-center gap-0.5 bg-secondary/60 p-0.5 rounded-xl">
+            {([1, 2, 3, 4] as const).map((col) => (
               <button
                 key={col}
                 type="button"
@@ -366,40 +377,40 @@ function GadgetWrapper({
                   aoMudarColunas(gadget.id, col);
                 }}
                 className={cn(
-                  "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                  "px-2 py-0.5 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer",
                   gadget.colunas === col
-                    ? "bg-primary text-primary-foreground shadow-xs"
+                    ? "bg-primary text-primary-foreground shadow-xs scale-105"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 )}
-                title={`Largura: ${col} coluna(s)`}
+                title={`Definir largura para ${col} coluna(s)`}
               >
-                {col}x
+                {col === 4 ? "Full" : `${col}x`}
               </button>
             ))}
           </div>
 
-          <div className="h-3.5 w-px bg-border/60 mx-0.5" />
+          <div className="h-4 w-px bg-border/80 mx-0.5" />
 
-          {/* Arrastar */}
+          {/* Alça de Arrastar */}
           <button
             type="button"
             {...attributes}
             {...listeners}
-            className="p-1 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing transition-colors"
-            title="Arraste para mover"
+            className="p-1.5 rounded-xl hover:bg-accent text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing transition-colors"
+            title="Arraste para reposicionar widget"
             aria-label="Reordenar widget"
           >
             <GripVertical size={13} />
           </button>
 
-          {/* Remover */}
+          {/* Ocultar */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               aoRemover(gadget.id);
             }}
-            className="p-1 rounded-lg hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors"
+            className="p-1.5 rounded-xl hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
             title="Ocultar widget do Dashboard"
             aria-label="Ocultar widget"
           >
@@ -409,6 +420,20 @@ function GadgetWrapper({
       </div>
 
       {children}
+
+      {/* Alça de Redimensionamento Rápido no Canto Inferior Direito */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          aoMudarColunas(gadget.id, proximaColuna(gadget.colunas));
+        }}
+        className="absolute bottom-2.5 right-2.5 z-20 opacity-0 group-hover/gadget:opacity-100 transition-opacity p-1 rounded-lg text-muted-foreground/50 hover:text-primary hover:bg-primary/10 cursor-pointer"
+        title={`Clique para expandir tamanho (${gadget.colunas}x → ${proximaColuna(gadget.colunas)}x)`}
+        aria-label="Redimensionar widget"
+      >
+        <Move size={12} className="rotate-45" />
+      </button>
     </div>
   );
 }
@@ -596,7 +621,7 @@ export default function Home() {
     localStorage.removeItem("home-gadgets");
   };
 
-  const alternarColunas = (id: string, colunas: 1 | 2 | 3) => {
+  const alternarColunas = (id: string, colunas: 1 | 2 | 3 | 4) => {
     salvarGadgets(
       gadgets.map((g) => (g.id === id ? { ...g, colunas } : g))
     );
@@ -1321,7 +1346,7 @@ export default function Home() {
       {/* DndContext & Sortable Grid de Gadgets */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={aoArrastarFim}>
         <SortableContext items={gadgets.map((g) => g.id)} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7">
             {gadgets.map((gadget) => renderizarGadget(gadget))}
           </div>
         </SortableContext>

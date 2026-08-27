@@ -63,6 +63,7 @@ export interface PainelNotionBaseProps {
   erro?: string;
   mencoes?: any[];
   opcoesRelacionamento?: { titulo: string; caminho: string }[];
+  elementoAcimaCorpo?: React.ReactNode;
 }
 
 export function PainelNotionBase({
@@ -85,6 +86,7 @@ export function PainelNotionBase({
   erro,
   mencoes = [],
   opcoesRelacionamento = [],
+  elementoAcimaCorpo,
 }: PainelNotionBaseProps) {
   const [confirmandoApagar, setConfirmandoApagar] = useState(false);
   const [minimizadoFlutuante, setMinimizadoFlutuante] = useState(false);
@@ -1046,6 +1048,8 @@ export function PainelNotionBase({
       </div>
 
       <hr className="border-border" />
+
+      {elementoAcimaCorpo}
 
       {eTarefa && (
         <>
