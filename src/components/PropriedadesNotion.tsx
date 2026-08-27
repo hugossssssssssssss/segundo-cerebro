@@ -19,6 +19,7 @@ import {
   Inbox as InboxIcon,
   Send as SendIcon,
   Mail as MailIcon,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -322,9 +323,16 @@ export function PropriedadesNotion({
   const rotulosMap = { ...globalConfig.rotulos, ...((dados._rotulos as Record<string, string>) || {}) };
 
   const ehLembrete = rotuloTipo?.toLowerCase().includes("lembrete") || dados.tipo === "lembrete";
+  const chavesLembrete = ["horario", "hora", "aviso_inbox", "notificacao_inbox", "aviso_telegram", "notificacao_telegram", "aviso_email", "notificacao_email"];
+  const chavesExclusivasTarefa = ["caminho", "pasta", "status", "pomodoro", "pomodoros", "estimativa", "c", "indicador", "metas"];
 
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
-    .filter(k => !["titulo", "tipo", "atualizado", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "c", "pomodoro", "pomodoros", "estimativa", "porque", "anotacoes", ...(ehLembrete ? ["caminho", "pasta", "status"] : [])].includes(k));
+    .filter(k => {
+      if (["titulo", "tipo", "atualizado", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "c", "pomodoro", "pomodoros", "estimativa", "porque", "anotacoes"].includes(k)) return false;
+      if (ehLembrete && chavesExclusivasTarefa.includes(k)) return false;
+      if (!ehLembrete && chavesLembrete.includes(k)) return false;
+      return true;
+    });
     
   const temRelacionamentos = (Array.isArray(dados.relacionamentos) && dados.relacionamentos.length > 0) ||
     (Array.isArray(dados.relacao) && dados.relacao.length > 0);
@@ -1375,6 +1383,103 @@ export function PropriedadesNotion({
             </div>
           </div>
 
+          {/* Configurações específicas da propriedade */}
+          <div className="border-t border-border pt-2 mt-1">
+            <span className="text-[11px] font-semibold text-muted-foreground px-1 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+              <SlidersHorizontal size={12} className="text-primary" />
+              <span>Configurações</span>
+            </span>
+
+            {(tipoAtual === "multiselect" || chave === "tags") && (
+              <div className="space-y-1.5 p-1.5 bg-secondary/30 rounded-lg border border-border/40">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
+                  <span>Tags neste documento:</span>
+                  {Array.isArray(dados[chave]) && dados[chave].length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        atualizar(chave, []);
+                        toast("Todas as tags foram removidas.");
+                      }}
+                      className="text-[10px] text-destructive hover:underline cursor-pointer"
+                    >
+                      Limpar todas
+                    </button>
+                  )}
+                </div>
+
+                {Array.isArray(dados[chave]) && dados[chave].length > 0 ? (
+                  <div className="flex flex-col gap-1 max-h-32 overflow-y-auto pr-1">
+                    {dados[chave].map((t: string) => (
+                      <div key={t} className="flex items-center justify-between gap-1 p-1 rounded hover:bg-accent text-xs">
+                        <span className="truncate font-medium">{t}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const novas = dados[chave].filter((x: string) => x !== t);
+                            atualizar(chave, novas);
+                            toast(`Tag "${t}" removida.`);
+                          }}
+                          className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                          title={`Excluir tag "${t}"`}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground italic px-1">Nenhuma tag adicionada.</p>
+                )}
+              </div>
+            )}
+
+            {tipoAtual === "numero" && (
+              <div className="p-1.5 bg-secondary/30 rounded-lg border border-border/40 space-y-1 text-xs">
+                <span className="text-[11px] text-muted-foreground block">Modo de Exibição:</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const novoEsq = { ...esquema, [chave]: "numero" as TipoPropriedade };
+                      onChange({ ...dados, esquema: novoEsq });
+                      toast("Modo alterado para Número Comum.");
+                    }}
+                    className="flex-1 py-1 px-2 text-[10px] rounded bg-card border border-border hover:bg-accent text-center cursor-pointer font-medium"
+                  >
+                    Número
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      renomear(chave, "Pomodoro");
+                      toast("Modo alterado para Prismas de Esforço.");
+                    }}
+                    className="flex-1 py-1 px-2 text-[10px] rounded bg-card border border-border hover:bg-accent text-center cursor-pointer font-medium"
+                  >
+                    Prismas (1-5)
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {tipoAtual === "data" && (
+              <div className="p-1.5 bg-secondary/30 rounded-lg border border-border/40 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    atualizar(chave, undefined);
+                    toast("Data limpa.");
+                  }}
+                  className="w-full py-1 px-2 text-[11px] text-destructive hover:bg-destructive/10 rounded flex items-center justify-center gap-1 cursor-pointer font-medium"
+                >
+                  <Trash2 size={12} />
+                  <span>Limpar data</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           {!fixo && (
             <div className="border-t border-border pt-2 mt-1">
               <span className="text-[11px] font-semibold text-muted-foreground px-1 uppercase tracking-wider block mb-1">Tipo de Propriedade</span>
@@ -1406,7 +1511,7 @@ export function PropriedadesNotion({
                   remover(chave);
                   setMenuAberto(null);
                 }}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-destructive hover:bg-destructive/10 transition-colors"
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
               >
                 <Trash2 className="h-4 w-4 shrink-0" />
                 <span>Excluir propriedade</span>

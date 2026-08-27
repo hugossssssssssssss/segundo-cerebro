@@ -129,7 +129,10 @@ export default function Inbox() {
   const carregar = useCallback(async () => {
     if (!pronto) return;
     try {
-      setCarregando(true);
+      setAcervo((prev) => {
+        if (prev.length === 0) setCarregando(true);
+        return prev;
+      });
       const todos = await carregarRepo(cfg);
       setAcervo(todos);
       atualizarRascunhos();
@@ -170,9 +173,10 @@ export default function Inbox() {
       const tituloDoc = tituloProvavel(doc, item.nome);
       const dados = doc.dados || {};
 
-      // 1. Tarefas com Prazo (tarefas/)
+      // 1. Tarefas ou Lembretes na pasta tarefas/
       if (item.caminho.startsWith("tarefas/")) {
-        const prazo = (dados.prazo as string) || (dados.data_fim as string) || (dados.data_inicio as string);
+        const ehLembrete = dados.tipo === "lembrete" || item.nome.startsWith("lembrete-");
+        const prazo = (dados.prazo as string) || (dados.data_fim as string) || (dados.data_inicio as string) || (dados.data as string);
         if (prazo && typeof prazo === "string") {
           const match = prazo.match(/\d{4}-\d{2}-\d{2}/);
           if (match) {
@@ -180,19 +184,35 @@ export default function Inbox() {
             const concluido = dados.status === "feito";
             const atrasado = !concluido && dataIso < hojeStr;
 
-            lista.push({
-              id: `tarefa-${item.caminho}`,
-              tipo: "tarefa",
-              titulo: tituloDoc,
-              dataIso,
-              dataBr: formatarBr(dataIso),
-              caminho: item.caminho,
-              sha: item.sha,
-              corpo: doc.corpo,
-              dados,
-              concluido,
-              atrasado,
-            });
+            if (ehLembrete) {
+              lista.push({
+                id: `lembrete-${item.caminho}`,
+                tipo: "lembrete",
+                titulo: tituloDoc,
+                dataIso,
+                dataBr: formatarBr(dataIso),
+                hora: (dados.horario as string) || (dados.hora as string),
+                caminho: item.caminho,
+                sha: item.sha,
+                corpo: doc.corpo,
+                dados,
+                atrasado,
+              });
+            } else {
+              lista.push({
+                id: `tarefa-${item.caminho}`,
+                tipo: "tarefa",
+                titulo: tituloDoc,
+                dataIso,
+                dataBr: formatarBr(dataIso),
+                caminho: item.caminho,
+                sha: item.sha,
+                corpo: doc.corpo,
+                dados,
+                concluido,
+                atrasado,
+              });
+            }
           }
         }
       }
@@ -454,12 +474,17 @@ export default function Inbox() {
     setSalvandoItem(true);
 
     const hojeStr = new Date().toISOString().split("T")[0];
+    const ehLembrete = itemAberto.tipo === "lembrete";
     const caminhosExistentes = acervo.map((i) => i.caminho);
     const caminhoReal =
-      itemAberto.caminho || nomeLivre("tarefas", `lembrete-${tituloEditor}`, caminhosExistentes);
+      itemAberto.caminho ||
+      (ehLembrete
+        ? nomeLivre("tarefas", `lembrete-${tituloEditor}`, caminhosExistentes)
+        : nomeLivre("tarefas", tituloEditor, caminhosExistentes));
 
     const novosDados = {
       ...dadosPropsEditor,
+      tipo: ehLembrete ? "lembrete" : (dadosPropsEditor.tipo || itemAberto.tipo),
       titulo: tituloEditor,
       atualizado: hojeStr,
     };
@@ -973,7 +998,7 @@ export default function Inbox() {
                       {todosCompromissos.filter((c) => {
                         const dIni = format(inicioSemana, "yyyy-MM-dd");
                         const dFim = format(fimSemana, "yyyy-MM-dd");
-                        return c.dataIso >= dIni && c.dataIso <= dFim;
+                        return c.tipo !== "lembrete" && c.dataIso >= dIni && c.dataIso <= dFim;
                       }).length}
                     </span>
                   </div>

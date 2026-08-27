@@ -248,7 +248,7 @@ export function compilarItensInbox(
             const descricao = ehAtrasada
               ? `Prazo venceu em ${formatarDataPtBR(fimIso)} • Status: ${statusAmigavel}`
               : ehHoje
-              ? `Em andamento hoje (${intervalo.textoFormatado}) • Status: ${statusAmigavel}`
+              ? `Em andamento hoje • Status: ${statusAmigavel}`
               : `Agendada para ${intervalo.textoFormatado} • Status: ${statusAmigavel}`;
 
             resultado.push({
@@ -406,6 +406,27 @@ export function salvarEstadoInboxLocal(mapa: MapaEstadoInbox): void {
   }
 }
 
+export function mesclarEstadosInbox(local: MapaEstadoInbox, remoto: MapaEstadoInbox): MapaEstadoInbox {
+  const todasChaves = new Set([...Object.keys(local), ...Object.keys(remoto)]);
+  const resultado: MapaEstadoInbox = {};
+  for (const chave of todasChaves) {
+    const l = local[chave];
+    const r = remoto[chave];
+    if (l && r) {
+      resultado[chave] = {
+        visto: Boolean(l.visto || r.visto),
+        vistoEm: l.vistoEm || r.vistoEm,
+        descartado: Boolean(l.descartado || r.descartado),
+        notificadoTelegram: Boolean(l.notificadoTelegram || r.notificadoTelegram),
+        notificadoEmail: Boolean(l.notificadoEmail || r.notificadoEmail),
+      };
+    } else {
+      resultado[chave] = l || r || { visto: false };
+    }
+  }
+  return resultado;
+}
+
 /**
  * Carrega o estado da Inbox sincronizado do repositório GitHub (com fallback pro local).
  */
@@ -424,15 +445,13 @@ export async function carregarEstadoInbox(
     if (itemEstado) {
       try {
         const remoto: MapaEstadoInbox = JSON.parse(itemEstado.texto);
-        const mesclado = { ...local, ...remoto };
+        const mesclado = mesclarEstadosInbox(local, remoto);
         salvarEstadoInboxLocal(mesclado);
         return { mapa: mesclado, sha: itemEstado.sha };
       } catch {
         // arquivo de estado quebrado no repo (JSON inválido)
       }
     }
-    // Se o array de itensRepo existe mas o arquivo não está nele, temos certeza que ele não existe no repositório!
-    // Não precisamos fazer nenhuma requisição de rede e podemos retornar o estado local diretamente.
     return { mapa: local };
   }
 
@@ -440,7 +459,7 @@ export async function carregarEstadoInbox(
     const res = await ler(cfg, CAMINHO_ESTADO_INBOX, { silenciar404: true });
     if (res?.texto) {
       const remoto: MapaEstadoInbox = JSON.parse(res.texto);
-      const mesclado = { ...local, ...remoto };
+      const mesclado = mesclarEstadosInbox(local, remoto);
       salvarEstadoInboxLocal(mesclado);
       return { mapa: mesclado, sha: res.sha };
     }
