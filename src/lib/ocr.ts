@@ -88,3 +88,65 @@ export async function extrairTexto(
     await worker.terminate();
   }
 }
+
+/**
+ * Coordenadas de crop (em pixels da imagem real, não da tela).
+ */
+export type CropArea = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+/**
+ * Recorta uma área da imagem e devolve como Blob.
+ * Usa Canvas para fazer o crop antes de enviar ao Tesseract.
+ */
+export function cropImageToBlob(
+  imgElement: HTMLImageElement,
+  crop: CropArea,
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      reject(new Error("Não foi possível criar contexto Canvas."));
+      return;
+    }
+    ctx.drawImage(
+      imgElement,
+      crop.x,
+      crop.y,
+      crop.width,
+      crop.height,
+      0,
+      0,
+      crop.width,
+      crop.height,
+    );
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("Falha ao gerar blob do crop."));
+      },
+      "image/png",
+    );
+  });
+}
+
+/**
+ * Extrai texto apenas de uma área selecionada da imagem.
+ * Faz crop via Canvas antes de passar ao Tesseract.
+ */
+export async function extrairTextoDaArea(
+  imgElement: HTMLImageElement,
+  crop: CropArea,
+  aoProgredir?: (fracao: number) => void,
+): Promise<string> {
+  const blob = await cropImageToBlob(imgElement, crop);
+  return extrairTexto(blob, aoProgredir);
+}
+

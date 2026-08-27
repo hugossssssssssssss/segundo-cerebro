@@ -41,6 +41,7 @@ import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { cn, lerParametroAbrir, correspondeBusca } from "@/lib/utils";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
+import { BarraFiltrosAvancados, type FiltroDataPreset, filtrarPorDataPreset } from "@/components/BarraFiltrosAvancados";
 import { toast } from "@/lib/toast";
 
 export default function Tarefas() {
@@ -69,6 +70,8 @@ export default function Tarefas() {
   const { iniciar } = useCronometro();
   const modelosTarefa = useMemo(() => obterTodosModelos().filter((m) => m.categoria === "tarefa"), []);
   const [tagSelecionada, setTagSelecionada] = useState<string | null>(null);
+  const [tagsFiltro, setTagsFiltro] = useState<string[]>([]);
+  const [filtroDataTarefas, setFiltroDataTarefas] = useState<FiltroDataPreset>("qualquer");
   const [pastaSelecionada, setPastaSelecionada] = useState<string | null>(null);
   const [visao, setVisao] = useState<"quadro" | "calendario">(() => {
     const salvo = localStorage.getItem("tarefa-visao");
@@ -359,7 +362,16 @@ export default function Tarefas() {
       const prefixo = `${PASTAS.tarefas}/${pastaSelecionada}/`;
       if (!t.caminho.startsWith(prefixo)) return false;
     }
+    // Filtro BarraFiltrosAvancados: tags (multiselect)
+    if (tagsFiltro.length > 0) {
+      if (!tagsFiltro.every((tag) => t.tags?.includes(tag))) return false;
+    }
+    // Filtro legado: tag única selecionada
     if (tagSelecionada && (!t.tags || !t.tags.includes(tagSelecionada))) {
+      return false;
+    }
+    // Filtro de data
+    if (filtroDataTarefas !== "qualquer" && !filtrarPorDataPreset(t.bruto || {}, filtroDataTarefas)) {
       return false;
     }
     if (busca.trim()) {
@@ -409,6 +421,18 @@ export default function Tarefas() {
         busca={busca}
         aoMudarBusca={setBusca}
         placeholderBusca="Buscar tarefa por título..."
+        filtros={
+          <BarraFiltrosAvancados
+            todasTags={todasTags}
+            tagsFiltro={tagsFiltro}
+            aoMudarTags={(tags) => {
+              setTagsFiltro(tags);
+              setTagSelecionada(tags.length === 1 ? tags[0] : null);
+            }}
+            filtroData={filtroDataTarefas}
+            aoMudarFiltroData={setFiltroDataTarefas}
+          />
+        }
         acoes={
           <AlternadorVisao
             valorAtivo={visao}
@@ -465,39 +489,7 @@ export default function Tarefas() {
         </div>
       )}
 
-      {/* Filtro por Tags */}
-      {todasTags.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap py-1">
-          <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-            <Tag size={12} /> Tags:
-          </span>
-          <button
-            onClick={() => setTagSelecionada(null)}
-            className={cn(
-              "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer",
-              tagSelecionada === null
-                ? "bg-primary text-primary-foreground font-semibold"
-                : "bg-secondary/60 text-muted-foreground hover:bg-accent",
-            )}
-          >
-            Todas
-          </button>
-          {todasTags.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTagSelecionada(t === tagSelecionada ? null : t)}
-              className={cn(
-                "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer",
-                tagSelecionada === t
-                  ? "bg-primary text-primary-foreground font-semibold"
-                  : "bg-secondary/60 text-muted-foreground hover:bg-accent",
-              )}
-            >
-              #{t}
-            </button>
-          ))}
-        </div>
-      )}
+
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 

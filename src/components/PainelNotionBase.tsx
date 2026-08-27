@@ -518,6 +518,42 @@ export function PainelNotionBase({
   const [fechandoESalvando, setFechandoESalvando] = useState(false);
   const fechandoRef = useRef(false);
 
+  // ── Auto-save invisível com debounce de 2s ──────────────────────────────
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [autoSalvou, setAutoSalvou] = useState(false);
+
+  useEffect(() => {
+    // Limpa indicador de "salvo" quando houver novas mudanças
+    if (temMudancas) setAutoSalvou(false);
+  }, [temMudancas]);
+
+  useEffect(() => {
+    if (!temMudancas || salvando || fechandoRef.current) {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+      return;
+    }
+
+    autoSaveTimerRef.current = setTimeout(async () => {
+      if (!temMudancasRef.current || salvandoRef.current || fechandoRef.current) return;
+      try {
+        await aoSalvar();
+        setAutoSalvou(true);
+      } catch {
+        // Falha silenciosa — o save por fechar ainda funciona como fallback
+      }
+    }, 2000);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+    };
+  }, [temMudancas, salvando, titulo, corpo, dadosProps]);
+
   const tentarFechar = useCallback(async () => {
     if (fechandoRef.current) return;
     if (!temMudancasRef.current) {
@@ -669,7 +705,9 @@ export function PainelNotionBase({
           {salvando || fechandoESalvando ? (
             <span className="text-blue-500 animate-pulse font-semibold">Salvando...</span>
           ) : temMudancas ? (
-            <span className="text-amber-600 dark:text-amber-400 font-medium">Salva ao fechar</span>
+            <span className="text-muted-foreground/70 font-medium">Editando…</span>
+          ) : autoSalvou ? (
+            <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ Salvo</span>
           ) : (
             <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ Sincronizado</span>
           )}

@@ -732,6 +732,8 @@ export function PropriedadesNotion({
           : format(inicioObj, "dd 'de' MMM 'de' yyyy", { locale: ptBR })
         : null;
 
+      const temRange = !!(inicioObj && fimObj && !isNaN(inicioObj.getTime()) && !isNaN(fimObj.getTime()));
+
       return (
         <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
           <PopoverTrigger asChild>
@@ -744,45 +746,78 @@ export function PropriedadesNotion({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-72 p-3" align="start" onInteractOutside={() => setMenuAberto(null)}>
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
-                <span>Data Inicial</span>
-                {fimStr && (
+                <span>{temRange ? "Intervalo de datas" : "Clique para definir a data"}</span>
+                {temRange && (
                   <button 
                     onClick={() => atualizar(chave, inicioStr)} 
-                    className="text-destructive hover:underline text-[11px]"
+                    className="text-destructive hover:underline text-[11px] cursor-pointer"
                   >
                     Remover término
                   </button>
                 )}
+                {inicioStr && !temRange && (
+                  <button 
+                    onClick={() => atualizar(chave, undefined)} 
+                    className="text-destructive hover:underline text-[11px] cursor-pointer"
+                  >
+                    Limpar data
+                  </button>
+                )}
               </div>
 
-              <Calendar
-                mode="single"
-                selected={inicioObj}
-                className="w-full"
-                locale={ptBR}
-                onSelect={(d: Date | undefined) => {
-                  const nInicio = d ? format(d, "yyyy-MM-dd") : "";
-                  atualizar(chave, fimStr ? `${nInicio} → ${fimStr}` : nInicio);
-                }}
-                autoFocus
-              />
+              <p className="text-[10px] text-muted-foreground/70">
+                {temRange
+                  ? "Clique numa data para redefinir."
+                  : inicioStr
+                    ? "Clique em outra data para criar um intervalo."
+                    : "1º clique define a data. 2º clique numa data diferente cria um intervalo."
+                }
+              </p>
 
-              <div className="border-t border-border pt-2">
-                <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground mb-1.5">
-                  <span>Data de Término (Intervalo)</span>
-                </div>
-                <input
-                  type="date"
-                  value={fimStr}
-                  onChange={(e) => {
-                    const nFim = e.target.value;
-                    atualizar(chave, nFim ? `${inicioStr || format(new Date(), "yyyy-MM-dd")} → ${nFim}` : inicioStr);
+              {temRange ? (
+                <Calendar
+                  mode="range"
+                  selected={{ from: inicioObj!, to: fimObj! }}
+                  className="w-full"
+                  locale={ptBR}
+                  onSelect={(range: any) => {
+                    if (!range) {
+                      atualizar(chave, undefined);
+                      return;
+                    }
+                    const nInicio = range.from ? format(range.from, "yyyy-MM-dd") : "";
+                    const nFim = range.to ? format(range.to, "yyyy-MM-dd") : "";
+                    if (nInicio && nFim) {
+                      atualizar(chave, `${nInicio} → ${nFim}`);
+                    } else if (nInicio) {
+                      atualizar(chave, nInicio);
+                    }
                   }}
-                  className="w-full text-xs rounded border border-border bg-accent/40 p-1.5 text-foreground outline-none"
+                  autoFocus
                 />
-              </div>
+              ) : (
+                <Calendar
+                  mode="single"
+                  selected={inicioObj}
+                  className="w-full"
+                  locale={ptBR}
+                  onSelect={(d: Date | undefined) => {
+                    if (!d) return;
+                    const nData = format(d, "yyyy-MM-dd");
+                    if (inicioStr && nData !== inicioStr) {
+                      // 2º clique em data diferente → cria range
+                      const [menor, maior] = [inicioStr, nData].sort();
+                      atualizar(chave, `${menor} → ${maior}`);
+                    } else {
+                      // 1º clique ou mesma data → define data única
+                      atualizar(chave, nData);
+                    }
+                  }}
+                  autoFocus
+                />
+              )}
             </div>
           </PopoverContent>
         </Popover>

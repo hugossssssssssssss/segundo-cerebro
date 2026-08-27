@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Masonry } from "react-plock";
-import { Plus, Trash2, ImagePlus, ExternalLink, ScanText } from "lucide-react";
+import { Plus, Trash2, ImagePlus, ExternalLink, ScanText, FolderOpen, ChevronRight, LayoutGrid, List, FolderPlus } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { correspondeBusca, lerParametroAbrir, lerParametroCriar } from "@/lib/utils";
 import { gravarBinario } from "@/lib/github";
@@ -38,8 +38,15 @@ import { Badge } from "@/components/ui/badge";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
+import { AlternadorVisao } from "@/components/AlternadorVisao";
+import { CabecalhoSecao } from "@/components/CabecalhoSecao";
+import { CartaoItem } from "@/components/CartaoItem";
+import { SeletorOcr } from "@/components/SeletorOcr";
 import { cn } from "@/lib/utils";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
+import { toast } from "@/lib/toast";
+
+type ModoVisaoRef = "masonry" | "grade" | "lista";
 
 export default function Referencias() {
   const cfg = lerConfig();
@@ -48,10 +55,11 @@ export default function Referencias() {
   const navegar = useNavigate();
   const { focarFlutuante } = useItemFlutuante();
 
-  // ── Carregamento ──────────────────────────────────────────────────────────
+  // ── Carregamento (recursivo para suportar subpastas) ─────────────────────
   const { itens: refs, carregando, erro: erroCarregar, recarregar } =
     useItemRepo(cfg, PASTAS.referencias, (item) =>
       comoReferencia(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+      { recursivo: true }
     );
 
   // ── Salvamento ────────────────────────────────────────────────────────────
@@ -65,8 +73,6 @@ export default function Referencias() {
   const [enviando, setEnviando] = useState(false);
   const [encolhendo, setEncolhendo] = useState(false);
   const [nota, setNota] = useState("");
-  const [lendoTexto, setLendoTexto] = useState(false);
-  const [progressoOcr, setProgressoOcr] = useState(0);
   const [editando, setEditando] = useState<Referencia | null>(null);
   const [original, setOriginal] = useState<Referencia | null>(null);
   const [previa, setPrevia] = useState<string | null>(null);
@@ -74,6 +80,26 @@ export default function Referencias() {
   const [paletasExtraidas, setPaletasExtraidas] = useState<Record<string, string[]>>({});
   const [corCopiada, setCorCopiada] = useState<string | null>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
+
+  // ── OCR com seleção de área ───────────────────────────────────────────────
+  const [modoOcr, setModoOcr] = useState(false);
+  const [fonteOcrUrl, setFonteOcrUrl] = useState<string | null>(null);
+
+  // ── Pastas ────────────────────────────────────────────────────────────────
+  const [pastaAtual, setPastaAtual] = useState("");
+  const [pastasCriadas, setPastasCriadas] = useState<string[]>([]);
+
+  // ── Modo de visualização ──────────────────────────────────────────────────
+  const [modoVisao, setModoVisao] = useState<ModoVisaoRef>(() => {
+    const salvo = localStorage.getItem("klaus_modo_visao_refs");
+    return (salvo as ModoVisaoRef) || "masonry";
+  });
+  useEffect(() => {
+    localStorage.setItem("klaus_modo_visao_refs", modoVisao);
+  }, [modoVisao]);
+
+  // ── Drag & drop na zona de imagem ─────────────────────────────────────────
+  const [arrastando, setArrastando] = useState(false);
 
   // ── Abre item pela URL ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -114,10 +140,11 @@ export default function Referencias() {
       const arquivo = preparada.arquivo;
       const nome = nomeDeImagem(escolhido.name);
       const base64 = await arquivoParaBase64(arquivo);
-      await gravarBinario(cfg, `${PASTA_IMAGENS}/${nome}`, base64);
+      const pastaImg = pastaAtual ? `${PASTA_IMAGENS}/${pastaAtual}` : PASTA_IMAGENS;
+      await gravarBinario(cfg, `${pastaImg}/${nome}`, base64);
       invalidarCache();
 
-      const relativo = `imagens/${nome}`;
+      const relativo = pastaAtual ? `imagens/${pastaAtual}/${nome}` : `imagens/${nome}`;
       setEditando({
         ...editando,
         imagem: relativo,
@@ -154,56 +181,49 @@ export default function Referencias() {
     }
   }
 
-  async function lerTextoDaImagem() {
+  async function abrirOcr() {
     if (!editando?.imagem && !previa) {
       setErroLocal("Adicione uma imagem antes de extrair o texto.");
       return;
     }
 
-    setLendoTexto(true);
     setErroLocal("");
-    setNota("");
-
-    let temporaria: string | null = null;
     try {
-      const fonte =
-        previa ?? (temporaria = await baixarImagemPrivada(cfg, editando!.imagem!));
-
-      const { extrairTexto, anexarTextoLido } = await import("@/lib/ocr");
-      const texto = await extrairTexto(fonte, setProgressoOcr);
-
-      if (!texto) {
-        setNota("Não encontrei texto legível nessa imagem.");
-        return;
-      }
-
-      setEditando((prev) =>
-        prev ? { ...prev, corpo: anexarTextoLido(prev.corpo, texto) } : null,
-      );
-      setNota(
-        `Texto extraído da imagem (${texto.length} caracteres) e colocado nas anotações. Confira antes de salvar.`,
-      );
+      const url = previa ?? await baixarImagemPrivada(cfg, editando!.imagem!);
+      setFonteOcrUrl(url);
+      setModoOcr(true);
     } catch (e) {
       setErroLocal(e instanceof Error ? e.message : String(e));
-    } finally {
-      if (temporaria) URL.revokeObjectURL(temporaria);
-      setLendoTexto(false);
-      setProgressoOcr(0);
     }
   }
 
-  async function salvar() {
-    if (!editando?.titulo.trim()) {
-      setErroLocal("A referência precisa de um título.");
-      return;
+  function aoExtrairTextoOcr(texto: string) {
+    import("@/lib/ocr").then(({ anexarTextoLido }) => {
+      setEditando((prev) =>
+        prev ? { ...prev, corpo: anexarTextoLido(prev.corpo, texto) } : null,
+      );
+    });
+    setModoOcr(false);
+    setNota(`Texto extraído (${texto.length} caracteres) e colocado no corpo do documento.`);
+    // Limpar URL temporária se não for a prévia
+    if (fonteOcrUrl && fonteOcrUrl !== previa) {
+      URL.revokeObjectURL(fonteOcrUrl);
     }
+    setFonteOcrUrl(null);
+  }
+
+  async function salvar() {
+    const titulo = editando?.titulo?.trim() || "Sem Título";
+    const ref = editando ? { ...editando, titulo } : editando;
+    if (!ref) return;
     setErroLocal("");
     try {
-      const { dados, corpo } = referenciaParaArquivo(editando);
+      const { dados, corpo } = referenciaParaArquivo(ref);
       const texto = escreverMarkdown({ dados, corpo });
-      const caminho = editando.caminho ||
-        nomeLivre(PASTA_REFS, editando.titulo, refs.map((x) => x.caminho));
-      await salvarTexto(caminho, texto, editando.sha || undefined);
+      const pastaRef = pastaAtual ? `${PASTA_REFS}/${pastaAtual}` : PASTA_REFS;
+      const caminho = ref.caminho ||
+        nomeLivre(pastaRef, titulo, refs.map((x) => x.caminho));
+      await salvarTexto(caminho, texto, ref.sha || undefined);
       fecharModal();
       recarregar();
     } catch {
@@ -229,12 +249,17 @@ export default function Referencias() {
     setEditando(null);
     setOriginal(null);
     setNota("");
+    setModoOcr(false);
     limparErro();
     setErroLocal("");
     setPrevia((p) => {
       if (p) URL.revokeObjectURL(p);
       return null;
     });
+    if (fonteOcrUrl && fonteOcrUrl !== previa) {
+      URL.revokeObjectURL(fonteOcrUrl);
+    }
+    setFonteOcrUrl(null);
   }
 
   const nova = () => {
@@ -278,6 +303,60 @@ export default function Referencias() {
     }
   }, [location.pathname, location.search, location.hash, refs.length > 0]);
 
+  // ── Drag & drop handlers para imagem ──────────────────────────────────────
+  function aoArrastarSobre(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setArrastando(true);
+  }
+
+  function aoSairArrasto(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setArrastando(false);
+  }
+
+  function aoSoltar(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setArrastando(false);
+    const arquivos = e.dataTransfer.files;
+    if (arquivos.length > 0 && arquivos[0].type.startsWith("image/")) {
+      enviarImagem(arquivos[0]);
+    }
+  }
+
+  // Colar imagem do clipboard
+  useEffect(() => {
+    if (!editando) return;
+    const aoColar = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const arquivo = item.getAsFile();
+          if (arquivo) enviarImagem(arquivo);
+          return;
+        }
+      }
+    };
+    window.addEventListener("paste", aoColar);
+    return () => window.removeEventListener("paste", aoColar);
+  }, [editando]);
+
+  // ── Criar pasta ────────────────────────────────────────────────────────────
+  function criarPasta() {
+    const nome = prompt("Nome da nova pasta:")?.trim();
+    if (!nome) return;
+    const slug = nome.replace(/[^a-zA-Z0-9\s-]/g, "").trim().replace(/\s+/g, "-").toLowerCase();
+    if (!slug) return;
+    const novaPasta = pastaAtual ? `${pastaAtual}/${slug}` : slug;
+    setPastasCriadas((atual) => [...new Set([...atual, novaPasta])]);
+    setPastaAtual(novaPasta);
+    toast(`Pasta "${slug}" criada`, { tipo: "sucesso" });
+  }
+
   // ── Sem configuração ────────────────────────────────────────────────────────
   if (!pronto) {
     return (
@@ -293,14 +372,55 @@ export default function Referencias() {
     );
   }
 
-  const tags = todasAsTags(refs);
-  const visiveis = refs
+  // ── Pastas e filtragem ────────────────────────────────────────────────────
+  const todasRefs = refs;
+  const naPasta = todasRefs.filter((a) => {
+    const partes = a.caminho.split("/");
+    // Ignora arquivos de imagem
+    if (a.caminho.includes("/imagens/")) return false;
+    const pastaDoItem = partes.slice(1, -1).join("/");
+    return pastaDoItem === pastaAtual;
+  });
+
+  const subpastas = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of todasRefs) {
+      if (a.caminho.includes("/imagens/")) continue;
+      const partes = a.caminho.split("/");
+      if (partes.length > 2) {
+        const pastaDoItem = partes.slice(1, -1).join("/");
+        if (pastaDoItem.startsWith(pastaAtual ? `${pastaAtual}/` : "")) {
+          const resto = pastaDoItem.slice(pastaAtual ? pastaAtual.length + 1 : 0);
+          const primeira = resto.split("/")[0];
+          if (primeira && primeira !== "imagens") set.add(primeira);
+        }
+      }
+    }
+    for (const p of pastasCriadas) {
+      if (pastaAtual) {
+        if (p.startsWith(`${pastaAtual}/`)) {
+          const resto = p.slice(pastaAtual.length + 1);
+          const primeira = resto.split("/")[0];
+          if (primeira) set.add(primeira);
+        }
+      } else {
+        const primeira = p.split("/")[0];
+        if (primeira) set.add(primeira);
+      }
+    }
+    return [...set].sort();
+  }, [todasRefs, pastaAtual, pastasCriadas]);
+
+  const tags = todasAsTags(naPasta);
+  const visiveis = naPasta
     .filter((r) => !filtro || r.tags.includes(filtro))
     .filter((r) =>
       correspondeBusca(r.titulo, busca) ||
       correspondeBusca(r.corpo, busca) ||
       r.tags.some((t) => correspondeBusca(t, busca))
     );
+
+  const partesPasta = pastaAtual ? pastaAtual.split("/") : [];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -310,12 +430,46 @@ export default function Referencias() {
         icone={<ImagePlus size={20} />}
         corIcone="bg-pink-500/10 text-pink-600 dark:text-pink-400"
         acoes={
-          <Botao onClick={nova}>
-            <Plus size={16} />
-            Nova Referência
-          </Botao>
+          <>
+            <Botao variante="neutro" onClick={criarPasta}>
+              <FolderPlus size={16} />
+              Nova Pasta
+            </Botao>
+            <Botao onClick={nova}>
+              <Plus size={16} />
+              Nova Referência
+            </Botao>
+          </>
         }
       />
+
+      {pastaAtual && (
+        <div className="flex items-center gap-1.5 flex-wrap text-xs">
+          <button
+            type="button"
+            onClick={() => setPastaAtual("")}
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <FolderOpen size={13} />
+            Referências
+          </button>
+          {partesPasta.map((parte, i) => {
+            const caminhoParcial = partesPasta.slice(0, i + 1).join("/");
+            return (
+              <span key={caminhoParcial} className="flex items-center gap-1.5">
+                <ChevronRight size={12} className="text-muted-foreground/50" />
+                <button
+                  type="button"
+                  onClick={() => setPastaAtual(caminhoParcial)}
+                  className="rounded-lg px-2 py-1 text-foreground hover:bg-accent transition-colors"
+                >
+                  {parte}
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       <BarraFerramentas
         busca={busca}
@@ -354,13 +508,24 @@ export default function Referencias() {
             </div>
           ) : undefined
         }
+        acoes={
+          <AlternadorVisao
+            valorAtivo={modoVisao}
+            aoAlternar={(v) => setModoVisao(v as ModoVisaoRef)}
+            opcoes={[
+              { id: "masonry", rotulo: "Painel", icone: <LayoutGrid size={14} /> },
+              { id: "grade", rotulo: "Grade", icone: <LayoutGrid size={14} /> },
+              { id: "lista", rotulo: "Lista", icone: <List size={14} /> },
+            ]}
+          />
+        }
       />
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 
       {carregando ? (
         <Carregando texto="Carregando suas referências…" />
-      ) : visiveis.length === 0 ? (
+      ) : visiveis.length === 0 && subpastas.length === 0 ? (
         <Vazio
           titulo={refs.length === 0 ? "Nenhuma referência ainda" : "Nada com essa tag"}
           descricao={
@@ -371,95 +536,60 @@ export default function Referencias() {
           acao={refs.length === 0 ? <Botao onClick={nova}>Salvar a primeira</Botao> : undefined}
         />
       ) : (
-        <Masonry
-          items={visiveis}
-          config={{
-            columns: [1, 2, 3],
-            gap: [16, 16, 16],
-            media: [640, 1024, 1280],
-          }}
-          render={(r: Referencia) => {
-            const paletaItem: string[] = Array.isArray(r.bruto.paleta)
-              ? r.bruto.paleta
-              : Array.isArray(paletasExtraidas[r.id])
-                ? paletasExtraidas[r.id]
-                : [];
-            return (
-              <div
-                key={r.id}
-                className="group relative cursor-pointer flex flex-col gap-2"
-                onClick={() => { setEditando(r); setOriginal(r); }}
-              >
-                <div className="relative overflow-hidden rounded-3xl bg-muted">
-                  {r.imagem && (
-                    <ImagemPrivada
-                      caminho={r.imagem}
-                      alt={r.titulo}
-                      className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                      aoCarregarBlob={(img) => {
-                        if (!r.bruto.paleta && !paletasExtraidas[r.id]) {
-                          import("@/lib/paleta").then(({ extrairPaletaDaImagem }) => {
-                            extrairPaletaDaImagem(img).then((cores) => {
-                              if (cores.length > 0) {
-                                setPaletasExtraidas((p) => ({ ...p, [r.id]: cores }));
-                              }
-                            });
-                          });
-                        }
-                      }}
+        <div className="space-y-4">
+          {/* Subpastas */}
+          {subpastas.length > 0 && (
+            <section className="space-y-2">
+              <CabecalhoSecao titulo="Pastas" contador={subpastas.length} />
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {subpastas.map((pasta) => {
+                  const caminhoPasta = pastaAtual ? `${pastaAtual}/${pasta}` : pasta;
+                  return (
+                    <CartaoItem
+                      key={`pasta-${caminhoPasta}`}
+                      icone={<FolderOpen size={18} className="text-pink-500" />}
+                      titulo={pasta}
+                      subtitulo="Pasta"
+                      onClick={() => setPastaAtual(caminhoPasta)}
                     />
-                  )}
-                  <div className="absolute inset-0 bg-black/30 opacity-60 sm:opacity-0 transition-opacity duration-300 sm:group-hover:opacity-100 flex flex-col justify-between p-3 sm:p-4">
-                    <div className="flex justify-end">
-                      <Button variant="secondary" size="sm" className="rounded-full h-8 font-semibold opacity-100 sm:opacity-0 sm:translate-y-[-10px] transition-all duration-300 sm:group-hover:opacity-100 sm:group-hover:translate-y-0">
-                        Abrir
-                      </Button>
-                    </div>
-                    {r.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 opacity-100 sm:opacity-0 sm:translate-y-[10px] transition-all duration-300 sm:group-hover:opacity-100 sm:group-hover:translate-y-0">
-                        {r.tags.slice(0, 3).map((t) => (
-                          <Badge variant="secondary" className="bg-background/90 text-foreground text-[10px] rounded-full border-none" key={t}>{t}</Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="px-1.5">
-                  <p className="font-semibold text-sm leading-tight text-foreground line-clamp-2">{r.titulo}</p>
-                  {r.porque && (
-                    <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                      {r.porque}
-                    </p>
-                  )}
-                  {paletaItem.length > 0 && (
-                    <div className="mt-2 flex items-center gap-1 flex-wrap relative">
-                      {paletaItem.map((hex: string) => (
-                        <button
-                          key={hex}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(hex);
-                            setCorCopiada(hex);
-                            setTimeout(() => setCorCopiada(null), 1500);
-                          }}
-                          className="h-4 w-4 rounded-full border border-black/10 shadow-sm transition-transform active:scale-90 hover:scale-125 relative"
-                          style={{ backgroundColor: hex }}
-                          title={`Copiar ${hex}`}
-                        />
-                      ))}
-                      {corCopiada && (
-                        <span className="ml-1 text-[10px] font-semibold text-primary animate-fade-in">
-                          Copiada!
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
+                  );
+                })}
               </div>
-            );
-          }}
-        />
+            </section>
+          )}
+
+          {/* Lista / Grade / Masonry */}
+          {visiveis.length > 0 && (
+            modoVisao === "masonry" ? (
+              <Masonry
+                items={visiveis}
+                config={{
+                  columns: [1, 2, 3],
+                  gap: [16, 16, 16],
+                  media: [640, 1024, 1280],
+                }}
+                render={(r: Referencia) => renderCartaoMasonry(r)}
+              />
+            ) : modoVisao === "grade" ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {visiveis.map((r) => renderCartaoGrade(r))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {visiveis.map((r) => (
+                  <CartaoItem
+                    key={r.id}
+                    icone={<ImagePlus size={18} className="text-pink-500" />}
+                    titulo={r.titulo || "Sem Título"}
+                    subtitulo={r.porque || r.fonte || undefined}
+                    tags={r.tags}
+                    onClick={() => { setEditando(r); setOriginal(r); }}
+                  />
+                ))}
+              </div>
+            )
+          )}
+        </div>
       )}
 
       {/* ------------------------------------------------------- modal */}
@@ -490,19 +620,63 @@ export default function Referencias() {
       >
         {editando && (
           <div className="space-y-4">
-            {previa ? (
-              <img
-                src={previa}
-                alt=""
-                className="max-h-64 w-full rounded-lg object-contain bg-secondary"
+            {/* Zona de imagem com Drag & Drop */}
+            {modoOcr && fonteOcrUrl ? (
+              <SeletorOcr
+                imagemSrc={fonteOcrUrl}
+                aoExtrairTexto={aoExtrairTextoOcr}
+                aoFechar={() => {
+                  setModoOcr(false);
+                  if (fonteOcrUrl && fonteOcrUrl !== previa) {
+                    URL.revokeObjectURL(fonteOcrUrl);
+                  }
+                  setFonteOcrUrl(null);
+                }}
               />
-            ) : editando.imagem ? (
-              <ImagemPrivada
-                caminho={editando.imagem}
-                alt=""
-                className="max-h-64 w-full rounded-lg object-contain"
-              />
-            ) : null}
+            ) : (
+              <div
+                onDragOver={aoArrastarSobre}
+                onDragLeave={aoSairArrasto}
+                onDrop={aoSoltar}
+                className={cn(
+                  "relative rounded-xl overflow-hidden transition-all border-2 border-dashed cursor-pointer",
+                  arrastando
+                    ? "border-primary bg-primary/5 scale-[1.01]"
+                    : previa || editando.imagem
+                      ? "border-transparent"
+                      : "border-border hover:border-primary/40 bg-secondary/30",
+                )}
+                onClick={() => {
+                  if (!previa && !editando.imagem) inputArquivo.current?.click();
+                }}
+              >
+                {previa ? (
+                  <img
+                    src={previa}
+                    alt=""
+                    className="max-h-64 w-full rounded-lg object-contain bg-secondary"
+                  />
+                ) : editando.imagem ? (
+                  <ImagemPrivada
+                    caminho={editando.imagem}
+                    alt=""
+                    className="max-h-64 w-full rounded-lg object-contain"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+                    <ImagePlus size={32} className="opacity-40" />
+                    <p className="text-xs font-medium">Arraste uma imagem aqui ou clique para escolher</p>
+                    <p className="text-[10px] opacity-60">Também aceita colar (Ctrl+V)</p>
+                  </div>
+                )}
+
+                {arrastando && (
+                  <div className="absolute inset-0 bg-primary/10 backdrop-blur-sm flex items-center justify-center">
+                    <p className="text-sm font-semibold text-primary">Solte para substituir a imagem</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <input
               ref={inputArquivo}
@@ -515,40 +689,36 @@ export default function Referencias() {
                 e.target.value = "";
               }}
             />
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Botao
-                variante="neutro"
-                onClick={() => inputArquivo.current?.click()}
-                disabled={enviando || lendoTexto}
-                className="flex-1"
-              >
-                <ImagePlus size={16} />
-                {encolhendo
-                  ? "Encolhendo…"
-                  : enviando
-                    ? "Enviando…"
-                    : editando.imagem
-                      ? "Trocar imagem"
-                      : "Adicionar imagem"}
-              </Botao>
 
-              {(editando.imagem || previa) && (
+            {/* Botões de ação na imagem */}
+            {!modoOcr && (previa || editando.imagem) && (
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Botao
                   variante="neutro"
-                  onClick={lerTextoDaImagem}
-                  disabled={enviando || lendoTexto}
+                  onClick={() => inputArquivo.current?.click()}
+                  disabled={enviando}
                   className="flex-1"
-                  title="Lê o texto escrito dentro da imagem e joga nas anotações, para a busca encontrar depois"
+                >
+                  <ImagePlus size={16} />
+                  {encolhendo
+                    ? "Encolhendo…"
+                    : enviando
+                      ? "Enviando…"
+                      : "Adicionar imagem"}
+                </Botao>
+
+                <Botao
+                  variante="neutro"
+                  onClick={abrirOcr}
+                  disabled={enviando}
+                  className="flex-1"
+                  title="Selecione uma área da imagem para extrair o texto"
                 >
                   <ScanText size={16} />
-                  {lendoTexto
-                    ? progressoOcr > 0
-                      ? `Lendo… ${Math.round(progressoOcr * 100)}%`
-                      : "Preparando…"
-                    : "Ler texto da imagem"}
+                  Ler texto da imagem
                 </Botao>
-              )}
-            </div>
+              </div>
+            )}
 
             {nota && <Aviso tom="sucesso">{nota}</Aviso>}
 
@@ -608,24 +778,13 @@ export default function Referencias() {
                 placeholder="tipografia, editorial"
               />
             </div>
-
-            <div>
-              <Rotulo>Anotações</Rotulo>
-              <AreaTexto
-                value={editando.corpo}
-                onChange={(e) =>
-                  setEditando({ ...editando, corpo: e.target.value })
-                }
-                className="min-h-24"
-              />
-            </div>
           </div>
         )}
       </Modal>
 
       <ModalConfirmacao
         aberto={referenciaParaExcluir !== null}
-        titulo={`Apagar "${referenciaParaExcluir?.titulo || ""}"?`}
+        titulo={`Apagar "${referenciaParaExcluir?.titulo || ""}"`}
         descricao="Esta referência será removida da lista. A imagem associada continua no repositório."
         textoConfirmar="Apagar Referência"
         varianteConfirmar="perigo"
@@ -634,4 +793,127 @@ export default function Referencias() {
       />
     </div>
   );
+
+  // ── Funções de renderização ───────────────────────────────────────────────
+
+  function renderCartaoMasonry(r: Referencia) {
+    const paletaItem: string[] = Array.isArray(r.bruto.paleta)
+      ? r.bruto.paleta
+      : Array.isArray(paletasExtraidas[r.id])
+        ? paletasExtraidas[r.id]
+        : [];
+    return (
+      <div
+        key={r.id}
+        className="group relative cursor-pointer flex flex-col gap-2"
+        onClick={() => { setEditando(r); setOriginal(r); }}
+      >
+        <div className="relative overflow-hidden rounded-3xl bg-muted">
+          {r.imagem && (
+            <ImagemPrivada
+              caminho={r.imagem}
+              alt={r.titulo}
+              className="w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+              aoCarregarBlob={(img) => {
+                if (!r.bruto.paleta && !paletasExtraidas[r.id]) {
+                  import("@/lib/paleta").then(({ extrairPaletaDaImagem }) => {
+                    extrairPaletaDaImagem(img).then((cores) => {
+                      if (cores.length > 0) {
+                        setPaletasExtraidas((p) => ({ ...p, [r.id]: cores }));
+                      }
+                    });
+                  });
+                }
+              }}
+            />
+          )}
+          <div className="absolute inset-0 bg-black/30 opacity-60 sm:opacity-0 transition-opacity duration-300 sm:group-hover:opacity-100 flex flex-col justify-between p-3 sm:p-4">
+            <div className="flex justify-end">
+              <Button variant="secondary" size="sm" className="rounded-full h-8 font-semibold opacity-100 sm:opacity-0 sm:translate-y-[-10px] transition-all duration-300 sm:group-hover:opacity-100 sm:group-hover:translate-y-0">
+                Abrir
+              </Button>
+            </div>
+            {r.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 opacity-100 sm:opacity-0 sm:translate-y-[10px] transition-all duration-300 sm:group-hover:opacity-100 sm:group-hover:translate-y-0">
+                {r.tags.slice(0, 3).map((t) => (
+                  <Badge variant="secondary" className="bg-background/90 text-foreground text-[10px] rounded-full border-none" key={t}>{t}</Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="px-1.5">
+          <p className="font-semibold text-sm leading-tight text-foreground line-clamp-2">{r.titulo || "Sem Título"}</p>
+          {r.porque && (
+            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+              {r.porque}
+            </p>
+          )}
+          {renderPaleta(paletaItem)}
+        </div>
+      </div>
+    );
+  }
+
+  function renderCartaoGrade(r: Referencia) {
+    return (
+      <div
+        key={r.id}
+        className="group relative cursor-pointer flex flex-col gap-1.5 rounded-2xl overflow-hidden border border-border/60 bg-card hover:shadow-md transition-all"
+        onClick={() => { setEditando(r); setOriginal(r); }}
+      >
+        <div className="relative aspect-square overflow-hidden bg-muted">
+          {r.imagem ? (
+            <ImagemPrivada
+              caminho={r.imagem}
+              alt={r.titulo}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <ImagePlus size={32} className="text-muted-foreground/30" />
+            </div>
+          )}
+        </div>
+        <div className="px-2.5 pb-2.5">
+          <p className="font-semibold text-xs leading-tight text-foreground line-clamp-2">{r.titulo || "Sem Título"}</p>
+          {r.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {r.tags.slice(0, 2).map((t) => (
+                <Badge variant="secondary" className="text-[9px] rounded-full" key={t}>{t}</Badge>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function renderPaleta(paletaItem: string[]) {
+    if (paletaItem.length === 0) return null;
+    return (
+      <div className="mt-2 flex items-center gap-1 flex-wrap relative">
+        {paletaItem.map((hex: string) => (
+          <button
+            key={hex}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(hex);
+              setCorCopiada(hex);
+              setTimeout(() => setCorCopiada(null), 1500);
+            }}
+            className="h-4 w-4 rounded-full border border-black/10 shadow-sm transition-transform active:scale-90 hover:scale-125 relative"
+            style={{ backgroundColor: hex }}
+            title={`Copiar ${hex}`}
+          />
+        ))}
+        {corCopiada && (
+          <span className="ml-1 text-[10px] font-semibold text-primary animate-fade-in">
+            Copiada!
+          </span>
+        )}
+      </div>
+    );
+  }
 }

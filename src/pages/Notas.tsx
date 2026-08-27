@@ -7,13 +7,22 @@ import {
   FolderOpen,
   FolderPlus,
   ChevronRight,
-  Settings2,
+  ChevronDown,
+  Star,
+  MoreVertical,
   Trash2,
   X,
+  Copy,
 } from "lucide-react";
 import {
   obterTodosModelos,
   obterModeloPadrao,
+  carregarTemplatesDoRepo,
+  definirModeloPadraoId,
+  excluirTemplateDoRepo,
+  salvarTemplateNoRepo,
+  ehModeloCustom,
+  migrarModelosDoLocalStorage,
   type TemplateItem,
 } from "@/lib/templates";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -39,20 +48,21 @@ import {
 } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
+import { BarraFiltrosAvancados, type FiltroDataPreset } from "@/components/BarraFiltrosAvancados";
 import { CartaoItem } from "@/components/CartaoItem";
-import { TagChip } from "@/components/TagChip";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
-import { ModalGerenciarModelos } from "@/components/ModalGerenciarModelos";
 import { MenuContextoNotas, type AcaoMenuContexto } from "@/components/MenuContextoNotas";
 import { toast } from "@/lib/toast";
+
 import type { Nota } from "@/lib/tipos";
 
 type NotaAberta = Nota & {
   original: { titulo: string; corpo: string; bruto?: Frontmatter };
 };
 
-type FiltroData = "qualquer" | "hoje" | "7dias" | "mes";
+type FiltroData = FiltroDataPreset;
 
 export default function Notas() {
   const cfg = lerConfig();
@@ -107,9 +117,28 @@ export default function Notas() {
   const [tagsFiltro, setTagsFiltro] = useState<string[]>([]);
   const [filtroData, setFiltroData] = useState<FiltroData>("qualquer");
 
-  const [modalModelosAberto, setModalModelosAberto] = useState(false);
   const [modelos, setModelos] = useState<TemplateItem[]>(obterTodosModelos());
   const [modeloPadrao, setModeloPadrao] = useState<TemplateItem | undefined>(obterModeloPadrao());
+  const [menuModelosAberto, setMenuModelosAberto] = useState(false);
+
+  // Carrega templates do repositório e migra do localStorage (uma vez)
+  useEffect(() => {
+    if (!pronto) return;
+    let montado = true;
+    (async () => {
+      try {
+        await migrarModelosDoLocalStorage(cfg);
+        await carregarTemplatesDoRepo(cfg);
+        if (montado) {
+          setModelos(obterTodosModelos());
+          setModeloPadrao(obterModeloPadrao());
+        }
+      } catch {
+        // Silencioso — modelos padrão continuam disponíveis
+      }
+    })();
+    return () => { montado = false; };
+  }, [pronto]);
 
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
   const opcoesRelacionamento = useMemo(() =>
@@ -738,11 +767,7 @@ export default function Notas() {
     }
   }
 
-  function alternarTagFiltro(tag: string) {
-    setTagsFiltro((atual) =>
-      atual.includes(tag) ? atual.filter((t) => t !== tag) : [...atual, tag],
-    );
-  }
+
 
   function filtrarPorData(nota: Nota): boolean {
     if (filtroData === "qualquer") return true;
@@ -862,30 +887,6 @@ export default function Notas() {
         corIcone="bg-amber-500/10 text-amber-600 dark:text-amber-400"
         acoes={
           <>
-            <select
-              onChange={(e) => {
-                const tmpl = modelos.find((m) => m.id === e.target.value);
-                if (tmpl) nova(tmpl);
-                e.target.value = "";
-              }}
-              defaultValue=""
-              className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer shadow-2xs"
-            >
-              <option value="" disabled>Usar Modelo...</option>
-              {modelos.map((m) => (
-                <option key={m.id} value={m.id}>{m.titulo}</option>
-              ))}
-            </select>
-            <Botao
-              variante="fantasma"
-              tamanho="pequeno"
-              onClick={() => setModalModelosAberto(true)}
-              title="Gerenciar modelos"
-              className="gap-1"
-            >
-              <Settings2 size={14} />
-              Modelos
-            </Botao>
             <Botao
               variante="neutro"
               onClick={() => setMenuContexto({ x: window.innerWidth / 2 - 120, y: 96, emCartao: false })}
@@ -893,10 +894,123 @@ export default function Notas() {
               <FolderPlus size={16} />
               Nova Pasta
             </Botao>
-            <Botao onClick={() => nova()}>
-              <Plus size={16} />
-              Nova Nota
-            </Botao>
+
+            {/* Dropdown split: Nova Nota + templates */}
+            <div className="flex items-center">
+              <Botao onClick={() => nova()} className="rounded-r-none">
+                <Plus size={16} />
+                Nova Nota
+              </Botao>
+              <Popover open={menuModelosAberto} onOpenChange={setMenuModelosAberto}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center justify-center h-full px-2 py-2 rounded-r-xl bg-primary text-primary-foreground border-l border-primary-foreground/20 hover:bg-primary/90 transition-colors cursor-pointer"
+                    title="Novo via Modelo"
+                  >
+                    <ChevronDown size={14} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-1" align="end">
+                  <div className="py-1">
+                    <p className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Novo via Modelo</p>
+                    {modelos.map((m) => {
+                      const ehPadrao = modeloPadrao?.id === m.id;
+                      const ehCustom = ehModeloCustom(m.id);
+                      return (
+                        <div
+                          key={m.id}
+                          className="group flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                          onClick={() => {
+                            nova(m);
+                            setMenuModelosAberto(false);
+                          }}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-foreground truncate">{m.titulo}</span>
+                              {ehPadrao && (
+                                <Star size={10} className="text-amber-500 fill-amber-500 shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground truncate">{m.descricao}</p>
+                          </div>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-accent text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical size={12} />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-40 p-1" align="end">
+                              <button
+                                type="button"
+                                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-foreground hover:bg-accent transition-colors cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  definirModeloPadraoId(ehPadrao ? null : m.id);
+                                  setModeloPadrao(ehPadrao ? undefined : m);
+                                  setModelos(obterTodosModelos());
+                                }}
+                              >
+                                <Star size={12} className={ehPadrao ? "text-amber-500 fill-amber-500" : ""} />
+                                {ehPadrao ? "Remover padrão" : "Definir como padrão"}
+                              </button>
+                              {ehCustom && m.caminho && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-foreground hover:bg-accent transition-colors cursor-pointer"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      try {
+                                        const duplicado = { ...m, titulo: `Cópia de ${m.titulo}`, caminho: undefined, sha: undefined };
+                                        await salvarTemplateNoRepo(cfg, duplicado as TemplateItem);
+                                        await carregarTemplatesDoRepo(cfg);
+                                        setModelos(obterTodosModelos());
+                                        toast("Modelo duplicado!");
+                                      } catch (err: any) {
+                                        toast(`Erro: ${err?.message}`, { tipo: "erro" });
+                                      }
+                                    }}
+                                  >
+                                    <Copy size={12} />
+                                    Duplicar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (!m.caminho || !m.sha) return;
+                                      try {
+                                        await excluirTemplateDoRepo(cfg, m.caminho, m.sha);
+                                        await carregarTemplatesDoRepo(cfg);
+                                        setModelos(obterTodosModelos());
+                                        setModeloPadrao(obterModeloPadrao());
+                                        toast("Modelo excluído.");
+                                      } catch (err: any) {
+                                        toast(`Erro: ${err?.message}`, { tipo: "erro" });
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 size={12} />
+                                    Excluir
+                                  </button>
+                                </>
+                              )}
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
           </>
         }
       />
@@ -935,36 +1049,13 @@ export default function Notas() {
           aoMudarBusca={setBusca}
           placeholderBusca="Buscar nota por título..."
           filtros={
-            <div className="flex items-center gap-2 flex-wrap">
-              <select
-                value={filtroData}
-                onChange={(e) => setFiltroData(e.target.value as FiltroData)}
-                className="rounded-xl border border-border bg-card px-2.5 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
-              >
-                <option value="qualquer">Qualquer data</option>
-                <option value="hoje">Hoje</option>
-                <option value="7dias">Últimos 7 dias</option>
-                <option value="mes">Este mês</option>
-              </select>
-
-              {todasTags.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {todasTags.slice(0, 8).map((tag) => (
-                    <TagChip
-                      key={tag}
-                      tag={tag}
-                      ativa={tagsFiltro.includes(tag)}
-                      aoClicar={() => alternarTagFiltro(tag)}
-                    />
-                  ))}
-                  {todasTags.length > 8 && (
-                    <span className="text-[10px] text-muted-foreground">
-                      +{todasTags.length - 8}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
+            <BarraFiltrosAvancados
+              todasTags={todasTags}
+              tagsFiltro={tagsFiltro}
+              aoMudarTags={setTagsFiltro}
+              filtroData={filtroData}
+              aoMudarFiltroData={setFiltroData}
+            />
           }
         />
       )}
@@ -1237,14 +1328,7 @@ export default function Notas() {
         temClipboard={clipboard !== null && clipboard.caminhos.length > 0}
       />
 
-      <ModalGerenciarModelos
-        aberto={modalModelosAberto}
-        aoFechar={() => setModalModelosAberto(false)}
-        aoAtualizar={() => {
-          setModelos(obterTodosModelos());
-          setModeloPadrao(obterModeloPadrao());
-        }}
-      />
+
 
       {aberta !== null && (
         <PainelNotionBase

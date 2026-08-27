@@ -1,6 +1,31 @@
 /**
- * Gerenciador de Modelos (Templates) Pré-definidos para Notas e Tarefas.
+ * Gerenciador de Modelos (Templates) para Notas e Tarefas.
+ *
+ * ## Arquitetura
+ *
+ * Os templates vivem em **dois lugares**:
+ *
+ * 1. `MODELOS_PADRAO` — hard-coded neste arquivo, não podem ser apagados.
+ * 2. `.klaus/templates/*.md` — arquivos Markdown no repositório de dados.
+ *    Cada arquivo é um template com frontmatter e corpo.
+ *
+ * ## Migração do localStorage
+ *
+ * Na versão anterior, templates customizados ficavam no `localStorage`.
+ * A função `migrarModelosDoLocalStorage` move esses templates para o
+ * repositório de dados automaticamente. Depois de migrar, limpa o
+ * `localStorage`.
+ *
+ * ## Modelo padrão
+ *
+ * O ID do modelo padrão (aquele que é aplicado ao clicar "Nova Nota")
+ * continua no localStorage porque é uma preferência de UI, não dados.
  */
+
+import type { Settings } from "./settings";
+import { escreverMarkdown, nomeLivre } from "./markdown";
+
+export const PASTA_TEMPLATES = ".klaus/templates";
 
 export type TemplateItem = {
   id: string;
@@ -9,6 +34,10 @@ export type TemplateItem = {
   descricao: string;
   frontmatter: Record<string, any>;
   corpoPadrao: string;
+  /** Caminho no repositório. Vazio para modelos padrão (hard-coded). */
+  caminho?: string;
+  /** SHA do arquivo no repositório. */
+  sha?: string;
 };
 
 export type TemplateCategoria = TemplateItem["categoria"];
@@ -83,27 +112,30 @@ Mencione referências ou salve em @referencias.
   },
 ];
 
-const CHAVE_MODELOS_CUSTOM = "klaus_modelos_personalizados";
 const CHAVE_MODELO_PADRAO = "klaus_modelo_padrao_id";
+const CHAVE_MODELOS_CUSTOM_LEGADO = "klaus_modelos_personalizados";
 
+// ── API síncrona (modelos padrão + cache de repo) ──────────────────────────
+
+/** Cache em memória dos templates carregados do repositório */
+let _cacheTemplatesRepo: TemplateItem[] = [];
+
+/**
+ * Retorna todos os modelos (padrão + repositório + legado localStorage).
+ * Se o repositório ainda não foi carregado, inclui os do localStorage como fallback.
+ */
 export function obterTodosModelos(): TemplateItem[] {
+  let customLegado: TemplateItem[] = [];
   try {
-    const salvo = localStorage.getItem(CHAVE_MODELOS_CUSTOM);
-    if (!salvo) return MODELOS_PADRAO;
-    const custom = JSON.parse(salvo) as TemplateItem[];
-    return [...MODELOS_PADRAO, ...custom];
-  } catch {
-    return MODELOS_PADRAO;
-  }
-}
+    const salvo = localStorage.getItem(CHAVE_MODELOS_CUSTOM_LEGADO);
+    if (salvo) customLegado = JSON.parse(salvo);
+  } catch { /* vazio */ }
 
-export function salvarModelosPersonalizados(custom: TemplateItem[]): void {
-  localStorage.setItem(CHAVE_MODELOS_CUSTOM, JSON.stringify(custom));
-}
+  // IDs que já existem no cache do repo (evitar duplicatas)
+  const idsRepo = new Set(_cacheTemplatesRepo.map((t) => t.id));
+  const legadosFiltrados = customLegado.filter((t) => !idsRepo.has(t.id));
 
-/** Só os modelos personalizados (id começa com "custom_"). */
-export function obterModelosPersonalizados(): TemplateItem[] {
-  return obterTodosModelos().filter((m) => ehModeloCustom(m.id));
+  return [...MODELOS_PADRAO, ..._cacheTemplatesRepo, ...legadosFiltrados];
 }
 
 export function obterModeloPadraoId(): string | null {
@@ -125,13 +157,164 @@ export function obterModeloPadrao(): TemplateItem | undefined {
 }
 
 export function ehModeloCustom(id: string): boolean {
-  return id.startsWith("custom_");
+  return id.startsWith("custom_") || id.startsWith("repo_");
+}
+
+export function ehModeloPadrao(id: string): boolean {
+  return MODELOS_PADRAO.some((m) => m.id === id);
+}
+
+// ── API assíncrona (repositório) ────────────────────────────────────────────
+
+/**
+ * Carrega templates do repositório (.klaus/templates/*.md).
+ * Atualiza o cache em memória e retorna todos os modelos.
+ */
+export async function carregarTemplatesDoRepo(cfg: Settings): Promise<TemplateItem[]> {
+  if (!cfg.githubToken || !cfg.repoOwner || !cfg.repoName) {
+    return obterTodosModelos();
+  }
+
+  try {
+    const { carregarRepo, daPasta } = await import("./repo");
+    const todos = await carregarRepo(cfg);
+    const itens = daPasta(todos, PASTA_TEMPLATES);
+
+    _cacheTemplatesRepo = itens.map((item): TemplateItem => {
+      const doc = item.doc;
+      const dados: Record<string, any> = doc.dados || {};
+      return {
+        id: `repo_${item.caminho}`,
+        titulo: (dados.titulo as string) || item.nome.replace(/\.md$/, ""),
+        categoria: (dados.categoria as TemplateItem["categoria"]) || "design",
+        descricao: (dados.descricao as string) || "Modelo personalizado",
+        frontmatter: {
+          tipo: (dados.tipo as string) || "nota",
+          tags: (dados.tags as string[]) || [],
+          ...dados,
+        },
+        corpoPadrao: doc.corpo || "",
+        caminho: item.caminho,
+        sha: item.sha,
+      };
+    });
+
+    return obterTodosModelos();
+  } catch {
+    // Silencioso — pasta pode não existir
+    return obterTodosModelos();
+  }
 }
 
 /**
- * Cria um novo modelo personalizado e salva junto aos existentes.
- * Devolve o modelo criado.
+ * Salva um template como arquivo .md no repositório.
  */
+export async function salvarTemplateNoRepo(
+  cfg: Settings,
+  template: TemplateItem,
+): Promise<string> {
+  const { gravar } = await import("./github");
+  const { invalidarCache } = await import("./repo");
+
+  const dados = {
+    titulo: template.titulo,
+    categoria: template.categoria,
+    descricao: template.descricao,
+    tipo: template.frontmatter.tipo || "nota",
+    tags: template.frontmatter.tags || [],
+  };
+
+  const texto = escreverMarkdown({ dados, corpo: template.corpoPadrao });
+
+  const caminho = template.caminho || nomeLivre(
+    PASTA_TEMPLATES,
+    template.titulo,
+    _cacheTemplatesRepo.map((t) => t.caminho || ""),
+  );
+
+  await gravar(cfg, caminho, texto, template.sha, `template: ${template.titulo}`);
+  invalidarCache();
+
+  return caminho;
+}
+
+/**
+ * Exclui um template do repositório.
+ */
+export async function excluirTemplateDoRepo(
+  cfg: Settings,
+  caminho: string,
+  sha: string,
+): Promise<void> {
+  const { apagar } = await import("./github");
+  const { invalidarCache } = await import("./repo");
+
+  await apagar(cfg, caminho, sha);
+  invalidarCache();
+
+  // Remover do cache
+  _cacheTemplatesRepo = _cacheTemplatesRepo.filter((t) => t.caminho !== caminho);
+
+  // Se era o modelo padrão, limpar
+  const padraoId = obterModeloPadraoId();
+  if (padraoId === `repo_${caminho}`) {
+    definirModeloPadraoId(null);
+  }
+}
+
+/**
+ * Migra templates do localStorage para o repositório.
+ * Chamado uma vez — depois limpa o localStorage.
+ */
+export async function migrarModelosDoLocalStorage(cfg: Settings): Promise<number> {
+  const salvo = localStorage.getItem(CHAVE_MODELOS_CUSTOM_LEGADO);
+  if (!salvo) return 0;
+
+  let custom: TemplateItem[] = [];
+  try {
+    custom = JSON.parse(salvo);
+  } catch {
+    localStorage.removeItem(CHAVE_MODELOS_CUSTOM_LEGADO);
+    return 0;
+  }
+
+  if (!Array.isArray(custom) || custom.length === 0) {
+    localStorage.removeItem(CHAVE_MODELOS_CUSTOM_LEGADO);
+    return 0;
+  }
+
+  let migrados = 0;
+  for (const tmpl of custom) {
+    try {
+      await salvarTemplateNoRepo(cfg, tmpl);
+      migrados++;
+    } catch {
+      // Falha silenciosa — tenta os outros
+    }
+  }
+
+  // Limpar localStorage após migração bem-sucedida
+  if (migrados > 0) {
+    localStorage.removeItem(CHAVE_MODELOS_CUSTOM_LEGADO);
+  }
+
+  return migrados;
+}
+
+// ── Wrappers legados (compatibilidade com código existente) ──────────────
+
+/** @deprecated Use salvarTemplateNoRepo */
+export function salvarModelosPersonalizados(custom: TemplateItem[]): void {
+  // Fallback para localStorage se não tiver cfg
+  localStorage.setItem(CHAVE_MODELOS_CUSTOM_LEGADO, JSON.stringify(custom));
+}
+
+/** @deprecated Use obterTodosModelos */
+export function obterModelosPersonalizados(): TemplateItem[] {
+  return obterTodosModelos().filter((m) => ehModeloCustom(m.id));
+}
+
+/** @deprecated Use salvarTemplateNoRepo */
 export function criarModeloPersonalizado(
   dados: Omit<TemplateItem, "id">,
 ): TemplateItem {
@@ -144,10 +327,7 @@ export function criarModeloPersonalizado(
   return novo;
 }
 
-/**
- * Atualiza um modelo personalizado existente (por id).
- * Modelos padrão não podem ser editados — devolve false.
- */
+/** @deprecated Use salvarTemplateNoRepo */
 export function editarModeloPersonalizado(
   id: string,
   dados: Partial<Omit<TemplateItem, "id">>,
@@ -161,10 +341,7 @@ export function editarModeloPersonalizado(
   return true;
 }
 
-/**
- * Remove um modelo personalizado. Se ele era o padrão, limpa a preferência.
- * Modelos padrão não podem ser removidos — devolve false.
- */
+/** @deprecated Use excluirTemplateDoRepo */
 export function removerModeloPersonalizado(id: string): boolean {
   if (!ehModeloCustom(id)) return false;
   const custom = obterModelosPersonalizados().filter((m) => m.id !== id);
