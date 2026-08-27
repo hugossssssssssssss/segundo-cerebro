@@ -318,7 +318,7 @@ export function PropriedadesNotion({
   const rotulosMap = { ...globalConfig.rotulos, ...((dados._rotulos as Record<string, string>) || {}) };
 
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
-    .filter(k => !["titulo", "tipo", "atualizado", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "c", "pomodoro", "pomodoros", "estimativa"].includes(k));
+    .filter(k => !["titulo", "tipo", "atualizado", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "c", "pomodoro", "pomodoros", "estimativa", "porque", "anotacoes"].includes(k));
     
   const temRelacionamentos = (Array.isArray(dados.relacionamentos) && dados.relacionamentos.length > 0) ||
     (Array.isArray(dados.relacao) && dados.relacao.length > 0);
@@ -336,6 +336,7 @@ export function PropriedadesNotion({
     if (chave === "indicador") return "Indicador";
     if (chave === "metas") return "Metas";
     if (chave === "data") return "Data";
+    if (chave === "fonte" || chave === "sourceUrl") return "Link da fonte";
     if (rotulosMap[chave]) return rotulosMap[chave];
     if (chave === "relacionamentos" || chave === "relacao") return "Relacionamentos";
     if (chave === "caminho" || chave === "pasta") return "Caminho";
@@ -723,16 +724,53 @@ export function PropriedadesNotion({
       let inicioStr = typeof valor === "string" ? valor.split("→")[0]?.trim() : valor?.inicio || "";
       let fimStr = typeof valor === "string" && valor.includes("→") ? valor.split("→")[1]?.trim() : valor?.fim || "";
 
-      const inicioObj = inicioStr ? new Date(`${inicioStr}T00:00:00`) : undefined;
-      const fimObj = fimStr ? new Date(`${fimStr}T00:00:00`) : undefined;
+      if (!fimStr && dados.endDate && typeof dados.endDate === "string") {
+        fimStr = dados.endDate.trim();
+      }
 
-      const textoFormatado = inicioObj && !isNaN(inicioObj.getTime())
-        ? fimObj && !isNaN(fimObj.getTime())
+      const parseData = (str: string) => {
+        if (!str) return undefined;
+        const d = new Date(`${str}T00:00:00`);
+        return isNaN(d.getTime()) ? undefined : d;
+      };
+
+      const inicioObj = parseData(inicioStr);
+      const fimObj = parseData(fimStr);
+
+      const textoFormatado = inicioObj
+        ? fimObj
           ? `${format(inicioObj, "dd 'de' MMM", { locale: ptBR })} → ${format(fimObj, "dd 'de' MMM 'de' yyyy", { locale: ptBR })}`
           : format(inicioObj, "dd 'de' MMM 'de' yyyy", { locale: ptBR })
         : null;
 
-      const temRange = !!(inicioObj && fimObj && !isNaN(inicioObj.getTime()) && !isNaN(fimObj.getTime()));
+      const temRange = !!(inicioObj && fimObj);
+
+      const aoClicarDia = (d: Date | undefined) => {
+        if (!d) return;
+        const dataClicada = format(d, "yyyy-MM-dd");
+
+        // Clique 1 ou Clique 3 (quando não há início ou quando já há um range fechado): define data única
+        if (!inicioStr || (inicioStr && fimStr)) {
+          atualizar(chave, dataClicada);
+          if (dados.endDate) {
+            const novos = { ...dados, [chave]: dataClicada };
+            delete novos.endDate;
+            onChange(novos);
+          }
+          return;
+        }
+
+        // Clique 2 (quando há início e não há fim):
+        if (inicioStr && !fimStr) {
+          if (dataClicada === inicioStr) {
+            // Clicou no mesmo dia -> mantém data única
+            return;
+          }
+          // Clicou em dia diferente -> cria range cronológico
+          const [menor, maior] = [inicioStr, dataClicada].sort();
+          atualizar(chave, `${menor} → ${maior}`);
+        }
+      };
 
       return (
         <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
@@ -745,21 +783,21 @@ export function PropriedadesNotion({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-72 p-3" align="start" onInteractOutside={() => setMenuAberto(null)}>
+          <PopoverContent className="w-72 p-3 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
-                <span>{temRange ? "Intervalo de datas" : "Clique para definir a data"}</span>
-                {temRange && (
+                <span>{temRange ? "Intervalo selecionado" : inicioStr ? "Data selecionada" : "Definir data"}</span>
+                {(inicioStr || fimStr) && (
                   <button 
-                    onClick={() => atualizar(chave, inicioStr)} 
-                    className="text-destructive hover:underline text-[11px] cursor-pointer"
-                  >
-                    Remover término
-                  </button>
-                )}
-                {inicioStr && !temRange && (
-                  <button 
-                    onClick={() => atualizar(chave, undefined)} 
+                    onClick={() => {
+                      atualizar(chave, undefined);
+                      if (dados.endDate) {
+                        const novos = { ...dados };
+                        delete novos[chave];
+                        delete novos.endDate;
+                        onChange(novos);
+                      }
+                    }} 
                     className="text-destructive hover:underline text-[11px] cursor-pointer"
                   >
                     Limpar data
@@ -767,57 +805,25 @@ export function PropriedadesNotion({
                 )}
               </div>
 
-              <p className="text-[10px] text-muted-foreground/70">
+              <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
                 {temRange
-                  ? "Clique numa data para redefinir."
+                  ? "Clique em uma nova data para reiniciar."
                   : inicioStr
-                    ? "Clique em outra data para criar um intervalo."
-                    : "1º clique define a data. 2º clique numa data diferente cria um intervalo."
-                }
+                    ? "Clique em outra data para formar um intervalo (range)."
+                    : "1º clique define a data. 2º clique cria o intervalo."}
               </p>
 
-              {temRange ? (
-                <Calendar
-                  mode="range"
-                  selected={{ from: inicioObj!, to: fimObj! }}
-                  className="w-full"
-                  locale={ptBR}
-                  onSelect={(range: any) => {
-                    if (!range) {
-                      atualizar(chave, undefined);
-                      return;
-                    }
-                    const nInicio = range.from ? format(range.from, "yyyy-MM-dd") : "";
-                    const nFim = range.to ? format(range.to, "yyyy-MM-dd") : "";
-                    if (nInicio && nFim) {
-                      atualizar(chave, `${nInicio} → ${nFim}`);
-                    } else if (nInicio) {
-                      atualizar(chave, nInicio);
-                    }
-                  }}
-                  autoFocus
-                />
-              ) : (
-                <Calendar
-                  mode="single"
-                  selected={inicioObj}
-                  className="w-full"
-                  locale={ptBR}
-                  onSelect={(d: Date | undefined) => {
-                    if (!d) return;
-                    const nData = format(d, "yyyy-MM-dd");
-                    if (inicioStr && nData !== inicioStr) {
-                      // 2º clique em data diferente → cria range
-                      const [menor, maior] = [inicioStr, nData].sort();
-                      atualizar(chave, `${menor} → ${maior}`);
-                    } else {
-                      // 1º clique ou mesma data → define data única
-                      atualizar(chave, nData);
-                    }
-                  }}
-                  autoFocus
-                />
-              )}
+              <Calendar
+                mode="range"
+                selected={{
+                  from: inicioObj,
+                  to: fimObj || undefined,
+                }}
+                onDayClick={aoClicarDia}
+                className="w-full"
+                locale={ptBR}
+                autoFocus
+              />
             </div>
           </PopoverContent>
         </Popover>

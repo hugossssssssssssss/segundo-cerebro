@@ -72,8 +72,15 @@ export function construirGrafo3D(
 
   // 1. Cria nós para cada documento no repositório
   for (const item of itens) {
-    if (ehArquivoInternoOuSistema(item.caminho)) continue;
-    if (item.caminho.startsWith("referencias/imagens/")) continue;
+    if (
+      ehArquivoInternoOuSistema(item.caminho) ||
+      item.caminho.startsWith(".klaus/") ||
+      item.caminho.includes("/.klaus/") ||
+      item.caminho.includes("templates/") ||
+      item.caminho.startsWith("referencias/imagens/")
+    ) {
+      continue;
+    }
 
     const tipo = determinarTipo(item.caminho);
     const titulo = String(item.doc.dados.titulo || tituloProvavel(item.doc, item.nome));

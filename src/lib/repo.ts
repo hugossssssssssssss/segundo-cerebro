@@ -155,20 +155,23 @@ export function ehArquivoInternoOuSistema(caminho: string): boolean {
   if (!caminho) return true;
   const c = caminho.toLowerCase().trim();
 
-  // Arquivos e diretórios ocultos ou de build/código do app
-  if (c.startsWith(".") || c.includes("/.")) return true;
+  // Arquivos e diretórios ocultos ou de build/código do app / templates do sistema
+  if (c.startsWith(".") || c.includes("/.") || c.startsWith(".klaus/") || c.includes("/.klaus/")) return true;
   if (
     c.startsWith("node_modules/") ||
     c.startsWith(".github/") ||
     c.startsWith(".agents/") ||
     c.startsWith(".gemini/") ||
     c.startsWith(".vscode/") ||
+    c.startsWith(".klaus/") ||
+    c.includes("/.klaus/") ||
     c.startsWith("src/") ||
     c.startsWith("public/") ||
     c.startsWith("dist/") ||
     c.startsWith("modelos/") ||
     c.startsWith("templates/") ||
     c.startsWith(".templates/") ||
+    c.includes("/templates/") ||
     c.startsWith("exemplos/") ||
     c.startsWith("processos/")
   ) {

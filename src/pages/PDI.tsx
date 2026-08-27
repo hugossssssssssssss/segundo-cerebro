@@ -347,13 +347,12 @@ export default function PDI() {
   }
 
   async function salvarEntrega() {
-    if (!editandoEntrega?.titulo.trim()) {
-      setErroLocal("A entrega precisa de um título.");
-      return;
-    }
+    const titulo = editandoEntrega?.titulo?.trim() || "Sem título";
+    const entregaComTitulo = editandoEntrega ? { ...editandoEntrega, titulo } : editandoEntrega;
+    if (!entregaComTitulo) return;
     setErroLocal("");
     try {
-      const limpa = { ...editandoEntrega, iaSugeriu: false };
+      const limpa = { ...entregaComTitulo, iaSugeriu: false };
       const { dados, corpo } = entregaParaArquivo(limpa);
       const texto = escreverMarkdown({ dados, corpo });
       const caminho = limpa.caminho ||

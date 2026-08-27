@@ -7,22 +7,11 @@ import {
   FolderOpen,
   FolderPlus,
   ChevronRight,
-  ChevronDown,
-  Star,
-  MoreVertical,
   Trash2,
   X,
-  Copy,
 } from "lucide-react";
 import {
-  obterTodosModelos,
   obterModeloPadrao,
-  carregarTemplatesDoRepo,
-  definirModeloPadraoId,
-  excluirTemplateDoRepo,
-  salvarTemplateNoRepo,
-  ehModeloCustom,
-  migrarModelosDoLocalStorage,
   type TemplateItem,
 } from "@/lib/templates";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -48,10 +37,10 @@ import {
 } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
-import { BarraFiltrosAvancados, type FiltroDataPreset } from "@/components/BarraFiltrosAvancados";
+import { BarraFiltrosAvancados, type FiltroDataPreset, filtrarPorDataPreset } from "@/components/BarraFiltrosAvancados";
+import { DropdownNovoViaModelo } from "@/components/DropdownNovoViaModelo";
 import { CartaoItem } from "@/components/CartaoItem";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { MenuContextoNotas, type AcaoMenuContexto } from "@/components/MenuContextoNotas";
 import { toast } from "@/lib/toast";
@@ -61,8 +50,6 @@ import type { Nota } from "@/lib/tipos";
 type NotaAberta = Nota & {
   original: { titulo: string; corpo: string; bruto?: Frontmatter };
 };
-
-type FiltroData = FiltroDataPreset;
 
 export default function Notas() {
   const cfg = lerConfig();
@@ -115,30 +102,17 @@ export default function Notas() {
   } | null>(null);
 
   const [tagsFiltro, setTagsFiltro] = useState<string[]>([]);
-  const [filtroData, setFiltroData] = useState<FiltroData>("qualquer");
+  const [filtroData, setFiltroData] = useState<FiltroDataPreset>("qualquer");
+  const [filtroAtualizacao, setFiltroAtualizacao] = useState<FiltroDataPreset>("qualquer");
 
-  const [modelos, setModelos] = useState<TemplateItem[]>(obterTodosModelos());
-  const [modeloPadrao, setModeloPadrao] = useState<TemplateItem | undefined>(obterModeloPadrao());
-  const [menuModelosAberto, setMenuModelosAberto] = useState(false);
-
-  // Carrega templates do repositório e migra do localStorage (uma vez)
+  // Reset de filtros locais ao mudar de rota
   useEffect(() => {
-    if (!pronto) return;
-    let montado = true;
-    (async () => {
-      try {
-        await migrarModelosDoLocalStorage(cfg);
-        await carregarTemplatesDoRepo(cfg);
-        if (montado) {
-          setModelos(obterTodosModelos());
-          setModeloPadrao(obterModeloPadrao());
-        }
-      } catch {
-        // Silencioso — modelos padrão continuam disponíveis
-      }
-    })();
-    return () => { montado = false; };
-  }, [pronto]);
+    setTagsFiltro([]);
+    setFiltroData("qualquer");
+    setFiltroAtualizacao("qualquer");
+    setPastaAtual("");
+    setSelecionadas(new Set());
+  }, [location.pathname]);
 
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
   const opcoesRelacionamento = useMemo(() =>
@@ -305,7 +279,7 @@ export default function Notas() {
   }
 
   function nova(template?: TemplateItem, pastaDestino?: string) {
-    const tmpl = template || modeloPadrao;
+    const tmpl = template || obterModeloPadrao();
     const titulo = tmpl?.titulo || "Nova Nota";
     
     let caminho = "";
@@ -770,24 +744,12 @@ export default function Notas() {
 
 
   function filtrarPorData(nota: Nota): boolean {
-    if (filtroData === "qualquer") return true;
-    const data = dataDoNome(nota.caminho) || nota.atualizado || "";
-    if (!data) return true;
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const dataNota = new Date(`${data}T00:00:00`);
-    if (Number.isNaN(dataNota.getTime())) return true;
+    const dataCriacao = dataDoNome(nota.caminho) || (nota.bruto.criado_em as string) || (nota.bruto.criado as string);
+    if (!filtrarPorDataPreset(dataCriacao, filtroData)) return false;
 
-    if (filtroData === "hoje") {
-      return dataNota.getTime() === hoje.getTime();
-    }
-    if (filtroData === "7dias") {
-      const limite = hoje.getTime() - 7 * 86_400_000;
-      return dataNota.getTime() >= limite;
-    }
-    if (filtroData === "mes") {
-      return dataNota.getMonth() === hoje.getMonth() && dataNota.getFullYear() === hoje.getFullYear();
-    }
+    const dataAtualizacao = (nota.bruto.atualizado as string) || (nota.bruto.ultima_edicao as string) || nota.atualizado;
+    if (!filtrarPorDataPreset(dataAtualizacao, filtroAtualizacao)) return false;
+
     return true;
   }
 
@@ -895,122 +857,12 @@ export default function Notas() {
               Nova Pasta
             </Botao>
 
-            {/* Dropdown split: Nova Nota + templates */}
-            <div className="flex items-center">
-              <Botao onClick={() => nova()} className="rounded-r-none">
-                <Plus size={16} />
-                Nova Nota
-              </Botao>
-              <Popover open={menuModelosAberto} onOpenChange={setMenuModelosAberto}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex items-center justify-center h-full px-2 py-2 rounded-r-xl bg-primary text-primary-foreground border-l border-primary-foreground/20 hover:bg-primary/90 transition-colors cursor-pointer"
-                    title="Novo via Modelo"
-                  >
-                    <ChevronDown size={14} />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-72 p-1" align="end">
-                  <div className="py-1">
-                    <p className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Novo via Modelo</p>
-                    {modelos.map((m) => {
-                      const ehPadrao = modeloPadrao?.id === m.id;
-                      const ehCustom = ehModeloCustom(m.id);
-                      return (
-                        <div
-                          key={m.id}
-                          className="group flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-accent cursor-pointer transition-colors"
-                          onClick={() => {
-                            nova(m);
-                            setMenuModelosAberto(false);
-                          }}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-foreground truncate">{m.titulo}</span>
-                              {ehPadrao && (
-                                <Star size={10} className="text-amber-500 fill-amber-500 shrink-0" />
-                              )}
-                            </div>
-                            <p className="text-[10px] text-muted-foreground truncate">{m.descricao}</p>
-                          </div>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button
-                                type="button"
-                                className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-accent text-muted-foreground hover:text-foreground transition-all cursor-pointer"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MoreVertical size={12} />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-40 p-1" align="end">
-                              <button
-                                type="button"
-                                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-foreground hover:bg-accent transition-colors cursor-pointer"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  definirModeloPadraoId(ehPadrao ? null : m.id);
-                                  setModeloPadrao(ehPadrao ? undefined : m);
-                                  setModelos(obterTodosModelos());
-                                }}
-                              >
-                                <Star size={12} className={ehPadrao ? "text-amber-500 fill-amber-500" : ""} />
-                                {ehPadrao ? "Remover padrão" : "Definir como padrão"}
-                              </button>
-                              {ehCustom && m.caminho && (
-                                <>
-                                  <button
-                                    type="button"
-                                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-foreground hover:bg-accent transition-colors cursor-pointer"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      try {
-                                        const duplicado = { ...m, titulo: `Cópia de ${m.titulo}`, caminho: undefined, sha: undefined };
-                                        await salvarTemplateNoRepo(cfg, duplicado as TemplateItem);
-                                        await carregarTemplatesDoRepo(cfg);
-                                        setModelos(obterTodosModelos());
-                                        toast("Modelo duplicado!");
-                                      } catch (err: any) {
-                                        toast(`Erro: ${err?.message}`, { tipo: "erro" });
-                                      }
-                                    }}
-                                  >
-                                    <Copy size={12} />
-                                    Duplicar
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      if (!m.caminho || !m.sha) return;
-                                      try {
-                                        await excluirTemplateDoRepo(cfg, m.caminho, m.sha);
-                                        await carregarTemplatesDoRepo(cfg);
-                                        setModelos(obterTodosModelos());
-                                        setModeloPadrao(obterModeloPadrao());
-                                        toast("Modelo excluído.");
-                                      } catch (err: any) {
-                                        toast(`Erro: ${err?.message}`, { tipo: "erro" });
-                                      }
-                                    }}
-                                  >
-                                    <Trash2 size={12} />
-                                    Excluir
-                                  </button>
-                                </>
-                              )}
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+            <DropdownNovoViaModelo
+              rotuloPrincipal="Nova Nota"
+              iconePrincipal={<Plus size={16} />}
+              aoCriarNovo={() => nova()}
+              aoCriarComTemplate={(t) => nova(t)}
+            />
           </>
         }
       />
@@ -1055,6 +907,8 @@ export default function Notas() {
               aoMudarTags={setTagsFiltro}
               filtroData={filtroData}
               aoMudarFiltroData={setFiltroData}
+              filtroAtualizacao={filtroAtualizacao}
+              aoMudarFiltroAtualizacao={setFiltroAtualizacao}
             />
           }
         />

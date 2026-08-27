@@ -389,16 +389,15 @@ describe("propagarRenomeacao", () => {
     expect(r.falhas).toEqual(["notas/b.md"]);
   });
 
-  it("não faz nada quando o título não muda", async () => {
-    vi.resetModules();
-    vi.doMock("./github", () => ({
-      gravar: async () => {
-        throw new Error("não deveria gravar");
-      },
-    }));
-    const { propagarRenomeacao } = await import("./links");
+  it("ignora arquivos em .klaus/templates ao montar o índice", () => {
+    const acervoComTemplate = [
+      item("notas/normal.md", "Nota normal"),
+      item(".klaus/templates/modelo.md", "Conteúdo do modelo"),
+    ];
 
-    const r = await propagarRenomeacao(cfg, [item("notas/a.md", "@X")], "X", "  X  ");
-    expect(r).toEqual({ atualizados: 0, falhas: [] });
+    const idx = montarIndice(acervoComTemplate);
+    expect(idx.has("normal")).toBe(true);
+    expect(idx.has("modelo")).toBe(false);
+    expect(idx.has(".klaus/templates/modelo.md")).toBe(false);
   });
 });

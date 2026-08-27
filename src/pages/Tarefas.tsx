@@ -26,7 +26,6 @@ import {
   type Status,
 } from "@/lib/tarefas";
 import { useCronometro } from "@/components/ContextoCronometro";
-import { obterTodosModelos } from "@/lib/templates";
 import { Timer } from "lucide-react";
 import { Calendario } from "@/components/Calendario";
 import { Quadro } from "@/components/Quadro";
@@ -42,7 +41,7 @@ import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { cn, lerParametroAbrir, correspondeBusca } from "@/lib/utils";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { BarraFiltrosAvancados, type FiltroDataPreset, filtrarPorDataPreset } from "@/components/BarraFiltrosAvancados";
-import { toast } from "@/lib/toast";
+import { DropdownNovoViaModelo } from "@/components/DropdownNovoViaModelo";
 
 export default function Tarefas() {
   const cfg = lerConfig();
@@ -68,7 +67,6 @@ export default function Tarefas() {
   const [editando, setEditando] = useState<Tarefa | null>(null);
   const [original, setOriginal] = useState<Tarefa | null>(null);
   const { iniciar } = useCronometro();
-  const modelosTarefa = useMemo(() => obterTodosModelos().filter((m) => m.categoria === "tarefa"), []);
   const [tagSelecionada, setTagSelecionada] = useState<string | null>(null);
   const [tagsFiltro, setTagsFiltro] = useState<string[]>([]);
   const [filtroDataTarefas, setFiltroDataTarefas] = useState<FiltroDataPreset>("qualquer");
@@ -222,14 +220,24 @@ export default function Tarefas() {
     }
   }, [modoVisao, editando]);
 
+  // Reset de filtros locais ao mudar de rota
+  useEffect(() => {
+    setTagsFiltro([]);
+    setTagSelecionada(null);
+    setFiltroDataTarefas("qualquer");
+    setPastaSelecionada(null);
+  }, [location.pathname]);
+
   // ── Gravação baixo nível (retorna tarefa atualizada com sha novo) ───────────
   async function gravarTarefa(t: Tarefa, mensagemCommit?: string): Promise<Tarefa> {
-    const { dados, corpo } = tarefaParaArquivo(t);
+    const titulo = t.titulo?.trim() || "Sem título";
+    const tarefaComTitulo = { ...t, titulo };
+    const { dados, corpo } = tarefaParaArquivo(tarefaComTitulo);
     const texto = escreverMarkdown({ dados, corpo });
     const prefixo = pastaSelecionada ? `${PASTAS.tarefas}/${pastaSelecionada}` : PASTAS.tarefas;
-    const caminho = t.caminho || nomeLivre(prefixo, t.titulo, tarefas.map((x) => x.caminho));
+    const caminho = t.caminho || nomeLivre(prefixo, titulo, tarefas.map((x) => x.caminho));
     const sha = await salvarTexto(caminho, texto, t.sha || undefined, mensagemCommit);
-    return { ...t, caminho, sha };
+    return { ...tarefaComTitulo, caminho, sha };
   }
 
   // ── Ações ──────────────────────────────────────────────────────────────────
@@ -251,9 +259,7 @@ export default function Tarefas() {
     if (editando && editando.caminho !== t.caminho) {
       const mudou = original !== null && JSON.stringify(editando) !== JSON.stringify(original);
       if (mudou) {
-        salvar(editando).catch((err) => {
-          toast(`Erro ao salvar alterações da tarefa anterior: ${err?.message || "Falha na gravação"}`, { tipo: "erro" });
-        });
+        salvar(editando).catch(() => {});
       }
     }
     setEditando(t);
@@ -275,17 +281,16 @@ export default function Tarefas() {
     setOriginal(vazia);
   }
 
-  function criarComModelo(modeloId: string) {
-    const m = modelosTarefa.find((x) => x.id === modeloId);
+  function criarComModelo(m: any) {
     if (!m) return;
     const nova: Tarefa = {
       bruto: { ...m.frontmatter },
       caminho: "",
       sha: "",
-      titulo: m.titulo,
-      status: (m.frontmatter.status as Status) || "a-fazer",
-      tags: m.frontmatter.tags || [],
-      corpo: m.corpoPadrao,
+      titulo: m.titulo || "Nova Tarefa",
+      status: (m.frontmatter?.status as Status) || "a-fazer",
+      tags: m.frontmatter?.tags || [],
+      corpo: m.corpoPadrao || "",
     };
     setEditando(nova);
     setOriginal(nova);
@@ -294,10 +299,6 @@ export default function Tarefas() {
   async function salvar(alvo?: Tarefa) {
     const t = alvo || editando;
     if (!t) return;
-    if (!t.titulo.trim()) {
-      setErroLocal("A tarefa precisa de um título.");
-      return;
-    }
     setErroLocal("");
     try {
       const salva = await gravarTarefa(t);
@@ -311,7 +312,7 @@ export default function Tarefas() {
       });
       recarregar();
     } catch {
-      // erro já está em erroSalvar via useSalvar
+      // erro gerenciado por useSalvar
     }
   }
 
@@ -339,8 +340,6 @@ export default function Tarefas() {
       setGravandoCaminho(null);
     }
   }
-
-  // registrarTempo removido em favor da gestão global do cronômetro
 
   // ── Sem configuração ────────────────────────────────────────────────────────
   if (!pronto) {
@@ -371,7 +370,7 @@ export default function Tarefas() {
       return false;
     }
     // Filtro de data
-    if (filtroDataTarefas !== "qualquer" && !filtrarPorDataPreset(t.bruto || {}, filtroDataTarefas)) {
+    if (filtroDataTarefas !== "qualquer" && !filtrarPorDataPreset((t.bruto?.criado_em || t.bruto?.criado || t.bruto?.atualizado) as string | undefined, filtroDataTarefas)) {
       return false;
     }
     if (busca.trim()) {
@@ -393,27 +392,13 @@ export default function Tarefas() {
         corIcone="bg-blue-500/10 text-blue-600 dark:text-blue-400"
         badge={undefined}
         acoes={
-          <div className="flex items-center gap-2">
-            {modelosTarefa.length > 0 && (
-              <select
-                onChange={(e) => {
-                  criarComModelo(e.target.value);
-                  e.target.value = "";
-                }}
-                defaultValue=""
-                className="h-9 px-3 rounded-lg border border-input bg-card text-xs font-semibold hover:bg-accent hover:text-accent-foreground cursor-pointer focus:ring-1 focus:ring-primary focus:outline-none"
-              >
-                <option value="" disabled>Usar Modelo...</option>
-                {modelosTarefa.map((m) => (
-                  <option key={m.id} value={m.id}>{m.titulo}</option>
-                ))}
-              </select>
-            )}
-            <Botao onClick={abrirNova}>
-              <Plus size={16} />
-              Nova Tarefa
-            </Botao>
-          </div>
+          <DropdownNovoViaModelo
+            rotuloPrincipal="Nova Tarefa"
+            iconePrincipal={<Plus size={16} />}
+            aoCriarNovo={abrirNova}
+            categoria="tarefa"
+            aoCriarComTemplate={criarComModelo}
+          />
         }
       />
 

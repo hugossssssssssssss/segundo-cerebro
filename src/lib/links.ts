@@ -92,7 +92,14 @@ export function montarIndice(itens: ItemRepo[]): Map<string, Alvo> {
   const ordenados = [...itens].sort((a, b) => b.nome.localeCompare(a.nome));
 
   for (const item of ordenados) {
-    if (ehArquivoInternoOuSistema(item.caminho)) continue;
+    if (
+      ehArquivoInternoOuSistema(item.caminho) ||
+      item.caminho.startsWith(".klaus/") ||
+      item.caminho.includes("/.klaus/") ||
+      item.caminho.includes("templates/")
+    ) {
+      continue;
+    }
     const titulo = tituloProvavel(item.doc, item.nome);
     const alvo: Alvo = {
       caminho: item.caminho,

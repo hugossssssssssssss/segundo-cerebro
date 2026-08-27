@@ -49,6 +49,27 @@ describe("grafo 3D", () => {
     expect(arestaMencao).toBeDefined();
   });
 
+  it("ignora explicitamente arquivos da pasta .klaus/templates", () => {
+    const itensComTemplates: ItemRepo[] = [
+      ...mockItens,
+      {
+        caminho: ".klaus/templates/briefing.md",
+        nome: "briefing.md",
+        sha: "sha-tmpl",
+        tamanho: 100,
+        texto: "Modelo de briefing",
+        doc: {
+          dados: { titulo: "Template Briefing", tipo: "nota" },
+          corpo: "Template content",
+        },
+      },
+    ];
+
+    const dados = construirGrafo3D(itensComTemplates);
+    const noTemplate = dados.nos.find((n) => n.caminho.includes(".klaus/templates"));
+    expect(noTemplate).toBeUndefined();
+  });
+
   it("executa o passo da simulação física sem gerar valores NaN", () => {
     const dados = construirGrafo3D(mockItens);
     simularPassoFisica3D(dados);

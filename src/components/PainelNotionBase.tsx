@@ -919,7 +919,7 @@ export function PainelNotionBase({
         </div>
       )}
 
-      <span className="text-[11px] text-muted-foreground hidden sm:inline">Salva automaticamente ao fechar</span>
+      <div className="flex-1" />
     </div>
   );
 
