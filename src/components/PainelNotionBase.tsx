@@ -33,7 +33,6 @@ import { useSalvar } from "@/lib/useSalvar";
 import { cache, invalidarCache } from "@/lib/repo";
 import { lerConfig } from "@/lib/settings";
 import { toast } from "@/lib/toast";
-import { useWorkspace } from "@/components/workspace/WorkspaceContext";
 
 const HistoricoDiffModal = lazy(() =>
   import("@/components/HistoricoDiffModal").then((m) => ({
@@ -96,60 +95,6 @@ export function PainelNotionBase({
 
   const cfg = useMemo(() => lerConfig(), []);
   const { salvarTexto, apagarItem } = useSalvar(cfg);
-
-  let workspace: any = null;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    workspace = useWorkspace();
-  } catch {}
-
-  const abrirEmTelaCheiaWorkspace = useCallback(() => {
-    if (workspace?.abrirNoWorkspace) {
-      workspace.abrirNoWorkspace({
-        id: caminhoItem || `item-${Date.now()}`,
-        caminho: caminhoItem,
-        rotuloTipo,
-        titulo,
-        corpo,
-        dadosProps,
-        camposFixosProps,
-        temMudancas,
-        salvando,
-        mencoes,
-        opcoesRelacionamento,
-        aoSalvar: async () => {
-          await aoSalvar();
-        },
-        aoRemover,
-      });
-      aoFechar();
-    } else {
-      setModoVisao("telacheia");
-      setMinimizadoFlutuante(false);
-    }
-  }, [
-    workspace,
-    caminhoItem,
-    rotuloTipo,
-    titulo,
-    corpo,
-    dadosProps,
-    camposFixosProps,
-    temMudancas,
-    salvando,
-    mencoes,
-    opcoesRelacionamento,
-    aoSalvar,
-    aoRemover,
-    aoFechar,
-    setModoVisao,
-  ]);
-
-  useEffect(() => {
-    if (modoVisao === "telacheia" && workspace?.abrirNoWorkspace) {
-      abrirEmTelaCheiaWorkspace();
-    }
-  }, [modoVisao, workspace, abrirEmTelaCheiaWorkspace]);
 
   const acaoCopiarLink = useCallback(() => {
     if (!caminhoItem) return;
@@ -522,12 +467,6 @@ export function PainelNotionBase({
 
   // ── Auto-save invisível com debounce de 2s ──────────────────────────────
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [autoSalvou, setAutoSalvou] = useState(false);
-
-  useEffect(() => {
-    // Limpa indicador de "salvo" quando houver novas mudanças
-    if (temMudancas) setAutoSalvou(false);
-  }, [temMudancas]);
 
   useEffect(() => {
     if (!temMudancas || salvando || fechandoRef.current) {
@@ -542,7 +481,6 @@ export function PainelNotionBase({
       if (!temMudancasRef.current || salvandoRef.current || fechandoRef.current) return;
       try {
         await aoSalvar();
-        setAutoSalvou(true);
       } catch {
         // Falha silenciosa — o save por fechar ainda funciona como fallback
       }
@@ -702,18 +640,6 @@ export function PainelNotionBase({
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
           {rotuloTipo}
         </span>
-
-        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-accent/60 flex items-center gap-1 shrink-0">
-          {salvando || fechandoESalvando ? (
-            <span className="text-blue-500 animate-pulse font-semibold">Salvando...</span>
-          ) : temMudancas ? (
-            <span className="text-muted-foreground/70 font-medium">Editando…</span>
-          ) : autoSalvou ? (
-            <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ Salvo</span>
-          ) : (
-            <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ Sincronizado</span>
-          )}
-        </span>
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
@@ -748,16 +674,16 @@ export function PainelNotionBase({
             </button>
           </Tooltip>
 
-          <Tooltip conteudo="Workspace em Tela Cheia (com abas)" posicao="bottom">
+          <Tooltip conteudo="Tela Cheia" posicao="bottom">
             <button
-              onClick={abrirEmTelaCheiaWorkspace}
+              onClick={() => { setModoVisao("telacheia"); setMinimizadoFlutuante(false); }}
               className={cn(
                 "p-1.5 rounded-md transition-colors flex items-center justify-center cursor-pointer",
                 modoVisao === "telacheia"
                   ? "bg-background text-foreground shadow-xs font-semibold"
                   : "text-muted-foreground hover:text-foreground"
               )}
-              aria-label="Workspace em Tela Cheia"
+              aria-label="Tela Cheia"
             >
               <Maximize2 size={15} />
             </button>

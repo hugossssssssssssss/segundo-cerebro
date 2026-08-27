@@ -60,7 +60,11 @@ export function DropdownNovoViaModelo({
   useEffect(() => {
     atualizarLista();
     window.addEventListener("acervo-atualizado", atualizarLista);
-    return () => window.removeEventListener("acervo-atualizado", atualizarLista);
+    window.addEventListener("klaus-templates-atualizados", atualizarLista);
+    return () => {
+      window.removeEventListener("acervo-atualizado", atualizarLista);
+      window.removeEventListener("klaus-templates-atualizados", atualizarLista);
+    };
   }, [atualizarLista]);
 
   const modelosFiltrados = categoria

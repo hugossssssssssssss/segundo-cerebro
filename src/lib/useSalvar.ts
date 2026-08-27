@@ -92,9 +92,6 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
         // 3. Notifica atualizações de estado local instantaneamente
         window.dispatchEvent(new CustomEvent("acervo-atualizado"));
         notificarOutrasAbas(caminho);
-
-        const nomeItem = formatarNomeAmigavel(caminho);
-        toast(`"${nomeItem}" salvo localmente`, { tipo: "sucesso" });
       }
 
       // 4. Dispara a sincronização real com o GitHub em background

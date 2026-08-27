@@ -49,9 +49,16 @@ import {
   Carregando,
   ModalConfirmacao,
 } from "@/components/ui";
-import { hojeISO, dataCurta, lerParametroAbrir, lerParametroCriar } from "@/lib/utils";
+import { hojeISO, dataCurta, lerParametroAbrir, lerParametroCriar, correspondeBusca } from "@/lib/utils";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { CabecalhoSecao } from "@/components/CabecalhoSecao";
+import { BarraFerramentas } from "@/components/BarraFerramentas";
+import {
+  BarraFiltrosAvancados,
+  filtrarItensPorRegras,
+  type DefinicaoPropriedade,
+  type RegraFiltro,
+} from "@/components/BarraFiltrosAvancados";
 import { cn } from "@/lib/utils";
 
 /**
@@ -419,6 +426,52 @@ export default function PDI() {
   const soltas = semMeta(entregas);
   const conferir = aConferir(entregas);
 
+  const [busca, setBusca] = useState("");
+  const [regrasFiltro, setRegrasFiltro] = useState<RegraFiltro[]>([]);
+
+  const todasTagsMetas = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of metas) {
+      if (m.tags) for (const t of m.tags) set.add(t);
+    }
+    return [...set].sort();
+  }, [metas]);
+
+  const propriedadesDisponiveis = useMemo<DefinicaoPropriedade[]>(() => {
+    return [
+      { id: "titulo", rotulo: "Título / Nome", tipo: "texto" },
+      { id: "status", rotulo: "Status", tipo: "status", opcoes: ["a-fazer", "em-andamento", "concluida"] },
+      { id: "prazo", rotulo: "Prazo", tipo: "data" },
+      { id: "indicador", rotulo: "Indicador", tipo: "texto" },
+      { id: "tags", rotulo: "Tags", tipo: "tags", opcoes: todasTagsMetas },
+      { id: "criado_em", rotulo: "Criado em", tipo: "data" },
+    ];
+  }, [todasTagsMetas]);
+
+  const resumosFiltrados = useMemo(() => {
+    let lista = resumos;
+    if (busca.trim()) {
+      lista = lista.filter((r) =>
+        correspondeBusca(r.meta.titulo, busca) ||
+        correspondeBusca(r.meta.indicador, busca) ||
+        correspondeBusca(r.meta.corpo, busca) ||
+        (r.meta.tags && r.meta.tags.some((t) => correspondeBusca(t, busca)))
+      );
+    }
+
+    lista = filtrarItensPorRegras(lista, regrasFiltro, (item, propId) => {
+      if (propId === "titulo" || propId === "nome") return item.meta.titulo;
+      if (propId === "status") return item.meta.status;
+      if (propId === "prazo") return item.meta.prazo;
+      if (propId === "indicador") return item.meta.indicador;
+      if (propId === "tags") return item.meta.tags || [];
+      if (propId === "criado_em") return item.meta.bruto?.criado || item.meta.bruto?.criado_em;
+      return (item.meta as any)[propId] || item.meta.bruto?.[propId];
+    });
+
+    return lista;
+  }, [resumos, busca, regrasFiltro]);
+
   const novaMeta = () => {
     const prefixo = pastaMetaSelecionada ? `${PASTA_METAS}/${pastaMetaSelecionada}` : PASTA_METAS;
     const caminhoNovo = nomeLivreSemData(prefixo, "Nova Meta", metas.map((m) => m.caminho));
@@ -592,15 +645,29 @@ const novaEntregaParaMeta = (meta: Meta) => {
             </div>
           )}
 
+          {/* Barra de Ferramentas e Filtros de Metas */}
+          <BarraFerramentas
+            busca={busca}
+            aoMudarBusca={setBusca}
+            placeholderBusca="Buscar metas, indicadores, tags..."
+            filtros={
+              <BarraFiltrosAvancados
+                propriedadesDisponiveis={propriedadesDisponiveis}
+                regras={regrasFiltro}
+                aoMudarRegras={setRegrasFiltro}
+              />
+            }
+          />
+
           {/* ----------------------------------------------------- metas */}
-          {resumos.length > 0 && (
+          {resumosFiltrados.length > 0 ? (
             <section className="space-y-4">
               <CabecalhoSecao
                 titulo="Metas Profissionais"
-                contador={resumos.length}
+                contador={resumosFiltrados.length}
               />
               <div className="grid gap-3">
-                {resumos.map(({ meta: m, entregas: ligadas }) => (
+                {resumosFiltrados.map(({ meta: m, entregas: ligadas }) => (
                   <Cartao
                     key={m.id}
                     className="p-4 cursor-grab active:cursor-grabbing hover:border-muted-foreground/30 transition-all flex flex-col justify-between"
@@ -709,6 +776,10 @@ const novaEntregaParaMeta = (meta: Meta) => {
                 ))}
               </div>
             </section>
+          ) : (
+            <div className="py-8 text-center text-xs text-muted-foreground bg-muted/20 border border-dashed border-border/80 rounded-2xl">
+              Nenhuma meta corresponde aos filtros selecionados.
+            </div>
           )}
 
           {/* -------------------------------------------------- entregas */}

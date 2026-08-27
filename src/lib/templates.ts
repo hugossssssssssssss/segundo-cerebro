@@ -232,8 +232,26 @@ export async function salvarTemplateNoRepo(
     _cacheTemplatesRepo.map((t) => t.caminho || ""),
   );
 
-  await gravar(cfg, caminho, texto, template.sha, `template: ${template.titulo}`);
+  const res = await gravar(cfg, caminho, texto, template.sha, `template: ${template.titulo}`);
   invalidarCache();
+
+  const novoItem: TemplateItem = {
+    ...template,
+    id: `repo_${caminho}`,
+    caminho,
+    sha: res || `temp_${Date.now()}`,
+  };
+
+  const idx = _cacheTemplatesRepo.findIndex((t) => t.caminho === caminho);
+  if (idx >= 0) {
+    _cacheTemplatesRepo[idx] = novoItem;
+  } else {
+    _cacheTemplatesRepo.push(novoItem);
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("klaus-templates-atualizados"));
+  }
 
   return caminho;
 }
