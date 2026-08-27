@@ -59,7 +59,11 @@ export function lerMarkdown(texto: string): Documento {
 /** Monta o arquivo .md de volta. Frontmatter vazio não gera bloco `---`. */
 export function escreverMarkdown(doc: Documento): string {
   const campos = Object.entries(doc.dados).filter(
-    ([k, v]) => !k.startsWith("_") && v !== undefined && v !== null && v !== "",
+    ([k, v]) =>
+      (!k.startsWith("_") || k === "_visibilidade" || k === "_rotulos" || k === "_coresTags") &&
+      v !== undefined &&
+      v !== null &&
+      v !== "",
   );
   if (campos.length === 0) return doc.corpo;
 
@@ -152,15 +156,22 @@ export function mesclarFrontmatter(
 
 /**
  * Converte wikilinks [[alvo]], escapados `\[\[alvo\]\]` e URLs coladas contendo
- * `?abrir=...` para o formato limpo `@alvo`.
+ * `?abrir=...` para o formato limpo `@alvo`, preservando blocos de código.
  */
 export function restaurarWikilinks(markdown: string): string {
+  if (!markdown) return "";
+
+  // Preserva blocos de código (fenced e inline)
+  const blocosCodigo: string[] = [];
+  const semCodigo = markdown.replace(/(```[\s\S]*?```|`[^`\n]+`)/g, (match) => {
+    blocosCodigo.push(match);
+    return `__BLOCO_CODIGO_${blocosCodigo.length - 1}__`;
+  });
+
   // Converte \[\[alvo\]\] e [[alvo]] para @alvo.
   //
   // `[[alvo|texto exibido]]` fica com o TEXTO, não com o alvo mais a barra.
-  // Sem tratar o `|`, "[[Briefing|o brief]]" virava "@Briefing|o brief" — com
-  // a barra solta no meio da frase, e sem casar com item nenhum.
-  let limpo = markdown.replace(
+  let limpo = semCodigo.replace(
     /\\?\[\\?\[([^\[\]\n]{1,200}?)\\?\]\\?\]/g,
     (_todo, alvo: string) => {
       const barra = alvo.indexOf("|");
@@ -179,8 +190,8 @@ export function restaurarWikilinks(markdown: string): string {
     }
   );
 
-  // Remove barras invertidas residuais no final das linhas (\\ + quebra de linha)
-  limpo = limpo.replace(/\\+\s*(\n|$)/g, "$1");
+  // Restaura os blocos de código originais intactos
+  limpo = limpo.replace(/__BLOCO_CODIGO_(\d+)__/g, (_m, idx) => blocosCodigo[Number(idx)] ?? "");
 
   return limpo;
 }

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { BookOpen, Search, Download, Loader2, X, Book, ExternalLink, AlertTriangle } from "lucide-react";
 import { Botao, Cartao, Aviso, Vazio, Carregando, Selo, Campo } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { buscarLivrosUnificado } from "@/services/bookSearch/aggregator";
 import type { LivroBuscado } from "@/services/bookSearch/types";
 import { toast } from "@/lib/toast";
+import { logger } from "@/lib/logger";
 
 export default function PesquisaLivros() {
   const [busca, setBusca] = useState("");
@@ -14,23 +15,31 @@ export default function PesquisaLivros() {
   const [erro, setErro] = useState("");
   const [estadoInicial, setEstadoInicial] = useState(true);
   const [baixandoIds, setBaixandoIds] = useState<Record<string, boolean>>({});
+  const buscaEmVooRef = useRef<number>(0);
 
   async function aoBuscar(e: React.FormEvent) {
     e.preventDefault();
     if (!busca.trim()) return;
 
+    const idBuscaAtual = ++buscaEmVooRef.current;
     setCarregando(true);
     setErro("");
     setEstadoInicial(false);
 
     try {
       const resultados = await buscarLivrosUnificado(busca, idioma);
-      setLivros(resultados);
+      if (idBuscaAtual === buscaEmVooRef.current) {
+        setLivros(resultados);
+      }
     } catch (err) {
-      console.error(err);
-      setErro("Houve uma falha inesperada ao contatar as fontes de pesquisa de livros.");
+      if (idBuscaAtual === buscaEmVooRef.current) {
+        logger.error("Falha ao pesquisar livros", err);
+        setErro("Houve uma falha inesperada ao contatar as fontes de pesquisa de livros.");
+      }
     } finally {
-      setCarregando(false);
+      if (idBuscaAtual === buscaEmVooRef.current) {
+        setCarregando(false);
+      }
     }
   }
 

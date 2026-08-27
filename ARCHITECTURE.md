@@ -62,6 +62,7 @@ Uma tarefa em `tarefas/`.
 | `status` | `StatusTarefa` | sim | — |
 | `prazo` | `string` | não | — |
 | `tags` | `string[]` | sim | — |
+| `pomodoro` | `number` | não | — |
 | `Pomodoro` | `number` | não | — |
 | `fraturados` | `number` | não | — |
 

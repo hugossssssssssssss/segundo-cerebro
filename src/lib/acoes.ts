@@ -15,6 +15,7 @@ import { gravar, apagar, ler } from "./github";
 import { invalidarCache, type ItemRepo } from "./repo";
 import { escreverMarkdown, lerMarkdown, nomeLivre } from "./markdown";
 import { hojeISO } from "./utils";
+import { notificarOutrasAbas } from "./syncChannel";
 
 export type TipoAcao = "criar" | "editar" | "apagar";
 
@@ -260,15 +261,14 @@ export async function executar(
   acao: Acao,
   acervo: ItemRepo[],
 ): Promise<string> {
+  let caminhoAfetado = "";
+
   if (acao.tipo === "apagar") {
     const alvo = acervo.find((i) => i.caminho === acao.caminho);
     if (!alvo) throw new Error(`Não achei o arquivo ${acao.caminho}.`);
     await apagar(cfg, alvo.caminho, alvo.sha);
-    invalidarCache();
-    return alvo.caminho;
-  }
-
-  if (acao.tipo === "editar") {
+    caminhoAfetado = alvo.caminho;
+  } else if (acao.tipo === "editar") {
     // relê antes de gravar: o arquivo pode ter mudado desde o carregamento
     const { texto, sha } = await ler(cfg, acao.caminho!);
     const doc = lerMarkdown(texto);
@@ -285,31 +285,36 @@ export async function executar(
       corpo: acao.corpo === "<limpar>" ? "" : (acao.corpo && acao.corpo.trim() ? acao.corpo : doc.corpo),
     });
     await gravar(cfg, acao.caminho!, conteudo, sha, `IA edita ${acao.caminho}`);
-    invalidarCache();
-    return acao.caminho!;
+    caminhoAfetado = acao.caminho!;
+  } else {
+    // criar
+    const caminho = nomeLivre(acao.pasta!, acao.titulo!, [
+      ...acervo.map((i) => i.caminho),
+      ...reservados,
+    ]);
+    reservados.add(caminho);
+    const conteudo = escreverMarkdown({
+      dados: {
+        titulo: acao.titulo,
+        tipo: tipoDaPasta(acao.pasta!),
+        ...(acao.pasta === "pdi/entregas" || acao.pasta === "reunioes"
+          ? { data: hojeISO() }
+          : {}),
+        ...(acao.campos ?? {}),
+        ...marcaDaIA(acao.pasta!),
+      },
+      corpo: acao.corpo ?? "",
+    });
+    await gravar(cfg, caminho, conteudo, undefined, `IA cria ${caminho}`);
+    caminhoAfetado = caminho;
   }
 
-  // criar
-  const caminho = nomeLivre(acao.pasta!, acao.titulo!, [
-    ...acervo.map((i) => i.caminho),
-    ...reservados,
-  ]);
-  reservados.add(caminho);
-  const conteudo = escreverMarkdown({
-    dados: {
-      titulo: acao.titulo,
-      tipo: tipoDaPasta(acao.pasta!),
-      ...(acao.pasta === "pdi/entregas" || acao.pasta === "reunioes"
-        ? { data: hojeISO() }
-        : {}),
-      ...(acao.campos ?? {}),
-      ...marcaDaIA(acao.pasta!),
-    },
-    corpo: acao.corpo ?? "",
-  });
-  await gravar(cfg, caminho, conteudo, undefined, `IA cria ${caminho}`);
   invalidarCache();
-  return caminho;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+    notificarOutrasAbas(caminhoAfetado);
+  }
+  return caminhoAfetado;
 }
 
 function tipoDaPasta(pasta: string): string {

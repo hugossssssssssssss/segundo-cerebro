@@ -39,8 +39,14 @@ import {
 import type { ItemHistorico } from "@/lib/historicoConversor";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
+declare global {
+  interface Window {
+    JSZip?: typeof JSZip;
+  }
+}
+
 if (typeof window !== "undefined") {
-  (window as any).JSZip = JSZip;
+  window.JSZip = JSZip;
 }
 
 // Configura o worker do PDF.js via Vite bundle local

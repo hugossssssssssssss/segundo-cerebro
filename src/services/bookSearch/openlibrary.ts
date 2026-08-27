@@ -1,4 +1,5 @@
 import type { ConectorBusca, LivroBuscado } from "./types";
+import { logger } from "@/lib/logger";
 
 const IDIOMAS_3_LETRAS: Record<string, string> = {
   por: "Português",
@@ -80,7 +81,7 @@ export const openlibraryConector: ConectorBusca = {
         };
       });
     } catch (erro) {
-      console.error("Erro na busca do Open Library:", erro);
+      logger.error("Erro na busca do Open Library:", erro);
       throw erro;
     }
   }

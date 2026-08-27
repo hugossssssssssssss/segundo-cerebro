@@ -7,10 +7,11 @@
  * - URLs completas contendo `?abrir=tarefas%2F...` ou `?abrir=notas%2F...`
  */
 
-import { type ItemRepo, ehArquivoInternoOuSistema } from "./repo";
+import { type ItemRepo, ehArquivoInternoOuSistema, atualizarCacheLocal, invalidarCache } from "./repo";
 import { gravar } from "./github";
-import { tituloProvavel } from "./markdown";
+import { tituloProvavel, lerMarkdown } from "./markdown";
 import { tipoDoItem, type TipoItem } from "./busca";
+import { notificarOutrasAbas } from "./syncChannel";
 
 /** Letras aceitas num título mencionado com `@`, incluindo as acentuadas. */
 const LETRA = "a-zA-ZáàâãéèêíïóôõöúüçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÜÇÑ";
@@ -440,12 +441,20 @@ export async function propagarRenomeacao(
 
     if (textoNovo !== item.texto) {
       try {
-        await gravar(cfg, item.caminho, textoNovo, item.sha, `refatorar: renomear menção de ${antigoLimpo} para ${novoLimpo}`);
+        const novoSha = await gravar(cfg, item.caminho, textoNovo, item.sha, `refatorar: renomear menção de ${antigoLimpo} para ${novoLimpo}`);
+        const docAtualizado = lerMarkdown(textoNovo);
+        atualizarCacheLocal(item.caminho, textoNovo, docAtualizado, novoSha);
         sucessoContagem++;
       } catch {
         falhas.push(item.caminho);
       }
     }
+  }
+
+  if (sucessoContagem > 0) {
+    invalidarCache();
+    window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+    notificarOutrasAbas();
   }
 
   return { atualizados: sucessoContagem, falhas };

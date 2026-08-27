@@ -1,4 +1,5 @@
 import type { ConectorBusca, LivroBuscado } from "./types";
+import { logger } from "@/lib/logger";
 
 const NOMES_IDIOMAS: Record<string, string> = {
   pt: "Português",
@@ -91,7 +92,7 @@ export const gutenbergConector: ConectorBusca = {
         };
       });
     } catch (erro) {
-      console.error("Erro na busca do Project Gutenberg:", erro);
+      logger.error("Erro na busca do Project Gutenberg:", erro);
       throw erro;
     }
   }

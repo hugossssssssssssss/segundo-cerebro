@@ -121,6 +121,7 @@ export function comoTarefa(
     status: statusTarefaValido(d.status),
     prazo: typeof d.prazo === "string" ? d.prazo : undefined,
     tags: comoLista(d.tags),
+    pomodoro: Pomodoro,
     Pomodoro,
     fraturados,
     corpo: doc.corpo,
@@ -137,7 +138,7 @@ export function tarefaParaArquivo(t: Tarefa): { dados: Frontmatter; corpo: strin
       status: t.status,
       prazo:  t.prazo,
       tags:   t.tags.length ? t.tags : undefined,
-      Pomodoro: t.Pomodoro,
+      Pomodoro: t.pomodoro ?? t.Pomodoro,
       PomodoroFraturado: t.fraturados,
       // Remove campos legados do frontmatter para limpeza
       estimativa: undefined,

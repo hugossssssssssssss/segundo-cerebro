@@ -199,18 +199,22 @@ export default function Home() {
       }));
       setLousas(listaLousas);
 
-      // Salva snapshot no localStorage para abertura instantânea na próxima vez
-      localStorage.setItem(
-        CHAVE_SNAPSHOT_HOME,
-        JSON.stringify({
-          tarefas: listaTarefas,
-          notas: listaNotas,
-          referencias: listaRefs,
-          resumosPdi: listaResumos,
-          processos: listaProcessos,
-          lousas: listaLousas,
-        })
-      );
+      // Salva snapshot compacto no localStorage para abertura instantânea (0ms)
+      try {
+        localStorage.setItem(
+          CHAVE_SNAPSHOT_HOME,
+          JSON.stringify({
+            tarefas: listaTarefas,
+            notas: listaNotas.map((n) => ({ ...n, corpo: (n.corpo || "").slice(0, 300) })),
+            referencias: listaRefs,
+            resumosPdi: listaResumos,
+            processos: listaProcessos,
+            lousas: listaLousas,
+          })
+        );
+      } catch {
+        // ignora se localStorage estiver lotado
+      }
     } catch {
       // Erro tratado silenciosamente para não quebrar a UI
     }
@@ -218,6 +222,9 @@ export default function Home() {
 
   useEffect(() => {
     carregarDados();
+    const aoAtualizar = () => carregarDados();
+    window.addEventListener("acervo-atualizado", aoAtualizar);
+    return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
   }, [carregarDados]);
 
   // ── Ações Rápidas nos Widgets ─────────────────────────────────────────────

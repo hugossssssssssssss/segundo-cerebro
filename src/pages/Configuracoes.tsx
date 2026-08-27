@@ -8,6 +8,8 @@ import { useSalvar } from "@/lib/useSalvar";
 import { Botao, Campo, Cartao, Rotulo, Aviso } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { ModalPersonalizarMenu } from "@/components/ModalPersonalizarMenu";
+import { nomeLivre } from "@/lib/markdown";
+import { PASTAS } from "@/lib/tipos";
 
 export default function Configuracoes() {
   const [cfg, setCfg] = useState<Settings>(lerConfig);
@@ -48,12 +50,16 @@ export default function Configuracoes() {
     setMsgBackup("");
     let importados = 0;
     try {
+      const acervo = await carregarRepo(cfg).catch(() => []);
+      const caminhosExistentes = new Set(acervo.map((i) => i.caminho));
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (file.name.endsWith(".md") || file.name.endsWith(".txt")) {
           const conteudo = await file.text();
-          const nomeNormalizado = file.name.endsWith(".md") ? file.name : `${file.name}.md`;
-          const caminhoFinal = `notas/${nomeNormalizado}`;
+          const tituloBase = file.name.replace(/\.(md|txt)$/i, "");
+          const caminhoFinal = nomeLivre(PASTAS.notas, tituloBase, caminhosExistentes);
+          caminhosExistentes.add(caminhoFinal);
           await salvarTexto(caminhoFinal, conteudo);
           importados++;
         }

@@ -163,8 +163,6 @@ export function ehArquivoInternoOuSistema(caminho: string): boolean {
     c.startsWith(".agents/") ||
     c.startsWith(".gemini/") ||
     c.startsWith(".vscode/") ||
-    c.startsWith(".klaus/") ||
-    c.includes("/.klaus/") ||
     c.startsWith("src/") ||
     c.startsWith("public/") ||
     c.startsWith("dist/") ||
@@ -172,8 +170,7 @@ export function ehArquivoInternoOuSistema(caminho: string): boolean {
     c.startsWith("templates/") ||
     c.startsWith(".templates/") ||
     c.includes("/templates/") ||
-    c.startsWith("exemplos/") ||
-    c.startsWith("processos/")
+    c.startsWith("exemplos/")
   ) {
     return true;
   }
@@ -197,19 +194,8 @@ export function ehArquivoInternoOuSistema(caminho: string): boolean {
     "tsconfig.app.json",
     "tsconfig.node.json",
     "vite.config.ts",
+    "vitest.config.ts",
     "estado.json",
-    "kanban-geral",
-    "kanban geral",
-    "identidade-visual-e-branding",
-    "identidade visual e branding",
-    "briefing-de-identidade-visual",
-    "briefing de identidade visual",
-    "tese",
-    "ata-de-reuniao",
-    "ata de reuniao",
-    "ata-reuniao",
-    "1-1-com-liderado",
-    "revisao-trimestral-okrs",
   ];
 
   if (nomesInternos.includes(nome) || nomesInternos.includes(nomeSemExt)) return true;
@@ -493,17 +479,22 @@ export function atualizarCacheLocal(
   // correspondência conteúdo↔sha que o git não reconhece.
   if (!sha) return;
 
-  // Trava contra o bug que já aconteceu: se este sha JÁ está no mapa com outro
-  // texto, quem chamou está passando o sha antigo junto com o texto novo — ou
-  // seja, anunciando como gravado algo que o GitHub ainda não confirmou.
-  // Regravar aqui faria o app mostrar como salvo um texto que pode nunca ter
-  // saído do navegador. Melhor ignorar e deixar a próxima leitura buscar a
-  // verdade no repositório.
-  const jaConhecido = textoPorSha.get(sha);
-  if (jaConhecido !== undefined && jaConhecido !== texto) return;
+  const ehTemporario = sha.startsWith("temp_") || sha.startsWith("pending_");
+
+  if (!ehTemporario) {
+    // Trava contra o bug que já aconteceu: se este sha JÁ está no mapa com outro
+    // texto, quem chamou está passando o sha antigo junto com o texto novo — ou
+    // seja, anunciando como gravado algo que o GitHub ainda não confirmou.
+    // Regravar aqui faria o app mostrar como salvo um texto que pode nunca ter
+    // saído do navegador. Melhor ignorar e deixar a próxima leitura buscar a
+    // verdade no repositório.
+    const jaConhecido = textoPorSha.get(sha);
+    if (jaConhecido !== undefined && jaConhecido !== texto) return;
+
+    textoPorSha.set(sha, texto);
+  }
 
   const shaFinal = sha;
-  textoPorSha.set(shaFinal, texto);
 
   // Registra alteração recente para consistência imediata
   alteracoesRecentes.set(caminho, {

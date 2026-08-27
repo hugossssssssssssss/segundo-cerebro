@@ -16,6 +16,7 @@ import { useMediaDevices } from "@/lib/useMediaDevices";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 type AbaHardware = "audio_video" | "teclado" | "mouse";
 
@@ -230,7 +231,10 @@ export default function TestadorHardware() {
   const aoReproduzirAudio = () => {
     if (audioRef.current && audioUrl) {
       audioRef.current.src = audioUrl;
-      audioRef.current.play().then(() => setTocando(true)).catch(console.error);
+      audioRef.current
+        .play()
+        .then(() => setTocando(true))
+        .catch((err) => logger.error("Falha ao reproduzir áudio gravado:", err));
     }
   };
 

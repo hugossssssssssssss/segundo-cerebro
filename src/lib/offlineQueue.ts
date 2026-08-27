@@ -78,15 +78,13 @@ export function salvarRascunhoLocal(
     gravado = true;
   } catch (err: any) {
     if (err?.name === "QuotaExceededError" || err?.code === 22 || String(err).includes("Quota")) {
-      // Tenta podar os rascunhos mais antigos para dar espaço ao novo rascunho
-      while (filtrados.length > 1 && !gravado) {
-        filtrados.shift();
-        try {
-          localStorage.setItem(CHAVE_RASCUNHOS, JSON.stringify(filtrados));
-          gravado = true;
-        } catch {
-          // Tenta podar mais um se ainda falhar
-        }
+      // Limpa caches secundários não críticos (como snapshots da Home) para dar espaço aos rascunhos
+      try {
+        localStorage.removeItem("klaus_home_cache_snapshot");
+        localStorage.setItem(CHAVE_RASCUNHOS, JSON.stringify(filtrados));
+        gravado = true;
+      } catch {
+        toast("Memória do navegador cheia. Conecte-se à internet para sincronizar seus rascunhos.", { tipo: "erro" });
       }
     }
   }
