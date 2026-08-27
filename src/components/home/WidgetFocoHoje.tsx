@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Check, AlertTriangle } from "lucide-react";
+import { Check, AlertCircle } from "lucide-react";
 import { type Tarefa, urgencia, textoPrazo } from "@/lib/tarefas";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 
 interface WidgetFocoHojeProps {
   tarefas: Tarefa[];
@@ -18,23 +17,17 @@ export function WidgetFocoHoje({
   aoCriarRapida,
 }: WidgetFocoHojeProps) {
   const [novoTitulo, setNovoTitulo] = useState("");
-
   const hoje = new Date().toISOString().split("T")[0];
 
-  const tarefasPendentes = tarefas.filter((t) => t.status !== "feito");
-  const tarefasConcluidasHoje = tarefas.filter((t) => t.status === "feito");
+  const pendentes = tarefas.filter((t) => t.status !== "feito");
 
-  const totalTarefas = tarefasPendentes.length + tarefasConcluidasHoje.length;
-  const percentual = totalTarefas > 0 ? Math.round((tarefasConcluidasHoje.length / totalTarefas) * 100) : 0;
-
-  // Prioriza atrasadas, depois hoje, depois próximas
-  const prioritarias = [...tarefasPendentes]
+  const prioritarias = [...pendentes]
     .sort((a, b) => {
       const urgA = urgencia(a) === "atrasada" ? 3 : urgencia(a) === "hoje" ? 2 : urgencia(a) === "proxima" ? 1 : 0;
       const urgB = urgencia(b) === "atrasada" ? 3 : urgencia(b) === "hoje" ? 2 : urgencia(b) === "proxima" ? 1 : 0;
       return urgB - urgA;
     })
-    .slice(0, 5);
+    .slice(0, 6);
 
   const handleCriar = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,47 +37,16 @@ export function WidgetFocoHoje({
   };
 
   return (
-    <div className="flex flex-col justify-between h-full space-y-3.5">
-      {/* Indicador Superior de Progresso Diário */}
-      <div className="p-2.5 rounded-2xl bg-secondary/30 border border-border/50 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-mono font-bold text-xs">
-            {percentual}%
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[11px] font-bold text-foreground">
-              {tarefasConcluidasHoje.length} de {totalTarefas} concluídas
-            </p>
-            <p className="text-[10px] text-muted-foreground">
-              {tarefasPendentes.length === 0 ? "Tudo concluído por hoje!" : `${tarefasPendentes.length} pendentes`}
-            </p>
-          </div>
-        </div>
-
-        {/* Mini Barra de Progresso */}
-        <div className="w-20 bg-secondary h-2 rounded-full overflow-hidden shrink-0">
-          <div
-            className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
-            style={{ width: `${percentual}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Lista de Tarefas Prioritárias */}
-      <div className="space-y-1.5 flex-1 overflow-y-auto max-h-[260px] pr-0.5">
+    <div className="flex flex-col justify-between h-full space-y-2.5">
+      {/* Lista Limpa de Tarefas */}
+      <div className="space-y-1 flex-1 overflow-y-auto pr-0.5">
         {prioritarias.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground gap-2">
-            <div className="h-10 w-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-              <Check size={20} />
-            </div>
-            <p className="text-xs font-semibold text-foreground">Foco do dia em dia!</p>
-            <p className="text-[11px] text-muted-foreground/70 max-w-[220px]">
-              Nenhuma tarefa pendente. Use o campo abaixo para registrar uma nova ação.
-            </p>
+          <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground gap-1.5">
+            <p className="text-xs font-medium text-foreground">Nenhuma tarefa pendente</p>
+            <p className="text-[11px] text-muted-foreground">Tudo em dia por hoje.</p>
           </div>
         ) : (
           prioritarias.map((t) => {
-            const nivelUrgencia = urgencia(t);
             const prazoInfo = textoPrazo(t);
             const ehAtrasada = t.prazo && t.prazo < hoje;
 
@@ -92,9 +54,9 @@ export function WidgetFocoHoje({
               <div
                 key={t.caminho}
                 onClick={() => aoAbrirTarefa(t)}
-                className="group flex items-center justify-between gap-3 p-2.5 rounded-2xl border border-border/50 bg-background/50 hover:bg-card hover:border-emerald-500/30 transition-all cursor-pointer shadow-2xs"
+                className="group flex items-center justify-between gap-2.5 p-2 rounded-xl hover:bg-secondary/40 transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -102,38 +64,33 @@ export function WidgetFocoHoje({
                       aoAlternarConclusao(t);
                     }}
                     className={cn(
-                      "h-5 w-5 rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0",
+                      "h-4 w-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0",
                       t.status === "feito"
-                        ? "bg-emerald-500 border-emerald-500 text-white"
-                        : "border-border/80 hover:border-emerald-500 bg-card/80 hover:scale-105"
+                        ? "bg-primary border-primary text-primary-foreground"
+                        : "border-border hover:border-foreground bg-card"
                     )}
-                    title="Marcar como concluída"
                   >
-                    {t.status === "feito" && <Check size={12} strokeWidth={3} />}
+                    {t.status === "feito" && <Check size={10} strokeWidth={3} />}
                   </button>
 
                   <span
                     className={cn(
-                      "text-xs font-medium text-foreground truncate group-hover:text-primary transition-colors",
-                      t.status === "feito" && "line-through opacity-50"
+                      "text-xs text-foreground truncate group-hover:text-primary transition-colors",
+                      t.status === "feito" && "line-through opacity-40"
                     )}
                   >
                     {t.titulo}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 text-[10px]">
                   {ehAtrasada ? (
-                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5 gap-1 font-bold">
-                      <AlertTriangle size={10} />
-                      <span>Atrasada</span>
-                    </Badge>
+                    <span className="text-destructive font-medium flex items-center gap-0.5">
+                      <AlertCircle size={10} />
+                      Atrasada
+                    </span>
                   ) : prazoInfo ? (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 font-medium">
-                      {prazoInfo}
-                    </Badge>
-                  ) : nivelUrgencia === "hoje" ? (
-                    <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" title="Vence hoje" />
+                    <span className="text-muted-foreground">{prazoInfo}</span>
                   ) : null}
                 </div>
               </div>
@@ -142,14 +99,14 @@ export function WidgetFocoHoje({
         )}
       </div>
 
-      {/* Input de Adição Rápida */}
-      <form onSubmit={handleCriar} className="relative pt-1 border-t border-border/40">
+      {/* Input de Nova Tarefa */}
+      <form onSubmit={handleCriar} className="pt-1.5 border-t border-border/40">
         <input
           type="text"
           value={novoTitulo}
           onChange={(e) => setNovoTitulo(e.target.value)}
-          placeholder="+ Adicionar tarefa rápida e pressionar Enter..."
-          className="w-full text-xs bg-background/60 border border-border/70 rounded-xl px-3 py-2 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary transition-all shadow-2xs"
+          placeholder="+ Adicionar tarefa..."
+          className="w-full text-xs bg-background/50 border border-border/60 rounded-lg px-2.5 py-1.5 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-border transition-colors"
         />
       </form>
     </div>

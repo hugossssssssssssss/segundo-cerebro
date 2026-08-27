@@ -28,13 +28,12 @@ import { Vazio } from "@/components/ui";
 // Suíte Modular Bento Home
 import {
   type WidgetConfig,
-  type LarguraWidget,
+  type ColunasWidget,
   type InfoWidgetCatalogo,
   CONFIG_PADRAO_WIDGETS,
   CATALOGO_WIDGETS,
 } from "@/components/home/types";
 import { CabecalhoHome } from "@/components/home/CabecalhoHome";
-import { PulseKPIs } from "@/components/home/PulseKPIs";
 import { WidgetWrapper } from "@/components/home/WidgetWrapper";
 import { WidgetFocoHoje } from "@/components/home/WidgetFocoHoje";
 import { WidgetNotasRecentes, type NotaItemHome } from "@/components/home/WidgetNotasRecentes";
@@ -87,7 +86,7 @@ export default function Home() {
   const [processos, setProcessos] = useState<ProcessoItemHome[]>(snapshotInicial.processos);
   const [lousas, setLousas] = useState<LousaItemHome[]>(snapshotInicial.lousas);
 
-  // ── Configuração dos Widgets (Bento Grid) ──────────────────────────────────
+  // ── Configuração dos Widgets (Grade com Tamanho Livre) ────────────────────
   const [configWidgets, setConfigWidgets] = useState<WidgetConfig[]>(() => {
     const salvo = localStorage.getItem("klaus_home_bento_config");
     if (salvo) {
@@ -308,37 +307,16 @@ export default function Home() {
     } else {
       salvarConfigWidgets([
         ...configWidgets,
-        { id: info.id, ativo: true, colunas: info.colunasPadrao, altura: "auto", ordem: configWidgets.length },
+        { id: info.id, ativo: true, colunas: info.colunasPadrao, alturaPx: info.alturaPadraoPx, ordem: configWidgets.length },
       ]);
     }
   };
 
-  const aoMudarColunasWidget = (id: string, colunas: LarguraWidget) => {
+  const aoMudarDimensoesWidget = (id: string, colunas: ColunasWidget, alturaPx: number) => {
     salvarConfigWidgets(
-      configWidgets.map((c) => (c.id === id ? { ...c, colunas } : c))
+      configWidgets.map((c) => (c.id === id ? { ...c, colunas, alturaPx } : c))
     );
   };
-
-  // ── Métricas de Topo (KPIs) ───────────────────────────────────────────────
-  const hojeStr = new Date().toISOString().split("T")[0];
-
-  const tarefasHojeCount = useMemo(() => {
-    return tarefas.filter((t) => t.status !== "feito" && (!t.prazo || t.prazo <= hojeStr)).length;
-  }, [tarefas, hojeStr]);
-
-  const tarefasUrgentesCount = useMemo(() => {
-    return tarefas.filter((t) => t.status !== "feito" && t.prazo && t.prazo < hojeStr).length;
-  }, [tarefas, hojeStr]);
-
-  const progressoPdiGeral = useMemo(() => {
-    if (resumosPdi.length === 0) return 0;
-    const concluidas = resumosPdi.filter((r) => r.meta.status === "concluida").length;
-    return Math.round((concluidas / resumosPdi.length) * 100);
-  }, [resumosPdi]);
-
-  const metasAtivasCount = useMemo(() => {
-    return resumosPdi.filter((r) => r.meta.status !== "concluida").length;
-  }, [resumosPdi]);
 
   // ── Sem Configuração ──────────────────────────────────────────────────────
   if (!pronto) {
@@ -358,12 +336,12 @@ export default function Home() {
     );
   }
 
-  // Nome do usuário inserido no Onboarding ou fallback
+  // Nome do usuário inserido no Onboarding
   const nomeExibicao = cfg.nomeUsuario?.trim() || "Hugo";
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 w-full pb-12">
-      {/* 1. Cockpit de Saudação & Botão de Adicionar Widgets */}
+    <div className="space-y-5 animate-in fade-in duration-150 w-full pb-12">
+      {/* 1. Cockpit de Saudação Minimalista */}
       <CabecalhoHome
         nomeUsuario={nomeExibicao}
         aoAbrirCatalogo={() => setCatalogoAberto(true)}
@@ -372,18 +350,8 @@ export default function Home() {
         aoRestaurarPadrao={restaurarPadrao}
       />
 
-      {/* 2. Pulso de Indicadores Essenciais (KPIs de Topo) */}
-      <PulseKPIs
-        tarefasHoje={tarefasHojeCount}
-        tarefasUrgentes={tarefasUrgentesCount}
-        totalNotas={notas.length}
-        totalReferencias={referencias.length}
-        progressoPdi={progressoPdiGeral}
-        metasAtivas={metasAtivasCount}
-      />
-
-      {/* 3. Grid Principal Bento da Tela Inicial (1 a 4 colunas livres) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+      {/* 2. Grade de Widgets com Arraste Livre de Largura e Altura */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5 items-start">
         {configWidgets
           .filter((w) => w.ativo)
           .sort((a, b) => a.ordem - b.ordem)
@@ -408,10 +376,9 @@ export default function Home() {
                 key={widget.id}
                 id={widget.id}
                 titulo={info.titulo}
-                subtitulo={info.subtitulo}
                 icone={Icone}
-                corIcone={info.corIcone}
                 colunas={widget.colunas}
+                alturaPx={widget.alturaPx}
                 linkVerMais={
                   widget.id === "foco_hoje"
                     ? "/tarefas"
@@ -428,7 +395,9 @@ export default function Home() {
                     : undefined
                 }
                 modoEdicao={modoEdicao}
-                aoMudarColunas={(novasColunas) => aoMudarColunasWidget(widget.id, novasColunas)}
+                aoMudarDimensoes={(novasColunas, novaAlturaPx) =>
+                  aoMudarDimensoesWidget(widget.id, novasColunas, novaAlturaPx)
+                }
                 aoRemover={() => {
                   salvarConfigWidgets(
                     configWidgets.map((c) =>
@@ -437,7 +406,7 @@ export default function Home() {
                   );
                 }}
               >
-                {/* Conteúdo Dinâmico dos Widgets */}
+                {/* Conteúdo dos Widgets */}
                 {widget.id === "foco_hoje" && (
                   <WidgetFocoHoje
                     tarefas={tarefas}
@@ -500,7 +469,6 @@ export default function Home() {
         aoFechar={() => setCatalogoAberto(false)}
         configWidgets={configWidgets}
         aoAlternarWidget={aoAlternarWidgetCatalogo}
-        aoMudarTamanho={aoMudarColunasWidget}
       />
     </div>
   );

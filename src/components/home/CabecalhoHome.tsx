@@ -1,13 +1,7 @@
 import { useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import {
-  Plus,
-  SlidersHorizontal,
-  Sparkles,
-  Clock,
-  RotateCcw,
-} from "lucide-react";
+import { Plus, SlidersHorizontal, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -42,34 +36,28 @@ export function CabecalhoHome({
   }, [agora]);
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-border/50">
-      {/* Saudação e Data */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
-            <span>{saudacao},</span>
-            <span className="text-primary">{nomeUsuario}</span>
-            <Sparkles size={20} className="text-amber-400 fill-amber-400 inline" />
-          </h1>
-        </div>
-        <p className="text-xs sm:text-sm text-muted-foreground font-medium flex items-center gap-2">
-          <Clock size={14} className="opacity-70" />
-          <span>{dataFormatada}</span>
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-border/40">
+      {/* Saudação e Data sem emojis */}
+      <div className="space-y-0.5">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          {saudacao}, {nomeUsuario}.
+        </h1>
+        <p className="text-xs text-muted-foreground font-normal">
+          {dataFormatada}
         </p>
       </div>
 
       {/* Ações de Layout & Widgets */}
-      <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
+      <div className="flex items-center gap-2">
         {modoEdicao && (
           <Button
             variant="ghost"
             size="sm"
             onClick={aoRestaurarPadrao}
-            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground h-9 rounded-xl"
-            title="Restaurar layout padrão dos widgets"
+            className="text-xs text-muted-foreground hover:text-foreground h-8 rounded-lg"
           >
-            <RotateCcw size={13} />
-            <span className="hidden sm:inline">Restaurar Padrão</span>
+            <RotateCcw size={12} className="mr-1.5" />
+            Restaurar Padrão
           </Button>
         )}
 
@@ -78,22 +66,21 @@ export function CabecalhoHome({
           size="sm"
           onClick={aoAlternarModoEdicao}
           className={cn(
-            "gap-1.5 text-xs font-semibold rounded-xl h-9 shadow-2xs transition-all",
-            !modoEdicao && "bg-card/80 border-border/80 hover:text-foreground"
+            "text-xs font-medium rounded-lg h-8 transition-all",
+            !modoEdicao && "bg-card border-border/80 text-muted-foreground hover:text-foreground"
           )}
-          title="Alternar controles de tamanho e exclusão nos cartões"
         >
-          <SlidersHorizontal size={14} />
-          <span>{modoEdicao ? "Concluir Ajustes" : "Ajustar Tamanhos"}</span>
+          <SlidersHorizontal size={13} className="mr-1.5" />
+          {modoEdicao ? "Concluir Ajustes" : "Ajustar Grade"}
         </Button>
 
         <Button
           size="sm"
           onClick={aoAbrirCatalogo}
-          className="gap-1.5 text-xs font-semibold rounded-xl h-9 shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+          className="text-xs font-semibold rounded-lg h-8 gap-1.5 shadow-2xs cursor-pointer"
         >
-          <Plus size={15} />
-          <span>Adicionar Widgets</span>
+          <Plus size={14} />
+          <span>Adicionar Widget</span>
         </Button>
       </div>
     </div>

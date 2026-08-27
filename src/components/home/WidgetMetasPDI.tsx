@@ -1,4 +1,3 @@
-import { Target } from "lucide-react";
 import { type ResumoMeta } from "@/lib/pdi";
 
 interface WidgetMetasPDIProps {
@@ -10,52 +9,40 @@ export function WidgetMetasPDI({
   resumos,
   aoAbrirMeta,
 }: WidgetMetasPDIProps) {
-  const ativas = resumos.slice(0, 3);
+  const ativas = resumos.slice(0, 4);
 
   return (
-    <div className="space-y-3 flex-1">
+    <div className="space-y-2 flex-1 overflow-y-auto">
       {ativas.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground gap-2">
-          <div className="h-10 w-10 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
-            <Target size={20} />
-          </div>
-          <p className="text-xs font-semibold text-foreground">Nenhuma meta ativa</p>
-          <p className="text-[11px] text-muted-foreground/70">
-            Defina suas metas de carreira na aba PDI.
-          </p>
+        <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground gap-1.5">
+          <p className="text-xs font-medium text-foreground">Nenhuma meta ativa</p>
+          <p className="text-[11px] text-muted-foreground">Adicione metas na aba PDI.</p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-1">
           {ativas.map((r) => {
-            const concluida = r.meta.status === "concluida";
             const totalEntregas = r.entregas.length;
 
             return (
               <div
                 key={r.meta.caminho}
                 onClick={() => aoAbrirMeta(r.meta.caminho)}
-                className="group p-3 rounded-2xl border border-border/50 bg-background/50 hover:bg-card hover:border-rose-500/30 transition-all cursor-pointer space-y-2 shadow-2xs"
+                className="group p-2 rounded-xl hover:bg-secondary/40 transition-colors cursor-pointer flex items-center justify-between gap-2"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-foreground group-hover:text-rose-500 transition-colors truncate">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-foreground group-hover:text-primary transition-colors truncate">
                     {r.meta.titulo}
-                  </span>
-                  <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
-                    {concluida ? "Concluída" : "Em andamento"}
-                  </span>
+                  </p>
+                  {r.meta.indicador && (
+                    <p className="text-[10px] text-muted-foreground line-clamp-1">
+                      {r.meta.indicador}
+                    </p>
+                  )}
                 </div>
 
-                {/* Segmented Progress Track */}
-                <div className="w-full bg-secondary/70 h-2 rounded-full overflow-hidden p-0.5">
-                  <div
-                    className="h-full bg-gradient-to-r from-rose-500 via-pink-500 to-amber-400 rounded-full transition-all duration-500"
-                    style={{ width: concluida ? "100%" : totalEntregas > 0 ? "60%" : "20%" }}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>{totalEntregas} entrega{totalEntregas === 1 ? "" : "s"} registrada{totalEntregas === 1 ? "" : "s"}</span>
-                  {r.meta.prazo && <span>Prazo: {r.meta.prazo}</span>}
+                <div className="shrink-0 text-[10px] text-muted-foreground text-right">
+                  <span>{totalEntregas} entrega{totalEntregas === 1 ? "" : "s"}</span>
+                  {r.meta.prazo && <p className="opacity-70">{r.meta.prazo}</p>}
                 </div>
               </div>
             );
