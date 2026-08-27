@@ -489,7 +489,12 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         {workspaceAberto ? (
           <WorkspaceTelaCheia />
         ) : (
-          <main className="mx-auto w-full max-w-6xl flex-1 px-4 sm:px-6 py-8 pb-28 sm:pb-8 overflow-y-auto">
+          <main className={cn(
+            "mx-auto w-full flex-1 py-6 pb-28 sm:pb-8 overflow-y-auto",
+            pathname === "/" || pathname === "/home"
+              ? "max-w-none px-4 sm:px-6 lg:px-8"
+              : "max-w-6xl px-4 sm:px-6"
+          )}>
             <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
           </main>
         )}

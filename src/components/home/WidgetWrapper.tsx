@@ -9,9 +9,10 @@ interface WidgetWrapperProps {
   titulo: string;
   subtitulo?: string;
   icone: any;
-  colunas: ColunasWidget;
+  colunas: ColunasWidget; // 1 a 12
   alturaPx?: number;
   linkVerMais?: string;
+  aoAbrirPopup?: () => void;
   acoes?: ReactNode;
   modoEdicao?: boolean;
   aoRemover?: () => void;
@@ -24,9 +25,10 @@ export function WidgetWrapper({
   titulo,
   subtitulo,
   icone: Icone,
-  colunas = 2,
-  alturaPx = 340,
+  colunas = 6,
+  alturaPx = 320,
   linkVerMais,
+  aoAbrirPopup,
   acoes,
   modoEdicao = false,
   aoRemover,
@@ -39,15 +41,25 @@ export function WidgetWrapper({
   const [alturaLocal, setAlturaLocal] = useState(alturaPx);
   const [colunasLocal, setColunasLocal] = useState<ColunasWidget>(colunas);
 
-  // Mapeamento responsivo de colunas
-  const classesColunas = {
-    1: "col-span-1 md:col-span-1 lg:col-span-1",
-    2: "col-span-1 md:col-span-2 lg:col-span-2",
-    3: "col-span-1 md:col-span-2 lg:col-span-3",
-    4: "col-span-1 md:col-span-2 lg:col-span-4",
-  }[colunasLocal] || "col-span-1 md:col-span-2 lg:col-span-2";
+  // Mapeamento de 12 colunas para malha com total liberdade
+  const classesColunas: Record<number, string> = {
+    1: "col-span-12 sm:col-span-3 lg:col-span-1",
+    2: "col-span-12 sm:col-span-4 lg:col-span-2",
+    3: "col-span-12 sm:col-span-6 lg:col-span-3",
+    4: "col-span-12 sm:col-span-6 lg:col-span-4",
+    5: "col-span-12 sm:col-span-6 lg:col-span-5",
+    6: "col-span-12 sm:col-span-6 lg:col-span-6",
+    7: "col-span-12 lg:col-span-7",
+    8: "col-span-12 lg:col-span-8",
+    9: "col-span-12 lg:col-span-9",
+    10: "col-span-12 lg:col-span-10",
+    11: "col-span-12 lg:col-span-11",
+    12: "col-span-12",
+  };
 
-  // Arrastar no canto para redimensionar livremente largura e altura
+  const classeGrid = classesColunas[colunasLocal] || "col-span-12 lg:col-span-6";
+
+  // Arrastar no canto para redimensionar largura e altura livremente
   const iniciarArrasto = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -56,23 +68,21 @@ export function WidgetWrapper({
     const startX = e.clientX;
     const startY = e.clientY;
     const startHeight = cardRef.current ? cardRef.current.offsetHeight : alturaLocal;
-    const startColunas = colunasLocal;
+    const parentWidth = cardRef.current?.parentElement?.offsetWidth || window.innerWidth;
+    const colWidth = parentWidth / 12;
+    const startCols = colunasLocal;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX;
       const deltaY = moveEvent.clientY - startY;
 
-      // 1. Ajuste vertical contínuo (mínimo 200px, máximo 800px)
-      const novaAltura = Math.max(200, Math.min(800, startHeight + deltaY));
+      // 1. Altura contínua em pixels
+      const novaAltura = Math.max(90, Math.min(900, startHeight + deltaY));
       setAlturaLocal(novaAltura);
 
-      // 2. Ajuste horizontal por limiares
-      let novaCol: ColunasWidget = startColunas;
-      if (deltaX > 280) novaCol = 4;
-      else if (deltaX > 140) novaCol = Math.min(4, startColunas + 1) as ColunasWidget;
-      else if (deltaX < -280) novaCol = 1;
-      else if (deltaX < -140) novaCol = Math.max(1, startColunas - 1) as ColunasWidget;
-
+      // 2. Largura em passos da malha de 12 colunas
+      const deltaCols = Math.round(deltaX / colWidth);
+      const novaCol = Math.max(1, Math.min(12, startCols + deltaCols)) as ColunasWidget;
       setColunasLocal(novaCol);
     };
 
@@ -83,13 +93,9 @@ export function WidgetWrapper({
 
       const deltaX = upEvent.clientX - startX;
       const deltaY = upEvent.clientY - startY;
-      const novaAltura = Math.max(200, Math.min(800, startHeight + deltaY));
-
-      let novaCol: ColunasWidget = startColunas;
-      if (deltaX > 280) novaCol = 4;
-      else if (deltaX > 140) novaCol = Math.min(4, startColunas + 1) as ColunasWidget;
-      else if (deltaX < -280) novaCol = 1;
-      else if (deltaX < -140) novaCol = Math.max(1, startColunas - 1) as ColunasWidget;
+      const novaAltura = Math.max(90, Math.min(900, startHeight + deltaY));
+      const deltaCols = Math.round(deltaX / colWidth);
+      const novaCol = Math.max(1, Math.min(12, startCols + deltaCols)) as ColunasWidget;
 
       aoMudarDimensoes?.(novaCol, novaAltura);
     };
@@ -104,35 +110,25 @@ export function WidgetWrapper({
       style={{ minHeight: `${alturaLocal}px` }}
       className={cn(
         "group relative flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-4 transition-all duration-150 overflow-hidden",
-        classesColunas,
+        classeGrid,
         modoEdicao && "ring-1 ring-primary/40",
-        redimensionando && "select-none ring-2 ring-primary shadow-xl opacity-90",
+        redimensionando && "select-none ring-2 ring-primary shadow-2xl opacity-95",
         className
       )}
     >
-      {/* Barra de Ajuste Rápido (Modo Edição) */}
+      {/* Indicador Flutuante de Dimensões durante o Arraste */}
+      {redimensionando && (
+        <div className="absolute top-2 left-2 z-30 bg-primary text-primary-foreground font-mono text-[10px] font-bold px-2 py-0.5 rounded shadow">
+          {colunasLocal}/12 colunas ({Math.round((colunasLocal / 12) * 100)}%) × {alturaLocal}px
+        </div>
+      )}
+
+      {/* Controles de Edição no Modo Grade */}
       {modoEdicao && (
         <div className="absolute top-2 right-2 z-20 flex items-center gap-1 bg-background/95 border border-border p-1 rounded-lg shadow-md">
-          <div className="flex items-center gap-0.5">
-            {([1, 2, 3, 4] as ColunasWidget[]).map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => {
-                  setColunasLocal(c);
-                  aoMudarDimensoes?.(c, alturaLocal);
-                }}
-                className={cn(
-                  "px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold transition-colors cursor-pointer",
-                  colunasLocal === c
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {c === 4 ? "Full" : `${c}x`}
-              </button>
-            ))}
-          </div>
+          <span className="text-[10px] text-muted-foreground font-mono px-1 font-semibold">
+            {colunasLocal}/12 col
+          </span>
 
           <div className="h-3 w-px bg-border/60 mx-0.5" />
 
@@ -167,7 +163,20 @@ export function WidgetWrapper({
 
         <div className="flex items-center gap-1 shrink-0">
           {acoes}
-          {linkVerMais && !modoEdicao && (
+
+          {aoAbrirPopup && !modoEdicao && (
+            <button
+              type="button"
+              onClick={aoAbrirPopup}
+              className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 p-1 rounded hover:bg-accent transition-colors cursor-pointer"
+              title="Abrir em janela flutuante"
+            >
+              <span>Abrir</span>
+              <ArrowUpRight size={11} />
+            </button>
+          )}
+
+          {linkVerMais && !aoAbrirPopup && !modoEdicao && (
             <Link
               to={linkVerMais}
               className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 p-1 rounded hover:bg-accent transition-colors"
@@ -186,15 +195,15 @@ export function WidgetWrapper({
       <div
         onMouseDown={iniciarArrasto}
         className={cn(
-          "absolute bottom-0 right-0 w-5 h-5 flex items-end justify-end p-1 cursor-se-resize select-none transition-opacity",
+          "absolute bottom-0 right-0 w-6 h-6 flex items-end justify-end p-1.5 cursor-se-resize select-none transition-opacity",
           modoEdicao ? "opacity-100 text-primary" : "opacity-0 group-hover:opacity-40 hover:opacity-100 text-muted-foreground"
         )}
-        title="Arraste para redimensionar largura e altura livremente"
+        title="Arraste para redimensionar na malha de 12 colunas"
       >
-        <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
-          <circle cx="6" cy="6" r="1" />
-          <circle cx="2" cy="6" r="1" />
-          <circle cx="6" cy="2" r="1" />
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+          <circle cx="8" cy="8" r="1.2" />
+          <circle cx="4" cy="8" r="1.2" />
+          <circle cx="8" cy="4" r="1.2" />
         </svg>
       </div>
     </div>

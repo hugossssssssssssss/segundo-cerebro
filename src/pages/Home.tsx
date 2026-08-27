@@ -10,6 +10,16 @@ import {
   Layout,
   Globe,
   Edit3,
+  FileImage,
+  Scissors,
+  Mic,
+  Headphones,
+  Video,
+  BookOpen,
+  Network,
+  Newspaper,
+  Calendar,
+  MessageSquare,
 } from "lucide-react";
 
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -22,6 +32,7 @@ import { comoMeta, comoEntrega, resumir, type ResumoMeta } from "@/lib/pdi";
 import { tituloProvavel, escreverMarkdown, nomeLivre } from "@/lib/markdown";
 import { PASTAS } from "@/lib/tipos";
 import { toast } from "@/lib/toast";
+import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 
 import { Vazio } from "@/components/ui";
 
@@ -44,6 +55,11 @@ import { WidgetHubFerramentas } from "@/components/home/WidgetHubFerramentas";
 import { WidgetProcessosCRM, type ProcessoItemHome } from "@/components/home/WidgetProcessosCRM";
 import { WidgetLousasRecentes, type LousaItemHome } from "@/components/home/WidgetLousasRecentes";
 import { WidgetBuscaWeb } from "@/components/home/WidgetBuscaWeb";
+import { WidgetConversorRapido } from "@/components/home/WidgetConversorRapido";
+import { WidgetPDFRapido } from "@/components/home/WidgetPDFRapido";
+import { WidgetTranscritorVoz } from "@/components/home/WidgetTranscritorVoz";
+import { WidgetSonsFoco } from "@/components/home/WidgetSonsFoco";
+import { WidgetChatIA } from "@/components/home/WidgetChatIA";
 import { ModalCatalogoWidgets } from "@/components/home/ModalCatalogoWidgets";
 
 const CHAVE_SNAPSHOT_HOME = "klaus_home_cache_snapshot";
@@ -62,6 +78,7 @@ export default function Home() {
   const pronto = configCompleta(cfg);
   const navegar = useNavigate();
   const { salvarTexto } = useSalvar(cfg);
+  const { abrirFerramentaFlutuante } = useFerramentasFlutuantes();
 
   // ── Carregamento Instantâneo com Cache Snapshot (0ms) ─────────────────────
   const snapshotInicial = useMemo<SnapshotHome>(() => {
@@ -86,9 +103,9 @@ export default function Home() {
   const [processos, setProcessos] = useState<ProcessoItemHome[]>(snapshotInicial.processos);
   const [lousas, setLousas] = useState<LousaItemHome[]>(snapshotInicial.lousas);
 
-  // ── Configuração dos Widgets (Grade com Tamanho Livre) ────────────────────
+  // ── Configuração dos Widgets (Grade de 12 Colunas com Tamanho Livre) ──────
   const [configWidgets, setConfigWidgets] = useState<WidgetConfig[]>(() => {
-    const salvo = localStorage.getItem("klaus_home_bento_config");
+    const salvo = localStorage.getItem("klaus_home_bento_config_v3");
     if (salvo) {
       try {
         const parsed = JSON.parse(salvo);
@@ -107,7 +124,7 @@ export default function Home() {
   // Salva configurações de widgets no localStorage
   const salvarConfigWidgets = (novaConfig: WidgetConfig[]) => {
     setConfigWidgets(novaConfig);
-    localStorage.setItem("klaus_home_bento_config", JSON.stringify(novaConfig));
+    localStorage.setItem("klaus_home_bento_config_v3", JSON.stringify(novaConfig));
   };
 
   const alternarModoEdicao = () => {
@@ -340,7 +357,7 @@ export default function Home() {
   const nomeExibicao = cfg.nomeUsuario?.trim() || "Hugo";
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-150 w-full pb-12">
+    <div className="space-y-4 animate-in fade-in duration-150 w-full min-h-screen max-w-none pb-16">
       {/* 1. Cockpit de Saudação Minimalista */}
       <CabecalhoHome
         nomeUsuario={nomeExibicao}
@@ -350,8 +367,8 @@ export default function Home() {
         aoRestaurarPadrao={restaurarPadrao}
       />
 
-      {/* 2. Grade de Widgets com Arraste Livre de Largura e Altura */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5 items-start">
+      {/* 2. Malha de 12 Colunas com Total Liberdade de Largura e Altura */}
+      <div className="grid grid-cols-12 gap-3.5 items-start w-full">
         {configWidgets
           .filter((w) => w.ativo)
           .sort((a, b) => a.ordem - b.ordem)
@@ -369,7 +386,21 @@ export default function Home() {
               Layout,
               Globe,
               Edit3,
+              FileImage,
+              Scissors,
+              Mic,
+              Headphones,
+              Video,
+              BookOpen,
+              Network,
+              Newspaper,
+              Calendar,
+              MessageSquare,
             }[info.icone as string] || Layers;
+
+            const abrirPopup = info.ferramentaPopupId
+              ? () => abrirFerramentaFlutuante(info.ferramentaPopupId!)
+              : undefined;
 
             return (
               <WidgetWrapper
@@ -379,6 +410,7 @@ export default function Home() {
                 icone={Icone}
                 colunas={widget.colunas}
                 alturaPx={widget.alturaPx}
+                aoAbrirPopup={abrirPopup}
                 linkVerMais={
                   widget.id === "foco_hoje"
                     ? "/tarefas"
@@ -392,6 +424,26 @@ export default function Home() {
                     ? "/processos"
                     : widget.id === "lousas_recentes"
                     ? "/lousas"
+                    : widget.id === "conversor_arquivos"
+                    ? "/conversor"
+                    : widget.id === "ferramentas_pdf"
+                    ? "/pdf"
+                    : widget.id === "transcritor_voz"
+                    ? "/transcritor"
+                    : widget.id === "sons_foco"
+                    ? "/sons"
+                    : widget.id === "hardware_test"
+                    ? "/hardware"
+                    : widget.id === "pesquisa_livros"
+                    ? "/livros"
+                    : widget.id === "grafo_neural"
+                    ? "/grafo"
+                    : widget.id === "noticias_feed"
+                    ? "/noticias"
+                    : widget.id === "calendario_home"
+                    ? "/calendario"
+                    : widget.id === "chat_ia"
+                    ? "/chat"
                     : undefined
                 }
                 modoEdicao={modoEdicao}
@@ -406,7 +458,9 @@ export default function Home() {
                   );
                 }}
               >
-                {/* Conteúdo dos Widgets */}
+                {/* ── Conteúdo dos Widgets ── */}
+                {widget.id === "busca_web" && <WidgetBuscaWeb />}
+
                 {widget.id === "foco_hoje" && (
                   <WidgetFocoHoje
                     tarefas={tarefas}
@@ -457,7 +511,26 @@ export default function Home() {
                   />
                 )}
 
-                {widget.id === "busca_web" && <WidgetBuscaWeb />}
+                {/* ── Ferramentas Dedicadas com Popup ── */}
+                {widget.id === "conversor_arquivos" && (
+                  <WidgetConversorRapido aoAbrirPopup={() => abrirFerramentaFlutuante("conversor")} />
+                )}
+
+                {widget.id === "ferramentas_pdf" && (
+                  <WidgetPDFRapido aoAbrirPopup={() => abrirFerramentaFlutuante("ferramentas_pdf")} />
+                )}
+
+                {widget.id === "transcritor_voz" && (
+                  <WidgetTranscritorVoz aoAbrirPopup={() => abrirFerramentaFlutuante("transcritor")} />
+                )}
+
+                {widget.id === "sons_foco" && (
+                  <WidgetSonsFoco aoAbrirPopup={() => abrirFerramentaFlutuante("sons")} />
+                )}
+
+                {widget.id === "chat_ia" && (
+                  <WidgetChatIA aoAbrirPopup={() => abrirFerramentaFlutuante("chat_ia")} />
+                )}
               </WidgetWrapper>
             );
           })}
