@@ -9,7 +9,11 @@ import {
   ChevronRight,
   Trash2,
   X,
+  LayoutGrid,
+  List,
+  Columns,
 } from "lucide-react";
+import { Masonry } from "react-plock";
 import {
   obterModeloPadrao,
   type TemplateItem,
@@ -27,7 +31,7 @@ import {
   nomeLivre,
   type Frontmatter,
 } from "@/lib/markdown";
-import { lerParametroAbrir, lerParametroCriar, correspondeBusca, formatarNomeAmigavel } from "@/lib/utils";
+import { lerParametroAbrir, lerParametroCriar, correspondeBusca, formatarNomeAmigavel, cn } from "@/lib/utils";
 import {
   Botao,
   Aviso,
@@ -37,9 +41,11 @@ import {
 } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
+import { AlternadorVisao } from "@/components/AlternadorVisao";
+import { SeloStatus } from "@/components/SeloStatus";
 import { BarraFiltrosAvancados, filtrarItensPorRegras, type DefinicaoPropriedade, type RegraFiltro } from "@/components/BarraFiltrosAvancados";
 import { DropdownNovoViaModelo } from "@/components/DropdownNovoViaModelo";
-import { CartaoItem } from "@/components/CartaoItem";
+import { CartaoNotaVisual } from "@/components/CartaoNotaVisual";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { MenuContextoNotas, type AcaoMenuContexto } from "@/components/MenuContextoNotas";
@@ -74,6 +80,15 @@ export default function Notas() {
   useEffect(() => {
     localStorage.setItem('klaus_modo_visao_notas', modoVisao);
   }, [modoVisao]);
+
+  type ModoLayoutNotas = "grade" | "lista" | "mural";
+  const [modoLayout, setModoLayout] = useState<ModoLayoutNotas>(() => {
+    const salvo = localStorage.getItem("klaus_modo_layout_notas");
+    return (salvo as ModoLayoutNotas) || "grade";
+  });
+  useEffect(() => {
+    localStorage.setItem("klaus_modo_layout_notas", modoLayout);
+  }, [modoLayout]);
 
   const [aberta, setAberta] = useState<NotaAberta | null>(null);
 
@@ -842,6 +857,19 @@ export default function Notas() {
   const partesPasta = pastaAtual ? pastaAtual.split("/") : [];
   const filtroAtivo = busca.trim() !== "" || regrasFiltro.length > 0;
 
+  const contagemPorSubpasta = useMemo(() => {
+    const contagens: Record<string, number> = {};
+    for (const pasta of subpastas) {
+      const prefixo = pastaAtual ? `${pastaAtual}/${pasta}` : pasta;
+      const qtd = todasNotas.filter((n) => {
+        const partes = n.caminho.split("/").slice(1, -1).join("/");
+        return partes === prefixo || partes.startsWith(`${prefixo}/`);
+      }).length;
+      contagens[pasta] = qtd;
+    }
+    return contagens;
+  }, [subpastas, pastaAtual, todasNotas]);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       <CabecalhoPagina
@@ -849,6 +877,12 @@ export default function Notas() {
         descricao="Anotações e rascunhos em Markdown armazenados no seu repositório."
         icone={<FileText size={20} />}
         corIcone="bg-amber-500/10 text-amber-600 dark:text-amber-400"
+        badge={
+          <SeloStatus
+            rotulo={`${visiveis.length} ${visiveis.length === 1 ? "nota" : "notas"}`}
+            tom="primario"
+          />
+        }
         acoes={
           <>
             <Botao
@@ -887,24 +921,30 @@ export default function Notas() {
       />
 
       {pastaAtual && (
-        <div className="flex items-center gap-1.5 flex-wrap text-xs">
+        <div className="flex items-center gap-1.5 flex-wrap text-xs bg-card/60 p-2 px-3 rounded-2xl border border-border/60 shadow-2xs">
           <button
             type="button"
             onClick={() => setPastaAtual("")}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors font-medium cursor-pointer"
           >
-            <FolderOpen size={13} />
+            <FolderOpen size={14} className="text-amber-500" />
             Notas
           </button>
           {partesPasta.map((parte, i) => {
             const caminhoParcial = partesPasta.slice(0, i + 1).join("/");
+            const ehUltimo = i === partesPasta.length - 1;
             return (
               <span key={caminhoParcial} className="flex items-center gap-1.5">
                 <ChevronRight size={12} className="text-muted-foreground/50" />
                 <button
                   type="button"
                   onClick={() => setPastaAtual(caminhoParcial)}
-                  className="rounded-lg px-2 py-1 text-foreground hover:bg-accent transition-colors"
+                  className={cn(
+                    "rounded-xl px-2.5 py-1 transition-colors font-medium cursor-pointer",
+                    ehUltimo
+                      ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/20"
+                      : "text-foreground hover:bg-accent"
+                  )}
                 >
                   {parte}
                 </button>
@@ -918,7 +958,7 @@ export default function Notas() {
         <BarraFerramentas
           busca={busca}
           aoMudarBusca={setBusca}
-          placeholderBusca="Buscar nota por título..."
+          placeholderBusca="Buscar nota por título ou conteúdo..."
           filtros={
             <BarraFiltrosAvancados
               propriedadesDisponiveis={propriedadesDisponiveis}
@@ -926,13 +966,23 @@ export default function Notas() {
               aoMudarRegras={setRegrasFiltro}
             />
           }
+          acoes={
+            <AlternadorVisao<ModoLayoutNotas>
+              valorAtivo={modoLayout}
+              aoAlternar={setModoLayout}
+              opcoes={[
+                { id: "grade", rotulo: "Grade", icone: <LayoutGrid size={14} /> },
+                { id: "lista", rotulo: "Lista", icone: <List size={14} /> },
+                { id: "mural", rotulo: "Mural", icone: <Columns size={14} /> },
+              ]}
+            />
+          }
         />
       )}
 
-
       {selecionadas.size > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 animate-in fade-in duration-150">
-          <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-2.5 animate-in fade-in duration-150 backdrop-blur-md">
+          <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
               {selecionadas.size}
             </span>
@@ -947,7 +997,7 @@ export default function Notas() {
                 if (destino) processarAcaoMenu({ tipo: "mover_para", pasta: destino });
                 e.target.value = "";
               }}
-              className="rounded-xl border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
+              className="rounded-xl border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer shadow-2xs"
               title="Mover selecionados para pasta"
             >
               <option value="" disabled>Mover para pasta...</option>
@@ -972,7 +1022,7 @@ export default function Notas() {
                   }
                 }
               }}
-              className="rounded-xl border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-28"
+              className="rounded-xl border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-28 shadow-2xs"
               title="Digite tags separadas por vírgula e pressione Enter"
             />
 
@@ -1007,6 +1057,92 @@ export default function Notas() {
           ser lido e está oculto: {ilegiveis.join(", ")}. Ele continua no
           repositório — abra pelo GitHub para conferir.
         </Aviso>
+      )}
+
+      {/* Seção Visual de Subpastas */}
+      {subpastas.length > 0 && (
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <FolderOpen size={13} className="text-amber-500" />
+              Pastas ({subpastas.length})
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+            {subpastas.map((pasta) => {
+              const caminhoPasta = pastaAtual ? `${pastaAtual}/${pasta}` : pasta;
+              const pastaId = `folder:${caminhoPasta}`;
+              const estaPastaSelecionada = selecionadas.has(pastaId);
+              const qtdNotas = contagemPorSubpasta[pasta] ?? 0;
+              const ehAlvo = pastaAlvo === caminhoPasta;
+
+              return (
+                <div
+                  key={`pasta-${caminhoPasta}`}
+                  data-cartao
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    setPastaAlvo(caminhoPasta);
+                  }}
+                  onDragLeave={() => {
+                    if (notaArrastada) setPastaAlvo(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const caminhoNota = e.dataTransfer.getData("text/plain") || notaArrastada;
+                    if (caminhoNota) {
+                      if (selecionadas.has(caminhoNota)) {
+                        processarAcaoMenu({ tipo: "mover_para", pasta: caminhoPasta });
+                      } else {
+                        moverNotaParaPasta(caminhoNota, caminhoPasta);
+                      }
+                      setNotaArrastada(null);
+                      setPastaAlvo(null);
+                    }
+                  }}
+                  onContextMenu={(e) => {
+                    e.stopPropagation();
+                    abrirMenuContexto(e, true);
+                  }}
+                  ref={(el) => {
+                    if (el) {
+                      cartoesRef.current.set(pastaId, el.getBoundingClientRect());
+                    } else {
+                      cartoesRef.current.delete(pastaId);
+                    }
+                  }}
+                  onClick={() => {
+                    if (selecionadas.size > 0) {
+                      alternarSelecao(pastaId);
+                    } else {
+                      setPastaAtual(caminhoPasta);
+                    }
+                  }}
+                  className={cn(
+                    "group relative flex items-center gap-3 p-3 rounded-2xl border transition-all duration-150 cursor-pointer select-none",
+                    "bg-card hover:bg-accent/40 border-border/80 hover:border-amber-500/50 hover:shadow-xs",
+                    estaPastaSelecionada && "border-primary bg-primary/10 ring-2 ring-primary/30",
+                    ehAlvo && "border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/40 scale-[1.02]"
+                  )}
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform">
+                    <FolderOpen size={18} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-bold text-xs text-foreground truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                      {pasta}
+                    </h4>
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                      {qtdNotas} {qtdNotas === 1 ? "nota" : "notas"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {carregando ? (
@@ -1049,127 +1185,180 @@ export default function Notas() {
           ref={gridRef}
           onMouseDown={iniciarArrasto}
           onContextMenu={(e) => abrirMenuContexto(e, false)}
-          className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 select-none min-h-[60vh] pb-24 content-start"
+          className="relative select-none min-h-[50vh] pb-24"
         >
-          {subpastas.map((pasta) => {
-            const caminhoPasta = pastaAtual ? `${pastaAtual}/${pasta}` : pasta;
-            const pastaId = `folder:${caminhoPasta}`;
-            const estaPastaSelecionada = selecionadas.has(pastaId);
-            return (
-              <div
-                key={`pasta-${caminhoPasta}`}
-                data-cartao
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                  setPastaAlvo(caminhoPasta);
-                }}
-                onDragLeave={() => {
-                  if (notaArrastada) setPastaAlvo(null);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const caminhoNota = e.dataTransfer.getData("text/plain") || notaArrastada;
-                  if (caminhoNota) {
-                    if (selecionadas.has(caminhoNota)) {
-                      processarAcaoMenu({ tipo: "mover_para", pasta: caminhoPasta });
-                    } else {
-                      moverNotaParaPasta(caminhoNota, caminhoPasta);
-                    }
-                    setNotaArrastada(null);
-                    setPastaAlvo(null);
-                  }
-                }}
-                onContextMenu={(e) => {
-                  e.stopPropagation();
-                  abrirMenuContexto(e, true);
-                }}
-                ref={(el) => {
-                  if (el) {
-                    cartoesRef.current.set(pastaId, el.getBoundingClientRect());
-                  } else {
-                    cartoesRef.current.delete(pastaId);
-                  }
-                }}
-              >
-                <CartaoItem
-                  icone={<FolderOpen size={18} className="text-primary" />}
-                  titulo={pasta}
-                  subtitulo="Pasta"
-                  selecionado={estaPastaSelecionada}
-                  className={
-                    pastaAlvo === caminhoPasta
-                      ? "border-primary bg-primary/10 ring-2 ring-primary/30"
-                      : ""
-                  }
-                  onClick={() => {
-                    if (selecionadas.size > 0) {
-                      alternarSelecao(pastaId);
-                    } else {
-                      setPastaAtual(caminhoPasta);
-                    }
-                  }}
-                />
-              </div>
-            );
-          })}
+          {modoLayout === "grade" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3.5">
+              {visiveis.map((nota) => {
+                const tituloNota = titulos[nota.caminho] ?? nota.titulo ?? nota.caminho;
+                const nomeArquivo = nota.caminho.split("/").pop() || "";
+                const estaSelecionada = selecionadas.has(nota.caminho);
+                const emSubpasta = nota.caminho.split("/").length > 2;
 
-          {visiveis.map((nota) => {
-            const tituloNota = titulos[nota.caminho] ?? nota.titulo ?? nota.caminho;
-            const nomeArquivo = nota.caminho.split("/").pop() || "";
-            const estaSelecionada = selecionadas.has(nota.caminho);
-            const emSubpasta = nota.caminho.split("/").length > 2;
+                const mostrarCaminho = filtroAtivo || emSubpasta;
+                const subtitulo = mostrarCaminho
+                  ? emSubpasta
+                    ? nota.caminho.split("/").slice(1, -1).join(" / ")
+                    : formatarNomeAmigavel(nomeArquivo)
+                  : undefined;
 
-            const mostrarCaminho = filtroAtivo || emSubpasta;
-            const subtitulo = mostrarCaminho
-              ? emSubpasta
-                ? nota.caminho.split("/").slice(1, -1).join(" / ")
-                : formatarNomeAmigavel(nomeArquivo)
-              : undefined;
+                return (
+                  <CartaoNotaVisual
+                    key={nota.caminho}
+                    nota={nota}
+                    tituloNota={tituloNota}
+                    subtitulo={subtitulo}
+                    selecionado={estaSelecionada}
+                    visao="grade"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", nota.caminho);
+                      setNotaArrastada(nota.caminho);
+                    }}
+                    onDragEnd={() => {
+                      setNotaArrastada(null);
+                      setPastaAlvo(null);
+                    }}
+                    ref={(el) => {
+                      if (el) {
+                        cartoesRef.current.set(nota.caminho, el.getBoundingClientRect());
+                      } else {
+                        cartoesRef.current.delete(nota.caminho);
+                      }
+                    }}
+                    onContextMenu={(e) => {
+                      e.stopPropagation();
+                      abrirMenuContexto(e, true);
+                    }}
+                    onClick={() => {
+                      if (selecionadas.size > 0) {
+                        alternarSelecao(nota.caminho);
+                      } else {
+                        abrir(nota);
+                      }
+                    }}
+                  />
+                );
+              })}
+            </div>
+          ) : modoLayout === "lista" ? (
+            <div className="flex flex-col gap-2">
+              {visiveis.map((nota) => {
+                const tituloNota = titulos[nota.caminho] ?? nota.titulo ?? nota.caminho;
+                const nomeArquivo = nota.caminho.split("/").pop() || "";
+                const estaSelecionada = selecionadas.has(nota.caminho);
+                const emSubpasta = nota.caminho.split("/").length > 2;
 
-            return (
-              <div
-                key={nota.caminho}
-                data-cartao
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.effectAllowed = "move";
-                  e.dataTransfer.setData("text/plain", nota.caminho);
-                  setNotaArrastada(nota.caminho);
-                }}
-                onDragEnd={() => {
-                  setNotaArrastada(null);
-                  setPastaAlvo(null);
-                }}
-                ref={(el) => {
-                  if (el) {
-                    cartoesRef.current.set(nota.caminho, el.getBoundingClientRect());
-                  } else {
-                    cartoesRef.current.delete(nota.caminho);
-                  }
-                }}
-                onContextMenu={(e) => {
-                  e.stopPropagation();
-                  abrirMenuContexto(e, true);
-                }}
-              >
-                <CartaoItem
-                  icone={<FileText size={18} />}
-                  titulo={tituloNota}
-                  subtitulo={subtitulo}
-                  tags={nota.tags}
-                  selecionado={estaSelecionada}
-                  onClick={() => {
-                    if (selecionadas.size > 0) {
-                      alternarSelecao(nota.caminho);
-                    } else {
-                      abrir(nota);
-                    }
-                  }}
-                />
-              </div>
-            );
-          })}
+                const mostrarCaminho = filtroAtivo || emSubpasta;
+                const subtitulo = mostrarCaminho
+                  ? emSubpasta
+                    ? nota.caminho.split("/").slice(1, -1).join(" / ")
+                    : formatarNomeAmigavel(nomeArquivo)
+                  : undefined;
+
+                return (
+                  <CartaoNotaVisual
+                    key={nota.caminho}
+                    nota={nota}
+                    tituloNota={tituloNota}
+                    subtitulo={subtitulo}
+                    selecionado={estaSelecionada}
+                    visao="lista"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", nota.caminho);
+                      setNotaArrastada(nota.caminho);
+                    }}
+                    onDragEnd={() => {
+                      setNotaArrastada(null);
+                      setPastaAlvo(null);
+                    }}
+                    ref={(el) => {
+                      if (el) {
+                        cartoesRef.current.set(nota.caminho, el.getBoundingClientRect());
+                      } else {
+                        cartoesRef.current.delete(nota.caminho);
+                      }
+                    }}
+                    onContextMenu={(e) => {
+                      e.stopPropagation();
+                      abrirMenuContexto(e, true);
+                    }}
+                    onClick={() => {
+                      if (selecionadas.size > 0) {
+                        alternarSelecao(nota.caminho);
+                      } else {
+                        abrir(nota);
+                      }
+                    }}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <Masonry
+              items={visiveis}
+              config={{
+                columns: [1, 2, 3, 4, 5],
+                gap: [14, 14, 14, 14, 14],
+                media: [640, 768, 1024, 1440, 1920],
+              }}
+              render={(nota) => {
+                const tituloNota = titulos[nota.caminho] ?? nota.titulo ?? nota.caminho;
+                const nomeArquivo = nota.caminho.split("/").pop() || "";
+                const estaSelecionada = selecionadas.has(nota.caminho);
+                const emSubpasta = nota.caminho.split("/").length > 2;
+
+                const mostrarCaminho = filtroAtivo || emSubpasta;
+                const subtitulo = mostrarCaminho
+                  ? emSubpasta
+                    ? nota.caminho.split("/").slice(1, -1).join(" / ")
+                    : formatarNomeAmigavel(nomeArquivo)
+                  : undefined;
+
+                return (
+                  <CartaoNotaVisual
+                    key={nota.caminho}
+                    nota={nota}
+                    tituloNota={tituloNota}
+                    subtitulo={subtitulo}
+                    selecionado={estaSelecionada}
+                    visao="mural"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", nota.caminho);
+                      setNotaArrastada(nota.caminho);
+                    }}
+                    onDragEnd={() => {
+                      setNotaArrastada(null);
+                      setPastaAlvo(null);
+                    }}
+                    ref={(el) => {
+                      if (el) {
+                        cartoesRef.current.set(nota.caminho, el.getBoundingClientRect());
+                      } else {
+                        cartoesRef.current.delete(nota.caminho);
+                      }
+                    }}
+                    onContextMenu={(e) => {
+                      e.stopPropagation();
+                      abrirMenuContexto(e, true);
+                    }}
+                    onClick={() => {
+                      if (selecionadas.size > 0) {
+                        alternarSelecao(nota.caminho);
+                      } else {
+                        abrir(nota);
+                      }
+                    }}
+                  />
+                );
+              }}
+            />
+          )}
 
           {marquee && (
             <div

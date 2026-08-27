@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, lazy, Suspense } from "react";
+import { useEffect, useState, useRef, useMemo, lazy, Suspense } from "react";
 import type { ExcalidrawInitialDataState } from "@excalidraw/excalidraw/types";
 import { Link } from "react-router-dom";
 import {
@@ -9,11 +9,11 @@ import {
   Trash2,
   Maximize2,
   Minimize2,
-  Copy,
   Check,
   Link as LinkIcon,
-  MoreVertical,
-  FileEdit,
+  LayoutGrid,
+  List,
+  Layers,
 } from "lucide-react";
 import "@excalidraw/excalidraw/index.css";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -24,10 +24,13 @@ import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
 import { tituloProvavel, nomeLivre, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
 import { propagarRenomeacao } from "@/lib/links";
+import { correspondeBusca } from "@/lib/utils";
 import { Botao, Campo, Aviso, Vazio, Carregando, ModalConfirmacao } from "@/components/ui";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
-import { CartaoItem } from "@/components/CartaoItem";
+import { BarraFerramentas } from "@/components/BarraFerramentas";
+import { AlternadorVisao } from "@/components/AlternadorVisao";
+import { SeloStatus } from "@/components/SeloStatus";
+import { CartaoLousaVisual } from "@/components/CartaoLousaVisual";
 import { toast } from "@/lib/toast";
 
 const PASTA = PASTAS.lousas;
@@ -56,22 +59,25 @@ export default function Lousas() {
   const pronto = configCompleta(cfg);
 
   // ── Carregamento ──────────────────────────────────────────────────────────
-  // useItemRepo retorna ItemRepo[] — lousas têm tratamento especial de abertura
-  // então não as convertemos aqui (a conversão acontece no `abrir`)
   const { itens: lousas, carregando, erro: erroCarregar, recarregar } =
     useItemRepo(cfg, PASTA, (item) => item);
 
   // ── Salvamento ────────────────────────────────────────────────────────────
-  // Uma única instância: duas chamadas criariam dois estados `salvando`/`erro`
-  // independentes, e o do apagar nunca chegaria à tela.
   const { salvarTexto, apagarItem, salvando, erro: erroSalvar } = useSalvar(cfg);
 
   // ── Estado da UI ──────────────────────────────────────────────────────────
   const [erroLocal, setErroLocal] = useState("");
-  /** Falha ao propagar um renomeio pelo repositório — separada do erro de salvar,
-   *  porque aqui a lousa FOI salva e só as menções nos outros arquivos ficaram para trás. */
   const [erroRenomeacao, setErroRenomeacao] = useState("");
   const erro = erroLocal || erroCarregar || erroSalvar;
+
+  const [busca, setBusca] = useState("");
+  const [modoVisao, setModoVisao] = useState<"grade" | "lista">(() => {
+    const salvo = localStorage.getItem("klaus_modo_visao_lousas");
+    return (salvo as "grade" | "lista") || "grade";
+  });
+  useEffect(() => {
+    localStorage.setItem("klaus_modo_visao_lousas", modoVisao);
+  }, [modoVisao]);
 
   const [aberta, setAberta] = useState<LousaAberta | null>(null);
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
@@ -108,7 +114,7 @@ export default function Lousas() {
           } else if (parsed && typeof parsed === "object") {
             dados = parsed;
             if ((parsed as Record<string, unknown>).title || (parsed as Record<string, unknown>).titulo) {
-              titulo = (parsed as Record<string, unknown>).title as string || (parsed as Record<string, unknown>).titulo as string;
+              titulo = ((parsed as Record<string, unknown>).title as string) || ((parsed as Record<string, unknown>).titulo as string);
             }
           }
         }
@@ -216,8 +222,6 @@ export default function Lousas() {
 
       const tituloLimpo = aberta.titulo.trim() || "Lousa Sem Título";
 
-
-
       const dadosParaSalvar = {
         title: tituloLimpo,
         elements: elementosValidos,
@@ -258,10 +262,6 @@ export default function Lousas() {
       const baseSucesso = `Lousa "${tituloLimpo}" salva com sucesso! (${elementosValidos.length} elementos gravados)`;
       toast(baseSucesso, { tipo: "sucesso" });
 
-      // Renomear uma lousa reescreve as menções dela em TODO o repositório. Se
-      // parte dessas gravações falhar, o acervo fica misto — metade dos links
-      // apontando para o nome novo, metade para o antigo. O usuário precisa
-      // saber disso na hora, senão fica com links quebrados sem sinal nenhum.
       if (aberta.tituloOriginal && aberta.tituloOriginal !== tituloLimpo) {
         try {
           const { atualizados, falhas } = await propagarRenomeacao(
@@ -324,7 +324,6 @@ export default function Lousas() {
     setTimeout(() => setCopiadoId(null), 2000);
   }
 
-  // Duplicar lousa
   async function duplicarLousa(item: ItemRepo, e?: React.MouseEvent) {
     if (e) e.stopPropagation();
     try {
@@ -351,6 +350,14 @@ export default function Lousas() {
     }
   }
 
+  // ── Lousas filtradas pela busca ───────────────────────────────────────────
+  const visiveis = useMemo(() => {
+    return lousas.filter((item) => {
+      const titulo = (item.doc?.dados?.titulo as string) || tituloProvavel(item.doc, item.nome);
+      return correspondeBusca(titulo, busca);
+    });
+  }, [lousas, busca]);
+
   // ── Sem configuração ────────────────────────────────────────────────────────
   if (!pronto) {
     return (
@@ -368,7 +375,12 @@ export default function Lousas() {
 
   const ehModoEscuro = document.documentElement.classList.contains("dark");
 
+  // ── LOUSA ABERTA (CANVAS EXCALIDRAW) ───────────────────────────────────────
   if (aberta) {
+    const totalElementosAtual = Array.isArray(aberta.dados?.elements)
+      ? aberta.dados.elements.filter((el: any) => !el.isDeleted).length
+      : 0;
+
     return (
       <div
         className={
@@ -378,21 +390,30 @@ export default function Lousas() {
         }
       >
         {/* Barra Superior da Lousa Aberta */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3">
-          <div className="flex items-center gap-2 flex-1 max-w-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card/90 backdrop-blur-md p-3 px-4 rounded-2xl border border-border/80 shadow-2xs">
+          <div className="flex items-center gap-2 flex-1 max-w-lg min-w-0">
             <Botao variante="fantasma" tamanho="pequeno" onClick={() => setAberta(null)}>
               <ArrowLeft size={16} />
               <span>Voltar</span>
             </Botao>
+
+            <div className="h-5 w-px bg-border/60 mx-1 shrink-0" />
+
             <Campo
               value={aberta.titulo}
               onChange={(e) => setAberta({ ...aberta, titulo: e.target.value })}
               placeholder="Nome do Mapa Mental / Lousa"
-              className="text-base font-semibold"
+              className="text-sm font-semibold flex-1"
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {/* Badge de contagem de elementos */}
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-xl bg-secondary text-muted-foreground border border-border/60">
+              <Layers size={13} className="text-cyan-500" />
+              {totalElementosAtual} {totalElementosAtual === 1 ? "elemento" : "elementos"}
+            </span>
+
             <Botao
               variante="neutro"
               tamanho="icone"
@@ -404,15 +425,33 @@ export default function Lousas() {
             </Botao>
 
             {aberta.caminho && (
-              <Botao
-                variante="fantasma"
-                tamanho="icone"
-                onClick={() => setLousaParaDeletar({ caminho: aberta.caminho, sha: aberta.sha, titulo: aberta.titulo })}
-                title="Apagar lousa"
-                aria-label="Apagar lousa"
-              >
-                <Trash2 size={16} className="text-red-500" />
-              </Botao>
+              <>
+                <Botao
+                  variante="neutro"
+                  tamanho="pequeno"
+                  onClick={(e) => copiarWikilink(aberta.caminho, aberta.titulo, e)}
+                  title="Copiar @menção"
+                >
+                  {copiadoId === aberta.caminho ? (
+                    <Check size={14} className="text-emerald-500" />
+                  ) : (
+                    <LinkIcon size={14} />
+                  )}
+                  <span className="hidden md:inline">
+                    {copiadoId === aberta.caminho ? "Copiado!" : "@Menção"}
+                  </span>
+                </Botao>
+
+                <Botao
+                  variante="fantasma"
+                  tamanho="icone"
+                  onClick={() => setLousaParaDeletar({ caminho: aberta.caminho, sha: aberta.sha, titulo: aberta.titulo })}
+                  title="Apagar lousa"
+                  aria-label="Apagar lousa"
+                >
+                  <Trash2 size={16} className="text-red-500" />
+                </Botao>
+              </>
             )}
 
             <Botao variante="primario" tamanho="pequeno" onClick={salvar} disabled={salvando}>
@@ -426,7 +465,7 @@ export default function Lousas() {
         {erroRenomeacao && <Aviso tom="erro">{erroRenomeacao}</Aviso>}
 
         {/* Canvas do Excalidraw */}
-        <div className="flex-1 w-full min-h-[500px] rounded-2xl overflow-hidden border border-border shadow-md bg-background relative">
+        <div className="flex-1 w-full min-h-[500px] rounded-3xl overflow-hidden border border-border shadow-md bg-background relative">
           <Suspense fallback={<Carregando texto="Carregando editor visual Excalidraw..." />}>
             <ExcalidrawComp
               key={aberta?.caminho ? `excalidraw-${aberta.caminho}` : "excalidraw-nova"}
@@ -478,6 +517,7 @@ export default function Lousas() {
     );
   }
 
+  // ── LISTA DE LOUSAS (VISÃO GERAL) ──────────────────────────────────────────
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       <CabecalhoPagina
@@ -485,6 +525,12 @@ export default function Lousas() {
         descricao="Desenhe diagramas, mapas mentais e conecte aos seus projetos, notas e metas."
         icone={<Layout size={20} />}
         corIcone="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
+        badge={
+          <SeloStatus
+            rotulo={`${visiveis.length} ${visiveis.length === 1 ? "lousa" : "lousas"}`}
+            tom="primario"
+          />
+        }
         acoes={
           <Botao variante="primario" onClick={novaLousa}>
             <Plus size={16} />
@@ -492,6 +538,24 @@ export default function Lousas() {
           </Botao>
         }
       />
+
+      {lousas.length > 0 && (
+        <BarraFerramentas
+          busca={busca}
+          aoMudarBusca={setBusca}
+          placeholderBusca="Buscar lousa ou mapa mental..."
+          acoes={
+            <AlternadorVisao<"grade" | "lista">
+              valorAtivo={modoVisao}
+              aoAlternar={setModoVisao}
+              opcoes={[
+                { id: "grade", rotulo: "Grade", icone: <LayoutGrid size={14} /> },
+                { id: "lista", rotulo: "Lista", icone: <List size={14} /> },
+              ]}
+            />
+          }
+        />
+      )}
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
       {erroRenomeacao && <Aviso tom="erro">{erroRenomeacao}</Aviso>}
@@ -505,74 +569,54 @@ export default function Lousas() {
           descricao="Crie seu primeiro mapa mental, fluxo ou diagrama visual no Excalidraw."
           acao={<Botao onClick={novaLousa}>Criar Primeira Lousa</Botao>}
         />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
-          {lousas.map((item) => {
+      ) : visiveis.length === 0 ? (
+        <Vazio
+          icone={<Layout size={24} />}
+          titulo="Nenhuma lousa encontrada"
+          descricao={`Nenhum mapa mental corresponde à busca por "${busca}".`}
+        />
+      ) : modoVisao === "grade" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4">
+          {visiveis.map((item) => {
             const titulo = (item.doc.dados.titulo as string) || tituloProvavel(item.doc, item.nome);
             return (
-              <CartaoItem
+              <CartaoLousaVisual
                 key={item.caminho}
-                icone={<Layout size={18} />}
+                item={item}
                 titulo={titulo}
+                visao="grade"
                 onClick={() => abrir(item)}
-                acoes={
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
-                        title="Opções da lousa"
-                        aria-label="Opções da lousa"
-                      >
-                        <MoreVertical size={16} />
-                      </button>
-                    </PopoverTrigger>
-
-                    <PopoverContent className="w-44 p-1 shadow-xl border-border" align="end" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
-                        onClick={() => abrir(item)}
-                      >
-                        <FileEdit size={13} />
-                        <span>Editar</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
-                        onClick={(e) => duplicarLousa(item, e)}
-                      >
-                        <Copy size={13} />
-                        <span>Duplicar</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
-                        onClick={(e) => copiarWikilink(item.caminho, titulo, e)}
-                      >
-                        {copiadoId === item.caminho ? <Check size={13} className="text-emerald-500" /> : <LinkIcon size={13} />}
-                        <span>{copiadoId === item.caminho ? "Copiado!" : "Copiar @menção"}</span>
-                      </button>
-
-                      <div className="h-px bg-border/50 my-1" />
-
-                      <button
-                        type="button"
-                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-destructive hover:bg-destructive/10 transition-colors cursor-pointer text-left"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLousaParaDeletar({ caminho: item.caminho, sha: item.sha, titulo });
-                        }}
-                      >
-                        <Trash2 size={13} />
-                        <span>Excluir</span>
-                      </button>
-                    </PopoverContent>
-                  </Popover>
-                }
+                onEditar={() => abrir(item)}
+                onDuplicar={(e) => duplicarLousa(item, e)}
+                onExcluir={(e) => {
+                  e.stopPropagation();
+                  setLousaParaDeletar({ caminho: item.caminho, sha: item.sha, titulo });
+                }}
+                copiado={copiadoId === item.caminho}
+                onCopiarMencao={(e) => copiarWikilink(item.caminho, titulo, e)}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {visiveis.map((item) => {
+            const titulo = (item.doc.dados.titulo as string) || tituloProvavel(item.doc, item.nome);
+            return (
+              <CartaoLousaVisual
+                key={item.caminho}
+                item={item}
+                titulo={titulo}
+                visao="lista"
+                onClick={() => abrir(item)}
+                onEditar={() => abrir(item)}
+                onDuplicar={(e) => duplicarLousa(item, e)}
+                onExcluir={(e) => {
+                  e.stopPropagation();
+                  setLousaParaDeletar({ caminho: item.caminho, sha: item.sha, titulo });
+                }}
+                copiado={copiadoId === item.caminho}
+                onCopiarMencao={(e) => copiarWikilink(item.caminho, titulo, e)}
               />
             );
           })}
