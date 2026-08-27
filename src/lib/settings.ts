@@ -312,11 +312,10 @@ export function nomeExibido(s: Settings): string {
 }
 
 /**
- * Decide se o passo a passo inicial deve aparecer.
+ * Decide se o passo a passo inicial (Onboarding / Tour) deve aparecer.
  *
- * Quem já tem configuração válida nunca vê — inclusive quem usava o app antes
- * deste campo existir, cuja config gravada não tem `onboardingConcluido`.
+ * Exibido sempre que o onboarding ainda não foi marcado como concluído.
  */
 export function precisaOnboarding(s: Settings): boolean {
-  return !configCompleta(s) && !s.onboardingConcluido;
+  return !s.onboardingConcluido;
 }

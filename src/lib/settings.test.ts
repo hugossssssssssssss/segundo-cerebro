@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { lerConfig, salvarConfig, PADRAO } from "./settings";
+import { lerConfig, salvarConfig, precisaOnboarding, PADRAO } from "./settings";
 
 describe("settings persistence", () => {
   beforeEach(() => {
@@ -35,4 +35,11 @@ describe("settings persistence", () => {
     expect(lidoAposReload.githubToken).toBe("github_pat_11ABCDEF_token_seguro");
     expect(lidoAposReload.repoOwner).toBe("hugosilva");
   });
+
+  it("precisaOnboarding retorna true se onboardingConcluido for false", () => {
+    expect(precisaOnboarding({ ...PADRAO, onboardingConcluido: false })).toBe(true);
+    expect(precisaOnboarding({ ...PADRAO, githubToken: "ghp_123", onboardingConcluido: false })).toBe(true);
+    expect(precisaOnboarding({ ...PADRAO, onboardingConcluido: true })).toBe(false);
+  });
 });
+

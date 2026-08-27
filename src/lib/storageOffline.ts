@@ -13,12 +13,14 @@ import type { RascunhoOffline } from "./offlineQueue";
 import { logger } from "./logger";
 
 const DB_NAME = "klaus_offline_db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "sync_queue";
+const STORE_SHA_CACHE = "sha_cache";
 const CHAVE_LEGADA_LOCALSTORAGE = "klaus:rascunhos_offline";
 
 let idbDisponivel: boolean | null = null;
 const memoriaFallback = new Map<string, RascunhoOffline>();
+const memoriaShaFallback = new Map<string, string>();
 
 function checarSuporteIDB(): boolean {
   if (idbDisponivel !== null) return idbDisponivel;
@@ -43,6 +45,9 @@ function abrirConexao(): Promise<IDBDatabase> {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(STORE_SHA_CACHE)) {
+        db.createObjectStore(STORE_SHA_CACHE, { keyPath: "sha" });
       }
     };
 
@@ -190,3 +195,112 @@ export async function migrarRascunhosLegadosLocalStorage(): Promise<number> {
     return 0;
   }
 }
+
+/**
+ * Salva múltiplos conteúdos de arquivos indexados por seu SHA no IndexedDB.
+ */
+export async function salvarTextosPorSha(itens: { sha: string; texto: string }[]): Promise<void> {
+  if (!itens || itens.length === 0) return;
+
+  for (const item of itens) {
+    if (item.sha && typeof item.texto === "string") {
+      memoriaShaFallback.set(item.sha, item.texto);
+    }
+  }
+
+  if (!checarSuporteIDB()) return;
+
+  try {
+    const db = await abrirConexao();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_SHA_CACHE, "readwrite");
+      const store = tx.objectStore(STORE_SHA_CACHE);
+      for (const item of itens) {
+        if (item.sha && typeof item.texto === "string") {
+          store.put(item);
+        }
+      }
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => {
+        logger.warn("Erro ao salvar lote de SHAs no IndexedDB:", tx.error);
+        resolve(); // não trava a execução
+      };
+    });
+  } catch (err) {
+    logger.warn("Falha ao abrir IndexedDB para salvar SHAs:", err);
+  }
+}
+
+/**
+ * Carrega em lote o texto dos arquivos a partir de uma lista de SHAs.
+ */
+export async function carregarTextosPorShas(shas: string[]): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>();
+  if (!shas || shas.length === 0) return mapa;
+
+  // Verifica primeiro na memória de fallback
+  for (const sha of shas) {
+    const txt = memoriaShaFallback.get(sha);
+    if (typeof txt === "string") {
+      mapa.set(sha, txt);
+    }
+  }
+
+  if (!checarSuporteIDB()) return mapa;
+
+  try {
+    const db = await abrirConexao();
+    const shasPendentes = shas.filter((sha) => !mapa.has(sha));
+    if (shasPendentes.length === 0) return mapa;
+
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(STORE_SHA_CACHE, "readonly");
+      const store = tx.objectStore(STORE_SHA_CACHE);
+
+      let concluidos = 0;
+      const total = shasPendentes.length;
+
+      for (const sha of shasPendentes) {
+        const req = store.get(sha);
+        req.onsuccess = () => {
+          if (req.result && typeof req.result.texto === "string") {
+            mapa.set(sha, req.result.texto);
+            memoriaShaFallback.set(sha, req.result.texto);
+          }
+          concluidos++;
+          if (concluidos >= total) resolve();
+        };
+        req.onerror = () => {
+          concluidos++;
+          if (concluidos >= total) resolve();
+        };
+      }
+    });
+  } catch (err) {
+    logger.warn("Falha ao ler SHAs do IndexedDB:", err);
+  }
+
+  return mapa;
+}
+
+/**
+ * Limpa todo o cache de SHAs do IndexedDB.
+ */
+export async function limparCacheSha(): Promise<void> {
+  memoriaShaFallback.clear();
+  if (!checarSuporteIDB()) return;
+
+  try {
+    const db = await abrirConexao();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_SHA_CACHE, "readwrite");
+      const store = tx.objectStore(STORE_SHA_CACHE);
+      const req = store.clear();
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
+    });
+  } catch (err) {
+    logger.warn("Falha ao limpar cache de SHAs do IndexedDB:", err);
+  }
+}
+

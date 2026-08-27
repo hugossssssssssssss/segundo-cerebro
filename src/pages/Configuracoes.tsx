@@ -8,6 +8,7 @@ import { useSalvar } from "@/lib/useSalvar";
 import { Botao, Campo, Cartao, Rotulo, Aviso } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { ModalPersonalizarMenu } from "@/components/ModalPersonalizarMenu";
+import { ModalTourGuiado } from "@/components/ModalTourGuiado";
 import { nomeLivre } from "@/lib/markdown";
 import { PASTAS } from "@/lib/tipos";
 
@@ -20,6 +21,7 @@ export default function Configuracoes() {
   const [etapas, setEtapas] = useState<Etapa[] | null>(null);
   const [diagnosticando, setDiagnosticando] = useState(false);
   const [modalPersonalizarAberta, setModalPersonalizarAberta] = useState(false);
+  const [modalTourAberta, setModalTourAberta] = useState(false);
   const { salvarTexto } = useSalvar(cfg);
   const [exportando, setExportando] = useState(false);
   const [importando, setImportando] = useState(false);
@@ -146,19 +148,27 @@ export default function Configuracoes() {
           <div className="space-y-1">
             <div className="flex items-center gap-2 font-medium text-foreground">
               <Sparkles size={20} className="text-amber-500" />
-              <span>Apresentação & Guia Inicial (Onboarding)</span>
+              <span>Apresentação & Guia Inicial (Tour & Onboarding)</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Deseja rever o tour de funcionalidades do Klaus ou refazer a configuração passo a passo?
+              Deseja rever o tour interativo pelas funcionalidades do Klaus ou refazer a configuração inicial do cofre?
             </p>
           </div>
-          <Link
-            to="/boas-vindas"
-            className="inline-flex items-center justify-center gap-2 h-11 px-4 text-sm font-medium rounded-lg bg-secondary text-secondary-foreground hover:bg-accent border border-border transition-colors shrink-0"
-          >
-            <Sparkles size={16} className="text-amber-500" />
-            Rever Apresentação
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <Botao
+              onClick={() => setModalTourAberta(true)}
+              className="gap-2"
+            >
+              <Sparkles size={16} className="text-amber-300" />
+              Fazer Tour Guiado
+            </Botao>
+            <Link
+              to="/boas-vindas"
+              className="inline-flex items-center justify-center gap-2 h-11 px-4 text-sm font-medium rounded-lg bg-secondary text-secondary-foreground hover:bg-accent border border-border transition-colors shrink-0"
+            >
+              Passo a Passo
+            </Link>
+          </div>
         </div>
       </Cartao>
 
@@ -561,6 +571,11 @@ export default function Configuracoes() {
       <ModalPersonalizarMenu
         aberta={modalPersonalizarAberta}
         aoFechar={() => setModalPersonalizarAberta(false)}
+      />
+
+      <ModalTourGuiado
+        aberta={modalTourAberta}
+        aoFechar={() => setModalTourAberta(false)}
       />
     </div>
   );

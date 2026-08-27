@@ -19,6 +19,7 @@
 import type { Settings } from "./settings";
 import { ErroGitHub, conferir } from "./github";
 import { lerMarkdown, type Documento } from "./markdown";
+import { salvarTextosPorSha, carregarTextosPorShas, limparCacheSha } from "./storageOffline";
 
 const BASE = "https://api.github.com";
 
@@ -123,6 +124,7 @@ export function esquecerTudo(): void {
   cache = null;
   cargaEmVoo = null;
   textoPorSha.clear();
+  limparCacheSha().catch(() => {});
 }
 
 function cabecalhos(cfg: Settings): HeadersInit {
@@ -373,7 +375,19 @@ async function carregarDeVerdade(
     return [];
   }
 
-  // Só baixa o conteúdo de quem mudou de sha.
+  // 1. Tenta carregar do IndexedDB os SHAs que ainda não estão na memória RAM
+  const shasFaltando = folhasFiltradas
+    .filter((f) => !textoPorSha.has(f.sha))
+    .map((f) => f.sha);
+
+  if (shasFaltando.length > 0) {
+    const doDisco = await carregarTextosPorShas(shasFaltando);
+    for (const [sha, texto] of doDisco.entries()) {
+      textoPorSha.set(sha, texto);
+    }
+  }
+
+  // 2. Só baixa da rede quem REALMENTE não foi encontrado nem na RAM nem no disco
   const faltando = folhasFiltradas
     .filter((f) => !textoPorSha.has(f.sha))
     .map((f) => f.path);
@@ -392,9 +406,18 @@ async function carregarDeVerdade(
 
     if (caminhosParaBaixar.length) {
       const baixados = await conteudoEmLote(cfg, caminhosParaBaixar);
+      const novosParaDisco: { sha: string; texto: string }[] = [];
+
       for (const f of folhasFiltradas) {
         const texto = baixados.get(f.path);
-        if (typeof texto === "string") textoPorSha.set(f.sha, texto);
+        if (typeof texto === "string") {
+          textoPorSha.set(f.sha, texto);
+          novosParaDisco.push({ sha: f.sha, texto });
+        }
+      }
+
+      if (novosParaDisco.length > 0) {
+        salvarTextosPorSha(novosParaDisco).catch(() => {});
       }
     }
   }
@@ -492,6 +515,7 @@ export function atualizarCacheLocal(
     if (jaConhecido !== undefined && jaConhecido !== texto) return;
 
     textoPorSha.set(sha, texto);
+    salvarTextosPorSha([{ sha, texto }]).catch(() => {});
   }
 
   const shaFinal = sha;

@@ -143,7 +143,7 @@ export default function Home() {
     if (!pronto) return;
 
     try {
-      const todos = await carregarRepo(cfg);
+      const todos = await carregarRepo(cfg, { memoria: 20_000 });
 
       // 1. Tarefas
       const docsTarefas = daPasta(todos, PASTAS.tarefas);

@@ -43,6 +43,7 @@ import { testarConexao } from "@/lib/github";
 import { criarKitInicial } from "@/lib/starterKit";
 import { Botao, Campo, Rotulo, Aviso } from "@/components/ui";
 import { LogoKlaus } from "@/components/LogoKlaus";
+import { ModalTourGuiado } from "@/components/ModalTourGuiado";
 
 /** Os passos do Onboarding, na ordem. */
 const PASSOS = [
@@ -69,6 +70,7 @@ export default function BoasVindas() {
   const navegar = useNavigate();
   const [cfg, setCfg] = useState<Settings>(lerConfig);
   const [passo, setPasso] = useState(0);
+  const [modalTourAberta, setModalTourAberta] = useState(false);
   const [testando, setTestando] = useState(false);
   const [verToken, setVerToken] = useState(false);
   const [verGemini, setVerGemini] = useState(false);
@@ -196,67 +198,131 @@ export default function BoasVindas() {
         </p>
       </div>
 
+      {/* Botão de Destaque para Iniciar o Tour Interativo */}
+      <button
+        type="button"
+        onClick={() => setModalTourAberta(true)}
+        className="w-full flex items-center justify-between p-3.5 sm:p-4 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/15 active:scale-[0.99] transition-all text-left group shadow-sm"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+            <Sparkles size={20} />
+          </div>
+          <div>
+            <span className="text-xs sm:text-sm font-bold text-foreground block group-hover:text-primary transition-colors">
+              Fazer Tour Guiado Interativo (Recomendado)
+            </span>
+            <span className="text-[11px] text-muted-foreground block">
+              Veja em 1 minuto como funcionam notas, tarefas, referências e atalhos.
+            </span>
+          </div>
+        </div>
+        <ArrowRight size={18} className="text-primary shrink-0 group-hover:translate-x-1 transition-transform ml-2" />
+      </button>
+
       {/* Grade de Recursos - 1 coluna no mobile, 2 no tablet/desktop */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-        <div className="p-3 rounded-xl border border-border bg-card/50 hover:bg-card/90 transition-colors space-y-1">
-          <div className="flex items-center gap-2 text-amber-500 font-semibold text-xs sm:text-sm">
-            <FileText size={15} className="shrink-0" />
-            <span>Notas & @Menções</span>
+        <button
+          type="button"
+          onClick={() => setModalTourAberta(true)}
+          className="p-3 rounded-xl border border-border bg-card/50 hover:bg-card/90 hover:border-amber-500/30 transition-all text-left space-y-1 group"
+        >
+          <div className="flex items-center justify-between text-amber-500 font-semibold text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <FileText size={15} className="shrink-0" />
+              <span>Notas & @Menções</span>
+            </div>
+            <ArrowRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
           <p className="text-[11px] sm:text-xs text-muted-foreground leading-normal">
             Conecte pensamentos e projetos em Markdown bidirecional com retrocompatibilidade total.
           </p>
-        </div>
+        </button>
 
-        <div className="p-3 rounded-xl border border-border bg-card/50 hover:bg-card/90 transition-colors space-y-1">
-          <div className="flex items-center gap-2 text-blue-500 font-semibold text-xs sm:text-sm">
-            <CheckSquare size={15} className="shrink-0" />
-            <span>Tarefas & Pomodoro</span>
+        <button
+          type="button"
+          onClick={() => setModalTourAberta(true)}
+          className="p-3 rounded-xl border border-border bg-card/50 hover:bg-card/90 hover:border-blue-500/30 transition-all text-left space-y-1 group"
+        >
+          <div className="flex items-center justify-between text-blue-500 font-semibold text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <CheckSquare size={15} className="shrink-0" />
+              <span>Tarefas & Pomodoro</span>
+            </div>
+            <ArrowRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
           <p className="text-[11px] sm:text-xs text-muted-foreground leading-normal">
             Listas Kanban, prioridades, subtarefas e cronômetro de foco direto na sua rotina.
           </p>
-        </div>
+        </button>
 
-        <div className="p-3 rounded-xl border border-border bg-card/50 hover:bg-card/90 transition-colors space-y-1">
-          <div className="flex items-center gap-2 text-pink-500 font-semibold text-xs sm:text-sm">
-            <ImageIcon size={15} className="shrink-0" />
-            <span>Referências Visuais</span>
+        <button
+          type="button"
+          onClick={() => setModalTourAberta(true)}
+          className="p-3 rounded-xl border border-border bg-card/50 hover:bg-card/90 hover:border-pink-500/30 transition-all text-left space-y-1 group"
+        >
+          <div className="flex items-center justify-between text-pink-500 font-semibold text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <ImageIcon size={15} className="shrink-0" />
+              <span>Referências Visuais</span>
+            </div>
+            <ArrowRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
           <p className="text-[11px] sm:text-xs text-muted-foreground leading-normal">
             Mural com extração automática de paletas de cor HEX e tags para seus projetos de design.
           </p>
-        </div>
+        </button>
 
-        <div className="p-3 rounded-xl border border-border bg-card/50 hover:bg-card/90 transition-colors space-y-1">
-          <div className="flex items-center gap-2 text-teal-500 font-semibold text-xs sm:text-sm">
-            <Target size={15} className="shrink-0" />
-            <span>Plano de Carreira (PDI)</span>
+        <button
+          type="button"
+          onClick={() => setModalTourAberta(true)}
+          className="p-3 rounded-xl border border-border bg-card/50 hover:bg-card/90 hover:border-teal-500/30 transition-all text-left space-y-1 group"
+        >
+          <div className="flex items-center justify-between text-teal-500 font-semibold text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <Target size={15} className="shrink-0" />
+              <span>Plano de Carreira (PDI)</span>
+            </div>
+            <ArrowRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
           <p className="text-[11px] sm:text-xs text-muted-foreground leading-normal">
             Metas trimestrais, entregas mensuráveis e acompanhamento visual do seu progresso.
           </p>
-        </div>
+        </button>
 
-        <div className="p-3 rounded-xl border border-border bg-card/50 hover:bg-card/90 transition-colors space-y-1">
-          <div className="flex items-center gap-2 text-cyan-500 font-semibold text-xs sm:text-sm">
-            <Network size={15} className="shrink-0" />
-            <span>Grafo & Lousas</span>
+        <button
+          type="button"
+          onClick={() => setModalTourAberta(true)}
+          className="p-3 rounded-xl border border-border bg-card/50 hover:bg-card/90 hover:border-cyan-500/30 transition-all text-left space-y-1 group"
+        >
+          <div className="flex items-center justify-between text-cyan-500 font-semibold text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <Network size={15} className="shrink-0" />
+              <span>Grafo & Lousas</span>
+            </div>
+            <ArrowRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
           <p className="text-[11px] sm:text-xs text-muted-foreground leading-normal">
             Mapa neural 3D das conexões e lousas infinitas para desenhar e rascunhar.
           </p>
-        </div>
+        </button>
 
-        <div className="p-3 rounded-xl border border-border bg-card/50 hover:bg-card/90 transition-colors space-y-1">
-          <div className="flex items-center gap-2 text-purple-500 font-semibold text-xs sm:text-sm">
-            <Bot size={15} className="shrink-0" />
-            <span>Assistente IA Gemini</span>
+        <button
+          type="button"
+          onClick={() => setModalTourAberta(true)}
+          className="p-3 rounded-xl border border-border bg-card/50 hover:bg-card/90 hover:border-purple-500/30 transition-all text-left space-y-1 group"
+        >
+          <div className="flex items-center justify-between text-purple-500 font-semibold text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <Bot size={15} className="shrink-0" />
+              <span>Assistente IA Gemini</span>
+            </div>
+            <ArrowRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
           <p className="text-[11px] sm:text-xs text-muted-foreground leading-normal">
             IA inteligente sob sua aprovação, resumindo documentos e sugerindo melhorias.
           </p>
-        </div>
+        </button>
       </div>
 
       {/* Pilares do App */}
@@ -775,6 +841,11 @@ export default function BoasVindas() {
           )}
         </div>
       </div>
+
+      <ModalTourGuiado
+        aberta={modalTourAberta}
+        aoFechar={() => setModalTourAberta(false)}
+      />
     </div>
   );
 }
