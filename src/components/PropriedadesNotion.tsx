@@ -16,6 +16,9 @@ import {
   Clock,
   X,
   Folder,
+  Inbox as InboxIcon,
+  Send as SendIcon,
+  Mail as MailIcon,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -337,6 +340,10 @@ export function PropriedadesNotion({
     if (chave === "indicador") return "Indicador";
     if (chave === "metas") return "Metas";
     if (chave === "data") return "Data";
+    if (chave === "horario" || chave === "hora") return "Horário";
+    if (chave === "aviso_inbox" || chave === "notificacao_inbox") return "Avisar na Caixa de Entrada";
+    if (chave === "aviso_telegram" || chave === "notificacao_telegram") return "Avisar no Telegram";
+    if (chave === "aviso_email" || chave === "notificacao_email") return "Avisar por E-mail";
     if (chave === "fonte" || chave === "sourceUrl") return "Link da fonte";
     if (rotulosMap[chave]) return rotulosMap[chave];
     if (chave === "relacionamentos" || chave === "relacao") return "Relacionamentos";
@@ -345,7 +352,7 @@ export function PropriedadesNotion({
     if (chave === "criado_em" || chave === "criado") return "Criado em";
     if (chave === "ultima_edicao" || chave === "atualizado") return "Última edição em";
     if (chave === "status") return "Status";
-    if (chave === "prazo") return "Prazo";
+    if (chave === "prazo") return rotuloTipo?.toLowerCase().includes("lembrete") ? "Data do Lembrete" : "Prazo";
     if (chave === "tags") return "Tags";
     return chave;
   }
@@ -554,7 +561,9 @@ export function PropriedadesNotion({
       chave === "criado_por" ? "criado_por" :
       chave === "criado_em" || chave === "criado" ? "criado_em" :
       chave === "ultima_edicao" || chave === "atualizado" ? "ultima_edicao" :
-      fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : "texto");
+      chave === "aviso_inbox" || chave === "aviso_telegram" || chave === "aviso_email" ? "checkbox" :
+      chave === "data" || chave === "prazo" ? "data" :
+      fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : typeof valor === "boolean" ? "checkbox" : "texto");
     const idPopover = `val-${chave}`;
 
     if (tipo === "status" || chave === "status") {
@@ -1290,8 +1299,19 @@ export function PropriedadesNotion({
       chave === "criado_por" ? "criado_por" :
       chave === "criado_em" || chave === "criado" ? "criado_em" :
       chave === "ultima_edicao" || chave === "atualizado" ? "ultima_edicao" :
+      chave === "aviso_inbox" || chave === "aviso_telegram" || chave === "aviso_email" ? "checkbox" :
+      chave === "data" || chave === "prazo" ? "data" :
       fixo?.tipo || esquema[chave] || "texto";
-    const IconeAtual = chave === "caminho" ? Folder : fixo?.icone ? () => <>{fixo.icone}</> : ICONES_TIPO[tipoAtual as TipoPropriedade] || Type;
+
+    const IconeAtual = 
+      chave === "caminho" ? Folder :
+      chave === "aviso_inbox" ? InboxIcon :
+      chave === "aviso_telegram" ? SendIcon :
+      chave === "aviso_email" ? MailIcon :
+      chave === "horario" || chave === "hora" ? Clock :
+      chave === "data" || chave === "prazo" ? CalendarIcon :
+      fixo?.icone ? () => <>{fixo.icone}</> : 
+      ICONES_TIPO[tipoAtual as TipoPropriedade] || Type;
     const visDefault = ["criado_por", "criado_em", "criado", "ultima_edicao", "atualizado", "caminho"].includes(chave) ? "esconder" : "sempre";
     const visAtual = visibilidadeMap[chave] || visDefault;
     const rotuloAtual = nomeExibido(chave);

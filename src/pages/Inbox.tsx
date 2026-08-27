@@ -380,17 +380,31 @@ export default function Inbox() {
       dataBr: formatarBr(hojeStr),
       caminho: "",
       sha: "",
-      corpo: "Descreva os detalhes do lembrete...",
+      corpo: "",
       dados: {
         titulo: "Novo Lembrete",
         prazo: hojeStr,
         horario: "09:00",
-        status: "a-fazer",
         aviso_inbox: true,
         aviso_telegram: true,
         aviso_email: false,
         tags: ["lembrete"],
         criado: hojeStr,
+        esquema: {
+          prazo: "data",
+          horario: "texto",
+          aviso_inbox: "checkbox",
+          aviso_telegram: "checkbox",
+          aviso_email: "checkbox",
+          tags: "multiselect",
+        },
+        _rotulos: {
+          prazo: "Data do Lembrete",
+          horario: "Horário",
+          aviso_inbox: "Avisar na Caixa de Entrada",
+          aviso_telegram: "Avisar no Telegram",
+          aviso_email: "Avisar por E-mail",
+        },
       },
     };
 
@@ -560,32 +574,40 @@ export default function Inbox() {
         <div className="flex items-center gap-2">
           {abaAtiva === "agenda" ? (
             <>
-              {/* Navegação Semanal */}
+              {/* Navegação Semanal Clara */}
               <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 shadow-2xs">
                 <button
                   type="button"
                   onClick={() => setDataReferencia((d) => subWeeks(d, 1))}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                  className="px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer flex items-center gap-1"
                   title="Semana anterior"
                 >
-                  <ChevronLeft size={15} />
+                  <ChevronLeft size={14} />
+                  <span className="hidden sm:inline">Anterior</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setDataReferencia(new Date())}
-                  className="px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-accent rounded-lg transition-colors cursor-pointer"
+                  className={cn(
+                    "px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer",
+                    isSameDay(inicioSemana, startOfWeek(hoje, { weekStartsOn: 1 }))
+                      ? "bg-secondary text-foreground font-bold"
+                      : "text-primary hover:bg-primary/10"
+                  )}
+                  title="Ir para a semana atual"
                 >
-                  Hoje
+                  Semana Atual
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setDataReferencia((d) => addWeeks(d, 1))}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                  className="px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer flex items-center gap-1"
                   title="Próxima semana"
                 >
-                  <ChevronRight size={15} />
+                  <span className="hidden sm:inline">Próxima</span>
+                  <ChevronRight size={14} />
                 </button>
               </div>
 
