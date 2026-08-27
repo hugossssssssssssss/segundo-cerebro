@@ -932,7 +932,7 @@ function ItemNoArvore({
       <div
         onClick={() => aoEditar(c)}
         className={cn(
-          "group relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border bg-card hover:border-primary/40 transition-all shadow-2xs cursor-pointer",
+          "group relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border bg-card hover:bg-accent/40 transition-colors cursor-pointer",
           no.nivel > 0 && "ml-4 sm:ml-8 border-l-4 border-l-primary/30",
         )}
       >
@@ -1086,7 +1086,7 @@ function CartaoContato({
   return (
     <Cartao
       onClick={() => aoEditar(c)}
-      className="flex flex-col justify-between p-4 space-y-3 relative group hover:border-primary/50 transition-all cursor-pointer"
+      className="flex flex-col justify-between p-4 space-y-3 relative group hover:bg-accent/30 transition-colors cursor-pointer"
     >
       <div className="space-y-2.5">
         <div className="flex items-start justify-between gap-2">

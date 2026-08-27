@@ -102,10 +102,10 @@ function CartaoSortable({
       ref={setNodeRef}
       style={style}
       onClick={() => aoClicar(card)}
-      className="group relative flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5 shadow-xs hover:border-primary/50 hover:shadow-md transition-all cursor-pointer select-none"
+      className="group relative flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5 hover:bg-accent/30 transition-colors cursor-pointer select-none"
     >
       <div className="flex items-start justify-between gap-2">
-        <h4 className="font-bold text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+        <h4 className="font-bold text-xs sm:text-sm text-foreground transition-colors line-clamp-2 leading-snug">
           {card.titulo}
         </h4>
         <div

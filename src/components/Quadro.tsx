@@ -170,10 +170,10 @@ function CartaoArrastavel({
       ref={setNodeRef}
       style={estilo}
       className={cn(
-        "group relative flex flex-col gap-1 p-3 text-xs select-none cursor-pointer transition-all hover:shadow-md",
+        "group relative flex flex-col gap-1 p-3 text-xs select-none cursor-pointer transition-colors hover:bg-accent/30",
         isDragging && "opacity-30",
         gravando && "animate-pulse border-primary",
-        isAtivo && "border-primary/60 bg-primary/5 shadow-md",
+        isAtivo && "border-primary/60 bg-primary/5",
       )}
       onClick={() => aoAbrir(t)}
     >

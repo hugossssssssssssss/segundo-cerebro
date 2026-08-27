@@ -175,7 +175,7 @@ export function MapaMentalEmbed({
   };
 
   return (
-    <div ref={containerRef} className="my-4 w-full rounded-2xl border border-indigo-500/30 bg-card overflow-hidden shadow-lg transition-all hover:border-indigo-500/50 group relative">
+    <div ref={containerRef} className="my-4 w-full rounded-2xl border border-border bg-card overflow-hidden group relative">
       {/* Cabeçalho com Alça de Arraste Estilo Notion */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-indigo-500/10 dark:bg-indigo-950/40 border-b border-indigo-500/20">
         <div className="flex items-center gap-1.5">

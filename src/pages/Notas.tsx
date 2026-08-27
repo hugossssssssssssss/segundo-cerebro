@@ -1121,17 +1121,17 @@ export default function Notas() {
                     }
                   }}
                   className={cn(
-                    "group relative flex items-center gap-3 p-3 rounded-2xl border transition-all duration-150 cursor-pointer select-none",
-                    "bg-card hover:bg-accent/40 border-border/80 hover:border-amber-500/50 hover:shadow-xs",
+                    "group relative flex items-center gap-3 p-3 rounded-2xl border transition-colors duration-150 cursor-pointer select-none",
+                    "bg-card hover:bg-accent/40 border-border/80 hover:border-border",
                     estaPastaSelecionada && "border-primary bg-primary/10 ring-2 ring-primary/30",
-                    ehAlvo && "border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/40 scale-[1.02]"
+                    ehAlvo && "border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/40"
                   )}
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-colors">
                     <FolderOpen size={18} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-bold text-xs text-foreground truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                    <h4 className="font-bold text-xs text-foreground truncate">
                       {pasta}
                     </h4>
                     <span className="text-[10px] text-muted-foreground font-medium">

@@ -43,13 +43,10 @@ export function WidgetNotasRecentes({
               <div
                 key={n.caminho}
                 onClick={() => aoAbrirNota(n.caminho)}
-                className="group relative flex flex-col justify-between p-3.5 rounded-2xl border border-border/60 bg-background/50 hover:bg-card hover:border-blue-500/40 hover:shadow-md transition-all duration-200 cursor-pointer min-h-[105px] overflow-hidden"
+                className="group relative flex flex-col justify-between p-3.5 rounded-2xl border border-border/60 bg-card hover:bg-accent/40 hover:border-border transition-colors duration-150 cursor-pointer min-h-[105px] overflow-hidden"
               >
-                {/* Indicador sutil de borda superior */}
-                <div className="absolute top-0 left-3 right-3 h-0.5 bg-gradient-to-r from-blue-500/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
                 <div className="space-y-1">
-                  <h4 className="text-xs font-bold text-foreground group-hover:text-blue-500 transition-colors line-clamp-1">
+                  <h4 className="text-xs font-bold text-foreground transition-colors line-clamp-1">
                     {n.titulo || "Nota sem título"}
                   </h4>
                   {previewCorpo && (

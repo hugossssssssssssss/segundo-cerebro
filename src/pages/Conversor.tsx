@@ -953,7 +953,7 @@ export default function Conversor() {
                 "flex flex-col text-left p-3.5 rounded-2xl border transition-all relative overflow-hidden group",
                 ativa
                   ? "bg-card border-primary shadow-md ring-2 ring-primary/20"
-                  : "bg-card/60 border-border/80 hover:border-border hover:bg-card hover:shadow-xs"
+                  : "bg-card/60 border-border/80 hover:border-border hover:bg-card"
               )}
             >
               <div className="flex items-center justify-between w-full mb-2">

@@ -433,7 +433,7 @@ export function Calendario({
                       key={t.caminho}
                       onClick={() => aoAbrir(t)}
                       className={cn(
-                        "p-3.5 rounded-xl border bg-card hover:bg-accent/60 hover:border-primary/50 transition-all cursor-pointer space-y-2.5 group shadow-2xs",
+                        "p-3.5 rounded-xl border bg-card hover:bg-accent/40 hover:border-border transition-colors cursor-pointer space-y-2.5 group",
                         ehFeito ? "border-border/40 opacity-70" : "border-border/80",
                       )}
                     >

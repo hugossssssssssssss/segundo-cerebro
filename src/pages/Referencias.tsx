@@ -583,7 +583,7 @@ export default function Referencias() {
                     setEditando(r);
                     setOrigRef(r);
                   }}
-                  className="group relative rounded-3xl overflow-hidden border border-border/80 bg-card hover:border-purple-500/50 hover:shadow-xl transition-all duration-300 cursor-pointer mb-4"
+                  className="group relative rounded-3xl overflow-hidden border border-border/80 bg-card hover:bg-accent/20 hover:border-border transition-colors duration-200 cursor-pointer mb-4"
                 >
                   {r.imagem ? (
                     <div className="relative aspect-auto overflow-hidden bg-black/5 dark:bg-black/20">
@@ -600,7 +600,7 @@ export default function Referencias() {
                   )}
 
                   <div className="p-4 space-y-2">
-                    <h4 className="font-bold text-sm text-foreground group-hover:text-purple-500 transition-colors">
+                    <h4 className="font-bold text-sm text-foreground transition-colors">
                       {r.titulo}
                     </h4>
 
@@ -633,11 +633,11 @@ export default function Referencias() {
                     setEditando(r);
                     setOrigRef(r);
                   }}
-                  className="group rounded-3xl overflow-hidden border border-border/80 bg-card hover:border-purple-500/50 hover:shadow-lg transition-all cursor-pointer flex flex-col"
+                  className="group rounded-3xl overflow-hidden border border-border/80 bg-card hover:bg-accent/20 hover:border-border transition-colors cursor-pointer flex flex-col"
                 >
                   <div className="aspect-square bg-black/5 overflow-hidden">
                     {r.imagem ? (
-                      <ImagemPrivada caminho={r.imagem} alt={r.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <ImagemPrivada caminho={r.imagem} alt={r.titulo} className="w-full h-full object-cover transition-transform duration-300" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground/40">
                         <ImageIcon size={24} />
@@ -645,7 +645,7 @@ export default function Referencias() {
                     )}
                   </div>
                   <div className="p-3">
-                    <p className="font-bold text-xs truncate group-hover:text-purple-500">{r.titulo}</p>
+                    <p className="font-bold text-xs truncate text-foreground">{r.titulo}</p>
                   </div>
                 </div>
               ))}
@@ -660,7 +660,7 @@ export default function Referencias() {
                     setEditando(r);
                     setOrigRef(r);
                   }}
-                  className="p-3.5 rounded-2xl border border-border/80 bg-card hover:bg-accent/60 hover:border-purple-500/40 transition-all cursor-pointer flex items-center justify-between gap-3 shadow-xs"
+                  className="p-3.5 rounded-2xl border border-border/80 bg-card hover:bg-accent/40 hover:border-border transition-colors cursor-pointer flex items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="h-10 w-10 rounded-xl overflow-hidden bg-secondary/50 shrink-0">
@@ -752,7 +752,7 @@ export default function Referencias() {
                       ? "border-primary bg-primary/10 scale-[1.01]"
                       : previa || editando.imagem
                         ? "border-border/60 bg-secondary/15"
-                        : "border-border hover:border-purple-500/50 bg-secondary/20 cursor-pointer"
+                        : "border-border hover:border-foreground/30 bg-secondary/20 cursor-pointer"
                   )}
                   onClick={() => {
                     if (!previa && !editando.imagem) inputArquivo.current?.click();

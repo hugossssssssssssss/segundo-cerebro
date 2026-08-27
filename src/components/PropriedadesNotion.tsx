@@ -868,7 +868,7 @@ export function PropriedadesNotion({
                     setCopiado(hex);
                     setTimeout(() => setCopiado(null), 1500);
                   }}
-                  className="group flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-mono transition-all active:scale-95 hover:shadow-sm"
+                  className="group flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-mono transition-all active:scale-95 hover:opacity-90"
                   style={{ backgroundColor: hex, color: parseInt(hex.replace('#',''), 16) > 0xffffff/2 ? '#000' : '#fff' }}
                   title={`Clique para copiar ${hex}`}
                 >

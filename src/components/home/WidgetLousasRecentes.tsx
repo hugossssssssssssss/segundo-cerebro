@@ -34,13 +34,13 @@ export function WidgetLousasRecentes({
             <div
               key={l.caminho}
               onClick={() => aoAbrirLousa(l.caminho)}
-              className="group p-2.5 rounded-2xl border border-border/50 bg-background/50 hover:bg-card hover:border-cyan-500/40 transition-all cursor-pointer flex items-center justify-between shadow-2xs"
+              className="group p-2.5 rounded-2xl border border-border/50 bg-card hover:bg-accent/40 hover:border-border transition-colors cursor-pointer flex items-center justify-between"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div className="h-7 w-7 rounded-lg bg-cyan-500/10 text-cyan-500 flex items-center justify-center shrink-0">
                   <Layout size={13} />
                 </div>
-                <span className="text-xs font-bold text-foreground group-hover:text-cyan-500 transition-colors truncate">
+                <span className="text-xs font-bold text-foreground transition-colors truncate">
                   {l.titulo}
                 </span>
               </div>

@@ -122,7 +122,7 @@ const AbaItem = memo(function AbaItem({
         "group relative flex items-center gap-2 px-3 py-1.5 text-xs font-medium cursor-pointer select-none touch-none will-change-transform transition-colors duration-150 max-w-[200px] sm:max-w-[240px] shrink-0",
         ativa
           ? "bg-card text-foreground border-t-2 border-t-primary border-x border-x-border/70 border-b-transparent shadow-xs font-semibold rounded-t-xl -mb-[1px] z-10"
-          : "bg-transparent text-muted-foreground hover:bg-card/60 hover:text-foreground border border-transparent rounded-lg my-1 hover:shadow-2xs",
+          : "bg-transparent text-muted-foreground hover:bg-card/60 hover:text-foreground border border-transparent rounded-lg my-1",
         isDragging && "shadow-xl bg-card/90 ring-1 ring-primary/30 rounded-xl"
       )}
       onClick={onSelecionar}

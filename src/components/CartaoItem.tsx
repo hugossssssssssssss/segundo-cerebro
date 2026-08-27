@@ -43,12 +43,12 @@ export function CartaoItem({
       onContextMenu={onContextMenu}
       className={cn(
         "p-4 transition-all duration-200 group relative flex flex-col justify-between border-border/80 bg-card",
-        onClick && "cursor-pointer hover:border-primary/50 hover:shadow-xs",
+        onClick && "cursor-pointer hover:border-border hover:bg-accent/30",
         ativo && "border-primary bg-primary/5 ring-1 ring-primary/20",
         selecionado &&
-        "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-md",
+        "border-primary bg-primary/10 ring-2 ring-primary/30",
         temTags &&
-        "border-l-4 border-l-amber-400/70 hover:border-l-amber-500",
+        "border-l-4 border-l-amber-400/70",
         className
       )}
     >
@@ -75,7 +75,7 @@ export function CartaoItem({
           {icone && (
             <div
               className={cn(
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/60 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors",
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/60 text-muted-foreground transition-colors",
                 temTags && "bg-amber-500/10 text-amber-600 dark:text-amber-400"
               )}
             >
@@ -84,7 +84,7 @@ export function CartaoItem({
           )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-semibold text-sm sm:text-base text-foreground leading-snug truncate group-hover:text-primary transition-colors">
+              <h3 className="font-semibold text-sm sm:text-base text-foreground leading-snug truncate transition-colors">
                 {titulo}
               </h3>
               {badge}

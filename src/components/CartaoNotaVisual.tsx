@@ -163,8 +163,8 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
           onContextMenu={onContextMenu}
           className={cn(
             "group relative flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border transition-all duration-150 select-none cursor-pointer",
-            "bg-card/90 hover:bg-accent/40 border-border/70 hover:border-amber-500/40 hover:shadow-xs",
-            selecionado && "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-md",
+            "bg-card hover:bg-accent/40 border-border/70 hover:border-border",
+            selecionado && "border-primary bg-primary/10 ring-2 ring-primary/30",
             className
           )}
         >
@@ -175,7 +175,7 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
                 "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors",
                 selecionado
                   ? "bg-primary text-primary-foreground font-bold text-xs"
-                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500/20"
+                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
               )}
             >
               {selecionado ? (
@@ -187,7 +187,7 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
 
             <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center sm:gap-3">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="font-semibold text-xs sm:text-sm text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate">
+                <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
                   {tituloNota}
                 </span>
 
@@ -261,10 +261,10 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
         onClick={onClick}
         onContextMenu={onContextMenu}
         className={cn(
-          "group relative flex flex-col justify-between rounded-2xl border transition-all duration-200 select-none cursor-pointer overflow-hidden p-4",
-          "bg-card/95 hover:bg-card border-border/80 hover:border-amber-500/40 hover:shadow-md hover:-translate-y-0.5",
+          "group relative flex flex-col justify-between rounded-2xl border transition-colors duration-150 select-none cursor-pointer overflow-hidden p-4",
+          "bg-card hover:bg-accent/20 border-border/80 hover:border-border",
           selecionado &&
-            "border-primary bg-primary/5 ring-2 ring-primary/30 shadow-md",
+            "border-primary bg-primary/5 ring-2 ring-primary/30",
           visao === "grade" && "min-h-[170px]",
           visao === "mural" && "mb-3",
           className
@@ -276,10 +276,10 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
             <div className="flex items-center gap-2.5 min-w-0">
               <div
                 className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all",
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors",
                   selecionado
                     ? "bg-primary text-primary-foreground"
-                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:scale-105 group-hover:bg-amber-500/20"
+                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
                 )}
               >
                 {selecionado ? (
@@ -290,7 +290,7 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
               </div>
 
               <div className="min-w-0 flex-1">
-                <h3 className="font-bold text-sm text-foreground leading-snug truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                <h3 className="font-bold text-sm text-foreground leading-snug truncate">
                   {tituloNota}
                 </h3>
                 {subtitulo && (

@@ -98,7 +98,7 @@ export function WidgetHubFerramentas() {
           <Link
             key={idx}
             to={f.rota}
-            className="group p-2.5 rounded-xl border border-border/60 bg-background/60 hover:bg-card hover:border-border hover:shadow-sm transition-all flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer"
+            className="group p-2.5 rounded-xl border border-border/60 bg-background/60 hover:bg-card hover:border-border transition-colors flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer"
           >
             <div className="p-2 rounded-lg bg-secondary text-foreground group-hover:text-primary transition-colors">
               <Icone size={16} />

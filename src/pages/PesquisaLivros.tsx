@@ -188,7 +188,7 @@ export default function PesquisaLivros() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
             {livros.map((livro) => (
-              <Cartao key={livro.id} className="flex p-4 gap-4 items-stretch group hover:border-primary/50 transition-colors shadow-2xs hover:shadow-xs">
+              <Cartao key={livro.id} className="flex p-4 gap-4 items-stretch group hover:bg-accent/20 transition-colors">
                 {/* Capa */}
                 <div className="aspect-[2/3] w-24 sm:w-28 shrink-0 relative overflow-hidden rounded-lg border border-border bg-muted flex items-center justify-center shadow-3xs">
                   {livro.capaUrl ? (

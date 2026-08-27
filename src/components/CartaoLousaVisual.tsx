@@ -162,16 +162,16 @@ export function CartaoLousaVisual({
       <div
         ref={containerRef}
         onClick={onClick}
-        className="group flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-border/80 bg-card/90 hover:bg-card hover:border-cyan-500/40 hover:shadow-xs transition-all duration-150 cursor-pointer select-none"
+        className="group flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-border/80 bg-card hover:bg-accent/40 hover:border-border transition-colors duration-150 cursor-pointer select-none"
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 group-hover:bg-cyan-500/20 transition-colors">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 transition-colors">
             <Layout size={18} />
           </div>
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-xs sm:text-sm text-foreground group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors truncate">
+              <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
                 {titulo}
               </span>
 
@@ -260,7 +260,7 @@ export function CartaoLousaVisual({
     <div
       ref={containerRef}
       onClick={onClick}
-      className="group relative flex flex-col justify-between rounded-3xl border border-border/80 bg-card hover:border-cyan-500/50 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden select-none"
+      className="group relative flex flex-col justify-between rounded-3xl border border-border/80 bg-card hover:bg-accent/20 hover:border-border transition-colors duration-150 cursor-pointer overflow-hidden select-none"
     >
       {/* Área de Preview Visual do Canvas */}
       <div className="relative h-40 w-full overflow-hidden bg-accent/20 border-b border-border/50 flex items-center justify-center p-3">
@@ -276,12 +276,12 @@ export function CartaoLousaVisual({
         {/* Miniatura do Desenho */}
         {svgHtml ? (
           <div
-            className="w-full h-full flex items-center justify-center pointer-events-none transition-transform duration-300 group-hover:scale-105"
+            className="w-full h-full flex items-center justify-center pointer-events-none"
             dangerouslySetInnerHTML={{ __html: sanitizarHTML(svgHtml) }}
           />
         ) : (
           <div className="flex flex-col items-center justify-center text-muted-foreground/50 gap-2 pointer-events-none">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
               <Shapes size={24} />
             </div>
             <span className="text-[11px] font-medium tracking-tight">
@@ -376,7 +376,7 @@ export function CartaoLousaVisual({
       {/* Conteúdo Inferior do Cartão */}
       <div className="p-4 flex flex-col justify-between flex-1 gap-2">
         <div>
-          <h3 className="font-bold text-sm text-foreground leading-snug truncate group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+          <h3 className="font-bold text-sm text-foreground leading-snug truncate">
             {titulo}
           </h3>
           <p className="text-[11px] text-muted-foreground/80 mt-1 truncate">
@@ -393,7 +393,7 @@ export function CartaoLousaVisual({
             Excalidraw
           </span>
 
-          <span className="flex items-center gap-1 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 font-semibold transition-colors">
+          <span className="flex items-center gap-1 font-semibold text-muted-foreground hover:text-foreground transition-colors">
             Abrir editor →
           </span>
         </div>

@@ -369,7 +369,7 @@ export default function Noticias() {
               {noticiaHero && (
                 <div
                   onClick={() => handleAbrirLeitor(noticiaHero)}
-                  className="relative rounded-3xl overflow-hidden border border-border bg-card shadow-lg cursor-pointer group transition-all duration-300 hover:shadow-2xl"
+                  className="relative rounded-3xl overflow-hidden border border-border bg-card cursor-pointer group"
                 >
                   <div className="relative h-72 sm:h-96 w-full overflow-hidden bg-muted">
                     <img
@@ -427,7 +427,7 @@ export default function Noticias() {
                 {noticiasSecundarias.map((item) => (
                   <article
                     key={item.id}
-                    className="flex flex-col justify-between rounded-2xl border border-border bg-card overflow-hidden shadow-xs hover:border-primary/40 hover:shadow-md transition-all group"
+                    className="flex flex-col justify-between rounded-2xl border border-border bg-card overflow-hidden transition-colors group"
                   >
                     <div
                       onClick={() => handleAbrirLeitor(item)}
@@ -514,7 +514,7 @@ export default function Noticias() {
               {noticiasFiltradas.map((item) => (
                 <article
                   key={item.id}
-                  className="flex flex-col justify-between rounded-2xl border border-border bg-card overflow-hidden shadow-xs hover:border-primary/40 hover:shadow-md transition-all group"
+                  className="flex flex-col justify-between rounded-2xl border border-border bg-card overflow-hidden transition-colors group"
                 >
                   <div
                     onClick={() => handleAbrirLeitor(item)}
@@ -539,7 +539,7 @@ export default function Noticias() {
                         <span>{new Date(item.data).toLocaleDateString("pt-BR")}</span>
                         <span>⏱️ {item.tempoLeituraMinutos} min</span>
                       </div>
-                      <h2 className="font-bold text-sm leading-snug tracking-tight text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+                      <h2 className="font-bold text-sm leading-snug tracking-tight text-foreground line-clamp-2 transition-colors">
                         {item.titulo}
                       </h2>
                       {item.descricao && (
@@ -598,7 +598,7 @@ export default function Noticias() {
               {noticiasFiltradas.map((item) => (
                 <article
                   key={item.id}
-                  className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl border border-border bg-card shadow-xs hover:border-primary/40 hover:shadow-md transition-all group"
+                  className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl border border-border bg-card transition-colors group"
                 >
                   <div
                     onClick={() => handleAbrirLeitor(item)}

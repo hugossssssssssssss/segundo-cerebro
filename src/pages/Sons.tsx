@@ -161,8 +161,8 @@ export default function Sons() {
             <Cartao
               key={som.id}
               onClick={() => selecionarSom(som.id)}
-              className={`border p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer flex flex-col justify-between min-h-[160px] ${obterGradiente(som.id)} ${
-                ativo ? "ring-2 ring-primary bg-card/60" : "bg-card/20"
+              className={`border p-5 transition-colors duration-150 cursor-pointer flex flex-col justify-between min-h-[160px] ${obterGradiente(som.id)} ${
+                ativo ? "ring-2 ring-primary bg-card/60" : "bg-card/20 hover:bg-card/50"
               }`}
             >
               <div className="flex justify-between items-start gap-4">
