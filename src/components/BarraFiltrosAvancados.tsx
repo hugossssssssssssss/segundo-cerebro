@@ -1,12 +1,11 @@
 /**
- * BarraFiltrosAvancados — Sistema de Filtragem Global por Propriedades (Estilo Notion)
+ * BarraFiltrosAvancados — Sistema de Filtragem Global por Propriedades (Estilo Notion / Linear)
  *
- * Funcionalidades:
- * 1. Botão simples de filtro (apenas ícone).
- * 2. Ao clicar, abre popover com busca "Procurar propriedade..." e lista de todas as propriedades.
- * 3. Ao selecionar uma propriedade, adiciona uma pílula na linha de filtros com operador e campo de valor.
- * 4. Botão "+ Filtrar" para adicionar múltiplos filtros combinados (AND).
- * 5. Reutilizável em Notas, Tarefas, Referências, Metas e Lousas.
+ * Design & UX:
+ * - Botão de filtro minimalista com badge de contagem de filtros ativos.
+ * - Menu Popover fluído com busca rápida e lista categorizada com ícones coloridos exclusivos.
+ * - Pílulas de filtro elegantes (chips) com controles integrados, menus refinados de operadores e valores.
+ * - Suporte completo a Notas, Tarefas, Referências e Metas.
  */
 
 import { useState, useMemo } from "react";
@@ -18,10 +17,16 @@ import {
   Type,
   Tags as TagsIcon,
   Calendar as CalendarIcon,
+  CalendarPlus,
   Clock,
   User,
   ListTodo,
   Hash,
+  Link as LinkIcon,
+  FolderOpen,
+  Flame,
+  CheckSquare,
+  ChevronDown,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -44,7 +49,7 @@ export interface DefinicaoPropriedade {
   id: string;
   rotulo: string;
   tipo: TipoPropriedadeFiltro;
-  opcoes?: string[]; // Opções para status ou tags
+  opcoes?: string[];
   icone?: React.ReactNode;
 }
 
@@ -61,16 +66,16 @@ export const OPERADORES_POR_TIPO: Record<TipoPropriedadeFiltro, { id: OperadorFi
   texto: [
     { id: "contem", rotulo: "contém" },
     { id: "nao_contem", rotulo: "não contém" },
-    { id: "igual", rotulo: "é exatamente" },
+    { id: "igual", rotulo: "é igual a" },
     { id: "comeca_com", rotulo: "começa com" },
     { id: "vazio", rotulo: "está vazio" },
     { id: "nao_vazio", rotulo: "não está vazio" },
   ],
   tags: [
-    { id: "contem", rotulo: "contém" },
+    { id: "contem", rotulo: "contém tag" },
     { id: "nao_contem", rotulo: "não contém" },
-    { id: "vazio", rotulo: "está sem tags" },
-    { id: "nao_vazio", rotulo: "tem alguma tag" },
+    { id: "vazio", rotulo: "sem tags" },
+    { id: "nao_vazio", rotulo: "com tags" },
   ],
   status: [
     { id: "igual", rotulo: "é" },
@@ -78,35 +83,49 @@ export const OPERADORES_POR_TIPO: Record<TipoPropriedadeFiltro, { id: OperadorFi
   ],
   data: [
     { id: "eh_hoje", rotulo: "é hoje" },
-    { id: "antes_de", rotulo: "está antes de" },
-    { id: "depois_de", rotulo: "está depois de" },
-    { id: "vazio", rotulo: "está sem data" },
-    { id: "nao_vazio", rotulo: "tem data definida" },
+    { id: "antes_de", rotulo: "antes de" },
+    { id: "depois_de", rotulo: "depois de" },
+    { id: "vazio", rotulo: "sem data" },
+    { id: "nao_vazio", rotulo: "com data" },
   ],
   numero: [
-    { id: "igual", rotulo: "é igual a" },
-    { id: "antes_de", rotulo: "é menor que" },
-    { id: "depois_de", rotulo: "é maior que" },
-    { id: "vazio", rotulo: "está vazio" },
+    { id: "igual", rotulo: "=" },
+    { id: "antes_de", rotulo: "<" },
+    { id: "depois_de", rotulo: ">" },
+    { id: "vazio", rotulo: "vazio" },
   ],
   checkbox: [
-    { id: "igual", rotulo: "está marcado" },
-    { id: "vazio", rotulo: "não está marcado" },
+    { id: "igual", rotulo: "marcado" },
+    { id: "vazio", rotulo: "desmarcado" },
   ],
 };
 
-const ICONES_PADRAO: Record<string, React.ReactNode> = {
-  titulo: <Type size={13} />,
-  nome: <Type size={13} />,
-  tags: <TagsIcon size={13} />,
-  status: <ListTodo size={13} />,
-  prazo: <CalendarIcon size={13} />,
-  data: <CalendarIcon size={13} />,
-  criado_em: <Clock size={13} />,
-  atualizado_em: <Clock size={13} />,
-  criado_por: <User size={13} />,
-  estimativa: <Hash size={13} />,
-  pomodoro: <Hash size={13} />,
+const RENDER_ICONE_PROPRIEDADE = (id: string, tipo: TipoPropriedadeFiltro, customIcon?: React.ReactNode) => {
+  if (customIcon) return customIcon;
+  const idNorm = id.toLowerCase();
+
+  if (idNorm.includes("tag")) return <TagsIcon size={13} className="text-amber-500" />;
+  if (idNorm.includes("status")) return <ListTodo size={13} className="text-emerald-500" />;
+  if (idNorm.includes("prazo") || idNorm === "data") return <CalendarIcon size={13} className="text-rose-500" />;
+  if (idNorm.includes("criado")) return <CalendarPlus size={13} className="text-indigo-500" />;
+  if (idNorm.includes("atualizado") || idNorm.includes("edicao")) return <Clock size={13} className="text-teal-500" />;
+  if (idNorm.includes("fonte") || idNorm.includes("link")) return <LinkIcon size={13} className="text-blue-500" />;
+  if (idNorm.includes("pasta") || idNorm.includes("caminho")) return <FolderOpen size={13} className="text-amber-600" />;
+  if (idNorm.includes("pomodoro") || idNorm.includes("esforco")) return <Flame size={13} className="text-orange-500" />;
+  if (idNorm.includes("autor") || idNorm.includes("usuario") || idNorm.includes("criado_por")) return <User size={13} className="text-purple-500" />;
+  if (tipo === "checkbox") return <CheckSquare size={13} className="text-blue-500" />;
+  if (tipo === "numero") return <Hash size={13} className="text-cyan-500" />;
+
+  return <Type size={13} className="text-sky-500" />;
+};
+
+const ROTULO_TIPO_AMIGAVEL: Record<TipoPropriedadeFiltro, string> = {
+  texto: "Texto",
+  tags: "Tags",
+  status: "Status",
+  data: "Data",
+  numero: "Número",
+  checkbox: "Seleção",
 };
 
 export interface BarraFiltrosAvancadosProps {
@@ -128,7 +147,7 @@ export function BarraFiltrosAvancados({
   const propriedadesFiltradas = useMemo(() => {
     if (!buscaPropriedade.trim()) return propriedadesDisponiveis;
     const b = buscaPropriedade.toLowerCase();
-    return propriedadesDisponiveis.filter((p) => p.rotulo.toLowerCase().includes(b));
+    return propriedadesDisponiveis.filter((p) => p.rotulo.toLowerCase().includes(b) || p.id.toLowerCase().includes(b));
   }, [propriedadesDisponiveis, buscaPropriedade]);
 
   const adicionarFiltro = (prop: DefinicaoPropriedade) => {
@@ -175,63 +194,79 @@ export function BarraFiltrosAvancados({
 
   return (
     <div className={cn("flex items-center gap-2 flex-wrap text-xs", className)}>
-      {/* Botão Principal de Filtro (ou "+ Filtrar" se já houver regras) */}
+      {/* Botão de Disparo do Filtro */}
       <Popover open={menuAddAberto} onOpenChange={setMenuAddAberto}>
         <PopoverTrigger asChild>
           {regras.length === 0 ? (
             <Button
               variant="outline"
               size="sm"
-              className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground cursor-pointer shadow-2xs"
+              className="h-9 px-2.5 rounded-xl border border-border/80 bg-background/80 hover:bg-accent text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-2xs gap-1.5 font-medium"
               title="Filtrar por propriedade"
               aria-label="Filtrar por propriedade"
             >
-              <Filter size={14} />
+              <Filter size={14} className="text-primary/80" />
+              <span className="text-xs">Filtro</span>
             </Button>
           ) : (
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-2 text-xs rounded-lg text-primary border-primary/30 bg-primary/5 hover:bg-primary/10 gap-1 cursor-pointer font-semibold"
+              className="h-9 px-3 text-xs rounded-xl text-primary border-primary/40 bg-primary/10 hover:bg-primary/15 transition-all gap-1.5 cursor-pointer font-semibold shadow-2xs"
             >
-              <Plus size={12} />
-              <span>Filtrar</span>
+              <Plus size={13} strokeWidth={2.5} />
+              <span>Filtrar ({regras.length})</span>
             </Button>
           )}
         </PopoverTrigger>
 
-        <PopoverContent className="w-64 p-2 shadow-2xl border-border rounded-xl" align="start">
+        <PopoverContent
+          className="w-72 p-2 shadow-2xl border-border/80 bg-popover/95 backdrop-blur-xl rounded-2xl animate-in fade-in-50 zoom-in-95 duration-150"
+          align="start"
+        >
           <div className="space-y-2">
+            {/* Campo de Busca de Propriedades */}
             <div className="relative">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <input
                 type="text"
                 value={buscaPropriedade}
                 onChange={(e) => setBuscaPropriedade(e.target.value)}
                 placeholder="Procurar propriedade..."
                 autoFocus
-                className="w-full bg-secondary/40 border border-border/80 rounded-lg pl-8 pr-2.5 py-1 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary"
+                className="w-full bg-secondary/50 border border-border/60 rounded-xl pl-8.5 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/40 transition-all font-medium"
               />
             </div>
 
-            <div className="max-h-52 overflow-y-auto space-y-0.5 pt-1 divide-y divide-border/20">
+            {/* Lista com Propriedades e Ícones Elegantes */}
+            <div className="max-h-56 overflow-y-auto space-y-1 pt-1 pr-0.5 custom-scrollbar">
               {propriedadesFiltradas.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground text-center py-4">
+                <div className="py-6 text-center text-xs text-muted-foreground">
                   Nenhuma propriedade encontrada
-                </p>
+                </div>
               ) : (
                 propriedadesFiltradas.map((p) => {
-                  const Icone = p.icone || ICONES_PADRAO[p.id] || <Type size={13} />;
+                  const Icone = RENDER_ICONE_PROPRIEDADE(p.id, p.tipo, p.icone);
+                  const tipoTexto = ROTULO_TIPO_AMIGAVEL[p.tipo] || "Geral";
+
                   return (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => adicionarFiltro(p)}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-left text-foreground hover:bg-accent transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs text-left text-foreground hover:bg-accent/80 transition-all cursor-pointer group"
                     >
-                      <span className="text-muted-foreground shrink-0">{Icone}</span>
-                      <span className="truncate font-medium flex-1">{p.rotulo}</span>
-                      <span className="text-[10px] text-muted-foreground uppercase font-mono">{p.tipo}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="h-6 w-6 rounded-lg bg-secondary/60 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
+                          {Icone}
+                        </div>
+                        <span className="truncate font-semibold text-foreground/90 group-hover:text-foreground">
+                          {p.rotulo}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-medium text-muted-foreground bg-secondary/40 px-1.5 py-0.5 rounded-md shrink-0">
+                        {tipoTexto}
+                      </span>
                     </button>
                   );
                 })
@@ -241,104 +276,116 @@ export function BarraFiltrosAvancados({
         </PopoverContent>
       </Popover>
 
-      {/* Linha de Filtros Ativos (Chips) */}
+      {/* Pílulas de Filtros Ativos (Estilo Notion Linear) */}
       {regras.map((regra) => {
         const propDef = propriedadesDisponiveis.find((p) => p.id === regra.propriedadeId);
         const operadoresDisponiveis = OPERADORES_POR_TIPO[regra.tipo] || OPERADORES_POR_TIPO.texto;
         const precisaValor = regra.operador !== "vazio" && regra.operador !== "nao_vazio" && regra.operador !== "eh_hoje";
-        const Icone = propDef?.icone || ICONES_PADRAO[regra.propriedadeId] || <Type size={12} />;
+        const Icone = RENDER_ICONE_PROPRIEDADE(regra.propriedadeId, regra.tipo, propDef?.icone);
 
         return (
           <div
             key={regra.id}
-            className="flex items-center gap-1 bg-card border border-border/80 rounded-xl px-2 py-0.5 shadow-2xs animate-in fade-in zoom-in-95 duration-100"
+            className="inline-flex items-center rounded-xl bg-card border border-border/80 shadow-2xs hover:border-primary/40 transition-all overflow-hidden text-xs animate-in fade-in zoom-in-95 duration-100 divide-x divide-border/60"
           >
-            {/* Nome da Propriedade */}
-            <span className="flex items-center gap-1 font-semibold text-[11px] text-foreground shrink-0 select-none">
-              <span className="text-primary/70">{Icone}</span>
-              <span>{regra.rotulo}</span>
-            </span>
+            {/* Bloco 1: Nome da Propriedade com Ícone */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-secondary/20 select-none font-semibold text-foreground shrink-0">
+              <span className="shrink-0">{Icone}</span>
+              <span className="text-[11px]">{regra.rotulo}</span>
+            </div>
 
-            {/* Seletor de Operador */}
-            <select
-              value={regra.operador}
-              onChange={(e) => atualizarRegra(regra.id, { operador: e.target.value as OperadorFiltro })}
-              className="bg-secondary/40 border border-border/50 text-[11px] font-medium text-muted-foreground hover:text-foreground rounded-md px-1.5 py-0.5 outline-none cursor-pointer"
-            >
-              {operadoresDisponiveis.map((op) => (
-                <option key={op.id} value={op.id}>
-                  {op.rotulo}
-                </option>
-              ))}
-            </select>
+            {/* Bloco 2: Seletor Elegante de Operador */}
+            <div className="relative flex items-center bg-background/50 px-1.5 py-1">
+              <select
+                value={regra.operador}
+                onChange={(e) => atualizarRegra(regra.id, { operador: e.target.value as OperadorFiltro })}
+                className="appearance-none bg-transparent pr-4 pl-1 text-[11px] font-medium text-muted-foreground hover:text-foreground outline-none cursor-pointer"
+              >
+                {operadoresDisponiveis.map((op) => (
+                  <option key={op.id} value={op.id}>
+                    {op.rotulo}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={11} className="absolute right-1 text-muted-foreground pointer-events-none opacity-60" />
+            </div>
 
-            {/* Input de Valor */}
+            {/* Bloco 3: Campo de Valor Dinâmico e Customizado */}
             {precisaValor && (
-              regra.tipo === "status" && propDef?.opcoes ? (
-                <select
-                  value={regra.valor || ""}
-                  onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
-                  className="bg-secondary/40 border border-border/50 text-[11px] font-medium text-foreground rounded-md px-1.5 py-0.5 outline-none cursor-pointer"
-                >
-                  {propDef.opcoes.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              ) : regra.tipo === "tags" && propDef?.opcoes ? (
-                <select
-                  value={regra.valor || ""}
-                  onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
-                  className="bg-secondary/40 border border-border/50 text-[11px] font-medium text-foreground rounded-md px-1.5 py-0.5 outline-none cursor-pointer"
-                >
-                  <option value="">Selecione a tag...</option>
-                  {propDef.opcoes.map((tag) => (
-                    <option key={tag} value={tag}>
-                      {tag}
-                    </option>
-                  ))}
-                </select>
-              ) : regra.tipo === "data" ? (
-                <input
-                  type="date"
-                  value={regra.valor || ""}
-                  onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
-                  className="bg-secondary/40 border border-border/50 text-[11px] font-mono text-foreground rounded-md px-1.5 py-0.5 outline-none"
-                />
-              ) : (
-                <input
-                  type="text"
-                  value={regra.valor || ""}
-                  onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
-                  placeholder="Valor..."
-                  className="bg-secondary/40 border border-border/50 text-[11px] text-foreground rounded-md px-1.5 py-0.5 w-24 sm:w-32 outline-none focus:ring-1 focus:ring-primary"
-                />
-              )
+              <div className="flex items-center px-1.5 py-1 bg-background/30">
+                {regra.tipo === "status" && propDef?.opcoes ? (
+                  <div className="relative flex items-center">
+                    <select
+                      value={regra.valor || ""}
+                      onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
+                      className="appearance-none bg-transparent pr-4 pl-1 text-[11px] font-semibold text-primary outline-none cursor-pointer"
+                    >
+                      {propDef.opcoes.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={11} className="absolute right-0 text-muted-foreground pointer-events-none opacity-60" />
+                  </div>
+                ) : regra.tipo === "tags" && propDef?.opcoes ? (
+                  <div className="relative flex items-center">
+                    <select
+                      value={regra.valor || ""}
+                      onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
+                      className="appearance-none bg-transparent pr-4 pl-1 text-[11px] font-medium text-foreground outline-none cursor-pointer max-w-[130px] truncate"
+                    >
+                      <option value="">Escolher tag...</option>
+                      {propDef.opcoes.map((tag) => (
+                        <option key={tag} value={tag}>
+                          {tag}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={11} className="absolute right-0 text-muted-foreground pointer-events-none opacity-60" />
+                  </div>
+                ) : regra.tipo === "data" ? (
+                  <input
+                    type="date"
+                    value={regra.valor || ""}
+                    onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
+                    className="bg-transparent border-none text-[11px] font-mono text-foreground outline-none px-1 py-0.5 cursor-pointer"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={regra.valor || ""}
+                    onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
+                    placeholder="Digitar valor..."
+                    className="bg-transparent border-none text-[11px] text-foreground placeholder:text-muted-foreground outline-none px-1.5 py-0.5 w-24 sm:w-32 focus:w-40 transition-all font-medium"
+                  />
+                )}
+              </div>
             )}
 
-            {/* Botão Remover Filtro */}
+            {/* Bloco 4: Botão de Remover Filtro */}
             <button
               type="button"
               onClick={() => removerRegra(regra.id)}
-              className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+              className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
               title="Remover filtro"
+              aria-label="Remover filtro"
             >
-              <X size={11} />
+              <X size={12} />
             </button>
           </div>
         );
       })}
 
-      {/* Botão Limpar Tudo */}
+      {/* Botão de Limpar Todos os Filtros */}
       {regras.length > 0 && (
         <button
           type="button"
           onClick={limparTodosFiltros}
-          className="text-[11px] text-muted-foreground hover:text-destructive px-1.5 py-1 rounded transition-colors cursor-pointer"
+          className="text-[11px] font-medium text-muted-foreground hover:text-destructive px-2 py-1.5 rounded-lg hover:bg-destructive/10 transition-all cursor-pointer select-none"
           title="Limpar todos os filtros"
         >
-          Limpar
+          Limpar filtros
         </button>
       )}
     </div>
