@@ -34,21 +34,22 @@ export function WidgetMetasPDI({
               <div
                 key={r.meta.caminho}
                 onClick={() => aoAbrirMeta(r.meta.caminho)}
-                className="group p-2.5 rounded-2xl border border-border/50 bg-background/50 hover:bg-card hover:border-border transition-all cursor-pointer space-y-1.5 shadow-2xs"
+                className="group p-3 rounded-2xl border border-border/50 bg-background/50 hover:bg-card hover:border-rose-500/30 transition-all cursor-pointer space-y-2 shadow-2xs"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-bold text-foreground group-hover:text-rose-500 transition-colors truncate">
                     {r.meta.titulo}
                   </span>
-                  <span className="text-[10px] font-medium text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded-md">
+                  <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
                     {concluida ? "Concluída" : "Em andamento"}
                   </span>
                 </div>
 
-                <div className="w-full bg-secondary/60 h-1.5 rounded-full overflow-hidden">
+                {/* Segmented Progress Track */}
+                <div className="w-full bg-secondary/70 h-2 rounded-full overflow-hidden p-0.5">
                   <div
-                    className="h-full bg-gradient-to-r from-rose-500 to-amber-500 rounded-full transition-all duration-500"
-                    style={{ width: concluida ? "100%" : totalEntregas > 0 ? "50%" : "20%" }}
+                    className="h-full bg-gradient-to-r from-rose-500 via-pink-500 to-amber-400 rounded-full transition-all duration-500"
+                    style={{ width: concluida ? "100%" : totalEntregas > 0 ? "60%" : "20%" }}
                   />
                 </div>
 

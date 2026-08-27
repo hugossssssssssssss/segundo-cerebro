@@ -23,13 +23,13 @@ import { tituloProvavel, escreverMarkdown, nomeLivre } from "@/lib/markdown";
 import { PASTAS } from "@/lib/tipos";
 import { toast } from "@/lib/toast";
 
-import { Vazio, Carregando } from "@/components/ui";
-import { CapturaRapida } from "@/components/CapturaRapida";
-import { Busca } from "@/components/Busca";
+import { Vazio } from "@/components/ui";
 
 // Suíte Modular Bento Home
 import {
   type WidgetConfig,
+  type LarguraWidget,
+  type InfoWidgetCatalogo,
   CONFIG_PADRAO_WIDGETS,
   CATALOGO_WIDGETS,
 } from "@/components/home/types";
@@ -45,7 +45,18 @@ import { WidgetHubFerramentas } from "@/components/home/WidgetHubFerramentas";
 import { WidgetProcessosCRM, type ProcessoItemHome } from "@/components/home/WidgetProcessosCRM";
 import { WidgetLousasRecentes, type LousaItemHome } from "@/components/home/WidgetLousasRecentes";
 import { WidgetBuscaWeb } from "@/components/home/WidgetBuscaWeb";
-import { PainelPersonalizarHome } from "@/components/home/PainelPersonalizarHome";
+import { ModalCatalogoWidgets } from "@/components/home/ModalCatalogoWidgets";
+
+const CHAVE_SNAPSHOT_HOME = "klaus_home_cache_snapshot";
+
+interface SnapshotHome {
+  tarefas: Tarefa[];
+  notas: NotaItemHome[];
+  referencias: Referencia[];
+  resumosPdi: ResumoMeta[];
+  processos: ProcessoItemHome[];
+  lousas: LousaItemHome[];
+}
 
 export default function Home() {
   const cfg = lerConfig();
@@ -53,14 +64,28 @@ export default function Home() {
   const navegar = useNavigate();
   const { salvarTexto } = useSalvar(cfg);
 
-  // ── Estados de Dados ──────────────────────────────────────────────────────
-  const [carregando, setCarregando] = useState(true);
-  const [tarefas, setTarefas] = useState<Tarefa[]>([]);
-  const [notas, setNotas] = useState<NotaItemHome[]>([]);
-  const [referencias, setReferencias] = useState<Referencia[]>([]);
-  const [resumosPdi, setResumosPdi] = useState<ResumoMeta[]>([]);
-  const [processos, setProcessos] = useState<ProcessoItemHome[]>([]);
-  const [lousas, setLousas] = useState<LousaItemHome[]>([]);
+  // ── Carregamento Instantâneo com Cache Snapshot (0ms) ─────────────────────
+  const snapshotInicial = useMemo<SnapshotHome>(() => {
+    try {
+      const salvo = localStorage.getItem(CHAVE_SNAPSHOT_HOME);
+      if (salvo) return JSON.parse(salvo);
+    } catch {}
+    return {
+      tarefas: [],
+      notas: [],
+      referencias: [],
+      resumosPdi: [],
+      processos: [],
+      lousas: [],
+    };
+  }, []);
+
+  const [tarefas, setTarefas] = useState<Tarefa[]>(snapshotInicial.tarefas);
+  const [notas, setNotas] = useState<NotaItemHome[]>(snapshotInicial.notas);
+  const [referencias, setReferencias] = useState<Referencia[]>(snapshotInicial.referencias);
+  const [resumosPdi, setResumosPdi] = useState<ResumoMeta[]>(snapshotInicial.resumosPdi);
+  const [processos, setProcessos] = useState<ProcessoItemHome[]>(snapshotInicial.processos);
+  const [lousas, setLousas] = useState<LousaItemHome[]>(snapshotInicial.lousas);
 
   // ── Configuração dos Widgets (Bento Grid) ──────────────────────────────────
   const [configWidgets, setConfigWidgets] = useState<WidgetConfig[]>(() => {
@@ -74,13 +99,11 @@ export default function Home() {
     return CONFIG_PADRAO_WIDGETS;
   });
 
-  const [modoEdicaoRapida, setModoEdicaoRapida] = useState(() => {
+  const [modoEdicao, setModoEdicao] = useState(() => {
     return localStorage.getItem("klaus_home_modo_edicao") === "true";
   });
 
-  const [painelPersonalizarAberto, setPainelPersonalizarAberto] = useState(false);
-  const [capturaAberta, setCapturaAberta] = useState(false);
-  const [buscaAberta, setBuscaAberta] = useState(false);
+  const [catalogoAberto, setCatalogoAberto] = useState(false);
 
   // Salva configurações de widgets no localStorage
   const salvarConfigWidgets = (novaConfig: WidgetConfig[]) => {
@@ -89,8 +112,8 @@ export default function Home() {
   };
 
   const alternarModoEdicao = () => {
-    const novoValor = !modoEdicaoRapida;
-    setModoEdicaoRapida(novoValor);
+    const novoValor = !modoEdicao;
+    setModoEdicao(novoValor);
     localStorage.setItem("klaus_home_modo_edicao", String(novoValor));
   };
 
@@ -99,15 +122,11 @@ export default function Home() {
     toast("Layout da tela inicial restaurado para o padrão!");
   };
 
-  // ── Carregamento do Repositório ───────────────────────────────────────────
+  // ── Atualização em Segundo Plano do Repositório ───────────────────────────
   const carregarDados = useCallback(async () => {
-    if (!pronto) {
-      setCarregando(false);
-      return;
-    }
+    if (!pronto) return;
 
     try {
-      setCarregando(true);
       const todos = await carregarRepo(cfg);
 
       // 1. Tarefas
@@ -145,47 +164,45 @@ export default function Home() {
       const entregas = docsEntregas.map((i) =>
         comoEntrega(i.doc, i.caminho, i.sha, tituloProvavel(i.doc, i.nome))
       );
-      setResumosPdi(resumir(metas, entregas));
+      const listaResumos = resumir(metas, entregas);
+      setResumosPdi(listaResumos);
 
       // 5. Processos
       const docsProcessos = daPasta(todos, "processos");
-      setProcessos(
-        docsProcessos.map((i) => ({
-          caminho: i.caminho,
-          titulo: tituloProvavel(i.doc, i.nome),
-        }))
-      );
+      const listaProcessos = docsProcessos.map((i) => ({
+        caminho: i.caminho,
+        titulo: tituloProvavel(i.doc, i.nome),
+      }));
+      setProcessos(listaProcessos);
 
       // 6. Lousas
       const docsLousas = daPasta(todos, "lousas");
-      setLousas(
-        docsLousas.map((i) => ({
-          caminho: i.caminho,
-          titulo: tituloProvavel(i.doc, i.nome),
-        }))
+      const listaLousas = docsLousas.map((i) => ({
+        caminho: i.caminho,
+        titulo: tituloProvavel(i.doc, i.nome),
+      }));
+      setLousas(listaLousas);
+
+      // Salva snapshot no localStorage para abertura instantânea na próxima vez
+      localStorage.setItem(
+        CHAVE_SNAPSHOT_HOME,
+        JSON.stringify({
+          tarefas: listaTarefas,
+          notas: listaNotas,
+          referencias: listaRefs,
+          resumosPdi: listaResumos,
+          processos: listaProcessos,
+          lousas: listaLousas,
+        })
       );
     } catch {
-      // Erro silencioso ou gerenciado
-    } finally {
-      setCarregando(false);
+      // Erro tratado silenciosamente para não quebrar a UI
     }
   }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
   useEffect(() => {
     carregarDados();
   }, [carregarDados]);
-
-  // ── Atalho Global ⌘K para Busca ───────────────────────────────────────────
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setBuscaAberta((prev) => !prev);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
 
   // ── Ações Rápidas nos Widgets ─────────────────────────────────────────────
 
@@ -194,7 +211,7 @@ export default function Home() {
     const novoStatus: Tarefa["status"] = tarefa.status === "feito" ? "a-fazer" : "feito";
     const atualizada: Tarefa = { ...tarefa, status: novoStatus };
 
-    // Atualização otimista
+    // Atualização otimista imediata
     setTarefas((prev) =>
       prev.map((t) => (t.caminho === tarefa.caminho ? atualizada : t))
     );
@@ -281,6 +298,27 @@ export default function Home() {
     }
   };
 
+  // Alternar widget pelo catálogo visual
+  const aoAlternarWidgetCatalogo = (info: InfoWidgetCatalogo) => {
+    const existe = configWidgets.find((c) => c.id === info.id);
+    if (existe) {
+      salvarConfigWidgets(
+        configWidgets.map((c) => (c.id === info.id ? { ...c, ativo: !c.ativo } : c))
+      );
+    } else {
+      salvarConfigWidgets([
+        ...configWidgets,
+        { id: info.id, ativo: true, colunas: info.colunasPadrao, altura: "auto", ordem: configWidgets.length },
+      ]);
+    }
+  };
+
+  const aoMudarColunasWidget = (id: string, colunas: LarguraWidget) => {
+    salvarConfigWidgets(
+      configWidgets.map((c) => (c.id === id ? { ...c, colunas } : c))
+    );
+  };
+
   // ── Métricas de Topo (KPIs) ───────────────────────────────────────────────
   const hojeStr = new Date().toISOString().split("T")[0];
 
@@ -320,18 +358,18 @@ export default function Home() {
     );
   }
 
-  const nomeExibicao = cfg.repoOwner || "Hugo";
+  // Nome do usuário inserido no Onboarding ou fallback
+  const nomeExibicao = cfg.nomeUsuario?.trim() || "Hugo";
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 w-full pb-12">
-      {/* 1. Cockpit de Saudação e Comandos Rápidos */}
+      {/* 1. Cockpit de Saudação & Botão de Adicionar Widgets */}
       <CabecalhoHome
         nomeUsuario={nomeExibicao}
-        aoAbrirCapturaRapida={() => setCapturaAberta(true)}
-        aoCriarNota={() => navegar("/notas?criar=true")}
-        aoCriarTarefa={() => navegar("/tarefas?criar=true")}
-        aoAbrirPersonalizar={() => setPainelPersonalizarAberto(true)}
-        aoAbrirBusca={() => setBuscaAberta(true)}
+        aoAbrirCatalogo={() => setCatalogoAberto(true)}
+        modoEdicao={modoEdicao}
+        aoAlternarModoEdicao={alternarModoEdicao}
+        aoRestaurarPadrao={restaurarPadrao}
       />
 
       {/* 2. Pulso de Indicadores Essenciais (KPIs de Topo) */}
@@ -344,147 +382,126 @@ export default function Home() {
         metasAtivas={metasAtivasCount}
       />
 
-      {/* 3. Grid Principal Bento da Tela Inicial */}
-      {carregando ? (
-        <Carregando texto="Carregando seu segundo cérebro..." />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-          {configWidgets
-            .filter((w) => w.ativo)
-            .sort((a, b) => a.ordem - b.ordem)
-            .map((widget) => {
-              const info = CATALOGO_WIDGETS.find((c) => c.id === widget.id);
-              if (!info) return null;
+      {/* 3. Grid Principal Bento da Tela Inicial (1 a 4 colunas livres) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+        {configWidgets
+          .filter((w) => w.ativo)
+          .sort((a, b) => a.ordem - b.ordem)
+          .map((widget) => {
+            const info = CATALOGO_WIDGETS.find((c) => c.id === widget.id);
+            if (!info) return null;
 
-              const Icone = {
-                CheckSquare,
-                FileText,
-                ImageIcon,
-                Target,
-                Layers,
-                GitMerge,
-                Layout,
-                Globe,
-                Edit3,
-              }[info.icone as string] || SparklesIcon;
+            const Icone = {
+              CheckSquare,
+              FileText,
+              ImageIcon,
+              Target,
+              Layers,
+              GitMerge,
+              Layout,
+              Globe,
+              Edit3,
+            }[info.icone as string] || Layers;
 
-              return (
-                <WidgetWrapper
-                  key={widget.id}
-                  id={widget.id}
-                  titulo={info.titulo}
-                  icone={Icone}
-                  corIcone={info.corIcone}
-                  tamanho={widget.tamanho}
-                  linkVerMais={
-                    widget.id === "foco_hoje"
-                      ? "/tarefas"
-                      : widget.id === "notas_recentes"
-                      ? "/notas"
-                      : widget.id === "referencias_mural"
-                      ? "/referencias"
-                      : widget.id === "metas_pdi"
-                      ? "/pdi"
-                      : widget.id === "processos_crm"
-                      ? "/processos"
-                      : widget.id === "lousas_recentes"
-                      ? "/lousas"
-                      : undefined
-                  }
-                  modoEdicao={modoEdicaoRapida}
-                  aoMudarTamanho={(novoTam) => {
-                    salvarConfigWidgets(
-                      configWidgets.map((c) =>
-                        c.id === widget.id ? { ...c, tamanho: novoTam } : c
-                      )
-                    );
-                  }}
-                  aoRemover={() => {
-                    salvarConfigWidgets(
-                      configWidgets.map((c) =>
-                        c.id === widget.id ? { ...c, ativo: false } : c
-                      )
-                    );
-                  }}
-                >
-                  {/* Renderização Dinâmica do Conteúdo dos Widgets */}
-                  {widget.id === "foco_hoje" && (
-                    <WidgetFocoHoje
-                      tarefas={tarefas}
-                      aoAlternarConclusao={aoAlternarConclusaoTarefa}
-                      aoAbrirTarefa={(t) => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
-                      aoCriarRapida={aoCriarTarefaRapida}
-                    />
-                  )}
+            return (
+              <WidgetWrapper
+                key={widget.id}
+                id={widget.id}
+                titulo={info.titulo}
+                subtitulo={info.subtitulo}
+                icone={Icone}
+                corIcone={info.corIcone}
+                colunas={widget.colunas}
+                linkVerMais={
+                  widget.id === "foco_hoje"
+                    ? "/tarefas"
+                    : widget.id === "notas_recentes"
+                    ? "/notas"
+                    : widget.id === "referencias_mural"
+                    ? "/referencias"
+                    : widget.id === "metas_pdi"
+                    ? "/pdi"
+                    : widget.id === "processos_crm"
+                    ? "/processos"
+                    : widget.id === "lousas_recentes"
+                    ? "/lousas"
+                    : undefined
+                }
+                modoEdicao={modoEdicao}
+                aoMudarColunas={(novasColunas) => aoMudarColunasWidget(widget.id, novasColunas)}
+                aoRemover={() => {
+                  salvarConfigWidgets(
+                    configWidgets.map((c) =>
+                      c.id === widget.id ? { ...c, ativo: false } : c
+                    )
+                  );
+                }}
+              >
+                {/* Conteúdo Dinâmico dos Widgets */}
+                {widget.id === "foco_hoje" && (
+                  <WidgetFocoHoje
+                    tarefas={tarefas}
+                    aoAlternarConclusao={aoAlternarConclusaoTarefa}
+                    aoAbrirTarefa={(t) => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
+                    aoCriarRapida={aoCriarTarefaRapida}
+                  />
+                )}
 
-                  {widget.id === "scratchpad" && (
-                    <WidgetScratchpad aoConverterEmNota={aoConverterScratchpadEmNota} />
-                  )}
+                {widget.id === "scratchpad" && (
+                  <WidgetScratchpad aoConverterEmNota={aoConverterScratchpadEmNota} />
+                )}
 
-                  {widget.id === "notas_recentes" && (
-                    <WidgetNotasRecentes
-                      notas={notas}
-                      aoAbrirNota={(caminho) => navegar(`/notas?abrir=${encodeURIComponent(caminho)}`)}
-                    />
-                  )}
+                {widget.id === "notas_recentes" && (
+                  <WidgetNotasRecentes
+                    notas={notas}
+                    aoAbrirNota={(caminho) => navegar(`/notas?abrir=${encodeURIComponent(caminho)}`)}
+                  />
+                )}
 
-                  {widget.id === "referencias_mural" && (
-                    <WidgetReferenciasMural
-                      referencias={referencias}
-                      aoAbrirReferencia={(ref) => navegar(`/referencias?abrir=${encodeURIComponent(ref.caminho)}`)}
-                    />
-                  )}
+                {widget.id === "referencias_mural" && (
+                  <WidgetReferenciasMural
+                    referencias={referencias}
+                    aoAbrirReferencia={(ref) => navegar(`/referencias?abrir=${encodeURIComponent(ref.caminho)}`)}
+                  />
+                )}
 
-                  {widget.id === "metas_pdi" && (
-                    <WidgetMetasPDI
-                      resumos={resumosPdi}
-                      aoAbrirMeta={(caminho) => navegar(`/pdi?abrir=${encodeURIComponent(caminho)}`)}
-                    />
-                  )}
+                {widget.id === "metas_pdi" && (
+                  <WidgetMetasPDI
+                    resumos={resumosPdi}
+                    aoAbrirMeta={(caminho) => navegar(`/pdi?abrir=${encodeURIComponent(caminho)}`)}
+                  />
+                )}
 
-                  {widget.id === "hub_ferramentas" && <WidgetHubFerramentas />}
+                {widget.id === "hub_ferramentas" && <WidgetHubFerramentas />}
 
-                  {widget.id === "processos_crm" && (
-                    <WidgetProcessosCRM
-                      processos={processos}
-                      aoAbrirProcesso={() => navegar("/processos")}
-                    />
-                  )}
+                {widget.id === "processos_crm" && (
+                  <WidgetProcessosCRM
+                    processos={processos}
+                    aoAbrirProcesso={() => navegar("/processos")}
+                  />
+                )}
 
-                  {widget.id === "lousas_recentes" && (
-                    <WidgetLousasRecentes
-                      lousas={lousas}
-                      aoAbrirLousa={() => navegar("/lousas")}
-                    />
-                  )}
+                {widget.id === "lousas_recentes" && (
+                  <WidgetLousasRecentes
+                    lousas={lousas}
+                    aoAbrirLousa={() => navegar("/lousas")}
+                  />
+                )}
 
-                  {widget.id === "busca_web" && <WidgetBuscaWeb />}
-                </WidgetWrapper>
-              );
-            })}
-        </div>
-      )}
+                {widget.id === "busca_web" && <WidgetBuscaWeb />}
+              </WidgetWrapper>
+            );
+          })}
+      </div>
 
-      {/* Painel Lateral de Personalização */}
-      <PainelPersonalizarHome
-        aberto={painelPersonalizarAberto}
-        aoFechar={() => setPainelPersonalizarAberto(false)}
+      {/* Modal Didático de Catálogo de Widgets */}
+      <ModalCatalogoWidgets
+        aberto={catalogoAberto}
+        aoFechar={() => setCatalogoAberto(false)}
         configWidgets={configWidgets}
-        aoMudarConfig={salvarConfigWidgets}
-        aoRestaurarPadrao={restaurarPadrao}
-        modoEdicaoRapida={modoEdicaoRapida}
-        aoAlternarModoEdicao={alternarModoEdicao}
+        aoAlternarWidget={aoAlternarWidgetCatalogo}
+        aoMudarTamanho={aoMudarColunasWidget}
       />
-
-      {/* Modal de Captura Rápida */}
-      <CapturaRapida aberta={capturaAberta} aoFechar={() => setCapturaAberta(false)} />
-
-      {/* Modal de Busca Global Avançada */}
-      <Busca aberta={buscaAberta} aoFechar={() => setBuscaAberta(false)} />
     </div>
   );
-}
-
-function SparklesIcon(props: any) {
-  return <Layers {...props} />;
 }

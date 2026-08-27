@@ -26,18 +26,18 @@ export function WidgetReferenciasMural({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {recentes.map((r) => (
             <div
               key={r.caminho}
               onClick={() => aoAbrirReferencia(r)}
-              className="group relative aspect-square rounded-2xl overflow-hidden border border-border/70 bg-black/10 hover:border-purple-500/50 hover:shadow-md transition-all duration-200 cursor-pointer"
+              className="group relative aspect-square rounded-2xl overflow-hidden border border-border/70 bg-black/10 hover:border-purple-500/50 hover:shadow-xl transition-all duration-300 cursor-pointer"
             >
               {r.imagem ? (
                 <ImagemPrivada
                   caminho={r.imagem}
                   alt={r.titulo}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground/40 bg-secondary/30">
@@ -45,13 +45,13 @@ export function WidgetReferenciasMural({
                 </div>
               )}
 
-              {/* Overlay com Título no Hover */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-2.5 flex flex-col justify-end">
-                <p className="text-[11px] font-bold text-white truncate drop-shadow-sm">
+              {/* Overlay Glassmorphic com Título no Hover */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-200 p-3 flex flex-col justify-end">
+                <p className="text-[11px] font-bold text-white truncate drop-shadow-md">
                   {r.titulo}
                 </p>
                 {r.tags.length > 0 && (
-                  <span className="text-[9px] text-white/75 truncate">
+                  <span className="text-[9px] text-purple-300 font-medium truncate">
                     #{r.tags[0]}
                   </span>
                 )}

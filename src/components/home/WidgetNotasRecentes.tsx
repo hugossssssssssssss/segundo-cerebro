@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { FileText, ArrowRight } from "lucide-react";
 
 export interface NotaItemHome {
   caminho: string;
@@ -27,24 +27,27 @@ export function WidgetNotasRecentes({
           <div className="h-10 w-10 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
             <FileText size={20} />
           </div>
-          <p className="text-xs font-semibold text-foreground">Nenhuma nota recente</p>
+          <p className="text-xs font-semibold text-foreground">Acervo vazio</p>
           <p className="text-[11px] text-muted-foreground/70">
-            Crie sua primeira nota usando o botão acima.
+            Suas notas e ideias aparecerão organizadas aqui.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {recentes.map((n) => {
             const previewCorpo = n.corpo
-              ? n.corpo.replace(/^[#>\s-]+/gm, "").slice(0, 90).trim()
+              ? n.corpo.replace(/^[#>\s-]+/gm, "").slice(0, 85).trim()
               : "";
 
             return (
               <div
                 key={n.caminho}
                 onClick={() => aoAbrirNota(n.caminho)}
-                className="group flex flex-col justify-between p-3 rounded-2xl border border-border/60 bg-background/50 hover:bg-card hover:border-blue-500/40 hover:shadow-md transition-all duration-200 cursor-pointer min-h-[96px]"
+                className="group relative flex flex-col justify-between p-3.5 rounded-2xl border border-border/60 bg-background/50 hover:bg-card hover:border-blue-500/40 hover:shadow-md transition-all duration-200 cursor-pointer min-h-[105px] overflow-hidden"
               >
+                {/* Indicador sutil de borda superior */}
+                <div className="absolute top-0 left-3 right-3 h-0.5 bg-gradient-to-r from-blue-500/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
                 <div className="space-y-1">
                   <h4 className="text-xs font-bold text-foreground group-hover:text-blue-500 transition-colors line-clamp-1">
                     {n.titulo || "Nota sem título"}
@@ -56,18 +59,26 @@ export function WidgetNotasRecentes({
                   )}
                 </div>
 
-                {n.tags && n.tags.length > 0 && (
-                  <div className="flex items-center gap-1 pt-1.5 flex-wrap">
-                    {n.tags.slice(0, 2).map((t) => (
-                      <span
-                        key={t}
-                        className="text-[10px] font-medium text-muted-foreground/70 bg-secondary/50 px-1.5 py-0.5 rounded-md"
-                      >
-                        #{t}
-                      </span>
-                    ))}
+                <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {n.tags && n.tags.length > 0 ? (
+                      n.tags.slice(0, 2).map((t) => (
+                        <span
+                          key={t}
+                          className="text-[9px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-md"
+                        >
+                          #{t}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground/60">Nota</span>
+                    )}
                   </div>
-                )}
+
+                  <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                    Abrir <ArrowRight size={10} />
+                  </span>
+                </div>
               </div>
             );
           })}
