@@ -140,6 +140,28 @@ export default function Configuracoes() {
         </div>
       </Cartao>
 
+      {/* Seção de Onboarding & Apresentação */}
+      <Cartao className="p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 font-medium text-foreground">
+              <Sparkles size={20} className="text-amber-500" />
+              <span>Apresentação & Guia Inicial (Onboarding)</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Deseja rever o tour de funcionalidades do Klaus ou refazer a configuração passo a passo?
+            </p>
+          </div>
+          <Link
+            to="/boas-vindas"
+            className="inline-flex items-center justify-center gap-2 h-11 px-4 text-sm font-medium rounded-lg bg-secondary text-secondary-foreground hover:bg-accent border border-border transition-colors shrink-0"
+          >
+            <Sparkles size={16} className="text-amber-500" />
+            Rever Apresentação
+          </Link>
+        </div>
+      </Cartao>
+
       <Cartao className="p-5 space-y-4">
         <div>
           <h2 className="font-medium">Sobre você</h2>
