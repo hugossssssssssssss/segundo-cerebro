@@ -491,9 +491,16 @@ export async function gravarEstadoInbox(
 
   try {
     const conteudo = JSON.stringify(mapa, null, 2);
-    const shaFinal = shaAntigo || `temp_${Math.random().toString(36).substring(7)}`;
-    salvarRascunhoLocal(CAMINHO_ESTADO_INBOX, conteudo, shaAntigo, "atualizar estado da caixa de entrada");
-    atualizarCacheLocal(CAMINHO_ESTADO_INBOX, conteudo, lerMarkdown(conteudo), shaFinal);
+    let shaFinal = shaAntigo;
+    if (!shaFinal) {
+      try {
+        const res = await ler(cfg, CAMINHO_ESTADO_INBOX, { silenciar404: true });
+        if (res?.sha) shaFinal = res.sha;
+      } catch {}
+    }
+
+    salvarRascunhoLocal(CAMINHO_ESTADO_INBOX, conteudo, shaFinal, "atualizar estado da caixa de entrada");
+    atualizarCacheLocal(CAMINHO_ESTADO_INBOX, conteudo, lerMarkdown(conteudo), shaFinal || `temp_${Math.random().toString(36).substring(7)}`);
     return { ok: true, sha: shaFinal };
   } catch (err: any) {
     return { ok: false, erro: err?.message || "Falha ao gravar estado no GitHub." };

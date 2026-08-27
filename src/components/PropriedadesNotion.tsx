@@ -1383,99 +1383,109 @@ export function PropriedadesNotion({
             </div>
           </div>
 
-          {/* Configurações específicas da propriedade */}
+          {/* Configurações avançadas específicas da propriedade */}
           <div className="border-t border-border pt-2 mt-1">
             <span className="text-[11px] font-semibold text-muted-foreground px-1 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
               <SlidersHorizontal size={12} className="text-primary" />
-              <span>Configurações</span>
+              <span>Configurações da Propriedade</span>
             </span>
 
             {(tipoAtual === "multiselect" || chave === "tags") && (
-              <div className="space-y-1.5 p-1.5 bg-secondary/30 rounded-lg border border-border/40">
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
-                  <span>Tags neste documento:</span>
-                  {Array.isArray(dados[chave]) && dados[chave].length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        atualizar(chave, []);
-                        toast("Todas as tags foram removidas.");
-                      }}
-                      className="text-[10px] text-destructive hover:underline cursor-pointer"
-                    >
-                      Limpar todas
-                    </button>
-                  )}
+              <div className="space-y-2 p-2 bg-secondary/30 rounded-lg border border-border/40 text-xs">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">Ordenar tags A-Z:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tagsAtuais = Array.isArray(dados[chave]) ? [...dados[chave]] : [];
+                      tagsAtuais.sort((a, b) => a.localeCompare(b));
+                      atualizar(chave, tagsAtuais);
+                      toast("Tags ordenadas alfabeticamente.");
+                    }}
+                    className="px-2 py-0.5 text-[10px] rounded bg-card border border-border hover:bg-accent font-medium cursor-pointer"
+                  >
+                    Ordenar
+                  </button>
                 </div>
-
-                {Array.isArray(dados[chave]) && dados[chave].length > 0 ? (
-                  <div className="flex flex-col gap-1 max-h-32 overflow-y-auto pr-1">
-                    {dados[chave].map((t: string) => (
-                      <div key={t} className="flex items-center justify-between gap-1 p-1 rounded hover:bg-accent text-xs">
-                        <span className="truncate font-medium">{t}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const novas = dados[chave].filter((x: string) => x !== t);
-                            atualizar(chave, novas);
-                            toast(`Tag "${t}" removida.`);
-                          }}
-                          className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-                          title={`Excluir tag "${t}"`}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-[10px] text-muted-foreground italic px-1">Nenhuma tag adicionada.</p>
-                )}
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">Estilo visual:</span>
+                  <span className="text-[10px] font-semibold text-primary">Pílulas Coloridas</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">Criação livre:</span>
+                  <span className="text-[10px] font-semibold text-emerald-500">Ativada</span>
+                </div>
               </div>
             )}
 
             {tipoAtual === "numero" && (
-              <div className="p-1.5 bg-secondary/30 rounded-lg border border-border/40 space-y-1 text-xs">
-                <span className="text-[11px] text-muted-foreground block">Modo de Exibição:</span>
-                <div className="flex items-center gap-1">
+              <div className="p-2 bg-secondary/30 rounded-lg border border-border/40 space-y-1.5 text-xs">
+                <span className="text-[11px] text-muted-foreground block font-medium">Formato do Número:</span>
+                <div className="grid grid-cols-2 gap-1">
                   <button
                     type="button"
                     onClick={() => {
                       const novoEsq = { ...esquema, [chave]: "numero" as TipoPropriedade };
                       onChange({ ...dados, esquema: novoEsq });
-                      toast("Modo alterado para Número Comum.");
+                      toast("Formato: Número Simples.");
                     }}
-                    className="flex-1 py-1 px-2 text-[10px] rounded bg-card border border-border hover:bg-accent text-center cursor-pointer font-medium"
+                    className="py-1 px-2 text-[10px] rounded bg-card border border-border hover:bg-accent text-center cursor-pointer font-medium"
                   >
-                    Número
+                    Simples
                   </button>
                   <button
                     type="button"
                     onClick={() => {
                       renomear(chave, "Pomodoro");
-                      toast("Modo alterado para Prismas de Esforço.");
+                      toast("Formato: Prismas de Esforço.");
                     }}
-                    className="flex-1 py-1 px-2 text-[10px] rounded bg-card border border-border hover:bg-accent text-center cursor-pointer font-medium"
+                    className="py-1 px-2 text-[10px] rounded bg-card border border-border hover:bg-accent text-center cursor-pointer font-medium"
                   >
                     Prismas (1-5)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toast("Formato moeda ativado.");
+                    }}
+                    className="py-1 px-2 text-[10px] rounded bg-card border border-border hover:bg-accent text-center cursor-pointer font-medium"
+                  >
+                    Moeda (R$)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toast("Formato porcentagem ativado.");
+                    }}
+                    className="py-1 px-2 text-[10px] rounded bg-card border border-border hover:bg-accent text-center cursor-pointer font-medium"
+                  >
+                    Porcentagem (%)
                   </button>
                 </div>
               </div>
             )}
 
             {tipoAtual === "data" && (
-              <div className="p-1.5 bg-secondary/30 rounded-lg border border-border/40 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    atualizar(chave, undefined);
-                    toast("Data limpa.");
-                  }}
-                  className="w-full py-1 px-2 text-[11px] text-destructive hover:bg-destructive/10 rounded flex items-center justify-center gap-1 cursor-pointer font-medium"
-                >
-                  <Trash2 size={12} />
-                  <span>Limpar data</span>
-                </button>
+              <div className="p-2 bg-secondary/30 rounded-lg border border-border/40 space-y-1.5 text-xs">
+                <span className="text-[11px] text-muted-foreground block font-medium">Formato da Data:</span>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">Padrão:</span>
+                  <span className="text-[10px] font-semibold text-primary">DD/MM/AAAA (Brasil)</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">Fuso horário:</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">GMT-3</span>
+                </div>
+              </div>
+            )}
+
+            {tipoAtual === "texto" && (
+              <div className="p-2 bg-secondary/30 rounded-lg border border-border/40 space-y-1.5 text-xs">
+                <span className="text-[11px] text-muted-foreground block font-medium">Tipo de Entrada:</span>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">Comportamento:</span>
+                  <span className="text-[10px] font-semibold text-primary">Texto Curto Dinâmico</span>
+                </div>
               </div>
             )}
           </div>

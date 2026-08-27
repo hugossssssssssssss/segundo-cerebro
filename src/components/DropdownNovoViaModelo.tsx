@@ -1,17 +1,16 @@
 /**
- * DropdownNovoViaModelo — Botão split com menu dropdown de templates Markdown.
+ * DropdownNovoViaModelo — Botão integrado com menu dropdown de templates Markdown.
  *
- * Permite criar um novo documento direto ou via modelo Markdown (.klaus/templates/*.md).
- * Cada modelo possui um menu de opções (três pontinhos):
- * 1. Definir como padrão (com estrela indicativa)
- * 2. Editar (abre o arquivo .md no editor)
- * 3. Duplicar (cria uma cópia no diretório de templates)
- * 4. Excluir (apaga o arquivo do repositório)
+ * - Fica ao lado ou integrado ao botão de "Nova Nota / Nova Tarefa", com exatamente a mesma altura.
+ * - Dropdown com:
+ *   1. Botão "+ Novo Modelo"
+ *   2. Lista de modelos disponíveis
+ *   3. Cada modelo possui: Definir Padrão (⭐), Editar (✏️), Duplicar (📄) e Excluir (🗑️).
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, ChevronDown, MoreVertical, Star, Copy, Trash2, FileEdit } from "lucide-react";
-import { Botao } from "@/components/ui";
+import { Plus, ChevronDown, Star, Copy, Trash2, FileEdit, LayoutTemplate } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   type TemplateItem,
@@ -25,7 +24,6 @@ import {
 } from "@/lib/templates";
 import { lerConfig } from "@/lib/settings";
 import { toast } from "@/lib/toast";
-import { abrirItemSpa } from "@/components/PropriedadesNotion";
 
 interface DropdownNovoViaModeloProps {
   rotuloPrincipal: string;
@@ -44,7 +42,7 @@ export function DropdownNovoViaModelo({
   aoCriarComTemplate,
   categoria,
   aoEditarTemplate,
-  className,
+  className = "",
 }: DropdownNovoViaModeloProps) {
   const [aberto, setAberto] = useState(false);
   const [modelos, setModelos] = useState<TemplateItem[]>(() => obterTodosModelos());
@@ -61,6 +59,8 @@ export function DropdownNovoViaModelo({
 
   useEffect(() => {
     atualizarLista();
+    window.addEventListener("acervo-atualizado", atualizarLista);
+    return () => window.removeEventListener("acervo-atualizado", atualizarLista);
   }, [atualizarLista]);
 
   const modelosFiltrados = categoria
@@ -73,6 +73,7 @@ export function DropdownNovoViaModelo({
     definirModeloPadraoId(ehPadrao ? null : m.id);
     setModeloPadrao(ehPadrao ? undefined : m);
     setModelos(obterTodosModelos());
+    toast(ehPadrao ? `Modelo "${m.titulo}" desmarcado como padrão.` : `"${m.titulo}" definido como modelo padrão!`);
   };
 
   const handleEditar = async (e: React.MouseEvent, m: TemplateItem) => {
@@ -83,22 +84,9 @@ export function DropdownNovoViaModelo({
       return;
     }
 
-    // Se já é um arquivo no repositório, abre diretamente pelo SPA
-    if (m.caminho) {
-      abrirItemSpa(m.caminho);
-    } else {
-      // Se é um template padrão interno, cria cópia em .klaus/templates e abre
-      try {
-        const caminhoNovo = await salvarTemplateNoRepo(cfg, {
-          ...m,
-          titulo: `${m.titulo} (Personalizado)`,
-        });
-        await atualizarLista();
-        abrirItemSpa(caminhoNovo);
-      } catch (err: any) {
-        toast(`Erro ao criar arquivo para edição: ${err?.message || err}`, { tipo: "erro" });
-      }
-    }
+    // Se a página não tiver editor de template dedicado, dispara o evento global
+    window.dispatchEvent(new CustomEvent("klaus-editar-template", { detail: { template: m } }));
+    toast(`Editando modelo: "${m.titulo}"`);
   };
 
   const handleDuplicar = async (e: React.MouseEvent, m: TemplateItem) => {
@@ -107,13 +95,13 @@ export function DropdownNovoViaModelo({
       const duplicado: TemplateItem = {
         ...m,
         id: `custom_${Date.now()}`,
-        titulo: `${m.titulo} - cópia`,
+        titulo: `${m.titulo} (Cópia)`,
         caminho: undefined,
         sha: undefined,
       };
       await salvarTemplateNoRepo(cfg, duplicado);
       await atualizarLista();
-      toast("Modelo duplicado!");
+      toast(`Modelo "${duplicado.titulo}" duplicado com sucesso!`);
     } catch (err: any) {
       toast(`Erro ao duplicar modelo: ${err?.message || err}`, { tipo: "erro" });
     }
@@ -121,11 +109,14 @@ export function DropdownNovoViaModelo({
 
   const handleExcluir = async (e: React.MouseEvent, m: TemplateItem) => {
     e.stopPropagation();
-    if (!m.caminho || !m.sha) return;
+    if (!m.caminho || !m.sha) {
+      toast("Modelos do sistema não podem ser excluídos.", { tipo: "erro" });
+      return;
+    }
     try {
       await excluirTemplateDoRepo(cfg, m.caminho, m.sha);
       await atualizarLista();
-      toast("Modelo excluído.");
+      toast("Modelo excluído com sucesso.");
     } catch (err: any) {
       toast(`Erro ao excluir modelo: ${err?.message || err}`, { tipo: "erro" });
     }
@@ -142,14 +133,19 @@ export function DropdownNovoViaModelo({
         descricao: "Modelo personalizado",
         frontmatter: {
           tipo: categoria === "tarefa" ? "tarefa" : "nota",
-          tags: ["modelo"],
+          tags: [],
         },
-        corpoPadrao: "## Seção Principal\n\nEscreva o conteúdo do modelo aqui...",
+        corpoPadrao: "## Seção Principal\n\nEscreva a estrutura padrão do seu modelo aqui...",
       };
-      const caminho = await salvarTemplateNoRepo(cfg, novoTemplate);
+      await salvarTemplateNoRepo(cfg, novoTemplate);
       await atualizarLista();
-      toast("Novo modelo criado em .klaus/templates!");
-      abrirItemSpa(caminho);
+      toast(`Modelo "${novoNome}" criado!`);
+
+      if (aoEditarTemplate) {
+        aoEditarTemplate(novoTemplate);
+      } else {
+        window.dispatchEvent(new CustomEvent("klaus-editar-template", { detail: { template: novoTemplate } }));
+      }
     } catch (err: any) {
       toast(`Erro ao criar novo modelo: ${err?.message || err}`, { tipo: "erro" });
     }
@@ -164,34 +160,39 @@ export function DropdownNovoViaModelo({
   };
 
   return (
-    <div className={`flex items-center ${className || ""}`}>
-      <Botao
+    <div className={`inline-flex items-center shadow-2xs rounded-xl overflow-hidden ${className}`}>
+      {/* Botão Principal de Criação (Mesma altura exata h-9) */}
+      <Button
         onClick={aoClicarPrincipal}
-        className="rounded-r-none"
+        className="h-9 rounded-r-none gap-1.5 font-semibold text-xs cursor-pointer"
         title={modeloPadrao ? `Criar novo usando modelo padrão: "${modeloPadrao.titulo}"` : undefined}
       >
         {iconePrincipal}
-        {rotuloPrincipal}
-        {modeloPadrao && <Star size={12} className="ml-1 text-amber-300 fill-amber-300 inline" />}
-      </Botao>
+        <span>{rotuloPrincipal}</span>
+        {modeloPadrao && <Star size={12} className="text-amber-300 fill-amber-300 inline shrink-0" />}
+      </Button>
 
+      {/* Botão de Modelos / Dropdown (Exatamente da mesma altura h-9) */}
       <Popover open={aberto} onOpenChange={setAberto}>
         <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="flex items-center justify-center h-full px-2 py-2 rounded-r-xl bg-primary text-primary-foreground border-l border-primary-foreground/20 hover:bg-primary/90 transition-colors cursor-pointer"
-            title="Escolher modelo Markdown (.klaus/templates)"
+          <Button
+            variant="default"
+            size="sm"
+            className="h-9 px-2.5 rounded-l-none border-l border-primary-foreground/20 hover:bg-primary/90 transition-colors cursor-pointer"
+            title="Escolher ou gerenciar modelos"
+            aria-label="Opções de modelos"
           >
             <ChevronDown size={14} />
-          </button>
+          </Button>
         </PopoverTrigger>
 
-        <PopoverContent className="w-72 p-1 shadow-xl border-border" align="end">
+        <PopoverContent className="w-80 p-1.5 shadow-2xl border-border rounded-xl" align="end">
           <div className="py-1">
-            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Novo via Modelo
-              </p>
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <LayoutTemplate size={13} className="text-primary" />
+                <span>Modelos de Documento</span>
+              </span>
               <button
                 type="button"
                 onClick={handleCriarNovoModelo}
@@ -203,92 +204,85 @@ export function DropdownNovoViaModelo({
               </button>
             </div>
 
-            {modelosFiltrados.length === 0 ? (
-              <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-                Nenhum modelo disponível
-              </div>
-            ) : (
-              modelosFiltrados.map((m) => {
-                const ehPadrao = modeloPadrao?.id === m.id;
-                const ehCustom = ehModeloCustom(m.id) || !!m.caminho;
+            <div className="max-h-64 overflow-y-auto divide-y divide-border/20 pt-1">
+              {modelosFiltrados.length === 0 ? (
+                <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                  Nenhum modelo disponível
+                </div>
+              ) : (
+                modelosFiltrados.map((m) => {
+                  const ehPadrao = modeloPadrao?.id === m.id;
+                  const ehCustom = ehModeloCustom(m.id) || !!m.caminho;
 
-                return (
-                  <div
-                    key={m.id}
-                    className="group flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-accent cursor-pointer transition-colors"
-                    onClick={() => {
-                      aoCriarComTemplate(m);
-                      setAberto(false);
-                    }}
-                  >
-                    <div className="flex-1 min-w-0 pr-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium text-foreground truncate">{m.titulo}</span>
-                        {ehPadrao && (
-                          <Star size={10} className="text-amber-500 fill-amber-500 shrink-0" />
+                  return (
+                    <div
+                      key={m.id}
+                      className="group flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                      onClick={() => {
+                        aoCriarComTemplate(m);
+                        setAberto(false);
+                      }}
+                    >
+                      <div className="flex-1 min-w-0 pr-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-semibold text-foreground truncate">{m.titulo}</span>
+                          {ehPadrao && (
+                            <Star size={11} className="text-amber-500 fill-amber-500 shrink-0" />
+                          )}
+                        </div>
+                        {m.descricao && (
+                          <p className="text-[10px] text-muted-foreground truncate">{m.descricao}</p>
                         )}
                       </div>
-                      {m.descricao && (
-                        <p className="text-[10px] text-muted-foreground truncate">{m.descricao}</p>
-                      )}
-                    </div>
 
-                    <Popover>
-                      <PopoverTrigger asChild>
+                      {/* Ações Diretas por Modelo */}
+                      <div
+                        className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <button
                           type="button"
-                          className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0"
-                          onClick={(e) => e.stopPropagation()}
-                          title="Opções do modelo"
-                        >
-                          <MoreVertical size={13} />
-                        </button>
-                      </PopoverTrigger>
-
-                      <PopoverContent className="w-44 p-1 shadow-xl border-border" align="end">
-                        <button
-                          type="button"
-                          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
+                          className="p-1 rounded-md text-muted-foreground hover:text-amber-500 hover:bg-muted transition-colors cursor-pointer"
                           onClick={(e) => handleDefinirPadrao(e, m)}
+                          title={ehPadrao ? "Remover como padrão" : "Definir como padrão"}
                         >
                           <Star size={13} className={ehPadrao ? "text-amber-500 fill-amber-500" : ""} />
-                          <span>{ehPadrao ? "Remover padrão" : "Definir como padrão"}</span>
                         </button>
 
                         <button
                           type="button"
-                          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
+                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                           onClick={(e) => handleEditar(e, m)}
+                          title="Editar modelo"
                         >
                           <FileEdit size={13} />
-                          <span>Editar modelo</span>
                         </button>
 
                         <button
                           type="button"
-                          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
+                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                           onClick={(e) => handleDuplicar(e, m)}
+                          title="Duplicar modelo"
                         >
                           <Copy size={13} />
-                          <span>Duplicar</span>
                         </button>
 
                         {ehCustom && m.caminho && (
                           <button
                             type="button"
-                            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-destructive hover:bg-destructive/10 transition-colors cursor-pointer text-left"
+                            className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                             onClick={(e) => handleExcluir(e, m)}
+                            title="Excluir modelo"
                           >
                             <Trash2 size={13} />
-                            <span>Excluir</span>
                           </button>
                         )}
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                );
-              })
-            )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </PopoverContent>
       </Popover>

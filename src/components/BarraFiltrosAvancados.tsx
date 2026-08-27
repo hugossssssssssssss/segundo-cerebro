@@ -1,293 +1,417 @@
 /**
- * BarraFiltrosAvancados / GlobalFilterBar — Componente reutilizável de filtros globais
- * para telas de listagem (Notas, Tarefas, Referências, etc.).
+ * BarraFiltrosAvancados — Sistema de Filtragem Global por Propriedades (Estilo Notion)
  *
- * Capacidades:
- * - Filtro por Tags (múltipla seleção com badges e chips removíveis)
- * - Filtro por Data de Criação (Hoje, Últimos 7 dias, Este mês)
- * - Filtro por Data de Atualização (Hoje, Últimos 7 dias, Este mês)
- * - Filtros por propriedades customizadas / booleanas (status, checkbox)
- * - Estado local isolado: não vaza entre rotas nem persiste em localStorage.
+ * Funcionalidades:
+ * 1. Botão simples de filtro (apenas ícone).
+ * 2. Ao clicar, abre popover com busca "Procurar propriedade..." e lista de todas as propriedades.
+ * 3. Ao selecionar uma propriedade, adiciona uma pílula na linha de filtros com operador e campo de valor.
+ * 4. Botão "+ Filtrar" para adicionar múltiplos filtros combinados (AND).
+ * 5. Reutilizável em Notas, Tarefas, Referências, Metas e Lousas.
  */
 
-import { useState } from "react";
-import { Tag, X, Filter, ChevronDown, CheckSquare } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useState, useMemo } from "react";
+import {
+  Filter,
+  Plus,
+  X,
+  Search,
+  Type,
+  Tags as TagsIcon,
+  Calendar as CalendarIcon,
+  Clock,
+  User,
+  ListTodo,
+  Hash,
+} from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export type FiltroDataPreset = "qualquer" | "hoje" | "7dias" | "mes";
+export type TipoPropriedadeFiltro = "texto" | "tags" | "status" | "data" | "numero" | "checkbox";
 
-export const PRESETS_DATA: { id: FiltroDataPreset; rotulo: string }[] = [
-  { id: "qualquer", rotulo: "Qualquer data" },
-  { id: "hoje", rotulo: "Hoje" },
-  { id: "7dias", rotulo: "Últimos 7 dias" },
-  { id: "mes", rotulo: "Este mês" },
-];
+export type OperadorFiltro =
+  | "contem"
+  | "nao_contem"
+  | "igual"
+  | "comeca_com"
+  | "vazio"
+  | "nao_vazio"
+  | "antes_de"
+  | "depois_de"
+  | "eh_hoje";
+
+export interface DefinicaoPropriedade {
+  id: string;
+  rotulo: string;
+  tipo: TipoPropriedadeFiltro;
+  opcoes?: string[]; // Opções para status ou tags
+  icone?: React.ReactNode;
+}
+
+export interface RegraFiltro {
+  id: string;
+  propriedadeId: string;
+  rotulo: string;
+  tipo: TipoPropriedadeFiltro;
+  operador: OperadorFiltro;
+  valor: any;
+}
+
+export const OPERADORES_POR_TIPO: Record<TipoPropriedadeFiltro, { id: OperadorFiltro; rotulo: string }[]> = {
+  texto: [
+    { id: "contem", rotulo: "contém" },
+    { id: "nao_contem", rotulo: "não contém" },
+    { id: "igual", rotulo: "é exatamente" },
+    { id: "comeca_com", rotulo: "começa com" },
+    { id: "vazio", rotulo: "está vazio" },
+    { id: "nao_vazio", rotulo: "não está vazio" },
+  ],
+  tags: [
+    { id: "contem", rotulo: "contém" },
+    { id: "nao_contem", rotulo: "não contém" },
+    { id: "vazio", rotulo: "está sem tags" },
+    { id: "nao_vazio", rotulo: "tem alguma tag" },
+  ],
+  status: [
+    { id: "igual", rotulo: "é" },
+    { id: "nao_contem", rotulo: "não é" },
+  ],
+  data: [
+    { id: "eh_hoje", rotulo: "é hoje" },
+    { id: "antes_de", rotulo: "está antes de" },
+    { id: "depois_de", rotulo: "está depois de" },
+    { id: "vazio", rotulo: "está sem data" },
+    { id: "nao_vazio", rotulo: "tem data definida" },
+  ],
+  numero: [
+    { id: "igual", rotulo: "é igual a" },
+    { id: "antes_de", rotulo: "é menor que" },
+    { id: "depois_de", rotulo: "é maior que" },
+    { id: "vazio", rotulo: "está vazio" },
+  ],
+  checkbox: [
+    { id: "igual", rotulo: "está marcado" },
+    { id: "vazio", rotulo: "não está marcado" },
+  ],
+};
+
+const ICONES_PADRAO: Record<string, React.ReactNode> = {
+  titulo: <Type size={13} />,
+  nome: <Type size={13} />,
+  tags: <TagsIcon size={13} />,
+  status: <ListTodo size={13} />,
+  prazo: <CalendarIcon size={13} />,
+  data: <CalendarIcon size={13} />,
+  criado_em: <Clock size={13} />,
+  atualizado_em: <Clock size={13} />,
+  criado_por: <User size={13} />,
+  estimativa: <Hash size={13} />,
+  pomodoro: <Hash size={13} />,
+};
 
 export interface BarraFiltrosAvancadosProps {
-  /** Todas as tags únicas disponíveis */
-  todasTags?: string[];
-  /** Tags selecionadas */
-  tagsFiltro?: string[];
-  /** Callback ao mudar tags */
-  aoMudarTags?: (tags: string[]) => void;
-
-  /** Filtro de Data (Criação ou Geral) */
-  filtroData?: FiltroDataPreset;
-  aoMudarFiltroData?: (filtro: FiltroDataPreset) => void;
-
-  /** Filtro de Data de Atualização */
-  filtroAtualizacao?: FiltroDataPreset;
-  aoMudarFiltroAtualizacao?: (filtro: FiltroDataPreset) => void;
-
-  /** Filtro booleano / checkbox opcional (ex: apenas marcados) */
-  filtroCheckbox?: {
-    rotulo: string;
-    ativo: boolean;
-    aoAlternar: (ativo: boolean) => void;
-  };
-
-  /** Elementos extras customizados */
-  extras?: React.ReactNode;
+  propriedadesDisponiveis: DefinicaoPropriedade[];
+  regras: RegraFiltro[];
+  aoMudarRegras: (regras: RegraFiltro[]) => void;
   className?: string;
 }
 
 export function BarraFiltrosAvancados({
-  todasTags = [],
-  tagsFiltro = [],
-  aoMudarTags,
-  filtroData = "qualquer",
-  aoMudarFiltroData,
-  filtroAtualizacao = "qualquer",
-  aoMudarFiltroAtualizacao,
-  filtroCheckbox,
-  extras,
+  propriedadesDisponiveis,
+  regras,
+  aoMudarRegras,
   className,
 }: BarraFiltrosAvancadosProps) {
-  const [tagsAberto, setTagsAberto] = useState(false);
+  const [menuAddAberto, setMenuAddAberto] = useState(false);
+  const [buscaPropriedade, setBuscaPropriedade] = useState("");
 
-  const temFiltroAtivo =
-    tagsFiltro.length > 0 ||
-    filtroData !== "qualquer" ||
-    filtroAtualizacao !== "qualquer" ||
-    !!filtroCheckbox?.ativo;
+  const propriedadesFiltradas = useMemo(() => {
+    if (!buscaPropriedade.trim()) return propriedadesDisponiveis;
+    const b = buscaPropriedade.toLowerCase();
+    return propriedadesDisponiveis.filter((p) => p.rotulo.toLowerCase().includes(b));
+  }, [propriedadesDisponiveis, buscaPropriedade]);
 
-  function alternarTag(tag: string) {
-    if (!aoMudarTags) return;
-    if (tagsFiltro.includes(tag)) {
-      aoMudarTags(tagsFiltro.filter((t) => t !== tag));
-    } else {
-      aoMudarTags([...tagsFiltro, tag]);
+  const adicionarFiltro = (prop: DefinicaoPropriedade) => {
+    const operadores = OPERADORES_POR_TIPO[prop.tipo] || OPERADORES_POR_TIPO.texto;
+    const operadorInicial = operadores[0]?.id || "contem";
+    let valorInicial: any = "";
+
+    if (prop.tipo === "status" && prop.opcoes && prop.opcoes.length > 0) {
+      valorInicial = prop.opcoes[0];
+    } else if (prop.tipo === "data") {
+      valorInicial = new Date().toISOString().split("T")[0];
     }
-  }
 
-  function limparTudo() {
-    if (aoMudarTags) aoMudarTags([]);
-    if (aoMudarFiltroData) aoMudarFiltroData("qualquer");
-    if (aoMudarFiltroAtualizacao) aoMudarFiltroAtualizacao("qualquer");
-    if (filtroCheckbox) filtroCheckbox.aoAlternar(false);
-  }
+    const novaRegra: RegraFiltro = {
+      id: `filtro_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      propriedadeId: prop.id,
+      rotulo: prop.rotulo,
+      tipo: prop.tipo,
+      operador: operadorInicial,
+      valor: valorInicial,
+    };
+
+    aoMudarRegras([...regras, novaRegra]);
+    setMenuAddAberto(false);
+    setBuscaPropriedade("");
+  };
+
+  const atualizarRegra = (id: string, updates: Partial<RegraFiltro>) => {
+    aoMudarRegras(
+      regras.map((r) => {
+        if (r.id !== id) return r;
+        return { ...r, ...updates };
+      })
+    );
+  };
+
+  const removerRegra = (id: string) => {
+    aoMudarRegras(regras.filter((r) => r.id !== id));
+  };
+
+  const limparTodosFiltros = () => {
+    aoMudarRegras([]);
+  };
 
   return (
     <div className={cn("flex items-center gap-2 flex-wrap text-xs", className)}>
-      {/* Indicador de Filtro */}
-      <span className="font-semibold text-muted-foreground flex items-center gap-1 shrink-0 select-none">
-        <Filter size={13} className="text-primary/70" />
-        Filtros
-      </span>
+      {/* Botão Principal de Filtro (ou "+ Filtrar" se já houver regras) */}
+      <Popover open={menuAddAberto} onOpenChange={setMenuAddAberto}>
+        <PopoverTrigger asChild>
+          {regras.length === 0 ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground cursor-pointer shadow-2xs"
+              title="Filtrar por propriedade"
+              aria-label="Filtrar por propriedade"
+            >
+              <Filter size={14} />
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs rounded-lg text-primary border-primary/30 bg-primary/5 hover:bg-primary/10 gap-1 cursor-pointer font-semibold"
+            >
+              <Plus size={12} />
+              <span>Filtrar</span>
+            </Button>
+          )}
+        </PopoverTrigger>
 
-      {/* 1. Filtro de Data de Criação */}
-      {aoMudarFiltroData && (
-        <div className="flex items-center">
-          <select
-            value={filtroData}
-            onChange={(e) => aoMudarFiltroData(e.target.value as FiltroDataPreset)}
-            className={cn(
-              "rounded-xl border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer transition-colors",
-              filtroData !== "qualquer"
-                ? "border-primary/40 bg-primary/10 text-primary font-semibold"
-                : "border-border bg-card text-foreground hover:bg-accent"
-            )}
-            title="Filtrar por data de criação"
+        <PopoverContent className="w-64 p-2 shadow-2xl border-border rounded-xl" align="start">
+          <div className="space-y-2">
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={buscaPropriedade}
+                onChange={(e) => setBuscaPropriedade(e.target.value)}
+                placeholder="Procurar propriedade..."
+                autoFocus
+                className="w-full bg-secondary/40 border border-border/80 rounded-lg pl-8 pr-2.5 py-1 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <div className="max-h-52 overflow-y-auto space-y-0.5 pt-1 divide-y divide-border/20">
+              {propriedadesFiltradas.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground text-center py-4">
+                  Nenhuma propriedade encontrada
+                </p>
+              ) : (
+                propriedadesFiltradas.map((p) => {
+                  const Icone = p.icone || ICONES_PADRAO[p.id] || <Type size={13} />;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => adicionarFiltro(p)}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-left text-foreground hover:bg-accent transition-colors cursor-pointer"
+                    >
+                      <span className="text-muted-foreground shrink-0">{Icone}</span>
+                      <span className="truncate font-medium flex-1">{p.rotulo}</span>
+                      <span className="text-[10px] text-muted-foreground uppercase font-mono">{p.tipo}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Linha de Filtros Ativos (Chips) */}
+      {regras.map((regra) => {
+        const propDef = propriedadesDisponiveis.find((p) => p.id === regra.propriedadeId);
+        const operadoresDisponiveis = OPERADORES_POR_TIPO[regra.tipo] || OPERADORES_POR_TIPO.texto;
+        const precisaValor = regra.operador !== "vazio" && regra.operador !== "nao_vazio" && regra.operador !== "eh_hoje";
+        const Icone = propDef?.icone || ICONES_PADRAO[regra.propriedadeId] || <Type size={12} />;
+
+        return (
+          <div
+            key={regra.id}
+            className="flex items-center gap-1 bg-card border border-border/80 rounded-xl px-2 py-0.5 shadow-2xs animate-in fade-in zoom-in-95 duration-100"
           >
-            <option value="qualquer">Criado em: Qualquer data</option>
-            <option value="hoje">Criado: Hoje</option>
-            <option value="7dias">Criado: Últimos 7 dias</option>
-            <option value="mes">Criado: Este mês</option>
-          </select>
-        </div>
-      )}
+            {/* Nome da Propriedade */}
+            <span className="flex items-center gap-1 font-semibold text-[11px] text-foreground shrink-0 select-none">
+              <span className="text-primary/70">{Icone}</span>
+              <span>{regra.rotulo}</span>
+            </span>
 
-      {/* 2. Filtro de Data de Atualização */}
-      {aoMudarFiltroAtualizacao && (
-        <div className="flex items-center">
-          <select
-            value={filtroAtualizacao}
-            onChange={(e) => aoMudarFiltroAtualizacao(e.target.value as FiltroDataPreset)}
-            className={cn(
-              "rounded-xl border px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer transition-colors",
-              filtroAtualizacao !== "qualquer"
-                ? "border-primary/40 bg-primary/10 text-primary font-semibold"
-                : "border-border bg-card text-foreground hover:bg-accent"
+            {/* Seletor de Operador */}
+            <select
+              value={regra.operador}
+              onChange={(e) => atualizarRegra(regra.id, { operador: e.target.value as OperadorFiltro })}
+              className="bg-secondary/40 border border-border/50 text-[11px] font-medium text-muted-foreground hover:text-foreground rounded-md px-1.5 py-0.5 outline-none cursor-pointer"
+            >
+              {operadoresDisponiveis.map((op) => (
+                <option key={op.id} value={op.id}>
+                  {op.rotulo}
+                </option>
+              ))}
+            </select>
+
+            {/* Input de Valor */}
+            {precisaValor && (
+              regra.tipo === "status" && propDef?.opcoes ? (
+                <select
+                  value={regra.valor || ""}
+                  onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
+                  className="bg-secondary/40 border border-border/50 text-[11px] font-medium text-foreground rounded-md px-1.5 py-0.5 outline-none cursor-pointer"
+                >
+                  {propDef.opcoes.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              ) : regra.tipo === "tags" && propDef?.opcoes ? (
+                <select
+                  value={regra.valor || ""}
+                  onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
+                  className="bg-secondary/40 border border-border/50 text-[11px] font-medium text-foreground rounded-md px-1.5 py-0.5 outline-none cursor-pointer"
+                >
+                  <option value="">Selecione a tag...</option>
+                  {propDef.opcoes.map((tag) => (
+                    <option key={tag} value={tag}>
+                      {tag}
+                    </option>
+                  ))}
+                </select>
+              ) : regra.tipo === "data" ? (
+                <input
+                  type="date"
+                  value={regra.valor || ""}
+                  onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
+                  className="bg-secondary/40 border border-border/50 text-[11px] font-mono text-foreground rounded-md px-1.5 py-0.5 outline-none"
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={regra.valor || ""}
+                  onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
+                  placeholder="Valor..."
+                  className="bg-secondary/40 border border-border/50 text-[11px] text-foreground rounded-md px-1.5 py-0.5 w-24 sm:w-32 outline-none focus:ring-1 focus:ring-primary"
+                />
+              )
             )}
-            title="Filtrar por data de atualização"
-          >
-            <option value="qualquer">Modificado: Qualquer data</option>
-            <option value="hoje">Modificado: Hoje</option>
-            <option value="7dias">Modificado: Últimos 7 dias</option>
-            <option value="mes">Modificado: Este mês</option>
-          </select>
-        </div>
-      )}
 
-      {/* 3. Filtro de Tags (Popover Multiselect) */}
-      {todasTags.length > 0 && aoMudarTags && (
-        <Popover open={tagsAberto} onOpenChange={setTagsAberto}>
-          <PopoverTrigger asChild>
+            {/* Botão Remover Filtro */}
             <button
               type="button"
-              className={cn(
-                "flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer",
-                tagsFiltro.length > 0
-                  ? "border-primary/40 bg-primary/10 text-primary font-semibold"
-                  : "border-border bg-card text-foreground hover:bg-accent"
-              )}
+              onClick={() => removerRegra(regra.id)}
+              className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+              title="Remover filtro"
             >
-              <Tag size={12} />
-              Tags
-              {tagsFiltro.length > 0 && (
-                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">
-                  {tagsFiltro.length}
-                </span>
-              )}
-              <ChevronDown size={12} className="opacity-50" />
+              <X size={11} />
             </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-64 p-2 shadow-xl border-border" align="start">
-            <div className="space-y-1 max-h-64 overflow-y-auto">
-              <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Selecionar Tags ({todasTags.length})
-              </div>
-              {todasTags.map((tag) => {
-                const ativa = tagsFiltro.includes(tag);
-                return (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => alternarTag(tag)}
-                    className={cn(
-                      "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer text-left",
-                      ativa
-                        ? "bg-primary/10 text-primary font-semibold"
-                        : "text-foreground hover:bg-accent"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "h-3.5 w-3.5 rounded border flex items-center justify-center transition-colors shrink-0",
-                        ativa ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"
-                      )}
-                    >
-                      {ativa && (
-                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                          <path
-                            d="M1.5 4L3 5.5L6.5 2"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
-                    </span>
-                    <span className="truncate">#{tag}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </PopoverContent>
-        </Popover>
-      )}
+          </div>
+        );
+      })}
 
-      {/* 4. Filtro Booleano / Checkbox */}
-      {filtroCheckbox && (
+      {/* Botão Limpar Tudo */}
+      {regras.length > 0 && (
         <button
           type="button"
-          onClick={() => filtroCheckbox.aoAlternar(!filtroCheckbox.ativo)}
-          className={cn(
-            "flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer",
-            filtroCheckbox.ativo
-              ? "border-primary/40 bg-primary/10 text-primary font-semibold"
-              : "border-border bg-card text-foreground hover:bg-accent"
-          )}
+          onClick={limparTodosFiltros}
+          className="text-[11px] text-muted-foreground hover:text-destructive px-1.5 py-1 rounded transition-colors cursor-pointer"
+          title="Limpar todos os filtros"
         >
-          <CheckSquare size={13} className={filtroCheckbox.ativo ? "text-primary" : "opacity-60"} />
-          <span>{filtroCheckbox.rotulo}</span>
-        </button>
-      )}
-
-      {/* 5. Chips de tags selecionadas */}
-      {tagsFiltro.map((tag) => (
-        <button
-          key={tag}
-          type="button"
-          onClick={() => alternarTag(tag)}
-          className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/20 transition-colors cursor-pointer"
-          title={`Remover tag #${tag}`}
-        >
-          #{tag}
-          <X size={11} />
-        </button>
-      ))}
-
-      {/* Extras customizados */}
-      {extras}
-
-      {/* Botão Limpar Filtros */}
-      {temFiltroAtivo && (
-        <button
-          type="button"
-          onClick={limparTudo}
-          className="text-[11px] font-medium text-destructive hover:underline cursor-pointer shrink-0 ml-1"
-        >
-          Limpar filtros
+          Limpar
         </button>
       )}
     </div>
   );
 }
 
-/** Alias exportado como GlobalFilterBar */
-export const GlobalFilterBar = BarraFiltrosAvancados;
-
 /**
- * Helper para filtrar itens por data com base no preset.
- * Suporta formatos ISO ou YYYY-MM-DD.
+ * Função utilitária universal de filtragem client-side por regras.
  */
-export function filtrarPorDataPreset(
-  dataRaw: string | undefined | null,
-  filtro: FiltroDataPreset,
-): boolean {
-  if (filtro === "qualquer" || !dataRaw) return true;
+export function filtrarItensPorRegras<T>(
+  itens: T[],
+  regras: RegraFiltro[],
+  extratorPropriedade: (item: T, propId: string) => any
+): T[] {
+  if (regras.length === 0) return itens;
 
-  const data = new Date(typeof dataRaw === "string" && !dataRaw.includes("T") ? `${dataRaw}T00:00:00` : dataRaw);
-  if (isNaN(data.getTime())) return true;
+  const hojeIso = new Date().toISOString().split("T")[0];
 
-  const agora = new Date();
-  const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+  return itens.filter((item) => {
+    return regras.every((regra) => {
+      const val = extratorPropriedade(item, regra.propriedadeId);
 
-  if (filtro === "hoje") {
-    return data >= inicioHoje;
-  }
-  if (filtro === "7dias") {
-    const seteDiasAtras = new Date(inicioHoje);
-    seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
-    return data >= seteDiasAtras;
-  }
-  if (filtro === "mes") {
-    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
-    return data >= inicioMes;
-  }
+      // Tratamento para 'vazio' e 'nao_vazio'
+      if (regra.operador === "vazio") {
+        if (val === undefined || val === null || val === "") return true;
+        if (Array.isArray(val) && val.length === 0) return true;
+        return false;
+      }
+      if (regra.operador === "nao_vazio") {
+        if (val === undefined || val === null || val === "") return false;
+        if (Array.isArray(val) && val.length === 0) return false;
+        return true;
+      }
 
-  return true;
+      // Tratamento para Tags / Arrays
+      if (regra.tipo === "tags" || Array.isArray(val)) {
+        const tags = Array.isArray(val) ? val.map((x) => String(x).toLowerCase()) : [];
+        const busca = String(regra.valor || "").toLowerCase().trim();
+        if (!busca) return true;
+        if (regra.operador === "contem") return tags.some((t) => t.includes(busca));
+        if (regra.operador === "nao_contem") return !tags.some((t) => t.includes(busca));
+        return true;
+      }
+
+      // Tratamento para Data
+      if (regra.tipo === "data") {
+        const dataStr = typeof val === "string" ? val.match(/\d{4}-\d{2}-\d{2}/)?.[0] : "";
+        if (regra.operador === "eh_hoje") return dataStr === hojeIso;
+        if (!dataStr || !regra.valor) return true;
+        if (regra.operador === "antes_de") return dataStr < regra.valor;
+        if (regra.operador === "depois_de") return dataStr > regra.valor;
+        if (regra.operador === "igual") return dataStr === regra.valor;
+        return true;
+      }
+
+      // Tratamento para Texto Geral
+      const textoItem = String(val || "").toLowerCase();
+      const textoBusca = String(regra.valor || "").toLowerCase().trim();
+
+      if (!textoBusca) return true;
+
+      switch (regra.operador) {
+        case "contem":
+          return textoItem.includes(textoBusca);
+        case "nao_contem":
+          return !textoItem.includes(textoBusca);
+        case "igual":
+          return textoItem === textoBusca;
+        case "comeca_com":
+          return textoItem.startsWith(textoBusca);
+        default:
+          return textoItem.includes(textoBusca);
+      }
+    });
+  });
 }

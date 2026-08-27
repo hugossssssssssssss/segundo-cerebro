@@ -282,10 +282,10 @@ export async function gravar(
 
       /**
        * Se era uma nova criação (sha undefined) e o GitHub devolveu 422 (já existe),
-       * NUNCA buscar o sha do arquivo existente para regravar por cima.
+       * NUNCA buscar o sha do arquivo existente para regravar por cima (a menos que seja arquivo de sistema como caixa-entrada).
        * Isso destruiria o arquivo antigo silenciosamente.
        */
-      if (resposta.status === 422 && eraNovaCriacao) {
+      if (resposta.status === 422 && eraNovaCriacao && !caminho.startsWith("caixa-entrada/")) {
         try {
           const { sha: shaDestino, texto: textoDestino } = await ler(cfg, caminho);
           if (conteudosSemelhantes(textoDestino, texto)) {

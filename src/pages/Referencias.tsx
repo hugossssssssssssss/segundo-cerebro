@@ -46,7 +46,7 @@ import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { SeletorOcr } from "@/components/SeletorOcr";
-import { BarraFiltrosAvancados, filtrarPorDataPreset, type FiltroDataPreset } from "@/components/BarraFiltrosAvancados";
+import { BarraFiltrosAvancados, filtrarItensPorRegras, type DefinicaoPropriedade, type RegraFiltro } from "@/components/BarraFiltrosAvancados";
 import { DropdownNovoViaModelo } from "@/components/DropdownNovoViaModelo";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { cn } from "@/lib/utils";
@@ -76,14 +76,10 @@ export default function Referencias() {
   const [erroLocal, setErroLocal] = useState("");
   const erro = erroLocal || erroCarregar || erroSalvar;
 
-  const [tagsFiltro, setTagsFiltro] = useState<string[]>([]);
-  const [filtroDataCriacao, setFiltroDataCriacao] = useState<FiltroDataPreset>("qualquer");
-  const [filtroDataAtualizacao, setFiltroDataAtualizacao] = useState<FiltroDataPreset>("qualquer");
+  const [regrasFiltro, setRegrasFiltro] = useState<RegraFiltro[]>([]);
 
   useEffect(() => {
-    setTagsFiltro([]);
-    setFiltroDataCriacao("qualquer");
-    setFiltroDataAtualizacao("qualquer");
+    setRegrasFiltro([]);
   }, [location.pathname]);
 
   const [editando, setEditando] = useState<Referencia | null>(null);
@@ -396,8 +392,19 @@ export default function Referencias() {
     return Array.from(setPastas).sort();
   }, [refs, pastasCriadas]);
 
+  const propriedadesDisponiveis = useMemo<DefinicaoPropriedade[]>(() => {
+    return [
+      { id: "titulo", rotulo: "Título / Nome", tipo: "texto" },
+      { id: "tags", rotulo: "Tags", tipo: "tags", opcoes: todasTags },
+      { id: "fonte", rotulo: "Fonte / Link", tipo: "texto" },
+      { id: "criado_em", rotulo: "Criado em", tipo: "data" },
+      { id: "atualizado_em", rotulo: "Última edição em", tipo: "data" },
+      { id: "caminho", rotulo: "Pasta / Caminho", tipo: "texto" },
+    ];
+  }, [todasTags]);
+
   const visiveis = useMemo(() => {
-    return refs.filter((r) => {
+    let lista = refs.filter((r) => {
       if (pastaAtual) {
         const prefixo = `${PASTA_REFS}/${pastaAtual}/`;
         if (!r.caminho.startsWith(prefixo)) return false;
@@ -405,21 +412,21 @@ export default function Referencias() {
       if (busca && !correspondeBusca(r.titulo, busca) && !correspondeBusca(r.porque, busca) && !correspondeBusca(r.corpo, busca)) {
         return false;
       }
-      if (tagsFiltro.length > 0) {
-        const temAlguma = tagsFiltro.some((t) => r.tags.includes(t));
-        if (!temAlguma) return false;
-      }
-      if (filtroDataCriacao !== "qualquer") {
-        const criadoEm = String(r.bruto?.criado || r.bruto?.criado_em || "");
-        if (!filtrarPorDataPreset(criadoEm, filtroDataCriacao)) return false;
-      }
-      if (filtroDataAtualizacao !== "qualquer") {
-        const atualizadoEm = String(r.bruto?.atualizado || r.bruto?.atualizado_em || "");
-        if (!filtrarPorDataPreset(atualizadoEm, filtroDataAtualizacao)) return false;
-      }
       return true;
     });
-  }, [refs, pastaAtual, busca, tagsFiltro, filtroDataCriacao, filtroDataAtualizacao]);
+
+    lista = filtrarItensPorRegras(lista, regrasFiltro, (item, propId) => {
+      if (propId === "titulo" || propId === "nome") return item.titulo;
+      if (propId === "tags") return item.tags || [];
+      if (propId === "fonte") return item.fonte;
+      if (propId === "criado_em") return item.bruto?.criado || item.bruto?.criado_em;
+      if (propId === "atualizado_em") return item.bruto?.atualizado || item.bruto?.atualizado_em;
+      if (propId === "caminho") return item.caminho;
+      return (item as any)[propId] || item.bruto?.[propId];
+    });
+
+    return lista;
+  }, [refs, pastaAtual, busca, regrasFiltro]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 w-full pb-10">
@@ -522,6 +529,13 @@ export default function Referencias() {
           busca={busca}
           aoMudarBusca={setBusca}
           placeholderBusca="Buscar inspirações, cores, notas..."
+          filtros={
+            <BarraFiltrosAvancados
+              propriedadesDisponiveis={propriedadesDisponiveis}
+              regras={regrasFiltro}
+              aoMudarRegras={setRegrasFiltro}
+            />
+          }
           acoes={
             <AlternadorVisao
               valorAtivo={modoVisao}
@@ -533,16 +547,6 @@ export default function Referencias() {
               ]}
             />
           }
-        />
-
-        <BarraFiltrosAvancados
-          todasTags={todasTags}
-          tagsFiltro={tagsFiltro}
-          aoMudarTags={setTagsFiltro}
-          filtroData={filtroDataCriacao}
-          aoMudarFiltroData={setFiltroDataCriacao}
-          filtroAtualizacao={filtroDataAtualizacao}
-          aoMudarFiltroAtualizacao={setFiltroDataAtualizacao}
         />
       </div>
 

@@ -37,7 +37,7 @@ import {
 } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
-import { BarraFiltrosAvancados, type FiltroDataPreset, filtrarPorDataPreset } from "@/components/BarraFiltrosAvancados";
+import { BarraFiltrosAvancados, filtrarItensPorRegras, type DefinicaoPropriedade, type RegraFiltro } from "@/components/BarraFiltrosAvancados";
 import { DropdownNovoViaModelo } from "@/components/DropdownNovoViaModelo";
 import { CartaoItem } from "@/components/CartaoItem";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
@@ -101,15 +101,9 @@ export default function Notas() {
     caminhos: string[];
   } | null>(null);
 
-  const [tagsFiltro, setTagsFiltro] = useState<string[]>([]);
-  const [filtroData, setFiltroData] = useState<FiltroDataPreset>("qualquer");
-  const [filtroAtualizacao, setFiltroAtualizacao] = useState<FiltroDataPreset>("qualquer");
-
   // Reset de filtros locais ao mudar de rota
   useEffect(() => {
-    setTagsFiltro([]);
-    setFiltroData("qualquer");
-    setFiltroAtualizacao("qualquer");
+    setRegrasFiltro([]);
     setPastaAtual("");
     setSelecionadas(new Set());
   }, [location.pathname]);
@@ -743,16 +737,6 @@ export default function Notas() {
 
 
 
-  function filtrarPorData(nota: Nota): boolean {
-    const dataCriacao = dataDoNome(nota.caminho) || (nota.bruto.criado_em as string) || (nota.bruto.criado as string);
-    if (!filtrarPorDataPreset(dataCriacao, filtroData)) return false;
-
-    const dataAtualizacao = (nota.bruto.atualizado as string) || (nota.bruto.ultima_edicao as string) || nota.atualizado;
-    if (!filtrarPorDataPreset(dataAtualizacao, filtroAtualizacao)) return false;
-
-    return true;
-  }
-
   if (!pronto) {
     return (
       <Vazio
@@ -801,19 +785,7 @@ export default function Notas() {
     return [...set].sort();
   }, [todasNotas, pastaAtual, pastasCriadas]);
 
-  const visiveis = naPasta.filter((a) => {
-    const titulo = titulos[a.caminho] ?? a.titulo ?? a.caminho;
-    const correspondeBuscaTexto =
-      correspondeBusca(titulo, busca) || correspondeBusca(a.corpo, busca);
-    if (!correspondeBuscaTexto) return false;
-
-    if (tagsFiltro.length > 0) {
-      const temTodas = tagsFiltro.every((t) => a.tags.includes(t));
-      if (!temTodas) return false;
-    }
-
-    return filtrarPorData(a);
-  });
+  const [regrasFiltro, setRegrasFiltro] = useState<RegraFiltro[]>([]);
 
   const todasTags = useMemo(() => {
     const set = new Set<string>();
@@ -822,6 +794,36 @@ export default function Notas() {
     }
     return [...set].sort();
   }, [todasNotas]);
+
+  const propriedadesDisponiveis = useMemo<DefinicaoPropriedade[]>(() => {
+    return [
+      { id: "titulo", rotulo: "Título / Nome", tipo: "texto" },
+      { id: "tags", rotulo: "Tags", tipo: "tags", opcoes: todasTags },
+      { id: "criado_em", rotulo: "Criado em", tipo: "data" },
+      { id: "atualizado_em", rotulo: "Última edição em", tipo: "data" },
+      { id: "criado_por", rotulo: "Criado por", tipo: "texto" },
+      { id: "caminho", rotulo: "Pasta / Caminho", tipo: "texto" },
+    ];
+  }, [todasTags]);
+
+  const visiveis = useMemo(() => {
+    let lista = naPasta.filter((a) => {
+      const titulo = titulos[a.caminho] ?? a.titulo ?? a.caminho;
+      return correspondeBusca(titulo, busca) || correspondeBusca(a.corpo, busca);
+    });
+
+    lista = filtrarItensPorRegras(lista, regrasFiltro, (item, propId) => {
+      if (propId === "titulo" || propId === "nome") return titulos[item.caminho] ?? item.titulo ?? item.caminho;
+      if (propId === "tags") return item.tags || [];
+      if (propId === "criado_em") return item.bruto?.criado || item.bruto?.criado_em || dataDoNome(item.caminho);
+      if (propId === "atualizado_em") return item.atualizado || item.bruto?.atualizado;
+      if (propId === "criado_por") return item.bruto?.autor || item.bruto?.criado_por;
+      if (propId === "caminho") return item.caminho;
+      return (item as any)[propId] || item.bruto?.[propId];
+    });
+
+    return lista;
+  }, [naPasta, titulos, busca, regrasFiltro]);
 
   // `subpastas` serve só para desenhar a pasta atual. Para mover, porém,
   // precisamos oferecer também as pastas mais profundas e as que acabaram de
@@ -838,7 +840,7 @@ export default function Notas() {
   }, [todasNotas, pastasCriadas]);
 
   const partesPasta = pastaAtual ? pastaAtual.split("/") : [];
-  const filtroAtivo = busca.trim() !== "" || tagsFiltro.length > 0 || filtroData !== "qualquer";
+  const filtroAtivo = busca.trim() !== "" || regrasFiltro.length > 0;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -862,6 +864,23 @@ export default function Notas() {
               iconePrincipal={<Plus size={16} />}
               aoCriarNovo={() => nova()}
               aoCriarComTemplate={(t) => nova(t)}
+              aoEditarTemplate={(tmpl) => {
+                setAberta({
+                  caminho: tmpl.caminho || `.klaus/templates/${tmpl.id}.md`,
+                  sha: tmpl.sha || "",
+                  tipo: "nota",
+                  titulo: tmpl.titulo,
+                  corpo: tmpl.corpoPadrao,
+                  tags: tmpl.frontmatter?.tags || [],
+                  atualizado: "",
+                  bruto: tmpl.frontmatter || {},
+                  original: {
+                    titulo: tmpl.titulo,
+                    corpo: tmpl.corpoPadrao,
+                    bruto: tmpl.frontmatter || {},
+                  },
+                });
+              }}
             />
           </>
         }
@@ -902,13 +921,9 @@ export default function Notas() {
           placeholderBusca="Buscar nota por título..."
           filtros={
             <BarraFiltrosAvancados
-              todasTags={todasTags}
-              tagsFiltro={tagsFiltro}
-              aoMudarTags={setTagsFiltro}
-              filtroData={filtroData}
-              aoMudarFiltroData={setFiltroData}
-              filtroAtualizacao={filtroAtualizacao}
-              aoMudarFiltroAtualizacao={setFiltroAtualizacao}
+              propriedadesDisponiveis={propriedadesDisponiveis}
+              regras={regrasFiltro}
+              aoMudarRegras={setRegrasFiltro}
             />
           }
         />

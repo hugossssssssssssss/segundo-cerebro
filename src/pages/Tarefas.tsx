@@ -40,7 +40,7 @@ import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { cn, lerParametroAbrir, correspondeBusca } from "@/lib/utils";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
-import { BarraFiltrosAvancados, type FiltroDataPreset, filtrarPorDataPreset } from "@/components/BarraFiltrosAvancados";
+import { BarraFiltrosAvancados, filtrarItensPorRegras, type DefinicaoPropriedade, type RegraFiltro } from "@/components/BarraFiltrosAvancados";
 import { DropdownNovoViaModelo } from "@/components/DropdownNovoViaModelo";
 
 export default function Tarefas() {
@@ -67,9 +67,7 @@ export default function Tarefas() {
   const [editando, setEditando] = useState<Tarefa | null>(null);
   const [original, setOriginal] = useState<Tarefa | null>(null);
   const { iniciar } = useCronometro();
-  const [tagSelecionada, setTagSelecionada] = useState<string | null>(null);
-  const [tagsFiltro, setTagsFiltro] = useState<string[]>([]);
-  const [filtroDataTarefas, setFiltroDataTarefas] = useState<FiltroDataPreset>("qualquer");
+  const [regrasFiltro, setRegrasFiltro] = useState<RegraFiltro[]>([]);
   const [pastaSelecionada, setPastaSelecionada] = useState<string | null>(null);
   const [visao, setVisao] = useState<"quadro" | "calendario">(() => {
     const salvo = localStorage.getItem("tarefa-visao");
@@ -222,9 +220,7 @@ export default function Tarefas() {
 
   // Reset de filtros locais ao mudar de rota
   useEffect(() => {
-    setTagsFiltro([]);
-    setTagSelecionada(null);
-    setFiltroDataTarefas("qualquer");
+    setRegrasFiltro([]);
     setPastaSelecionada(null);
   }, [location.pathname]);
 
@@ -356,32 +352,47 @@ export default function Tarefas() {
     );
   }
 
-  const tarefasExibidas = tarefas.filter((t) => {
-    if (pastaSelecionada) {
-      const prefixo = `${PASTAS.tarefas}/${pastaSelecionada}/`;
-      if (!t.caminho.startsWith(prefixo)) return false;
-    }
-    // Filtro BarraFiltrosAvancados: tags (multiselect)
-    if (tagsFiltro.length > 0) {
-      if (!tagsFiltro.every((tag) => t.tags?.includes(tag))) return false;
-    }
-    // Filtro legado: tag única selecionada
-    if (tagSelecionada && (!t.tags || !t.tags.includes(tagSelecionada))) {
-      return false;
-    }
-    // Filtro de data
-    if (filtroDataTarefas !== "qualquer" && !filtrarPorDataPreset((t.bruto?.criado_em || t.bruto?.criado || t.bruto?.atualizado) as string | undefined, filtroDataTarefas)) {
-      return false;
-    }
-    if (busca.trim()) {
-      return (
-        correspondeBusca(t.titulo, busca) ||
-        correspondeBusca(t.corpo, busca) ||
-        t.tags.some((tag) => correspondeBusca(tag, busca))
-      );
-    }
-    return true;
-  });
+  const propriedadesDisponiveis = useMemo<DefinicaoPropriedade[]>(() => {
+    return [
+      { id: "titulo", rotulo: "Título / Nome", tipo: "texto" },
+      { id: "status", rotulo: "Status", tipo: "status", opcoes: ["a-fazer", "fazendo", "feito"] },
+      { id: "tags", rotulo: "Tags", tipo: "tags", opcoes: todasTags },
+      { id: "prazo", rotulo: "Prazo", tipo: "data" },
+      { id: "criado_em", rotulo: "Criado em", tipo: "data" },
+      { id: "atualizado_em", rotulo: "Última edição em", tipo: "data" },
+      { id: "pomodoro", rotulo: "Pomodoro / Esforço", tipo: "numero" },
+    ];
+  }, [todasTags]);
+
+  const tarefasExibidas = useMemo(() => {
+    let lista = tarefas.filter((t) => {
+      if (pastaSelecionada) {
+        const prefixo = `${PASTAS.tarefas}/${pastaSelecionada}/`;
+        if (!t.caminho.startsWith(prefixo)) return false;
+      }
+      if (busca.trim()) {
+        return (
+          correspondeBusca(t.titulo, busca) ||
+          correspondeBusca(t.corpo, busca) ||
+          t.tags.some((tag) => correspondeBusca(tag, busca))
+        );
+      }
+      return true;
+    });
+
+    lista = filtrarItensPorRegras(lista, regrasFiltro, (item, propId) => {
+      if (propId === "titulo" || propId === "nome") return item.titulo;
+      if (propId === "status") return item.status;
+      if (propId === "tags") return item.tags || [];
+      if (propId === "prazo") return item.prazo;
+      if (propId === "criado_em") return item.bruto?.criado || item.bruto?.criado_em;
+      if (propId === "atualizado_em") return item.bruto?.atualizado || item.bruto?.atualizado_em;
+      if (propId === "pomodoro") return item.Pomodoro || item.bruto?.pomodoro;
+      return (item as any)[propId] || item.bruto?.[propId];
+    });
+
+    return lista;
+  }, [tarefas, pastaSelecionada, busca, regrasFiltro]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -398,6 +409,20 @@ export default function Tarefas() {
             aoCriarNovo={abrirNova}
             categoria="tarefa"
             aoCriarComTemplate={criarComModelo}
+            aoEditarTemplate={(tmpl) => {
+              const rascunho: Tarefa = {
+                titulo: tmpl.titulo,
+                status: "a-fazer",
+                caminho: tmpl.caminho || `.klaus/templates/${tmpl.id}.md`,
+                sha: tmpl.sha || "",
+                corpo: tmpl.corpoPadrao,
+                tags: tmpl.frontmatter?.tags || [],
+                Pomodoro: 0,
+                bruto: tmpl.frontmatter || {},
+              };
+              setEditando(rascunho);
+              setOriginal(rascunho);
+            }}
           />
         }
       />
@@ -408,14 +433,9 @@ export default function Tarefas() {
         placeholderBusca="Buscar tarefa por título..."
         filtros={
           <BarraFiltrosAvancados
-            todasTags={todasTags}
-            tagsFiltro={tagsFiltro}
-            aoMudarTags={(tags) => {
-              setTagsFiltro(tags);
-              setTagSelecionada(tags.length === 1 ? tags[0] : null);
-            }}
-            filtroData={filtroDataTarefas}
-            aoMudarFiltroData={setFiltroDataTarefas}
+            propriedadesDisponiveis={propriedadesDisponiveis}
+            regras={regrasFiltro}
+            aoMudarRegras={setRegrasFiltro}
           />
         }
         acoes={
