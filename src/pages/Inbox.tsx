@@ -9,9 +9,9 @@ import {
   Sparkles,
   Bell,
   Check,
-  AlertCircle,
-  LayoutList,
-  Columns3,
+  Clock,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo, type ItemRepo, invalidarCache } from "@/lib/repo";
@@ -21,7 +21,6 @@ import { toast } from "@/lib/toast";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { Carregando } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, endOfWeek, addDays, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -49,7 +48,7 @@ export default function Inbox() {
   const [carregando, setCarregando] = useState(true);
   const [acervo, setAcervo] = useState<ItemRepo[]>([]);
   const [dataReferencia, setDataReferencia] = useState<Date>(new Date());
-  const [modoExibicao, setModoExibicao] = useState<"lista" | "colunas">("lista");
+  const [mostrarPendencias, setMostrarPendencias] = useState(false);
 
   // Estado do Painel Notion para Novo Lembrete / Edição de Documento
   const [itemAberto, setItemAberto] = useState<CompromissoSemana | null>(null);
@@ -257,7 +256,7 @@ export default function Inbox() {
     return `Semana de ${dInicio} a ${dFim}`;
   }, [inicioSemana, fimSemana]);
 
-  // Compromissos Atrasados: APENAS aqueles cuja data é estritamente anterior ao HOJE REAL
+  // Compromissos Atrasados: APENAS o que venceu antes de hoje
   const hojeRealIso = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   const atrasadosReais = useMemo(() => {
@@ -369,54 +368,46 @@ export default function Inbox() {
 
   const hoje = new Date();
 
+  // Dividindo os dias em dias úteis (Seg-Qui) e fim da semana (Sex-Dom) para grade ampla balanceada
+  const diasLinha1 = diasDaSemana.slice(0, 4); // Seg, Ter, Qua, Qui
+  const diasLinha2 = diasDaSemana.slice(4, 7); // Sex, Sáb, Dom
+
   return (
-    <div className="space-y-6 w-full max-w-none pb-16 animate-in fade-in duration-150">
-      {/* 1. Cabeçalho da Caixa de Entrada & Agenda Semanal */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-border/40">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Caixa de Entrada & Agenda da Semana
+    <div className="space-y-5 w-full max-w-none pb-16 animate-in fade-in duration-150">
+      {/* 1. Cabeçalho Minimalista da Agenda Semanal */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-border/40">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
+            Caixa de Entrada & Agenda
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
+
+          <span className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2.5 py-1 rounded-lg border border-border/40">
             {intervaloSemanaFormatado}
-          </p>
+          </span>
+
+          {/* Tag Minimalista de Pendências Anteriores */}
+          {atrasadosReais.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setMostrarPendencias(!mostrarPendencias)}
+              className={cn(
+                "text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors flex items-center gap-1.5 cursor-pointer",
+                mostrarPendencias
+                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                  : "bg-secondary/40 text-muted-foreground border-border/60 hover:text-foreground"
+              )}
+            >
+              <Clock size={12} className={mostrarPendencias ? "text-amber-500" : ""} />
+              <span>
+                {atrasadosReais.length} pendência{atrasadosReais.length === 1 ? "" : "s"} anterior{atrasadosReais.length === 1 ? "" : "es"}
+              </span>
+              {mostrarPendencias ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Alternador de Layout (Lista Espaçosa vs Grade) */}
-          <div className="flex items-center gap-0.5 bg-card border border-border rounded-xl p-1 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setModoExibicao("lista")}
-              className={cn(
-                "p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer",
-                modoExibicao === "lista"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              title="Visão Lista Espaçosa por Dia"
-            >
-              <LayoutList size={14} />
-              <span className="hidden sm:inline">Lista</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setModoExibicao("colunas")}
-              className={cn(
-                "p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer",
-                modoExibicao === "colunas"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              title="Visão Grade Semanal"
-            >
-              <Columns3 size={14} />
-              <span className="hidden sm:inline">Grade</span>
-            </button>
-          </div>
-
-          {/* Navegação de Semanas */}
+        <div className="flex items-center gap-2">
+          {/* Navegação Semanal */}
           <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 shadow-2xs">
             <button
               type="button"
@@ -424,7 +415,7 @@ export default function Inbox() {
               className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
               title="Semana anterior"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={15} />
             </button>
 
             <button
@@ -441,252 +432,316 @@ export default function Inbox() {
               className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
               title="Próxima semana"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={15} />
             </button>
           </div>
 
-          {/* Botão Padronizado + Novo Lembrete */}
+          {/* Botão + Novo Lembrete */}
           <Button
             size="sm"
             onClick={abrirNovoLembrete}
-            className="text-xs font-semibold h-9 rounded-xl gap-1.5 shadow-2xs cursor-pointer ml-1"
+            className="text-xs font-semibold h-8 rounded-xl gap-1.5 shadow-2xs cursor-pointer"
           >
-            <Plus size={14} />
+            <Plus size={13} />
             <span>Novo Lembrete</span>
           </Button>
         </div>
       </div>
 
-      {/* 2. Conteúdo da Agenda */}
-      {carregando ? (
-        <Carregando texto="Carregando seus compromissos..." />
-      ) : (
-        <div className="space-y-6">
-          {/* Seção de Atrasados Reais (Apenas o que venceu antes de hoje) */}
-          {atrasadosReais.length > 0 && (
-            <div className="p-4 rounded-2xl border border-destructive/30 bg-destructive/5 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-destructive font-bold text-xs">
-                  <AlertCircle size={15} />
-                  <span>Pendências Anteriores Vencidas ({atrasadosReais.length})</span>
+      {/* 2. Gaveta Minimalista de Pendências Anteriores (Expansível sob demanda) */}
+      {mostrarPendencias && atrasadosReais.length > 0 && (
+        <div className="p-3.5 rounded-xl border border-border/70 bg-secondary/15 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold">
+            <span>Compromissos pendentes com data anterior a hoje:</span>
+            <button
+              type="button"
+              onClick={() => setMostrarPendencias(false)}
+              className="text-[11px] hover:text-foreground cursor-pointer"
+            >
+              Ocultar
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {atrasadosReais.map((c) => (
+              <div
+                key={c.id}
+                onClick={() => abrirDocumento(c)}
+                className="p-2.5 rounded-lg border border-border/60 bg-card hover:border-border transition-all cursor-pointer flex items-center justify-between gap-2 text-xs shadow-2xs"
+              >
+                <div className="min-w-0">
+                  <p className="font-semibold text-foreground truncate">{c.titulo}</p>
+                  <p className="text-[10px] text-muted-foreground">Prazo: {c.dataBr}</p>
                 </div>
+                <span className="text-[10px] capitalize text-muted-foreground font-mono bg-secondary px-1.5 py-0.5 rounded">
+                  {c.tipo}
+                </span>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-                {atrasadosReais.map((c) => (
-                  <div
-                    key={c.id}
-                    onClick={() => abrirDocumento(c)}
-                    className="p-3 rounded-xl border border-destructive/20 bg-card hover:border-destructive/40 transition-all cursor-pointer flex items-center justify-between gap-2.5 shadow-2xs"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-semibold text-xs text-foreground truncate">{c.titulo}</p>
-                      <p className="text-[10px] text-destructive font-medium mt-0.5">
-                        Prazo: {c.dataBr}
-                      </p>
-                    </div>
-                    <Badge variant="destructive" className="text-[9px] px-1.5 py-0 h-4 uppercase shrink-0">
-                      {c.tipo}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* MODO 1: Lista Espaçosa por Dia da Semana (Layout Confortável) */}
-          {modoExibicao === "lista" && (
-            <div className="space-y-4">
-              {diasDaSemana.map((dia) => {
-                const diaIso = format(dia, "yyyy-MM-dd");
-                const diaNome = format(dia, "EEEE", { locale: ptBR });
-                const diaFormatadoBr = format(dia, "dd/MM/yyyy");
-                const ehHoje = isSameDay(dia, hoje);
-
-                const itensDoDia = todosCompromissos.filter((c) => c.dataIso === diaIso);
-
-                return (
-                  <div
-                    key={diaIso}
-                    className={cn(
-                      "rounded-2xl border transition-all overflow-hidden p-4 space-y-3",
-                      ehHoje
-                        ? "bg-card border-primary/50 shadow-md ring-1 ring-primary/20"
-                        : "bg-card/70 border-border/70"
-                    )}
-                  >
-                    {/* Topo do Dia */}
-                    <div className="flex items-center justify-between border-b border-border/40 pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "text-sm font-bold capitalize",
-                            ehHoje ? "text-primary" : "text-foreground"
-                          )}
-                        >
-                          {diaNome}
-                        </span>
-                        <span className="text-xs font-mono text-muted-foreground font-medium">
-                          ({diaFormatadoBr})
-                        </span>
-                        {ehHoje && (
-                          <Badge variant="default" className="text-[10px] h-4 px-1.5 py-0">
-                            Hoje
-                          </Badge>
-                        )}
-                      </div>
-
-                      <span className="text-xs text-muted-foreground font-medium">
-                        {itensDoDia.length} compromisso{itensDoDia.length === 1 ? "" : "s"}
-                      </span>
-                    </div>
-
-                    {/* Itens do Dia */}
-                    {itensDoDia.length === 0 ? (
-                      <p className="text-xs text-muted-foreground/50 py-2">
-                        Nenhum compromisso para este dia.
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                        {itensDoDia.map((c) => {
-                          const Icone =
-                            c.tipo === "tarefa"
-                              ? CheckSquare
-                              : c.tipo === "meta"
-                              ? Target
-                              : c.tipo === "entrega"
-                              ? Sparkles
-                              : c.tipo === "nota"
-                              ? FileText
-                              : Bell;
-
-                          return (
-                            <div
-                              key={c.id}
-                              onClick={() => abrirDocumento(c)}
-                              className={cn(
-                                "group p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 shadow-2xs",
-                                c.concluido
-                                  ? "bg-secondary/20 border-border/40 opacity-60 hover:opacity-100"
-                                  : "bg-background border-border/70 hover:border-border hover:bg-card hover:shadow-xs"
-                              )}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                {c.tipo === "tarefa" ? (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      alternarConclusaoTarefa(c);
-                                    }}
-                                    className={cn(
-                                      "h-4 w-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0",
-                                      c.concluido
-                                        ? "bg-primary border-primary text-primary-foreground"
-                                        : "border-border hover:border-foreground bg-card"
-                                    )}
-                                  >
-                                    {c.concluido && <Check size={10} strokeWidth={3} />}
-                                  </button>
-                                ) : (
-                                  <Icone size={14} className="text-muted-foreground shrink-0" />
-                                )}
-
-                                <div className="min-w-0">
-                                  <p
-                                    className={cn(
-                                      "font-semibold text-xs text-foreground truncate group-hover:text-primary transition-colors",
-                                      c.concluido && "line-through opacity-50"
-                                    )}
-                                  >
-                                    {c.titulo}
-                                  </p>
-                                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
-                                    <span className="capitalize">{c.tipo}</span>
-                                    {c.hora && <span>• {c.hora}</span>}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                                {c.dataBr}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* MODO 2: Grade de Colunas por Dia (7 Colunas) */}
-          {modoExibicao === "colunas" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 items-start">
-              {diasDaSemana.map((dia) => {
-                const diaIso = format(dia, "yyyy-MM-dd");
-                const diaNome = format(dia, "EEEE", { locale: ptBR });
-                const diaFormatadoBr = format(dia, "dd/MM/yyyy");
-                const ehHoje = isSameDay(dia, hoje);
-
-                const itensDoDia = todosCompromissos.filter((c) => c.dataIso === diaIso);
-
-                return (
-                  <div
-                    key={diaIso}
-                    className={cn(
-                      "flex flex-col rounded-2xl border transition-all duration-150 overflow-hidden min-h-[360px]",
-                      ehHoje
-                        ? "bg-card border-primary/50 shadow-md ring-1 ring-primary/20"
-                        : "bg-card/60 border-border/70"
-                    )}
-                  >
-                    {/* Cabeçalho do Dia */}
-                    <div
-                      className={cn(
-                        "p-3 border-b text-xs flex flex-col gap-0.5",
-                        ehHoje
-                          ? "bg-primary/10 border-primary/30 text-primary font-bold"
-                          : "bg-secondary/20 border-border/40 text-muted-foreground font-medium"
-                      )}
-                    >
-                      <span className="capitalize">{diaNome.slice(0, 3)}</span>
-                      <span className="font-mono text-[10px]">{diaFormatadoBr}</span>
-                    </div>
-
-                    {/* Lista de Itens */}
-                    <div className="p-2 space-y-2 flex-1 overflow-y-auto">
-                      {itensDoDia.length === 0 ? (
-                        <p className="text-[11px] text-muted-foreground/40 text-center py-8">
-                          Sem eventos
-                        </p>
-                      ) : (
-                        itensDoDia.map((c) => (
-                          <div
-                            key={c.id}
-                            onClick={() => abrirDocumento(c)}
-                            className="group p-2.5 rounded-xl border border-border/70 bg-background hover:bg-card transition-all cursor-pointer space-y-1 text-xs"
-                          >
-                            <p className="font-semibold text-foreground truncate">{c.titulo}</p>
-                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                              <span className="capitalize">{c.tipo}</span>
-                              {c.hora && <span>{c.hora}</span>}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       )}
 
-      {/* 3. Painel Notion Padrão para Visualizar, Criar e Editar Lembretes / Documentos */}
+      {/* 3. Conteúdo da Agenda Semanal em Grade Ampla Balanceada */}
+      {carregando ? (
+        <Carregando texto="Carregando compromissos..." />
+      ) : (
+        <div className="space-y-3.5">
+          {/* Linha 1: Segunda, Terça, Quarta, Quinta (4 Colunas Largas) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {diasLinha1.map((dia) => {
+              const diaIso = format(dia, "yyyy-MM-dd");
+              const diaNome = format(dia, "EEEE", { locale: ptBR });
+              const diaFormatadoBr = format(dia, "dd/MM/yyyy");
+              const ehHoje = isSameDay(dia, hoje);
+
+              const itensDoDia = todosCompromissos.filter((c) => c.dataIso === diaIso);
+
+              return (
+                <div
+                  key={diaIso}
+                  className={cn(
+                    "flex flex-col rounded-2xl border transition-all duration-150 overflow-hidden min-h-[260px]",
+                    ehHoje
+                      ? "bg-card border-primary/50 shadow-md ring-1 ring-primary/20"
+                      : "bg-card/70 border-border/70"
+                  )}
+                >
+                  {/* Topo do Dia */}
+                  <div
+                    className={cn(
+                      "p-3 border-b text-xs flex items-center justify-between",
+                      ehHoje
+                        ? "bg-primary/10 border-primary/25 text-primary font-bold"
+                        : "bg-secondary/20 border-border/40 text-foreground font-semibold"
+                    )}
+                  >
+                    <span className="capitalize">{diaNome}</span>
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                      {diaFormatadoBr}
+                    </span>
+                  </div>
+
+                  {/* Lista de Compromissos do Dia */}
+                  <div className="p-2.5 space-y-2 flex-1 overflow-y-auto">
+                    {itensDoDia.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground/40 text-center py-6">
+                        Livre
+                      </p>
+                    ) : (
+                      itensDoDia.map((c) => {
+                        const Icone =
+                          c.tipo === "tarefa"
+                            ? CheckSquare
+                            : c.tipo === "meta"
+                            ? Target
+                            : c.tipo === "entrega"
+                            ? Sparkles
+                            : c.tipo === "nota"
+                            ? FileText
+                            : Bell;
+
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => abrirDocumento(c)}
+                            className={cn(
+                              "group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 shadow-2xs text-xs",
+                              c.concluido
+                                ? "bg-secondary/20 border-border/40 opacity-60 hover:opacity-100"
+                                : "bg-background border-border/70 hover:border-border hover:bg-card"
+                            )}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              {c.tipo === "tarefa" ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    alternarConclusaoTarefa(c);
+                                  }}
+                                  className={cn(
+                                    "h-4 w-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0",
+                                    c.concluido
+                                      ? "bg-primary border-primary text-primary-foreground"
+                                      : "border-border hover:border-foreground bg-card"
+                                  )}
+                                >
+                                  {c.concluido && <Check size={10} strokeWidth={3} />}
+                                </button>
+                              ) : (
+                                <Icone size={13} className="text-muted-foreground shrink-0" />
+                              )}
+
+                              <div className="min-w-0">
+                                <p
+                                  className={cn(
+                                    "font-semibold text-foreground truncate group-hover:text-primary transition-colors",
+                                    c.concluido && "line-through opacity-50"
+                                  )}
+                                >
+                                  {c.titulo}
+                                </p>
+                                <span className="text-[10px] text-muted-foreground capitalize">
+                                  {c.tipo} {c.hora && `• ${c.hora}`}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Linha 2: Sexta, Sábado, Domingo + Painel de Visão Geral (4 Colunas) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {diasLinha2.map((dia) => {
+              const diaIso = format(dia, "yyyy-MM-dd");
+              const diaNome = format(dia, "EEEE", { locale: ptBR });
+              const diaFormatadoBr = format(dia, "dd/MM/yyyy");
+              const ehHoje = isSameDay(dia, hoje);
+
+              const itensDoDia = todosCompromissos.filter((c) => c.dataIso === diaIso);
+
+              return (
+                <div
+                  key={diaIso}
+                  className={cn(
+                    "flex flex-col rounded-2xl border transition-all duration-150 overflow-hidden min-h-[260px]",
+                    ehHoje
+                      ? "bg-card border-primary/50 shadow-md ring-1 ring-primary/20"
+                      : "bg-card/70 border-border/70"
+                  )}
+                >
+                  {/* Topo do Dia */}
+                  <div
+                    className={cn(
+                      "p-3 border-b text-xs flex items-center justify-between",
+                      ehHoje
+                        ? "bg-primary/10 border-primary/25 text-primary font-bold"
+                        : "bg-secondary/20 border-border/40 text-foreground font-semibold"
+                    )}
+                  >
+                    <span className="capitalize">{diaNome}</span>
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                      {diaFormatadoBr}
+                    </span>
+                  </div>
+
+                  {/* Lista de Compromissos */}
+                  <div className="p-2.5 space-y-2 flex-1 overflow-y-auto">
+                    {itensDoDia.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground/40 text-center py-6">
+                        Livre
+                      </p>
+                    ) : (
+                      itensDoDia.map((c) => {
+                        const Icone =
+                          c.tipo === "tarefa"
+                            ? CheckSquare
+                            : c.tipo === "meta"
+                            ? Target
+                            : c.tipo === "entrega"
+                            ? Sparkles
+                            : c.tipo === "nota"
+                            ? FileText
+                            : Bell;
+
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => abrirDocumento(c)}
+                            className={cn(
+                              "group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 shadow-2xs text-xs",
+                              c.concluido
+                                ? "bg-secondary/20 border-border/40 opacity-60 hover:opacity-100"
+                                : "bg-background border-border/70 hover:border-border hover:bg-card"
+                            )}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              {c.tipo === "tarefa" ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    alternarConclusaoTarefa(c);
+                                  }}
+                                  className={cn(
+                                    "h-4 w-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0",
+                                    c.concluido
+                                      ? "bg-primary border-primary text-primary-foreground"
+                                      : "border-border hover:border-foreground bg-card"
+                                  )}
+                                >
+                                  {c.concluido && <Check size={10} strokeWidth={3} />}
+                                </button>
+                              ) : (
+                                <Icone size={13} className="text-muted-foreground shrink-0" />
+                              )}
+
+                              <div className="min-w-0">
+                                <p
+                                  className={cn(
+                                    "font-semibold text-foreground truncate group-hover:text-primary transition-colors",
+                                    c.concluido && "line-through opacity-50"
+                                  )}
+                                >
+                                  {c.titulo}
+                                </p>
+                                <span className="text-[10px] text-muted-foreground capitalize">
+                                  {c.tipo} {c.hora && `• ${c.hora}`}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* 4ª Coluna da Linha 2: Resumo Rápido da Semana */}
+            <div className="flex flex-col rounded-2xl border border-dashed border-border/80 bg-secondary/10 p-4 justify-between min-h-[260px]">
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-primary" />
+                  <span>Resumo da Semana</span>
+                </span>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Todos os seus compromissos, entregas e tarefas da semana permanecem sincronizados aqui.
+                </p>
+              </div>
+
+              <div className="space-y-1.5 pt-2 border-t border-border/40 text-xs">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Total de eventos:</span>
+                  <span className="font-semibold font-mono text-foreground">
+                    {todosCompromissos.filter((c) => {
+                      const dIni = format(inicioSemana, "yyyy-MM-dd");
+                      const dFim = format(fimSemana, "yyyy-MM-dd");
+                      return c.dataIso >= dIni && c.dataIso <= dFim;
+                    }).length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Pendências anteriores:</span>
+                  <span className="font-semibold font-mono text-foreground">
+                    {atrasadosReais.length}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Painel Notion Padrão para Visualizar, Criar e Editar Lembretes / Documentos */}
       {itemAberto && (
         <PainelNotionBase
           rotuloTipo={itemAberto.tipo.toUpperCase()}
