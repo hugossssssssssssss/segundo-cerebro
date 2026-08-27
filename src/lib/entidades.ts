@@ -409,3 +409,10 @@ export function textoPrazoMeta(m: Meta): string {
 }
 
 export { PASTAS };
+export {
+  REGISTRO_ENTIDADES,
+  detectarTipoDoItem,
+  obterEntidadePorPasta,
+  obterEntidadePorTipo,
+  type DefinicaoEntidade,
+} from "./entidadeRegistro";

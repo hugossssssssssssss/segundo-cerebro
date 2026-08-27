@@ -25,6 +25,7 @@ import { PASTAS } from "@/lib/tipos";
 import { comoNota, notaParaArquivo, dataDoNome } from "@/lib/entidades";
 import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
 import { invalidarCache } from "@/lib/repo";
+import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import {
   escreverMarkdown,
   tituloProvavel,
@@ -498,7 +499,7 @@ export default function Notas() {
       // Espera o GitHub processar os commits antes de forçar o recarregamento unificado
       await new Promise((r) => setTimeout(r, 800));
       invalidarCache();
-      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+      dispararAtualizacaoAcervo(PASTAS.notas);
 
       if (falhas > 0) {
         toast(`${sucesso} item(ns) colado(s), ${falhas} falha(s)`, { tipo: "aviso" });
@@ -543,7 +544,7 @@ export default function Notas() {
       // Espera o GitHub processar a deleção antes de forçar o recarregamento unificado
       await new Promise((r) => setTimeout(r, 800));
       invalidarCache();
-      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+      dispararAtualizacaoAcervo(PASTAS.notas);
 
       if (falhas > 0) {
         toast(`${sucesso} excluída(s), ${falhas} falha(s)`, { tipo: "aviso" });
@@ -627,7 +628,7 @@ export default function Notas() {
       // Espera o GitHub processar a movimentação antes de forçar o recarregamento unificado
       await new Promise((r) => setTimeout(r, 800));
       invalidarCache();
-      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+      dispararAtualizacaoAcervo(PASTAS.notas);
 
       if (!silenciarToast) toast(`Nota movida para "${pastaDestino || "Notas"}"`, { tipo: "sucesso" });
       return true;
@@ -682,7 +683,7 @@ export default function Notas() {
           // Espera o GitHub processar a movimentação em lote antes de forçar o recarregamento unificado
           await new Promise((r) => setTimeout(r, 800));
           invalidarCache();
-          window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+          dispararAtualizacaoAcervo(PASTAS.notas);
 
           if (falhas > 0) {
             toast(`${sucesso} movida(s), ${falhas} falha(s)`, { tipo: "aviso" });

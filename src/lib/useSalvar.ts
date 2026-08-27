@@ -18,6 +18,7 @@ import { toast } from "./toast";
 import { formatarNomeAmigavel } from "./utils";
 import { salvarRascunhoLocal, obterRascunhosLocais, sincronizarFilaOffline } from "./offlineQueue";
 import { lerConfig, configCompleta, type Settings } from "./settings";
+import { dispararAtualizacaoAcervo, EVENTO_ACERVO_ATUALIZADO } from "./eventos";
 
 export type EstadoSalvar = {
   /**
@@ -65,8 +66,8 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
     };
 
     checarStatusFila();
-    window.addEventListener("acervo-atualizado", checarStatusFila);
-    return () => window.removeEventListener("acervo-atualizado", checarStatusFila);
+    window.addEventListener(EVENTO_ACERVO_ATUALIZADO, checarStatusFila);
+    return () => window.removeEventListener(EVENTO_ACERVO_ATUALIZADO, checarStatusFila);
   }, []);
 
   async function salvarTexto(
@@ -89,8 +90,8 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
       atualizarCacheLocal(caminho, texto, doc, shaFinal);
 
       if (!silencioso) {
-        // 3. Notifica atualizações de estado local instantaneamente
-        window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+        // 3. Notifica atualizações de estado local com agrupamento inteligente
+        dispararAtualizacaoAcervo(caminho);
         notificarOutrasAbas(caminho);
       }
 
@@ -118,8 +119,8 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
       removerDoCacheLocal(caminho);
 
       if (!silencioso) {
-        // 3. Notifica atualizações de estado local instantaneamente
-        window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+        // 3. Notifica atualizações de estado local com agrupamento inteligente
+        dispararAtualizacaoAcervo(caminho);
         notificarOutrasAbas(caminho);
 
         const nomeItem = formatarNomeAmigavel(caminho);

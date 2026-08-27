@@ -16,6 +16,7 @@ import { invalidarCache, type ItemRepo } from "./repo";
 import { escreverMarkdown, lerMarkdown, nomeLivre } from "./markdown";
 import { hojeISO } from "./utils";
 import { notificarOutrasAbas } from "./syncChannel";
+import { dispararAtualizacaoAcervo } from "./eventos";
 
 export type TipoAcao = "criar" | "editar" | "apagar";
 
@@ -311,7 +312,7 @@ export async function executar(
 
   invalidarCache();
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+    dispararAtualizacaoAcervo(caminhoAfetado);
     notificarOutrasAbas(caminhoAfetado);
   }
   return caminhoAfetado;

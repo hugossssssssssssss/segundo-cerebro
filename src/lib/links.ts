@@ -12,6 +12,7 @@ import { gravar } from "./github";
 import { tituloProvavel, lerMarkdown } from "./markdown";
 import { tipoDoItem, type TipoItem } from "./busca";
 import { notificarOutrasAbas } from "./syncChannel";
+import { dispararAtualizacaoAcervo } from "./eventos";
 
 /** Letras aceitas num título mencionado com `@`, incluindo as acentuadas. */
 const LETRA = "a-zA-ZáàâãéèêíïóôõöúüçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÜÇÑ";
@@ -453,7 +454,7 @@ export async function propagarRenomeacao(
 
   if (sucessoContagem > 0) {
     invalidarCache();
-    window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+    dispararAtualizacaoAcervo();
     notificarOutrasAbas();
   }
 

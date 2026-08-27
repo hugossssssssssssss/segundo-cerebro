@@ -24,7 +24,6 @@ import { LISTA_FERRAMENTAS_APP, type FerramentaApp } from "./ferramentasApp";
 // Re-exporta os contratos centrais de tipos.ts
 export type { TipoItem } from "./tipos";
 export { ROTULO_TIPO, ROTA_POR_TIPO as ROTA_TIPO } from "./tipos";
-import { ROTULO_TIPO } from "./tipos";
 import type { TipoItem } from "./tipos";
 
 export type Resultado = {
@@ -48,24 +47,11 @@ export type CategoriaFiltroBusca =
   | "referencias"
   | "lousas";
 
-/** Descobre o tipo pelo frontmatter e, se faltar, pela pasta. */
-export function tipoDoItem(item: ItemRepo): TipoItem {
-  const declarado = item.doc.dados.tipo;
-  if (typeof declarado === "string") {
-    const t = declarado.toLowerCase();
-    if (t in ROTULO_TIPO) return t as TipoItem;
-  }
+import { detectarTipoDoItem } from "./entidadeRegistro";
 
-  const pasta = item.caminho.split("/")[0];
-  if (pasta === "tarefas") return "tarefa";
-  if (pasta === "notas") return "nota";
-  if (pasta === "referencias") return "referencia";
-  if (pasta === "lousas") return "lousa";
-  if (pasta === "reunioes") return "reuniao";
-  if (pasta === "contatos") return "contato";
-  if (item.caminho.startsWith("pdi/metas")) return "meta";
-  if (item.caminho.startsWith("pdi/entregas")) return "entrega";
-  return "outro";
+/** Descobre o tipo pelo frontmatter e, se faltar, pela pasta através do registro desacoplado. */
+export function tipoDoItem(item: ItemRepo): TipoItem {
+  return detectarTipoDoItem(item);
 }
 
 /** Tira acento e caixa, para "reuniao" achar "Reunião". */

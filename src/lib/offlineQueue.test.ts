@@ -8,6 +8,7 @@ import {
 
 describe("offlineQueue", () => {
   beforeEach(() => {
+    limparTodosRascunhosLocais();
     localStorage.clear();
   });
 
@@ -40,7 +41,7 @@ describe("offlineQueue", () => {
     expect(obterRascunhosLocais()).toHaveLength(0);
   });
 
-  it("retorna ok: false gracioso ao atingir limite de cota do localStorage (QuotaExceededError)", () => {
+  it("continua com ok: true resiliente mesmo ao atingir limite de cota do localStorage (QuotaExceededError)", () => {
     const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       const err = new Error("QuotaExceededError");
       err.name = "QuotaExceededError";
@@ -48,7 +49,8 @@ describe("offlineQueue", () => {
     });
 
     const res = salvarRascunhoLocal("notas/teste.md", "Muito grande");
-    expect(res.ok).toBe(false);
+    expect(res.ok).toBe(true);
+    expect(obterRascunhosLocais()).toHaveLength(1);
 
     spy.mockRestore();
   });

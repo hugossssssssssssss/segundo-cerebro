@@ -6,6 +6,8 @@
  * sem precisar de nova requisição ao servidor.
  */
 
+import { dispararAtualizacaoAcervo } from "./eventos";
+
 const CANAL_NOME = "klaus-sync-channel";
 
 type MensagemSync =
@@ -21,7 +23,8 @@ if (typeof window !== "undefined" && "BroadcastChannel" in window) {
       if (!e.data || !e.data.tipo) return;
 
       if (e.data.tipo === "ACERVO_ATUALIZADO" || e.data.tipo === "INVALIDAR_CACHE") {
-        window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+        const caminho = "caminho" in e.data ? e.data.caminho : undefined;
+        dispararAtualizacaoAcervo(caminho);
       }
     };
   } catch {

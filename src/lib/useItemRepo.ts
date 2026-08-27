@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { carregarRepo, daPasta, arquivosIlegiveis, obterCacheExistente, type ItemRepo } from "./repo";
 import { tituloProvavel, lerMarkdown } from "./markdown";
 import { obterRascunhosLocais } from "./offlineQueue";
+import { useAoAtualizarAcervo } from "./eventos";
 import type { Settings } from "./settings";
 import type { Pasta } from "./tipos";
 
@@ -196,11 +197,10 @@ export function useItemRepo<T>(
 
   useEffect(() => {
     carregar();
-
-    const aoAtualizar = () => carregar(true);
-    window.addEventListener("acervo-atualizado", aoAtualizar);
-    return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
   }, [carregar]);
+
+  // Escuta atualizações do acervo de forma inteligente (com filtro por pasta para eliminar re-renders desnecessários)
+  useAoAtualizarAcervo(() => carregar(true), pasta);
 
   const recarregar = useCallback(() => carregar(true, true), [carregar]);
 

@@ -41,9 +41,9 @@ import {
 
 import { lerConfig, configCompleta, nomeExibido } from "@/lib/settings";
 import { correspondeBusca, lerParametroCriar } from "@/lib/utils";
-import { carregarRepo, daPasta, atualizarCacheLocal, removerDoCacheLocal } from "@/lib/repo";
-import { salvarRascunhoLocal } from "@/lib/offlineQueue";
-import { tituloProvavel, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
+import { carregarRepo, daPasta } from "@/lib/repo";
+import { useSalvar } from "@/lib/useSalvar";
+import { tituloProvavel, escreverMarkdown } from "@/lib/markdown";
 import {
   comoProcesso,
   processoParaFrontmatter,
@@ -222,6 +222,7 @@ export default function Processos() {
   const [processos, setProcessos] = useState<Processo[]>([]);
   const [cards, setCards] = useState<CardProcesso[]>([]);
   const [processoAtivoId, setProcessoAtivoId] = useState<string>("");
+  const { salvarTexto, apagarItem } = useSalvar(cfg);
 
   // Alternador de Visão (Kanban vs Tabela)
   const [modoVisao, setModoVisao] = useState<"kanban" | "tabela">("kanban");
@@ -324,35 +325,8 @@ export default function Processos() {
       return correspondeBusca(c.titulo, pesquisaCard) || correspondeBusca(c.corpo, pesquisaCard);
     });
 
-  const timerDebounceCardRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const timerDebounceProcRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-
-  const salvarProcessoAtivo = async (procAtualizado: Processo, debounced = false) => {
+  const salvarProcessoAtivo = async (procAtualizado: Processo) => {
     setProcessos((prev) => prev.map((p) => (p.id === procAtualizado.id ? procAtualizado : p)));
-
-    if (debounced) {
-      if (timerDebounceProcRef.current[procAtualizado.id]) {
-        clearTimeout(timerDebounceProcRef.current[procAtualizado.id]);
-      }
-      timerDebounceProcRef.current[procAtualizado.id] = setTimeout(async () => {
-        try {
-          const texto = escreverMarkdown({
-            dados: processoParaFrontmatter(procAtualizado),
-            corpo: procAtualizado.corpo || `Processo de ${procAtualizado.titulo}`,
-          });
-
-          const sha = procAtualizado.sha || `temp_${Math.random().toString(36).substring(7)}`;
-          salvarRascunhoLocal(procAtualizado.caminho, texto, procAtualizado.sha || undefined);
-          atualizarCacheLocal(procAtualizado.caminho, texto, lerMarkdown(texto), sha);
-          setProcessos((prev) => prev.map((p) => (p.id === procAtualizado.id ? { ...procAtualizado, sha } : p)));
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e);
-          setErro(msg);
-          toast(`Erro ao salvar processo no GitHub: ${msg}`, { tipo: "erro" });
-        }
-      }, 2500);
-      return;
-    }
 
     try {
       const texto = escreverMarkdown({
@@ -360,14 +334,12 @@ export default function Processos() {
         corpo: procAtualizado.corpo || `Processo de ${procAtualizado.titulo}`,
       });
 
-      const sha = procAtualizado.sha || `temp_${Math.random().toString(36).substring(7)}`;
-      salvarRascunhoLocal(procAtualizado.caminho, texto, procAtualizado.sha || undefined);
-      atualizarCacheLocal(procAtualizado.caminho, texto, lerMarkdown(texto), sha);
+      const sha = await salvarTexto(procAtualizado.caminho, texto, procAtualizado.sha || undefined);
       setProcessos((prev) => prev.map((p) => (p.id === procAtualizado.id ? { ...procAtualizado, sha } : p)));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setErro(msg);
-      toast(`Erro ao salvar processo no GitHub: ${msg}`, { tipo: "erro" });
+      toast(`Erro ao salvar processo: ${msg}`, { tipo: "erro" });
     }
   };
 
@@ -405,15 +377,13 @@ export default function Processos() {
         corpo: `Processo de ${novoProc.titulo}`,
       });
 
-      const sha = `temp_${Math.random().toString(36).substring(7)}`;
-      salvarRascunhoLocal(caminho, texto);
-      atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
+      const sha = await salvarTexto(caminho, texto);
       setProcessos((prev) => prev.map((p) => (p.id === id ? { ...p, sha } : p)));
     } catch (e) {
       setProcessos((prev) => prev.filter((p) => p.id !== id));
       const msg = e instanceof Error ? e.message : String(e);
       setErro(msg);
-      toast(`Erro ao criar processo no GitHub: ${msg}`, { tipo: "erro" });
+      toast(`Erro ao criar processo: ${msg}`, { tipo: "erro" });
     }
   };
 
@@ -445,45 +415,19 @@ export default function Processos() {
         corpo: `Processo de ${mod.titulo}`,
       });
 
-      const sha = `temp_${Math.random().toString(36).substring(7)}`;
-      salvarRascunhoLocal(caminho, texto);
-      atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
+      const sha = await salvarTexto(caminho, texto);
       setProcessos((prev) => prev.map((p) => (p.id === id ? { ...p, sha } : p)));
     } catch (e) {
       setProcessos((prev) => prev.filter((p) => p.id !== id));
       const msg = e instanceof Error ? e.message : String(e);
       setErro(msg);
-      toast(`Erro ao criar modelo de processo no GitHub: ${msg}`, { tipo: "erro" });
+      toast(`Erro ao criar modelo de processo: ${msg}`, { tipo: "erro" });
     }
   };
 
-  const salvarCard = async (cardAtualizado: CardProcesso, debounced = false) => {
+  const salvarCard = async (cardAtualizado: CardProcesso) => {
     setCards((prev) => prev.map((c) => (c.id === cardAtualizado.id ? cardAtualizado : c)));
     setCardEmEdicao((prev) => (prev && prev.id === cardAtualizado.id ? cardAtualizado : prev));
-
-    if (debounced) {
-      if (timerDebounceCardRef.current[cardAtualizado.id]) {
-        clearTimeout(timerDebounceCardRef.current[cardAtualizado.id]);
-      }
-      timerDebounceCardRef.current[cardAtualizado.id] = setTimeout(async () => {
-        try {
-          const texto = escreverMarkdown({
-            dados: cardProcessoParaFrontmatter(cardAtualizado),
-            corpo: cardAtualizado.corpo,
-          });
-
-          const sha = cardAtualizado.sha || `temp_${Math.random().toString(36).substring(7)}`;
-          salvarRascunhoLocal(cardAtualizado.caminho, texto, cardAtualizado.sha || undefined);
-          atualizarCacheLocal(cardAtualizado.caminho, texto, lerMarkdown(texto), sha);
-          const cardComSha = { ...cardAtualizado, sha };
-          setCards((prev) => prev.map((c) => (c.id === cardAtualizado.id ? cardComSha : c)));
-          setCardEmEdicao((prev) => (prev && prev.id === cardAtualizado.id ? cardComSha : prev));
-        } catch (e) {
-          setErro(e instanceof Error ? e.message : String(e));
-        }
-      }, 2500);
-      return;
-    }
 
     try {
       const texto = escreverMarkdown({
@@ -491,9 +435,7 @@ export default function Processos() {
         corpo: cardAtualizado.corpo,
       });
 
-      const sha = cardAtualizado.sha || `temp_${Math.random().toString(36).substring(7)}`;
-      salvarRascunhoLocal(cardAtualizado.caminho, texto, cardAtualizado.sha || undefined);
-      atualizarCacheLocal(cardAtualizado.caminho, texto, lerMarkdown(texto), sha);
+      const sha = await salvarTexto(cardAtualizado.caminho, texto, cardAtualizado.sha || undefined);
       const cardComSha = { ...cardAtualizado, sha };
       setCards((prev) => prev.map((c) => (c.id === cardAtualizado.id ? cardComSha : c)));
       setCardEmEdicao((prev) => (prev && prev.id === cardAtualizado.id ? cardComSha : prev));
@@ -554,15 +496,13 @@ export default function Processos() {
         corpo: "",
       });
 
-      const sha = `temp_${Math.random().toString(36).substring(7)}`;
-      salvarRascunhoLocal(caminho, texto);
-      atualizarCacheLocal(caminho, texto, lerMarkdown(texto), sha);
+      const sha = await salvarTexto(caminho, texto);
       setCards((prev) => prev.map((c) => (c.id === id ? { ...c, sha } : c)));
     } catch (e) {
       setCards((prev) => prev.filter((c) => c.id !== id));
       const msg = e instanceof Error ? e.message : String(e);
       setErro(msg);
-      toast(`Erro ao criar card no GitHub: ${msg}`, { tipo: "erro" });
+      toast(`Erro ao criar card: ${msg}`, { tipo: "erro" });
     }
   };
 
@@ -580,8 +520,6 @@ export default function Processos() {
     const novoComentario: ComentarioCard = {
       id: `com_${Date.now()}`,
       data: new Date().toISOString(),
-      // Vai gravado no arquivo, então tem de ser quem realmente escreveu —
-      // num repositório compartilhado o comentário é assinado para valer.
       autor: nomeExibido(lerConfig()),
       texto: novoComentarioTexto.trim(),
     };
@@ -601,14 +539,13 @@ export default function Processos() {
     setCardParaExcluir(null);
 
     try {
-      salvarRascunhoLocal(cardAlvo.caminho, "", cardAlvo.sha, undefined, true, "apagar");
-      removerDoCacheLocal(cardAlvo.caminho);
+      await apagarItem(cardAlvo.caminho, cardAlvo.sha);
       setCardEmEdicao(null);
       setCards((prev) => prev.filter((c) => c.id !== cardAlvo.id));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setErro(msg);
-      toast(`Erro ao excluir card no GitHub: ${msg}`, { tipo: "erro" });
+      toast(`Erro ao excluir card: ${msg}`, { tipo: "erro" });
     }
   };
 
@@ -1008,7 +945,7 @@ export default function Processos() {
                   <input
                     type="text"
                     value={cardEmEdicao.titulo}
-                    onChange={(e) => salvarCard({ ...cardEmEdicao, titulo: e.target.value }, true)}
+                    onChange={(e) => salvarCard({ ...cardEmEdicao, titulo: e.target.value })}
                     className="w-full text-base sm:text-lg font-bold text-foreground bg-background border border-border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="Título do Card..."
                   />
@@ -1021,7 +958,7 @@ export default function Processos() {
                   </label>
                   <textarea
                     value={cardEmEdicao.corpo}
-                    onChange={(e) => salvarCard({ ...cardEmEdicao, corpo: e.target.value }, true)}
+                    onChange={(e) => salvarCard({ ...cardEmEdicao, corpo: e.target.value })}
                     placeholder="Adicione detalhes, rascunhos ou anotações desta tarefa..."
                     rows={4}
                     className="w-full rounded-xl border border-border bg-background p-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary leading-relaxed resize-y"
@@ -1342,7 +1279,7 @@ export default function Processos() {
                 <input
                   type="text"
                   value={processoAtivo.titulo}
-                  onChange={(e) => salvarProcessoAtivo({ ...processoAtivo, titulo: e.target.value }, true)}
+                  onChange={(e) => salvarProcessoAtivo({ ...processoAtivo, titulo: e.target.value })}
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
@@ -1358,13 +1295,10 @@ export default function Processos() {
                           type="text"
                           value={etapa.nome}
                           onChange={(e) =>
-                            salvarProcessoAtivo(
-                              {
-                                ...processoAtivo,
-                                etapas: processoAtivo.etapas.map((et) => (et.id === etapa.id ? { ...et, nome: e.target.value } : et)),
-                              },
-                              true
-                            )
+                            salvarProcessoAtivo({
+                              ...processoAtivo,
+                              etapas: processoAtivo.etapas.map((et) => (et.id === etapa.id ? { ...et, nome: e.target.value } : et)),
+                            })
                           }
                           className="font-bold text-xs bg-transparent border-b border-border focus:outline-none focus:border-primary px-1 py-0.5 flex-1"
                         />

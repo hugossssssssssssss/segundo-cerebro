@@ -13,6 +13,14 @@ import { lerMarkdown } from "./markdown";
 import { notificarOutrasAbas } from "./syncChannel";
 import { toast } from "./toast";
 import { formatarNomeAmigavel } from "./utils";
+import { dispararAtualizacaoAcervo } from "./eventos";
+import {
+  salvarRascunhoNoArmazenamento,
+  removerRascunhoDoArmazenamento,
+  limparTodosRascunhosArmazenamento,
+  carregarTodosRascunhosArmazenamento,
+  migrarRascunhosLegadosLocalStorage,
+} from "./storageOffline";
 
 export type StatusRascunho = "pendente" | "conflito" | "erro" | "sincronizando";
 
@@ -31,18 +39,58 @@ export type RascunhoOffline = {
 
 const CHAVE_RASCUNHOS = "klaus:rascunhos_offline";
 
-export function obterRascunhosLocais(): RascunhoOffline[] {
+// Cache em memória para acesso síncrono e Optimistic UI imediata (0ms)
+let memoriaRascunhos: RascunhoOffline[] = [];
+let inicializado = false;
+
+/**
+ * Carrega a memória a partir do storage assíncrono e faz a migração inicial.
+ */
+export async function inicializarArmazenamentoOffline(): Promise<void> {
+  try {
+    await migrarRascunhosLegadosLocalStorage();
+    const carregados = await carregarTodosRascunhosArmazenamento();
+    if (carregados.length > 0) {
+      memoriaRascunhos = carregados;
+    }
+  } catch {
+    // fallback mantém memória atual
+  } finally {
+    inicializado = true;
+  }
+}
+
+export function estaArmazenamentoInicializado(): boolean {
+  return inicializado;
+}
+
+// Inicializa imediatamente se estiver no navegador
+if (typeof window !== "undefined") {
+  // Carregamento rápido síncrono de fallback
   try {
     const salvo = localStorage.getItem(CHAVE_RASCUNHOS);
-    const lista: RascunhoOffline[] = salvo ? JSON.parse(salvo) : [];
-    if (!sincronizandoFila) {
-      // Se a fila não está rodando no momento, nenhum rascunho deve ficar preso em "sincronizando"
-      return lista.map((r) => (r.status === "sincronizando" ? { ...r, status: "pendente" } : r));
+    if (salvo) {
+      memoriaRascunhos = JSON.parse(salvo);
     }
-    return lista;
-  } catch {
-    return [];
+  } catch {}
+  inicializarArmazenamentoOffline().catch(() => {});
+}
+
+export function obterRascunhosLocais(): RascunhoOffline[] {
+  // Se ainda temos itens no localStorage legados não carregados na memória
+  if (memoriaRascunhos.length === 0 && typeof localStorage !== "undefined") {
+    try {
+      const salvo = localStorage.getItem(CHAVE_RASCUNHOS);
+      if (salvo) {
+        memoriaRascunhos = JSON.parse(salvo);
+      }
+    } catch {}
   }
+
+  if (!sincronizandoFila) {
+    return memoriaRascunhos.map((r) => (r.status === "sincronizando" ? { ...r, status: "pendente" } : r));
+  }
+  return [...memoriaRascunhos];
 }
 
 export function salvarRascunhoLocal(
@@ -71,26 +119,20 @@ export function salvarRascunhoLocal(
   // Coalescing: Substitui qualquer rascunho pendente do mesmo arquivo pelo mais recente
   const filtrados = rascunhos.filter((r) => r.caminho !== caminho);
   filtrados.push(novo);
+  memoriaRascunhos = filtrados;
 
-  let gravado = false;
+  // Persiste no IndexedDB assíncrono (sem risco de estourar 5MB de cota síncrona)
+  salvarRascunhoNoArmazenamento(novo).catch(() => {});
+
+  // Também guarda backup no localStorage se for pequeno (para resiliência adicional)
   try {
     localStorage.setItem(CHAVE_RASCUNHOS, JSON.stringify(filtrados));
-    gravado = true;
-  } catch (err: any) {
-    if (err?.name === "QuotaExceededError" || err?.code === 22 || String(err).includes("Quota")) {
-      // Limpa caches secundários não críticos (como snapshots da Home) para dar espaço aos rascunhos
-      try {
-        localStorage.removeItem("klaus_home_cache_snapshot");
-        localStorage.setItem(CHAVE_RASCUNHOS, JSON.stringify(filtrados));
-        gravado = true;
-      } catch {
-        toast("Memória do navegador cheia. Conecte-se à internet para sincronizar seus rascunhos.", { tipo: "erro" });
-      }
-    }
+  } catch {
+    // Ignora estouro no localStorage, pois já está garantido no IndexedDB e memória
   }
 
-  if (gravado && notificarEvent) {
-    window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+  if (notificarEvent) {
+    dispararAtualizacaoAcervo(caminho);
     
     // Dispara a sincronização imediatamente em background se estiver online e autenticado
     const cfg = lerConfig();
@@ -99,7 +141,7 @@ export function salvarRascunhoLocal(
     }
   }
 
-  return { ok: gravado, rascunho: novo };
+  return { ok: true, rascunho: novo };
 }
 
 export function atualizarRascunhoLocal(rascunho: RascunhoOffline): void {
@@ -110,33 +152,36 @@ export function atualizarRascunhoLocal(rascunho: RascunhoOffline): void {
   } else {
     rascunhos.push(rascunho);
   }
+  memoriaRascunhos = [...rascunhos];
 
+  salvarRascunhoNoArmazenamento(rascunho).catch(() => {});
   try {
     localStorage.setItem(CHAVE_RASCUNHOS, JSON.stringify(rascunhos));
-  } catch {
-    // Trata estouro de localStorage
-  }
-  window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+  } catch {}
+
+  dispararAtualizacaoAcervo(rascunho.caminho);
 }
 
 export function removerRascunhoLocal(idOuCaminho: string): void {
   const rascunhos = obterRascunhosLocais();
   const filtrados = rascunhos.filter((r) => r.id !== idOuCaminho && r.caminho !== idOuCaminho);
+  memoriaRascunhos = filtrados;
+
+  removerRascunhoDoArmazenamento(idOuCaminho).catch(() => {});
   try {
     localStorage.setItem(CHAVE_RASCUNHOS, JSON.stringify(filtrados));
-  } catch {
-    // Trata erro ao salvar no localStorage
-  }
-  window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+  } catch {}
+
+  dispararAtualizacaoAcervo(idOuCaminho);
 }
 
 export function limparTodosRascunhosLocais(): void {
+  memoriaRascunhos = [];
+  limparTodosRascunhosArmazenamento().catch(() => {});
   try {
     localStorage.removeItem(CHAVE_RASCUNHOS);
-  } catch {
-    // Trata erro ao limpar
-  }
-  window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+  } catch {}
+  dispararAtualizacaoAcervo();
 }
 
 let sincronizandoFila = false;
@@ -266,7 +311,7 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
 
   if (concluidos > 0) {
     invalidarCache();
-    window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+    dispararAtualizacaoAcervo();
     notificarOutrasAbas();
   }
 
