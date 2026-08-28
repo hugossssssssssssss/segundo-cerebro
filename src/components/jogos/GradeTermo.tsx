@@ -6,6 +6,8 @@ import {
   type StatusLetra,
 } from "@/lib/jogos/termoEngine";
 
+export type TamanhoGrade = "padrao" | "compacto" | "mini";
+
 interface GradeTermoProps {
   tentativas: string[];
   letrasAtivas: string[];
@@ -16,7 +18,7 @@ interface GradeTermoProps {
   maxTentativas?: number;
   resolvido?: boolean;
   aoClicarCelula?: (colIdx: number) => void;
-  tamanho?: "padrao" | "compacto";
+  tamanho?: TamanhoGrade;
 }
 
 export function GradeTermo({
@@ -33,6 +35,13 @@ export function GradeTermo({
 }: GradeTermoProps) {
   const linhas: ReactNode[] = [];
 
+  const espacamentoLinha =
+    tamanho === "mini"
+      ? "gap-0.5 sm:gap-1"
+      : tamanho === "compacto"
+      ? "gap-1 sm:gap-1.5"
+      : "gap-1 sm:gap-1.5";
+
   for (let i = 0; i < maxTentativas; i++) {
     const ehLinhaPassada = i < tentativas.length;
     const ehLinhaAtual = i === tentativas.length && !resolvido;
@@ -43,7 +52,7 @@ export function GradeTermo({
       const estaRevelando = revelandoLinhaIdx === i;
 
       linhas.push(
-        <div key={`linha-${i}`} className="flex justify-center gap-1 sm:gap-1.5">
+        <div key={`linha-${i}`} className={cn("flex justify-center", espacamentoLinha)}>
           {avaliacao.letras.map((l, colIdx) => (
             <CelulaGrade
               key={`celula-${i}-${colIdx}`}
@@ -61,7 +70,8 @@ export function GradeTermo({
         <div
           key={`linha-${i}`}
           className={cn(
-            "flex justify-center gap-1 sm:gap-1.5 transition-transform",
+            "flex justify-center transition-transform",
+            espacamentoLinha,
             linhaComErro && "animate-shake"
           )}
         >
@@ -88,7 +98,7 @@ export function GradeTermo({
     } else {
       // Linha vazia futura
       linhas.push(
-        <div key={`linha-${i}`} className="flex justify-center gap-1 sm:gap-1.5">
+        <div key={`linha-${i}`} className={cn("flex justify-center", espacamentoLinha)}>
           {Array.from({ length: TAMANHO_PALAVRA }).map((_, colIdx) => (
             <CelulaGrade
               key={`celula-${i}-${colIdx}`}
@@ -105,7 +115,8 @@ export function GradeTermo({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-1 sm:gap-1.5 select-none py-1 transition-opacity",
+        "flex flex-col items-center justify-center select-none transition-opacity",
+        tamanho === "mini" ? "gap-0.5 sm:gap-1 py-0.5" : "gap-1 sm:gap-1.5 py-1",
         resolvido && "opacity-90"
       )}
     >
@@ -122,7 +133,7 @@ interface CelulaGradeProps {
   emDigitacao?: boolean;
   animarFlip?: boolean;
   delayFlipMs?: number;
-  tamanho?: "padrao" | "compacto";
+  tamanho?: TamanhoGrade;
   onClick?: () => void;
 }
 
@@ -137,29 +148,32 @@ function CelulaGrade({
   tamanho = "padrao",
   onClick,
 }: CelulaGradeProps) {
+  // Cores amigáveis e harmoniosas (Verde Esmeralda Termo, Amarelo Dourado Termo, Cinza Suave)
   const obterEstiloStatus = (st: StatusLetra) => {
     switch (st) {
       case "correta":
-        return "bg-emerald-600 dark:bg-emerald-600 text-white border-emerald-600 dark:border-emerald-500 shadow-xs";
+        return "bg-[#3aa394] dark:bg-[#3aa394] text-white border-[#3aa394] dark:border-[#3aa394] shadow-xs";
       case "existe":
-        return "bg-amber-500 dark:bg-amber-500 text-white border-amber-500 dark:border-amber-400 shadow-xs";
+        return "bg-[#d7a22a] dark:bg-[#d7a22a] text-white border-[#d7a22a] dark:border-[#d7a22a] shadow-xs";
       case "errada":
-        return "bg-zinc-700/80 dark:bg-zinc-800 text-zinc-300 dark:text-zinc-400 border-zinc-700 dark:border-zinc-700/80";
+        return "bg-[#6b7280]/85 dark:bg-[#374151] text-white/90 dark:text-zinc-200 border-[#6b7280]/85 dark:border-[#374151]";
       case "vazio":
       default:
         if (focado) {
-          return "border-primary bg-card text-foreground ring-2 ring-primary/40 shadow-xs scale-102";
+          return "border-primary bg-card text-foreground ring-2 ring-primary/50 shadow-xs scale-102";
         }
         return ativo
-          ? "border-foreground/50 bg-card text-foreground shadow-2xs"
-          : "border-border/70 bg-card/40 text-foreground";
+          ? "border-foreground/60 bg-card text-foreground shadow-2xs"
+          : "border-border/75 bg-card/40 text-foreground";
     }
   };
 
   const dimensoes =
-    tamanho === "compacto"
-      ? "h-9 w-9 sm:h-11 sm:w-11 text-base sm:text-lg rounded-lg"
-      : "h-11 w-11 sm:h-13 sm:w-13 text-xl sm:text-2xl rounded-xl";
+    tamanho === "mini"
+      ? "h-7 w-7 sm:h-9 sm:w-9 text-xs sm:text-sm rounded-md sm:rounded-lg border-[1.5px]"
+      : tamanho === "compacto"
+      ? "h-8 w-8 sm:h-11 sm:w-11 text-sm sm:text-lg rounded-lg border-[1.5px] sm:border-2"
+      : "h-10 w-10 sm:h-13 sm:w-13 text-lg sm:text-2xl rounded-xl border-2";
 
   return (
     <div
@@ -168,7 +182,7 @@ function CelulaGrade({
         animationDelay: animarFlip ? `${delayFlipMs}ms` : undefined,
       }}
       className={cn(
-        "flex items-center justify-center border-2 font-bold uppercase transition-all duration-150",
+        "flex items-center justify-center font-extrabold uppercase transition-all duration-150",
         dimensoes,
         obterEstiloStatus(status),
         emDigitacao && onClick && "cursor-pointer hover:border-primary/60",

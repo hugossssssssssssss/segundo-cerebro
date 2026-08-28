@@ -21,11 +21,11 @@ const LINHAS_TECLADO = [
 function corBgStatus(st?: StatusLetra): string {
   switch (st) {
     case "correta":
-      return "bg-emerald-600 dark:bg-emerald-600";
+      return "bg-[#3aa394] dark:bg-[#3aa394]";
     case "existe":
-      return "bg-amber-500 dark:bg-amber-500";
+      return "bg-[#d7a22a] dark:bg-[#d7a22a]";
     case "errada":
-      return "bg-zinc-700/90 dark:bg-zinc-800";
+      return "bg-[#6b7280]/85 dark:bg-[#374151]";
     case "vazio":
     default:
       return "bg-secondary/90 dark:bg-secondary/60";
@@ -53,9 +53,9 @@ export function TecladoTermo({
   };
 
   return (
-    <div className="flex flex-col items-center gap-1 sm:gap-1.5 w-full max-w-lg mx-auto select-none px-1 pt-2">
+    <div className="flex flex-col items-center gap-1 sm:gap-1.5 w-full max-w-lg mx-auto select-none px-0.5 sm:px-1 pt-1 sm:pt-2">
       {LINHAS_TECLADO.map((linha, lIdx) => (
-        <div key={`linha-teclado-${lIdx}`} className="flex justify-center gap-1 sm:gap-1.5 w-full">
+        <div key={`linha-teclado-${lIdx}`} className="flex justify-center gap-0.5 sm:gap-1.5 w-full">
           {linha.map((tecla) => {
             const ehEspecial = tecla === "ENTER" || tecla === "BACKSPACE";
             const statuses = statusTeclado[tecla] || new Array(tabuleiros).fill("vazio");
@@ -67,10 +67,10 @@ export function TecladoTermo({
                 onClick={() => lidarCliqueTecla(tecla)}
                 disabled={desabilitado}
                 className={cn(
-                  "relative overflow-hidden flex items-center justify-center rounded-lg sm:rounded-xl font-sans transition-all active:scale-95 duration-100 cursor-pointer border border-border/40 shadow-2xs",
+                  "relative overflow-hidden flex items-center justify-center rounded-md sm:rounded-xl font-sans transition-all active:scale-95 duration-100 cursor-pointer border border-border/40 shadow-2xs",
                   ehEspecial
-                    ? "px-2 sm:px-3 h-11 sm:h-12 text-[10px] sm:text-xs font-bold tracking-tight bg-secondary hover:bg-secondary/80 text-foreground"
-                    : "flex-1 min-w-[28px] max-w-[42px] h-11 sm:h-12 uppercase font-bold text-xs sm:text-sm",
+                    ? "px-1.5 sm:px-3 h-10 sm:h-12 text-[10px] sm:text-xs font-bold tracking-tight bg-secondary hover:bg-secondary/80 text-foreground shrink-0"
+                    : "flex-1 min-w-[24px] max-w-[36px] sm:max-w-[42px] h-10 sm:h-12 uppercase font-extrabold text-[11px] sm:text-sm",
                   desabilitado && "opacity-50 cursor-not-allowed pointer-events-none"
                 )}
                 aria-label={
@@ -148,7 +148,7 @@ export function TecladoTermo({
                 {/* Conteúdo da Tecla (Letra / Ícone) */}
                 <div className="relative z-10 flex items-center justify-center w-full h-full pointer-events-none drop-shadow-xs">
                   {tecla === "BACKSPACE" ? (
-                    <Delete size={17} className="stroke-[2.2]" />
+                    <Delete size={15} className="stroke-[2.2]" />
                   ) : tecla === "ENTER" ? (
                     <span>ENTER</span>
                   ) : (

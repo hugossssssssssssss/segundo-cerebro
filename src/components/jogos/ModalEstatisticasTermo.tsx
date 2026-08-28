@@ -107,7 +107,7 @@ export function ModalEstatisticasTermo({
           <div className="text-center space-y-2 p-4 rounded-2xl bg-secondary/50 border border-border/80">
             {jogo.status === "venceu" ? (
               <div className="space-y-1">
-                <div className="flex items-center justify-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-lg">
+                <div className="flex items-center justify-center gap-1.5 text-[#3aa394] dark:text-[#3aa394] font-bold text-lg">
                   <Sparkles size={20} className="animate-pulse" />
                   <span>Espetacular! Você acertou tudo!</span>
                 </div>
@@ -116,7 +116,7 @@ export function ModalEstatisticasTermo({
                   {jogo.palavras.map((p, idx) => (
                     <span
                       key={`palavra-res-${idx}`}
-                      className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold tracking-wider uppercase border border-emerald-500/20"
+                      className="px-2 py-0.5 rounded-md bg-[#3aa394]/15 text-[#3aa394] dark:text-[#3aa394] font-bold tracking-wider uppercase border border-[#3aa394]/25"
                     >
                       {obterPalavraOriginal(p)}
                     </span>
@@ -161,7 +161,7 @@ export function ModalEstatisticasTermo({
             </div>
           </div>
           <div className="rounded-xl border border-border/60 bg-card p-3 shadow-2xs">
-            <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight flex items-center justify-center gap-0.5">
+            <div className="text-2xl sm:text-3xl font-extrabold text-[#3aa394] dark:text-[#3aa394] tracking-tight flex items-center justify-center gap-0.5">
               <span>{estatisticas.sequenciaAtual}</span>
               <Flame size={18} className="text-amber-500 fill-amber-500" />
             </div>
@@ -199,7 +199,7 @@ export function ModalEstatisticasTermo({
                       style={{ width: `${porcentagemLargura}%` }}
                       className={`h-full flex items-center justify-end px-2 rounded-md font-bold text-[11px] transition-all duration-500 ${
                         ehTentativaDeHoje
-                          ? "bg-emerald-600 text-white"
+                          ? "bg-[#3aa394] text-white"
                           : qtd > 0
                           ? "bg-secondary text-secondary-foreground"
                           : "bg-muted text-muted-foreground"

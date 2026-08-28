@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { SeloStatus } from "@/components/SeloStatus";
 import { Botao, Cartao } from "@/components/ui";
-import { GradeTermo } from "@/components/jogos/GradeTermo";
+import { GradeTermo, type TamanhoGrade } from "@/components/jogos/GradeTermo";
 import { TecladoTermo } from "@/components/jogos/TecladoTermo";
 import { ModalEstatisticasTermo } from "@/components/jogos/ModalEstatisticasTermo";
 import { ModalComoJogarTermo } from "@/components/jogos/ModalComoJogarTermo";
@@ -157,7 +157,7 @@ export default function Jogos() {
         return novas;
       });
 
-      // Avança o foco para a próxima casa (ou para a próxima vazia)
+      // Avança o foco para a próxima casa
       setPosicaoFoco((prev) => {
         if (prev < TAMANHO_PALAVRA - 1) {
           return prev + 1;
@@ -314,7 +314,7 @@ export default function Jogos() {
     maxTentativas,
   ]);
 
-  // Listener Global Robusto para Teclado Físico
+  // Listener Global Robusto para Teclado Físico (com proteção contra auto-repeat descontrolado)
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -335,6 +335,11 @@ export default function Jogos() {
         e.preventDefault();
         setPosicaoFoco((prev) => Math.min(TAMANHO_PALAVRA - 1, prev + 1));
       } else if (/^[a-zA-ZçÇáàãâéêíóôõúüÁÀÃÂÉÊÍÓÔÕÚÜ]$/.test(tecla)) {
+        // Bloqueia auto-repeat involuntário ao segurar a tecla física
+        if (e.repeat) {
+          e.preventDefault();
+          return;
+        }
         e.preventDefault();
         inserirLetra(tecla);
       }
@@ -375,8 +380,12 @@ export default function Jogos() {
 
   const streakAtual = dadosPersistidos.estatisticas[tipoJogo]?.sequenciaAtual || 0;
 
+  // Tamanho responsivo das células por modalidade
+  const tamanhoGrade: TamanhoGrade =
+    tipoJogo === "quarteto" ? "mini" : tipoJogo === "dueto" ? "compacto" : "padrao";
+
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200 w-full max-w-4xl mx-auto pb-12">
+    <div className="space-y-3 sm:space-y-5 animate-in fade-in duration-200 w-full max-w-4xl mx-auto pb-8 sm:pb-12 px-1 sm:px-4">
       {/* 1. Cabeçalho Principal */}
       <CabecalhoPagina
         titulo="Jogos & Desafios"
@@ -417,14 +426,14 @@ export default function Jogos() {
         }
       />
 
-      {/* 2. Barra de Controle: Seletor de Tipo de Jogo + Ritmo (Diário / Infinito) */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-2 rounded-2xl border border-border bg-card/70 backdrop-blur-md shadow-2xs">
+      {/* 2. Barra de Controle Responsiva: Seletor de Modalidade + Ritmo */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 p-1.5 sm:p-2 rounded-2xl border border-border bg-card/75 backdrop-blur-md shadow-2xs">
         {/* Abas dos Tipos de Jogo (Termo, Dueto, Quarteto) */}
         <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl">
           <button
             type="button"
             onClick={() => trocarTipoJogo("termo")}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               tipoJogo === "termo"
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
@@ -437,7 +446,7 @@ export default function Jogos() {
           <button
             type="button"
             onClick={() => trocarTipoJogo("dueto")}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               tipoJogo === "dueto"
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
@@ -451,7 +460,7 @@ export default function Jogos() {
           <button
             type="button"
             onClick={() => trocarTipoJogo("quarteto")}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               tipoJogo === "quarteto"
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
@@ -464,38 +473,38 @@ export default function Jogos() {
         </div>
 
         {/* Alternador de Ritmo (Diário / Infinito) e Streak */}
-        <div className="flex items-center justify-between sm:justify-end gap-2">
+        <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2">
           <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl">
             <button
               type="button"
               onClick={() => trocarRitmo("diario")}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 ritmo === "diario"
                   ? "bg-primary text-primary-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Calendar size={13} />
+              <Calendar size={12} />
               <span>Diário</span>
             </button>
 
             <button
               type="button"
               onClick={() => trocarRitmo("infinito")}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 ritmo === "infinito"
                   ? "bg-primary text-primary-foreground shadow-2xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <InfinityIcon size={13} />
+              <InfinityIcon size={12} />
               <span>Infinito</span>
             </button>
           </div>
 
           {ritmo === "diario" ? (
             <div className="flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 px-2 py-1 bg-amber-500/10 rounded-lg shrink-0">
-              <Flame size={14} className="fill-amber-500" />
+              <Flame size={13} className="fill-amber-500" />
               <span>{streakAtual} d</span>
             </div>
           ) : (
@@ -503,34 +512,34 @@ export default function Jogos() {
               variante="neutro"
               tamanho="pequeno"
               onClick={iniciarNovaPartidaInfinita}
-              className="text-xs shrink-0"
+              className="text-xs shrink-0 h-8 px-2.5"
               title="Sortear nova palavra"
             >
-              <RotateCcw size={13} />
+              <RotateCcw size={12} />
               <span className="hidden sm:inline">Nova Palavra</span>
             </Botao>
           )}
         </div>
       </div>
 
-      {/* 3. Área Principal do Jogo com Grades Flexíveis */}
-      <Cartao className="flex flex-col items-center justify-center p-3 sm:p-5 bg-card/85 backdrop-blur-md shadow-sm border-border/80">
-        <div className="w-full flex flex-col items-center gap-3 sm:gap-4">
+      {/* 3. Área Principal do Jogo com Grades Flexíveis Otimizadas para Mobile */}
+      <Cartao className="flex flex-col items-center justify-center p-2 sm:p-4 bg-card/85 backdrop-blur-md shadow-sm border-border/80">
+        <div className="w-full flex flex-col items-center gap-2 sm:gap-3.5">
           {/* Instrução visual amigável para clique nas células */}
           {jogoAtivo.status === "jogando" && (
-            <div className="text-[11px] text-muted-foreground text-center select-none flex items-center gap-1.5">
-              <span>Dica: clique em qualquer casa para editar aquela letra ou use as setas ← → do teclado</span>
+            <div className="text-[11px] text-muted-foreground text-center select-none flex items-center gap-1 px-1">
+              <span>Toque na casa para editar ou use as setas ← → do teclado</span>
             </div>
           )}
 
-          {/* Grades dos Tabuleiros (1 para Termo, 2 para Dueto, 4 para Quarteto) */}
+          {/* Tabuleiros (1 para Termo, 2 lado a lado para Dueto, 4 em 2x2 para Quarteto) */}
           <div
             className={`w-full ${
               tipoJogo === "termo"
-                ? "flex justify-center max-w-sm"
+                ? "flex justify-center max-w-xs sm:max-w-sm"
                 : tipoJogo === "dueto"
-                ? "grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl"
-                : "grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl"
+                ? "grid grid-cols-2 gap-2 sm:gap-4 max-w-xl"
+                : "grid grid-cols-2 gap-1.5 sm:gap-3 max-w-xl"
             }`}
           >
             {jogoAtivo.palavras.map((palavra, tIdx) => {
@@ -538,19 +547,19 @@ export default function Jogos() {
               return (
                 <div
                   key={`tabuleiro-${tipoJogo}-${tIdx}`}
-                  className="flex flex-col items-center relative p-2 rounded-2xl bg-secondary/25 border border-border/60 shadow-2xs"
+                  className="flex flex-col items-center relative p-1 sm:p-2 rounded-xl sm:rounded-2xl bg-secondary/20 border border-border/50 shadow-2xs"
                 >
                   {/* Cabeçalho do Tabuleiro no Dueto/Quarteto */}
                   {tipoJogo !== "termo" && (
-                    <div className="flex items-center justify-between w-full px-2 pb-1 text-xs font-bold text-muted-foreground">
+                    <div className="flex items-center justify-between w-full px-1 sm:px-1.5 pb-0.5 sm:pb-1 text-[11px] sm:text-xs font-bold text-muted-foreground">
                       <span>Palavra {tIdx + 1}</span>
                       {resolvido ? (
-                        <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                          <Sparkles size={13} />
+                        <span className="text-[#3aa394] dark:text-[#3aa394] flex items-center gap-0.5 text-[10px] sm:text-xs font-extrabold">
+                          <Sparkles size={11} />
                           {obterPalavraOriginal(palavra)}
                         </span>
                       ) : (
-                        <span className="text-[11px] opacity-60 font-mono">
+                        <span className="text-[10px] sm:text-[11px] opacity-60 font-mono">
                           {jogoAtivo.tentativasPorTabuleiro[tIdx]?.length || 0}/{maxTentativas}
                         </span>
                       )}
@@ -567,7 +576,7 @@ export default function Jogos() {
                     maxTentativas={maxTentativas}
                     resolvido={resolvido}
                     aoClicarCelula={focarCelula}
-                    tamanho={tipoJogo === "quarteto" ? "compacto" : "padrao"}
+                    tamanho={tamanhoGrade}
                   />
                 </div>
               );

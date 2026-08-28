@@ -13,7 +13,7 @@ export function ModalComoJogarTermo({
     <Modal aberto={aberto} aoFechar={aoFechar} titulo="Como Jogar o Termo">
       <div className="space-y-4 text-sm text-muted-foreground py-1 leading-relaxed">
         <p>
-          Adivinhe a palavra secreta em <strong>6 tentativas</strong>. Cada tentativa deve ser uma palavra válida de <strong>5 letras</strong> em português.
+          Adivinhe a palavra secreta de <strong>5 letras</strong> em português. No <strong>Termo</strong> você tem 6 tentativas, no <strong>Dueto</strong> 7 tentativas para 2 palavras e no <strong>Quarteto</strong> 9 tentativas para 4 palavras.
         </p>
         <p>
           Após cada tentativa, as letras mudarão de cor para mostrar o quão perto você chegou da solução:
@@ -24,7 +24,7 @@ export function ModalComoJogarTermo({
           {/* Exemplo 1: Verde */}
           <div className="space-y-1.5 p-3 rounded-xl bg-secondary/40 border border-border/60">
             <div className="flex gap-1.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-lg">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#3aa394] text-white font-extrabold text-lg">
                 T
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card font-bold text-lg text-foreground">
@@ -41,7 +41,7 @@ export function ModalComoJogarTermo({
               </div>
             </div>
             <p className="text-xs pt-1">
-              A letra <strong className="text-emerald-600 dark:text-emerald-400">T</strong> faz parte da palavra e está na <strong>posição correta</strong>.
+              A letra <strong className="text-[#3aa394] dark:text-[#3aa394]">T</strong> faz parte da palavra e está na <strong>posição correta</strong>.
             </p>
           </div>
 
@@ -54,7 +54,7 @@ export function ModalComoJogarTermo({
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card font-bold text-lg text-foreground">
                 I
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500 text-white font-bold text-lg">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#d7a22a] text-white font-extrabold text-lg">
                 A
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card font-bold text-lg text-foreground">
@@ -65,7 +65,7 @@ export function ModalComoJogarTermo({
               </div>
             </div>
             <p className="text-xs pt-1">
-              A letra <strong className="text-amber-500 dark:text-amber-400">A</strong> faz parte da palavra, mas em <strong>outra posição</strong>.
+              A letra <strong className="text-[#d7a22a] dark:text-[#d7a22a]">A</strong> faz parte da palavra, mas em <strong>outra posição</strong>.
             </p>
           </div>
 
@@ -78,7 +78,7 @@ export function ModalComoJogarTermo({
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card font-bold text-lg text-foreground">
                 O
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-700 text-zinc-300 font-bold text-lg">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#6b7280]/85 text-white/90 font-bold text-lg">
                 Z
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card font-bold text-lg text-foreground">
@@ -96,8 +96,9 @@ export function ModalComoJogarTermo({
 
         <div className="space-y-1.5 pt-2 border-t border-border text-xs text-muted-foreground">
           <p>• As palavras podem conter letras repetidas.</p>
+          <p>• Você pode tocar/clicar em qualquer casa para editar aquela letra específica.</p>
           <p>• Os acentos são preenchidos e revelados automaticamente ao acertar.</p>
-          <p>• Uma nova palavra diária fica disponível todos os dias à meia-noite!</p>
+          <p>• Uma nova rodada diária fica disponível todos os dias à meia-noite!</p>
         </div>
 
         <div className="pt-2 flex justify-end">
