@@ -92,6 +92,7 @@ export function obterShaFavoritos(): string | undefined {
 }
 
 let timerDebouncePersistencia: ReturnType<typeof setTimeout> | null = null;
+let ultimosItensPendentes: FavoritoItem[] | null = null;
 
 /**
  * Indica se há uma persistência agendada no debounce aguardando envio ao GitHub.
@@ -101,7 +102,7 @@ export function temPersistenciaPendente(): boolean {
 }
 
 /**
- * Carrega os favoritos do repositório GitHub com fallback para o localStorage.
+ * Carrega os favoritos do repositório GitHub com mesclagem segura com o localStorage.
  */
 export async function carregarFavoritos(
   cfg: Settings,
@@ -122,21 +123,38 @@ export async function carregarFavoritos(
     if (res?.texto) {
       const parsed = JSON.parse(res.texto);
       if (Array.isArray(parsed)) {
-        const itensValidados = parsed.filter(
+        const remotosValidados = parsed.filter(
           (it) => it && typeof it === "object" && typeof it.url === "string",
         );
-        // Só atualiza o localStorage diretamente se ainda não houver gravação pendente
+
+        // Se ainda não houver gravação pendente no meio tempo:
         if (!temPersistenciaPendente()) {
+          // Mesclagem inteligente: se houver favoritos criados localmente que ainda não foram para o remoto,
+          // mantém eles para que o usuário NUNCA perca seus links recém adicionados.
+          const idsRemotos = new Set(remotosValidados.map((r) => r.id));
+          const novosLocais = locais.filter((l) => !idsRemotos.has(l.id));
+
+          const listaFinal = [...remotosValidados, ...novosLocais];
+
           try {
-            localStorage.setItem(CHAVE_STORAGE_FAVORITOS, JSON.stringify(itensValidados));
+            localStorage.setItem(CHAVE_STORAGE_FAVORITOS, JSON.stringify(listaFinal));
           } catch {}
           registrarShaFavoritos(res.sha);
-          return { itens: itensValidados, sha: res.sha };
+
+          // Se havia itens locais não sincronizados, agenda a sincronização para o GitHub
+          if (novosLocais.length > 0) {
+            agendarPersistenciaRemota(cfg, listaFinal, 1000);
+          }
+
+          return { itens: listaFinal, sha: res.sha };
         }
       }
     }
   } catch {
-    // Arquivo ainda não existe no repositório ou erro transitório
+    // Arquivo ainda não existe no repositório remoto: se temos favoritos locais, envia para lá
+    if (locais.length > 0) {
+      agendarPersistenciaRemota(cfg, locais, 1000);
+    }
   }
 
   return { itens: locais, sha: ultimoShaFavoritos };
@@ -168,12 +186,14 @@ export async function salvarFavoritosRemoto(
       // Arquivo novo sendo criado pela primeira vez
     }
 
+    // ATENÇÃO À ORDEM DOS PARÂMETROS:
+    // gravar(cfg, caminho, texto, sha?, mensagem?)
     const novoSha = await gravar(
       cfg,
       CAMINHO_FAVORITOS,
       conteudo,
-      `atualiza favoritos (${itens.length} links)`,
       shaFinal,
+      `atualiza favoritos (${itens.length} links)`,
     );
 
     registrarShaFavoritos(novoSha);
@@ -184,17 +204,18 @@ export async function salvarFavoritosRemoto(
 }
 
 /**
- * Atualiza o estado local imediatamente e agenda a persistência no GitHub com debounce (2.500ms).
- * Isso evita disparar dezenas de commits ao reordenar favoritos seguidamente via drag-and-drop.
+ * Atualiza o estado local imediatamente e agenda a persistência no GitHub.
+ * Para drag-and-drop usa debounce (ex: 2.000ms); para adicionar/editar/excluir grava rapidamente (ex: 300ms).
  */
 export function agendarPersistenciaRemota(
   cfg: Settings,
   itens: FavoritoItem[],
-  delayMs = 2500,
+  delayMs = 500,
   aoFinalizar?: (sucesso: boolean, erro?: string) => void,
 ): void {
   // Salva no localStorage e emite evento imediatamente
   salvarFavoritosLocal(itens);
+  ultimosItensPendentes = itens;
 
   if (!cfg.githubToken || !cfg.repoOwner || !cfg.repoName) {
     aoFinalizar?.(true);
@@ -207,9 +228,24 @@ export function agendarPersistenciaRemota(
 
   timerDebouncePersistencia = setTimeout(async () => {
     timerDebouncePersistencia = null;
+    ultimosItensPendentes = null;
     const res = await salvarFavoritosRemoto(cfg, itens, ultimoShaFavoritos);
     aoFinalizar?.(res.ok, res.erro);
   }, delayMs);
+}
+
+/**
+ * Se houver gravação pendente no debounce quando o usuário fechar a aba/janela,
+ * despacha imediatamente a gravação.
+ */
+export function flushPersistenciaPendente(cfg: Settings): void {
+  if (timerDebouncePersistencia && ultimosItensPendentes) {
+    clearTimeout(timerDebouncePersistencia);
+    timerDebouncePersistencia = null;
+    const itensParaSalvar = ultimosItensPendentes;
+    ultimosItensPendentes = null;
+    salvarFavoritosRemoto(cfg, itensParaSalvar).catch(() => {});
+  }
 }
 
 /**
@@ -219,5 +255,6 @@ export function cancelarPersistenciaPendente(): void {
   if (timerDebouncePersistencia) {
     clearTimeout(timerDebouncePersistencia);
     timerDebouncePersistencia = null;
+    ultimosItensPendentes = null;
   }
 }

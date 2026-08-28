@@ -148,8 +148,8 @@ describe("favoritos", () => {
         cfg,
         ".klaus/favoritos.json",
         expect.stringContaining("https://b.com"),
-        expect.any(String),
         "sha-antigo",
+        expect.any(String),
       );
 
       vi.useRealTimers();

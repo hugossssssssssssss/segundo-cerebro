@@ -44,6 +44,7 @@ import {
   lerFavoritosLocal,
   salvarFavoritosLocal,
   agendarPersistenciaRemota,
+  flushPersistenciaPendente,
   normalizarUrl,
   extrairDominio,
   obterFaviconGoogle,
@@ -84,12 +85,14 @@ interface ItemFavoritoProps {
   item: FavoritoItem;
   onContextMenu: (e: React.MouseEvent, item: FavoritoItem) => void;
   onRegistrarLargura: (id: string, largura: number) => void;
+  onNavegar: (url: string) => void;
 }
 
 const ItemFavorito = memo(function ItemFavorito({
   item,
   onContextMenu,
   onRegistrarLargura,
+  onNavegar,
 }: ItemFavoritoProps) {
   const elementoRef = useRef<HTMLDivElement | null>(null);
 
@@ -127,7 +130,7 @@ const ItemFavorito = memo(function ItemFavorito({
     // Clique com o botão esquerdo: navega na mesma guia substituindo o Klaus
     if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
-      window.location.href = item.url;
+      onNavegar(item.url);
     }
   };
 
@@ -226,6 +229,27 @@ export function BarraFavoritos({ className }: { className?: string }) {
       window.removeEventListener(EVENTO_FAVORITOS_ATUALIZADOS, atualizarDaChave);
     };
   }, [pronto, cfg]);
+
+  // Salva imediatamente qualquer alteração pendente se o usuário fechar a aba ou janela
+  useEffect(() => {
+    const aoSair = () => {
+      flushPersistenciaPendente(cfg);
+    };
+    window.addEventListener("beforeunload", aoSair);
+    window.addEventListener("pagehide", aoSair);
+    return () => {
+      window.removeEventListener("beforeunload", aoSair);
+      window.removeEventListener("pagehide", aoSair);
+    };
+  }, [cfg]);
+
+  const navegarParaUrl = useCallback(
+    (url: string) => {
+      flushPersistenciaPendente(cfg);
+      window.location.href = url;
+    },
+    [cfg],
+  );
 
   // Fechar menu de contexto ao clicar fora
   useEffect(() => {
@@ -432,6 +456,7 @@ export function BarraFavoritos({ className }: { className?: string }) {
                 item={item}
                 onContextMenu={lidarContextMenu}
                 onRegistrarLargura={registrarLarguraItem}
+                onNavegar={navegarParaUrl}
               />
             ))}
           </div>
@@ -477,7 +502,7 @@ export function BarraFavoritos({ className }: { className?: string }) {
                   onClick={(e) => {
                     if (e.button === 0) {
                       setOverflowAberto(false);
-                      window.location.href = it.url;
+                      navegarParaUrl(it.url);
                     }
                   }}
                   onContextMenu={(e) => {
