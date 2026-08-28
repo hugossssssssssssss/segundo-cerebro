@@ -12,10 +12,10 @@ permissions:
   pages: write
   id-token: write
 
-# Se dois pushes vierem juntos, deixa o último terminar em vez de cancelar
+# Se dois pushes vierem juntos, cancela o anterior e publica o mais recente
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   construir:
