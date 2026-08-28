@@ -214,6 +214,61 @@ Hoje é ${hojeISO()}.`;
 }
 
 /**
+ * Consulta modelo de IA gratuito e aberto via API pública compatível sem necessidade de chave.
+ * Suporta qualquer tipo de pergunta: criativa, factual, sugestões, brainstorm, correções, etc.
+ */
+export async function consultarLLMGratuito(
+  prompt: string,
+  historico: MensagemIARapida[] = [],
+): Promise<string> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+  try {
+    const mensagensFormatadas = [
+      {
+        role: "system",
+        content:
+          "Você é o assistente inteligente do editor de documentos Klaus. Responda em português do Brasil com clareza, concisão e sem rodeios ou saudações longas.",
+      },
+      ...historico.map((m) => ({
+        role: m.papel === "model" ? "assistant" : "user",
+        content: m.texto,
+      })),
+      { role: "user", content: prompt },
+    ];
+
+    const res = await fetch("https://api.llm7.io/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer unused",
+      },
+      body: JSON.stringify({
+        model: "default",
+        messages: mensagensFormatadas,
+        temperature: 0.4,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      const resposta = data?.choices?.[0]?.message?.content;
+      if (resposta && typeof resposta === "string" && resposta.trim()) {
+        return resposta.trim();
+      }
+    }
+  } catch {
+    clearTimeout(timeoutId);
+  }
+
+  throw new Error("Provedor gratuito indisponível no momento.");
+}
+
+/**
  * Função principal para perguntas rápidas no editor de documentos.
  * Atende a contas, correções, perguntas factuais e respostas completas.
  */
@@ -232,7 +287,7 @@ export async function perguntarIARapida(
 
   const cfg = lerConfig();
 
-  // 2. Se o usuário tiver o Gemini configurado no Klaus, usa o poder total da IA
+  // 2. Se o usuário tiver o Gemini configurado no Klaus, usa com prioridade
   if (cfg.geminiKey?.trim()) {
     try {
       return await consultarGeminiRobusto(p, historico, cfg);
@@ -246,21 +301,25 @@ export async function perguntarIARapida(
     }
   }
 
-  // 3. Verificação de correção de texto / gramática
+  // 3. Consulta IA gratuita completa (sem necessidade de chave de API)
+  try {
+    return await consultarLLMGratuito(p, historico);
+  } catch {
+    // Se o provedor gratuito falhar ou estiver offline, tenta os motores de fallback
+  }
+
+  // 4. Verificação de correção de texto / gramática gratuita
   const ehPedidoCorrecao = /^(?:corrija|corrigir|correção|arrume|revisar|revisão|ortografia)/i.test(p);
   if (ehPedidoCorrecao) {
     const corrigido = await corrigirTextoGratuito(p);
     if (corrigido) return corrigido;
   }
 
-  // 4. Pergunta sobre conceito, definição, história ou pessoa
-  const ehPerguntaFactual = /^(?:o que (?:é|e|era|significa)|quem (?:foi|é|era)|defina|definir|significado de|explique|sobre|conceito de)/i.test(p);
-  if (ehPerguntaFactual) {
-    const respostaFato = await consultarWikipedia(p);
-    if (respostaFato) return respostaFato;
-  }
+  // 5. Pergunta sobre conceito, definição, história ou pessoa via Wikipedia
+  const respostaFato = await consultarWikipedia(p);
+  if (respostaFato) return respostaFato;
 
-  // 5. Utilitários locais (contagem de palavras, caracteres)
+  // 6. Utilitários locais (contagem de palavras, caracteres)
   const pBaixo = p.toLowerCase();
   if (pBaixo.includes("contar palavras") || pBaixo.includes("quantas palavras")) {
     const palavras = p.split(/\s+/).filter(Boolean).length;
@@ -270,17 +329,5 @@ export async function perguntarIARapida(
     return `O texto digitado possui ${p.length} caracteres.`;
   }
 
-  // 6. Se perguntou algo factual geral sem o gatilho inicial explícito
-  const tentativaGeral = await consultarWikipedia(p);
-  if (tentativaGeral) return tentativaGeral;
-
-  // 7. Se não achou na Wikipedia nem é conta e não tem chave do Gemini
-  if (!cfg.geminiKey?.trim()) {
-    return (
-      "Para respostas complexas e criativas ilimitadas, configure sua chave gratuita do Gemini na tela de Ajustes do Klaus.\n\n" +
-      "Enquanto isso, você pode me pedir contas (ex: '25 * 4', '15% de 800'), correções de texto (ex: 'corrija: nós foi na feira') ou definições (ex: 'o que é design', 'quem foi Santos Dumont')."
-    );
-  }
-
-  throw new Error("Não foi possível obter uma resposta no momento. Tente novamente.");
+  throw new Error("Não foi possível conectar à IA no momento. Verifique sua conexão à internet.");
 }
