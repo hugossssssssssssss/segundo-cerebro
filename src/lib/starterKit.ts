@@ -43,7 +43,7 @@ O **Klaus** é o seu ambiente de trabalho criativo e produtivo. Aqui, suas notas
 
 ### 🧠 Como tirar o melhor proveito do Klaus
 
-1. **Conecte ideias com @menções**
+1. **Conecte ideias com menções (@)**
    Digite \`@\` em qualquer nota para criar ligações vivas com outras notas, tarefas ou referências (como a tarefa @Primeiros passos no seu Segundo Cérebro).
 
 2. **Foco e Gestão com Pomodoro**
@@ -85,7 +85,7 @@ O **Klaus** é o seu ambiente de trabalho criativo e produtivo. Aqui, suas notas
 
 - [ ] Personalizar os widgets da sua tela inicial (Home)
 - [ ] Criar sua primeira anotação na aba **Notas**
-- [ ] Testar uma @menção conectando duas ideias
+- [ ] Testar uma menção (@) conectando duas ideias
 - [ ] Iniciar um ciclo Pomodoro de 25 minutos na aba **Tarefas**
 - [ ] Adicionar uma referência visual inspiradora em **Referências**
 - [ ] Conversar com o Assistente IA do Klaus para estruturar um projeto

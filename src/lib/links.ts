@@ -130,7 +130,12 @@ export function extrairLinks(
   const saida: Referencia[] = [];
   const vistos = new Set<string>();
 
-  for (const m of texto.matchAll(PADRAO)) {
+  // Remove trechos de código (blocos e inline) para não extrair menções de tutoriais/código
+  const textoParaAnalise = texto
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`[^`\n]+`/g, "");
+
+  for (const m of textoParaAnalise.matchAll(PADRAO)) {
     let bruto = "";
     let exibir = "";
     let alvo: Alvo | null = null;
@@ -597,6 +602,36 @@ export function verificarIntegridadeReferencias(itens: ItemRepo[]): RelatorioInt
       .map((i) => (typeof i.doc.dados.id === "string" && i.doc.dados.id.trim() ? i.doc.dados.id.trim() : i.nome.replace(/\.md$/, "")))
   );
 
+  const termosReservados = new Set([
+    "mencao",
+    "menção",
+    "mencoes",
+    "menções",
+    "referencia",
+    "referência",
+    "referencias",
+    "referências",
+    "nota",
+    "notas",
+    "tarefa",
+    "tarefas",
+    "meta",
+    "metas",
+    "pdi",
+    "entrega",
+    "entregas",
+    "lousa",
+    "lousas",
+    "contato",
+    "contatos",
+    "lembrete",
+    "lembretes",
+    "hoje",
+    "amanha",
+    "amanhã",
+    "ontem",
+  ]);
+
   for (const item of itensElegiveis) {
     const titulo = tituloProvavel(item.doc, item.nome);
 
@@ -604,6 +639,11 @@ export function verificarIntegridadeReferencias(itens: ItemRepo[]): RelatorioInt
     const links = extrairLinks(item.texto, indice);
     for (const l of links) {
       if (!l.alvo) {
+        const termoNorm = l.bruto.toLowerCase().trim();
+        if (termosReservados.has(termoNorm)) {
+          continue;
+        }
+
         problemas.push({
           tipo: "mencao_quebrada",
           origemCaminho: item.caminho,
