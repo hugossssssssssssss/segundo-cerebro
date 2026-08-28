@@ -29,7 +29,6 @@ import {
   Pencil,
   Palette,
   Trash2,
-  MoreVertical,
   ArrowLeft,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -37,6 +36,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  PopoverAnchor,
 } from "@/components/ui/popover";
 import {
   Dialog,
@@ -192,62 +192,47 @@ const ItemFavorito = memo(function ItemFavorito({
   };
 
   return (
-    <div
-      ref={refCombinada}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={cn(
-        "group relative flex items-center gap-1 h-7 pl-2 pr-1 rounded-md text-xs font-medium cursor-pointer select-none touch-none shrink-0 transition-colors border border-transparent",
-        "text-muted-foreground hover:text-foreground hover:bg-accent/70 hover:border-border/50",
-        isDragging && "shadow-md bg-accent text-foreground ring-1 ring-primary/30",
-        popoverAberto && "bg-accent text-foreground",
-      )}
-      onClick={lidarClique}
-      onContextMenu={lidarContextMenu}
+    <Popover
+      open={popoverAberto}
+      onOpenChange={(aberto) => {
+        setPopoverAberto(aberto);
+        if (!aberto) setModoVisao("menu");
+      }}
     >
-      <Tooltip conteudo={textoTooltip} posicao="bottom">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <FaviconIcone
-            url={item.url}
-            nome={item.nome}
-            iconeCustomizado={item.iconeCustomizado}
-          />
-          {item.nome && (
-            <span className="truncate max-w-[120px] text-xs font-normal tracking-tight">
-              {item.nome}
-            </span>
+      <PopoverAnchor asChild>
+        <div
+          ref={refCombinada}
+          style={style}
+          {...attributes}
+          {...listeners}
+          className={cn(
+            "group relative flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-medium cursor-pointer select-none touch-none shrink-0 transition-colors border border-transparent",
+            "text-muted-foreground hover:text-foreground hover:bg-accent/70 hover:border-border/50",
+            isDragging && "shadow-md bg-accent text-foreground ring-1 ring-primary/30",
+            popoverAberto && "bg-accent text-foreground",
           )}
+          onClick={lidarClique}
+          onContextMenu={lidarContextMenu}
+        >
+          <Tooltip conteudo={textoTooltip} posicao="bottom">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <FaviconIcone
+                url={item.url}
+                nome={item.nome}
+                iconeCustomizado={item.iconeCustomizado}
+              />
+              {item.nome && (
+                <span className="truncate max-w-[120px] text-xs font-normal tracking-tight">
+                  {item.nome}
+                </span>
+              )}
+            </div>
+          </Tooltip>
         </div>
-      </Tooltip>
+      </PopoverAnchor>
 
-      {/* Botão de Opções / Três Pontinhos (aparece no hover ou se o popover estiver aberto) */}
-      <Popover
-        open={popoverAberto}
-        onOpenChange={(aberto) => {
-          setPopoverAberto(aberto);
-          if (!aberto) setModoVisao("menu");
-        }}
-      >
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            className={cn(
-              "flex items-center justify-center h-5 w-4 rounded opacity-0 group-hover:opacity-100 hover:bg-background/80 transition-opacity text-muted-foreground hover:text-foreground shrink-0 cursor-pointer ml-0.5",
-              popoverAberto && "opacity-100 bg-background/80 text-foreground",
-            )}
-            title="Opções do favorito"
-            aria-label="Opções do favorito"
-          >
-            <MoreVertical size={11} />
-          </button>
-        </PopoverTrigger>
-
-        {/* Popover Ancorado diretamente no ícone selecionado! */}
-        <PopoverContent
+      {/* Popover Ancorado diretamente no ícone selecionado via botão direito */}
+      <PopoverContent
           align="start"
           side="bottom"
           sideOffset={6}
@@ -356,7 +341,6 @@ const ItemFavorito = memo(function ItemFavorito({
           )}
         </PopoverContent>
       </Popover>
-    </div>
   );
 });
 
@@ -381,61 +365,53 @@ function ItemOverflow({
   const [modoVisao, setModoVisao] = useState<"menu" | "icone">("menu");
 
   return (
-    <div
-      onClick={(e) => {
-        if (e.button === 0) {
-          onFecharOverflow();
-          onNavegar(item.url);
-        }
+    <Popover
+      open={popoverAberto}
+      onOpenChange={(aberto) => {
+        setPopoverAberto(aberto);
+        if (!aberto) setModoVisao("menu");
       }}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setModoVisao("menu");
-        setPopoverAberto(true);
-      }}
-      className="flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer group"
     >
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        <FaviconIcone
-          url={item.url}
-          nome={item.nome}
-          iconeCustomizado={item.iconeCustomizado}
-        />
-        <span className="truncate flex-1" title={item.nome || item.url}>
-          {item.nome || extrairDominio(item.url) || item.url}
-        </span>
-      </div>
-
-      <Popover
-        open={popoverAberto}
-        onOpenChange={(aberto) => {
-          setPopoverAberto(aberto);
-          if (!aberto) setModoVisao("menu");
-        }}
-      >
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            className="flex items-center justify-center h-5 w-5 rounded opacity-0 group-hover:opacity-100 hover:bg-card transition-opacity text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
-            title="Opções do favorito"
-          >
-            <MoreVertical size={12} />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="end"
-          side="right"
-          sideOffset={6}
-          onClick={(e) => e.stopPropagation()}
+      <PopoverAnchor asChild>
+        <div
+          onClick={(e) => {
+            if (e.button === 0) {
+              onFecharOverflow();
+              onNavegar(item.url);
+            }
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setModoVisao("menu");
+            setPopoverAberto(true);
+          }}
           className={cn(
-            "shadow-2xl bg-card border border-border rounded-xl backdrop-blur-md z-50 animate-in fade-in zoom-in-95 duration-100",
-            modoVisao === "icone" ? "w-80 sm:w-96 p-3" : "w-48 p-1",
+            "flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer group",
+            popoverAberto && "bg-accent",
           )}
         >
+          <FaviconIcone
+            url={item.url}
+            nome={item.nome}
+            iconeCustomizado={item.iconeCustomizado}
+          />
+          <span className="truncate flex-1" title={item.nome || item.url}>
+            {item.nome || extrairDominio(item.url) || item.url}
+          </span>
+        </div>
+      </PopoverAnchor>
+
+      <PopoverContent
+        align="end"
+        side="right"
+        sideOffset={6}
+        onClick={(e) => e.stopPropagation()}
+        className={cn(
+          "shadow-2xl bg-card border border-border rounded-xl backdrop-blur-md z-50 animate-in fade-in zoom-in-95 duration-100",
+          modoVisao === "icone" ? "w-80 sm:w-96 p-3" : "w-48 p-1",
+        )}
+      >
           {modoVisao === "menu" ? (
             <div className="space-y-0.5">
               <div className="px-2.5 py-1 text-[11px] font-medium text-muted-foreground truncate border-b border-border/40 mb-1">
@@ -540,7 +516,6 @@ function ItemOverflow({
           )}
         </PopoverContent>
       </Popover>
-    </div>
   );
 }
 

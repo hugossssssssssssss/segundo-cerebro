@@ -121,9 +121,9 @@ describe("BarraFavoritos", () => {
     });
   });
 
-  it("abre opções ao clicar no botão de três pontinhos (MoreVertical)", async () => {
+  it("não renderiza botões de três pontinhos para manter o visual limpo e minimalista", async () => {
     const itens: FavoritoItem[] = [
-      { id: "fav-dots", url: "https://music.youtube.com", nome: "YouTube Music" },
+      { id: "fav-clean", url: "https://music.youtube.com", nome: "YouTube Music" },
     ];
     salvarFavoritosLocal(itens);
 
@@ -131,12 +131,7 @@ describe("BarraFavoritos", () => {
 
     await screen.findByText("YouTube Music");
 
-    const botaoTresPontinhos = screen.getByTitle("Opções do favorito");
-    expect(botaoTresPontinhos).toBeDefined();
-    fireEvent.click(botaoTresPontinhos);
-
-    expect(screen.getByText("Alterar ícone")).toBeDefined();
-    expect(screen.getByText("Editar")).toBeDefined();
-    expect(screen.getByText("Abrir em nova guia")).toBeDefined();
+    // Não deve haver botão com o título de opções
+    expect(screen.queryByTitle("Opções do favorito")).toBeNull();
   });
 });
