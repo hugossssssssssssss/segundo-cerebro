@@ -39,6 +39,7 @@ import { GavetaMais } from "@/components/GavetaMais";
 import { LogoKlaus } from "@/components/LogoKlaus";
 import { Carregando } from "@/components/ui";
 import { PainelNotificacoesHeader } from "@/components/PainelNotificacoesHeader";
+import { Rodape } from "@/components/Rodape";
 import { cn } from "@/lib/utils";
 import { lerConfig, configCompleta, precisaOnboarding } from "@/lib/settings";
 import { carregarRepo } from "@/lib/repo";
@@ -488,8 +489,11 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         {workspaceAberto ? (
           <WorkspaceTelaCheia />
         ) : (
-          <main className="mx-auto w-full flex-1 py-4 sm:py-6 pb-24 sm:pb-8 px-3.5 sm:px-6 lg:px-8 overflow-y-auto max-w-none">
-            <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
+          <main className="mx-auto w-full flex-1 py-4 sm:py-6 pb-24 sm:pb-8 px-3.5 sm:px-6 lg:px-8 overflow-y-auto max-w-none flex flex-col justify-between">
+            <div className="flex-1 w-full">
+              <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
+            </div>
+            <Rodape />
           </main>
         )}
       </div>

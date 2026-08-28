@@ -183,6 +183,10 @@ Cada área do Klaus possui um tom temático específico para o seu ícone de cab
 - **`Vazio`**: Exibe estado sem dados com ícone centralizado, título, descrição e botão de ação primária.
 - **`Carregando`**: Spinner animado centralizado com texto amigável.
 
+### 9. `Rodape` (`src/components/Rodape.tsx`)
+- **Quando usar**: Posicionado no final do layout principal (`<main>`) para fornecer links rápidos, atalhos de teclado, status do sistema em tempo real e botão de voltar ao topo.
+
+
 ---
 
 ## 📌 Regras Obrigatórias para Agentes de IA
