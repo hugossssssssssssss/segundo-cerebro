@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Sparkles,
   Send,
@@ -56,7 +57,7 @@ export function ModalIADocumento({
     }
   }, [aberto, modoPergunta]);
 
-  if (!aberto) return null;
+  if (!aberto || typeof document === "undefined") return null;
 
   const enviarPergunta = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -111,9 +112,9 @@ export function ModalIADocumento({
     aoFechar();
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/40 backdrop-blur-xs animate-in fade-in duration-100"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-100"
       onClick={(e) => {
         if (e.target === e.currentTarget) lidarExcluir();
       }}
@@ -251,6 +252,7 @@ export function ModalIADocumento({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

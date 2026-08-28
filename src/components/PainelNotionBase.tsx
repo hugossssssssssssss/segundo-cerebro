@@ -717,68 +717,74 @@ export function PainelNotionBase({
           </Tooltip>
         )}
 
-        {caminhoItem && (
-          <Popover open={menuAcoesAberto} onOpenChange={setMenuAcoesAberto}>
-            <Tooltip conteudo="Ações do documento" posicao="bottom">
-              <PopoverTrigger asChild>
-                <button
-                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-                  aria-label="Ações do item"
-                >
-                  <MoreVertical size={16} />
-                </button>
-              </PopoverTrigger>
-            </Tooltip>
-            <PopoverContent className="w-56 p-1.5 shadow-xl border-border" align="end">
-              <div className="flex flex-col gap-0.5">
-                <button
-                  onClick={acaoCopiarLink}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
-                >
-                  <Copy size={14} className="opacity-70 shrink-0" />
-                  <span>Copiar link</span>
-                </button>
+        <Popover open={menuAcoesAberto} onOpenChange={setMenuAcoesAberto}>
+          <Tooltip conteudo="Ações do documento" posicao="bottom">
+            <PopoverTrigger asChild>
+              <button
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+                aria-label="Ações do item"
+              >
+                <MoreVertical size={16} />
+              </button>
+            </PopoverTrigger>
+          </Tooltip>
+          <PopoverContent className="z-[300] w-56 p-1.5 shadow-xl border-border" align="end">
+            <div className="flex flex-col gap-0.5">
+              {caminhoItem ? (
+                <>
+                  <button
+                    onClick={acaoCopiarLink}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
+                  >
+                    <Copy size={14} className="opacity-70 shrink-0" />
+                    <span>Copiar link</span>
+                  </button>
 
-                <button
-                  onClick={acaoDuplicar}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
-                >
-                  <CopyPlus size={14} className="opacity-70 shrink-0" />
-                  <span>Duplicar</span>
-                </button>
+                  <button
+                    onClick={acaoDuplicar}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
+                  >
+                    <CopyPlus size={14} className="opacity-70 shrink-0" />
+                    <span>Duplicar</span>
+                  </button>
 
-                <div className="my-1 border-t border-border/60" />
-                <div className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Converter para
+                  <div className="my-1 border-t border-border/60" />
+                  <div className="px-2.5 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Converter para
+                  </div>
+                  {[
+                    { tipo: "nota", pasta: "notas", rotulo: "Nota" },
+                    { tipo: "tarefa", pasta: "tarefas", rotulo: "Tarefa" },
+                    { tipo: "meta", pasta: "pdi/metas", rotulo: "Meta do PDI" }
+                  ].map((dest) => {
+                    const ehTipoAtual =
+                      caminhoItem.startsWith(dest.pasta + "/") ||
+                      (dest.tipo === "nota" && rotuloTipo?.toLowerCase().includes("nota")) ||
+                      (dest.tipo === "tarefa" && rotuloTipo?.toLowerCase().includes("tarefa")) ||
+                      (dest.tipo === "meta" && rotuloTipo?.toLowerCase().includes("meta"));
+
+                    if (ehTipoAtual) return null;
+
+                    return (
+                      <button
+                        key={dest.tipo}
+                        onClick={() => acaoConverter(dest.tipo, dest.pasta)}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
+                      >
+                        <ArrowRightLeft size={14} className="opacity-70 shrink-0" />
+                        <span>{dest.rotulo}</span>
+                      </button>
+                    );
+                  })}
+                </>
+              ) : (
+                <div className="px-2.5 py-2 text-xs text-muted-foreground text-center">
+                  Salve o documento para liberar opções de link e conversão.
                 </div>
-                {[
-                  { tipo: "nota", pasta: "notas", rotulo: "Nota" },
-                  { tipo: "tarefa", pasta: "tarefas", rotulo: "Tarefa" },
-                  { tipo: "meta", pasta: "pdi/metas", rotulo: "Meta do PDI" }
-                ].map((dest) => {
-                  const ehTipoAtual =
-                    caminhoItem.startsWith(dest.pasta + "/") ||
-                    (dest.tipo === "nota" && rotuloTipo?.toLowerCase().includes("nota")) ||
-                    (dest.tipo === "tarefa" && rotuloTipo?.toLowerCase().includes("tarefa")) ||
-                    (dest.tipo === "meta" && rotuloTipo?.toLowerCase().includes("meta"));
-
-                  if (ehTipoAtual) return null;
-
-                  return (
-                    <button
-                      key={dest.tipo}
-                      onClick={() => acaoConverter(dest.tipo, dest.pasta)}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
-                    >
-                      <ArrowRightLeft size={14} className="opacity-70 shrink-0" />
-                      <span>{dest.rotulo}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <button
           onClick={tentarFechar}

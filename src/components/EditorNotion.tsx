@@ -378,7 +378,20 @@ export function EditorNotion({
         badge: "IA",
         icon: <Sparkles size={16} className="text-primary" />,
         onItemClick: () => {
-          setModalIAAberto(true);
+          try {
+            const cursor = editor.getTextCursorPosition();
+            if (cursor?.block) {
+              const currentBlock = cursor.block;
+              if (
+                Array.isArray(currentBlock.content) &&
+                currentBlock.content.length === 1 &&
+                (currentBlock.content[0] as any).text === "/"
+              ) {
+                editor.updateBlock(currentBlock, { content: [] });
+              }
+            }
+          } catch {}
+          setTimeout(() => setModalIAAberto(true), 50);
         },
       };
 
