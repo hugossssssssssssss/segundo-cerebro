@@ -102,13 +102,29 @@ export function temPersistenciaPendente(): boolean {
   return timerDebouncePersistencia !== null;
 }
 
+let cacheFavoritosEmMemoria: { quando: number; itens: FavoritoItem[]; sha?: string } | null = null;
+
+export function invalidarCacheFavoritos(): void {
+  cacheFavoritosEmMemoria = null;
+}
+
 /**
  * Carrega os favoritos do repositório GitHub com mesclagem segura com o localStorage.
  */
 export async function carregarFavoritos(
   cfg: Settings,
+  { forcarRede = false }: { forcarRede?: boolean } = {},
 ): Promise<{ itens: FavoritoItem[]; sha?: string }> {
   const locais = lerFavoritosLocal();
+
+  // Se já carregou nos últimos 60 segundos e não foi forçado, aproveita o cache
+  if (
+    !forcarRede &&
+    cacheFavoritosEmMemoria &&
+    Date.now() - cacheFavoritosEmMemoria.quando < 60_000
+  ) {
+    return { itens: cacheFavoritosEmMemoria.itens, sha: cacheFavoritosEmMemoria.sha };
+  }
 
   // Se houver gravação pendente de envio ao GitHub no debounce, nunca sobrescreve com dados antigos
   if (temPersistenciaPendente()) {
@@ -147,6 +163,7 @@ export async function carregarFavoritos(
             agendarPersistenciaRemota(cfg, listaFinal, 1000);
           }
 
+          cacheFavoritosEmMemoria = { quando: Date.now(), itens: listaFinal, sha: res.sha };
           return { itens: listaFinal, sha: res.sha };
         }
       }
@@ -158,6 +175,7 @@ export async function carregarFavoritos(
     }
   }
 
+  cacheFavoritosEmMemoria = { quando: Date.now(), itens: locais, sha: ultimoShaFavoritos };
   return { itens: locais, sha: ultimoShaFavoritos };
 }
 
@@ -176,28 +194,46 @@ export async function salvarFavoritosRemoto(
   try {
     const conteudo = JSON.stringify(itens, null, 2);
 
-    // Busca sempre o SHA mais recente do arquivo no GitHub para evitar 409 Conflict
+    // Busca o SHA apenas se ainda não conhecemos nenhum SHA localmente
     let shaFinal = shaAntigo || ultimoShaFavoritos;
-    try {
-      const res = await ler(cfg, CAMINHO_FAVORITOS, { silenciar404: true });
-      if (res?.sha) {
-        shaFinal = res.sha;
+    if (!shaFinal) {
+      try {
+        const res = await ler(cfg, CAMINHO_FAVORITOS, { silenciar404: true });
+        if (res?.sha) {
+          shaFinal = res.sha;
+        }
+      } catch {
+        // Arquivo novo sendo criado pela primeira vez
       }
-    } catch {
-      // Arquivo novo sendo criado pela primeira vez
     }
 
-    // ATENÇÃO À ORDEM DOS PARÂMETROS:
-    // gravar(cfg, caminho, texto, sha?, mensagem?)
-    const novoSha = await gravar(
-      cfg,
-      CAMINHO_FAVORITOS,
-      conteudo,
-      shaFinal,
-      `atualiza favoritos (${itens.length} links)`,
-    );
+    let novoSha: string;
+    try {
+      novoSha = await gravar(
+        cfg,
+        CAMINHO_FAVORITOS,
+        conteudo,
+        shaFinal,
+        `atualiza favoritos (${itens.length} links)`,
+      );
+    } catch (erroGravacao: any) {
+      // Se deu 409 Conflict, revalida o SHA remoto fresco e tenta novamente 1 vez
+      if (erroGravacao?.status === 409 || String(erroGravacao).includes("409")) {
+        const res = await ler(cfg, CAMINHO_FAVORITOS, { silenciar404: true });
+        novoSha = await gravar(
+          cfg,
+          CAMINHO_FAVORITOS,
+          conteudo,
+          res.sha,
+          `atualiza favoritos (${itens.length} links)`,
+        );
+      } else {
+        throw erroGravacao;
+      }
+    }
 
     registrarShaFavoritos(novoSha);
+    invalidarCacheFavoritos();
     return { ok: true, sha: novoSha };
   } catch (err: any) {
     return { ok: false, erro: err?.message || String(err) };

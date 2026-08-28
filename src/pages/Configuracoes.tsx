@@ -13,6 +13,7 @@ import { nomeLivre } from "@/lib/markdown";
 import { PASTAS } from "@/lib/tipos";
 import { analisarAcervoParaMigracao, executarMigracaoEmLote, type RelatorioAnaliseAcervo } from "@/lib/migracaoLote";
 import { identificarArquivosProcessos, apagarArquivosProcessosEmLote } from "@/lib/limpezaProcessos";
+import { CardConsumoGitHub } from "@/components/CardConsumoGitHub";
 
 export default function Configuracoes() {
   const [cfg, setCfg] = useState<Settings>(lerConfig);
@@ -528,6 +529,8 @@ export default function Configuracoes() {
           )}
         </div>
       </Cartao>
+
+      <CardConsumoGitHub />
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <Botao onClick={salvarETestar} disabled={testando}>

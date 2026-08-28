@@ -20,6 +20,7 @@ import type { Settings } from "./settings";
 import { ErroGitHub, conferir } from "./github";
 import { lerMarkdown, type Documento } from "./markdown";
 import { salvarTextosPorSha, carregarTextosPorShas, limparCacheSha } from "./storageOffline";
+import { registrarRespostaGitHub } from "./telemetriaRequisicoes";
 
 const BASE = "https://api.github.com";
 
@@ -112,6 +113,7 @@ export function invalidarCache(): void {
   // gravado. Deixá-la no ar faria a próxima leitura receber, de carona, um
   // acervo desatualizado — exatamente o que invalidar existe para evitar.
   cargaEmVoo = null;
+  resetarCacheArvore();
 }
 
 /**
@@ -124,6 +126,7 @@ export function esquecerTudo(): void {
   cache = null;
   cargaEmVoo = null;
   textoPorSha.clear();
+  resetarCacheArvore();
   limparCacheSha().catch(() => {});
 }
 
@@ -137,7 +140,9 @@ function cabecalhos(cfg: Settings): HeadersInit {
 
 async function buscar(url: string, init?: RequestInit): Promise<Response> {
   try {
-    return await fetch(url, init);
+    const res = await fetch(url, init);
+    registrarRespostaGitHub(url, init?.method || "GET", res.status, res.headers);
+    return res;
   } catch (e) {
     throw new ErroGitHub(
       navigator.onLine
@@ -214,9 +219,35 @@ export function ehArquivoInternoOuSistema(caminho: string): boolean {
 
 type Folha = { path: string; sha: string; size: number };
 
+type CacheArvore = {
+  etag: string;
+  folhas: Folha[];
+  quando: number;
+};
+
+let cacheArvoreEmMemoria: { chave: string; dados: CacheArvore } | null = null;
+
+export function resetarCacheArvore(): void {
+  cacheArvoreEmMemoria = null;
+}
+
 async function arvore(cfg: Settings): Promise<Folha[]> {
-  const url = `${BASE}/repos/${cfg.repoOwner}/${cfg.repoName}/git/trees/${encodeURIComponent(cfg.branch)}?recursive=1&t=${Date.now()}`;
-  const resposta = await buscar(url, { headers: cabecalhos(cfg), cache: "no-store" });
+  const chave = chaveDe(cfg);
+  const url = `${BASE}/repos/${cfg.repoOwner}/${cfg.repoName}/git/trees/${encodeURIComponent(cfg.branch)}?recursive=1`;
+
+  const etagAtual = cacheArvoreEmMemoria?.chave === chave ? cacheArvoreEmMemoria.dados.etag : null;
+
+  const headers: HeadersInit = {
+    ...cabecalhos(cfg),
+    ...(etagAtual ? { "If-None-Match": etagAtual } : {}),
+  };
+
+  const resposta = await buscar(url, { headers });
+
+  if (resposta.status === 304 && cacheArvoreEmMemoria?.chave === chave) {
+    // 304 Not Modified: Resposta instantânea que NÃO gasta cota da API do GitHub!
+    return cacheArvoreEmMemoria.dados.folhas;
+  }
 
   if (resposta.status === 404) return []; // repositório novo, sem commits
   // mesma tradução de erro do resto do app: limite de API não pode aparecer
@@ -230,7 +261,7 @@ async function arvore(cfg: Settings): Promise<Folha[]> {
       200,
     );
   }
-  return (dados.tree ?? [])
+  const novasFolhas = (dados.tree ?? [])
     .filter(
       (n: { type: string; path: string }) =>
         n.type === "blob" &&
@@ -239,6 +270,20 @@ async function arvore(cfg: Settings): Promise<Folha[]> {
         !ehArquivoInternoOuSistema(n.path),
     )
     .map((n: Folha) => ({ path: n.path, sha: n.sha, size: n.size }));
+
+  const novoEtag = resposta.headers.get("etag");
+  if (novoEtag) {
+    cacheArvoreEmMemoria = {
+      chave,
+      dados: {
+        etag: novoEtag,
+        folhas: novasFolhas,
+        quando: Date.now(),
+      },
+    };
+  }
+
+  return novasFolhas;
 }
 
 /* ---------------------------------------------------------------- conteúdo */

@@ -11,6 +11,7 @@
 
 import type { Settings } from "./settings";
 import { lerMarkdown } from "./markdown";
+import { registrarRespostaGitHub } from "./telemetriaRequisicoes";
 
 const BASE = "https://api.github.com";
 
@@ -64,6 +65,7 @@ async function buscar(url: string, init?: RequestInit, maxRetries = 2): Promise<
   while (tentativa <= maxRetries) {
     try {
       const res = await fetch(url, init);
+      registrarRespostaGitHub(url, init?.method || "GET", res.status, res.headers);
       if ((res.status === 429 || res.status === 503) && tentativa < maxRetries) {
         const retryAfterHeader = res.headers.get("retry-after");
         const fator = typeof process !== "undefined" && process.env.NODE_ENV === "test" ? 0 : 1000;
