@@ -340,16 +340,7 @@ export function EditorNotion({
 
   const [modalLembreteAberto, setModalLembreteAberto] = useState(false);
   const [modalIAAberto, setModalIAAberto] = useState(false);
-
-  useEffect(() => {
-    const handler = () => {
-      setModalIAAberto(true);
-    };
-    window.addEventListener("klaus:abrir-ia-documento", handler);
-    return () => {
-      window.removeEventListener("klaus:abrir-ia-documento", handler);
-    };
-  }, []);
+  const [posicaoIA, setPosicaoIA] = useState<{ x: number; y: number } | null>(null);
 
   const alvosRef = useRef(alvos);
   useEffect(() => {
@@ -398,6 +389,33 @@ export function EditorNotion({
         ],
         icon: <Sparkles size={16} className="text-primary" />,
         onItemClick: () => {
+          let x = 120;
+          let y = 140;
+
+          try {
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) {
+              const rect = sel.getRangeAt(0).getBoundingClientRect();
+              if (rect && (rect.top > 0 || rect.bottom > 0)) {
+                x = rect.left;
+                y = rect.bottom + 6;
+              }
+            }
+            if (y === 140) {
+              const cursor = editor.getTextCursorPosition();
+              if (cursor?.block) {
+                const blockEl = editor.domElement?.querySelector(`[data-id="${cursor.block.id}"]`);
+                if (blockEl) {
+                  const bRect = blockEl.getBoundingClientRect();
+                  x = bRect.left;
+                  y = bRect.bottom + 6;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn(e);
+          }
+
           try {
             const cursor = editor.getTextCursorPosition();
             if (cursor?.block) {
@@ -414,6 +432,15 @@ export function EditorNotion({
           } catch (e) {
             console.warn(e);
           }
+
+          // Limita horizontalmente e inverte verticalmente se estiver próximo ao rodapé
+          const larguraCard = 400;
+          x = Math.max(16, Math.min(window.innerWidth - larguraCard - 16, x));
+          if (y + 200 > window.innerHeight) {
+            y = Math.max(16, y - 220);
+          }
+
+          setPosicaoIA({ x, y });
           setModalIAAberto(true);
         },
       };
@@ -766,6 +793,7 @@ export function EditorNotion({
 
       <ModalIADocumento
         aberto={modalIAAberto}
+        posicao={posicaoIA}
         aoFechar={() => setModalIAAberto(false)}
         aoColarNoDocumento={colarTextoIA}
       />

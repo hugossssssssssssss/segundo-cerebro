@@ -17,7 +17,6 @@ import {
   ArrowRightLeft,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
 } from "lucide-react";
 import { Botao, Aviso, ModalConfirmacao, Tooltip } from "@/components/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -821,17 +820,6 @@ export function PainelNotionBase({
             </Botao>
           </Tooltip>
         )}
-
-        <Tooltip conteudo="Perguntas rápidas ou contas com IA (ou digite / no texto)" posicao="top">
-          <Botao
-            variante="fantasma"
-            onClick={() => window.dispatchEvent(new CustomEvent("klaus:abrir-ia-documento"))}
-            className="text-xs text-primary hover:text-primary hover:bg-primary/10 cursor-pointer gap-1.5"
-          >
-            <Sparkles size={14} className="text-primary" />
-            <span className="hidden sm:inline">Assistente IA</span>
-          </Botao>
-        </Tooltip>
       </div>
 
       {/* Controles Sequenciais no Rodapé (Ex: "< 3 de 100 >") */}

@@ -17,12 +17,14 @@ import { cn } from "@/lib/utils";
 
 interface ModalIADocumentoProps {
   aberto: boolean;
+  posicao?: { x: number; y: number } | null;
   aoFechar: () => void;
   aoColarNoDocumento: (texto: string) => void;
 }
 
 export function ModalIADocumento({
   aberto,
+  posicao,
   aoFechar,
   aoColarNoDocumento,
 }: ModalIADocumentoProps) {
@@ -35,14 +37,13 @@ export function ModalIADocumento({
   const [historico, setHistorico] = useState<MensagemIARapida[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const abertoEmRef = useRef<number>(0);
-  const mouseDownOnBackdropRef = useRef<boolean>(false);
 
   // Reseta ou foca ao abrir
   useEffect(() => {
     if (aberto) {
       abertoEmRef.current = Date.now();
-      mouseDownOnBackdropRef.current = false;
       setPrompt("");
       setResposta("");
       setCarregando(false);
@@ -60,6 +61,19 @@ export function ModalIADocumento({
       setTimeout(() => inputRef.current?.focus(), 80);
     }
   }, [aberto, modoPergunta]);
+
+  // Fecha com clique fora do card (sem necessidade de escurecer a tela)
+  useEffect(() => {
+    if (!aberto) return;
+    const lidarClickFora = (e: MouseEvent) => {
+      if (Date.now() - abertoEmRef.current < 250) return;
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        lidarExcluir();
+      }
+    };
+    window.addEventListener("mousedown", lidarClickFora);
+    return () => window.removeEventListener("mousedown", lidarClickFora);
+  }, [aberto]);
 
   if (!aberto || typeof document === "undefined") return null;
 
@@ -116,28 +130,26 @@ export function ModalIADocumento({
     aoFechar();
   };
 
+  const posX = posicao ? posicao.x : Math.max(16, (window.innerWidth - 400) / 2);
+  const posY = posicao ? posicao.y : 120;
+
   return createPortal(
     <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-100"
-      onMouseDown={(e) => {
-        mouseDownOnBackdropRef.current = e.target === e.currentTarget;
-      }}
-      onClick={(e) => {
-        // Ignora cliques residuais nos primeiros 250ms após a abertura
-        if (Date.now() - abertoEmRef.current < 250) return;
-        if (e.target === e.currentTarget && mouseDownOnBackdropRef.current) {
-          lidarExcluir();
-        }
-        mouseDownOnBackdropRef.current = false;
-      }}
+      className="fixed inset-0 z-[99999] pointer-events-none"
       onKeyDown={(e) => {
         if (e.key === "Escape") lidarExcluir();
       }}
     >
       <div
+        ref={cardRef}
+        style={{
+          position: "fixed",
+          left: `${posX}px`,
+          top: `${posY}px`,
+        }}
         className={cn(
-          "w-full max-w-md bg-card border border-border/80 shadow-2xl rounded-2xl p-3.5 transition-all duration-150 backdrop-blur-md",
-          "animate-in zoom-in-95 duration-100",
+          "pointer-events-auto w-[360px] sm:w-[420px] bg-card border border-border shadow-2xl rounded-2xl p-3.5 transition-all duration-150",
+          "animate-in fade-in zoom-in-95 duration-100",
         )}
       >
         {/* Cabeçalho Minimalista */}
