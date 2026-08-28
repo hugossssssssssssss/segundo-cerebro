@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp, Settings as SettingsIcon, Terminal, RefreshCw, Layers } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp, Settings as SettingsIcon, Terminal, RefreshCw, Layers, Trash2 } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
-import { carregarRepo } from "@/lib/repo";
+import { carregarRepo, type ItemRepo } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
 import { Botao, Campo, Cartao, Rotulo, Aviso } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
@@ -12,6 +12,7 @@ import { ModalTourGuiado } from "@/components/ModalTourGuiado";
 import { nomeLivre } from "@/lib/markdown";
 import { PASTAS } from "@/lib/tipos";
 import { analisarAcervoParaMigracao, executarMigracaoEmLote, type RelatorioAnaliseAcervo } from "@/lib/migracaoLote";
+import { identificarArquivosProcessos, apagarArquivosProcessosEmLote } from "@/lib/limpezaProcessos";
 
 export default function Configuracoes() {
   const [cfg, setCfg] = useState<Settings>(lerConfig);
@@ -35,20 +36,66 @@ export default function Configuracoes() {
   const [progressoMigracao, setProgressoMigracao] = useState<{ atual: number; total: number; caminho: string } | null>(null);
   const [msgMigracao, setMsgMigracao] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
 
+  // Estados da Limpeza de Processos Residuais
+  const [arquivosProcessos, setArquivosProcessos] = useState<ItemRepo[]>([]);
+  const [excluindoProcessos, setExcluindoProcessos] = useState(false);
+  const [progressoProcessos, setProgressoProcessos] = useState<{ atual: number; total: number; msg: string } | null>(null);
+  const [msgProcessos, setMsgProcessos] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
+
   const analisarPadronizacao = async () => {
     setAnalisandoAcervo(true);
     setMsgMigracao(null);
+    setMsgProcessos(null);
     try {
       const itens = await carregarRepo(cfg);
       const rel = analisarAcervoParaMigracao(itens);
       setRelatorioMigracao(rel);
-      if (rel.arquivosPendentes === 0) {
-        setMsgMigracao({ tom: "sucesso", texto: `Perfeito! Todos os ${rel.totalArquivos} arquivos do seu repositório já estão padronizados.` });
+      const procs = identificarArquivosProcessos(itens);
+      setArquivosProcessos(procs);
+
+      if (rel.arquivosPendentes === 0 && procs.length === 0) {
+        setMsgMigracao({ tom: "sucesso", texto: `Perfeito! Todos os ${rel.totalArquivos} arquivos do seu repositório já estão padronizados e limpos.` });
       }
     } catch (e: any) {
       setMsgMigracao({ tom: "erro", texto: `Erro ao analisar repositório: ${e?.message || e}` });
     } finally {
       setAnalisandoAcervo(false);
+    }
+  };
+
+  const executarExclusaoProcessos = async () => {
+    if (arquivosProcessos.length === 0) return;
+    setExcluindoProcessos(true);
+    setMsgProcessos(null);
+    try {
+      const res = await apagarArquivosProcessosEmLote(
+        cfg,
+        arquivosProcessos.map((i) => ({ caminho: i.caminho, sha: i.sha })),
+        (atual, total, msg) => setProgressoProcessos({ atual, total, msg }),
+      );
+
+      if (res.falhas.length === 0) {
+        setMsgProcessos({
+          tom: "sucesso",
+          texto: `Sucesso! Todos os ${res.sucessos} arquivo(s) de processos/CRM foram excluídos do GitHub.`,
+        });
+        setArquivosProcessos([]);
+      } else {
+        setMsgProcessos({
+          tom: "erro",
+          texto: `${res.sucessos} arquivo(s) excluídos, mas ${res.falhas.length} falharam ao excluir.`,
+        });
+      }
+
+      // Re-analisa acervo
+      const itensNovos = await carregarRepo(cfg);
+      setArquivosProcessos(identificarArquivosProcessos(itensNovos));
+      setRelatorioMigracao(analisarAcervoParaMigracao(itensNovos));
+    } catch (e: any) {
+      setMsgProcessos({ tom: "erro", texto: `Erro durante a exclusão: ${e?.message || e}` });
+    } finally {
+      setExcluindoProcessos(false);
+      setProgressoProcessos(null);
     }
   };
 
@@ -546,6 +593,74 @@ export default function Configuracoes() {
         </Cartao>
       )}
 
+      {/* Seção de Limpeza de Arquivos de Processos */}
+      {arquivosProcessos.length > 0 && (
+        <Cartao className="p-5 space-y-4 border-rose-500/40 bg-rose-500/5">
+          <div>
+            <h2 className="font-medium text-foreground flex items-center gap-2 text-rose-600 dark:text-rose-400">
+              <Trash2 size={18} />
+              Arquivos Residuais de Processos / CRM ({arquivosProcessos.length})
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Foram identificados <strong className="text-foreground">{arquivosProcessos.length}</strong> arquivos antigos na pasta <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">processos/</code> no seu repositório do GitHub. Como a ferramenta foi descontinuada, você pode excluí-los em lote em 1 clique.
+            </p>
+          </div>
+
+          {msgProcessos && (
+            <Aviso tom={msgProcessos.tom}>{msgProcessos.texto}</Aviso>
+          )}
+
+          {progressoProcessos && (
+            <div className="space-y-2 rounded-xl bg-muted/40 p-3 border border-border">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="text-foreground">Excluindo processos do GitHub...</span>
+                <span className="text-rose-500">{progressoProcessos.atual} de {progressoProcessos.total}</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-rose-500 transition-all duration-200"
+                  style={{ width: `${(progressoProcessos.atual / progressoProcessos.total) * 100}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground truncate font-mono">
+                {progressoProcessos.msg}
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-2 pt-1">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+              Exemplos de arquivos a excluir:
+            </span>
+            <div className="max-h-32 overflow-y-auto space-y-1 rounded-lg border border-border bg-background p-2 text-xs font-mono text-muted-foreground">
+              {arquivosProcessos.slice(0, 10).map((item) => (
+                <div key={item.caminho} className="truncate">
+                  • {item.caminho}
+                </div>
+              ))}
+              {arquivosProcessos.length > 10 && (
+                <div className="text-[11px] text-muted-foreground/80 italic">
+                  + outros {arquivosProcessos.length - 10} arquivo(s)
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <Botao
+              variante="perigo"
+              onClick={executarExclusaoProcessos}
+              disabled={excluindoProcessos}
+            >
+              <Trash2 size={16} />
+              {excluindoProcessos
+                ? "Excluindo arquivos..."
+                : `Excluir todos os ${arquivosProcessos.length} arquivos de processos do GitHub`}
+            </Botao>
+          </div>
+        </Cartao>
+      )}
+
       {/* Seção de Padronização Global do Acervo */}
       <Cartao className="p-5 space-y-4">
         <div>
@@ -554,7 +669,7 @@ export default function Configuracoes() {
             Padronização Global do Acervo (snake_case)
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Varra todo o repositório no GitHub para identificar e converter notas, tarefas, metas e processos com convenções antigas para o padrão global unificado em 1 clique.
+            Varra todo o repositório no GitHub para identificar e converter notas, tarefas, metas e contatos com convenções antigas para o padrão global unificado em 1 clique.
           </p>
         </div>
 
