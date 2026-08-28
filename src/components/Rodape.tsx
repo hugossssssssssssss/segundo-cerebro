@@ -95,243 +95,245 @@ export function Rodape() {
     <>
       <footer
         data-testid="rodape-klaus"
-        className="mt-24 w-full border-t border-border/50 pt-10 pb-16 text-muted-foreground select-none transition-colors"
+        className="mt-32 sm:mt-40 w-[calc(100%+1.75rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] -mx-3.5 sm:-mx-6 lg:-mx-8 -mb-24 sm:-mb-8 bg-[#e9e9ed] dark:bg-[#141417] border-t-2 border-zinc-300 dark:border-zinc-800 pt-12 pb-16 text-zinc-900 dark:text-zinc-100 select-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)]"
       >
-        {/* Grade de Informações (Tipografia limpa e espaçada, sem caixas envolventes) */}
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Coluna 1: Identidade e Privacidade */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <LogoKlaus tamanho={24} />
-              <span className="text-base font-bold tracking-tight text-foreground">Klaus</span>
-              <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-mono font-medium text-foreground/80">
-                v{versao}
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Segundo cérebro digital e repositório de conhecimento. Notas, tarefas, referências visuais e metas pessoais
-              salvas em Markdown direto no GitHub.
-            </p>
-            <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-              <ShieldCheck size={14} className="shrink-0" />
-              <span>100% sob seu controle e privado</span>
-            </div>
-          </div>
-
-          {/* Coluna 2: Navegação Rápida */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
-              Navegação
-            </h4>
-            <ul className="space-y-2 text-xs">
-              <li>
-                <Link
-                  to="/notas"
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <FileText size={14} className="text-amber-500 shrink-0" />
-                  <span>Notas & Conhecimento</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/tarefas"
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <CheckSquare size={14} className="text-blue-500 shrink-0" />
-                  <span>Tarefas & Projetos</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/referencias"
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ImageIcon size={14} className="text-pink-500 shrink-0" />
-                  <span>Referências Visuais</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/pdi"
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Target size={14} className="text-teal-500 shrink-0" />
-                  <span>Plano de Carreira (PDI)</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/grafo"
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Network size={14} className="text-indigo-500 shrink-0" />
-                  <span>Grafo Neural 3D</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/sons"
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Headphones size={14} className="text-purple-500 shrink-0" />
-                  <span>Sons & Foco</span>
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Coluna 3: Atalhos de Teclado */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
-              Atalhos de Teclado
-            </h4>
-            <ul className="space-y-2 text-xs">
-              <li className="flex items-center justify-between text-muted-foreground">
-                <span>Busca Global:</span>
-                <span className="font-mono font-medium text-foreground">{formatarAtalho("⌘K")}</span>
-              </li>
-              <li className="flex items-center justify-between text-muted-foreground">
-                <span>Captura Rápida:</span>
-                <span className="font-mono font-medium text-foreground">{formatarAtalho("⌘J")}</span>
-              </li>
-              <li className="flex items-center justify-between text-muted-foreground">
-                <span>Barra Lateral:</span>
-                <span className="font-mono font-medium text-foreground">{formatarAtalho("⌘B")}</span>
-              </li>
-            </ul>
-            <div className="flex items-center gap-3 pt-2 text-xs font-medium">
-              <Link
-                to="/inbox"
-                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Inbox size={13} />
-                <span>Inbox</span>
-              </Link>
-              <span className="text-border">•</span>
-              <Link
-                to="/config"
-                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <SettingsIcon size={13} />
-                <span>Ajustes</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* Coluna 4: Status em Tempo Real */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
-              Status do Sistema
-            </h4>
-            <ul className="space-y-2 text-xs">
-              <li className="flex items-center justify-between">
-                <span className="text-muted-foreground">Conexão:</span>
-                <span
-                  className={cn(
-                    "flex items-center gap-1.5 font-medium",
-                    online ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500"
-                  )}
-                >
-                  {online ? (
-                    <>
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <Wifi size={12} />
-                      <span>Online</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                      <WifiOff size={12} />
-                      <span>Offline</span>
-                    </>
-                  )}
+        <div className="mx-auto max-w-7xl px-4 sm:px-8">
+          {/* Grade de Informações (Bloco sólido, tipografia limpa em preto de alto contraste) */}
+          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Coluna 1: Identidade e Privacidade */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <LogoKlaus tamanho={24} />
+                <span className="text-base font-black tracking-tight text-black dark:text-white">Klaus</span>
+                <span className="rounded-md bg-zinc-300/90 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-mono font-bold text-black dark:text-zinc-200 border border-zinc-400/30">
+                  v{versao}
                 </span>
-              </li>
+              </div>
+              <p className="text-xs text-zinc-800 dark:text-zinc-300 leading-relaxed font-medium">
+                Segundo cérebro digital e repositório de conhecimento. Notas, tarefas, referências visuais e metas pessoais
+                salvas em Markdown direto no GitHub.
+              </p>
+              <div className="flex items-center gap-1.5 text-xs text-emerald-800 dark:text-emerald-400 font-bold">
+                <ShieldCheck size={14} className="shrink-0" />
+                <span>100% sob seu controle e privado</span>
+              </div>
+            </div>
 
-              <li className="flex items-center justify-between">
-                <span className="text-muted-foreground">GitHub:</span>
-                {temRepo ? (
-                  <a
-                    href={repoUrl || "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 font-mono text-[11px] font-medium text-foreground hover:text-primary transition-colors truncate max-w-[140px]"
-                    title={`${cfg.repoOwner}/${cfg.repoName} (${cfg.branch || "main"})`}
-                  >
-                    <GitBranch size={12} className="shrink-0 text-primary" />
-                    <span className="truncate">{cfg.repoName}</span>
-                    <ExternalLink size={10} className="shrink-0 opacity-60" />
-                  </a>
-                ) : (
+            {/* Coluna 2: Navegação Rápida */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-black uppercase tracking-wider text-black dark:text-white">
+                Navegação
+              </h4>
+              <ul className="space-y-2 text-xs">
+                <li>
                   <Link
-                    to="/config"
-                    className="text-amber-600 dark:text-amber-400 font-medium hover:underline text-[11px]"
+                    to="/notas"
+                    className="flex items-center gap-2 text-zinc-800 hover:text-black dark:text-zinc-200 dark:hover:text-white font-semibold transition-colors"
                   >
-                    Não configurado
+                    <FileText size={14} className="text-amber-600 dark:text-amber-500 shrink-0" />
+                    <span>Notas & Conhecimento</span>
                   </Link>
-                )}
-              </li>
+                </li>
+                <li>
+                  <Link
+                    to="/tarefas"
+                    className="flex items-center gap-2 text-zinc-800 hover:text-black dark:text-zinc-200 dark:hover:text-white font-semibold transition-colors"
+                  >
+                    <CheckSquare size={14} className="text-blue-600 dark:text-blue-500 shrink-0" />
+                    <span>Tarefas & Projetos</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/referencias"
+                    className="flex items-center gap-2 text-zinc-800 hover:text-black dark:text-zinc-200 dark:hover:text-white font-semibold transition-colors"
+                  >
+                    <ImageIcon size={14} className="text-pink-600 dark:text-pink-500 shrink-0" />
+                    <span>Referências Visuais</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/pdi"
+                    className="flex items-center gap-2 text-zinc-800 hover:text-black dark:text-zinc-200 dark:hover:text-white font-semibold transition-colors"
+                  >
+                    <Target size={14} className="text-teal-600 dark:text-teal-500 shrink-0" />
+                    <span>Plano de Carreira (PDI)</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/grafo"
+                    className="flex items-center gap-2 text-zinc-800 hover:text-black dark:text-zinc-200 dark:hover:text-white font-semibold transition-colors"
+                  >
+                    <Network size={14} className="text-indigo-600 dark:text-indigo-500 shrink-0" />
+                    <span>Grafo Neural 3D</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/sons"
+                    className="flex items-center gap-2 text-zinc-800 hover:text-black dark:text-zinc-200 dark:hover:text-white font-semibold transition-colors"
+                  >
+                    <Headphones size={14} className="text-purple-600 dark:text-purple-500 shrink-0" />
+                    <span>Sons & Foco</span>
+                  </Link>
+                </li>
+              </ul>
+            </div>
 
-              <li className="flex items-center justify-between">
-                <span className="text-muted-foreground">IA Gemini:</span>
-                <span
-                  className={cn(
-                    "flex items-center gap-1 font-medium text-[11px]",
-                    temGemini ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground"
-                  )}
+            {/* Coluna 3: Atalhos de Teclado */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-black uppercase tracking-wider text-black dark:text-white">
+                Atalhos de Teclado
+              </h4>
+              <ul className="space-y-2 text-xs">
+                <li className="flex items-center justify-between text-zinc-700 dark:text-zinc-300">
+                  <span className="font-medium">Busca Global:</span>
+                  <span className="font-mono font-bold text-black dark:text-white">{formatarAtalho("⌘K")}</span>
+                </li>
+                <li className="flex items-center justify-between text-zinc-700 dark:text-zinc-300">
+                  <span className="font-medium">Captura Rápida:</span>
+                  <span className="font-mono font-bold text-black dark:text-white">{formatarAtalho("⌘J")}</span>
+                </li>
+                <li className="flex items-center justify-between text-zinc-700 dark:text-zinc-300">
+                  <span className="font-medium">Barra Lateral:</span>
+                  <span className="font-mono font-bold text-black dark:text-white">{formatarAtalho("⌘B")}</span>
+                </li>
+              </ul>
+              <div className="flex items-center gap-3 pt-2 text-xs font-bold">
+                <Link
+                  to="/inbox"
+                  className="flex items-center gap-1.5 text-zinc-800 hover:text-black dark:text-zinc-200 dark:hover:text-white transition-colors"
                 >
-                  <Sparkles size={12} />
-                  <span>{temGemini ? "Ativo" : "Opcional"}</span>
-                </span>
-              </li>
+                  <Inbox size={13} />
+                  <span>Inbox</span>
+                </Link>
+                <span className="text-zinc-400">•</span>
+                <Link
+                  to="/config"
+                  className="flex items-center gap-1.5 text-zinc-800 hover:text-black dark:text-zinc-200 dark:hover:text-white transition-colors"
+                >
+                  <SettingsIcon size={13} />
+                  <span>Ajustes</span>
+                </Link>
+              </div>
+            </div>
 
-              {qtdRascunhos > 0 && (
-                <li className="flex items-center justify-between text-amber-600 dark:text-amber-400 font-medium text-[11px] pt-1">
-                  <span>Rascunhos offline:</span>
-                  <span className="rounded-full bg-amber-500/10 px-2 py-0.5 border border-amber-500/20">
-                    {qtdRascunhos}
+            {/* Coluna 4: Status em Tempo Real */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-black uppercase tracking-wider text-black dark:text-white">
+                Status do Sistema
+              </h4>
+              <ul className="space-y-2 text-xs">
+                <li className="flex items-center justify-between">
+                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">Conexão:</span>
+                  <span
+                    className={cn(
+                      "flex items-center gap-1.5 font-bold",
+                      online ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
+                    )}
+                  >
+                    {online ? (
+                      <>
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                        <Wifi size={12} />
+                        <span>Online</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
+                        <WifiOff size={12} />
+                        <span>Offline</span>
+                      </>
+                    )}
                   </span>
                 </li>
-              )}
-            </ul>
+
+                <li className="flex items-center justify-between">
+                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">GitHub:</span>
+                  {temRepo ? (
+                    <a
+                      href={repoUrl || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 font-mono text-[11px] font-bold text-black dark:text-white hover:text-primary transition-colors truncate max-w-[140px]"
+                      title={`${cfg.repoOwner}/${cfg.repoName} (${cfg.branch || "main"})`}
+                    >
+                      <GitBranch size={12} className="shrink-0 text-primary" />
+                      <span className="truncate">{cfg.repoName}</span>
+                      <ExternalLink size={10} className="shrink-0 opacity-70" />
+                    </a>
+                  ) : (
+                    <Link
+                      to="/config"
+                      className="text-amber-700 dark:text-amber-400 font-bold hover:underline text-[11px]"
+                    >
+                      Não configurado
+                    </Link>
+                  )}
+                </li>
+
+                <li className="flex items-center justify-between">
+                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">IA Gemini:</span>
+                  <span
+                    className={cn(
+                      "flex items-center gap-1 font-bold text-[11px]",
+                      temGemini ? "text-purple-700 dark:text-purple-400" : "text-zinc-600 dark:text-zinc-400"
+                    )}
+                  >
+                    <Sparkles size={12} />
+                    <span>{temGemini ? "Ativo" : "Opcional"}</span>
+                  </span>
+                </li>
+
+                {qtdRascunhos > 0 && (
+                  <li className="flex items-center justify-between text-amber-800 dark:text-amber-400 font-bold text-[11px] pt-1">
+                    <span>Rascunhos offline:</span>
+                    <span className="rounded-full bg-amber-500/20 px-2 py-0.5 border border-amber-600/30">
+                      {qtdRascunhos}
+                    </span>
+                  </li>
+                )}
+              </ul>
+            </div>
           </div>
-        </div>
 
-        {/* Linha Inferior com Frase Inspiradora, Assinatura e Voltar ao Topo */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/40 pt-6 sm:flex-row text-xs text-muted-foreground">
-          <p className="italic text-center sm:text-left text-muted-foreground/80">
-            "{frase}"
-          </p>
+          {/* Linha Inferior com Frase Inspiradora, Assinatura e Voltar ao Topo */}
+          <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-zinc-300 dark:border-zinc-800 pt-6 sm:flex-row text-xs text-zinc-700 dark:text-zinc-300">
+            <p className="italic text-center sm:text-left font-medium">
+              "{frase}"
+            </p>
 
-          <div className="flex items-center gap-4 flex-wrap justify-center">
-            <button
-              type="button"
-              onClick={() => setModalCreditosAberta(true)}
-              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer text-xs"
-            >
-              <Code2 size={13} />
-              <span>Créditos Open Source</span>
-            </button>
+            <div className="flex items-center gap-4 flex-wrap justify-center font-medium">
+              <button
+                type="button"
+                onClick={() => setModalCreditosAberta(true)}
+                className="flex items-center gap-1 text-zinc-800 hover:text-black dark:text-zinc-200 dark:hover:text-white transition-colors cursor-pointer text-xs font-semibold"
+              >
+                <Code2 size={13} />
+                <span>Créditos Open Source</span>
+              </button>
 
-            <span className="text-border">•</span>
+              <span className="text-zinc-400">•</span>
 
-            <span className="flex items-center gap-1">
-              Feito com <Heart size={12} className="text-rose-500 fill-rose-500" /> para {cfg.nomeUsuario || "Hugo Silva"}
-            </span>
+              <span className="flex items-center gap-1">
+                Feito com <Heart size={12} className="text-rose-600 fill-rose-600" /> para {cfg.nomeUsuario || "Hugo Silva"}
+              </span>
 
-            <span className="text-border">•</span>
+              <span className="text-zinc-400">•</span>
 
-            <button
-              type="button"
-              onClick={rolarParaTopo}
-              className="flex items-center gap-1 text-foreground hover:text-primary font-medium transition-colors cursor-pointer"
-              title="Voltar ao topo da página"
-              aria-label="Voltar ao topo da página"
-            >
-              <ArrowUp size={13} />
-              <span>Topo</span>
-            </button>
+              <button
+                type="button"
+                onClick={rolarParaTopo}
+                className="flex items-center gap-1 text-black dark:text-white hover:text-primary font-black transition-colors cursor-pointer"
+                title="Voltar ao topo da página"
+                aria-label="Voltar ao topo da página"
+              >
+                <ArrowUp size={13} strokeWidth={3} />
+                <span>Topo</span>
+              </button>
+            </div>
           </div>
         </div>
       </footer>

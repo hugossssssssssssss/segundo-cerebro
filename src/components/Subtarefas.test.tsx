@@ -95,4 +95,15 @@ describe("Subtarefas", () => {
     render(<Subtarefas corpo="só um texto" onChange={() => {}} />);
     expect(screen.queryByText("0/0")).toBeNull();
   });
+
+  it("renderiza formatação em markdown como negrito e itálico nos passos", () => {
+    const textoComNegrito = "- [ ] comprar **tinta guache** e *pincel fino*";
+    render(<Subtarefas corpo={textoComNegrito} onChange={() => {}} />);
+
+    const negrito = screen.getByText("tinta guache");
+    expect(negrito.tagName.toLowerCase()).toBe("strong");
+
+    const italico = screen.getByText("pincel fino");
+    expect(italico.tagName.toLowerCase()).toBe("em");
+  });
 });

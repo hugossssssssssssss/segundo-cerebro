@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Botao, Cartao } from "@/components/ui";
+import { Botao } from "@/components/ui";
 import { GradeTermo, type TamanhoGrade } from "./GradeTermo";
 import { TecladoTermo } from "./TecladoTermo";
 import { ModalEstatisticasTermo } from "./ModalEstatisticasTermo";
@@ -368,7 +368,7 @@ export function JogoTermo() {
 
   const streakAtual = dadosPersistidos.estatisticas[tipoJogo]?.sequenciaAtual || 0;
   const tamanhoGrade: TamanhoGrade =
-    tipoJogo === "quarteto" ? "mini" : tipoJogo === "dueto" ? "compacto" : "padrao";
+    tipoJogo === "dueto" ? "compacto" : "padrao";
 
   return (
     <div className="space-y-3 sm:space-y-4 w-full">
@@ -490,8 +490,8 @@ export function JogoTermo() {
       </div>
 
       {/* Área Principal do Termo */}
-      <Cartao className="flex flex-col items-center justify-center p-1 sm:p-4 bg-card/85 backdrop-blur-md shadow-sm border-border/80 w-full">
-        <div className="w-full flex flex-col items-center gap-2 sm:gap-3.5">
+      <div className="flex flex-col items-center justify-center w-full">
+        <div className="w-full flex flex-col items-center gap-3 sm:gap-4">
           {jogoAtivo.status === "jogando" && (
             <div className="text-[11px] text-muted-foreground text-center select-none flex items-center gap-1 px-1">
               <span>Toque na casa para editar ou use as setas ← → do teclado</span>
@@ -502,10 +502,10 @@ export function JogoTermo() {
           <div
             className={`w-full ${
               tipoJogo === "termo"
-                ? "flex justify-center max-w-xs sm:max-w-sm"
+                ? "flex justify-center max-w-md sm:max-w-lg"
                 : tipoJogo === "dueto"
-                ? "grid grid-cols-2 gap-1.5 sm:gap-4 max-w-3xl lg:max-w-4xl"
-                : "grid grid-cols-2 gap-1 sm:gap-3 max-w-3xl lg:max-w-4xl"
+                ? "grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-4xl"
+                : "grid grid-cols-1 gap-6 sm:gap-8 max-w-md sm:max-w-lg"
             }`}
           >
             {jogoAtivo.palavras.map((palavra, tIdx) => {
@@ -513,18 +513,18 @@ export function JogoTermo() {
               return (
                 <div
                   key={`tabuleiro-${tipoJogo}-${tIdx}`}
-                  className="flex flex-col items-center relative p-0.5 sm:p-2 rounded-xl sm:rounded-2xl bg-secondary/15 sm:bg-secondary/25 border border-border/40 shadow-2xs"
+                  className="flex flex-col items-center relative p-2 sm:p-3 rounded-2xl bg-card border border-border/70 shadow-xs w-full"
                 >
                   {tipoJogo !== "termo" && (
-                    <div className="flex items-center justify-between w-full px-1 sm:px-1.5 pb-0.5 sm:pb-1 text-[11px] sm:text-xs font-bold text-muted-foreground">
+                    <div className="flex items-center justify-between w-full px-1.5 pb-1 text-xs font-bold text-muted-foreground">
                       <span>Palavra {tIdx + 1}</span>
                       {resolvido ? (
-                        <span className="text-[#3aa394] dark:text-[#3aa394] flex items-center gap-0.5 text-[10px] sm:text-xs font-extrabold">
-                          <Sparkles size={11} />
+                        <span className="text-[#3aa394] dark:text-[#3aa394] flex items-center gap-0.5 text-xs font-extrabold">
+                          <Sparkles size={12} />
                           {obterPalavraOriginal(palavra)}
                         </span>
                       ) : (
-                        <span className="text-[10px] sm:text-[11px] opacity-60 font-mono">
+                        <span className="text-[11px] opacity-70 font-mono">
                           {jogoAtivo.tentativasPorTabuleiro[tIdx]?.length || 0}/{maxTentativas}
                         </span>
                       )}
@@ -573,17 +573,19 @@ export function JogoTermo() {
           )}
 
           {/* Teclado */}
-          <TecladoTermo
-            statusTeclado={statusTecladoMulti}
-            tabuleiros={configModo.tabuleiros}
-            resolvidos={jogoAtivo.resolvidos}
-            aoPressionarLetra={inserirLetra}
-            aoConfirmar={confirmarPalavra}
-            aoApagar={apagarLetra}
-            desabilitado={jogoAtivo.status !== "jogando"}
-          />
+          <div className="sticky bottom-0 z-20 w-full max-w-xl py-2 bg-background/95 backdrop-blur-md border-t border-border/40 flex justify-center shadow-lg mt-2">
+            <TecladoTermo
+              statusTeclado={statusTecladoMulti}
+              tabuleiros={configModo.tabuleiros}
+              resolvidos={jogoAtivo.resolvidos}
+              aoPressionarLetra={inserirLetra}
+              aoConfirmar={confirmarPalavra}
+              aoApagar={apagarLetra}
+              desabilitado={jogoAtivo.status !== "jogando"}
+            />
+          </div>
         </div>
-      </Cartao>
+      </div>
 
       {/* Modais */}
       <ModalEstatisticasTermo
