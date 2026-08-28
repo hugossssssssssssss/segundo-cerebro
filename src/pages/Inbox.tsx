@@ -792,8 +792,8 @@ export default function Inbox() {
         return;
       }
 
-      // Caso contrário, apaga o arquivo do repositório
-      await apagarItem(item.caminho, item.sha);
+      // Caso contrário, apaga o arquivo do repositório de forma silenciosa para evitar aviso duplicado
+      await apagarItem(item.caminho, item.sha, true);
       setAcervo((prev) => prev.filter((a) => a.caminho !== item.caminho));
       toast(`"${item.titulo}" excluído com sucesso!`, { tipo: "sucesso" });
     } catch (err: any) {

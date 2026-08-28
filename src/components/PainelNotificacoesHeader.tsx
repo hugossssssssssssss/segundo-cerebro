@@ -23,6 +23,11 @@ import {
   CalendarCheck,
   Inbox,
   CheckCheck,
+  CheckSquare,
+  FileText,
+  Target,
+  Sparkles,
+  Bookmark,
 } from "lucide-react";
 import {
   type MapaEstadoInbox,
@@ -39,6 +44,26 @@ import { ModalLembrete } from "@/components/ModalLembrete";
 import { toast } from "@/lib/toast";
 
 type FiltroNotificacao = "semana" | "nao_vistos" | "todos";
+
+function obterInfoDocumento(item: ItemInbox) {
+  const caminho = (item.caminhoOrigem || "").toLowerCase();
+  if (caminho.startsWith("tarefas/") || item.tipo === "tarefa_atrasada") {
+    return { Icone: CheckSquare, cor: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" };
+  }
+  if (caminho.startsWith("pdi/metas/")) {
+    return { Icone: Target, cor: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" };
+  }
+  if (caminho.startsWith("pdi/entregas/")) {
+    return { Icone: Sparkles, cor: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-500/10" };
+  }
+  if (caminho.startsWith("referencias/")) {
+    return { Icone: Bookmark, cor: "text-pink-600 dark:text-pink-400", bg: "bg-pink-500/10" };
+  }
+  if (caminho.startsWith("notas/") || item.tipo === "nota_inativa") {
+    return { Icone: FileText, cor: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" };
+  }
+  return { Icone: Bell, cor: "text-sky-600 dark:text-sky-400", bg: "bg-sky-500/10" };
+}
 
 export function PainelNotificacoesHeader() {
   const [aberto, setAberto] = useState(false);
@@ -349,86 +374,85 @@ export function PainelNotificacoesHeader() {
               itensExibidos.map((item) => {
                 const ehNovo = !item.visto;
                 const ehAtrasada = item.tipo === "tarefa_atrasada";
+                const infoDoc = obterInfoDocumento(item);
+                const IconeDoc = infoDoc.Icone;
 
                 return (
                   <div
                     key={item.id}
                     onClick={() => aoAbrirItem(item)}
                     className={cn(
-                      "p-3.5 transition-all cursor-pointer group flex flex-col gap-1.5 relative",
+                      "p-3 transition-all cursor-pointer group flex items-center justify-between gap-3 relative",
                       ehNovo
                         ? "bg-card hover:bg-accent/40 border-l-4 border-l-primary"
-                        : "bg-secondary/20 hover:bg-secondary/40 opacity-80 hover:opacity-100"
+                        : "bg-secondary/20 hover:bg-secondary/40 opacity-85 hover:opacity-100"
                     )}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        {ehAtrasada ? (
-                          <AlertTriangle size={13} className="text-rose-500 shrink-0" />
-                        ) : ehNovo ? (
-                          <span className="h-2 w-2 rounded-full bg-primary shrink-0 animate-pulse" />
-                        ) : (
-                          <Clock size={13} className="text-muted-foreground/60 shrink-0" />
+                    {/* Lado esquerdo: Ícone do documento + Título */}
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div
+                        className={cn(
+                          "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 border border-border/30",
+                          infoDoc.bg,
+                          infoDoc.cor
                         )}
-                        <p
-                          className={cn(
-                            "text-xs truncate",
-                            ehNovo ? "font-bold text-foreground" : "font-medium text-foreground/80"
-                          )}
-                        >
-                          {item.titulo}
-                        </p>
+                      >
+                        <IconeDoc size={14} />
                       </div>
 
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          {ehAtrasada && (
+                            <AlertTriangle size={12} className="text-rose-500 shrink-0" />
+                          )}
+                          <p
+                            className={cn(
+                              "text-xs truncate",
+                              ehNovo ? "font-bold text-foreground" : "font-medium text-foreground/90"
+                            )}
+                          >
+                            {item.titulo}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Lado direito: Data de vencimento + Ações (Lido, Limpar) */}
+                    <div className="flex items-center gap-1.5 shrink-0">
                       {item.dataVencimento && (
                         <span
                           className={cn(
-                            "text-[10px] shrink-0 font-mono px-1.5 py-0.5 rounded-md",
+                            "text-[10px] font-mono px-1.5 py-0.5 rounded-md",
                             ehAtrasada
                               ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold"
-                              : "text-muted-foreground bg-secondary/50"
+                              : "text-muted-foreground bg-secondary/60"
                           )}
                         >
                           {item.dataVencimento.replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1")}
                         </span>
                       )}
-                    </div>
 
-                    {item.descricao && (
-                      <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
-                        {item.descricao}
-                      </p>
-                    )}
-
-                    {/* Rodapé com botões de Ação por item */}
-                    <div className="flex items-center justify-between pt-1.5 mt-0.5 border-t border-border/20">
-                      <span className="text-[10px] text-muted-foreground/70 font-medium truncate max-w-[150px]">
-                        {item.tituloOrigem || "Klaus"}
-                      </span>
-
-                      <div className="flex items-center gap-1.5">
-                        {ehNovo && (
-                          <button
-                            type="button"
-                            onClick={(e) => marcarComoLido(item.id, e)}
-                            className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-1 cursor-pointer"
-                            title="Marcar como lido"
-                          >
-                            <Check size={11} />
-                            <span>Lido</span>
-                          </button>
-                        )}
-
+                      {ehNovo && (
                         <button
                           type="button"
-                          onClick={(e) => limparItem(item.id, e)}
-                          className="p-1 rounded-md text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-                          title="Limpar notificação"
-                          aria-label="Limpar notificação"
+                          onClick={(e) => marcarComoLido(item.id, e)}
+                          className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-0.5 cursor-pointer ml-0.5"
+                          title="Marcar como lido"
                         >
-                          <Trash2 size={12} />
+                          <Check size={11} />
+                          <span>Lido</span>
                         </button>
-                      </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={(e) => limparItem(item.id, e)}
+                        className="p-1 rounded text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                        title="Limpar notificação"
+                        aria-label="Limpar notificação"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   </div>
                 );
