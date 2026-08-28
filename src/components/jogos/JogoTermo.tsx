@@ -490,7 +490,7 @@ export function JogoTermo() {
       </div>
 
       {/* Área Principal do Termo */}
-      <Cartao className="flex flex-col items-center justify-center p-2 sm:p-4 bg-card/85 backdrop-blur-md shadow-sm border-border/80">
+      <Cartao className="flex flex-col items-center justify-center p-1 sm:p-4 bg-card/85 backdrop-blur-md shadow-sm border-border/80 w-full">
         <div className="w-full flex flex-col items-center gap-2 sm:gap-3.5">
           {jogoAtivo.status === "jogando" && (
             <div className="text-[11px] text-muted-foreground text-center select-none flex items-center gap-1 px-1">
@@ -504,8 +504,8 @@ export function JogoTermo() {
               tipoJogo === "termo"
                 ? "flex justify-center max-w-xs sm:max-w-sm"
                 : tipoJogo === "dueto"
-                ? "grid grid-cols-2 gap-2 sm:gap-4 max-w-xl"
-                : "grid grid-cols-2 gap-1.5 sm:gap-3 max-w-xl"
+                ? "grid grid-cols-2 gap-1.5 sm:gap-4 max-w-2xl"
+                : "grid grid-cols-2 gap-1 sm:gap-3 max-w-2xl"
             }`}
           >
             {jogoAtivo.palavras.map((palavra, tIdx) => {
@@ -513,7 +513,7 @@ export function JogoTermo() {
               return (
                 <div
                   key={`tabuleiro-${tipoJogo}-${tIdx}`}
-                  className="flex flex-col items-center relative p-1 sm:p-2 rounded-xl sm:rounded-2xl bg-secondary/20 border border-border/50 shadow-2xs"
+                  className="flex flex-col items-center relative p-0.5 sm:p-2 rounded-xl sm:rounded-2xl bg-secondary/15 sm:bg-secondary/25 border border-border/40 shadow-2xs"
                 >
                   {tipoJogo !== "termo" && (
                     <div className="flex items-center justify-between w-full px-1 sm:px-1.5 pb-0.5 sm:pb-1 text-[11px] sm:text-xs font-bold text-muted-foreground">

@@ -16,7 +16,7 @@ export default function Jogos() {
   const [abaAtiva, setAbaAtiva] = useState<AbaJogos>("termo");
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200 w-full max-w-4xl mx-auto pb-12 px-1 sm:px-4">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200 w-full max-w-6xl mx-auto pb-12 px-1 sm:px-3">
       {/* 1. Cabeçalho Principal do Hub de Jogos */}
       <CabecalhoPagina
         titulo="Jogos & Desafios"

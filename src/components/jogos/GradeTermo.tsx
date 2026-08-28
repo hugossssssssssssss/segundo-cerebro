@@ -170,10 +170,10 @@ function CelulaGrade({
 
   const dimensoes =
     tamanho === "mini"
-      ? "h-7 w-7 sm:h-9 sm:w-9 text-xs sm:text-sm rounded-md sm:rounded-lg border-[1.5px]"
+      ? "h-7.5 w-7.5 sm:h-9.5 sm:w-9.5 text-xs sm:text-base rounded-md sm:rounded-lg border-[1.5px]"
       : tamanho === "compacto"
-      ? "h-8 w-8 sm:h-11 sm:w-11 text-sm sm:text-lg rounded-lg border-[1.5px] sm:border-2"
-      : "h-10 w-10 sm:h-13 sm:w-13 text-lg sm:text-2xl rounded-xl border-2";
+      ? "h-9 w-9 sm:h-12 sm:w-12 text-sm sm:text-xl rounded-lg sm:rounded-xl border-[1.5px] sm:border-2"
+      : "h-11 w-11 sm:h-14 sm:w-14 text-xl sm:text-2xl rounded-xl border-2";
 
   return (
     <div
