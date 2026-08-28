@@ -14,12 +14,9 @@ import {
   Headphones,
   Settings as SettingsIcon,
   Inbox,
-  Command,
   ShieldCheck,
   Heart,
   ExternalLink,
-  Compass,
-  Zap,
   Code2,
 } from "lucide-react";
 import { LogoKlaus } from "./LogoKlaus";
@@ -105,82 +102,72 @@ export function Rodape() {
     <>
       <footer
         data-testid="rodape-klaus"
-        className="mt-16 w-full rounded-3xl border border-border/80 bg-secondary/40 dark:bg-muted/15 p-6 sm:p-10 shadow-xs backdrop-blur-md relative overflow-hidden transition-colors select-none"
+        className="mt-24 w-full border-t border-border/50 pt-10 pb-16 text-muted-foreground select-none transition-colors"
       >
-        {/* Linha decorativa sutil no topo do rodapé */}
-        <div className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-
-        {/* Banner de Créditos Open Source da Ferramenta Atual (quando houver tecnologia específica) */}
+        {/* Crédito Open Source Contextual (sem caixas pesadas, formato limpo e elegante) */}
         {temCreditoEspecifico && creditosDaRota.length > 0 && (
-          <div className="mb-8 space-y-2">
+          <div className="mb-10 pb-6 border-b border-border/40 space-y-3">
             {creditosDaRota.map((c) => (
               <div
                 key={c.id}
                 data-testid="credito-opensource-banner"
-                className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-primary/5 dark:bg-primary/10 p-4 text-xs backdrop-blur-xs"
+                className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                    <Code2 size={16} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-foreground">Motor Open Source:</span>
-                      <span className="font-bold text-primary">{c.nome}</span>
-                      <span className="text-muted-foreground text-[11px]">por {c.autor}</span>
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground border border-border/50">
-                        {c.licenca}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground truncate">{c.descricao}</p>
-                  </div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <Code2 size={15} className="text-primary shrink-0" />
+                  <span className="font-semibold text-foreground">Motor Open Source:</span>
+                  <span className="font-bold text-foreground">{c.nome}</span>
+                  <span className="text-muted-foreground">por {c.autor}</span>
+                  <span className="text-[11px] text-muted-foreground/80 font-mono">({c.licenca})</span>
+                  <span className="hidden md:inline text-border">•</span>
+                  <span className="hidden md:inline text-muted-foreground/80">{c.descricao}</span>
                 </div>
                 <a
                   href={c.github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-primary/30 bg-background/90 px-3 py-1.5 font-mono text-[11px] font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-all shrink-0 shadow-2xs"
+                  className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline transition-colors shrink-0"
                 >
                   <GitBranch size={13} />
-                  <span>Acessar no GitHub</span>
-                  <ExternalLink size={10} />
+                  <span>Acessar repositório no GitHub</span>
+                  <ExternalLink size={11} className="opacity-70" />
                 </a>
               </div>
             ))}
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Coluna 1: Identidade e Filosofia */}
-          <div className="space-y-3.5">
+        {/* Grade de Informações (Tipografia limpa e espaçada, sem caixas envolventes) */}
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Coluna 1: Identidade e Privacidade */}
+          <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <LogoKlaus tamanho={28} />
+              <LogoKlaus tamanho={24} />
               <span className="text-base font-bold tracking-tight text-foreground">Klaus</span>
-              <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-primary border border-primary/20">
+              <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-mono font-medium text-foreground/80">
                 v{versao}
               </span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Seu segundo cérebro digital e repositório de conhecimento. Notas, tarefas, referências visuais e metas pessoais
-              sincronizadas em arquivos Markdown.
+              Segundo cérebro digital e repositório de conhecimento. Notas, tarefas, referências visuais e metas pessoais
+              salvas em Markdown direto no GitHub.
             </p>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              <ShieldCheck size={13} className="shrink-0" />
-              <span>100% sob seu controle no GitHub</span>
+            <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+              <ShieldCheck size={14} className="shrink-0" />
+              <span>100% sob seu controle e privado</span>
             </div>
           </div>
 
           {/* Coluna 2: Navegação Rápida */}
-          <div className="space-y-3.5">
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-foreground/90 flex items-center gap-1.5">
-              <Compass size={13} className="text-primary" />
-              <span>Navegação Rápida</span>
+          <div className="space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+              Navegação
             </h4>
-            <ul className="space-y-1.5 text-xs">
+            <ul className="space-y-2 text-xs">
               <li>
                 <Link
                   to="/notas"
-                  className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground hover:translate-x-0.5 transition-all py-1 font-medium"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <FileText size={14} className="text-amber-500 shrink-0" />
                   <span>Notas & Conhecimento</span>
@@ -189,7 +176,7 @@ export function Rodape() {
               <li>
                 <Link
                   to="/tarefas"
-                  className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground hover:translate-x-0.5 transition-all py-1 font-medium"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <CheckSquare size={14} className="text-blue-500 shrink-0" />
                   <span>Tarefas & Projetos</span>
@@ -198,7 +185,7 @@ export function Rodape() {
               <li>
                 <Link
                   to="/referencias"
-                  className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground hover:translate-x-0.5 transition-all py-1 font-medium"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <ImageIcon size={14} className="text-pink-500 shrink-0" />
                   <span>Referências Visuais</span>
@@ -207,7 +194,7 @@ export function Rodape() {
               <li>
                 <Link
                   to="/pdi"
-                  className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground hover:translate-x-0.5 transition-all py-1 font-medium"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Target size={14} className="text-teal-500 shrink-0" />
                   <span>Plano de Carreira (PDI)</span>
@@ -216,7 +203,7 @@ export function Rodape() {
               <li>
                 <Link
                   to="/grafo"
-                  className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground hover:translate-x-0.5 transition-all py-1 font-medium"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Network size={14} className="text-indigo-500 shrink-0" />
                   <span>Grafo Neural 3D</span>
@@ -225,7 +212,7 @@ export function Rodape() {
               <li>
                 <Link
                   to="/sons"
-                  className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground hover:translate-x-0.5 transition-all py-1 font-medium"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Headphones size={14} className="text-purple-500 shrink-0" />
                   <span>Sons & Foco</span>
@@ -234,42 +221,26 @@ export function Rodape() {
             </ul>
           </div>
 
-          {/* Coluna 3: Atalhos de Teclado & Utilidades */}
-          <div className="space-y-3.5">
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-foreground/90 flex items-center gap-1.5">
-              <Zap size={13} className="text-primary" />
-              <span>Atalhos do Sistema</span>
+          {/* Coluna 3: Atalhos de Teclado */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+              Atalhos de Teclado
             </h4>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between rounded-xl border border-border/70 bg-card/95 dark:bg-card/50 px-3 py-2 text-muted-foreground shadow-2xs">
-                <span className="flex items-center gap-2">
-                  <Command size={13} className="text-foreground/70" />
-                  <span className="font-medium text-foreground/80">Busca Global</span>
-                </span>
-                <kbd className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-mono font-semibold text-foreground border border-border/60">
-                  {formatarAtalho("⌘K")}
-                </kbd>
-              </div>
-              <div className="flex items-center justify-between rounded-xl border border-border/70 bg-card/95 dark:bg-card/50 px-3 py-2 text-muted-foreground shadow-2xs">
-                <span className="flex items-center gap-2">
-                  <Command size={13} className="text-foreground/70" />
-                  <span className="font-medium text-foreground/80">Captura Rápida</span>
-                </span>
-                <kbd className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-mono font-semibold text-foreground border border-border/60">
-                  {formatarAtalho("⌘J")}
-                </kbd>
-              </div>
-              <div className="flex items-center justify-between rounded-xl border border-border/70 bg-card/95 dark:bg-card/50 px-3 py-2 text-muted-foreground shadow-2xs">
-                <span className="flex items-center gap-2">
-                  <Command size={13} className="text-foreground/70" />
-                  <span className="font-medium text-foreground/80">Barra Lateral</span>
-                </span>
-                <kbd className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-mono font-semibold text-foreground border border-border/60">
-                  {formatarAtalho("⌘B")}
-                </kbd>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 pt-1 text-xs font-medium">
+            <ul className="space-y-2 text-xs">
+              <li className="flex items-center justify-between text-muted-foreground">
+                <span>Busca Global:</span>
+                <span className="font-mono font-medium text-foreground">{formatarAtalho("⌘K")}</span>
+              </li>
+              <li className="flex items-center justify-between text-muted-foreground">
+                <span>Captura Rápida:</span>
+                <span className="font-mono font-medium text-foreground">{formatarAtalho("⌘J")}</span>
+              </li>
+              <li className="flex items-center justify-between text-muted-foreground">
+                <span>Barra Lateral:</span>
+                <span className="font-mono font-medium text-foreground">{formatarAtalho("⌘B")}</span>
+              </li>
+            </ul>
+            <div className="flex items-center gap-3 pt-2 text-xs font-medium">
               <Link
                 to="/inbox"
                 className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
@@ -288,47 +259,44 @@ export function Rodape() {
             </div>
           </div>
 
-          {/* Coluna 4: Status do Sistema em Tempo Real */}
-          <div className="space-y-3.5">
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-foreground/90 flex items-center gap-1.5">
-              <Sparkles size={13} className="text-primary" />
-              <span>Status em Tempo Real</span>
+          {/* Coluna 4: Status em Tempo Real */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+              Status do Sistema
             </h4>
-            <div className="space-y-2.5 rounded-2xl border border-border/70 bg-card/95 dark:bg-card/50 p-3.5 text-xs shadow-2xs">
-              {/* Status Conexão / Rede */}
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground font-medium">Conexão:</span>
+            <ul className="space-y-2 text-xs">
+              <li className="flex items-center justify-between">
+                <span className="text-muted-foreground">Conexão:</span>
                 <span
                   className={cn(
-                    "flex items-center gap-1.5 font-semibold",
+                    "flex items-center gap-1.5 font-medium",
                     online ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500"
                   )}
                 >
                   {online ? (
                     <>
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       <Wifi size={12} />
                       <span>Online</span>
                     </>
                   ) : (
                     <>
-                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                       <WifiOff size={12} />
                       <span>Offline</span>
                     </>
                   )}
                 </span>
-              </div>
+              </li>
 
-              {/* Repositório GitHub */}
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground font-medium">GitHub:</span>
+              <li className="flex items-center justify-between">
+                <span className="text-muted-foreground">GitHub:</span>
                 {temRepo ? (
                   <a
                     href={repoUrl || "#"}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 font-mono text-[11px] font-semibold text-foreground hover:text-primary transition-colors truncate max-w-[130px]"
+                    className="flex items-center gap-1 font-mono text-[11px] font-medium text-foreground hover:text-primary transition-colors truncate max-w-[140px]"
                     title={`${cfg.repoOwner}/${cfg.repoName} (${cfg.branch || "main"})`}
                   >
                     <GitBranch size={12} className="shrink-0 text-primary" />
@@ -338,42 +306,40 @@ export function Rodape() {
                 ) : (
                   <Link
                     to="/config"
-                    className="text-amber-600 dark:text-amber-400 font-semibold hover:underline text-[11px]"
+                    className="text-amber-600 dark:text-amber-400 font-medium hover:underline text-[11px]"
                   >
                     Não configurado
                   </Link>
                 )}
-              </div>
+              </li>
 
-              {/* Inteligência Artificial Gemini */}
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground font-medium">IA Gemini:</span>
+              <li className="flex items-center justify-between">
+                <span className="text-muted-foreground">IA Gemini:</span>
                 <span
                   className={cn(
-                    "flex items-center gap-1 font-semibold text-[11px]",
+                    "flex items-center gap-1 font-medium text-[11px]",
                     temGemini ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground"
                   )}
                 >
                   <Sparkles size={12} />
                   <span>{temGemini ? "Ativo" : "Opcional"}</span>
                 </span>
-              </div>
+              </li>
 
-              {/* Fila Offline / Rascunhos */}
               {qtdRascunhos > 0 && (
-                <div className="flex items-center justify-between border-t border-border/40 pt-2 text-amber-600 dark:text-amber-400 font-semibold text-[11px]">
-                  <span>Rascunhos pendentes:</span>
+                <li className="flex items-center justify-between text-amber-600 dark:text-amber-400 font-medium text-[11px] pt-1">
+                  <span>Rascunhos offline:</span>
                   <span className="rounded-full bg-amber-500/10 px-2 py-0.5 border border-amber-500/20">
                     {qtdRascunhos}
                   </span>
-                </div>
+                </li>
               )}
-            </div>
+            </ul>
           </div>
         </div>
 
-        {/* Linha Inferior com Frase Inspiradora, Assinatura, Créditos Open Source e Voltar ao Topo */}
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-border/60 pt-5 sm:flex-row text-xs text-muted-foreground">
+        {/* Linha Inferior com Frase Inspiradora, Assinatura e Voltar ao Topo */}
+        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/40 pt-6 sm:flex-row text-xs text-muted-foreground">
           <p className="italic text-center sm:text-left text-muted-foreground/80">
             "{frase}"
           </p>
@@ -382,20 +348,24 @@ export function Rodape() {
             <button
               type="button"
               onClick={() => setModalCreditosAberta(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/60 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer text-xs"
             >
-              <Code2 size={12} className="text-primary" />
+              <Code2 size={13} />
               <span>Créditos Open Source</span>
             </button>
 
-            <span className="flex items-center gap-1 font-medium">
+            <span className="text-border">•</span>
+
+            <span className="flex items-center gap-1">
               Feito com <Heart size={12} className="text-rose-500 fill-rose-500" /> para {cfg.nomeUsuario || "Hugo Silva"}
             </span>
+
+            <span className="text-border">•</span>
 
             <button
               type="button"
               onClick={rolarParaTopo}
-              className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-2xs transition-all hover:bg-primary hover:text-primary-foreground hover:border-primary active:scale-95 cursor-pointer"
+              className="flex items-center gap-1 text-foreground hover:text-primary font-medium transition-colors cursor-pointer"
               title="Voltar ao topo da página"
               aria-label="Voltar ao topo da página"
             >

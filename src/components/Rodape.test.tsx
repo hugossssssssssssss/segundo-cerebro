@@ -19,7 +19,7 @@ describe("Rodape", () => {
     expect(screen.getByText("Klaus")).toBeTruthy();
     expect(screen.getByText(/Notas & Conhecimento/i)).toBeTruthy();
     expect(screen.getByText(/Tarefas & Projetos/i)).toBeTruthy();
-    expect(screen.getByText(/Status em Tempo Real/i)).toBeTruthy();
+    expect(screen.getByText(/Status do Sistema/i)).toBeTruthy();
   });
 
   it("renderiza atalhos de teclado principais adaptados ao sistema operacional", () => {
@@ -75,7 +75,7 @@ describe("Rodape", () => {
     expect(screen.getByTestId("credito-opensource-banner")).toBeTruthy();
     expect(screen.getByText("Excalidraw")).toBeTruthy();
     expect(screen.getByText(/por Excalidraw Team/i)).toBeTruthy();
-    expect(screen.getByText(/Acessar no GitHub/i)).toBeTruthy();
+    expect(screen.getByText(/Acessar repositório no GitHub/i)).toBeTruthy();
   });
 });
 

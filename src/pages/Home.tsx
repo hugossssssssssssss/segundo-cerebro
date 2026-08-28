@@ -351,7 +351,7 @@ export default function Home() {
   const nomeExibicao = cfg.nomeUsuario?.trim() || "Hugo";
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-150 w-full min-h-screen max-w-none pb-16">
+    <div className="space-y-4 animate-in fade-in duration-150 w-full max-w-none">
       {/* 1. Cockpit de Saudação Minimalista */}
       <CabecalhoHome
         nomeUsuario={nomeExibicao}
