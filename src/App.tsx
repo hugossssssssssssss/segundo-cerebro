@@ -494,7 +494,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
             <div className="flex-1 w-full">
               <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
             </div>
-            <Rodape />
+            {!pathname.startsWith("/jogos") && <Rodape />}
           </main>
         )}
       </div>

@@ -65,17 +65,20 @@ describe("Rodape", () => {
     expect(screen.getByText(/Tecnologias & Créditos Open Source/i)).toBeTruthy();
   });
 
-  it("exibe banner contextual de tecnologia open source em rota específica", () => {
+  it("garante que os créditos não poluem o rodapé inline e ficam exclusivamente no modal", () => {
     render(
       <MemoryRouter initialEntries={["/lousas"]}>
         <Rodape />
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId("credito-opensource-banner")).toBeTruthy();
-    expect(screen.getByText("Excalidraw")).toBeTruthy();
-    expect(screen.getByText(/por Excalidraw Team/i)).toBeTruthy();
-    expect(screen.getByText(/Acessar repositório no GitHub/i)).toBeTruthy();
+    // Não renderiza banner inline de créditos no rodapé
+    expect(screen.queryByTestId("credito-opensource-banner")).toBeNull();
+
+    // Créditos continuam disponíveis exclusivamente ao abrir o modal
+    const botaoCreditos = screen.getByRole("button", { name: /Créditos Open Source/i });
+    fireEvent.click(botaoCreditos);
+    expect(screen.getByText(/Tecnologias & Créditos Open Source/i)).toBeTruthy();
   });
 });
 

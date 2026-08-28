@@ -10,6 +10,153 @@ import { montarIndice, alvosUnicos, filtrarAlvos, type Alvo } from "@/lib/links"
 import { restaurarWikilinks } from "@/lib/markdown";
 import { formatarTagLembrete } from "@/lib/inbox";
 import { ModalLembrete } from "./ModalLembrete";
+import { abrirItemSpa } from "./PropriedadesNotion";
+
+/**
+ * Detecta se uma coordenada de tela (clientX, clientY) corresponde a uma
+ * menção `@Título` ou `[[Título]]` renderizada no DOM do editor.
+ */
+export function encontrarMencaoNoPonto(
+  clientX: number,
+  clientY: number,
+  container: HTMLElement,
+  alvos: Alvo[]
+): Alvo | null {
+  if (!container || alvos.length === 0) return null;
+
+  const semAcento = (s: string) =>
+    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  const porTamanho = [...alvos].sort((a, b) => b.titulo.length - a.titulo.length);
+
+  // 1. Tenta obter nó e offset através do caret do ponto
+  let rangeCaret: Range | null = null;
+  if (typeof document !== "undefined") {
+    if (document.caretRangeFromPoint) {
+      rangeCaret = document.caretRangeFromPoint(clientX, clientY);
+    } else if ((document as any).caretPositionFromPoint) {
+      const pos = (document as any).caretPositionFromPoint(clientX, clientY);
+      if (pos && pos.offsetNode) {
+        rangeCaret = document.createRange();
+        rangeCaret.setStart(pos.offsetNode, pos.offset);
+        rangeCaret.setEnd(pos.offsetNode, pos.offset);
+      }
+    }
+  }
+
+  // 2. Determina o escopo: primeiro o bloco sob o cursor para máxima velocidade
+  const elPonto =
+    typeof document !== "undefined" && typeof document.elementFromPoint === "function"
+      ? document.elementFromPoint(clientX, clientY)
+      : null;
+  const escopos = [
+    elPonto?.closest(".bn-block") as HTMLElement | null,
+    elPonto?.closest(".bn-block-content") as HTMLElement | null,
+    container,
+  ].filter(Boolean) as HTMLElement[];
+
+  const escoposUnicos = Array.from(new Set(escopos));
+
+  for (const escopo of escoposUnicos) {
+    const caminhante = document.createTreeWalker(escopo, NodeFilter.SHOW_TEXT);
+    for (let no = caminhante.nextNode(); no; no = caminhante.nextNode()) {
+      const texto = no.textContent ?? "";
+      if (!texto.includes("@") && !texto.includes("[[")) continue;
+
+      // Busca menções com @
+      for (let i = texto.indexOf("@"); i >= 0; i = texto.indexOf("@", i + 1)) {
+        const anterior = i > 0 ? texto[i - 1] : "";
+        if (anterior && /[\w.@-]/.test(anterior)) continue;
+
+        const depoisDoArroba = texto.slice(i + 1);
+        const achado = porTamanho.find(
+          (a) =>
+            semAcento(depoisDoArroba.slice(0, a.titulo.length)) ===
+            semAcento(a.titulo)
+        );
+        if (!achado) continue;
+
+        const inicio = i;
+        const fim = i + 1 + achado.titulo.length;
+
+        // Se o caret do clique caiu no mesmo nó de texto dentro do intervalo
+        if (rangeCaret && (rangeCaret.startContainer === no || rangeCaret.startContainer.contains(no))) {
+          const offset = rangeCaret.startOffset;
+          if (offset >= inicio && offset <= fim) {
+            return achado;
+          }
+        }
+
+        // Checagem visual por coordenadas de retângulo (getClientRects)
+        try {
+          const faixa = document.createRange();
+          faixa.setStart(no, inicio);
+          faixa.setEnd(no, fim);
+          const rects = faixa.getClientRects();
+          for (let r = 0; r < rects.length; r++) {
+            const rect = rects[r];
+            if (
+              clientX >= rect.left - 4 &&
+              clientX <= rect.right + 4 &&
+              clientY >= rect.top - 4 &&
+              clientY <= rect.bottom + 4
+            ) {
+              return achado;
+            }
+          }
+        } catch {}
+
+        i += achado.titulo.length;
+      }
+
+      // Busca links antigos [[alvo]] ou [[alvo|texto]]
+      for (let i = texto.indexOf("[["); i >= 0; i = texto.indexOf("[[", i + 1)) {
+        const fimColchetes = texto.indexOf("]]", i + 2);
+        if (fimColchetes < 0) continue;
+
+        const miolo = texto.slice(i + 2, fimColchetes);
+        const partes = miolo.split("|");
+        const alvoTitulo = partes[0].trim();
+        const achado = porTamanho.find(
+          (a) => semAcento(alvoTitulo) === semAcento(a.titulo)
+        );
+        if (!achado) continue;
+
+        const inicio = i;
+        const fim = fimColchetes + 2;
+
+        if (rangeCaret && (rangeCaret.startContainer === no || rangeCaret.startContainer.contains(no))) {
+          const offset = rangeCaret.startOffset;
+          if (offset >= inicio && offset <= fim) {
+            return achado;
+          }
+        }
+
+        try {
+          const faixa = document.createRange();
+          faixa.setStart(no, inicio);
+          faixa.setEnd(no, fim);
+          const rects = faixa.getClientRects();
+          for (let r = 0; r < rects.length; r++) {
+            const rect = rects[r];
+            if (
+              clientX >= rect.left - 4 &&
+              clientX <= rect.right + 4 &&
+              clientY >= rect.top - 4 &&
+              clientY <= rect.bottom + 4
+            ) {
+              return achado;
+            }
+          }
+        } catch {}
+
+        i = fimColchetes + 1;
+      }
+    }
+  }
+
+  return null;
+}
 
 // Dicionário customizado com atalhos de Markdown em português para as legendas
 const dicionarioCustomizado = locales.pt ? {
@@ -135,17 +282,20 @@ export function EditorNotion({
   editable = true,
   acervo,
   alvosOverride,
+  aoAbrirMencao,
 }: {
   markdown: string;
   onChange: (markdown: string) => void;
   editable?: boolean;
   acervo?: ItemRepo[];
   alvosOverride?: Alvo[];
+  aoAbrirMencao?: (alvo: Alvo) => void | Promise<void>;
 }) {
   const [pronto, setPronto] = useState(false);
   const [escuro, setEscuro] = useState(
     () => document.documentElement.classList.contains("dark"),
   );
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   const editor = useCreateBlockNote({
     dictionary: dicionarioCustomizado,
@@ -433,8 +583,63 @@ export function EditorNotion({
     };
   }, [pronto, alvos]);
 
+  /**
+   * Listener para cliques em menções (@ e [[alvo]]) dentro do editor.
+   * Direciona o usuário para o documento / nota / tarefa correspondente.
+   */
+  useEffect(() => {
+    const container = wrapperRef.current;
+    if (!container) return;
+
+    const lidarClique = (e: MouseEvent) => {
+      // Ignora clique que não seja com botão primário (esquerdo)
+      if (e.button !== 0) return;
+
+      // Se o usuário estiver arrastando/selecionando texto, não dispara navegação
+      const sel = window.getSelection();
+      if (sel && sel.type === "Range" && !sel.isCollapsed && sel.toString().trim().length > 0) {
+        return;
+      }
+
+      const mencao = encontrarMencaoNoPonto(e.clientX, e.clientY, container, alvosRef.current);
+      if (mencao) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (aoAbrirMencao) {
+          aoAbrirMencao(mencao);
+        } else {
+          abrirItemSpa(mencao.caminho);
+        }
+      }
+    };
+
+    const lidarMouseMove = (e: MouseEvent) => {
+      const mencao = encontrarMencaoNoPonto(e.clientX, e.clientY, container, alvosRef.current);
+      if (mencao) {
+        container.style.cursor = "pointer";
+        container.setAttribute("title", `Abrir @${mencao.titulo} (${mencao.tipo})`);
+      } else {
+        if (container.style.cursor === "pointer") {
+          container.style.cursor = "";
+          container.removeAttribute("title");
+        }
+      }
+    };
+
+    container.addEventListener("click", lidarClique, true);
+    container.addEventListener("mousemove", lidarMouseMove);
+
+    return () => {
+      container.removeEventListener("click", lidarClique, true);
+      container.removeEventListener("mousemove", lidarMouseMove);
+      container.style.cursor = "";
+      container.removeAttribute("title");
+    };
+  }, [aoAbrirMencao]);
+
   return (
-    <div className="notion-editor-wrapper min-h-[300px] relative" onPaste={aoColar} onCopy={aoCopiar}>
+    <div ref={wrapperRef} className="notion-editor-wrapper min-h-[300px] relative" onPaste={aoColar} onCopy={aoCopiar}>
       {!pronto && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/60 backdrop-blur-xs text-xs text-muted-foreground animate-pulse">
           Carregando editor…

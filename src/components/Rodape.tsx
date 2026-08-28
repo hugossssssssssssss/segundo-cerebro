@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   ArrowUp,
   Wifi,
@@ -24,7 +24,6 @@ import { versao } from "@/lib/versao";
 import { lerConfig, type Settings } from "@/lib/settings";
 import { obterRascunhosLocais } from "@/lib/offlineQueue";
 import { cn, formatarAtalho } from "@/lib/utils";
-import { obterCreditosPorRota, TODOS_CREDITOS_OPEN_SOURCE } from "@/lib/creditosOpenSource";
 import { ModalCreditosOpenSource } from "./ModalCreditosOpenSource";
 
 const FRASES_INSPIRADORAS = [
@@ -37,7 +36,6 @@ const FRASES_INSPIRADORAS = [
 ];
 
 export function Rodape() {
-  const { pathname } = useLocation();
   const [cfg, setCfg] = useState<Settings>(lerConfig);
   const [online, setOnline] = useState(() => (typeof navigator !== "undefined" ? navigator.onLine : true));
   const [qtdRascunhos, setQtdRascunhos] = useState(0);
@@ -46,11 +44,6 @@ export function Rodape() {
     const indice = Math.floor(Math.random() * FRASES_INSPIRADORAS.length);
     return FRASES_INSPIRADORAS[indice];
   });
-
-  const creditosDaRota = obterCreditosPorRota(pathname);
-  const temCreditoEspecifico = TODOS_CREDITOS_OPEN_SOURCE.some(
-    (c) => c.rotas && c.rotas.some((r) => pathname.toLowerCase().startsWith(r))
-  );
 
   useEffect(() => {
     const atualizarStatusRede = () => {
@@ -104,39 +97,6 @@ export function Rodape() {
         data-testid="rodape-klaus"
         className="mt-24 w-full border-t border-border/50 pt-10 pb-16 text-muted-foreground select-none transition-colors"
       >
-        {/* Crédito Open Source Contextual (sem caixas pesadas, formato limpo e elegante) */}
-        {temCreditoEspecifico && creditosDaRota.length > 0 && (
-          <div className="mb-10 pb-6 border-b border-border/40 space-y-3">
-            {creditosDaRota.map((c) => (
-              <div
-                key={c.id}
-                data-testid="credito-opensource-banner"
-                className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs"
-              >
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <Code2 size={15} className="text-primary shrink-0" />
-                  <span className="font-semibold text-foreground">Motor Open Source:</span>
-                  <span className="font-bold text-foreground">{c.nome}</span>
-                  <span className="text-muted-foreground">por {c.autor}</span>
-                  <span className="text-[11px] text-muted-foreground/80 font-mono">({c.licenca})</span>
-                  <span className="hidden md:inline text-border">•</span>
-                  <span className="hidden md:inline text-muted-foreground/80">{c.descricao}</span>
-                </div>
-                <a
-                  href={c.github}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline transition-colors shrink-0"
-                >
-                  <GitBranch size={13} />
-                  <span>Acessar repositório no GitHub</span>
-                  <ExternalLink size={11} className="opacity-70" />
-                </a>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Grade de Informações (Tipografia limpa e espaçada, sem caixas envolventes) */}
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Coluna 1: Identidade e Privacidade */}

@@ -997,6 +997,14 @@ export function PainelNotionBase({
           key={caminhoItem || "nota-editor"}
           markdown={corpo}
           alvosOverride={alvosOverride}
+          aoAbrirMencao={async (alvo) => {
+            if (temMudancas) {
+              try {
+                await aoSalvar();
+              } catch {}
+            }
+            abrirItemSpa(alvo.caminho);
+          }}
           onChange={(v) => {
             const nCorpo = v ?? "";
             setCorpo(nCorpo);
