@@ -34,6 +34,7 @@ import {
 import type { Settings } from "./settings";
 import { dispararAtualizacaoAcervo } from "./eventos";
 import { notificarOutrasAbas } from "./syncChannel";
+import { verificarIntegridadeReferencias, type RelatorioIntegridade } from "./links";
 
 export interface ItemMigracao {
   caminho: string;
@@ -49,6 +50,7 @@ export interface RelatorioAnaliseAcervo {
   arquivosPadronizados: number;
   arquivosPendentes: number;
   itensPendentes: ItemMigracao[];
+  integridade?: RelatorioIntegridade;
 }
 
 /**
@@ -186,11 +188,14 @@ export function analisarAcervoParaMigracao(itens: ItemRepo[]): RelatorioAnaliseA
     }
   }
 
+  const integridade = verificarIntegridadeReferencias(itens);
+
   return {
     totalArquivos: itensElegiveis.length,
     arquivosPadronizados: itensElegiveis.length - pendentes.length,
     arquivosPendentes: pendentes.length,
     itensPendentes: pendentes,
+    integridade,
   };
 }
 

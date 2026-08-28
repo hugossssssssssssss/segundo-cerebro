@@ -616,6 +616,50 @@ export default function Configuracoes() {
                 </div>
               </div>
             )}
+
+            {relatorioMigracao.integridade && (
+              <div className="pt-2 border-t border-border/60">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                    <CheckCircle2
+                      size={14}
+                      className={
+                        relatorioMigracao.integridade.totalProblemas === 0
+                          ? "text-emerald-500"
+                          : "text-amber-500"
+                      }
+                    />
+                    Integridade de Links e Vínculos:
+                  </span>
+                  <span
+                    className={`font-medium ${
+                      relatorioMigracao.integridade.totalProblemas === 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-amber-600 dark:text-amber-400"
+                    }`}
+                  >
+                    {relatorioMigracao.integridade.totalProblemas === 0
+                      ? "100% íntegro (nenhum link quebrado)"
+                      : `${relatorioMigracao.integridade.totalProblemas} aviso(s)`}
+                  </span>
+                </div>
+
+                {relatorioMigracao.integridade.totalProblemas > 0 && (
+                  <div className="mt-2 max-h-28 overflow-y-auto space-y-1 rounded-lg bg-amber-500/5 border border-amber-500/20 p-2 text-[11px] text-muted-foreground">
+                    {relatorioMigracao.integridade.problemas.slice(0, 5).map((p, idx) => (
+                      <div key={idx} className="truncate">
+                        • <strong className="text-foreground">{p.origemTitulo}</strong>: {p.detalhe}
+                      </div>
+                    ))}
+                    {relatorioMigracao.integridade.problemas.length > 5 && (
+                      <div className="text-[10px] italic text-muted-foreground">
+                        + outros {relatorioMigracao.integridade.problemas.length - 5} aviso(s)
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

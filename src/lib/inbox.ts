@@ -417,9 +417,13 @@ export function mesclarEstadosInbox(local: MapaEstadoInbox, remoto: MapaEstadoIn
     const l = local[chave];
     const r = remoto[chave];
     if (l && r) {
+      const timeL = l.vistoEm ? new Date(l.vistoEm).getTime() : 0;
+      const timeR = r.vistoEm ? new Date(r.vistoEm).getTime() : 0;
+      const maisRecente = timeL >= timeR ? l : r;
+
       resultado[chave] = {
         visto: Boolean(l.visto || r.visto),
-        vistoEm: l.vistoEm || r.vistoEm,
+        vistoEm: maisRecente.vistoEm || l.vistoEm || r.vistoEm,
         descartado: Boolean(l.descartado || r.descartado),
         notificadoTelegram: Boolean(l.notificadoTelegram || r.notificadoTelegram),
         notificadoEmail: Boolean(l.notificadoEmail || r.notificadoEmail),

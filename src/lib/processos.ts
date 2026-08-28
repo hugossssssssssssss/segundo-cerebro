@@ -105,6 +105,142 @@ export const MODELOS_PROCESSO_PADRAO: Array<{
   },
 ];
 
+function sanitizarEtapas(raw: unknown): EtapaProcesso[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((e): e is Record<string, any> => typeof e === "object" && e !== null)
+    .map((e, idx) => {
+      const id = typeof e.id === "string" && e.id.trim() ? e.id.trim() : `etapa_${idx + 1}`;
+      const nome = typeof e.nome === "string" && e.nome.trim() ? e.nome.trim() : `Etapa ${idx + 1}`;
+      const corValida = ["blue", "emerald", "amber", "purple", "rose", "indigo", "slate"].includes(e.cor)
+        ? e.cor
+        : "blue";
+      const checklistsPadrao = Array.isArray(e.checklistsPadrao)
+        ? e.checklistsPadrao
+            .filter((c: any) => c !== null && c !== undefined && c !== "")
+            .map((c: any, cIdx: number) => {
+              if (typeof c === "object") {
+                return {
+                  id: typeof c.id === "string" ? c.id : `chk_${cIdx + 1}`,
+                  texto: typeof c.texto === "string" ? c.texto : String(c),
+                };
+              }
+              return {
+                id: `chk_${cIdx + 1}`,
+                texto: String(c),
+              };
+            })
+        : [];
+      return { id, nome, cor: corValida, checklistsPadrao };
+    });
+}
+
+function sanitizarRegras(raw: unknown): RegraAutomacao[] {
+  if (!Array.isArray(raw)) return [];
+  const gatilhosValidos = ["ao_concluir_checklist", "ao_mudar_etapa", "ao_criar_card", "tempo_parado"] as const;
+  const acoesValidas = ["mudar_etapa", "adicionar_checklist", "marcar_urgente", "adicionar_comentario"] as const;
+
+  return raw
+    .filter((r): r is Record<string, any> => typeof r === "object" && r !== null)
+    .map((r, idx) => {
+      const gatilho = typeof r.gatilho === "string" && (gatilhosValidos as readonly string[]).includes(r.gatilho)
+        ? (r.gatilho as RegraAutomacao["gatilho"])
+        : "ao_concluir_checklist";
+      const acao = typeof r.acao === "string" && (acoesValidas as readonly string[]).includes(r.acao)
+        ? (r.acao as RegraAutomacao["acao"])
+        : "mudar_etapa";
+
+      return {
+        id: typeof r.id === "string" && r.id.trim() ? r.id.trim() : `regra_${idx + 1}`,
+        gatilho,
+        condicao: typeof r.condicao === "object" && r.condicao !== null ? r.condicao : {},
+        acao,
+        parametros: typeof r.parametros === "object" && r.parametros !== null ? r.parametros : {},
+      };
+    });
+}
+
+function sanitizarChecklistsExtras(raw: unknown): Array<{ id: string; texto: string; concluido: boolean }> {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((c): c is Record<string, any> => typeof c === "object" && c !== null)
+    .map((c, idx) => ({
+      id: typeof c.id === "string" && c.id.trim() ? c.id.trim() : `extra_${idx + 1}`,
+      texto: typeof c.texto === "string" ? c.texto : "",
+      concluido: Boolean(c.concluido),
+    }))
+    .filter((c) => c.texto.trim().length > 0);
+}
+
+/**
+ * Extrai comentários formatados no corpo Markdown se o usuário preferir escrever no texto:
+ * Formato 1: - **2026-08-28 10:00 (Hugo)**: mensagem
+ * Formato 2: > **Hugo** (2026-08-28): mensagem
+ */
+export function extrairComentariosDoCorpo(corpo: string): ComentarioCard[] {
+  if (!corpo) return [];
+  const comentarios: ComentarioCard[] = [];
+  const linhas = corpo.split("\n");
+
+  for (let i = 0; i < linhas.length; i++) {
+    const l = linhas[i].trim();
+    // Padrão: - **YYYY-MM-DD HH:mm (Autor)**: Texto
+    const m1 = l.match(/^[-*]\s+\*\*([\d\s\-\:T]+)\s*\(([^)]+)\)\*\*:\s*(.+)$/i);
+    if (m1) {
+      comentarios.push({
+        id: `c_corpo_${i + 1}`,
+        data: m1[1].trim(),
+        autor: m1[2].trim(),
+        texto: m1[3].trim(),
+      });
+      continue;
+    }
+    // Padrão: > **Autor** (YYYY-MM-DD HH:mm): Texto
+    const m2 = l.match(/^>\s+\*\*([^*]+)\*\*\s*\(([\d\s\-\:T]+)\):\s*(.+)$/i);
+    if (m2) {
+      comentarios.push({
+        id: `c_corpo_${i + 1}`,
+        data: m2[2].trim(),
+        autor: m2[1].trim(),
+        texto: m2[3].trim(),
+      });
+    }
+  }
+
+  return comentarios;
+}
+
+function sanitizarComentarios(raw: unknown, corpo = ""): ComentarioCard[] {
+  const doFrontmatter: ComentarioCard[] = [];
+  if (Array.isArray(raw)) {
+    for (let i = 0; i < raw.length; i++) {
+      const c = raw[i];
+      if (typeof c === "object" && c !== null) {
+        doFrontmatter.push({
+          id: typeof c.id === "string" && c.id.trim() ? c.id.trim() : `comentario_${i + 1}`,
+          data: typeof c.data === "string" && c.data.trim() ? c.data.trim() : new Date().toISOString(),
+          autor: typeof c.autor === "string" && c.autor.trim() ? c.autor.trim() : "Usuário",
+          texto: typeof c.texto === "string" ? c.texto : "",
+        });
+      }
+    }
+  }
+
+  const doCorpo = extrairComentariosDoCorpo(corpo);
+  if (doFrontmatter.length === 0) return doCorpo;
+
+  // Unifica preservando os do frontmatter e complementando com os do corpo que não existam
+  const textosExistentes = new Set(doFrontmatter.map((c) => c.texto.trim()));
+  for (const c of doCorpo) {
+    if (!textosExistentes.has(c.texto.trim())) {
+      doFrontmatter.push(c);
+      textosExistentes.add(c.texto.trim());
+    }
+  }
+
+  return doFrontmatter;
+}
+
 /** Converte um documento lido da pasta `processos/` em `Processo` */
 export function comoProcesso(
   doc: { dados: Frontmatter; corpo: string },
@@ -113,11 +249,11 @@ export function comoProcesso(
   tituloFallback = "Processo sem título"
 ): Processo {
   const d = doc.dados || {};
-  const id = typeof d.id === "string" ? d.id : caminho.replace("processos/", "").replace(".md", "");
-  const titulo = typeof d.titulo === "string" ? d.titulo : tituloFallback;
+  const id = typeof d.id === "string" && d.id.trim() ? d.id.trim() : caminho.replace("processos/", "").replace(".md", "");
+  const titulo = typeof d.titulo === "string" && d.titulo.trim() ? d.titulo.trim() : tituloFallback;
   const descricao = typeof d.descricao === "string" ? d.descricao : "";
-  const etapas = Array.isArray(d.etapas) ? (d.etapas as EtapaProcesso[]) : [];
-  const regras = Array.isArray(d.regras) ? (d.regras as RegraAutomacao[]) : [];
+  const etapas = sanitizarEtapas(d.etapas);
+  const regras = sanitizarRegras(d.regras);
   const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
   const atualizadoEm =
     typeof d.atualizado_em === "string"
@@ -153,8 +289,8 @@ export function processoParaFrontmatter(p: Processo): Record<string, any> {
     tipo:          "processo",
     titulo:        p.titulo,
     descricao:     p.descricao,
-    etapas:        p.etapas,
-    regras:        p.regras,
+    etapas:        p.etapas.length ? p.etapas : undefined,
+    regras:        p.regras.length ? p.regras : undefined,
     criado_em:     criadoEm,
     atualizado_em: agora,
     // Limpeza de campos legados
@@ -172,7 +308,7 @@ export function comoCardProcesso(
   tituloFallback = "Cartão sem título"
 ): CardProcesso {
   const d = doc.dados || {};
-  const id = typeof d.id === "string" ? d.id : caminho.replace("processos/cards/", "").replace(".md", "");
+  const id = typeof d.id === "string" && d.id.trim() ? d.id.trim() : caminho.replace("processos/cards/", "").replace(".md", "");
   const processoId =
     typeof d.processo_id === "string" && d.processo_id.trim()
       ? d.processo_id.trim()
@@ -185,23 +321,25 @@ export function comoCardProcesso(
       : typeof d.etapaId === "string"
       ? d.etapaId.trim()
       : "";
-  const titulo = typeof d.titulo === "string" ? d.titulo : tituloFallback;
-  const cliente = typeof d.cliente === "string" ? d.cliente : undefined;
-  const empresa = typeof d.empresa === "string" ? d.empresa : undefined;
-  const email = typeof d.email === "string" ? d.email : undefined;
-  const telefone = typeof d.telefone === "string" ? d.telefone : undefined;
-  const valor = typeof d.valor === "number" ? d.valor : undefined;
-  const prazo = typeof d.prazo === "string" ? d.prazo : undefined;
+  const titulo = typeof d.titulo === "string" && d.titulo.trim() ? d.titulo.trim() : tituloFallback;
+  const cliente = typeof d.cliente === "string" && d.cliente.trim() ? d.cliente.trim() : undefined;
+  const empresa = typeof d.empresa === "string" && d.empresa.trim() ? d.empresa.trim() : undefined;
+  const email = typeof d.email === "string" && d.email.trim() ? d.email.trim() : undefined;
+  const telefone = typeof d.telefone === "string" && d.telefone.trim() ? d.telefone.trim() : undefined;
+  const valor = typeof d.valor === "number" && !isNaN(d.valor) ? d.valor : undefined;
+  const prazo = typeof d.prazo === "string" && d.prazo.trim() ? d.prazo.trim() : undefined;
   const prioridade = typeof d.prioridade === "string" && ["baixa", "media", "alta", "urgente"].includes(d.prioridade) ? (d.prioridade as CardProcesso["prioridade"]) : undefined;
-  const checklists = typeof d.checklists === "object" && d.checklists !== null ? (d.checklists as Record<string, boolean>) : {};
-  const checklistsExtras =
-    Array.isArray(d.checklists_extras)
-      ? (d.checklists_extras as any[])
-      : Array.isArray(d.checklistsExtras)
-      ? (d.checklistsExtras as any[])
-      : [];
-  const comentarios = Array.isArray(d.comentarios) ? (d.comentarios as ComentarioCard[]) : [];
-  const tags = Array.isArray(d.tags) ? (d.tags as string[]) : [];
+  
+  const checklists: Record<string, boolean> = {};
+  if (typeof d.checklists === "object" && d.checklists !== null) {
+    for (const [k, v] of Object.entries(d.checklists)) {
+      checklists[k] = Boolean(v);
+    }
+  }
+
+  const checklistsExtras = sanitizarChecklistsExtras(d.checklists_extras || d.checklistsExtras);
+  const comentarios = sanitizarComentarios(d.comentarios, doc.corpo || "");
+  const tags = Array.isArray(d.tags) ? d.tags.map(String).filter((t) => t.trim().length > 0) : [];
   const urgente = Boolean(d.urgente) || prioridade === "urgente";
   const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
   const atualizadoEm =
@@ -257,10 +395,10 @@ export function cardProcessoParaFrontmatter(c: CardProcesso): Record<string, any
     valor:             c.valor,
     prazo:             c.prazo,
     prioridade:        c.prioridade,
-    checklists:        c.checklists,
-    checklists_extras: c.checklistsExtras,
-    comentarios:       c.comentarios,
-    tags:              c.tags,
+    checklists:        Object.keys(c.checklists).length ? c.checklists : undefined,
+    checklists_extras: c.checklistsExtras && c.checklistsExtras.length ? c.checklistsExtras : undefined,
+    comentarios:       c.comentarios && c.comentarios.length ? c.comentarios : undefined,
+    tags:              c.tags.length ? c.tags : undefined,
     urgente:           c.urgente ? true : undefined,
     criado_em:         criadoEm,
     atualizado_em:     agora,

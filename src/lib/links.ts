@@ -381,6 +381,29 @@ export type ResultadoRenomeacao = {
   falhas: string[];
 };
 
+async function gravarComRetry(
+  cfg: any,
+  caminho: string,
+  conteudo: string,
+  sha: string,
+  mensagem: string,
+  tentativas = 2,
+): Promise<string> {
+  let ultimoErro: any;
+  for (let i = 0; i <= tentativas; i++) {
+    try {
+      return await gravar(cfg, caminho, conteudo, sha, mensagem);
+    } catch (err: any) {
+      ultimoErro = err;
+      if (i < tentativas) {
+        // Pausa suave exponencial para contornar oscilações ou rate limit leve
+        await new Promise((r) => setTimeout(r, (i + 1) * 200));
+      }
+    }
+  }
+  throw ultimoErro;
+}
+
 /**
  * Propaga a alteração de um título para todos os arquivos que mencionavam o título antigo.
  * Atualiza @TituloAntigo -> @TituloNovo e [[TituloAntigo]] -> [[TituloNovo]] com limite de palavra.
@@ -442,7 +465,13 @@ export async function propagarRenomeacao(
 
     if (textoNovo !== item.texto) {
       try {
-        const novoSha = await gravar(cfg, item.caminho, textoNovo, item.sha, `refatorar: renomear menção de ${antigoLimpo} para ${novoLimpo}`);
+        const novoSha = await gravarComRetry(
+          cfg,
+          item.caminho,
+          textoNovo,
+          item.sha,
+          `refatorar: renomear menção de ${antigoLimpo} para ${novoLimpo}`,
+        );
         const docAtualizado = lerMarkdown(textoNovo);
         atualizarCacheLocal(item.caminho, textoNovo, docAtualizado, novoSha);
         sucessoContagem++;
@@ -508,7 +537,7 @@ export async function propagarRenomeacaoId(
     if (mudou) {
       const textoNovo = escreverMarkdown({ dados: d, corpo: doc.corpo });
       try {
-        const novoSha = await gravar(
+        const novoSha = await gravarComRetry(
           cfg,
           item.caminho,
           textoNovo,
@@ -531,5 +560,125 @@ export async function propagarRenomeacaoId(
   }
 
   return { atualizados: sucessoContagem, falhas };
+}
+
+export interface ProblemaIntegridade {
+  tipo: "mencao_quebrada" | "meta_orfa" | "pai_contato_orfao" | "processo_card_orfao";
+  origemCaminho: string;
+  origemTitulo: string;
+  detalhe: string;
+  referencia: string;
+}
+
+export interface RelatorioIntegridade {
+  totalItensAnalisados: number;
+  problemas: ProblemaIntegridade[];
+  totalProblemas: number;
+}
+
+/**
+ * Analisa todo o acervo e identifica links quebrados ou referências a IDs inexistentes.
+ */
+export function verificarIntegridadeReferencias(itens: ItemRepo[]): RelatorioIntegridade {
+  const indice = montarIndice(itens);
+  const problemas: ProblemaIntegridade[] = [];
+
+  const itensElegiveis = itens.filter(
+    (i) =>
+      !ehArquivoInternoOuSistema(i.caminho) &&
+      !i.caminho.startsWith(".klaus/") &&
+      !i.caminho.includes("/.klaus/") &&
+      !i.caminho.startsWith("referencias/imagens/") &&
+      i.caminho.endsWith(".md"),
+  );
+
+  const metasIds = new Set(
+    itens
+      .filter((i) => i.caminho.startsWith("pdi/metas/"))
+      .map((i) => (typeof i.doc.dados.id === "string" && i.doc.dados.id.trim() ? i.doc.dados.id.trim() : i.nome.replace(/\.md$/, "")))
+  );
+
+  const contatosIds = new Set(
+    itens
+      .filter((i) => i.caminho.startsWith("contatos/"))
+      .map((i) => (typeof i.doc.dados.id === "string" && i.doc.dados.id.trim() ? i.doc.dados.id.trim() : i.nome.replace(/\.md$/, "")))
+  );
+
+  const processosIds = new Set(
+    itens
+      .filter((i) => i.caminho.startsWith("processos/") && !i.caminho.startsWith("processos/cards/"))
+      .map((i) => (typeof i.doc.dados.id === "string" && i.doc.dados.id.trim() ? i.doc.dados.id.trim() : i.nome.replace(/\.md$/, "")))
+  );
+
+  for (const item of itensElegiveis) {
+    const titulo = tituloProvavel(item.doc, item.nome);
+
+    // 1. Menções no corpo do Markdown
+    const links = extrairLinks(item.texto, indice);
+    for (const l of links) {
+      if (!l.alvo) {
+        problemas.push({
+          tipo: "mencao_quebrada",
+          origemCaminho: item.caminho,
+          origemTitulo: titulo,
+          detalhe: `Menção a "@${l.bruto}" não foi encontrada no acervo.`,
+          referencia: l.bruto,
+        });
+      }
+    }
+
+    // 2. Vínculos estruturais no frontmatter
+    const d = item.doc.dados;
+
+    // Metas em Entregas
+    if (item.caminho.startsWith("pdi/entregas/")) {
+      const metas = Array.isArray(d.metas) ? d.metas : typeof d.metas === "string" ? [d.metas] : [];
+      for (const metaId of metas) {
+        if (metaId && typeof metaId === "string" && !metasIds.has(metaId.trim())) {
+          problemas.push({
+            tipo: "meta_orfa",
+            origemCaminho: item.caminho,
+            origemTitulo: titulo,
+            detalhe: `Meta vinculada "${metaId}" não existe em pdi/metas/.`,
+            referencia: metaId,
+          });
+        }
+      }
+    }
+
+    // Líder/Pai em Contatos
+    if (item.caminho.startsWith("contatos/")) {
+      const paiId = (d.pai_id || d.pai) as string | undefined;
+      if (paiId && typeof paiId === "string" && !contatosIds.has(paiId.trim())) {
+        problemas.push({
+          tipo: "pai_contato_orfao",
+          origemCaminho: item.caminho,
+          origemTitulo: titulo,
+          detalhe: `Contato líder/pai "${paiId}" não foi encontrado em contatos/.`,
+          referencia: paiId,
+        });
+      }
+    }
+
+    // Processo pai em Cartões
+    if (item.caminho.startsWith("processos/cards/")) {
+      const processoId = (d.processo_id || d.processoId) as string | undefined;
+      if (processoId && typeof processoId === "string" && !processosIds.has(processoId.trim())) {
+        problemas.push({
+          tipo: "processo_card_orfao",
+          origemCaminho: item.caminho,
+          origemTitulo: titulo,
+          detalhe: `Funil de processo "${processoId}" não foi encontrado em processos/.`,
+          referencia: processoId,
+        });
+      }
+    }
+  }
+
+  return {
+    totalItensAnalisados: itensElegiveis.length,
+    problemas,
+    totalProblemas: problemas.length,
+  };
 }
 
