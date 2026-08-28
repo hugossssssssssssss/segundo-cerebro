@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
-import { SuggestionMenuController, useCreateBlockNote } from "@blocknote/react";
+import {
+  SuggestionMenuController,
+  useCreateBlockNote,
+  getDefaultReactSlashMenuItems,
+} from "@blocknote/react";
+import { filterSuggestionItems } from "@blocknote/core";
+import { Sparkles } from "lucide-react";
 import * as locales from "@blocknote/core/locales";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -10,6 +16,7 @@ import { montarIndice, alvosUnicos, filtrarAlvos, type Alvo } from "@/lib/links"
 import { restaurarWikilinks } from "@/lib/markdown";
 import { formatarTagLembrete } from "@/lib/inbox";
 import { ModalLembrete } from "./ModalLembrete";
+import { ModalIADocumento } from "./ModalIADocumento";
 import { abrirItemSpa } from "./PropriedadesNotion";
 
 /**
@@ -332,11 +339,54 @@ export function EditorNotion({
   }, [acervo, alvosOverrideKey]);
 
   const [modalLembreteAberto, setModalLembreteAberto] = useState(false);
+  const [modalIAAberto, setModalIAAberto] = useState(false);
 
   const alvosRef = useRef(alvos);
   useEffect(() => {
     alvosRef.current = alvos;
   }, [alvos]);
+
+  /** Cola o texto retornado pela IA diretamente no cursor do editor */
+  const colarTextoIA = useCallback(
+    async (texto: string) => {
+      if (!texto) return;
+      try {
+        if (texto.includes("\n")) {
+          const blocos = await editor.tryParseMarkdownToBlocks(texto);
+          if (Array.isArray(blocos) && blocos.length > 0) {
+            const cursor = editor.getTextCursorPosition();
+            if (cursor?.block) {
+              editor.insertBlocks(blocos, cursor.block, "after");
+              return;
+            }
+          }
+        }
+        editor.insertInlineContent([`${texto} `]);
+      } catch {
+        editor.insertInlineContent([`${texto} `]);
+      }
+    },
+    [editor],
+  );
+
+  /** Itens do menu slash disparado por '/' */
+  const handleGetSlashItems = useCallback(
+    async (query: string) => {
+      const itemIA = {
+        title: "Inteligência artificial",
+        subtext: "Perguntas rápidas, contas e correções no texto",
+        badge: "IA",
+        icon: <Sparkles size={16} className="text-primary" />,
+        onItemClick: () => {
+          setModalIAAberto(true);
+        },
+      };
+
+      const padrao = getDefaultReactSlashMenuItems(editor);
+      return filterSuggestionItems([itemIA, ...padrao], query);
+    },
+    [editor],
+  );
 
   /** Monta os itens do menu com callback estável de getItems para a SuggestionMenuController */
   const handleGetItems = useCallback(
@@ -661,6 +711,11 @@ export function EditorNotion({
           triggerCharacter="["
           getItems={handleGetItems}
         />
+        {/* `/` é o menu de comandos e IA rápida */}
+        <SuggestionMenuController
+          triggerCharacter="/"
+          getItems={handleGetSlashItems}
+        />
       </BlockNoteView>
 
       <ModalLembrete
@@ -670,6 +725,12 @@ export function EditorNotion({
           const tag = formatarTagLembrete(titulo, dataHora);
           editor.insertInlineContent([`${tag} `]);
         }}
+      />
+
+      <ModalIADocumento
+        aberto={modalIAAberto}
+        aoFechar={() => setModalIAAberto(false)}
+        aoColarNoDocumento={colarTextoIA}
       />
       <style>{`
         .notion-editor-wrapper .bn-container { font-family: inherit; }

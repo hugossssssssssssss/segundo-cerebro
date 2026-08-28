@@ -20,19 +20,22 @@ import {
   Newspaper,
   Calendar,
   MessageSquare,
+  Tag,
 } from "lucide-react";
 
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo, daPasta, invalidarCache } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
 import { comoTarefa, type Tarefa } from "@/lib/tarefas";
-import { tarefaParaArquivo } from "@/lib/entidades";
+import { tarefaParaArquivo, notaParaArquivo } from "@/lib/entidades";
 import { comoReferencia, type Referencia } from "@/lib/referencias";
 import { comoMeta, comoEntrega, resumir, type ResumoMeta } from "@/lib/pdi";
-import { tituloProvavel, escreverMarkdown, nomeLivre } from "@/lib/markdown";
+import { tituloProvavel, escreverMarkdown, lerMarkdown, nomeLivre } from "@/lib/markdown";
+import { ler as lerArquivoGithub } from "@/lib/github";
 import { PASTAS } from "@/lib/tipos";
 import { toast } from "@/lib/toast";
 import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
+import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 
 import { Vazio } from "@/components/ui";
 
@@ -75,7 +78,7 @@ export default function Home() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
   const navegar = useNavigate();
-  const { salvarTexto } = useSalvar(cfg);
+  const { salvarTexto, salvando } = useSalvar(cfg);
   const { abrirFerramentaFlutuante } = useFerramentasFlutuantes();
 
   // ── Carregamento Instantâneo com Cache Snapshot (0ms) ─────────────────────
@@ -98,6 +101,152 @@ export default function Home() {
   const [referencias, setReferencias] = useState<Referencia[]>(snapshotInicial.referencias);
   const [resumosPdi, setResumosPdi] = useState<ResumoMeta[]>(snapshotInicial.resumosPdi);
   const [lousas, setLousas] = useState<LousaItemHome[]>(snapshotInicial.lousas);
+
+  // ── Abertura Fluida de Documento na Home (Sem Redirecionar) ───────────────
+  interface NotaAbertaHome {
+    caminho: string;
+    sha?: string;
+    titulo: string;
+    corpo: string;
+    dadosProps: Record<string, any>;
+    original: {
+      titulo: string;
+      corpo: string;
+      dadosProps: Record<string, any>;
+    };
+  }
+
+  const [notaAbertaHome, setNotaAbertaHome] = useState<NotaAbertaHome | null>(null);
+  const [modoVisaoNotaHome, setModoVisaoNotaHome] = useState<ModoVisaoNotion>(() => {
+    const salvo = localStorage.getItem("klaus_modo_visao_notas");
+    return (salvo as ModoVisaoNotion) || "lado";
+  });
+
+  const abrirNotaHome = useCallback(
+    async (caminho: string) => {
+      // 1. Procura na lista local de notas para abrir em 0ms!
+      const local = notas.find((n) => n.caminho === caminho);
+      const titulo =
+        local?.titulo || caminho.split("/").pop()?.replace(/\.md$/, "") || "Nota";
+      const corpo = local?.corpo || "";
+      const dadosIniciais = { tags: local?.tags || [] };
+
+      setNotaAbertaHome({
+        caminho,
+        sha: local?.sha,
+        titulo,
+        corpo,
+        dadosProps: dadosIniciais,
+        original: {
+          titulo,
+          corpo,
+          dadosProps: dadosIniciais,
+        },
+      });
+
+      // 2. Em segundo plano, busca conteúdo completo mais recente se necessário
+      if (pronto) {
+        try {
+          const itemRemoto = await lerArquivoGithub(cfg, caminho);
+          if (itemRemoto && itemRemoto.texto) {
+            const lido = lerMarkdown(itemRemoto.texto);
+            const tituloRemoto = String(lido.dados.titulo || titulo);
+            setNotaAbertaHome((antigo) => {
+              if (!antigo || antigo.caminho !== caminho) return antigo;
+              if (
+                antigo.titulo === antigo.original.titulo &&
+                antigo.corpo === antigo.original.corpo
+              ) {
+                return {
+                  caminho,
+                  sha: itemRemoto.sha,
+                  titulo: tituloRemoto,
+                  corpo: lido.corpo,
+                  dadosProps: lido.dados,
+                  original: {
+                    titulo: tituloRemoto,
+                    corpo: lido.corpo,
+                    dadosProps: lido.dados,
+                  },
+                };
+              }
+              return { ...antigo, sha: itemRemoto.sha };
+            });
+          }
+        } catch {
+          // Mantém versão carregada
+        }
+      }
+    },
+    [notas, pronto, cfg],
+  );
+
+  const salvarNotaHome = useCallback(async () => {
+    if (!notaAbertaHome) return;
+    const { dados, corpo } = notaParaArquivo({
+      caminho: notaAbertaHome.caminho,
+      sha: notaAbertaHome.sha || "",
+      titulo: notaAbertaHome.titulo.trim() || "Sem título",
+      tipo: "nota",
+      tags: Array.isArray(notaAbertaHome.dadosProps.tags)
+        ? notaAbertaHome.dadosProps.tags
+        : [],
+      corpo: notaAbertaHome.corpo,
+      bruto: notaAbertaHome.dadosProps,
+    });
+
+    const texto = escreverMarkdown({ dados, corpo });
+    const novoSha = await salvarTexto(
+      notaAbertaHome.caminho,
+      texto,
+      notaAbertaHome.sha,
+      `atualizar nota: ${notaAbertaHome.titulo}`,
+    );
+
+    if (novoSha) {
+      setNotaAbertaHome((antigo) =>
+        antigo
+          ? {
+              ...antigo,
+              sha: novoSha,
+              original: {
+                titulo: antigo.titulo,
+                corpo: antigo.corpo,
+                dadosProps: antigo.dadosProps,
+              },
+            }
+          : null,
+      );
+
+      // Atualiza lista de notas na Home para refletir imediatamente
+      setNotas((antigas) =>
+        antigas.map((n) =>
+          n.caminho === notaAbertaHome.caminho
+            ? {
+                ...n,
+                titulo: notaAbertaHome.titulo,
+                corpo: notaAbertaHome.corpo,
+                tags: Array.isArray(notaAbertaHome.dadosProps.tags)
+                  ? notaAbertaHome.dadosProps.tags
+                  : n.tags,
+                sha: novoSha,
+              }
+            : n,
+        ),
+      );
+      toast("Documento salvo!");
+    }
+  }, [notaAbertaHome, salvarTexto]);
+
+  const temMudancasNotaHome = useMemo(() => {
+    if (!notaAbertaHome) return false;
+    return (
+      notaAbertaHome.titulo !== notaAbertaHome.original.titulo ||
+      notaAbertaHome.corpo !== notaAbertaHome.original.corpo ||
+      JSON.stringify(notaAbertaHome.dadosProps) !==
+        JSON.stringify(notaAbertaHome.original.dadosProps)
+    );
+  }, [notaAbertaHome]);
 
   // ── Configuração dos Widgets (Grade de 12 Colunas com Tamanho Livre) ──────
   const [configWidgets, setConfigWidgets] = useState<WidgetConfig[]>(() => {
@@ -469,7 +618,7 @@ export default function Home() {
                 {widget.id === "notas_recentes" && (
                   <WidgetNotasRecentes
                     notas={notas}
-                    aoAbrirNota={(caminho) => navegar(`/notas?abrir=${encodeURIComponent(caminho)}`)}
+                    aoAbrirNota={abrirNotaHome}
                   />
                 )}
 
@@ -528,6 +677,48 @@ export default function Home() {
         configWidgets={configWidgets}
         aoAlternarWidget={aoAlternarWidgetCatalogo}
       />
+
+      {/* Painel Fluido do Notion na Home (sem navegação e com resposta imediata) */}
+      {notaAbertaHome && (
+        <PainelNotionBase
+          rotuloTipo="Nota"
+          modoVisao={modoVisaoNotaHome}
+          setModoVisao={(m) => {
+            setModoVisaoNotaHome(m);
+            localStorage.setItem("klaus_modo_visao_notas", m);
+          }}
+          titulo={notaAbertaHome.titulo}
+          setTitulo={(t) =>
+            setNotaAbertaHome((antigo) => (antigo ? { ...antigo, titulo: t } : null))
+          }
+          corpo={notaAbertaHome.corpo}
+          setCorpo={(c) =>
+            setNotaAbertaHome((antigo) => (antigo ? { ...antigo, corpo: c } : null))
+          }
+          caminhoItem={notaAbertaHome.caminho}
+          dadosProps={notaAbertaHome.dadosProps}
+          onChangeProps={(novosDados) =>
+            setNotaAbertaHome((antigo) =>
+              antigo ? { ...antigo, dadosProps: novosDados } : null,
+            )
+          }
+          camposFixosProps={{
+            tipo: {
+              icone: <FileText className="h-4 w-4 opacity-50 text-orange-500" />,
+              tipo: "select",
+              opcoes: ["nota", "referencia", "rascunho"],
+            },
+            tags: {
+              icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />,
+              tipo: "multiselect",
+            },
+          }}
+          salvando={salvando}
+          temMudancas={temMudancasNotaHome}
+          aoFechar={() => setNotaAbertaHome(null)}
+          aoSalvar={salvarNotaHome}
+        />
+      )}
     </div>
   );
 }
