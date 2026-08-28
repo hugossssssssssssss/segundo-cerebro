@@ -40,6 +40,7 @@ describe("PASTAS", () => {
       lousas: "lousas",
       caixaEntrada: "caixa-entrada",
       contatos: "contatos",
+      jogos: "jogos",
     });
   });
 });

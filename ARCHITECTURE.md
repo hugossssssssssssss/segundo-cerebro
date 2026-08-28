@@ -226,6 +226,8 @@ direto · `não usa` = não toca no repositório de dados.
 | `src/pages/GrafoNeural.tsx` | na mão | hook |
 | `src/pages/Home.tsx` | na mão | hook |
 | `src/pages/Inbox.tsx` | na mão | hook |
+| `src/pages/Jogos.test.tsx` | não usa | não usa |
+| `src/pages/Jogos.tsx` | na mão | não usa |
 | `src/pages/Lousas.tsx` | hook | hook |
 | `src/pages/Notas.tsx` | hook | hook |
 | `src/pages/Noticias.tsx` | não usa | não usa |

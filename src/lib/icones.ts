@@ -92,6 +92,8 @@ import {
   BarChart3,
   TrendingUp,
   PieChart,
+  Gamepad2,
+  Dices,
 } from "lucide-react";
 
 export interface ItemGaleriaIcone {
@@ -217,6 +219,8 @@ export const CATALOGO_ICONES: ItemGaleriaIcone[] = [
   { nome: "Upload", rotulo: "Enviar, Upload", categoria: "Símbolos & Utilitários", Icone: Upload },
   { nome: "Link", rotulo: "Link, Hiperlink", categoria: "Símbolos & Utilitários", Icone: Link },
   { nome: "Hash", rotulo: "Hashtag, Número", categoria: "Símbolos & Utilitários", Icone: Hash },
+  { nome: "Gamepad2", rotulo: "Jogos, Videogame, Diversão, Termo", categoria: "Símbolos & Utilitários", Icone: Gamepad2 },
+  { nome: "Dices", rotulo: "Dados, Sorte, Aleatório, Jogo", categoria: "Símbolos & Utilitários", Icone: Dices },
 ];
 
 /** Mapa rápido de ícones por nome para acesso O(1) */
