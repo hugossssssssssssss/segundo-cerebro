@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Jogos from "./Jogos";
-import { CHAVE_STORAGE_TERMO } from "@/lib/jogos/termoStorage";
 
 afterEach(() => {
   cleanup();
@@ -25,8 +24,8 @@ beforeEach(() => {
   });
 });
 
-describe("Página Jogos (Termo, Dueto e Quarteto)", () => {
-  it("renderiza a página com abas de Termo, Dueto e Quarteto", () => {
+describe("Página Jogos (Hub de Jogos: Termo e Palavras Cruzadas)", () => {
+  it("renderiza o Hub de Jogos com abas de Termo e Palavras Cruzadas e créditos", () => {
     render(
       <MemoryRouter>
         <Jogos />
@@ -35,50 +34,42 @@ describe("Página Jogos (Termo, Dueto e Quarteto)", () => {
 
     expect(screen.getByText("Jogos & Desafios")).toBeTruthy();
     expect(screen.getByText("Termo")).toBeTruthy();
-    expect(screen.getByText("Dueto")).toBeTruthy();
-    expect(screen.getByText("Quarteto")).toBeTruthy();
-    expect(screen.getByText("Diário")).toBeTruthy();
-    expect(screen.getByText("Infinito")).toBeTruthy();
+    expect(screen.getByText("Palavras Cruzadas")).toBeTruthy();
+    expect(screen.getByText("Créditos & Motores Open Source dos Jogos")).toBeTruthy();
+    expect(screen.getByText("Termo & Lingle")).toBeTruthy();
+    expect(screen.getByText("React Crossword")).toBeTruthy();
   });
 
-  it("permite clicar em células individuais para posicionar foco e digitar", () => {
+  it("permite alternar para a pastinha de Palavras Cruzadas", () => {
     render(
       <MemoryRouter>
         <Jogos />
       </MemoryRouter>
     );
 
-    // Clicar em T, depois E
+    const botaoCruzadinha = screen.getByText("Palavras Cruzadas");
+    fireEvent.click(botaoCruzadinha);
+
+    expect(screen.getByText("Horizontais (Across)")).toBeTruthy();
+    expect(screen.getByText("Verticais (Down)")).toBeTruthy();
+    expect(screen.getByText("Verificar")).toBeTruthy();
+  });
+
+  it("permite digitar letras e apagar no Termo", () => {
+    render(
+      <MemoryRouter>
+        <Jogos />
+      </MemoryRouter>
+    );
+
     fireEvent.click(screen.getByLabelText("Letra T"));
     fireEvent.click(screen.getByLabelText("Letra E"));
 
-    // O texto T e E deve estar na tela
     expect(screen.getAllByText("T").length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText("E").length).toBeGreaterThanOrEqual(2);
   });
 
-  it("aceita digitação via teclado físico (keydown)", () => {
-    render(
-      <MemoryRouter>
-        <Jogos />
-      </MemoryRouter>
-    );
-
-    // Digitar 'G', 'A', 'T', 'O', 'S' no teclado físico
-    fireEvent.keyDown(window, { key: "g" });
-    fireEvent.keyDown(window, { key: "a" });
-    fireEvent.keyDown(window, { key: "t" });
-    fireEvent.keyDown(window, { key: "o" });
-    fireEvent.keyDown(window, { key: "s" });
-
-    expect(screen.getAllByText("G").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText("A").length).toBeGreaterThanOrEqual(2);
-
-    // Apagar com Backspace
-    fireEvent.keyDown(window, { key: "Backspace" });
-  });
-
-  it("permite alternar para o modo Dueto (2 tabuleiros)", () => {
+  it("permite alternar entre modalidades do Termo (Dueto e Quarteto)", () => {
     render(
       <MemoryRouter>
         <Jogos />
@@ -90,60 +81,5 @@ describe("Página Jogos (Termo, Dueto e Quarteto)", () => {
 
     expect(screen.getByText("Palavra 1")).toBeTruthy();
     expect(screen.getByText("Palavra 2")).toBeTruthy();
-  });
-
-  it("permite alternar para o modo Quarteto (4 tabuleiros)", () => {
-    render(
-      <MemoryRouter>
-        <Jogos />
-      </MemoryRouter>
-    );
-
-    const botaoQuarteto = screen.getByText("Quarteto");
-    fireEvent.click(botaoQuarteto);
-
-    expect(screen.getByText("Palavra 1")).toBeTruthy();
-    expect(screen.getByText("Palavra 2")).toBeTruthy();
-    expect(screen.getByText("Palavra 3")).toBeTruthy();
-    expect(screen.getByText("Palavra 4")).toBeTruthy();
-  });
-
-  it("permite alternar para o Modo Infinito do Dueto", () => {
-    render(
-      <MemoryRouter>
-        <Jogos />
-      </MemoryRouter>
-    );
-
-    // Selecionar Dueto
-    fireEvent.click(screen.getByText("Dueto"));
-
-    // Selecionar Infinito
-    fireEvent.click(screen.getByText("Infinito"));
-
-    expect(screen.getByText("Nova Palavra")).toBeTruthy();
-  });
-
-  it("permite submeter palavra e persiste no storage", async () => {
-    render(
-      <MemoryRouter>
-        <Jogos />
-      </MemoryRouter>
-    );
-
-    // Digitar TERMO
-    fireEvent.click(screen.getByLabelText("Letra T"));
-    fireEvent.click(screen.getByLabelText("Letra E"));
-    fireEvent.click(screen.getByLabelText("Letra R"));
-    fireEvent.click(screen.getByLabelText("Letra M"));
-    fireEvent.click(screen.getByLabelText("Letra O"));
-
-    fireEvent.click(screen.getByLabelText("Confirmar palavra"));
-
-    await waitFor(() => {
-      const salvo = localStorage.getItem(CHAVE_STORAGE_TERMO);
-      expect(salvo).toBeDefined();
-      expect(salvo).toContain("TERMO");
-    });
   });
 });

@@ -18,6 +18,24 @@ export interface CreditoOpenSource {
 
 export const TODOS_CREDITOS_OPEN_SOURCE: CreditoOpenSource[] = [
   {
+    id: "termo-lingle",
+    nome: "Termo & Lingle (Wordle pt-BR)",
+    autor: "Fernando Serboncini & sixels",
+    descricao: "Mecânica do Termo, dicionário de 5 letras em português e algoritmo determinístico de sorteio diário",
+    github: "https://github.com/sixels/Lingle",
+    licenca: "MIT",
+    rotas: ["/jogos"],
+  },
+  {
+    id: "cruzadinha-react",
+    nome: "React Crossword & The Guardian",
+    autor: "Jared Reisinger & The Guardian",
+    descricao: "Engine e renderização matricial de grade de Palavras Cruzadas (Crossword)",
+    github: "https://github.com/JaredReisinger/react-crossword",
+    licenca: "MIT",
+    rotas: ["/jogos"],
+  },
+  {
     id: "excalidraw",
     nome: "Excalidraw",
     autor: "Excalidraw Team",
