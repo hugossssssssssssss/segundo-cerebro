@@ -50,4 +50,32 @@ describe("Rodape", () => {
     fireEvent.click(botaoTopo);
     expect(scrollToMock).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
   });
+
+  it("exibe botão de créditos Open Source e abre modal", () => {
+    render(
+      <MemoryRouter>
+        <Rodape />
+      </MemoryRouter>
+    );
+
+    const botaoCreditos = screen.getByRole("button", { name: /Créditos Open Source/i });
+    expect(botaoCreditos).toBeTruthy();
+
+    fireEvent.click(botaoCreditos);
+    expect(screen.getByText(/Tecnologias & Créditos Open Source/i)).toBeTruthy();
+  });
+
+  it("exibe banner contextual de tecnologia open source em rota específica", () => {
+    render(
+      <MemoryRouter initialEntries={["/lousas"]}>
+        <Rodape />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId("credito-opensource-banner")).toBeTruthy();
+    expect(screen.getByText("Excalidraw")).toBeTruthy();
+    expect(screen.getByText(/por Excalidraw Team/i)).toBeTruthy();
+    expect(screen.getByText(/Acessar no GitHub/i)).toBeTruthy();
+  });
 });
+
