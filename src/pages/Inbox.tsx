@@ -19,6 +19,9 @@ import {
   Calendar,
   AlertTriangle,
   RefreshCw,
+  MoreVertical,
+  Edit3,
+  Copy,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo, type ItemRepo, invalidarCache } from "@/lib/repo";
@@ -34,7 +37,8 @@ import {
   type RascunhoOffline,
 } from "@/lib/offlineQueue";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
-import { Carregando } from "@/components/ui";
+import { Carregando, ModalConfirmacao } from "@/components/ui";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatarNomeAmigavel } from "@/lib/utils";
@@ -96,6 +100,160 @@ const ESTILOS_TIPO: Record<string, { border: string; bg: string; text: string; b
   },
 };
 
+function MenuAcoesCompromisso({
+  c,
+  onEditar,
+  onDuplicar,
+  onMudarData,
+  onExcluir,
+}: {
+  c: CompromissoSemana;
+  onEditar: () => void;
+  onDuplicar: () => void;
+  onMudarData: (novaDataIso: string) => void;
+  onExcluir: () => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const hojeIso = format(new Date(), "yyyy-MM-dd");
+  const amanhaIso = format(addDays(new Date(), 1), "yyyy-MM-dd");
+  const proxSemanaIso = format(addWeeks(new Date(), 1), "yyyy-MM-dd");
+
+  return (
+    <Popover open={aberto} onOpenChange={setAberto}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+          className="p-1 rounded-md text-muted-foreground/70 hover:text-foreground hover:bg-muted/80 transition-colors shrink-0 cursor-pointer"
+          title="Opções do documento"
+          aria-label="Opções do documento"
+        >
+          <MoreVertical size={14} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        sideOffset={4}
+        className="w-48 p-1.5 shadow-lg border border-border bg-popover rounded-xl z-50 select-none"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-col gap-0.5 text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setAberto(false);
+              onEditar();
+            }}
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-accent text-foreground transition-colors cursor-pointer text-left w-full font-medium"
+          >
+            <Edit3 size={13} className="text-blue-500 shrink-0" />
+            <span>Editar</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAberto(false);
+              onDuplicar();
+            }}
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-accent text-foreground transition-colors cursor-pointer text-left w-full font-medium"
+          >
+            <Copy size={13} className="text-amber-500 shrink-0" />
+            <span>Duplicar</span>
+          </button>
+
+          {/* Atalhos rápidos de Data */}
+          <div className="pt-1 mt-1 border-t border-border/50">
+            <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+              Mudar data para:
+            </span>
+            <div className="flex flex-col gap-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setAberto(false);
+                  onMudarData(hojeIso);
+                }}
+                className="flex items-center justify-between px-2.5 py-1 rounded-lg hover:bg-accent text-foreground transition-colors cursor-pointer text-left w-full text-[11px]"
+              >
+                <span>Hoje</span>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {format(new Date(), "dd/MM")}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAberto(false);
+                  onMudarData(amanhaIso);
+                }}
+                className="flex items-center justify-between px-2.5 py-1 rounded-lg hover:bg-accent text-foreground transition-colors cursor-pointer text-left w-full text-[11px]"
+              >
+                <span>Amanhã</span>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {format(addDays(new Date(), 1), "dd/MM")}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAberto(false);
+                  onMudarData(proxSemanaIso);
+                }}
+                className="flex items-center justify-between px-2.5 py-1 rounded-lg hover:bg-accent text-foreground transition-colors cursor-pointer text-left w-full text-[11px]"
+              >
+                <span>Próxima semana</span>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {format(addWeeks(new Date(), 1), "dd/MM")}
+                </span>
+              </button>
+
+              {/* Escolha customizada no calendário */}
+              <label
+                className="flex items-center justify-between px-2.5 py-1 rounded-lg hover:bg-accent text-foreground transition-colors cursor-pointer text-left w-full text-[11px] relative"
+                title="Escolher data específica"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Calendar size={12} className="text-teal-500" />
+                  <span>Outra data...</span>
+                </div>
+                <input
+                  type="date"
+                  defaultValue={c.dataIso}
+                  onChange={(e) => {
+                    const nd = e.target.value;
+                    if (nd) {
+                      setAberto(false);
+                      onMudarData(nd);
+                    }
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+              </label>
+            </div>
+          </div>
+
+          <hr className="my-1 border-border/50" />
+
+          <button
+            type="button"
+            onClick={() => {
+              setAberto(false);
+              onExcluir();
+            }}
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors cursor-pointer text-left w-full font-medium"
+          >
+            <Trash2 size={13} className="shrink-0" />
+            <span>Excluir</span>
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function Inbox() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
@@ -106,6 +264,11 @@ export default function Inbox() {
   const [acervo, setAcervo] = useState<ItemRepo[]>([]);
   const [dataReferencia, setDataReferencia] = useState<Date>(new Date());
   const [mostrarPendencias, setMostrarPendencias] = useState(false);
+
+  // Estados de Drag and Drop e Exclusão
+  const [itemArrastando, setItemArrastando] = useState<CompromissoSemana | null>(null);
+  const [diaSobHover, setDiaSobHover] = useState<string | null>(null);
+  const [itemParaExcluir, setItemParaExcluir] = useState<CompromissoSemana | null>(null);
 
   // Rascunhos Offline
   const [rascunhos, setRascunhos] = useState<RascunhoOffline[]>([]);
@@ -539,6 +702,133 @@ export default function Inbox() {
     }
   };
 
+  const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  const mudarDataDocumento = async (item: CompromissoSemana, novaDataIso: string) => {
+    try {
+      const arquivoOriginal = acervo.find((a) => a.caminho === item.caminho);
+      if (!arquivoOriginal) {
+        toast("Arquivo original não encontrado para atualizar data.", { tipo: "erro" });
+        return;
+      }
+
+      const doc = lerMarkdown(arquivoOriginal.texto);
+      const dadosAtuais = doc.dados || {};
+      let novoCorpo = doc.corpo;
+
+      // Se for lembrete inline no corpo [⏰ Lembrete: Título | ...]
+      if (item.id.startsWith("lembrete-") && item.id.includes("-") && item.titulo.startsWith("Lembrete: ")) {
+        const titLembrete = item.titulo.replace(/^Lembrete:\s*/, "").trim();
+        const regexLembrete = new RegExp(
+          `\\[⏰\\s*Lembrete:\\s*${escapeRegex(titLembrete)}\\|\\s*([\\d\\s\\-\\:T]+)\\]`,
+          "gi"
+        );
+        const match = regexLembrete.exec(novoCorpo);
+        if (match) {
+          const dhAntigo = match[1]?.trim() || "";
+          const partesDh = dhAntigo.split(" ");
+          const horaAntiga = partesDh[1] || "";
+          const novoDh = horaAntiga ? `${novaDataIso} ${horaAntiga}` : novaDataIso;
+          novoCorpo = novoCorpo.replace(match[0], `[⏰ Lembrete: ${titLembrete} | ${novoDh}]`);
+        }
+      }
+
+      // Atualiza frontmatter
+      const novosDados = { ...dadosAtuais };
+      if (item.caminho.startsWith("tarefas/")) {
+        novosDados.prazo = novaDataIso;
+        if (novosDados.data) novosDados.data = novaDataIso;
+      } else if (item.caminho.startsWith("pdi/metas/")) {
+        novosDados.prazo = novaDataIso;
+      } else if (item.caminho.startsWith("pdi/entregas/")) {
+        novosDados.data = novaDataIso;
+        if (novosDados.prazo) novosDados.prazo = novaDataIso;
+      } else if (item.caminho.startsWith("notas/")) {
+        if (novosDados.data) novosDados.data = novaDataIso;
+        if (novosDados.prazo) novosDados.prazo = novaDataIso;
+        if (novosDados.data_reuniao) novosDados.data_reuniao = novaDataIso;
+      } else {
+        novosDados.data = novaDataIso;
+      }
+
+      const novoTexto = escreverMarkdown({ dados: novosDados, corpo: novoCorpo });
+      await salvarTexto(item.caminho, novoTexto, arquivoOriginal.sha, `mover data: ${item.titulo} para ${novaDataIso}`);
+      invalidarCache();
+      toast(`Data alterada para ${formatarBr(novaDataIso)}!`, { tipo: "sucesso" });
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+      await carregar();
+    } catch (err: any) {
+      toast(`Erro ao alterar data: ${err?.message || err}`, { tipo: "erro" });
+    }
+  };
+
+  const duplicarDocumento = async (item: CompromissoSemana) => {
+    try {
+      const arquivoOriginal = acervo.find((a) => a.caminho === item.caminho);
+      if (!arquivoOriginal) {
+        toast("Arquivo original não encontrado para duplicar.", { tipo: "erro" });
+        return;
+      }
+
+      const doc = lerMarkdown(arquivoOriginal.texto);
+      const tituloLimpo = item.titulo.replace(/^Meta:\s*|^Entrega:\s*|^Lembrete:\s*/i, "").trim();
+      const novoTitulo = `${tituloLimpo} (Cópia)`;
+      const pasta = item.caminho.includes("/") ? item.caminho.substring(0, item.caminho.lastIndexOf("/")) : "notas";
+      const caminhosExistentes = acervo.map((a) => a.caminho);
+      const novoCaminho = nomeLivre(pasta, novoTitulo, caminhosExistentes);
+
+      const novosDados: Record<string, any> = {
+        ...doc.dados,
+        titulo: novoTitulo,
+      };
+      delete novosDados.id;
+
+      const novoTexto = escreverMarkdown({ dados: novosDados, corpo: doc.corpo });
+      await salvarTexto(novoCaminho, novoTexto, undefined, `duplicar: ${novoTitulo}`);
+      invalidarCache();
+      toast(`"${novoTitulo}" duplicado com sucesso!`, { tipo: "sucesso" });
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+      await carregar();
+    } catch (err: any) {
+      toast(`Erro ao duplicar: ${err?.message || err}`, { tipo: "erro" });
+    }
+  };
+
+  const excluirDocumento = async (item: CompromissoSemana) => {
+    try {
+      const arquivoOriginal = acervo.find((a) => a.caminho === item.caminho);
+      if (!arquivoOriginal) {
+        toast("Arquivo não encontrado para exclusão.", { tipo: "erro" });
+        return;
+      }
+
+      // Se for lembrete inline no corpo
+      if (item.id.startsWith("lembrete-") && item.id.includes("-") && item.titulo.startsWith("Lembrete: ")) {
+        const titLembrete = item.titulo.replace(/^Lembrete:\s*/, "").trim();
+        const regexLembrete = new RegExp(
+          `\\n?\\[⏰\\s*Lembrete:\\s*${escapeRegex(titLembrete)}\\|\\s*([\\d\\s\\-\\:T]+)\\]`,
+          "gi"
+        );
+        const novoTexto = arquivoOriginal.texto.replace(regexLembrete, "");
+        await salvarTexto(item.caminho, novoTexto, arquivoOriginal.sha, `remover lembrete: ${titLembrete}`);
+        invalidarCache();
+        toast("Lembrete removido com sucesso!", { tipo: "sucesso" });
+        window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+        await carregar();
+        return;
+      }
+
+      // Caso contrário, apaga o arquivo do repositório
+      await apagarItem(item.caminho, item.sha);
+      invalidarCache();
+      toast(`"${item.titulo}" excluído com sucesso!`, { tipo: "sucesso" });
+      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
+      await carregar();
+    } catch (err: any) {
+      toast(`Erro ao excluir: ${err?.message || err}`, { tipo: "erro" });
+    }
+  };
+
   const hoje = new Date();
   const [diaSelecionadoMobile, setDiaSelecionadoMobile] = useState<string | "todos">("todos");
 
@@ -724,20 +1014,35 @@ export default function Inbox() {
               return (
                 <div
                   key={c.id}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("text/plain", c.id);
+                    e.dataTransfer.effectAllowed = "move";
+                    setItemArrastando(c);
+                  }}
+                  onDragEnd={() => {
+                    setItemArrastando(null);
+                    setDiaSobHover(null);
+                  }}
                   onClick={() => abrirDocumento(c)}
                   className={cn(
-                    "p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 text-xs shadow-2xs",
+                    "p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 text-xs shadow-2xs select-none",
                     estilo.bg,
-                    estilo.border
+                    estilo.border,
+                    itemArrastando?.id === c.id && "opacity-30 scale-95 ring-2 ring-primary border-primary"
                   )}
                 >
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1 cursor-grab active:cursor-grabbing">
                     <p className="font-semibold text-foreground truncate">{c.titulo}</p>
                     <p className="text-[10px] text-muted-foreground">Prazo: {c.dataBr}</p>
                   </div>
-                  <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", estilo.badgeBg)}>
-                    {estilo.rotulo}
-                  </span>
+                  <MenuAcoesCompromisso
+                    c={c}
+                    onEditar={() => abrirDocumento(c)}
+                    onDuplicar={() => duplicarDocumento(c)}
+                    onMudarData={(novaData) => mudarDataDocumento(c, novaData)}
+                    onExcluir={() => setItemParaExcluir(c)}
+                  />
                 </div>
               );
             })}
@@ -819,15 +1124,40 @@ export default function Inbox() {
                 if (ocultarNoMobile) return null;
 
                 const itensDoDia = todosCompromissos.filter((c) => c.dataIso === diaIso);
+                const estaSobHover = diaSobHover === diaIso;
 
                 return (
                   <div
                     key={diaIso}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (diaSobHover !== diaIso) {
+                        setDiaSobHover(diaIso);
+                      }
+                    }}
+                    onDragLeave={(e) => {
+                      if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                      if (diaSobHover === diaIso) {
+                        setDiaSobHover(null);
+                      }
+                    }}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      setDiaSobHover(null);
+                      const itemId = e.dataTransfer.getData("text/plain");
+                      const item = todosCompromissos.find((x) => x.id === itemId) || itemArrastando;
+                      setItemArrastando(null);
+                      if (item && item.dataIso !== diaIso) {
+                        await mudarDataDocumento(item, diaIso);
+                      }
+                    }}
                     className={cn(
                       "flex flex-col rounded-2xl border transition-all duration-150 overflow-hidden min-h-[260px]",
                       ehHoje
                         ? "bg-card border-primary/50 shadow-md ring-1 ring-primary/20"
-                        : "bg-card/70 border-border/70"
+                        : "bg-card/70 border-border/70",
+                      estaSobHover && "ring-2 ring-primary border-primary bg-primary/5 shadow-md"
                     )}
                   >
                     {/* Topo do Dia */}
@@ -868,15 +1198,26 @@ export default function Inbox() {
                           return (
                             <div
                               key={c.id}
+                              draggable={true}
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData("text/plain", c.id);
+                                e.dataTransfer.effectAllowed = "move";
+                                setItemArrastando(c);
+                              }}
+                              onDragEnd={() => {
+                                setItemArrastando(null);
+                                setDiaSobHover(null);
+                              }}
                               onClick={() => abrirDocumento(c)}
                               className={cn(
-                                "group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 shadow-2xs text-xs",
+                                "group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 shadow-2xs text-xs select-none",
                                 estilo.bg,
                                 estilo.border,
-                                c.concluido && "opacity-60 hover:opacity-100"
+                                c.concluido && "opacity-60 hover:opacity-100",
+                                itemArrastando?.id === c.id && "opacity-30 scale-95 ring-2 ring-primary border-primary"
                               )}
                             >
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <div className="flex items-center gap-2 min-w-0 flex-1 cursor-grab active:cursor-grabbing">
                                 {c.tipo === "tarefa" ? (
                                   <button
                                     type="button"
@@ -912,12 +1253,21 @@ export default function Inbox() {
                                 </div>
                               </div>
 
-                              <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded shrink-0", estilo.badgeBg)}>
-                                {estilo.rotulo}
-                              </span>
+                              <MenuAcoesCompromisso
+                                c={c}
+                                onEditar={() => abrirDocumento(c)}
+                                onDuplicar={() => duplicarDocumento(c)}
+                                onMudarData={(novaData) => mudarDataDocumento(c, novaData)}
+                                onExcluir={() => setItemParaExcluir(c)}
+                              />
                             </div>
                           );
                         })
+                      )}
+                      {estaSobHover && (
+                        <div className="rounded-xl border-2 border-dashed border-primary/50 bg-primary/10 p-2 text-center text-[11px] font-semibold text-primary animate-pulse select-none">
+                          Solte aqui para mover para {diaNome}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -937,15 +1287,40 @@ export default function Inbox() {
                 if (ocultarNoMobile) return null;
 
                 const itensDoDia = todosCompromissos.filter((c) => c.dataIso === diaIso);
+                const estaSobHover = diaSobHover === diaIso;
 
                 return (
                   <div
                     key={diaIso}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (diaSobHover !== diaIso) {
+                        setDiaSobHover(diaIso);
+                      }
+                    }}
+                    onDragLeave={(e) => {
+                      if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                      if (diaSobHover === diaIso) {
+                        setDiaSobHover(null);
+                      }
+                    }}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      setDiaSobHover(null);
+                      const itemId = e.dataTransfer.getData("text/plain");
+                      const item = todosCompromissos.find((x) => x.id === itemId) || itemArrastando;
+                      setItemArrastando(null);
+                      if (item && item.dataIso !== diaIso) {
+                        await mudarDataDocumento(item, diaIso);
+                      }
+                    }}
                     className={cn(
                       "flex flex-col rounded-2xl border transition-all duration-150 overflow-hidden min-h-[260px]",
                       ehHoje
                         ? "bg-card border-primary/50 shadow-md ring-1 ring-primary/20"
-                        : "bg-card/70 border-border/70"
+                        : "bg-card/70 border-border/70",
+                      estaSobHover && "ring-2 ring-primary border-primary bg-primary/5 shadow-md"
                     )}
                   >
                     {/* Topo do Dia */}
@@ -986,15 +1361,26 @@ export default function Inbox() {
                           return (
                             <div
                               key={c.id}
+                              draggable={true}
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData("text/plain", c.id);
+                                e.dataTransfer.effectAllowed = "move";
+                                setItemArrastando(c);
+                              }}
+                              onDragEnd={() => {
+                                setItemArrastando(null);
+                                setDiaSobHover(null);
+                              }}
                               onClick={() => abrirDocumento(c)}
                               className={cn(
-                                "group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 shadow-2xs text-xs",
+                                "group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 shadow-2xs text-xs select-none",
                                 estilo.bg,
                                 estilo.border,
-                                c.concluido && "opacity-60 hover:opacity-100"
+                                c.concluido && "opacity-60 hover:opacity-100",
+                                itemArrastando?.id === c.id && "opacity-30 scale-95 ring-2 ring-primary border-primary"
                               )}
                             >
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <div className="flex items-center gap-2 min-w-0 flex-1 cursor-grab active:cursor-grabbing">
                                 {c.tipo === "tarefa" ? (
                                   <button
                                     type="button"
@@ -1030,12 +1416,21 @@ export default function Inbox() {
                                 </div>
                               </div>
 
-                              <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded shrink-0", estilo.badgeBg)}>
-                                {estilo.rotulo}
-                              </span>
+                              <MenuAcoesCompromisso
+                                c={c}
+                                onEditar={() => abrirDocumento(c)}
+                                onDuplicar={() => duplicarDocumento(c)}
+                                onMudarData={(novaData) => mudarDataDocumento(c, novaData)}
+                                onExcluir={() => setItemParaExcluir(c)}
+                              />
                             </div>
                           );
                         })
+                      )}
+                      {estaSobHover && (
+                        <div className="rounded-xl border-2 border-dashed border-primary/50 bg-primary/10 p-2 text-center text-[11px] font-semibold text-primary animate-pulse select-none">
+                          Solte aqui para mover para {diaNome}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1246,6 +1641,23 @@ export default function Inbox() {
           aoFechar={() => setItemAberto(null)}
         />
       )}
+
+      {/* Modal de Confirmação de Exclusão de Documento */}
+      <ModalConfirmacao
+        aberto={Boolean(itemParaExcluir)}
+        aoCancelar={() => setItemParaExcluir(null)}
+        aoConfirmar={async () => {
+          if (itemParaExcluir) {
+            const item = itemParaExcluir;
+            setItemParaExcluir(null);
+            await excluirDocumento(item);
+          }
+        }}
+        titulo="Excluir documento"
+        descricao={`Tem certeza que deseja excluir "${itemParaExcluir?.titulo}"? Esta ação removerá o arquivo permanentemente.`}
+        textoConfirmar="Excluir"
+        varianteConfirmar="perigo"
+      />
     </div>
   );
 }
