@@ -540,7 +540,7 @@ export default function Inbox() {
   };
 
   const hoje = new Date();
-  const [diaSelecionadoMobile, setDiaSelecionadoMobile] = useState<string | "todos">(() => format(new Date(), "yyyy-MM-dd"));
+  const [diaSelecionadoMobile, setDiaSelecionadoMobile] = useState<string | "todos">("todos");
 
   // Dividindo os dias em dias úteis (Seg-Qui) e fim da semana (Sex-Dom) para grade ampla balanceada
   const diasLinha1 = diasDaSemana.slice(0, 4); // Seg, Ter, Qua, Qui
@@ -1043,7 +1043,12 @@ export default function Inbox() {
               })}
 
               {/* 4ª Coluna da Linha 2: Resumo Rápido da Semana */}
-              <div className="flex flex-col rounded-2xl border border-dashed border-border/80 bg-secondary/10 p-4 justify-between min-h-[260px]">
+              <div
+                className={cn(
+                  "flex flex-col rounded-2xl border border-dashed border-border/80 bg-secondary/10 p-4 justify-between min-h-[260px]",
+                  diaSelecionadoMobile !== "todos" && "hidden sm:flex"
+                )}
+              >
                 <div className="space-y-2">
                   <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <Sparkles size={13} className="text-primary" />
