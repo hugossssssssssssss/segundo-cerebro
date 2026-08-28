@@ -95,7 +95,7 @@ export function Rodape() {
     <>
       <footer
         data-testid="rodape-klaus"
-        className="mt-32 sm:mt-40 w-[calc(100%+1.75rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] -mx-3.5 sm:-mx-6 lg:-mx-8 -mb-24 sm:-mb-8 bg-[#e9e9ed] dark:bg-[#141417] border-t-2 border-zinc-300 dark:border-zinc-800 pt-12 pb-16 text-zinc-900 dark:text-zinc-100 select-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)]"
+        className="mt-60 sm:mt-80 lg:mt-96 w-[calc(100%+1.75rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] -mx-3.5 sm:-mx-6 lg:-mx-8 -mb-24 sm:-mb-8 bg-[#f5f5f7] dark:bg-[#18181b] border-t border-zinc-200 dark:border-zinc-800 pt-14 pb-18 text-zinc-900 dark:text-zinc-100 select-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-8">
           {/* Grade de Informações (Bloco sólido, tipografia limpa em preto de alto contraste) */}
@@ -105,7 +105,7 @@ export function Rodape() {
               <div className="flex items-center gap-2">
                 <LogoKlaus tamanho={24} />
                 <span className="text-base font-black tracking-tight text-black dark:text-white">Klaus</span>
-                <span className="rounded-md bg-zinc-300/90 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-mono font-bold text-black dark:text-zinc-200 border border-zinc-400/30">
+                <span className="rounded-md bg-zinc-200/90 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-mono font-bold text-black dark:text-zinc-200 border border-zinc-300/40">
                   v{versao}
                 </span>
               </div>
@@ -300,7 +300,7 @@ export function Rodape() {
           </div>
 
           {/* Linha Inferior com Frase Inspiradora, Assinatura e Voltar ao Topo */}
-          <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-zinc-300 dark:border-zinc-800 pt-6 sm:flex-row text-xs text-zinc-700 dark:text-zinc-300">
+          <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-zinc-200 dark:border-zinc-800 pt-6 sm:flex-row text-xs text-zinc-700 dark:text-zinc-300">
             <p className="italic text-center sm:text-left font-medium">
               "{frase}"
             </p>
