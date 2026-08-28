@@ -56,6 +56,7 @@ import {
   executarRegrasAoMudarEtapa,
 } from "@/lib/automacoesProcesso";
 import type { Processo, CardProcesso, EtapaProcesso, RegraAutomacao, ComentarioCard } from "@/lib/tipos";
+import { propagarRenomeacaoId } from "@/lib/links";
 import { toast } from "@/lib/toast";
 
 import { Button } from "@/components/ui/button";
@@ -335,6 +336,13 @@ export default function Processos() {
       });
 
       const sha = await salvarTexto(procAtualizado.caminho, texto, procAtualizado.sha || undefined);
+      
+      // Se o ID do processo mudou em relação ao anterior, propaga para todos os cartões vinculados
+      if (processoAtivo?.id && procAtualizado.id && processoAtivo.id !== procAtualizado.id) {
+        const todos = await carregarRepo(cfg);
+        await propagarRenomeacaoId(cfg, todos, processoAtivo.id, procAtualizado.id);
+      }
+
       setProcessos((prev) => prev.map((p) => (p.id === procAtualizado.id ? { ...procAtualizado, sha } : p)));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

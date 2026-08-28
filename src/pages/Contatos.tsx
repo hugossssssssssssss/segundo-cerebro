@@ -43,6 +43,8 @@ import {
 } from "@/lib/contatos";
 import { Botao, Cartao, Selo, Modal, Carregando, ModalConfirmacao, Vazio } from "@/components/ui";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
+import { propagarRenomeacaoId } from "@/lib/links";
+import { carregarRepo } from "@/lib/repo";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
@@ -341,6 +343,13 @@ export default function Contatos() {
     // 2. GRAVAÇÃO NO GITHUB
     try {
       const novaSha = await salvarTexto(caminho, texto, c.sha || undefined);
+
+      // Se o ID do contato mudou, propaga para subordinados que tenham este contato como pai_id
+      const idOriginal = typeof c.original?.bruto?.id === "string" ? c.original.bruto.id : typeof c.original?.titulo === "string" ? c.original.titulo : "";
+      if (idOriginal && c.id && idOriginal !== c.id) {
+        const todos = await carregarRepo(cfg);
+        await propagarRenomeacaoId(cfg, todos, idOriginal, c.id);
+      }
 
       setAberta((atual) => {
         if (!atual || (atual.caminho !== caminho && atual.caminho !== "")) return atual;

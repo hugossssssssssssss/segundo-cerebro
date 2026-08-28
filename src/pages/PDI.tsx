@@ -19,6 +19,8 @@ import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
 import { comoMeta, comoEntrega, metaParaArquivo, entregaParaArquivo } from "@/lib/entidades";
+import { propagarRenomeacaoId } from "@/lib/links";
+import { carregarRepo } from "@/lib/repo";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import {
@@ -340,6 +342,13 @@ export default function PDI() {
         nomeLivreSemData(PASTA_METAS, metaParaSalvar.titulo, metas.map((x) => x.caminho));
       const novaSha = await salvarTexto(caminho, texto, metaParaSalvar.sha || undefined);
       const salvaMeta: Meta = { ...metaParaSalvar, caminho, sha: novaSha };
+
+      // Se o ID da meta mudou, propaga para todas as entregas vinculadas
+      if (origMeta?.id && salvaMeta.id && origMeta.id !== salvaMeta.id) {
+        const todos = await carregarRepo(cfg);
+        await propagarRenomeacaoId(cfg, todos, origMeta.id, salvaMeta.id);
+      }
+
       setEditandoMeta((atual) => {
         if (atual && (atual.caminho === salvaMeta.caminho || !atual.caminho)) return salvaMeta;
         return atual;

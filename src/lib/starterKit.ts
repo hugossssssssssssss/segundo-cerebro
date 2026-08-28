@@ -19,7 +19,7 @@ export interface ItemKitInicial {
 }
 
 export function gerarItensKitInicial(nomeUsuario?: string): ItemKitInicial[] {
-  const hoje = new Date().toISOString().slice(0, 10);
+  const agora = new Date().toISOString();
   const autor = nomeUsuario?.trim() || "Você";
 
   const notaBemVindo: ItemKitInicial = {
@@ -27,10 +27,11 @@ export function gerarItensKitInicial(nomeUsuario?: string): ItemKitInicial[] {
     mensagemCommit: "docs: nota de boas-vindas inicial",
     conteudo: escreverMarkdown({
       dados: {
+        id: "bem-vindo-ao-klaus",
         tipo: "nota",
         titulo: "Bem-vindo ao Klaus",
-        criado: hoje,
-        atualizado: hoje,
+        criado_em: agora,
+        atualizado_em: agora,
         criado_por: autor,
         tags: ["klaus", "tutorial", "primeiros-passos"],
       },
@@ -68,12 +69,15 @@ O **Klaus** é o seu ambiente de trabalho criativo e produtivo. Aqui, suas notas
     mensagemCommit: "tarefa: primeiros passos no Klaus",
     conteudo: escreverMarkdown({
       dados: {
+        id: "primeiros-passos-no-seu-segundo-cerebro",
         tipo: "tarefa",
         titulo: "Primeiros passos no seu Segundo Cérebro",
         status: "a-fazer",
         prioridade: "media",
-        criado: hoje,
-        atualizado: hoje,
+        pomodoros_estimados: 2,
+        pomodoros_realizados: 0,
+        criado_em: agora,
+        atualizado_em: agora,
         criado_por: autor,
         tags: ["klaus", "onboarding", "foco"],
       },
@@ -94,11 +98,13 @@ O **Klaus** é o seu ambiente de trabalho criativo e produtivo. Aqui, suas notas
     mensagemCommit: "pdi: meta de organização pessoal",
     conteudo: escreverMarkdown({
       dados: {
+        id: "construir-meu-segundo-cerebro",
         tipo: "meta",
         titulo: "Construir meu Segundo Cérebro",
         status: "em-andamento",
-        criado: hoje,
-        atualizado: hoje,
+        indicador: "Cofre 100% configurado e rotina diária estabelecida",
+        criado_em: agora,
+        atualizado_em: agora,
         criado_por: autor,
         tags: ["pdi", "produtividade", "design"],
       },

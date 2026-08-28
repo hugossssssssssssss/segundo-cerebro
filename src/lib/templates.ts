@@ -49,9 +49,10 @@ export const MODELOS_PADRAO: TemplateItem[] = [
     categoria: "design",
     descricao: "Estrutura completa para alinhamento de projeto de marca/design com cliente",
     frontmatter: {
+      id: "briefing-design",
       tipo: "nota",
+      subtipo: "briefing",
       tags: ["briefing", "design", "cliente"],
-      status: "em-andamento",
     },
     corpoPadrao: `## Objetivo do Projeto
 Descreva o que o cliente precisa alcançar com este projeto.
@@ -77,7 +78,9 @@ Mencione referências ou salve em @referencias.
     categoria: "reuniao",
     descricao: "Modelo para organizar decisões, próximos passos e contexto de reuniões",
     frontmatter: {
+      id: "ata-reuniao",
       tipo: "nota",
+      subtipo: "reuniao",
       tags: ["reuniao", "decisoes"],
     },
     corpoPadrao: `## Participantes
@@ -99,8 +102,12 @@ Mencione referências ou salve em @referencias.
     categoria: "tarefa",
     descricao: "Passos de verificação de qualidade antes do envio final ao cliente",
     frontmatter: {
+      id: "checklist-entrega",
       tipo: "tarefa",
       status: "a-fazer",
+      prioridade: "alta",
+      pomodoros_estimados: 1,
+      pomodoros_realizados: 0,
       tags: ["checklist", "entrega", "qualidade"],
     },
     corpoPadrao: `- [ ] Revisar exportação em vetor (SVG/EPS/PDF)
