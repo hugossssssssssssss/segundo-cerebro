@@ -9,7 +9,7 @@
 
 import { type ItemRepo, ehArquivoInternoOuSistema, atualizarCacheLocal, invalidarCache } from "./repo";
 import { gravar } from "./github";
-import { tituloProvavel, lerMarkdown } from "./markdown";
+import { tituloProvavel, lerMarkdown, escreverMarkdown } from "./markdown";
 import { tipoDoItem, type TipoItem } from "./busca";
 import { notificarOutrasAbas } from "./syncChannel";
 import { dispararAtualizacaoAcervo } from "./eventos";
@@ -460,3 +460,76 @@ export async function propagarRenomeacao(
 
   return { atualizados: sucessoContagem, falhas };
 }
+
+/**
+ * Propaga a alteração de um identificador estrutural (slug/id) em metas, pai_id e processo_id.
+ */
+export async function propagarRenomeacaoId(
+  cfg: any,
+  todos: ItemRepo[],
+  idAntigo: string,
+  idNovo: string,
+): Promise<ResultadoRenomeacao> {
+  const vazio: ResultadoRenomeacao = { atualizados: 0, falhas: [] };
+  if (!idAntigo || !idNovo || idAntigo.trim() === idNovo.trim()) return vazio;
+
+  const antigoLimpo = idAntigo.trim();
+  const novoLimpo = idNovo.trim();
+
+  let sucessoContagem = 0;
+  const falhas: string[] = [];
+
+  for (const item of todos) {
+    if (!item.texto) continue;
+    const doc = lerMarkdown(item.texto);
+    const d = doc.dados;
+    let mudou = false;
+
+    // 1. Atualiza metas em entregas
+    if (Array.isArray(d.metas) && d.metas.includes(antigoLimpo)) {
+      d.metas = d.metas.map((m: string) => (m === antigoLimpo ? novoLimpo : m));
+      mudou = true;
+    }
+
+    // 2. Atualiza pai_id em contatos
+    if (d.pai_id === antigoLimpo || d.pai === antigoLimpo) {
+      d.pai_id = novoLimpo;
+      if (d.pai) delete d.pai;
+      mudou = true;
+    }
+
+    // 3. Atualiza processo_id em cartões
+    if (d.processo_id === antigoLimpo || d.processoId === antigoLimpo) {
+      d.processo_id = novoLimpo;
+      if (d.processoId) delete d.processoId;
+      mudou = true;
+    }
+
+    if (mudou) {
+      const textoNovo = escreverMarkdown({ dados: d, corpo: doc.corpo });
+      try {
+        const novoSha = await gravar(
+          cfg,
+          item.caminho,
+          textoNovo,
+          item.sha,
+          `refatorar: propagar renomeação do id ${antigoLimpo} para ${novoLimpo}`,
+        );
+        const docAtualizado = lerMarkdown(textoNovo);
+        atualizarCacheLocal(item.caminho, textoNovo, docAtualizado, novoSha);
+        sucessoContagem++;
+      } catch {
+        falhas.push(item.caminho);
+      }
+    }
+  }
+
+  if (sucessoContagem > 0) {
+    invalidarCache();
+    dispararAtualizacaoAcervo();
+    notificarOutrasAbas();
+  }
+
+  return { atualizados: sucessoContagem, falhas };
+}
+

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp, Settings as SettingsIcon, Terminal } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp, Settings as SettingsIcon, Terminal, RefreshCw, Layers } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
 import { carregarRepo } from "@/lib/repo";
@@ -11,6 +11,7 @@ import { ModalPersonalizarMenu } from "@/components/ModalPersonalizarMenu";
 import { ModalTourGuiado } from "@/components/ModalTourGuiado";
 import { nomeLivre } from "@/lib/markdown";
 import { PASTAS } from "@/lib/tipos";
+import { analisarAcervoParaMigracao, executarMigracaoEmLote, type RelatorioAnaliseAcervo } from "@/lib/migracaoLote";
 
 export default function Configuracoes() {
   const [cfg, setCfg] = useState<Settings>(lerConfig);
@@ -26,6 +27,64 @@ export default function Configuracoes() {
   const [exportando, setExportando] = useState(false);
   const [importando, setImportando] = useState(false);
   const [msgBackup, setMsgBackup] = useState("");
+
+  // Estados da Padronização Global do Acervo
+  const [analisandoAcervo, setAnalisandoAcervo] = useState(false);
+  const [migrandoAcervo, setMigrandoAcervo] = useState(false);
+  const [relatorioMigracao, setRelatorioMigracao] = useState<RelatorioAnaliseAcervo | null>(null);
+  const [progressoMigracao, setProgressoMigracao] = useState<{ atual: number; total: number; caminho: string } | null>(null);
+  const [msgMigracao, setMsgMigracao] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
+
+  const analisarPadronizacao = async () => {
+    setAnalisandoAcervo(true);
+    setMsgMigracao(null);
+    try {
+      const itens = await carregarRepo(cfg);
+      const rel = analisarAcervoParaMigracao(itens);
+      setRelatorioMigracao(rel);
+      if (rel.arquivosPendentes === 0) {
+        setMsgMigracao({ tom: "sucesso", texto: `Perfeito! Todos os ${rel.totalArquivos} arquivos do seu repositório já estão padronizados.` });
+      }
+    } catch (e: any) {
+      setMsgMigracao({ tom: "erro", texto: `Erro ao analisar repositório: ${e?.message || e}` });
+    } finally {
+      setAnalisandoAcervo(false);
+    }
+  };
+
+  const executarPadronizacao = async () => {
+    if (!relatorioMigracao || relatorioMigracao.itensPendentes.length === 0) return;
+    setMigrandoAcervo(true);
+    setMsgMigracao(null);
+    try {
+      const res = await executarMigracaoEmLote(
+        cfg,
+        relatorioMigracao.itensPendentes,
+        (atual, total, caminho) => setProgressoMigracao({ atual, total, caminho }),
+      );
+
+      if (res.falhas.length === 0) {
+        setMsgMigracao({
+          tom: "sucesso",
+          texto: `Sucesso! ${res.sucessos} arquivo(s) foram padronizados no GitHub com commit semântico.`,
+        });
+      } else {
+        setMsgMigracao({
+          tom: "erro",
+          texto: `${res.sucessos} padronizados, mas ${res.falhas.length} falharam ao gravar.`,
+        });
+      }
+
+      // Re-analisa para atualizar os números
+      const itensNovos = await carregarRepo(cfg);
+      setRelatorioMigracao(analisarAcervoParaMigracao(itensNovos));
+    } catch (e: any) {
+      setMsgMigracao({ tom: "erro", texto: `Erro durante a padronização: ${e?.message || e}` });
+    } finally {
+      setMigrandoAcervo(false);
+      setProgressoMigracao(null);
+    }
+  };
 
   const exportarBackupJSON = async () => {
     setExportando(true);
@@ -486,6 +545,103 @@ export default function Configuracoes() {
           </button>
         </Cartao>
       )}
+
+      {/* Seção de Padronização Global do Acervo */}
+      <Cartao className="p-5 space-y-4">
+        <div>
+          <h2 className="font-medium text-foreground flex items-center gap-2">
+            <Layers size={18} className="text-amber-500" />
+            Padronização Global do Acervo (snake_case)
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Varra todo o repositório no GitHub para identificar e converter notas, tarefas, metas e processos com convenções antigas para o padrão global unificado em 1 clique.
+          </p>
+        </div>
+
+        {msgMigracao && (
+          <Aviso tom={msgMigracao.tom}>{msgMigracao.texto}</Aviso>
+        )}
+
+        {progressoMigracao && (
+          <div className="space-y-2 rounded-xl bg-muted/40 p-3 border border-border">
+            <div className="flex items-center justify-between text-xs font-semibold">
+              <span className="text-foreground">Padronizando arquivos no GitHub...</span>
+              <span className="text-primary">{progressoMigracao.atual} de {progressoMigracao.total}</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-200"
+                style={{ width: `${(progressoMigracao.atual / progressoMigracao.total) * 100}%` }}
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground truncate font-mono">
+              Gravando: {progressoMigracao.caminho}
+            </p>
+          </div>
+        )}
+
+        {relatorioMigracao && !progressoMigracao && (
+          <div className="rounded-xl border border-border/80 bg-card/60 p-4 space-y-3">
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="p-2.5 rounded-lg bg-muted/50">
+                <span className="text-xs text-muted-foreground font-medium block">Total Analisado</span>
+                <span className="text-lg font-bold text-foreground">{relatorioMigracao.totalArquivos}</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <span className="text-xs font-medium block">Padronizados</span>
+                <span className="text-lg font-bold">{relatorioMigracao.arquivosPadronizados}</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <span className="text-xs font-medium block">Pendentes</span>
+                <span className="text-lg font-bold">{relatorioMigracao.arquivosPendentes}</span>
+              </div>
+            </div>
+
+            {relatorioMigracao.arquivosPendentes > 0 && (
+              <div className="space-y-2 pt-1">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                  Exemplos de arquivos a atualizar ({relatorioMigracao.arquivosPendentes}):
+                </span>
+                <div className="max-h-32 overflow-y-auto space-y-1 rounded-lg border border-border bg-background p-2 text-xs font-mono text-muted-foreground">
+                  {relatorioMigracao.itensPendentes.slice(0, 10).map((item) => (
+                    <div key={item.caminho} className="truncate">
+                      • {item.caminho} ({item.tipo})
+                    </div>
+                  ))}
+                  {relatorioMigracao.itensPendentes.length > 10 && (
+                    <div className="text-[11px] text-muted-foreground/80 italic">
+                      + outros {relatorioMigracao.itensPendentes.length - 10} arquivo(s)
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <Botao
+            variante="neutro"
+            onClick={analisarPadronizacao}
+            disabled={analisandoAcervo || migrandoAcervo}
+          >
+            <RefreshCw size={16} className={analisandoAcervo ? "animate-spin" : ""} />
+            {analisandoAcervo ? "Analisando acervo..." : "Analisar Conformidade"}
+          </Botao>
+
+          {relatorioMigracao && relatorioMigracao.arquivosPendentes > 0 && (
+            <Botao
+              onClick={executarPadronizacao}
+              disabled={migrandoAcervo}
+            >
+              <Sparkles size={16} className="text-amber-300" />
+              {migrandoAcervo
+                ? "Padronizando..."
+                : `Padronizar ${relatorioMigracao.arquivosPendentes} arquivo(s)`}
+            </Botao>
+          )}
+        </div>
+      </Cartao>
 
       {/* Seção de Backup & Importação de Arquivos */}
       <Cartao className="p-5 space-y-4">
