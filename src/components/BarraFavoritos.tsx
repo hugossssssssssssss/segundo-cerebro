@@ -27,6 +27,7 @@ import {
   ExternalLink,
   AppWindow,
   Pencil,
+  Palette,
   Trash2,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -52,10 +53,23 @@ import {
   type FavoritoItem,
 } from "@/lib/favoritos";
 import { cn } from "@/lib/utils";
+import {
+  ModalSelecionarIconeFavorito,
+  RenderizadorIconeItem,
+} from "@/components/ModalSelecionarIconeFavorito";
+import { sugerirIconePorUrl } from "@/lib/catalogoIconesMarcas";
 
 /* ------------------------------------------------------------------ Ícone */
 
-function FaviconIcone({ url, nome }: { url: string; nome?: string }) {
+function FaviconIcone({
+  url,
+  nome,
+  iconeCustomizado,
+}: {
+  url: string;
+  nome?: string;
+  iconeCustomizado?: string;
+}) {
   const [erro, setErro] = useState(false);
   const src = useMemo(() => obterFaviconGoogle(url), [url]);
 
@@ -63,6 +77,29 @@ function FaviconIcone({ url, nome }: { url: string; nome?: string }) {
   useEffect(() => {
     setErro(false);
   }, [src]);
+
+  // Se o usuário selecionou um ícone customizado explicitamente
+  if (iconeCustomizado) {
+    return (
+      <RenderizadorIconeItem
+        iconeId={iconeCustomizado}
+        tamanho={14}
+        className="w-3.5 h-3.5"
+      />
+    );
+  }
+
+  // Sugestão automática e inteligente para serviços famosos (WhatsApp, Gmail, Drive, etc.)
+  const iconeSugerido = sugerirIconePorUrl(url);
+  if (iconeSugerido && !erro) {
+    return (
+      <RenderizadorIconeItem
+        iconeId={iconeSugerido}
+        tamanho={14}
+        className="w-3.5 h-3.5"
+      />
+    );
+  }
 
   if (erro || !src) {
     return <Globe size={14} className="shrink-0 text-muted-foreground/80" />;
@@ -150,7 +187,11 @@ const ItemFavorito = memo(function ItemFavorito({
     >
       <Tooltip conteudo={textoTooltip} posicao="bottom">
         <div className="flex items-center gap-1.5 min-w-0">
-          <FaviconIcone url={item.url} nome={item.nome} />
+          <FaviconIcone
+            url={item.url}
+            nome={item.nome}
+            iconeCustomizado={item.iconeCustomizado}
+          />
           {item.nome && (
             <span className="truncate max-w-[120px] text-xs font-normal tracking-tight">
               {item.nome}
@@ -176,6 +217,10 @@ export function BarraFavoritos({ className }: { className?: string }) {
   const [formNome, setFormNome] = useState("");
   const [formErro, setFormErro] = useState("");
 
+  // Modal de Seleção de Ícone
+  const [modalIconeAberto, setModalIconeAberto] = useState(false);
+  const [itemIcone, setItemIcone] = useState<FavoritoItem | null>(null);
+
   // Menu de Contexto (botão direito)
   const [menuContexto, setMenuContexto] = useState<{
     aberto: boolean;
@@ -183,6 +228,14 @@ export function BarraFavoritos({ className }: { className?: string }) {
     y: number;
     item: FavoritoItem | null;
   }>({ aberto: false, x: 0, y: 0, item: null });
+
+  const lidarSalvarIconeCustomizado = (id: string, iconeCustomizado?: string) => {
+    const novaLista = favoritos.map((f) =>
+      f.id === id ? { ...f, iconeCustomizado } : f,
+    );
+    setFavoritos(novaLista);
+    agendarPersistenciaRemota(cfg, novaLista, 300);
+  };
 
   // Popover de Overflow (>>)
   const [overflowAberto, setOverflowAberto] = useState(false);
@@ -511,7 +564,11 @@ export function BarraFavoritos({ className }: { className?: string }) {
                   }}
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer group"
                 >
-                  <FaviconIcone url={it.url} nome={it.nome} />
+                  <FaviconIcone
+                    url={it.url}
+                    nome={it.nome}
+                    iconeCustomizado={it.iconeCustomizado}
+                  />
                   <span className="truncate flex-1" title={it.nome || it.url}>
                     {it.nome || extrairDominio(it.url) || it.url}
                   </span>
@@ -562,6 +619,20 @@ export function BarraFavoritos({ className }: { className?: string }) {
           </button>
 
           <div className="h-px bg-border/40 my-1" />
+
+          <button
+            type="button"
+            onClick={() => {
+              const itemParaIcone = menuContexto.item!;
+              setMenuContexto((prev) => ({ ...prev, aberto: false }));
+              setItemIcone(itemParaIcone);
+              setModalIconeAberto(true);
+            }}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
+          >
+            <Palette size={13} className="shrink-0 opacity-70 text-primary" />
+            <span>Alterar ícone</span>
+          </button>
 
           <button
             type="button"
@@ -666,6 +737,17 @@ export function BarraFavoritos({ className }: { className?: string }) {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Escolha de Ícone de Marca ou Genérico */}
+      <ModalSelecionarIconeFavorito
+        aberto={modalIconeAberto}
+        aoFechar={() => {
+          setModalIconeAberto(false);
+          setItemIcone(null);
+        }}
+        favorito={itemIcone}
+        aoSalvarIcone={lidarSalvarIconeCustomizado}
+      />
     </div>
   );
 }

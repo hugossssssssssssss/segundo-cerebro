@@ -92,4 +92,32 @@ describe("BarraFavoritos", () => {
     const salvo = JSON.parse(localStorage.getItem(CHAVE_STORAGE_FAVORITOS) || "[]");
     expect(salvo.length).toBe(0);
   });
+
+  it("abre menu de contexto, clica em alterar ícone e seleciona ícone oficial", async () => {
+    const itens: FavoritoItem[] = [
+      { id: "fav-icon", url: "https://minhaempresa.com", nome: "Minha Empresa" },
+    ];
+    salvarFavoritosLocal(itens);
+
+    render(<BarraFavoritos />);
+
+    const item = await screen.findByText("Minha Empresa");
+    fireEvent.contextMenu(item);
+
+    const botaoAlterarIcone = screen.getByText("Alterar ícone");
+    expect(botaoAlterarIcone).toBeDefined();
+    fireEvent.click(botaoAlterarIcone);
+
+    // Modal de ícones aberto
+    expect(screen.getByText("Alterar Ícone do Favorito")).toBeDefined();
+
+    // Clica no ícone do WhatsApp na grade
+    const iconeWhatsApp = screen.getByTitle("WhatsApp");
+    fireEvent.click(iconeWhatsApp);
+
+    await waitFor(() => {
+      const salvo = JSON.parse(localStorage.getItem(CHAVE_STORAGE_FAVORITOS) || "[]");
+      expect(salvo[0].iconeCustomizado).toBe("si:whatsapp");
+    });
+  });
 });

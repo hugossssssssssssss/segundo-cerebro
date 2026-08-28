@@ -123,6 +123,14 @@ export const TODOS_CREDITOS_OPEN_SOURCE: CreditoOpenSource[] = [
     github: "https://github.com/lucaong/minisearch",
     licenca: "MIT",
   },
+  {
+    id: "simple-icons",
+    nome: "Simple Icons",
+    autor: "Simple Icons Community",
+    descricao: "Coleção abrangente de ícones e logotipos SVG oficiais de marcas, empresas e ferramentas de tecnologia",
+    github: "https://github.com/simple-icons/simple-icons",
+    licenca: "CC0-1.0",
+  },
 ];
 
 /**

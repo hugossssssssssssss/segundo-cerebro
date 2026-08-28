@@ -6,6 +6,7 @@ export interface FavoritoItem {
   url: string;
   nome?: string;
   criadoEm?: string;
+  iconeCustomizado?: string;
 }
 
 export const CAMINHO_FAVORITOS = ".klaus/favoritos.json";
