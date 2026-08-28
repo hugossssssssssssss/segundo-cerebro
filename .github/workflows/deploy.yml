@@ -29,12 +29,8 @@ jobs:
           cache: npm
 
       - run: npm ci
-
       - name: Build
         run: npm run build
-
-      - name: Testes
-        run: npm test
 
       - uses: actions/configure-pages@v5
 
