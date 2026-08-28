@@ -504,8 +504,8 @@ export function JogoTermo() {
               tipoJogo === "termo"
                 ? "flex justify-center max-w-xs sm:max-w-sm"
                 : tipoJogo === "dueto"
-                ? "grid grid-cols-2 gap-1.5 sm:gap-4 max-w-2xl"
-                : "grid grid-cols-2 gap-1 sm:gap-3 max-w-2xl"
+                ? "grid grid-cols-2 gap-1.5 sm:gap-4 max-w-3xl lg:max-w-4xl"
+                : "grid grid-cols-2 gap-1 sm:gap-3 max-w-3xl lg:max-w-4xl"
             }`}
           >
             {jogoAtivo.palavras.map((palavra, tIdx) => {

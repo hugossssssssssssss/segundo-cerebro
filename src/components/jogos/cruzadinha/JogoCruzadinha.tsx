@@ -77,7 +77,8 @@ export function JogoCruzadinha() {
 
   // Atualiza estado ao trocar de tabuleiro
   useEffect(() => {
-    const prog = dadosStorage.progresso[tabuleiroAtivoId];
+    const storageAtual = lerDadosCruzadinhaLocal();
+    const prog = storageAtual.progresso[tabuleiroAtivoId];
     setLetrasDigitadas(prog?.letrasDigitadas || {});
     setTempoSegundos(prog?.tempoSegundos || 0);
     setJogoConcluido(prog?.concluido || false);
@@ -88,7 +89,7 @@ export function JogoCruzadinha() {
       setCelulaFoco({ linha: p1.linha, coluna: p1.coluna });
       setDirecaoAtiva("across");
     }
-  }, [tabuleiroAtivoId, tabuleiro, dadosStorage.progresso]);
+  }, [tabuleiroAtivoId, tabuleiro]);
 
   // Cronômetro de tempo
   useEffect(() => {
@@ -101,24 +102,26 @@ export function JogoCruzadinha() {
 
   // Salvar periodicamente o progresso
   useEffect(() => {
-    const novosDados: DadosCruzadinhaPersistidos = {
-      ...dadosStorage,
-      progresso: {
-        ...dadosStorage.progresso,
-        [tabuleiroAtivoId]: {
-          letrasDigitadas,
-          tempoSegundos,
-          concluido: jogoConcluido,
-          concluidoEm: jogoConcluido ? new Date().toISOString() : undefined,
+    setDadosStorage((prev) => {
+      const novosDados: DadosCruzadinhaPersistidos = {
+        ...prev,
+        progresso: {
+          ...prev.progresso,
+          [tabuleiroAtivoId]: {
+            letrasDigitadas,
+            tempoSegundos,
+            concluido: jogoConcluido,
+            concluidoEm: jogoConcluido ? new Date().toISOString() : undefined,
+          },
         },
-      },
-      totalConcluidas: Object.values({
-        ...dadosStorage.progresso,
-        [tabuleiroAtivoId]: { concluido: jogoConcluido },
-      }).filter((p: any) => p.concluido).length,
-    };
-    setDadosStorage(novosDados);
-    salvarDadosCruzadinhaLocal(novosDados);
+        totalConcluidas: Object.values({
+          ...prev.progresso,
+          [tabuleiroAtivoId]: { concluido: jogoConcluido },
+        }).filter((p: any) => p.concluido).length,
+      };
+      salvarDadosCruzadinhaLocal(novosDados);
+      return novosDados;
+    });
   }, [letrasDigitadas, tempoSegundos, jogoConcluido, tabuleiroAtivoId]);
 
   // Matriz atual do tabuleiro
@@ -424,10 +427,10 @@ export function JogoCruzadinha() {
       </div>
 
       {/* Grid Principal & Pistas */}
-      <Cartao className="p-3 sm:p-5 bg-card/85 backdrop-blur-md shadow-sm border-border/80 space-y-4">
-        <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center gap-4 lg:gap-8">
+      <Cartao className="p-3 sm:p-5 bg-card/85 backdrop-blur-md shadow-sm border-border/80 space-y-4 w-full">
+        <div className="flex flex-col lg:flex-row items-center lg:items-start justify-start gap-4 lg:gap-8 w-full">
           {/* Grade da Cruzadinha */}
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center shrink-0">
             <GradeCruzadinha
               matriz={matriz}
               celulaFoco={celulaFoco}
@@ -480,7 +483,7 @@ export function JogoCruzadinha() {
           </div>
 
           {/* Painel de Pistas Horizontais e Verticais */}
-          <div className="w-full lg:max-w-md flex-1">
+          <div className="w-full flex-1 min-w-0">
             <ListaPistasCruzadinha
               tabuleiro={tabuleiro}
               direcaoAtiva={direcaoAtiva}

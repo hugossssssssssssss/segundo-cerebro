@@ -35,7 +35,7 @@ export function GradeCruzadinha({
               return (
                 <div
                   key={`cel-block-${r}-${c}`}
-                  className="h-8 w-8 sm:h-11 sm:w-11 rounded-lg bg-zinc-800/90 dark:bg-zinc-950/80 border border-zinc-700/50 dark:border-zinc-800"
+                  className="h-8 w-8 sm:h-11 sm:w-11 xl:h-12 xl:w-12 rounded-lg bg-zinc-800/90 dark:bg-zinc-950/80 border border-zinc-700/50 dark:border-zinc-800"
                 />
               );
             }
@@ -55,7 +55,7 @@ export function GradeCruzadinha({
                 type="button"
                 onClick={() => aoClicarCelula(r, c)}
                 className={cn(
-                  "relative flex items-center justify-center h-8 w-8 sm:h-11 sm:w-11 rounded-lg border font-bold uppercase transition-all duration-150 cursor-pointer text-sm sm:text-lg select-none",
+                  "relative flex items-center justify-center h-8 w-8 sm:h-11 sm:w-11 xl:h-12 xl:w-12 rounded-lg border font-bold uppercase transition-all duration-150 cursor-pointer text-sm sm:text-lg xl:text-xl select-none",
                   // Status de Verificação
                   status === "correta"
                     ? "bg-[#3aa394]/25 border-[#3aa394] text-[#3aa394] dark:text-[#3aa394]"
