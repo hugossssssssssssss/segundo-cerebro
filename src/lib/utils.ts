@@ -216,3 +216,30 @@ export function formatarTituloAmigavel(tituloOriginal?: string, nomeArquivo?: st
   return t;
 }
 
+/**
+ * Detecta se o sistema operacional do usuário é macOS / iOS ou Windows / Linux / Android.
+ */
+export function ehMac(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return true;
+  const platform =
+    (navigator as any)?.userAgentData?.platform ||
+    navigator?.platform ||
+    navigator?.userAgent ||
+    "";
+  return /Mac|iPhone|iPod|iPad/i.test(platform);
+}
+
+/**
+ * Formata atalhos de teclado conforme o sistema operacional:
+ * No macOS/iOS: exibe formato Apple (ex: "⌘K", "⌘J", "⌘B").
+ * No Windows/Linux/outros: exibe formato Windows (ex: "Ctrl+K", "Ctrl+J", "Ctrl+B").
+ */
+export function formatarAtalho(atalho?: string): string {
+  if (!atalho) return "";
+  const mac = ehMac();
+  if (mac) {
+    return atalho.replace(/Ctrl\+/gi, "⌘").replace(/Cmd\+/gi, "⌘");
+  }
+  return atalho.replace(/⌘/g, "Ctrl+").replace(/Cmd\+/gi, "Ctrl+");
+}
+

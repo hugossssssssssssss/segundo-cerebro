@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Botao } from "./ui";
+import { formatarAtalho } from "@/lib/utils";
 
 interface ModalTourGuiadoProps {
   aberta: boolean;
@@ -131,11 +132,11 @@ const ETAPAS_TOUR: ItemTour[] = [
     descricao:
       "O Klaus foi desenhado para ser ultrarrápido com atalhos de teclado modernos e interface limpa.",
     destaques: [
-      "⌘K ou Ctrl+K: Busca Global instantânea em todo o acervo",
-      "⌘J ou Ctrl+J: Captura Rápida de pensamento em 1 segundo",
-      "⌘B ou Ctrl+B: Ocultar ou exibir a barra de navegação lateral",
+      `${formatarAtalho("⌘K")}: Busca Global instantânea em todo o acervo`,
+      `${formatarAtalho("⌘J")}: Captura Rápida de pensamento em 1 segundo`,
+      `${formatarAtalho("⌘B")}: Ocultar ou exibir a barra de navegação lateral`,
     ],
-    dicaPro: "Pressione ⌘K a qualquer momento para pular direto para qualquer nota, tarefa ou referência.",
+    dicaPro: `Pressione ${formatarAtalho("⌘K")} a qualquer momento para pular direto para qualquer nota, tarefa ou referência.`,
   },
 ];
 

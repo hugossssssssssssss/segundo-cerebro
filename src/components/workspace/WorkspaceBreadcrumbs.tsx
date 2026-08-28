@@ -1,7 +1,7 @@
 import React from "react";
 import { ChevronRight, Search, Folder } from "lucide-react";
 import { useWorkspace } from "./WorkspaceContext";
-import { formatarNomeAmigavel, formatarTituloAmigavel } from "@/lib/utils";
+import { formatarNomeAmigavel, formatarTituloAmigavel, formatarAtalho } from "@/lib/utils";
 
 interface WorkspaceBreadcrumbsProps {
   caminho?: string;
@@ -40,7 +40,7 @@ export function WorkspaceBreadcrumbs({ caminho, titulo }: WorkspaceBreadcrumbsPr
       role="button"
       tabIndex={0}
       className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent/70 cursor-pointer transition-all select-none border border-transparent hover:border-border/60 max-w-full overflow-hidden"
-      title="Clique para pesquisar ou alternar documento (⌘K)"
+      title={`Clique para pesquisar ou alternar documento (${formatarAtalho("⌘K")})`}
     >
       <Folder size={13} className="text-primary/70 shrink-0 group-hover:text-primary transition-colors" />
 
@@ -63,7 +63,7 @@ export function WorkspaceBreadcrumbs({ caminho, titulo }: WorkspaceBreadcrumbsPr
 
       <div className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground/60 group-hover:text-primary transition-colors pl-2 shrink-0">
         <Search size={12} />
-        <span className="hidden sm:inline font-mono">⌘K</span>
+        <span className="hidden sm:inline font-mono">{formatarAtalho("⌘K")}</span>
       </div>
     </div>
   );

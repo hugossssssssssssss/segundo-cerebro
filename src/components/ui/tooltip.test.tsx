@@ -26,7 +26,7 @@ describe("Tooltip (Dica Flutuante)", () => {
     const dica = screen.getByText("Dica de teste");
     expect(dica).toBeDefined();
 
-    const atalho = screen.getByText("⌘K");
+    const atalho = screen.getByText(/^(⌘K|Ctrl\+K)$/);
     expect(atalho).toBeDefined();
 
     // Mouse leave esconde a dica

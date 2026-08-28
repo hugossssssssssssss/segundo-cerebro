@@ -1,5 +1,6 @@
 import { Search, Plus, Minimize2, Sparkles } from "lucide-react";
 import { Botao } from "@/components/ui";
+import { formatarAtalho } from "@/lib/utils";
 import { useWorkspace } from "./WorkspaceContext";
 
 export function WorkspaceVazio() {
@@ -36,7 +37,7 @@ export function WorkspaceVazio() {
           className="gap-2 shadow-md"
         >
           <Search size={15} />
-          <span>Pesquisar Documentos (⌘K)</span>
+          <span>Pesquisar Documentos ({formatarAtalho("⌘K")})</span>
         </Botao>
 
         <Botao

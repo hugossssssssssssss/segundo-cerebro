@@ -7,6 +7,8 @@ import {
   correspondeBusca,
   formatarCaminhoAmigavel,
   formatarTituloAmigavel,
+  formatarAtalho,
+  ehMac,
 } from "./utils";
 import { nomeLivre, nomeDeArquivo } from "./markdown";
 import { dataDoNome } from "./pdi";
@@ -135,3 +137,23 @@ describe("formatarCaminhoAmigavel e formatarTituloAmigavel", () => {
     expect(formatarTituloAmigavel("Documento Principal")).toBe("Documento Principal");
   });
 });
+
+describe("ehMac e formatarAtalho", () => {
+  it("ehMac retorna um booleano", () => {
+    expect(typeof ehMac()).toBe("boolean");
+  });
+
+  it("formatarAtalho retorna vazio para entrada nula ou vazia", () => {
+    expect(formatarAtalho("")).toBe("");
+    expect(formatarAtalho(undefined)).toBe("");
+  });
+
+  it("formata atalhos corretamente de acordo com o ambiente", () => {
+    const res = formatarAtalho("⌘K");
+    expect(res === "⌘K" || res === "Ctrl+K").toBe(true);
+
+    const resB = formatarAtalho("⌘B");
+    expect(resB === "⌘B" || resB === "Ctrl+B").toBe(true);
+  });
+});
+

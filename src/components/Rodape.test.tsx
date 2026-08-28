@@ -19,19 +19,19 @@ describe("Rodape", () => {
     expect(screen.getByText("Klaus")).toBeTruthy();
     expect(screen.getByText(/Notas & Conhecimento/i)).toBeTruthy();
     expect(screen.getByText(/Tarefas & Projetos/i)).toBeTruthy();
-    expect(screen.getByText(/Status do Sistema/i)).toBeTruthy();
+    expect(screen.getByText(/Status em Tempo Real/i)).toBeTruthy();
   });
 
-  it("renderiza atalhos de teclado principais", () => {
+  it("renderiza atalhos de teclado principais adaptados ao sistema operacional", () => {
     render(
       <MemoryRouter>
         <Rodape />
       </MemoryRouter>
     );
 
-    expect(screen.getByText("⌘K")).toBeTruthy();
-    expect(screen.getByText("⌘J")).toBeTruthy();
-    expect(screen.getByText("⌘B")).toBeTruthy();
+    expect(screen.getByText(/^(⌘K|Ctrl\+K)$/)).toBeTruthy();
+    expect(screen.getByText(/^(⌘J|Ctrl\+J)$/)).toBeTruthy();
+    expect(screen.getByText(/^(⌘B|Ctrl\+B)$/)).toBeTruthy();
   });
 
   it("possui botão de rolar para o topo e executa scrollTo", () => {

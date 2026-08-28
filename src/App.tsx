@@ -40,7 +40,7 @@ import { LogoKlaus } from "@/components/LogoKlaus";
 import { Carregando } from "@/components/ui";
 import { PainelNotificacoesHeader } from "@/components/PainelNotificacoesHeader";
 import { Rodape } from "@/components/Rodape";
-import { cn } from "@/lib/utils";
+import { cn, formatarAtalho } from "@/lib/utils";
 import { lerConfig, configCompleta, precisaOnboarding } from "@/lib/settings";
 import { carregarRepo } from "@/lib/repo";
 import { carregarEstadoInbox, compilarItensInbox } from "@/lib/inbox";
@@ -329,7 +329,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => setCapturando(true)}
                 className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
-                title="Captura rápida (⌘J)"
+                title={`Captura rápida (${formatarAtalho("⌘J")})`}
                 aria-label="Captura rápida"
               >
                 <Plus size={18} />
@@ -457,7 +457,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => setBuscando(true)}
                 className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
-                title="Buscar (⌘K)"
+                title={`Buscar (${formatarAtalho("⌘K")})`}
                 aria-label="Buscar"
               >
                 <Search size={18} />

@@ -8,7 +8,7 @@ import {
   isValidElement,
 } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@/lib/utils";
+import { cn, formatarAtalho } from "@/lib/utils";
 
 export type PosicaoTooltip = "top" | "bottom" | "left" | "right";
 
@@ -169,7 +169,7 @@ export function Tooltip({
           <span>{conteudo}</span>
           {atalho && (
             <kbd className="rounded bg-muted/80 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-muted-foreground border border-border/60">
-              {atalho}
+              {formatarAtalho(atalho)}
             </kbd>
           )}
         </div>,
