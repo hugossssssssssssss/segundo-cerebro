@@ -14,6 +14,9 @@ import {
   Flame,
   Calendar,
   Infinity as InfinityIcon,
+  Layers,
+  Grid2X2,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -21,46 +24,54 @@ import { carregarRepo } from "@/lib/repo";
 import {
   palavraExisteNoDicionario,
   normalizarPalavra,
-  obterPalavraAleatoria,
-  obterPalavraDoDia,
+  obterPalavrasDoDia,
+  obterPalavraOriginal,
 } from "@/lib/jogos/palavras";
 import {
   TAMANHO_PALAVRA,
-  MAX_TENTATIVAS,
-  calcularStatusTeclado,
+  CONFIG_MODOS,
+  calcularStatusTecladoMulti,
   avaliarChute,
+  type TipoJogo,
 } from "@/lib/jogos/termoEngine";
 import {
   lerDadosTermoLocal,
   carregarDadosTermo,
   gravarDadosTermo,
   atualizarEstatisticasComResultado,
-  criarNovoJogoDoDia,
-  type EstadoJogoTermo,
+  criarNovoJogo,
+  type EstadoJogoGenerico,
   type DadosTermoPersistidos,
 } from "@/lib/jogos/termoStorage";
 
 export default function Jogos() {
-  const [modo, setModo] = useState<"diario" | "infinito">("diario");
+  const [tipoJogo, setTipoJogo] = useState<TipoJogo>("termo");
+  const [ritmo, setRitmo] = useState<"diario" | "infinito">("diario");
+
   const [dadosPersistidos, setDadosPersistidos] = useState<DadosTermoPersistidos>(() =>
     lerDadosTermoLocal()
   );
   const [shaDados, setShaDados] = useState<string | undefined>();
 
-  // Estado para o modo infinito (independente do dia)
-  const [jogoInfinito, setJogoInfinito] = useState<EstadoJogoTermo>(() => ({
-    dataIso: "infinito",
-    numeroJogo: 0,
-    palavra: obterPalavraAleatoria(),
-    tentativas: [],
-    status: "jogando",
-    modo: "infinito",
+  // Estados locais para jogos no modo infinito
+  const [jogosInfinitos, setJogosInfinitos] = useState<Record<TipoJogo, EstadoJogoGenerico>>(() => ({
+    termo: criarNovoJogo("termo", new Date(), "infinito"),
+    dueto: criarNovoJogo("dueto", new Date(), "infinito"),
+    quarteto: criarNovoJogo("quarteto", new Date(), "infinito"),
   }));
 
-  // Jogo ativo atual (depende do modo selecionado)
-  const jogoAtivo = modo === "diario" ? dadosPersistidos.jogoDoDia : jogoInfinito;
+  // Jogo ativo atual baseado no tipo e ritmo selecionados
+  const jogoAtivo: EstadoJogoGenerico =
+    ritmo === "diario" ? dadosPersistidos.jogosDoDia[tipoJogo] : jogosInfinitos[tipoJogo];
 
-  const [tentativaAtual, setTentativaAtual] = useState("");
+  const configModo = CONFIG_MODOS[tipoJogo];
+  const maxTentativas = configModo.tentativas;
+
+  // 5 letras em digitação na linha ativa e índice da coluna em foco (0 a 4)
+  const [letrasAtivas, setLetrasAtivas] = useState<string[]>(() =>
+    new Array(TAMANHO_PALAVRA).fill("")
+  );
+  const [posicaoFoco, setPosicaoFoco] = useState<number>(0);
   const [linhaComErro, setLinhaComErro] = useState(false);
   const [revelandoLinhaIdx, setRevelandoLinhaIdx] = useState<number | undefined>();
   const [modalEstatisticasAberto, setModalEstatisticasAberto] = useState(false);
@@ -81,7 +92,7 @@ export default function Jogos() {
         setDadosPersistidos(res.dados);
         if (res.sha) setShaDados(res.sha);
       } catch {
-        // fallback mantém dados locais silenciosamente
+        // fallback mantém dados locais
       }
     };
 
@@ -91,21 +102,26 @@ export default function Jogos() {
     };
   }, []);
 
-  // Detector de virada de meia-noite (verifica a cada 30 segundos)
+  // Detector de virada de meia-noite para os jogos diários
   useEffect(() => {
     const verificarMeiaNoite = () => {
       const agora = new Date();
-      const infoHoje = obterPalavraDoDia(agora);
-      if (dadosPersistidos.jogoDoDia.dataIso !== infoHoje.dataIso) {
+      const infoHoje = obterPalavrasDoDia("termo", agora);
+      if (dadosPersistidos.jogosDoDia.termo.dataIso !== infoHoje.dataIso) {
         const novosDados: DadosTermoPersistidos = {
           ...dadosPersistidos,
-          jogoDoDia: criarNovoJogoDoDia(agora),
+          jogosDoDia: {
+            termo: criarNovoJogo("termo", agora, "diario"),
+            dueto: criarNovoJogo("dueto", agora, "diario"),
+            quarteto: criarNovoJogo("quarteto", agora, "diario"),
+          },
         };
         setDadosPersistidos(novosDados);
-        setTentativaAtual("");
+        setLetrasAtivas(new Array(TAMANHO_PALAVRA).fill(""));
+        setPosicaoFoco(0);
         const cfg = lerConfig();
         gravarDadosTermo(cfg, novosDados, shaDados);
-        toast("Um novo Termo do dia está disponível! Boa sorte! 🎯", { tipo: "sucesso" });
+        toast("Novas palavras do dia liberadas! Boa sorte! 🎯", { tipo: "sucesso" });
       }
     };
 
@@ -113,29 +129,63 @@ export default function Jogos() {
     return () => clearInterval(interval);
   }, [dadosPersistidos, shaDados]);
 
-  // Mapa de status do teclado consolidado
-  const statusTeclado = useMemo(() => {
-    return calcularStatusTeclado(jogoAtivo.tentativas, jogoAtivo.palavra);
-  }, [jogoAtivo.tentativas, jogoAtivo.palavra]);
+  // Mapa de status das teclas multi-tabuleiro
+  const statusTecladoMulti = useMemo(() => {
+    return calcularStatusTecladoMulti(
+      jogoAtivo.tentativasPorTabuleiro,
+      jogoAtivo.palavras
+    );
+  }, [jogoAtivo.tentativasPorTabuleiro, jogoAtivo.palavras]);
 
-  // Ações de Digitação
+  // Ações de Digitação e Foco de Célula
+  const focarCelula = useCallback((colIdx: number) => {
+    if (colIdx >= 0 && colIdx < TAMANHO_PALAVRA) {
+      setPosicaoFoco(colIdx);
+    }
+  }, []);
+
   const inserirLetra = useCallback(
     (letra: string) => {
       if (jogoAtivo.status !== "jogando") return;
-      if (tentativaAtual.length >= TAMANHO_PALAVRA) return;
 
       const norm = normalizarPalavra(letra);
       if (!norm || norm.length !== 1) return;
 
-      setTentativaAtual((prev) => (prev + norm).slice(0, TAMANHO_PALAVRA));
+      setLetrasAtivas((prev) => {
+        const novas = [...prev];
+        novas[posicaoFoco] = norm;
+        return novas;
+      });
+
+      // Avança o foco para a próxima casa (ou para a próxima vazia)
+      setPosicaoFoco((prev) => {
+        if (prev < TAMANHO_PALAVRA - 1) {
+          return prev + 1;
+        }
+        return prev;
+      });
     },
-    [jogoAtivo.status, tentativaAtual.length]
+    [jogoAtivo.status, posicaoFoco]
   );
 
   const apagarLetra = useCallback(() => {
     if (jogoAtivo.status !== "jogando") return;
-    setTentativaAtual((prev) => prev.slice(0, -1));
-  }, [jogoAtivo.status]);
+
+    setLetrasAtivas((prev) => {
+      const novas = [...prev];
+      if (novas[posicaoFoco] !== "") {
+        // Apaga a letra da célula atualmente focada
+        novas[posicaoFoco] = "";
+        return novas;
+      } else if (posicaoFoco > 0) {
+        // Se a atual já estava vazia, recua e apaga a anterior
+        novas[posicaoFoco - 1] = "";
+        setPosicaoFoco((p) => Math.max(0, p - 1));
+        return novas;
+      }
+      return prev;
+    });
+  }, [jogoAtivo.status, posicaoFoco]);
 
   const dispararAnimacaoErro = () => {
     setLinhaComErro(true);
@@ -145,53 +195,79 @@ export default function Jogos() {
   const confirmarPalavra = useCallback(async () => {
     if (jogoAtivo.status !== "jogando") return;
 
-    if (tentativaAtual.length < TAMANHO_PALAVRA) {
+    const palavraDigitada = letrasAtivas.join("");
+
+    if (palavraDigitada.length < TAMANHO_PALAVRA || letrasAtivas.some((l) => !l.trim())) {
       dispararAnimacaoErro();
-      toast("Digite uma palavra de 5 letras completa.", { tipo: "aviso" });
+      toast("Preencha todas as 5 letras da palavra.", { tipo: "aviso" });
       return;
     }
 
-    if (!palavraExisteNoDicionario(tentativaAtual)) {
+    if (!palavraExisteNoDicionario(palavraDigitada)) {
       dispararAnimacaoErro();
       toast("Palavra não reconhecida no dicionário.", { tipo: "erro" });
       return;
     }
 
-    const novaTentativa = tentativaAtual;
-    const novasTentativas = [...jogoAtivo.tentativas, novaTentativa];
-    const indiceLinha = jogoAtivo.tentativas.length;
+    const chute = normalizarPalavra(palavraDigitada);
+    const novasTentativasGerais = [...jogoAtivo.tentativasGerais, chute];
+    const indiceLinha = jogoAtivo.tentativasGerais.length;
 
     // Disparar animação de revelação da linha
     setRevelandoLinhaIdx(indiceLinha);
     setTimeout(() => setRevelandoLinhaIdx(undefined), TAMANHO_PALAVRA * 150 + 200);
 
-    const avaliacao = avaliarChute(novaTentativa, jogoAtivo.palavra);
-    const venceu = avaliacao.ehCorreta;
-    const perdeu = !venceu && novasTentativas.length >= MAX_TENTATIVAS;
-    const novoStatus = venceu ? "venceu" : perdeu ? "perdeu" : "jogando";
+    const qtdTabuleiros = configModo.tabuleiros;
+    const novasTentativasPorTab = jogoAtivo.tentativasPorTabuleiro.map((arr) => [...arr]);
+    const novosResolvidos = [...jogoAtivo.resolvidos];
 
-    setTentativaAtual("");
+    // Atualizar cada tabuleiro individualmente
+    for (let tIdx = 0; tIdx < qtdTabuleiros; tIdx++) {
+      if (!jogoAtivo.resolvidos[tIdx]) {
+        novasTentativasPorTab[tIdx].push(chute);
+        const avaliacao = avaliarChute(chute, jogoAtivo.palavras[tIdx]);
+        if (avaliacao.ehCorreta) {
+          novosResolvidos[tIdx] = true;
+        }
+      }
+    }
 
-    if (modo === "diario") {
-      let novasEstatisticas = dadosPersistidos.estatisticas;
+    const todosVenceram = novosResolvidos.every((r) => r);
+    const esgotouTentativas = novasTentativasGerais.length >= maxTentativas;
+    const novoStatus = todosVenceram ? "venceu" : esgotouTentativas ? "perdeu" : "jogando";
+
+    // Limpar linha de digitação e resetar foco para a primeira coluna
+    setLetrasAtivas(new Array(TAMANHO_PALAVRA).fill(""));
+    setPosicaoFoco(0);
+
+    if (ritmo === "diario") {
+      let novasStatsModo = dadosPersistidos.estatisticas[tipoJogo];
       if (novoStatus !== "jogando") {
-        novasEstatisticas = atualizarEstatisticasComResultado(
-          dadosPersistidos.estatisticas,
-          venceu,
-          novasTentativas.length,
+        novasStatsModo = atualizarEstatisticasComResultado(
+          novasStatsModo,
+          todosVenceram,
+          novasTentativasGerais.length,
           jogoAtivo.dataIso
         );
       }
 
       const novosDados: DadosTermoPersistidos = {
-        versao: 1,
-        jogoDoDia: {
-          ...jogoAtivo,
-          tentativas: novasTentativas,
-          status: novoStatus,
-          finalizadoEm: novoStatus !== "jogando" ? new Date().toISOString() : undefined,
+        ...dadosPersistidos,
+        jogosDoDia: {
+          ...dadosPersistidos.jogosDoDia,
+          [tipoJogo]: {
+            ...jogoAtivo,
+            tentativasGerais: novasTentativasGerais,
+            tentativasPorTabuleiro: novasTentativasPorTab,
+            resolvidos: novosResolvidos,
+            status: novoStatus,
+            finalizadoEm: novoStatus !== "jogando" ? new Date().toISOString() : undefined,
+          },
         },
-        estatisticas: novasEstatisticas,
+        estatisticas: {
+          ...dadosPersistidos.estatisticas,
+          [tipoJogo]: novasStatsModo,
+        },
       };
 
       setDadosPersistidos(novosDados);
@@ -207,13 +283,19 @@ export default function Jogos() {
       }
     } else {
       // Modo Infinito
-      const novoJogoInfinito: EstadoJogoTermo = {
-        ...jogoInfinito,
-        tentativas: novasTentativas,
+      const novoJogoInfinito: EstadoJogoGenerico = {
+        ...jogoAtivo,
+        tentativasGerais: novasTentativasGerais,
+        tentativasPorTabuleiro: novasTentativasPorTab,
+        resolvidos: novosResolvidos,
         status: novoStatus,
         finalizadoEm: novoStatus !== "jogando" ? new Date().toISOString() : undefined,
       };
-      setJogoInfinito(novoJogoInfinito);
+
+      setJogosInfinitos((prev) => ({
+        ...prev,
+        [tipoJogo]: novoJogoInfinito,
+      }));
 
       if (novoStatus !== "jogando") {
         setTimeout(() => {
@@ -223,28 +305,36 @@ export default function Jogos() {
     }
   }, [
     jogoAtivo,
-    tentativaAtual,
-    modo,
+    letrasAtivas,
+    tipoJogo,
+    ritmo,
     dadosPersistidos,
     shaDados,
-    jogoInfinito,
+    configModo.tabuleiros,
+    maxTentativas,
   ]);
 
-  // Listener para Teclado Físico
+  // Listener Global Robusto para Teclado Físico
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (modalEstatisticasAberto || modalComoJogarAberto) return;
 
-      const tecla = e.key.toUpperCase();
+      const tecla = e.key;
 
-      if (tecla === "ENTER") {
+      if (tecla === "Enter") {
         e.preventDefault();
         confirmarPalavra();
-      } else if (tecla === "BACKSPACE" || tecla === "DELETE") {
+      } else if (tecla === "Backspace" || tecla === "Delete") {
         e.preventDefault();
         apagarLetra();
-      } else if (/^[A-ZÇ]$/.test(tecla)) {
+      } else if (tecla === "ArrowLeft") {
+        e.preventDefault();
+        setPosicaoFoco((prev) => Math.max(0, prev - 1));
+      } else if (tecla === "ArrowRight") {
+        e.preventDefault();
+        setPosicaoFoco((prev) => Math.min(TAMANHO_PALAVRA - 1, prev + 1));
+      } else if (/^[a-zA-ZçÇáàãâéêíóôõúüÁÀÃÂÉÊÍÓÔÕÚÜ]$/.test(tecla)) {
         e.preventDefault();
         inserirLetra(tecla);
       }
@@ -261,29 +351,45 @@ export default function Jogos() {
   ]);
 
   const iniciarNovaPartidaInfinita = () => {
-    setJogoInfinito({
-      dataIso: "infinito",
-      numeroJogo: 0,
-      palavra: obterPalavraAleatoria(),
-      tentativas: [],
-      status: "jogando",
-      modo: "infinito",
-    });
-    setTentativaAtual("");
+    const novo = criarNovoJogo(tipoJogo, new Date(), "infinito");
+    setJogosInfinitos((prev) => ({
+      ...prev,
+      [tipoJogo]: novo,
+    }));
+    setLetrasAtivas(new Array(TAMANHO_PALAVRA).fill(""));
+    setPosicaoFoco(0);
     setModalEstatisticasAberto(false);
   };
+
+  const trocarTipoJogo = (novoTipo: TipoJogo) => {
+    setTipoJogo(novoTipo);
+    setLetrasAtivas(new Array(TAMANHO_PALAVRA).fill(""));
+    setPosicaoFoco(0);
+  };
+
+  const trocarRitmo = (novoRitmo: "diario" | "infinito") => {
+    setRitmo(novoRitmo);
+    setLetrasAtivas(new Array(TAMANHO_PALAVRA).fill(""));
+    setPosicaoFoco(0);
+  };
+
+  const streakAtual = dadosPersistidos.estatisticas[tipoJogo]?.sequenciaAtual || 0;
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200 w-full max-w-4xl mx-auto pb-12">
       {/* 1. Cabeçalho Principal */}
       <CabecalhoPagina
         titulo="Jogos & Desafios"
-        descricao="Desafie seu vocabulário e exercite a mente com o Termo e quebra-cabeças no Klaus."
+        descricao="Desafie seu vocabulário e exercite a mente com o Termo, Dueto e Quarteto no Klaus."
         icone={<Gamepad2 size={20} />}
         corIcone="bg-purple-500/10 text-purple-600 dark:text-purple-400"
         badge={
           <SeloStatus
-            rotulo={modo === "diario" ? `Termo #${jogoAtivo.numeroJogo}` : "Modo Infinito"}
+            rotulo={
+              ritmo === "diario"
+                ? `${configModo.rotulo} #${jogoAtivo.numeroJogo}`
+                : `${configModo.rotulo} (Infinito)`
+            }
             tom="primario"
           />
         }
@@ -311,74 +417,164 @@ export default function Jogos() {
         }
       />
 
-      {/* 2. Barra de Seleção de Modos */}
-      <div className="flex items-center justify-between gap-2 p-1.5 rounded-xl border border-border bg-card/60 backdrop-blur-xs">
-        <div className="flex items-center gap-1">
+      {/* 2. Barra de Controle: Seletor de Tipo de Jogo + Ritmo (Diário / Infinito) */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-2 rounded-2xl border border-border bg-card/70 backdrop-blur-md shadow-2xs">
+        {/* Abas dos Tipos de Jogo (Termo, Dueto, Quarteto) */}
+        <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl">
           <button
             type="button"
-            onClick={() => {
-              setModo("diario");
-              setTentativaAtual("");
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-              modo === "diario"
-                ? "bg-primary text-primary-foreground shadow-2xs"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            onClick={() => trocarTipoJogo("termo")}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              tipoJogo === "termo"
+                ? "bg-card text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Calendar size={14} />
-            <span>Termo Diário</span>
+            <span>Termo</span>
+            <span className="text-[10px] opacity-70 font-mono font-normal">(1)</span>
           </button>
 
           <button
             type="button"
-            onClick={() => {
-              setModo("infinito");
-              setTentativaAtual("");
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-              modo === "infinito"
-                ? "bg-primary text-primary-foreground shadow-2xs"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            onClick={() => trocarTipoJogo("dueto")}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              tipoJogo === "dueto"
+                ? "bg-card text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <InfinityIcon size={14} />
-            <span>Modo Infinito</span>
+            <Layers size={13} />
+            <span>Dueto</span>
+            <span className="text-[10px] opacity-70 font-mono font-normal">(2)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => trocarTipoJogo("quarteto")}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              tipoJogo === "quarteto"
+                ? "bg-card text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Grid2X2 size={13} />
+            <span>Quarteto</span>
+            <span className="text-[10px] opacity-70 font-mono font-normal">(4)</span>
           </button>
         </div>
 
-        {/* Indicador de Streak Diário ou Botão de Novo Jogo Infinito */}
-        {modo === "diario" ? (
-          <div className="flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 px-2 py-1 bg-amber-500/10 rounded-lg">
-            <Flame size={14} className="fill-amber-500" />
-            <span>{dadosPersistidos.estatisticas.sequenciaAtual} dias</span>
+        {/* Alternador de Ritmo (Diário / Infinito) e Streak */}
+        <div className="flex items-center justify-between sm:justify-end gap-2">
+          <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => trocarRitmo("diario")}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                ritmo === "diario"
+                  ? "bg-primary text-primary-foreground shadow-2xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Calendar size={13} />
+              <span>Diário</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => trocarRitmo("infinito")}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                ritmo === "infinito"
+                  ? "bg-primary text-primary-foreground shadow-2xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <InfinityIcon size={13} />
+              <span>Infinito</span>
+            </button>
           </div>
-        ) : (
-          <Botao
-            variante="fantasma"
-            tamanho="pequeno"
-            onClick={iniciarNovaPartidaInfinita}
-            className="text-xs"
-          >
-            <RotateCcw size={13} />
-            Nova Palavra
-          </Botao>
-        )}
+
+          {ritmo === "diario" ? (
+            <div className="flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 px-2 py-1 bg-amber-500/10 rounded-lg shrink-0">
+              <Flame size={14} className="fill-amber-500" />
+              <span>{streakAtual} d</span>
+            </div>
+          ) : (
+            <Botao
+              variante="neutro"
+              tamanho="pequeno"
+              onClick={iniciarNovaPartidaInfinita}
+              className="text-xs shrink-0"
+              title="Sortear nova palavra"
+            >
+              <RotateCcw size={13} />
+              <span className="hidden sm:inline">Nova Palavra</span>
+            </Botao>
+          )}
+        </div>
       </div>
 
-      {/* 3. Área Principal do Jogo */}
-      <Cartao className="flex flex-col items-center justify-center p-3 sm:p-6 bg-card/80 backdrop-blur-md shadow-sm border-border/80">
-        <div className="w-full flex flex-col items-center gap-3 sm:gap-4 max-w-md">
-          {/* Grade de Tentativas */}
-          <GradeTermo
-            tentativas={jogoAtivo.tentativas}
-            tentativaAtual={tentativaAtual}
-            solucao={jogoAtivo.palavra}
-            linhaComErro={linhaComErro}
-            revelandoLinhaIdx={revelandoLinhaIdx}
-          />
+      {/* 3. Área Principal do Jogo com Grades Flexíveis */}
+      <Cartao className="flex flex-col items-center justify-center p-3 sm:p-5 bg-card/85 backdrop-blur-md shadow-sm border-border/80">
+        <div className="w-full flex flex-col items-center gap-3 sm:gap-4">
+          {/* Instrução visual amigável para clique nas células */}
+          {jogoAtivo.status === "jogando" && (
+            <div className="text-[11px] text-muted-foreground text-center select-none flex items-center gap-1.5">
+              <span>Dica: clique em qualquer casa para editar aquela letra ou use as setas ← → do teclado</span>
+            </div>
+          )}
 
-          {/* Feedback de status em andamento */}
+          {/* Grades dos Tabuleiros (1 para Termo, 2 para Dueto, 4 para Quarteto) */}
+          <div
+            className={`w-full ${
+              tipoJogo === "termo"
+                ? "flex justify-center max-w-sm"
+                : tipoJogo === "dueto"
+                ? "grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl"
+                : "grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl"
+            }`}
+          >
+            {jogoAtivo.palavras.map((palavra, tIdx) => {
+              const resolvido = jogoAtivo.resolvidos[tIdx];
+              return (
+                <div
+                  key={`tabuleiro-${tipoJogo}-${tIdx}`}
+                  className="flex flex-col items-center relative p-2 rounded-2xl bg-secondary/25 border border-border/60 shadow-2xs"
+                >
+                  {/* Cabeçalho do Tabuleiro no Dueto/Quarteto */}
+                  {tipoJogo !== "termo" && (
+                    <div className="flex items-center justify-between w-full px-2 pb-1 text-xs font-bold text-muted-foreground">
+                      <span>Palavra {tIdx + 1}</span>
+                      {resolvido ? (
+                        <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <Sparkles size={13} />
+                          {obterPalavraOriginal(palavra)}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] opacity-60 font-mono">
+                          {jogoAtivo.tentativasPorTabuleiro[tIdx]?.length || 0}/{maxTentativas}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <GradeTermo
+                    tentativas={jogoAtivo.tentativasPorTabuleiro[tIdx] || []}
+                    letrasAtivas={letrasAtivas}
+                    posicaoFoco={posicaoFoco}
+                    solucao={palavra}
+                    linhaComErro={linhaComErro}
+                    revelandoLinhaIdx={revelandoLinhaIdx}
+                    maxTentativas={maxTentativas}
+                    resolvido={resolvido}
+                    aoClicarCelula={focarCelula}
+                    tamanho={tipoJogo === "quarteto" ? "compacto" : "padrao"}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Feedback de Partida Finalizada */}
           {jogoAtivo.status !== "jogando" && (
             <div className="flex items-center justify-center gap-2 pt-1 animate-in fade-in duration-300">
               <Botao
@@ -389,7 +585,7 @@ export default function Jogos() {
                 <BarChart3 size={15} />
                 Ver Resultado e Estatísticas
               </Botao>
-              {modo === "infinito" && (
+              {ritmo === "infinito" && (
                 <Botao
                   variante="neutro"
                   tamanho="pequeno"
@@ -402,9 +598,11 @@ export default function Jogos() {
             </div>
           )}
 
-          {/* Teclado Virtual */}
+          {/* Teclado Virtual Multi-Status */}
           <TecladoTermo
-            statusTeclado={statusTeclado}
+            statusTeclado={statusTecladoMulti}
+            tabuleiros={configModo.tabuleiros}
+            resolvidos={jogoAtivo.resolvidos}
             aoPressionarLetra={inserirLetra}
             aoConfirmar={confirmarPalavra}
             aoApagar={apagarLetra}
@@ -418,12 +616,13 @@ export default function Jogos() {
         aberto={modalEstatisticasAberto}
         aoFechar={() => setModalEstatisticasAberto(false)}
         jogo={jogoAtivo}
-        estatisticas={dadosPersistidos.estatisticas}
+        estatisticas={dadosPersistidos.estatisticas[tipoJogo]}
+        tipoJogo={tipoJogo}
         aoJogarInfinito={
-          modo === "diario"
+          ritmo === "diario"
             ? () => {
                 setModalEstatisticasAberto(false);
-                setModo("infinito");
+                setRitmo("infinito");
               }
             : iniciarNovaPartidaInfinita
         }

@@ -17262,9 +17262,13 @@ function pseudoAleatorio(semente: number): () => number {
 }
 
 /**
- * Retorna a palavra do dia de forma determinística para uma data específica.
+ * Retorna as palavras do dia de forma determinística para uma data específica.
+ * Gera palavras distintas para o modo Dueto (2) e Quarteto (4).
  */
-export function obterPalavraDoDia(data: Date = new Date()): { palavra: string; numeroJogo: number; dataIso: string } {
+export function obterPalavrasDoDia(
+  tipo: "termo" | "dueto" | "quarteto" = "termo",
+  data: Date = new Date()
+): { palavras: string[]; numeroJogo: number; dataIso: string } {
   const d = new Date(data);
   const ano = d.getFullYear();
   const mes = String(d.getMonth() + 1).padStart(2, '0');
@@ -17272,23 +17276,65 @@ export function obterPalavraDoDia(data: Date = new Date()): { palavra: string; n
   const dataIso = `${ano}-${mes}-${dia}`;
   
   const numeroJogo = calcularNumeroJogo(d);
+  const quantidade = tipo === "quarteto" ? 4 : tipo === "dueto" ? 2 : 1;
   
-  // Semente baseada no número sequencial do jogo
-  const rng = pseudoAleatorio(numeroJogo * 7919 + 104729);
-  const indice = Math.floor(rng() * SOLUCOES_TERMO.length);
-  const palavra = SOLUCOES_TERMO[indice % SOLUCOES_TERMO.length];
+  // Semente baseada no número sequencial do jogo e tipo
+  const multiplicadorTipo = tipo === "quarteto" ? 4391 : tipo === "dueto" ? 2857 : 104729;
+  const rng = pseudoAleatorio(numeroJogo * 7919 + multiplicadorTipo);
+  
+  const palavrasEscolhidas: string[] = [];
+  const jaEscolhidas = new Set<string>();
+
+  while (palavrasEscolhidas.length < quantidade) {
+    const indice = Math.floor(rng() * SOLUCOES_TERMO.length);
+    const cand = normalizarPalavra(SOLUCOES_TERMO[indice % SOLUCOES_TERMO.length]);
+    if (!jaEscolhidas.has(cand)) {
+      jaEscolhidas.add(cand);
+      palavrasEscolhidas.push(cand);
+    }
+  }
   
   return {
-    palavra: normalizarPalavra(palavra),
+    palavras: palavrasEscolhidas,
     numeroJogo,
     dataIso,
   };
 }
 
 /**
+ * Retorna a palavra do dia de forma determinística para uma data específica (Modo Termo Individual).
+ */
+export function obterPalavraDoDia(data: Date = new Date()): { palavra: string; numeroJogo: number; dataIso: string } {
+  const res = obterPalavrasDoDia("termo", data);
+  return {
+    palavra: res.palavras[0],
+    numeroJogo: res.numeroJogo,
+    dataIso: res.dataIso,
+  };
+}
+
+/**
+ * Retorna N palavras aleatórias distintas para o Modo Infinito (prática livre).
+ */
+export function obterPalavrasAleatorias(quantidade: number = 1): string[] {
+  const palavras: string[] = [];
+  const jaEscolhidas = new Set<string>();
+
+  while (palavras.length < quantidade) {
+    const indice = Math.floor(Math.random() * SOLUCOES_TERMO.length);
+    const cand = normalizarPalavra(SOLUCOES_TERMO[indice]);
+    if (!jaEscolhidas.has(cand)) {
+      jaEscolhidas.add(cand);
+      palavras.push(cand);
+    }
+  }
+
+  return palavras;
+}
+
+/**
  * Retorna uma palavra aleatória para o Modo Infinito (prática livre).
  */
 export function obterPalavraAleatoria(): string {
-  const indice = Math.floor(Math.random() * SOLUCOES_TERMO.length);
-  return normalizarPalavra(SOLUCOES_TERMO[indice]);
+  return obterPalavrasAleatorias(1)[0];
 }

@@ -3,14 +3,19 @@ import { Modal, Botao } from "@/components/ui";
 import { Share2, Trophy, Flame, RotateCcw, Clock, Sparkles } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { obterPalavraOriginal } from "@/lib/jogos/palavras";
-import { gerarTextoCompartilhamento } from "@/lib/jogos/termoEngine";
-import type { EstatisticasTermo, EstadoJogoTermo } from "@/lib/jogos/termoStorage";
+import {
+  CONFIG_MODOS,
+  gerarTextoCompartilhamentoMulti,
+  type TipoJogo,
+} from "@/lib/jogos/termoEngine";
+import type { EstatisticasModo, EstadoJogoGenerico } from "@/lib/jogos/termoStorage";
 
 interface ModalEstatisticasTermoProps {
   aberto: boolean;
   aoFechar: () => void;
-  jogo: EstadoJogoTermo;
-  estatisticas: EstatisticasTermo;
+  jogo: EstadoJogoGenerico;
+  estatisticas: EstatisticasModo;
+  tipoJogo: TipoJogo;
   aoJogarInfinito?: () => void;
 }
 
@@ -19,9 +24,11 @@ export function ModalEstatisticasTermo({
   aoFechar,
   jogo,
   estatisticas,
+  tipoJogo,
   aoJogarInfinito,
 }: ModalEstatisticasTermoProps) {
   const [tempoRestante, setTempoRestante] = useState<string>("");
+  const config = CONFIG_MODOS[tipoJogo];
 
   // Calcula contagem regressiva até a meia-noite local
   useEffect(() => {
@@ -44,25 +51,24 @@ export function ModalEstatisticasTermo({
     return () => clearInterval(interval);
   }, []);
 
-  const totalJogos = estatisticas.totalJogos || 0;
+  const totalJogos = estatisticas?.totalJogos || 0;
   const pctVitorias = totalJogos > 0 ? Math.round((estatisticas.vitorias / totalJogos) * 100) : 0;
-  const palavraFormatada = obterPalavraOriginal(jogo.palavra);
-
   const maxDistribuicao = Math.max(
     1,
-    ...Object.values(estatisticas.distribuicao || {})
+    ...Object.values(estatisticas?.distribuicao || {})
   );
 
   const tentativaVencedoraHoje =
-    jogo.status === "venceu" ? jogo.tentativas.length : null;
+    jogo.status === "venceu" ? jogo.tentativasGerais.length : null;
 
   const lidarCompartilhar = async () => {
-    const texto = gerarTextoCompartilhamento(
+    const texto = gerarTextoCompartilhamentoMulti(
+      tipoJogo,
       jogo.numeroJogo,
-      jogo.tentativas,
-      jogo.palavra,
+      jogo.tentativasPorTabuleiro,
+      jogo.palavras,
       jogo.status === "venceu",
-      jogo.modo
+      jogo.modoRitmo
     );
 
     try {
@@ -84,28 +90,53 @@ export function ModalEstatisticasTermo({
     }
   };
 
+  const listaTentativasDist = Array.from(
+    { length: config.tentativas },
+    (_, i) => i + 1
+  );
+
   return (
-    <Modal aberto={aberto} aoFechar={aoFechar} titulo="Estatísticas do Termo">
+    <Modal
+      aberto={aberto}
+      aoFechar={aoFechar}
+      titulo={`Estatísticas — ${config.rotulo}`}
+    >
       <div className="space-y-6 py-1">
         {/* Mensagem de Resultado se finalizado */}
         {jogo.status !== "jogando" && (
-          <div className="text-center space-y-1.5 p-4 rounded-2xl bg-secondary/50 border border-border/80">
+          <div className="text-center space-y-2 p-4 rounded-2xl bg-secondary/50 border border-border/80">
             {jogo.status === "venceu" ? (
               <div className="space-y-1">
                 <div className="flex items-center justify-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-lg">
                   <Sparkles size={20} className="animate-pulse" />
-                  <span>Espetacular! Você acertou!</span>
+                  <span>Espetacular! Você acertou tudo!</span>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  A palavra secreta era <strong className="text-foreground tracking-widest uppercase">{palavraFormatada}</strong>
-                </p>
+                <div className="text-sm text-muted-foreground flex flex-wrap items-center justify-center gap-2 pt-1">
+                  <span>Palavras:</span>
+                  {jogo.palavras.map((p, idx) => (
+                    <span
+                      key={`palavra-res-${idx}`}
+                      className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold tracking-wider uppercase border border-emerald-500/20"
+                    >
+                      {obterPalavraOriginal(p)}
+                    </span>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="space-y-1">
                 <p className="text-destructive font-bold text-base">Não foi dessa vez!</p>
-                <p className="text-sm text-muted-foreground">
-                  A palavra secreta era <strong className="text-foreground tracking-widest uppercase">{palavraFormatada}</strong>
-                </p>
+                <div className="text-sm text-muted-foreground flex flex-wrap items-center justify-center gap-2 pt-1">
+                  <span>As palavras eram:</span>
+                  {jogo.palavras.map((p, idx) => (
+                    <span
+                      key={`palavra-res-${idx}`}
+                      className="px-2 py-0.5 rounded-md bg-secondary text-foreground font-bold tracking-wider uppercase border border-border"
+                    >
+                      {obterPalavraOriginal(p)}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -155,8 +186,8 @@ export function ModalEstatisticasTermo({
             Distribuição de Tentativas
           </h4>
           <div className="space-y-1.5">
-            {([1, 2, 3, 4, 5, 6] as const).map((tentativa) => {
-              const qtd = estatisticas.distribuicao?.[tentativa] || 0;
+            {listaTentativasDist.map((tentativa) => {
+              const qtd = estatisticas?.distribuicao?.[tentativa] || 0;
               const porcentagemLargura = Math.max(7, Math.round((qtd / maxDistribuicao) * 100));
               const ehTentativaDeHoje = tentativaVencedoraHoje === tentativa;
 

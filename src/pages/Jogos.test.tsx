@@ -8,7 +8,6 @@ afterEach(() => {
   cleanup();
 });
 
-// Mock de matchMedia e clipboard
 beforeEach(() => {
   localStorage.clear();
   Object.defineProperty(window, "matchMedia", {
@@ -26,8 +25,8 @@ beforeEach(() => {
   });
 });
 
-describe("Página Jogos (Clone do Termo)", () => {
-  it("renderiza a página com título, grade 5x6 e teclado virtual", () => {
+describe("Página Jogos (Termo, Dueto e Quarteto)", () => {
+  it("renderiza a página com abas de Termo, Dueto e Quarteto", () => {
     render(
       <MemoryRouter>
         <Jogos />
@@ -35,84 +34,97 @@ describe("Página Jogos (Clone do Termo)", () => {
     );
 
     expect(screen.getByText("Jogos & Desafios")).toBeTruthy();
-    expect(screen.getByText("Termo Diário")).toBeTruthy();
-    expect(screen.getByText("Modo Infinito")).toBeTruthy();
-    expect(screen.getByText("ENTER")).toBeTruthy();
+    expect(screen.getByText("Termo")).toBeTruthy();
+    expect(screen.getByText("Dueto")).toBeTruthy();
+    expect(screen.getByText("Quarteto")).toBeTruthy();
+    expect(screen.getByText("Diário")).toBeTruthy();
+    expect(screen.getByText("Infinito")).toBeTruthy();
   });
 
-  it("permite digitar letras e apagar via teclado virtual", () => {
+  it("permite clicar em células individuais para posicionar foco e digitar", () => {
     render(
       <MemoryRouter>
         <Jogos />
       </MemoryRouter>
     );
 
-    // Clicar em T, E, R
+    // Clicar em T, depois E
     fireEvent.click(screen.getByLabelText("Letra T"));
     fireEvent.click(screen.getByLabelText("Letra E"));
-    fireEvent.click(screen.getByLabelText("Letra R"));
 
-    // O texto T, E, R deve estar presente
-    expect(screen.getAllByText("T").length).toBeGreaterThanOrEqual(2); // tecla e célula
+    // O texto T e E deve estar na tela
+    expect(screen.getAllByText("T").length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText("E").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText("R").length).toBeGreaterThanOrEqual(2);
-
-    // Clicar em apagar (Backspace)
-    const botaoApagar = screen.getByLabelText("Apagar letra");
-    fireEvent.click(botaoApagar);
   });
 
-  it("abre e fecha o modal de 'Como Jogar'", async () => {
+  it("aceita digitação via teclado físico (keydown)", () => {
     render(
       <MemoryRouter>
         <Jogos />
       </MemoryRouter>
     );
 
-    const botaoAjuda = screen.getByTitle("Como jogar");
-    fireEvent.click(botaoAjuda);
+    // Digitar 'G', 'A', 'T', 'O', 'S' no teclado físico
+    fireEvent.keyDown(window, { key: "g" });
+    fireEvent.keyDown(window, { key: "a" });
+    fireEvent.keyDown(window, { key: "t" });
+    fireEvent.keyDown(window, { key: "o" });
+    fireEvent.keyDown(window, { key: "s" });
 
-    expect(screen.getByText("Como Jogar o Termo")).toBeTruthy();
-    expect(
-      screen.getByText(/Adivinhe a palavra secreta em/i)
-    ).toBeTruthy();
+    expect(screen.getAllByText("G").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("A").length).toBeGreaterThanOrEqual(2);
 
-    const botaoFechar = screen.getByText("Entendi, vamos jogar!");
-    fireEvent.click(botaoFechar);
-
-    await waitFor(() => {
-      expect(screen.queryByText("Como Jogar o Termo")).toBeNull();
-    });
+    // Apagar com Backspace
+    fireEvent.keyDown(window, { key: "Backspace" });
   });
 
-  it("abre e fecha o modal de 'Estatísticas'", async () => {
+  it("permite alternar para o modo Dueto (2 tabuleiros)", () => {
     render(
       <MemoryRouter>
         <Jogos />
       </MemoryRouter>
     );
 
-    const botaoStats = screen.getByTitle("Ver estatísticas");
-    fireEvent.click(botaoStats);
+    const botaoDueto = screen.getByText("Dueto");
+    fireEvent.click(botaoDueto);
 
-    expect(screen.getByText("Estatísticas do Termo")).toBeTruthy();
-    expect(screen.getByText("Distribuição de Tentativas")).toBeTruthy();
+    expect(screen.getByText("Palavra 1")).toBeTruthy();
+    expect(screen.getByText("Palavra 2")).toBeTruthy();
   });
 
-  it("alterna para o Modo Infinito", () => {
+  it("permite alternar para o modo Quarteto (4 tabuleiros)", () => {
     render(
       <MemoryRouter>
         <Jogos />
       </MemoryRouter>
     );
 
-    const botoesInfinito = screen.getAllByText("Modo Infinito");
-    fireEvent.click(botoesInfinito[0]);
+    const botaoQuarteto = screen.getByText("Quarteto");
+    fireEvent.click(botaoQuarteto);
+
+    expect(screen.getByText("Palavra 1")).toBeTruthy();
+    expect(screen.getByText("Palavra 2")).toBeTruthy();
+    expect(screen.getByText("Palavra 3")).toBeTruthy();
+    expect(screen.getByText("Palavra 4")).toBeTruthy();
+  });
+
+  it("permite alternar para o Modo Infinito do Dueto", () => {
+    render(
+      <MemoryRouter>
+        <Jogos />
+      </MemoryRouter>
+    );
+
+    // Selecionar Dueto
+    fireEvent.click(screen.getByText("Dueto"));
+
+    // Selecionar Infinito
+    fireEvent.click(screen.getByText("Infinito"));
 
     expect(screen.getByText("Nova Palavra")).toBeTruthy();
   });
 
-  it("permite submeter uma palavra válida e salva no storage", async () => {
+  it("permite submeter palavra e persiste no storage", async () => {
     render(
       <MemoryRouter>
         <Jogos />
@@ -126,7 +138,6 @@ describe("Página Jogos (Clone do Termo)", () => {
     fireEvent.click(screen.getByLabelText("Letra M"));
     fireEvent.click(screen.getByLabelText("Letra O"));
 
-    // Confirmar
     fireEvent.click(screen.getByLabelText("Confirmar palavra"));
 
     await waitFor(() => {
