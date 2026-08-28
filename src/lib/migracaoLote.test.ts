@@ -29,16 +29,15 @@ describe("migracaoLote", () => {
     expect(normalizado).not.toContain("Pomodoro:");
   });
 
-  it("detecta arquivo com processoId em cards e normaliza para processo_id", () => {
-    const textoAntigo = "---\ntitulo: Card 1\nprocessoId: vendas\netapaId: triagem\n---\n\nDetalhes";
-    const item = criarItem("processos/cards/2026-08-28-card.md", textoAntigo);
+  it("detecta arquivo com pai em contatos e normaliza para pai_id", () => {
+    const textoAntigo = "---\ntitulo: Dev Junior\npai: lider-tech\n---\n\nDetalhes";
+    const item = criarItem("contatos/2026-08-28-dev.md", textoAntigo);
 
     const normalizado = normalizarDocumento(item);
     expect(normalizado).not.toBeNull();
-    expect(normalizado).toContain("processo_id: vendas");
-    expect(normalizado).toContain("etapa_id: triagem");
-    expect(normalizado).toContain("tipo: card_processo");
-    expect(normalizado).not.toContain("processoId:");
+    expect(normalizado).toContain("pai_id: lider-tech");
+    expect(normalizado).toContain("tipo: contato");
+    expect(normalizado).not.toContain("pai:");
   });
 
   it("não marca arquivo já padronizado como pendente", () => {

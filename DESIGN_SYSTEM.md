@@ -8,7 +8,7 @@ Este documento define o **Design System oficial do aplicativo Klaus** (Segundo C
 
 O Klaus adota uma estética **moderna, limpa e funcional**, inspirada em ferramentas profissionais como Notion, Linear e Raycast, ajustada para um designer gráfico (foco em legibilidade, contraste equilibrado, arredondamento harmonioso e transições fluidas).
 
-- **Princípio 1 — Consistência Absoluta**: Ao navegar entre seções (ex: de Notas para Contatos ou Processos), o topo da tela, os botões, os campos de busca e o ritmo de espaçamento permanecem no mesmo lugar.
+- **Princípio 1 — Consistência Absoluta**: Ao navegar entre seções (ex: de Notas para Contatos ou Tarefas), o topo da tela, os botões, os campos de busca e o ritmo de espaçamento permanecem no mesmo lugar.
 - **Princípio 2 — Componentes Reutilizáveis**: Nunca crie formulários ou listas "à mão" com HTML bruto. Sempre utilize os componentes da suíte `src/components/`.
 - **Princípio 3 — Transição Suave**: Toda troca de tela é envolvida em animações suaves de entrada (`animate-in fade-in duration-200`).
 
@@ -108,7 +108,6 @@ Cada área do Klaus possui um tom temático específico para o seu ícone de cab
 | **Notas** | `bg-amber-500/10 text-amber-600 dark:text-amber-400` | `<FileText />` |
 | **Tarefas** | `bg-blue-500/10 text-blue-600 dark:text-blue-400` | `<ListTodo />` |
 | **Árvore de Contatos** | `bg-emerald-500/10 text-emerald-600 dark:text-emerald-400` | `<FolderTree />` |
-| **Pipeline de Processos** | `bg-purple-500/10 text-purple-600 dark:text-purple-400` | `<GitMerge />` |
 | **Referências Visuais** | `bg-pink-500/10 text-pink-600 dark:text-pink-400` | `<ImagePlus />` |
 | **Plano de Carreira (PDI)** | `bg-teal-500/10 text-teal-600 dark:text-teal-400` | `<Target />` |
 | **Caixa de Entrada (Inbox)** | `bg-indigo-500/10 text-indigo-600 dark:text-indigo-400` | `<Bell />` |

@@ -178,7 +178,6 @@ export function formatarCaminhoAmigavel(caminho: string): string {
     referencias: "Referências",
     lousas: "Lousas",
     contatos: "Contatos",
-    processos: "Processos",
     projetos: "Projetos",
     estudos: "Estudos",
     diario: "Diário",

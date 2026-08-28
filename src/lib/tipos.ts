@@ -31,8 +31,6 @@ export const PASTAS = {
   entregas:  "pdi/entregas",
   referencias: "referencias",
   lousas:    "lousas",
-  processos: "processos",
-  cardsProcesso: "processos/cards",
   caixaEntrada: "caixa-entrada",
   contatos:  "contatos",
 } as const;
@@ -153,58 +151,6 @@ export interface LousaDados {
   files?: unknown;
 }
 
-export interface EtapaProcesso {
-  id: string;
-  nome: string;
-  cor: "blue" | "emerald" | "amber" | "purple" | "rose" | "indigo" | "slate";
-  checklistsPadrao: Array<{ id: string; texto: string }>;
-}
-
-export interface RegraAutomacao {
-  id: string;
-  gatilho: "ao_concluir_checklist" | "ao_mudar_etapa" | "ao_criar_card" | "tempo_parado";
-  condicao?: { checklistId?: string; etapaOrigemId?: string; diasParado?: number };
-  acao: "mudar_etapa" | "adicionar_checklist" | "marcar_urgente" | "adicionar_comentario";
-  parametros: { etapaDestinoId?: string; novoChecklistTexto?: string; mensagemComentario?: string };
-}
-
-export interface Processo extends ItemBase {
-  readonly id: string;
-  tipo?: "processo";
-  titulo: string;
-  descricao: string;
-  etapas: EtapaProcesso[];
-  regras: RegraAutomacao[];
-}
-
-export interface ComentarioCard {
-  id: string;
-  data: string;
-  autor: string;
-  texto: string;
-}
-
-export interface CardProcesso extends ItemBase {
-  readonly id: string;
-  tipo?: "card_processo";
-  processoId: string;
-  etapaId: string;
-  titulo: string;
-  cliente?: string;
-  empresa?: string;
-  email?: string;
-  telefone?: string;
-  valor?: number;
-  prazo?: string;
-  prioridade?: "baixa" | "media" | "alta" | "urgente";
-  corpo: string;
-  checklists: Record<string, boolean>;
-  checklistsExtras?: Array<{ id: string; texto: string; concluido: boolean }>;
-  comentarios: ComentarioCard[];
-  tags: string[];
-  urgente: boolean;
-}
-
 export type TipoItemInbox = "lembrete" | "tarefa_atrasada" | "nota_inativa";
 
 export interface Lembrete {
@@ -261,8 +207,6 @@ export type TipoItem =
   | "meta"
   | "entrega"
   | "reuniao"
-  | "processo"
-  | "card_processo"
   | "contato"
   | "outro";
 
@@ -275,8 +219,6 @@ export const ROTA_POR_TIPO: Record<TipoItem, string> = {
   meta:      "/pdi",
   entrega:   "/pdi",
   reuniao:   "/notas",
-  processo:  "/processos",
-  card_processo: "/processos",
   contato:   "/contatos",
   outro:     "/notas",
 };
@@ -290,8 +232,6 @@ export const ROTULO_TIPO: Record<TipoItem, string> = {
   meta:      "Meta",
   entrega:   "Entrega",
   reuniao:   "Reunião",
-  processo:  "Processo / Funil",
-  card_processo: "Cartão de Processo",
   contato:   "Contato / Árvore",
   outro:     "Outro",
 };

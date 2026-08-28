@@ -41,8 +41,7 @@ export const PASTAS_VALIDAS = [
   "reunioes",
   "pdi/metas",
   "pdi/entregas",
-  "processos",
-  "processos/cards",
+  "contatos",
 ] as const;
 
 /**
@@ -331,8 +330,6 @@ function tipoDaPasta(pasta: string): string {
     reunioes: "reuniao",
     "pdi/metas": "meta",
     "pdi/entregas": "entrega",
-    processos: "processo",
-    "processos/cards": "card_processo",
     contatos: "contato",
   };
   return tipos[pasta] ?? "nota";

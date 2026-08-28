@@ -35,7 +35,7 @@ describe("useMutacaoItem", () => {
     );
 
     const item: ItemMock = {
-      caminho: "processos/p1.md",
+      caminho: "notas/p1.md",
       sha: "sha_antigo",
       bruto: {},
       titulo: "Item Teste",

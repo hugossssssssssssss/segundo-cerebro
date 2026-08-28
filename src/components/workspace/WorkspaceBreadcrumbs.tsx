@@ -25,7 +25,6 @@ export function WorkspaceBreadcrumbs({ caminho, titulo }: WorkspaceBreadcrumbsPr
       referencias: "Referências",
       lousas: "Lousas",
       contatos: "Contatos",
-      processos: "Processos",
     };
 
     const raizFormatada = nomeAmigavelPasta[pastaRaiz.toLowerCase()] || formatarNomeAmigavel(pastaRaiz);

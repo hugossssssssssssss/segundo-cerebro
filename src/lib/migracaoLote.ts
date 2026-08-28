@@ -25,12 +25,6 @@ import {
   comoContato,
   contatoParaArquivo,
 } from "./entidades";
-import {
-  comoProcesso,
-  processoParaFrontmatter,
-  comoCardProcesso,
-  cardProcessoParaFrontmatter,
-} from "./processos";
 import type { Settings } from "./settings";
 import { dispararAtualizacaoAcervo } from "./eventos";
 import { notificarOutrasAbas } from "./syncChannel";
@@ -106,22 +100,6 @@ export function normalizarDocumento(item: ItemRepo): string | null {
       docConvertido = contatoParaArquivo(c);
       break;
     }
-    case "processo": {
-      const p = comoProcesso(item.doc, item.caminho, item.sha, tit);
-      docConvertido = {
-        dados: processoParaFrontmatter(p),
-        corpo: p.corpo,
-      };
-      break;
-    }
-    case "card_processo": {
-      const cp = comoCardProcesso(item.doc, item.caminho, item.sha, tit);
-      docConvertido = {
-        dados: cardProcessoParaFrontmatter(cp),
-        corpo: cp.corpo,
-      };
-      break;
-    }
     default:
       return null;
   }
@@ -136,8 +114,6 @@ export function normalizarDocumento(item: ItemRepo): string | null {
   const temCamposLegados =
     "Pomodoro" in dadosOriginal ||
     "PomodoroFraturado" in dadosOriginal ||
-    "processoId" in dadosOriginal ||
-    "etapaId" in dadosOriginal ||
     "pai" in dadosOriginal ||
     "criado" in dadosOriginal ||
     "atualizado" in dadosOriginal;

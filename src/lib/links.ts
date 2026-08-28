@@ -527,13 +527,6 @@ export async function propagarRenomeacaoId(
       mudou = true;
     }
 
-    // 3. Atualiza processo_id em cartões
-    if (d.processo_id === antigoLimpo || d.processoId === antigoLimpo) {
-      d.processo_id = novoLimpo;
-      if (d.processoId) delete d.processoId;
-      mudou = true;
-    }
-
     if (mudou) {
       const textoNovo = escreverMarkdown({ dados: d, corpo: doc.corpo });
       try {
@@ -563,7 +556,7 @@ export async function propagarRenomeacaoId(
 }
 
 export interface ProblemaIntegridade {
-  tipo: "mencao_quebrada" | "meta_orfa" | "pai_contato_orfao" | "processo_card_orfao";
+  tipo: "mencao_quebrada" | "meta_orfa" | "pai_contato_orfao";
   origemCaminho: string;
   origemTitulo: string;
   detalhe: string;
@@ -601,12 +594,6 @@ export function verificarIntegridadeReferencias(itens: ItemRepo[]): RelatorioInt
   const contatosIds = new Set(
     itens
       .filter((i) => i.caminho.startsWith("contatos/"))
-      .map((i) => (typeof i.doc.dados.id === "string" && i.doc.dados.id.trim() ? i.doc.dados.id.trim() : i.nome.replace(/\.md$/, "")))
-  );
-
-  const processosIds = new Set(
-    itens
-      .filter((i) => i.caminho.startsWith("processos/") && !i.caminho.startsWith("processos/cards/"))
       .map((i) => (typeof i.doc.dados.id === "string" && i.doc.dados.id.trim() ? i.doc.dados.id.trim() : i.nome.replace(/\.md$/, "")))
   );
 
@@ -656,20 +643,6 @@ export function verificarIntegridadeReferencias(itens: ItemRepo[]): RelatorioInt
           origemTitulo: titulo,
           detalhe: `Contato líder/pai "${paiId}" não foi encontrado em contatos/.`,
           referencia: paiId,
-        });
-      }
-    }
-
-    // Processo pai em Cartões
-    if (item.caminho.startsWith("processos/cards/")) {
-      const processoId = (d.processo_id || d.processoId) as string | undefined;
-      if (processoId && typeof processoId === "string" && !processosIds.has(processoId.trim())) {
-        problemas.push({
-          tipo: "processo_card_orfao",
-          origemCaminho: item.caminho,
-          origemTitulo: titulo,
-          detalhe: `Funil de processo "${processoId}" não foi encontrado em processos/.`,
-          referencia: processoId,
         });
       }
     }

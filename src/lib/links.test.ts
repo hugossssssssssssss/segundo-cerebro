@@ -401,7 +401,7 @@ describe("propagarRenomeacao", () => {
     expect(idx.has(".klaus/templates/modelo.md")).toBe(false);
   });
 
-  it("propaga renomeação de IDs estruturais em metas, pai_id e processo_id", async () => {
+  it("propaga renomeação de IDs estruturais em metas e pai_id", async () => {
     vi.resetModules();
     const gravados: Record<string, string> = {};
     vi.doMock("./github", () => ({
@@ -415,7 +415,6 @@ describe("propagarRenomeacao", () => {
     const acervoLocal = [
       item("pdi/entregas/entrega1.md", "---\ntitulo: E1\nmetas:\n  - meta-antiga\n  - outra-meta\n---\n"),
       item("contatos/membro.md", "---\ntitulo: Membro\npai_id: lider-antigo\n---\n"),
-      item("processos/cards/card1.md", "---\ntitulo: Card\nprocesso_id: funil-antigo\n---\n"),
       item("notas/intacta.md", "---\ntitulo: Nota\n---\n"),
     ];
 
@@ -426,9 +425,5 @@ describe("propagarRenomeacao", () => {
     const r2 = await propagarRenomeacaoId(cfg, acervoLocal, "lider-antigo", "lider-novo");
     expect(r2.atualizados).toBe(1);
     expect(gravados["contatos/membro.md"]).toContain("pai_id: lider-novo");
-
-    const r3 = await propagarRenomeacaoId(cfg, acervoLocal, "funil-antigo", "funil-novo");
-    expect(r3.atualizados).toBe(1);
-    expect(gravados["processos/cards/card1.md"]).toContain("processo_id: funil-novo");
   });
 });

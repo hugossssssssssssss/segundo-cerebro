@@ -18,8 +18,6 @@ export type TipoNoGrafo =
   | "referencia"
   | "lousa"
   | "contato"
-  | "processo"
-  | "card_processo"
   | "tag";
 
 export type NoGrafo3D = {
@@ -60,8 +58,6 @@ export const CORES_TIPOS_GRAFO: Record<TipoNoGrafo, string> = {
   referencia: "#cba6f7", // Lilás Pastel (Mauve/Purple)
   lousa: "#89dceb",      // Ciano Pastel (Sky)
   contato: "#f9e2af",    // Amarelo Pastel (Yellow)
-  processo: "#b4befe",   // Lavanda (Lavender)
-  card_processo: "#94e2d5", // Menta (Teal)
   tag: "#cdd6f4",        // Lavanda Claro (Lavender/Text)
 };
 
@@ -82,8 +78,6 @@ export function construirGrafo3D(
     if (t === "referencia" || item.caminho.startsWith("referencias/")) return "referencia";
     if (t === "lousa" || item.caminho.startsWith("lousas/")) return "lousa";
     if (t === "contato" || item.caminho.startsWith("contatos/")) return "contato";
-    if (t === "card_processo" || item.caminho.startsWith("processos/cards/")) return "card_processo";
-    if (t === "processo" || item.caminho.startsWith("processos/")) return "processo";
     return "nota";
   };
 
@@ -120,7 +114,7 @@ export function construirGrafo3D(
       vx: 0,
       vy: 0,
       vz: 0,
-      raio: tipo === "meta" || tipo === "lousa" || tipo === "processo" ? 14 : 10,
+      raio: tipo === "meta" || tipo === "lousa" ? 14 : 10,
       cor: CORES_TIPOS_GRAFO[tipo] || "#89b4fa",
       conexoesCount: 0,
     });
@@ -196,16 +190,6 @@ export function construirGrafo3D(
                       itens.find((i) => i.caminho === `contatos/${paiId}.md` || i.caminho.endsWith(`/${paiId}.md`));
       if (alvoPai) {
         adicionarAresta(caminho, "caminho" in alvoPai ? alvoPai.caminho : (alvoPai as any).caminho, "lider", 1.2);
-      }
-    }
-
-    // Conexões estruturais: CardProcesso -> Processo Pai
-    const processoId = typeof item.doc.dados.processo_id === "string" ? item.doc.dados.processo_id : typeof item.doc.dados.processoId === "string" ? item.doc.dados.processoId : undefined;
-    if (processoId && processoId.trim()) {
-      const alvoProcesso = indiceAlvos.get(processoId.toLowerCase().trim()) ||
-                           itens.find((i) => i.caminho === `processos/${processoId}.md` || i.caminho.endsWith(`/${processoId}.md`));
-      if (alvoProcesso) {
-        adicionarAresta(caminho, "caminho" in alvoProcesso ? alvoProcesso.caminho : (alvoProcesso as any).caminho, "processo", 1.2);
       }
     }
 

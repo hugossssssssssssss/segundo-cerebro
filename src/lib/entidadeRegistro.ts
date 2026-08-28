@@ -74,19 +74,6 @@ export const REGISTRO_ENTIDADES: Record<TipoItem, DefinicaoEntidade> = {
     rotulo: ROTULO_TIPO.contato,
     rota: ROTA_POR_TIPO.contato,
   },
-  processo: {
-    tipo: "processo",
-    pasta: "processos",
-    rotulo: ROTULO_TIPO.processo,
-    rota: ROTA_POR_TIPO.processo,
-  },
-  card_processo: {
-    tipo: "card_processo",
-    pasta: "processos/cards",
-    pastaEhPrefixo: true,
-    rotulo: ROTULO_TIPO.card_processo,
-    rota: ROTA_POR_TIPO.card_processo,
-  },
   outro: {
     tipo: "outro",
     pasta: "",
@@ -106,7 +93,6 @@ export function detectarTipoDoItem(item: ItemRepo): TipoItem {
   }
 
   // Primeiro checa caminhos específicos de subpastas
-  if (item.caminho.startsWith("processos/cards")) return "card_processo";
   if (item.caminho.startsWith("pdi/metas")) return "meta";
   if (item.caminho.startsWith("pdi/entregas")) return "entrega";
 

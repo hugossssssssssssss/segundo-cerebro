@@ -67,15 +67,6 @@ export const CATALOGO_WIDGETS: InfoWidgetCatalogo[] = [
     alturaPadraoPx: 320,
   },
   {
-    id: "processos_crm",
-    titulo: "Processos & CRM",
-    resumo: "Pipelines e funis de clientes",
-    categoria: "produtividade",
-    icone: "GitMerge",
-    colunasPadrao: 6,
-    alturaPadraoPx: 320,
-  },
-  {
     id: "busca_web",
     titulo: "Busca Web",
     resumo: "Spotlight de busca na internet",

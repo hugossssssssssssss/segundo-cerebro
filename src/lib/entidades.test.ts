@@ -38,8 +38,6 @@ describe("PASTAS", () => {
       entregas: "pdi/entregas",
       referencias: "referencias",
       lousas: "lousas",
-      processos: "processos",
-      cardsProcesso: "processos/cards",
       caixaEntrada: "caixa-entrada",
       contatos: "contatos",
     });

@@ -203,8 +203,6 @@ export function EditorNotion({
           ? "🎯 Meta / Entrega PDI"
           : s.caminho.startsWith("referencias/")
           ? "🖼️ Referência Visual"
-          : s.caminho.startsWith("processos/")
-          ? "🔄 Processo / CRM"
           : "📄 Documento";
 
         return {

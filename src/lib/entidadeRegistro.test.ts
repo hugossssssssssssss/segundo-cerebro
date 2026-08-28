@@ -40,15 +40,15 @@ describe("entidadeRegistro", () => {
     };
     expect(detectarTipoDoItem(itemMeta)).toBe("meta");
 
-    const itemCard: ItemRepo = {
-      caminho: "processos/cards/card1.md",
-      nome: "card1.md",
+    const itemEntrega: ItemRepo = {
+      caminho: "pdi/entregas/entrega1.md",
+      nome: "entrega1.md",
       sha: "123",
       tamanho: 10,
       texto: "",
       doc: { dados: {}, corpo: "" },
     };
-    expect(detectarTipoDoItem(itemCard)).toBe("card_processo");
+    expect(detectarTipoDoItem(itemEntrega)).toBe("entrega");
   });
 
   it("busca entidade por pasta e por tipo corretamente", () => {

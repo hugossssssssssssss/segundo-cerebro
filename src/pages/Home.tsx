@@ -52,7 +52,6 @@ import { WidgetReferenciasMural } from "@/components/home/WidgetReferenciasMural
 import { WidgetMetasPDI } from "@/components/home/WidgetMetasPDI";
 import { WidgetScratchpad } from "@/components/home/WidgetScratchpad";
 import { WidgetHubFerramentas } from "@/components/home/WidgetHubFerramentas";
-import { WidgetProcessosCRM, type ProcessoItemHome } from "@/components/home/WidgetProcessosCRM";
 import { WidgetLousasRecentes, type LousaItemHome } from "@/components/home/WidgetLousasRecentes";
 import { WidgetBuscaWeb } from "@/components/home/WidgetBuscaWeb";
 import { WidgetConversorRapido } from "@/components/home/WidgetConversorRapido";
@@ -69,7 +68,6 @@ interface SnapshotHome {
   notas: NotaItemHome[];
   referencias: Referencia[];
   resumosPdi: ResumoMeta[];
-  processos: ProcessoItemHome[];
   lousas: LousaItemHome[];
 }
 
@@ -91,7 +89,6 @@ export default function Home() {
       notas: [],
       referencias: [],
       resumosPdi: [],
-      processos: [],
       lousas: [],
     };
   }, []);
@@ -100,7 +97,6 @@ export default function Home() {
   const [notas, setNotas] = useState<NotaItemHome[]>(snapshotInicial.notas);
   const [referencias, setReferencias] = useState<Referencia[]>(snapshotInicial.referencias);
   const [resumosPdi, setResumosPdi] = useState<ResumoMeta[]>(snapshotInicial.resumosPdi);
-  const [processos, setProcessos] = useState<ProcessoItemHome[]>(snapshotInicial.processos);
   const [lousas, setLousas] = useState<LousaItemHome[]>(snapshotInicial.lousas);
 
   // ── Configuração dos Widgets (Grade de 12 Colunas com Tamanho Livre) ──────
@@ -183,15 +179,7 @@ export default function Home() {
       const listaResumos = resumir(metas, entregas);
       setResumosPdi(listaResumos);
 
-      // 5. Processos
-      const docsProcessos = daPasta(todos, "processos");
-      const listaProcessos = docsProcessos.map((i) => ({
-        caminho: i.caminho,
-        titulo: tituloProvavel(i.doc, i.nome),
-      }));
-      setProcessos(listaProcessos);
-
-      // 6. Lousas
+      // 5. Lousas
       const docsLousas = daPasta(todos, "lousas");
       const listaLousas = docsLousas.map((i) => ({
         caminho: i.caminho,
@@ -208,7 +196,6 @@ export default function Home() {
             notas: listaNotas.map((n) => ({ ...n, corpo: (n.corpo || "").slice(0, 300) })),
             referencias: listaRefs,
             resumosPdi: listaResumos,
-            processos: listaProcessos,
             lousas: listaLousas,
           })
         );
@@ -427,8 +414,6 @@ export default function Home() {
                     ? "/referencias"
                     : widget.id === "metas_pdi"
                     ? "/pdi"
-                    : widget.id === "processos_crm"
-                    ? "/processos"
                     : widget.id === "lousas_recentes"
                     ? "/lousas"
                     : widget.id === "conversor_arquivos"
@@ -503,13 +488,6 @@ export default function Home() {
                 )}
 
                 {widget.id === "hub_ferramentas" && <WidgetHubFerramentas />}
-
-                {widget.id === "processos_crm" && (
-                  <WidgetProcessosCRM
-                    processos={processos}
-                    aoAbrirProcesso={() => navegar("/processos")}
-                  />
-                )}
 
                 {widget.id === "lousas_recentes" && (
                   <WidgetLousasRecentes

@@ -6,7 +6,6 @@ const ROTAS_VALIDAS_APP = new Set([
   "/notas",
   "/tarefas",
   "/contatos",
-  "/processos",
   "/pdi",
   "/referencias",
   "/lousas",

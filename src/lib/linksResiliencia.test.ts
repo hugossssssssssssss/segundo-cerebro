@@ -27,18 +27,16 @@ describe("Resiliência de Links e Integridade Referencial", () => {
     expect(rel.problemas[0].referencia).toBe("ItemInexistente");
   });
 
-  it("deve detectar IDs órfãos em metas de entregas, pai_id de contatos e processo_id de cartões", () => {
+  it("deve detectar IDs órfãos em metas de entregas e pai_id de contatos", () => {
     const itens: ItemRepo[] = [
       item("pdi/entregas/entrega-1.md", "---\nid: entrega-1\ntitulo: Entrega 1\nmetas:\n  - meta-inexistente\n---\nCorpo"),
       item("contatos/ana.md", "---\nid: ana\ntitulo: Ana\npai_id: contato-fantasma\n---\nCorpo"),
-      item("processos/cards/card-1.md", "---\nid: card-1\ntitulo: Card 1\nprocesso_id: funil-fantasma\n---\nCorpo"),
     ];
 
     const rel = verificarIntegridadeReferencias(itens);
-    expect(rel.totalProblemas).toBe(3);
+    expect(rel.totalProblemas).toBe(2);
     expect(rel.problemas.some((p) => p.tipo === "meta_orfa")).toBe(true);
     expect(rel.problemas.some((p) => p.tipo === "pai_contato_orfao")).toBe(true);
-    expect(rel.problemas.some((p) => p.tipo === "processo_card_orfao")).toBe(true);
   });
 
   it("não deve apontar problemas quando todas as referências são válidas", () => {

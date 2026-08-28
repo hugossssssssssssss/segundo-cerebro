@@ -258,7 +258,6 @@ export function PropriedadesNotion({
       else if (rotulo.includes("entrega")) raiz = "pdi/entregas";
       else if (rotulo.includes("referencia") || rotulo.includes("referência")) raiz = "referencias";
       else if (rotulo.includes("reuniao") || rotulo.includes("reunião")) raiz = "reunioes";
-      else if (rotulo.includes("processo")) raiz = "processos";
       else if (rotulo.includes("contato")) raiz = "contatos";
       else raiz = "notas";
     }
@@ -270,7 +269,6 @@ export function PropriedadesNotion({
       "pdi/entregas": "PDI / Entregas",
       referencias: "Referências",
       reunioes: "Reuniões",
-      processos: "Processos",
       contatos: "Contatos",
     };
 
