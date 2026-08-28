@@ -294,13 +294,18 @@ export async function executar(
       ...reservados,
     ]);
     reservados.add(caminho);
+    const agora = new Date().toISOString();
+    const id = caminho.split("/").pop()!.replace(/\.md$/, "");
     const conteudo = escreverMarkdown({
       dados: {
+        id,
         titulo: acao.titulo,
         tipo: tipoDaPasta(acao.pasta!),
         ...(acao.pasta === "pdi/entregas" || acao.pasta === "reunioes"
           ? { data: hojeISO() }
           : {}),
+        criado_em: agora,
+        atualizado_em: agora,
         ...(acao.campos ?? {}),
         ...marcaDaIA(acao.pasta!),
       },
@@ -326,6 +331,9 @@ function tipoDaPasta(pasta: string): string {
     reunioes: "reuniao",
     "pdi/metas": "meta",
     "pdi/entregas": "entrega",
+    processos: "processo",
+    "processos/cards": "card_processo",
+    contatos: "contato",
   };
   return tipos[pasta] ?? "nota";
 }

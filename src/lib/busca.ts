@@ -113,11 +113,15 @@ function novoIndice(itens: ItemRepo[]): MiniSearch<Fichado> {
   mini.addAll(
     itensValidos.map((item) => {
       const d = item.doc.dados;
-      const extrasContato = [
+      const extras = [
         typeof d.cargo === "string" ? d.cargo : "",
         typeof d.empresa === "string" ? d.empresa : "",
         typeof d.email === "string" ? d.email : "",
         typeof d.telefone === "string" ? d.telefone : "",
+        typeof d.cliente === "string" ? d.cliente : "",
+        typeof d.descricao === "string" ? d.descricao : "",
+        typeof d.indicador === "string" ? d.indicador : "",
+        typeof d.porque === "string" ? d.porque : "",
       ]
         .filter(Boolean)
         .join(" ");
@@ -126,7 +130,7 @@ function novoIndice(itens: ItemRepo[]): MiniSearch<Fichado> {
         id: item.caminho,
         titulo: tituloProvavel(item.doc, item.nome),
         tags: comoLista(item.doc.dados.tags).join(" "),
-        corpo: ((item.doc.corpo || "") + " " + extrasContato).trim(),
+        corpo: ((item.doc.corpo || "") + " " + extras).trim(),
       };
     }),
   );

@@ -118,30 +118,49 @@ export function comoProcesso(
   const descricao = typeof d.descricao === "string" ? d.descricao : "";
   const etapas = Array.isArray(d.etapas) ? (d.etapas as EtapaProcesso[]) : [];
   const regras = Array.isArray(d.regras) ? (d.regras as RegraAutomacao[]) : [];
+  const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
+  const atualizadoEm =
+    typeof d.atualizado_em === "string"
+      ? d.atualizado_em
+      : typeof d.atualizadoEm === "string"
+      ? d.atualizadoEm
+      : typeof d.atualizado === "string"
+      ? d.atualizado
+      : undefined;
 
   return {
     caminho,
     sha,
     bruto: d,
     id,
+    tipo: "processo",
     titulo,
     corpo: doc.corpo || "",
     descricao,
     etapas,
     regras,
-    atualizadoEm: typeof d.atualizadoEm === "string" ? d.atualizadoEm : undefined,
+    criadoEm,
+    atualizadoEm,
   };
 }
 
 /** Prepara um `Processo` para ser gravado em frontmatter Markdown */
 export function processoParaFrontmatter(p: Processo): Record<string, any> {
+  const agora = new Date().toISOString();
+  const criadoEm = p.criadoEm || p.bruto.criado_em || p.bruto.criado || agora;
   return mesclarFrontmatter(p.bruto, {
-    id: p.id,
-    titulo: p.titulo,
-    descricao: p.descricao,
-    etapas: p.etapas,
-    regras: p.regras,
-    atualizadoEm: new Date().toISOString(),
+    id:            p.id,
+    tipo:          "processo",
+    titulo:        p.titulo,
+    descricao:     p.descricao,
+    etapas:        p.etapas,
+    regras:        p.regras,
+    criado_em:     criadoEm,
+    atualizado_em: agora,
+    // Limpeza de campos legados
+    atualizadoEm:  undefined,
+    atualizado:    undefined,
+    criado:        undefined,
   });
 }
 
@@ -154,8 +173,18 @@ export function comoCardProcesso(
 ): CardProcesso {
   const d = doc.dados || {};
   const id = typeof d.id === "string" ? d.id : caminho.replace("processos/cards/", "").replace(".md", "");
-  const processoId = typeof d.processoId === "string" ? d.processoId : "";
-  const etapaId = typeof d.etapaId === "string" ? d.etapaId : "";
+  const processoId =
+    typeof d.processo_id === "string" && d.processo_id.trim()
+      ? d.processo_id.trim()
+      : typeof d.processoId === "string"
+      ? d.processoId.trim()
+      : "";
+  const etapaId =
+    typeof d.etapa_id === "string" && d.etapa_id.trim()
+      ? d.etapa_id.trim()
+      : typeof d.etapaId === "string"
+      ? d.etapaId.trim()
+      : "";
   const titulo = typeof d.titulo === "string" ? d.titulo : tituloFallback;
   const cliente = typeof d.cliente === "string" ? d.cliente : undefined;
   const empresa = typeof d.empresa === "string" ? d.empresa : undefined;
@@ -165,17 +194,31 @@ export function comoCardProcesso(
   const prazo = typeof d.prazo === "string" ? d.prazo : undefined;
   const prioridade = typeof d.prioridade === "string" && ["baixa", "media", "alta", "urgente"].includes(d.prioridade) ? (d.prioridade as CardProcesso["prioridade"]) : undefined;
   const checklists = typeof d.checklists === "object" && d.checklists !== null ? (d.checklists as Record<string, boolean>) : {};
-  const checklistsExtras = Array.isArray(d.checklistsExtras) ? (d.checklistsExtras as any[]) : [];
+  const checklistsExtras =
+    Array.isArray(d.checklists_extras)
+      ? (d.checklists_extras as any[])
+      : Array.isArray(d.checklistsExtras)
+      ? (d.checklistsExtras as any[])
+      : [];
   const comentarios = Array.isArray(d.comentarios) ? (d.comentarios as ComentarioCard[]) : [];
   const tags = Array.isArray(d.tags) ? (d.tags as string[]) : [];
   const urgente = Boolean(d.urgente) || prioridade === "urgente";
-  const atualizadoEm = typeof d.atualizadoEm === "string" ? d.atualizadoEm : new Date().toISOString();
+  const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
+  const atualizadoEm =
+    typeof d.atualizado_em === "string"
+      ? d.atualizado_em
+      : typeof d.atualizadoEm === "string"
+      ? d.atualizadoEm
+      : typeof d.atualizado === "string"
+      ? d.atualizado
+      : new Date().toISOString();
 
   return {
     caminho,
     sha,
     bruto: d,
     id,
+    tipo: "card_processo",
     processoId,
     etapaId,
     titulo,
@@ -192,30 +235,42 @@ export function comoCardProcesso(
     comentarios,
     tags,
     urgente,
+    criadoEm,
     atualizadoEm,
   };
 }
 
 /** Prepara um `CardProcesso` para ser gravado em frontmatter Markdown */
 export function cardProcessoParaFrontmatter(c: CardProcesso): Record<string, any> {
+  const agora = new Date().toISOString();
+  const criadoEm = c.criadoEm || c.bruto.criado_em || c.bruto.criado || agora;
   return mesclarFrontmatter(c.bruto, {
-    id: c.id,
-    processoId: c.processoId,
-    etapaId: c.etapaId,
-    titulo: c.titulo,
-    cliente: c.cliente,
-    empresa: c.empresa,
-    email: c.email,
-    telefone: c.telefone,
-    valor: c.valor,
-    prazo: c.prazo,
-    prioridade: c.prioridade,
-    checklists: c.checklists,
-    checklistsExtras: c.checklistsExtras,
-    comentarios: c.comentarios,
-    tags: c.tags,
-    urgente: c.urgente ? true : undefined,
-    atualizadoEm: new Date().toISOString(),
+    id:                c.id,
+    tipo:              "card_processo",
+    processo_id:       c.processoId,
+    etapa_id:          c.etapaId,
+    titulo:            c.titulo,
+    cliente:           c.cliente,
+    empresa:           c.empresa,
+    email:             c.email,
+    telefone:          c.telefone,
+    valor:             c.valor,
+    prazo:             c.prazo,
+    prioridade:        c.prioridade,
+    checklists:        c.checklists,
+    checklists_extras: c.checklistsExtras,
+    comentarios:       c.comentarios,
+    tags:              c.tags,
+    urgente:           c.urgente ? true : undefined,
+    criado_em:         criadoEm,
+    atualizado_em:     agora,
+    // Limpeza de campos legados
+    processoId:        undefined,
+    etapaId:           undefined,
+    checklistsExtras:  undefined,
+    atualizadoEm:      undefined,
+    atualizado:        undefined,
+    criado:            undefined,
   });
 }
 

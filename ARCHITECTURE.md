@@ -1,6 +1,6 @@
 # Arquitetura do Klaus
 
-> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-27.**
+> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-28.**
 > Não edite este arquivo à mão — ele é reescrito a cada `npm run build`.
 > Para mudar o que está aqui, mude `src/lib/tipos.ts` e `src/lib/entidades.ts`.
 
@@ -42,11 +42,18 @@ Uma nota ou rascunho em `notas/`.
 | `caminho` | `string` | sim | _(de ItemBase)_ |
 | `sha` | `string` | sim | _(de ItemBase)_ |
 | `bruto` | `Frontmatter` | sim | _(de ItemBase)_ |
+| `id` | `string` | não | _(de ItemBase)_ |
 | `titulo` | `string` | sim | _(de ItemBase)_ |
 | `corpo` | `string` | sim | _(de ItemBase)_ |
+| `criadoEm` | `string` | não | _(de ItemBase)_ |
+| `atualizadoEm` | `string` | não | _(de ItemBase)_ |
+| `relacionamentos` | `string[]` | não | _(de ItemBase)_ |
 | `tipo` | `"nota" \| "referencia" \| "rascunho"` | sim | — |
+| `subtipo` | `"nota" \| "reuniao" \| "briefing" \| "rascunho"` | não | — |
 | `tags` | `string[]` | sim | — |
 | `atualizado` | `string` | não | — |
+| `dataReuniao` | `string` | não | — |
+| `participantes` | `string[]` | não | — |
 
 ### Tarefa
 
@@ -57,11 +64,18 @@ Uma tarefa em `tarefas/`.
 | `caminho` | `string` | sim | _(de ItemBase)_ |
 | `sha` | `string` | sim | _(de ItemBase)_ |
 | `bruto` | `Frontmatter` | sim | _(de ItemBase)_ |
+| `id` | `string` | não | _(de ItemBase)_ |
 | `titulo` | `string` | sim | _(de ItemBase)_ |
 | `corpo` | `string` | sim | _(de ItemBase)_ |
+| `criadoEm` | `string` | não | _(de ItemBase)_ |
+| `atualizadoEm` | `string` | não | _(de ItemBase)_ |
+| `relacionamentos` | `string[]` | não | _(de ItemBase)_ |
 | `status` | `StatusTarefa` | sim | — |
 | `prazo` | `string` | não | — |
 | `tags` | `string[]` | sim | — |
+| `prioridade` | `"baixa" \| "media" \| "alta" \| "urgente"` | não | — |
+| `pomodorosEstimados` | `number` | não | — |
+| `pomodorosRealizados` | `number` | não | — |
 | `pomodoro` | `number` | não | — |
 | `Pomodoro` | `number` | não | — |
 | `fraturados` | `number` | não | — |
@@ -75,8 +89,12 @@ Uma meta do PDI em `pdi/metas/`.
 | `caminho` | `string` | sim | _(de ItemBase)_ |
 | `sha` | `string` | sim | _(de ItemBase)_ |
 | `bruto` | `Frontmatter` | sim | _(de ItemBase)_ |
+| `id` | `string` | não | _(de ItemBase)_ |
 | `titulo` | `string` | sim | _(de ItemBase)_ |
 | `corpo` | `string` | sim | _(de ItemBase)_ |
+| `criadoEm` | `string` | não | _(de ItemBase)_ |
+| `atualizadoEm` | `string` | não | _(de ItemBase)_ |
+| `relacionamentos` | `string[]` | não | _(de ItemBase)_ |
 | `id` | `string` | sim | Nome do arquivo sem .md — é a chave usada pelas entregas para referenciar. |
 | `status` | `StatusMeta` | sim | — |
 | `prazo` | `string` | não | — |
@@ -92,8 +110,12 @@ Uma entrega do PDI em `pdi/entregas/`.
 | `caminho` | `string` | sim | _(de ItemBase)_ |
 | `sha` | `string` | sim | _(de ItemBase)_ |
 | `bruto` | `Frontmatter` | sim | _(de ItemBase)_ |
+| `id` | `string` | não | _(de ItemBase)_ |
 | `titulo` | `string` | sim | _(de ItemBase)_ |
 | `corpo` | `string` | sim | _(de ItemBase)_ |
+| `criadoEm` | `string` | não | _(de ItemBase)_ |
+| `atualizadoEm` | `string` | não | _(de ItemBase)_ |
+| `relacionamentos` | `string[]` | não | _(de ItemBase)_ |
 | `id` | `string` | sim | — |
 | `data` | `string` | sim | Data AAAA-MM-DD da entrega. |
 | `metas` | `string[]` | sim | IDs das metas que esta entrega alimenta (nome do arquivo sem .md). |
@@ -108,8 +130,12 @@ Uma referência visual em `referencias/`.
 | `caminho` | `string` | sim | _(de ItemBase)_ |
 | `sha` | `string` | sim | _(de ItemBase)_ |
 | `bruto` | `Frontmatter` | sim | _(de ItemBase)_ |
+| `id` | `string` | não | _(de ItemBase)_ |
 | `titulo` | `string` | sim | _(de ItemBase)_ |
 | `corpo` | `string` | sim | _(de ItemBase)_ |
+| `criadoEm` | `string` | não | _(de ItemBase)_ |
+| `atualizadoEm` | `string` | não | _(de ItemBase)_ |
+| `relacionamentos` | `string[]` | não | _(de ItemBase)_ |
 | `id` | `string` | sim | — |
 | `imagem` | `string` | não | Caminho da imagem dentro do repositório, se houver. |
 | `fonte` | `string` | não | URL de origem, se veio da web. |
@@ -137,8 +163,12 @@ Um contato ou pessoa vinculada em `contatos/`.
 | `caminho` | `string` | sim | _(de ItemBase)_ |
 | `sha` | `string` | sim | _(de ItemBase)_ |
 | `bruto` | `Frontmatter` | sim | _(de ItemBase)_ |
+| `id` | `string` | não | _(de ItemBase)_ |
 | `titulo` | `string` | sim | _(de ItemBase)_ |
 | `corpo` | `string` | sim | _(de ItemBase)_ |
+| `criadoEm` | `string` | não | _(de ItemBase)_ |
+| `atualizadoEm` | `string` | não | _(de ItemBase)_ |
+| `relacionamentos` | `string[]` | não | _(de ItemBase)_ |
 | `id` | `string` | sim | — |
 | `cargo` | `string` | não | — |
 | `empresa` | `string` | não | — |

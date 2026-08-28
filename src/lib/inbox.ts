@@ -157,7 +157,11 @@ export function compilarNotasInativas(
   for (const item of itensRepo) {
     if (!item.caminho.startsWith("notas/")) continue;
     const doc = lerMarkdown(item.texto);
-    const atualizadoEm = (doc.dados.atualizado as string) || (doc.dados.criado as string);
+    const atualizadoEm =
+      (doc.dados.atualizado_em as string) ||
+      (doc.dados.atualizado as string) ||
+      (doc.dados.criado_em as string) ||
+      (doc.dados.criado as string);
 
     let dataNota: Date | null = null;
     if (atualizadoEm) {

@@ -122,7 +122,7 @@ describe("notaParaArquivo", () => {
 
   it("carimba a data de atualização com ISO completo", () => {
     const n = comoNota(doc("---\ntitulo: X\n---\n"), "notas/a.md", "s", "t");
-    expect(notaParaArquivo(n).dados.atualizado).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    expect(notaParaArquivo(n).dados.atualizado_em).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
   });
 });
 
@@ -158,7 +158,7 @@ describe("tarefaParaArquivo", () => {
       "s",
       "t",
     );
-    expect(tarefaParaArquivo(t).dados.criado).toBe("2026-01-01");
+    expect(tarefaParaArquivo(t).dados.criado_em).toBe("2026-01-01");
   });
 
   it("aceita o campo legado criado_em como origem da data de criação", () => {
@@ -168,12 +168,12 @@ describe("tarefaParaArquivo", () => {
       "s",
       "t",
     );
-    expect(tarefaParaArquivo(t).dados.criado).toBe("2025-05-05");
+    expect(tarefaParaArquivo(t).dados.criado_em).toBe("2025-05-05");
   });
 
   it("cria a data de criação quando o arquivo não tem nenhuma", () => {
     const t = comoTarefa(doc("---\ntitulo: X\n---\n"), "tarefas/a.md", "s", "t");
-    expect(tarefaParaArquivo(t).dados.criado).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(tarefaParaArquivo(t).dados.criado_em).toMatch(/^\d{4}-\d{2}-\d{2}/);
   });
 
   it("sempre grava tipo: tarefa", () => {
@@ -232,7 +232,7 @@ describe("metaParaArquivo", () => {
 
   it("carimba a data de atualização com ISO completo", () => {
     const m = comoMeta(doc("---\ntitulo: X\n---\n"), "pdi/metas/a.md", "s", "t");
-    expect(metaParaArquivo(m).dados.atualizado).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    expect(metaParaArquivo(m).dados.atualizado_em).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
   });
 });
 

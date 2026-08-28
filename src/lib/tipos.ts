@@ -53,15 +53,22 @@ export interface ItemBase {
   readonly caminho: string;
   readonly sha: string;
   readonly bruto: Frontmatter;
+  readonly id?: string;
   titulo: string;
   corpo: string;
+  criadoEm?: string;
+  atualizadoEm?: string;
+  relacionamentos?: string[];
 }
 
 /** Uma nota ou rascunho em `notas/`. */
 export interface Nota extends ItemBase {
   tipo: "nota" | "referencia" | "rascunho";
+  subtipo?: "nota" | "reuniao" | "briefing" | "rascunho";
   tags: string[];
   atualizado?: string;
+  dataReuniao?: string;
+  participantes?: string[];
 }
 
 /** Os três estados possíveis de uma tarefa. */
@@ -78,6 +85,9 @@ export interface Tarefa extends ItemBase {
   status: StatusTarefa;
   prazo?: string;
   tags: string[];
+  prioridade?: "baixa" | "media" | "alta" | "urgente";
+  pomodorosEstimados?: number;
+  pomodorosRealizados?: number;
   pomodoro?: number;
   Pomodoro?: number;
   fraturados?: number;
@@ -160,11 +170,11 @@ export interface RegraAutomacao {
 
 export interface Processo extends ItemBase {
   readonly id: string;
+  tipo?: "processo";
   titulo: string;
   descricao: string;
   etapas: EtapaProcesso[];
   regras: RegraAutomacao[];
-  atualizadoEm?: string;
 }
 
 export interface ComentarioCard {
@@ -176,6 +186,7 @@ export interface ComentarioCard {
 
 export interface CardProcesso extends ItemBase {
   readonly id: string;
+  tipo?: "card_processo";
   processoId: string;
   etapaId: string;
   titulo: string;
@@ -192,7 +203,6 @@ export interface CardProcesso extends ItemBase {
   comentarios: ComentarioCard[];
   tags: string[];
   urgente: boolean;
-  atualizadoEm: string;
 }
 
 export type TipoItemInbox = "lembrete" | "tarefa_atrasada" | "nota_inativa";

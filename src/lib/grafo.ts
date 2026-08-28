@@ -10,7 +10,17 @@ import { type ItemRepo, ehArquivoInternoOuSistema } from "./repo";
 import { tituloProvavel } from "./markdown";
 import { montarIndice, extrairLinks } from "./links";
 
-export type TipoNoGrafo = "nota" | "tarefa" | "meta" | "entrega" | "referencia" | "lousa" | "tag";
+export type TipoNoGrafo =
+  | "nota"
+  | "tarefa"
+  | "meta"
+  | "entrega"
+  | "referencia"
+  | "lousa"
+  | "contato"
+  | "processo"
+  | "card_processo"
+  | "tag";
 
 export type NoGrafo3D = {
   id: string;
@@ -49,7 +59,10 @@ export const CORES_TIPOS_GRAFO: Record<TipoNoGrafo, string> = {
   entrega: "#f5c2e7",    // Rosa Pastel (Pink)
   referencia: "#cba6f7", // Lilás Pastel (Mauve/Purple)
   lousa: "#89dceb",      // Ciano Pastel (Sky)
-  tag: "#b4befe",        // Lavanda Pastel (Lavender)
+  contato: "#f9e2af",    // Amarelo Pastel (Yellow)
+  processo: "#b4befe",   // Lavanda (Lavender)
+  card_processo: "#94e2d5", // Menta (Teal)
+  tag: "#cdd6f4",        // Lavanda Claro (Lavender/Text)
 };
 
 export function construirGrafo3D(
@@ -60,13 +73,17 @@ export function construirGrafo3D(
   const arestas: ArestaGrafo3D[] = [];
   const arestaSet = new Set<string>();
 
-  // Helper para determinar o tipo da entidade pelo caminho
-  const determinarTipo = (caminho: string): TipoNoGrafo => {
-    if (caminho.startsWith("tarefas/")) return "tarefa";
-    if (caminho.startsWith("pdi/metas/")) return "meta";
-    if (caminho.startsWith("pdi/entregas/")) return "entrega";
-    if (caminho.startsWith("referencias/")) return "referencia";
-    if (caminho.startsWith("lousas/")) return "lousa";
+  // Helper para determinar o tipo da entidade pelo caminho ou frontmatter
+  const determinarTipo = (item: ItemRepo): TipoNoGrafo => {
+    const t = String(item.doc.dados.tipo || "").toLowerCase();
+    if (t === "tarefa" || item.caminho.startsWith("tarefas/")) return "tarefa";
+    if (t === "meta" || item.caminho.startsWith("pdi/metas/")) return "meta";
+    if (t === "entrega" || item.caminho.startsWith("pdi/entregas/")) return "entrega";
+    if (t === "referencia" || item.caminho.startsWith("referencias/")) return "referencia";
+    if (t === "lousa" || item.caminho.startsWith("lousas/")) return "lousa";
+    if (t === "contato" || item.caminho.startsWith("contatos/")) return "contato";
+    if (t === "card_processo" || item.caminho.startsWith("processos/cards/")) return "card_processo";
+    if (t === "processo" || item.caminho.startsWith("processos/")) return "processo";
     return "nota";
   };
 
@@ -82,7 +99,7 @@ export function construirGrafo3D(
       continue;
     }
 
-    const tipo = determinarTipo(item.caminho);
+    const tipo = determinarTipo(item);
     const titulo = String(item.doc.dados.titulo || tituloProvavel(item.doc, item.nome));
     const tags = Array.isArray(item.doc.dados.tags) ? item.doc.dados.tags : [];
 
@@ -103,42 +120,49 @@ export function construirGrafo3D(
       vx: 0,
       vy: 0,
       vz: 0,
-      raio: tipo === "meta" || tipo === "lousa" ? 14 : 10,
-      cor: CORES_TIPOS_GRAFO[tipo],
+      raio: tipo === "meta" || tipo === "lousa" || tipo === "processo" ? 14 : 10,
+      cor: CORES_TIPOS_GRAFO[tipo] || "#89b4fa",
       conexoesCount: 0,
     });
   }
 
-  // 2. Extrai relacionamentos por menções (@título e [[título]]) e campo relacionamentos de forma eficiente
+  // 2. Extrai relacionamentos por menções (@título e [[título]]) e campo relacionamentos
   const indiceAlvos = montarIndice(itens);
+
+  const adicionarAresta = (caminhoOrigem: string, caminhoDestino: string, rotulo: string, forca = 1) => {
+    if (caminhoOrigem === caminhoDestino) return;
+    const arestaKey = [caminhoOrigem, caminhoDestino].sort().join("<->");
+    if (!arestaSet.has(arestaKey)) {
+      arestaSet.add(arestaKey);
+      arestas.push({
+        id: arestaKey,
+        origem: caminhoOrigem,
+        destino: caminhoDestino,
+        forca,
+        rotulo,
+      });
+
+      const noOrigem = nosMap.get(caminhoOrigem);
+      if (noOrigem) noOrigem.conexoesCount++;
+
+      const noDestino = nosMap.get(caminhoDestino);
+      if (noDestino) noDestino.conexoesCount++;
+    }
+  };
 
   for (const [caminho, no] of nosMap.entries()) {
     const item = itens.find((i) => i.caminho === caminho);
     if (!item) continue;
 
+    // Conexões semânticas do corpo (@menções e [[links]])
     const links = extrairLinks(item.texto, indiceAlvos);
     for (const link of links) {
       if (link.alvo && link.alvo.caminho !== caminho) {
-        const destinoCaminho = link.alvo.caminho;
-        const arestaKey = [caminho, destinoCaminho].sort().join("<->");
-
-        if (!arestaSet.has(arestaKey)) {
-          arestaSet.add(arestaKey);
-          arestas.push({
-            id: arestaKey,
-            origem: caminho,
-            destino: destinoCaminho,
-            forca: 1,
-            rotulo: "menciona",
-          });
-
-          no.conexoesCount++;
-          const noDestino = nosMap.get(destinoCaminho);
-          if (noDestino) noDestino.conexoesCount++;
-        }
+        adicionarAresta(caminho, link.alvo.caminho, "menciona", 1);
       }
     }
 
+    // Conexões pelo campo `relacionamentos` do frontmatter
     const relsFrontmatter = Array.isArray(item.doc.dados.relacionamentos)
       ? item.doc.dados.relacionamentos
       : [];
@@ -147,26 +171,41 @@ export function construirGrafo3D(
       if (typeof rel === "string" && rel.trim()) {
         const relNorm = rel.toLowerCase().trim();
         const alvoResolvido = indiceAlvos.get(relNorm);
-
         if (alvoResolvido && alvoResolvido.caminho !== caminho) {
-          const destinoCaminho = alvoResolvido.caminho;
-          const arestaKey = [caminho, destinoCaminho].sort().join("<->");
-
-          if (!arestaSet.has(arestaKey)) {
-            arestaSet.add(arestaKey);
-            arestas.push({
-              id: arestaKey,
-              origem: caminho,
-              destino: destinoCaminho,
-              forca: 1,
-              rotulo: "menciona",
-            });
-
-            no.conexoesCount++;
-            const noDestino = nosMap.get(destinoCaminho);
-            if (noDestino) noDestino.conexoesCount++;
-          }
+          adicionarAresta(caminho, alvoResolvido.caminho, "menciona", 1);
         }
+      }
+    }
+
+    // Conexões estruturais: Entrega -> Metas
+    const metasVinculadas = Array.isArray(item.doc.dados.metas) ? item.doc.dados.metas : [];
+    for (const metaSlug of metasVinculadas) {
+      if (typeof metaSlug === "string" && metaSlug.trim()) {
+        const alvoMeta = indiceAlvos.get(metaSlug.toLowerCase().trim()) ||
+                         itens.find((i) => i.caminho === `pdi/metas/${metaSlug}.md` || i.caminho.endsWith(`/${metaSlug}.md`));
+        if (alvoMeta) {
+          adicionarAresta(caminho, "caminho" in alvoMeta ? alvoMeta.caminho : (alvoMeta as any).caminho, "alimenta", 1.2);
+        }
+      }
+    }
+
+    // Conexões estruturais: Contato -> Contato Pai
+    const paiId = typeof item.doc.dados.pai_id === "string" ? item.doc.dados.pai_id : typeof item.doc.dados.pai === "string" ? item.doc.dados.pai : undefined;
+    if (paiId && paiId.trim()) {
+      const alvoPai = indiceAlvos.get(paiId.toLowerCase().trim()) ||
+                      itens.find((i) => i.caminho === `contatos/${paiId}.md` || i.caminho.endsWith(`/${paiId}.md`));
+      if (alvoPai) {
+        adicionarAresta(caminho, "caminho" in alvoPai ? alvoPai.caminho : (alvoPai as any).caminho, "lider", 1.2);
+      }
+    }
+
+    // Conexões estruturais: CardProcesso -> Processo Pai
+    const processoId = typeof item.doc.dados.processo_id === "string" ? item.doc.dados.processo_id : typeof item.doc.dados.processoId === "string" ? item.doc.dados.processoId : undefined;
+    if (processoId && processoId.trim()) {
+      const alvoProcesso = indiceAlvos.get(processoId.toLowerCase().trim()) ||
+                           itens.find((i) => i.caminho === `processos/${processoId}.md` || i.caminho.endsWith(`/${processoId}.md`));
+      if (alvoProcesso) {
+        adicionarAresta(caminho, "caminho" in alvoProcesso ? alvoProcesso.caminho : (alvoProcesso as any).caminho, "processo", 1.2);
       }
     }
 
@@ -205,21 +244,7 @@ export function construirGrafo3D(
           });
         }
 
-        const arestaTagKey = [caminho, tagId].sort().join("<->");
-        if (!arestaSet.has(arestaTagKey)) {
-          arestaSet.add(arestaTagKey);
-          arestas.push({
-            id: arestaTagKey,
-            origem: caminho,
-            destino: tagId,
-            forca: 0.8,
-            rotulo: "tag",
-          });
-
-          no.conexoesCount++;
-          const noTag = nosMap.get(tagId);
-          if (noTag) noTag.conexoesCount++;
-        }
+        adicionarAresta(caminho, tagId, "tag", 0.8);
       }
     }
   }

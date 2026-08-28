@@ -63,28 +63,53 @@ export function comoNota(
   const tipo: Nota["tipo"] =
     tipoRaw === "referencia" || tipoRaw === "rascunho" ? tipoRaw : "nota";
 
+  const subtipoRaw = typeof d.subtipo === "string" ? d.subtipo : undefined;
+  const subtipo: Nota["subtipo"] =
+    subtipoRaw === "reuniao" || subtipoRaw === "briefing" || subtipoRaw === "rascunho" || subtipoRaw === "nota"
+      ? subtipoRaw
+      : undefined;
+
+  const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
+  const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
+
   return {
     bruto: doc.dados,
     caminho,
+    id: typeof d.id === "string" && d.id.trim() ? d.id.trim() : idDoCaminho(caminho),
     sha,
     titulo:
       typeof d.titulo === "string" && d.titulo.trim()
         ? d.titulo.trim()
         : tituloFallback,
     tipo,
+    subtipo,
     tags: comoLista(d.tags),
     corpo: doc.corpo,
-    atualizado: typeof d.atualizado === "string" ? d.atualizado : undefined,
+    criadoEm,
+    atualizadoEm,
+    atualizado: atualizadoEm,
+    dataReuniao: typeof d.data_reuniao === "string" ? d.data_reuniao : undefined,
+    participantes: Array.isArray(d.participantes) ? d.participantes.map(String) : undefined,
   };
 }
 
 export function notaParaArquivo(n: Nota): { dados: Frontmatter; corpo: string } {
+  const agora = new Date().toISOString();
+  const criadoEm = n.criadoEm || n.bruto.criado_em || n.bruto.criado || agora;
   return {
     dados: mesclarFrontmatter(n.bruto, {
-      titulo:    n.titulo,
-      tipo:      n.tipo || "nota",
-      tags:      n.tags.length ? n.tags : undefined,
-      atualizado: new Date().toISOString(),
+      id:            n.id || idDoCaminho(n.caminho),
+      titulo:        n.titulo,
+      tipo:          n.tipo || "nota",
+      subtipo:       n.subtipo || undefined,
+      tags:          n.tags.length ? n.tags : undefined,
+      criado_em:     criadoEm,
+      atualizado_em: agora,
+      data_reuniao:  n.dataReuniao || undefined,
+      participantes: n.participantes && n.participantes.length ? n.participantes : undefined,
+      // Limpeza de campos legados
+      atualizado:    undefined,
+      criado:        undefined,
     }),
     corpo: n.corpo,
   };
@@ -100,19 +125,32 @@ export function comoTarefa(
 ): Tarefa {
   const d = doc.dados;
 
-  const Pomodoro = typeof d.Pomodoro === "number" ? d.Pomodoro :
-                   typeof d.pomodoro === "number" ? d.pomodoro :
-                   typeof d.pomodoros === "number" ? d.pomodoros :
-                   typeof d.estimativa === "number" ? d.estimativa :
-                   typeof d.c === "number" ? d.c : undefined;
+  const pomodorosEstimados =
+    typeof d.pomodoros_estimados === "number" ? d.pomodoros_estimados :
+    typeof d.Pomodoro === "number" ? d.Pomodoro :
+    typeof d.pomodoro === "number" ? d.pomodoro :
+    typeof d.pomodoros === "number" ? d.pomodoros :
+    typeof d.estimativa === "number" ? d.estimativa :
+    typeof d.c === "number" ? d.c : undefined;
 
-  const fraturados = typeof d.PomodoroFraturado === "number" ? d.PomodoroFraturado :
-                     typeof d.pomodoro_fraturado === "number" ? d.pomodoro_fraturado :
-                     typeof d.fraturados === "number" ? d.fraturados : undefined;
+  const pomodorosRealizados =
+    typeof d.pomodoros_realizados === "number" ? d.pomodoros_realizados :
+    typeof d.PomodoroFraturado === "number" ? d.PomodoroFraturado :
+    typeof d.pomodoro_fraturado === "number" ? d.pomodoro_fraturado :
+    typeof d.fraturados === "number" ? d.fraturados : undefined;
+
+  const prioridade =
+    typeof d.prioridade === "string" && ["baixa", "media", "alta", "urgente"].includes(d.prioridade)
+      ? (d.prioridade as Tarefa["prioridade"])
+      : undefined;
+
+  const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
+  const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
 
   return {
     bruto: doc.dados,
     caminho,
+    id: typeof d.id === "string" && d.id.trim() ? d.id.trim() : idDoCaminho(caminho),
     sha,
     titulo:
       typeof d.titulo === "string" && d.titulo.trim()
@@ -120,35 +158,49 @@ export function comoTarefa(
         : tituloFallback,
     status: statusTarefaValido(d.status),
     prazo: typeof d.prazo === "string" ? d.prazo : undefined,
+    prioridade,
     tags: comoLista(d.tags),
-    pomodoro: Pomodoro,
-    Pomodoro,
-    fraturados,
+    pomodorosEstimados,
+    pomodorosRealizados,
+    pomodoro: pomodorosEstimados,
+    Pomodoro: pomodorosEstimados,
+    fraturados: pomodorosRealizados,
+    criadoEm,
+    atualizadoEm,
     corpo: doc.corpo,
   };
 }
 
 export function tarefaParaArquivo(t: Tarefa): { dados: Frontmatter; corpo: string } {
   const agora = new Date().toISOString();
-  const criado = t.bruto.criado || t.bruto.criado_em || agora.slice(0, 10);
+  const criadoEm = t.criadoEm || t.bruto.criado_em || t.bruto.criado || agora.slice(0, 10);
+  const estimativa = t.pomodorosEstimados ?? t.pomodoro ?? t.Pomodoro;
+  const realizados = t.pomodorosRealizados ?? t.fraturados;
+
   return {
     dados: mesclarFrontmatter(t.bruto, {
-      titulo: t.titulo,
-      tipo:   "tarefa",
-      status: t.status,
-      prazo:  t.prazo,
-      tags:   t.tags.length ? t.tags : undefined,
-      Pomodoro: t.pomodoro ?? t.Pomodoro,
-      PomodoroFraturado: t.fraturados,
+      id:                   t.id || idDoCaminho(t.caminho),
+      titulo:               t.titulo,
+      tipo:                 "tarefa",
+      status:               t.status,
+      prazo:                t.prazo,
+      prioridade:           t.prioridade,
+      tags:                 t.tags.length ? t.tags : undefined,
+      pomodoros_estimados:  estimativa,
+      pomodoros_realizados: realizados,
+      criado_em:            criadoEm,
+      atualizado_em:        agora,
       // Remove campos legados do frontmatter para limpeza
-      estimativa: undefined,
-      pomodoros: undefined,
-      pomodoro: undefined,
-      pomodoro_fraturado: undefined,
-      fraturados: undefined,
-      c: undefined,
-      criado,
-      atualizado: agora,
+      Pomodoro:             undefined,
+      PomodoroFraturado:    undefined,
+      estimativa:           undefined,
+      pomodoros:            undefined,
+      pomodoro:             undefined,
+      pomodoro_fraturado:   undefined,
+      fraturados:           undefined,
+      c:                    undefined,
+      criado:               undefined,
+      atualizado:           undefined,
     }),
     corpo: t.corpo,
   };
@@ -163,10 +215,13 @@ export function comoMeta(
   tituloFallback: string,
 ): Meta {
   const d = doc.dados;
+  const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
+  const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
+
   return {
     bruto: doc.dados,
     caminho,
-    id: idDoCaminho(caminho),
+    id: typeof d.id === "string" && d.id.trim() ? d.id.trim() : idDoCaminho(caminho),
     sha,
     titulo:
       typeof d.titulo === "string" && d.titulo.trim()
@@ -176,20 +231,29 @@ export function comoMeta(
     prazo: typeof d.prazo === "string" ? d.prazo : undefined,
     indicador: typeof d.indicador === "string" ? d.indicador : "",
     tags: comoLista(d.tags),
+    criadoEm,
+    atualizadoEm,
     corpo: doc.corpo,
   };
 }
 
 export function metaParaArquivo(m: Meta): { dados: Frontmatter; corpo: string } {
+  const agora = new Date().toISOString();
+  const criadoEm = m.criadoEm || m.bruto.criado_em || m.bruto.criado || agora;
   return {
     dados: mesclarFrontmatter(m.bruto, {
-      titulo:    m.titulo,
-      tipo:      "meta",
-      status:    m.status,
-      prazo:     m.prazo,
-      indicador: m.indicador || undefined,
-      tags:      m.tags?.length ? m.tags : undefined,
-      atualizado: new Date().toISOString(),
+      id:            m.id || idDoCaminho(m.caminho),
+      titulo:        m.titulo,
+      tipo:          "meta",
+      status:        m.status,
+      prazo:         m.prazo,
+      indicador:     m.indicador || undefined,
+      tags:          m.tags?.length ? m.tags : undefined,
+      criado_em:     criadoEm,
+      atualizado_em: agora,
+      // Limpeza de campos legados
+      atualizado:    undefined,
+      criado:        undefined,
     }),
     corpo: m.corpo,
   };
@@ -204,10 +268,13 @@ export function comoEntrega(
   tituloFallback: string,
 ): Entrega {
   const d = doc.dados;
+  const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
+  const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
+
   return {
     bruto: doc.dados,
     caminho,
-    id: idDoCaminho(caminho),
+    id: typeof d.id === "string" && d.id.trim() ? d.id.trim() : idDoCaminho(caminho),
     sha,
     titulo:
       typeof d.titulo === "string" && d.titulo.trim()
@@ -216,19 +283,28 @@ export function comoEntrega(
     data: typeof d.data === "string" ? d.data : dataDoNome(caminho),
     metas: comoLista(d.metas),
     iaSugeriu: d.ia_sugeriu === true,
+    criadoEm,
+    atualizadoEm,
     corpo: doc.corpo,
   };
 }
 
 export function entregaParaArquivo(e: Entrega): { dados: Frontmatter; corpo: string } {
+  const agora = new Date().toISOString();
+  const criadoEm = e.criadoEm || e.bruto.criado_em || e.bruto.criado || agora;
   return {
     dados: mesclarFrontmatter(e.bruto, {
-      titulo:     e.titulo,
-      tipo:       "entrega",
-      data:       e.data,
-      metas:      e.metas.length ? e.metas : undefined,
-      ia_sugeriu: e.iaSugeriu || undefined,
-      atualizado: new Date().toISOString(),
+      id:            e.id || idDoCaminho(e.caminho),
+      titulo:        e.titulo,
+      tipo:          "entrega",
+      data:          e.data,
+      metas:         e.metas.length ? e.metas : undefined,
+      ia_sugeriu:    e.iaSugeriu || undefined,
+      criado_em:     criadoEm,
+      atualizado_em: agora,
+      // Limpeza de campos legados
+      atualizado:    undefined,
+      criado:        undefined,
     }),
     corpo: e.corpo,
   };
@@ -248,10 +324,13 @@ export function comoReferencia(
   tituloFallback: string,
 ): Referencia {
   const d = doc.dados;
+  const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
+  const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
+
   return {
     bruto: doc.dados,
     caminho,
-    id: idDoCaminho(caminho),
+    id: typeof d.id === "string" && d.id.trim() ? d.id.trim() : idDoCaminho(caminho),
     sha,
     titulo:
       typeof d.titulo === "string" && d.titulo.trim()
@@ -261,20 +340,29 @@ export function comoReferencia(
     fonte: typeof d.fonte === "string" ? d.fonte : undefined,
     tags: comoLista(d.tags),
     porque: typeof d.porque === "string" ? d.porque : "",
+    criadoEm,
+    atualizadoEm,
     corpo: doc.corpo,
   };
 }
 
 export function referenciaParaArquivo(r: Referencia): { dados: Frontmatter; corpo: string } {
+  const agora = new Date().toISOString();
+  const criadoEm = r.criadoEm || r.bruto.criado_em || r.bruto.criado || agora;
   return {
     dados: mesclarFrontmatter(r.bruto, {
-      titulo: r.titulo,
-      tipo:   "referencia",
-      imagem: r.imagem,
-      fonte:  r.fonte,
-      porque: r.porque || undefined,
-      tags:   r.tags.length ? r.tags : undefined,
-      atualizado: new Date().toISOString(),
+      id:            r.id || idDoCaminho(r.caminho),
+      titulo:        r.titulo,
+      tipo:          "referencia",
+      imagem:        r.imagem,
+      fonte:         r.fonte,
+      porque:        r.porque || undefined,
+      tags:          r.tags.length ? r.tags : undefined,
+      criado_em:     criadoEm,
+      atualizado_em: agora,
+      // Limpeza de campos legados
+      atualizado:    undefined,
+      criado:        undefined,
     }),
     corpo: r.corpo,
   };
@@ -300,6 +388,7 @@ export function comoContato(
   }
 
   const reserved = new Set([
+    "id",
     "titulo",
     "nome",
     "tipo",
@@ -311,7 +400,10 @@ export function comoContato(
     "pai",
     "tags",
     "propriedades",
+    "criado",
+    "criado_em",
     "atualizado",
+    "atualizado_em",
     "icone",
   ]);
   for (const [k, v] of Object.entries(d)) {
@@ -327,10 +419,13 @@ export function comoContato(
       ? d.pai.trim()
       : undefined;
 
+  const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
+  const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
+
   return {
     bruto: doc.dados,
     caminho,
-    id: idDoCaminho(caminho),
+    id: typeof d.id === "string" && d.id.trim() ? d.id.trim() : idDoCaminho(caminho),
     sha,
     titulo:
       typeof d.titulo === "string" && d.titulo.trim()
@@ -346,12 +441,16 @@ export function comoContato(
     tags: comoLista(d.tags),
     propriedades,
     corpo: doc.corpo,
-    atualizado: typeof d.atualizado === "string" ? d.atualizado : undefined,
+    criadoEm,
+    atualizadoEm,
+    atualizado: atualizadoEm,
   };
 }
 
 export function contatoParaArquivo(c: Contato): { dados: Frontmatter; corpo: string } {
   const d = c.bruto || {};
+  const agora = new Date().toISOString();
+  const criadoEm = c.criadoEm || d.criado_em || d.criado || agora;
   const cargo = c.cargo !== undefined ? c.cargo : (typeof d.cargo === "string" ? d.cargo.trim() : undefined);
   const empresa = c.empresa !== undefined ? c.empresa : (typeof d.empresa === "string" ? d.empresa.trim() : undefined);
   const email = c.email !== undefined ? c.email : (typeof d.email === "string" ? d.email.trim() : undefined);
@@ -368,15 +467,21 @@ export function contatoParaArquivo(c: Contato): { dados: Frontmatter; corpo: str
 
   return {
     dados: mesclarFrontmatter(c.bruto, {
-      titulo: c.titulo,
-      tipo: "contato",
-      cargo: cargo || undefined,
-      empresa: empresa || undefined,
-      email: email || undefined,
-      telefone: telefone || undefined,
-      pai_id: paiId || undefined,
-      tags: tags && tags.length ? tags : undefined,
-      atualizado: new Date().toISOString(),
+      id:            c.id || idDoCaminho(c.caminho),
+      titulo:        c.titulo,
+      tipo:          "contato",
+      cargo:         cargo || undefined,
+      empresa:       empresa || undefined,
+      email:         email || undefined,
+      telefone:      telefone || undefined,
+      pai_id:        paiId || undefined,
+      tags:          tags && tags.length ? tags : undefined,
+      criado_em:     criadoEm,
+      atualizado_em: agora,
+      // Limpeza de campos legados
+      pai:           undefined,
+      atualizado:    undefined,
+      criado:        undefined,
     }),
     corpo: c.corpo,
   };
