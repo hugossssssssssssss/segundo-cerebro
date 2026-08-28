@@ -341,6 +341,16 @@ export function EditorNotion({
   const [modalLembreteAberto, setModalLembreteAberto] = useState(false);
   const [modalIAAberto, setModalIAAberto] = useState(false);
 
+  useEffect(() => {
+    const handler = () => {
+      setModalIAAberto(true);
+    };
+    window.addEventListener("klaus:abrir-ia-documento", handler);
+    return () => {
+      window.removeEventListener("klaus:abrir-ia-documento", handler);
+    };
+  }, []);
+
   const alvosRef = useRef(alvos);
   useEffect(() => {
     alvosRef.current = alvos;
@@ -376,6 +386,16 @@ export function EditorNotion({
         title: "Inteligência artificial",
         subtext: "Perguntas rápidas, contas e correções no texto",
         badge: "IA",
+        aliases: [
+          "ia",
+          "ai",
+          "inteligencia",
+          "inteligência",
+          "chat",
+          "pergunta",
+          "conta",
+          "calcular",
+        ],
         icon: <Sparkles size={16} className="text-primary" />,
         onItemClick: () => {
           try {
@@ -385,13 +405,16 @@ export function EditorNotion({
               if (
                 Array.isArray(currentBlock.content) &&
                 currentBlock.content.length === 1 &&
-                (currentBlock.content[0] as any).text === "/"
+                typeof (currentBlock.content[0] as any).text === "string" &&
+                (currentBlock.content[0] as any).text.startsWith("/")
               ) {
                 editor.updateBlock(currentBlock, { content: [] });
               }
             }
-          } catch {}
-          setTimeout(() => setModalIAAberto(true), 50);
+          } catch (e) {
+            console.warn(e);
+          }
+          setModalIAAberto(true);
         },
       };
 
@@ -712,6 +735,7 @@ export function EditorNotion({
         editor={editor}
         editable={editable}
         theme={escuro ? "dark" : "light"}
+        slashMenu={false}
         onChange={handleEditorChange}
       >
         {/* `@` é o gatilho principal. `[` continua atendido porque quem já

@@ -35,10 +35,14 @@ export function ModalIADocumento({
   const [historico, setHistorico] = useState<MensagemIARapida[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const abertoEmRef = useRef<number>(0);
+  const mouseDownOnBackdropRef = useRef<boolean>(false);
 
   // Reseta ou foca ao abrir
   useEffect(() => {
     if (aberto) {
+      abertoEmRef.current = Date.now();
+      mouseDownOnBackdropRef.current = false;
       setPrompt("");
       setResposta("");
       setCarregando(false);
@@ -115,8 +119,16 @@ export function ModalIADocumento({
   return createPortal(
     <div
       className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-100"
+      onMouseDown={(e) => {
+        mouseDownOnBackdropRef.current = e.target === e.currentTarget;
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) lidarExcluir();
+        // Ignora cliques residuais nos primeiros 250ms após a abertura
+        if (Date.now() - abertoEmRef.current < 250) return;
+        if (e.target === e.currentTarget && mouseDownOnBackdropRef.current) {
+          lidarExcluir();
+        }
+        mouseDownOnBackdropRef.current = false;
       }}
       onKeyDown={(e) => {
         if (e.key === "Escape") lidarExcluir();
