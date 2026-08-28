@@ -30,11 +30,11 @@ jobs:
 
       - run: npm ci
 
-      - name: Testes
-        run: npm test
-
       - name: Build
         run: npm run build
+
+      - name: Testes
+        run: npm test
 
       - uses: actions/configure-pages@v5
 
