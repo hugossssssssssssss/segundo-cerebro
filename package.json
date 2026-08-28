@@ -1,7 +1,7 @@
 {
   "name": "segundo-cere-bro",
   "private": true,
-  "version": "1.88.2",
+  "version": "1.89.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

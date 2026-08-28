@@ -288,7 +288,7 @@ export async function gravar(
        * NUNCA buscar o sha do arquivo existente para regravar por cima (a menos que seja arquivo de sistema como caixa-entrada).
        * Isso destruiria o arquivo antigo silenciosamente.
        */
-      if (resposta.status === 422 && eraNovaCriacao && !caminho.startsWith("caixa-entrada/")) {
+      if (resposta.status === 422 && eraNovaCriacao && !caminho.startsWith("caixa-entrada/") && !caminho.startsWith(".klaus/")) {
         try {
           const { sha: shaDestino, texto: textoDestino } = await ler(cfg, caminho);
           if (conteudosSemelhantes(textoDestino, texto)) {

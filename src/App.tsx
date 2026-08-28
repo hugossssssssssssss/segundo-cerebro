@@ -39,6 +39,7 @@ import { GavetaMais } from "@/components/GavetaMais";
 import { LogoKlaus } from "@/components/LogoKlaus";
 import { Carregando } from "@/components/ui";
 import { PainelNotificacoesHeader } from "@/components/PainelNotificacoesHeader";
+import { BarraFavoritos } from "@/components/BarraFavoritos";
 import { Rodape } from "@/components/Rodape";
 import { cn, formatarAtalho } from "@/lib/utils";
 import { lerConfig, configCompleta, precisaOnboarding } from "@/lib/settings";
@@ -301,21 +302,23 @@ function Estrutura({ children }: { children: React.ReactNode }) {
               "flex items-center justify-between transition-all",
               workspaceAberto
                 ? "w-full px-2 sm:px-3 h-12"
-                : "mx-auto max-w-6xl px-4 sm:px-6 h-14"
+                : "w-full px-3.5 sm:px-6 h-14"
             )}
           >
-            {/* Lado Esquerdo: Logo no Mobile */}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Lado Esquerdo: Logo no Mobile + Barra de Favoritos */}
+            <div className={cn("flex items-center gap-2 min-w-0 mr-2", workspaceAberto ? "flex-initial max-w-xs sm:max-w-sm" : "flex-1")}>
               <NavLink
                 to="/home"
                 onClick={() => {
                   if (workspaceAberto) fecharWorkspace();
                 }}
-                className="flex sm:hidden items-center gap-2 font-bold tracking-tight text-sm hover:opacity-90 transition-opacity"
+                className="flex sm:hidden items-center gap-2 font-bold tracking-tight text-sm hover:opacity-90 transition-opacity shrink-0"
               >
                 <LogoKlaus tamanho={24} />
                 <span>Klaus</span>
               </NavLink>
+
+              <BarraFavoritos className="flex-1 min-w-0" />
             </div>
 
             {/* Centro: Abas do Workspace integradas diretamente no Header */}
