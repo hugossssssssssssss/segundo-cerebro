@@ -41,6 +41,7 @@ import {
 import { lerConfig, configCompleta } from "@/lib/settings";
 import {
   carregarFavoritos,
+  lerFavoritosLocal,
   salvarFavoritosLocal,
   agendarPersistenciaRemota,
   normalizarUrl,
@@ -192,24 +193,30 @@ export function BarraFavoritos({ className }: { className?: string }) {
   const cfg = useMemo(() => lerConfig(), []);
   const pronto = configCompleta(cfg);
 
-  // Carregar favoritos iniciais
+  // Carregar favoritos iniciais e sincronizar com eventos locais
   useEffect(() => {
     let cancelado = false;
 
-    async function carregar() {
-      const res = await carregarFavoritos(cfg);
-      if (!cancelado) {
-        setFavoritos(res.itens);
-      }
+    // Carrega do cache local de imediato
+    setFavoritos(lerFavoritosLocal());
+
+    // Se estiver configurado, busca do GitHub apenas uma vez no carregamento
+    if (pronto) {
+      carregarFavoritos(cfg).then((res) => {
+        if (!cancelado && res.itens) {
+          setFavoritos(res.itens);
+        }
+      });
     }
 
-    carregar();
-
-    const atualizarDaChave = () => {
-      if (!cancelado) {
-        carregarFavoritos(cfg).then((r) => {
-          if (!cancelado) setFavoritos(r.itens);
-        });
+    // Atualiza o estado quando os favoritos locais mudarem (sem refazer requisições de rede ao GitHub!)
+    const atualizarDaChave = (e: Event) => {
+      if (cancelado) return;
+      const custom = e as CustomEvent<FavoritoItem[]>;
+      if (custom.detail && Array.isArray(custom.detail)) {
+        setFavoritos(custom.detail);
+      } else {
+        setFavoritos(lerFavoritosLocal());
       }
     };
 
@@ -332,7 +339,6 @@ export function BarraFavoritos({ className }: { className?: string }) {
   const excluirFavorito = (id: string) => {
     const novaLista = favoritos.filter((f) => f.id !== id);
     setFavoritos(novaLista);
-    salvarFavoritosLocal(novaLista);
     agendarPersistenciaRemota(cfg, novaLista);
   };
 
@@ -354,7 +360,6 @@ export function BarraFavoritos({ className }: { className?: string }) {
         f.id === itemEditando.id ? { ...f, url: urlNormalizada, nome: nomeLimpo } : f,
       );
       setFavoritos(novaLista);
-      salvarFavoritosLocal(novaLista);
       agendarPersistenciaRemota(cfg, novaLista);
     } else {
       // Novo item
@@ -366,7 +371,6 @@ export function BarraFavoritos({ className }: { className?: string }) {
       };
       const novaLista = [...favoritos, novoItem];
       setFavoritos(novaLista);
-      salvarFavoritosLocal(novaLista);
       agendarPersistenciaRemota(cfg, novaLista);
     }
 

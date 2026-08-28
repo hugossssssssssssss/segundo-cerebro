@@ -91,6 +91,15 @@ export function obterShaFavoritos(): string | undefined {
   return ultimoShaFavoritos;
 }
 
+let timerDebouncePersistencia: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Indica se há uma persistência agendada no debounce aguardando envio ao GitHub.
+ */
+export function temPersistenciaPendente(): boolean {
+  return timerDebouncePersistencia !== null;
+}
+
 /**
  * Carrega os favoritos do repositório GitHub com fallback para o localStorage.
  */
@@ -98,6 +107,11 @@ export async function carregarFavoritos(
   cfg: Settings,
 ): Promise<{ itens: FavoritoItem[]; sha?: string }> {
   const locais = lerFavoritosLocal();
+
+  // Se houver gravação pendente de envio ao GitHub no debounce, nunca sobrescreve com dados antigos
+  if (temPersistenciaPendente()) {
+    return { itens: locais, sha: ultimoShaFavoritos };
+  }
 
   if (!cfg.githubToken || !cfg.repoOwner || !cfg.repoName) {
     return { itens: locais };
@@ -111,9 +125,14 @@ export async function carregarFavoritos(
         const itensValidados = parsed.filter(
           (it) => it && typeof it === "object" && typeof it.url === "string",
         );
-        salvarFavoritosLocal(itensValidados);
-        registrarShaFavoritos(res.sha);
-        return { itens: itensValidados, sha: res.sha };
+        // Só atualiza o localStorage diretamente se ainda não houver gravação pendente
+        if (!temPersistenciaPendente()) {
+          try {
+            localStorage.setItem(CHAVE_STORAGE_FAVORITOS, JSON.stringify(itensValidados));
+          } catch {}
+          registrarShaFavoritos(res.sha);
+          return { itens: itensValidados, sha: res.sha };
+        }
       }
     }
   } catch {
@@ -137,17 +156,16 @@ export async function salvarFavoritosRemoto(
 
   try {
     const conteudo = JSON.stringify(itens, null, 2);
-    let shaFinal = shaAntigo || ultimoShaFavoritos;
 
-    if (!shaFinal) {
-      try {
-        const res = await ler(cfg, CAMINHO_FAVORITOS, { silenciar404: true });
-        if (res?.sha) {
-          shaFinal = res.sha;
-        }
-      } catch {
-        // Arquivo novo sendo criado pela primeira vez
+    // Busca sempre o SHA mais recente do arquivo no GitHub para evitar 409 Conflict
+    let shaFinal = shaAntigo || ultimoShaFavoritos;
+    try {
+      const res = await ler(cfg, CAMINHO_FAVORITOS, { silenciar404: true });
+      if (res?.sha) {
+        shaFinal = res.sha;
       }
+    } catch {
+      // Arquivo novo sendo criado pela primeira vez
     }
 
     const novoSha = await gravar(
@@ -164,8 +182,6 @@ export async function salvarFavoritosRemoto(
     return { ok: false, erro: err?.message || String(err) };
   }
 }
-
-let timerDebouncePersistencia: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Atualiza o estado local imediatamente e agenda a persistência no GitHub com debounce (2.500ms).

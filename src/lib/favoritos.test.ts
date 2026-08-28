@@ -154,5 +154,44 @@ describe("favoritos", () => {
 
       vi.useRealTimers();
     });
+
+    it("não sobrescreve o cache local com versão antiga do GitHub se houver persistência pendente", async () => {
+      vi.useFakeTimers();
+
+      const cfg: Settings = {
+        nomeUsuario: "Hugo",
+        profissaoUsuario: "Designer",
+        onboardingConcluido: true,
+        githubToken: "token-teste",
+        repoOwner: "hugo",
+        repoName: "segundo-cerebro-dados",
+        branch: "main",
+        geminiKey: "",
+        geminiModel: "gemini-1.5-flash",
+      };
+
+      // GitHub possui apenas 1 item
+      vi.spyOn(github, "ler").mockResolvedValue({
+        texto: JSON.stringify([{ id: "fav-antigo", url: "https://site-antigo.com" }]),
+        sha: "sha-antigo",
+      });
+
+      // Usuário adicionou 2 itens localmente (persistência pendente no debounce)
+      const itensNovos: FavoritoItem[] = [
+        { id: "fav-1", url: "https://site1.com" },
+        { id: "fav-2", url: "https://site2.com" },
+      ];
+      agendarPersistenciaRemota(cfg, itensNovos, 2500);
+
+      // Chamada de carregarFavoritos enquanto o timer está ativo
+      const { carregarFavoritos } = await import("./favoritos");
+      const res = await carregarFavoritos(cfg);
+
+      // Deve manter os 2 itens novos, e NÃO sobrescrever com o item antigo do GitHub!
+      expect(res.itens).toEqual(itensNovos);
+      expect(lerFavoritosLocal()).toEqual(itensNovos);
+
+      vi.useRealTimers();
+    });
   });
 });
