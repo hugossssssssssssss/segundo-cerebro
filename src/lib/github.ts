@@ -66,17 +66,20 @@ async function buscar(url: string, init?: RequestInit, maxRetries = 2): Promise<
       const res = await fetch(url, init);
       if ((res.status === 429 || res.status === 503) && tentativa < maxRetries) {
         const retryAfterHeader = res.headers.get("retry-after");
+        const fator = typeof process !== "undefined" && process.env.NODE_ENV === "test" ? 0 : 1000;
         const esperaMs = retryAfterHeader
-          ? parseInt(retryAfterHeader, 10) * 1000
-          : Math.pow(2, tentativa) * 1000;
-        await new Promise((r) => setTimeout(r, esperaMs));
+          ? parseInt(retryAfterHeader, 10) * fator
+          : Math.pow(2, tentativa) * fator;
+        if (esperaMs > 0) await new Promise((r) => setTimeout(r, esperaMs));
         tentativa++;
         continue;
       }
       return res;
     } catch (e) {
       if (tentativa < maxRetries && navigator.onLine) {
-        await new Promise((r) => setTimeout(r, Math.pow(2, tentativa) * 1000));
+        const fator = typeof process !== "undefined" && process.env.NODE_ENV === "test" ? 0 : 1000;
+        const esperaMs = Math.pow(2, tentativa) * fator;
+        if (esperaMs > 0) await new Promise((r) => setTimeout(r, esperaMs));
         tentativa++;
         continue;
       }
