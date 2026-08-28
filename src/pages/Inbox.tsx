@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -101,22 +101,15 @@ const ESTILOS_TIPO: Record<string, { border: string; bg: string; text: string; b
 };
 
 function MenuAcoesCompromisso({
-  c,
   onEditar,
   onDuplicar,
-  onMudarData,
   onExcluir,
 }: {
-  c: CompromissoSemana;
   onEditar: () => void;
   onDuplicar: () => void;
-  onMudarData: (novaDataIso: string) => void;
   onExcluir: () => void;
 }) {
   const [aberto, setAberto] = useState(false);
-  const hojeIso = format(new Date(), "yyyy-MM-dd");
-  const amanhaIso = format(addDays(new Date(), 1), "yyyy-MM-dd");
-  const proxSemanaIso = format(addWeeks(new Date(), 1), "yyyy-MM-dd");
 
   return (
     <Popover open={aberto} onOpenChange={setAberto}>
@@ -136,7 +129,7 @@ function MenuAcoesCompromisso({
       <PopoverContent
         align="end"
         sideOffset={4}
-        className="w-48 p-1.5 shadow-lg border border-border bg-popover rounded-xl z-50 select-none"
+        className="w-40 p-1.5 shadow-lg border border-border bg-popover rounded-xl z-50 select-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col gap-0.5 text-xs">
@@ -163,77 +156,6 @@ function MenuAcoesCompromisso({
             <Copy size={13} className="text-amber-500 shrink-0" />
             <span>Duplicar</span>
           </button>
-
-          {/* Atalhos rápidos de Data */}
-          <div className="pt-1 mt-1 border-t border-border/50">
-            <span className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              Mudar data para:
-            </span>
-            <div className="flex flex-col gap-0.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setAberto(false);
-                  onMudarData(hojeIso);
-                }}
-                className="flex items-center justify-between px-2.5 py-1 rounded-lg hover:bg-accent text-foreground transition-colors cursor-pointer text-left w-full text-[11px]"
-              >
-                <span>Hoje</span>
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  {format(new Date(), "dd/MM")}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAberto(false);
-                  onMudarData(amanhaIso);
-                }}
-                className="flex items-center justify-between px-2.5 py-1 rounded-lg hover:bg-accent text-foreground transition-colors cursor-pointer text-left w-full text-[11px]"
-              >
-                <span>Amanhã</span>
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  {format(addDays(new Date(), 1), "dd/MM")}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAberto(false);
-                  onMudarData(proxSemanaIso);
-                }}
-                className="flex items-center justify-between px-2.5 py-1 rounded-lg hover:bg-accent text-foreground transition-colors cursor-pointer text-left w-full text-[11px]"
-              >
-                <span>Próxima semana</span>
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  {format(addWeeks(new Date(), 1), "dd/MM")}
-                </span>
-              </button>
-
-              {/* Escolha customizada no calendário */}
-              <label
-                className="flex items-center justify-between px-2.5 py-1 rounded-lg hover:bg-accent text-foreground transition-colors cursor-pointer text-left w-full text-[11px] relative"
-                title="Escolher data específica"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Calendar size={12} className="text-teal-500" />
-                  <span>Outra data...</span>
-                </div>
-                <input
-                  type="date"
-                  defaultValue={c.dataIso}
-                  onChange={(e) => {
-                    const nd = e.target.value;
-                    if (nd) {
-                      setAberto(false);
-                      onMudarData(nd);
-                    }
-                  }}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                />
-              </label>
-            </div>
-          </div>
 
           <hr className="my-1 border-border/50" />
 
@@ -267,6 +189,7 @@ export default function Inbox() {
 
   // Estados de Drag and Drop e Exclusão
   const [itemArrastando, setItemArrastando] = useState<CompromissoSemana | null>(null);
+  const itemArrastandoRef = useRef<CompromissoSemana | null>(null);
   const [diaSobHover, setDiaSobHover] = useState<string | null>(null);
   const [itemParaExcluir, setItemParaExcluir] = useState<CompromissoSemana | null>(null);
 
@@ -734,17 +657,19 @@ export default function Inbox() {
       }
 
       // Atualiza frontmatter
-      const novosDados = { ...dadosAtuais };
+      const novosDados: Record<string, any> = { ...dadosAtuais };
       if (item.caminho.startsWith("tarefas/")) {
         novosDados.prazo = novaDataIso;
         if (novosDados.data) novosDados.data = novaDataIso;
+        if (novosDados.data_fim) novosDados.data_fim = novaDataIso;
+        if (novosDados.data_inicio) novosDados.data_inicio = novaDataIso;
       } else if (item.caminho.startsWith("pdi/metas/")) {
         novosDados.prazo = novaDataIso;
       } else if (item.caminho.startsWith("pdi/entregas/")) {
         novosDados.data = novaDataIso;
         if (novosDados.prazo) novosDados.prazo = novaDataIso;
       } else if (item.caminho.startsWith("notas/")) {
-        if (novosDados.data) novosDados.data = novaDataIso;
+        novosDados.data = novaDataIso;
         if (novosDados.prazo) novosDados.prazo = novaDataIso;
         if (novosDados.data_reuniao) novosDados.data_reuniao = novaDataIso;
       } else {
@@ -752,11 +677,18 @@ export default function Inbox() {
       }
 
       const novoTexto = escreverMarkdown({ dados: novosDados, corpo: novoCorpo });
-      await salvarTexto(item.caminho, novoTexto, arquivoOriginal.sha, `mover data: ${item.titulo} para ${novaDataIso}`);
-      invalidarCache();
+      const shaNovo = await salvarTexto(item.caminho, novoTexto, arquivoOriginal.sha, `mover data: ${item.titulo} para ${novaDataIso}`);
+      const novoDoc = lerMarkdown(novoTexto);
+      
+      // Atualiza estado local do acervo imediatamente para que o card se mova na hora!
+      setAcervo((prev) =>
+        prev.map((a) =>
+          a.caminho === item.caminho
+            ? { ...a, texto: novoTexto, sha: shaNovo, doc: novoDoc, tamanho: new TextEncoder().encode(novoTexto).length }
+            : a
+        )
+      );
       toast(`Data alterada para ${formatarBr(novaDataIso)}!`, { tipo: "sucesso" });
-      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
-      await carregar();
     } catch (err: any) {
       toast(`Erro ao alterar data: ${err?.message || err}`, { tipo: "erro" });
     }
@@ -775,7 +707,15 @@ export default function Inbox() {
       const novoTitulo = `${tituloLimpo} (Cópia)`;
       const pasta = item.caminho.includes("/") ? item.caminho.substring(0, item.caminho.lastIndexOf("/")) : "notas";
       const caminhosExistentes = acervo.map((a) => a.caminho);
-      const novoCaminho = nomeLivre(pasta, novoTitulo, caminhosExistentes);
+
+      // Preserva prefixo de data no nome do arquivo se o original continha
+      const nomeOriginal = item.caminho.split("/").pop() || "";
+      const matchDataNome = nomeOriginal.match(/^(\d{4}-\d{2}-\d{2})-(.*)$/);
+      let nomeBaseParaLivre = novoTitulo;
+      if (matchDataNome) {
+        nomeBaseParaLivre = `${matchDataNome[1]}-${novoTitulo}`;
+      }
+      const novoCaminho = nomeLivre(pasta, nomeBaseParaLivre, caminhosExistentes);
 
       const novosDados: Record<string, any> = {
         ...doc.dados,
@@ -783,12 +723,41 @@ export default function Inbox() {
       };
       delete novosDados.id;
 
+      // Preserva exatamente a data original da tarefa/documento
+      if (item.dataIso) {
+        if (item.caminho.startsWith("tarefas/")) {
+          novosDados.prazo = doc.dados.prazo || item.dataIso;
+          if (doc.dados.data) novosDados.data = doc.dados.data;
+          if (doc.dados.data_fim) novosDados.data_fim = doc.dados.data_fim;
+          if (doc.dados.data_inicio) novosDados.data_inicio = doc.dados.data_inicio;
+        } else if (item.caminho.startsWith("pdi/metas/")) {
+          novosDados.prazo = doc.dados.prazo || item.dataIso;
+        } else if (item.caminho.startsWith("pdi/entregas/")) {
+          novosDados.data = doc.dados.data || item.dataIso;
+        } else if (item.caminho.startsWith("notas/")) {
+          novosDados.data = doc.dados.data || item.dataIso;
+          if (doc.dados.prazo) novosDados.prazo = doc.dados.prazo;
+        }
+      }
+      if (doc.dados.criado_em || doc.dados.criado) {
+        novosDados.criado_em = doc.dados.criado_em || doc.dados.criado;
+      }
+
       const novoTexto = escreverMarkdown({ dados: novosDados, corpo: doc.corpo });
-      await salvarTexto(novoCaminho, novoTexto, undefined, `duplicar: ${novoTitulo}`);
-      invalidarCache();
+      const shaNovo = await salvarTexto(novoCaminho, novoTexto, undefined, `duplicar: ${novoTitulo}`);
+      const novoDoc = lerMarkdown(novoTexto);
+
+      // Atualiza o estado local imediatamente
+      const novoItemRepo: ItemRepo = {
+        caminho: novoCaminho,
+        nome: novoCaminho.split("/").pop() || novoTitulo,
+        sha: shaNovo,
+        texto: novoTexto,
+        tamanho: new TextEncoder().encode(novoTexto).length,
+        doc: novoDoc,
+      };
+      setAcervo((prev) => [novoItemRepo, ...prev]);
       toast(`"${novoTitulo}" duplicado com sucesso!`, { tipo: "sucesso" });
-      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
-      await carregar();
     } catch (err: any) {
       toast(`Erro ao duplicar: ${err?.message || err}`, { tipo: "erro" });
     }
@@ -810,20 +779,23 @@ export default function Inbox() {
           "gi"
         );
         const novoTexto = arquivoOriginal.texto.replace(regexLembrete, "");
-        await salvarTexto(item.caminho, novoTexto, arquivoOriginal.sha, `remover lembrete: ${titLembrete}`);
-        invalidarCache();
+        const shaNovo = await salvarTexto(item.caminho, novoTexto, arquivoOriginal.sha, `remover lembrete: ${titLembrete}`);
+        const novoDoc = lerMarkdown(novoTexto);
+        setAcervo((prev) =>
+          prev.map((a) =>
+            a.caminho === item.caminho
+              ? { ...a, texto: novoTexto, sha: shaNovo, doc: novoDoc, tamanho: new TextEncoder().encode(novoTexto).length }
+              : a
+          )
+        );
         toast("Lembrete removido com sucesso!", { tipo: "sucesso" });
-        window.dispatchEvent(new CustomEvent("acervo-atualizado"));
-        await carregar();
         return;
       }
 
       // Caso contrário, apaga o arquivo do repositório
       await apagarItem(item.caminho, item.sha);
-      invalidarCache();
+      setAcervo((prev) => prev.filter((a) => a.caminho !== item.caminho));
       toast(`"${item.titulo}" excluído com sucesso!`, { tipo: "sucesso" });
-      window.dispatchEvent(new CustomEvent("acervo-atualizado"));
-      await carregar();
     } catch (err: any) {
       toast(`Erro ao excluir: ${err?.message || err}`, { tipo: "erro" });
     }
@@ -1016,11 +988,13 @@ export default function Inbox() {
                   key={c.id}
                   draggable={true}
                   onDragStart={(e) => {
+                    itemArrastandoRef.current = c;
+                    setItemArrastando(c);
                     e.dataTransfer.setData("text/plain", c.id);
                     e.dataTransfer.effectAllowed = "move";
-                    setItemArrastando(c);
                   }}
                   onDragEnd={() => {
+                    itemArrastandoRef.current = null;
                     setItemArrastando(null);
                     setDiaSobHover(null);
                   }}
@@ -1037,10 +1011,8 @@ export default function Inbox() {
                     <p className="text-[10px] text-muted-foreground">Prazo: {c.dataBr}</p>
                   </div>
                   <MenuAcoesCompromisso
-                    c={c}
                     onEditar={() => abrirDocumento(c)}
                     onDuplicar={() => duplicarDocumento(c)}
-                    onMudarData={(novaData) => mudarDataDocumento(c, novaData)}
                     onExcluir={() => setItemParaExcluir(c)}
                   />
                 </div>
@@ -1136,6 +1108,12 @@ export default function Inbox() {
                         setDiaSobHover(diaIso);
                       }
                     }}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      if (diaSobHover !== diaIso) {
+                        setDiaSobHover(diaIso);
+                      }
+                    }}
                     onDragLeave={(e) => {
                       if (e.currentTarget.contains(e.relatedTarget as Node)) return;
                       if (diaSobHover === diaIso) {
@@ -1144,9 +1122,11 @@ export default function Inbox() {
                     }}
                     onDrop={async (e) => {
                       e.preventDefault();
+                      e.stopPropagation();
                       setDiaSobHover(null);
                       const itemId = e.dataTransfer.getData("text/plain");
-                      const item = todosCompromissos.find((x) => x.id === itemId) || itemArrastando;
+                      const item = itemArrastandoRef.current || todosCompromissos.find((x) => x.id === itemId);
+                      itemArrastandoRef.current = null;
                       setItemArrastando(null);
                       if (item && item.dataIso !== diaIso) {
                         await mudarDataDocumento(item, diaIso);
@@ -1200,11 +1180,13 @@ export default function Inbox() {
                               key={c.id}
                               draggable={true}
                               onDragStart={(e) => {
+                                itemArrastandoRef.current = c;
+                                setItemArrastando(c);
                                 e.dataTransfer.setData("text/plain", c.id);
                                 e.dataTransfer.effectAllowed = "move";
-                                setItemArrastando(c);
                               }}
                               onDragEnd={() => {
+                                itemArrastandoRef.current = null;
                                 setItemArrastando(null);
                                 setDiaSobHover(null);
                               }}
@@ -1214,7 +1196,8 @@ export default function Inbox() {
                                 estilo.bg,
                                 estilo.border,
                                 c.concluido && "opacity-60 hover:opacity-100",
-                                itemArrastando?.id === c.id && "opacity-30 scale-95 ring-2 ring-primary border-primary"
+                                itemArrastando?.id === c.id && "opacity-30 scale-95 ring-2 ring-primary border-primary",
+                                itemArrastando && itemArrastando.id !== c.id && "pointer-events-none"
                               )}
                             >
                               <div className="flex items-center gap-2 min-w-0 flex-1 cursor-grab active:cursor-grabbing">
@@ -1254,10 +1237,8 @@ export default function Inbox() {
                               </div>
 
                               <MenuAcoesCompromisso
-                                c={c}
                                 onEditar={() => abrirDocumento(c)}
                                 onDuplicar={() => duplicarDocumento(c)}
-                                onMudarData={(novaData) => mudarDataDocumento(c, novaData)}
                                 onExcluir={() => setItemParaExcluir(c)}
                               />
                             </div>
@@ -1299,6 +1280,12 @@ export default function Inbox() {
                         setDiaSobHover(diaIso);
                       }
                     }}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      if (diaSobHover !== diaIso) {
+                        setDiaSobHover(diaIso);
+                      }
+                    }}
                     onDragLeave={(e) => {
                       if (e.currentTarget.contains(e.relatedTarget as Node)) return;
                       if (diaSobHover === diaIso) {
@@ -1307,9 +1294,11 @@ export default function Inbox() {
                     }}
                     onDrop={async (e) => {
                       e.preventDefault();
+                      e.stopPropagation();
                       setDiaSobHover(null);
                       const itemId = e.dataTransfer.getData("text/plain");
-                      const item = todosCompromissos.find((x) => x.id === itemId) || itemArrastando;
+                      const item = itemArrastandoRef.current || todosCompromissos.find((x) => x.id === itemId);
+                      itemArrastandoRef.current = null;
                       setItemArrastando(null);
                       if (item && item.dataIso !== diaIso) {
                         await mudarDataDocumento(item, diaIso);
@@ -1363,11 +1352,13 @@ export default function Inbox() {
                               key={c.id}
                               draggable={true}
                               onDragStart={(e) => {
+                                itemArrastandoRef.current = c;
+                                setItemArrastando(c);
                                 e.dataTransfer.setData("text/plain", c.id);
                                 e.dataTransfer.effectAllowed = "move";
-                                setItemArrastando(c);
                               }}
                               onDragEnd={() => {
+                                itemArrastandoRef.current = null;
                                 setItemArrastando(null);
                                 setDiaSobHover(null);
                               }}
@@ -1377,7 +1368,8 @@ export default function Inbox() {
                                 estilo.bg,
                                 estilo.border,
                                 c.concluido && "opacity-60 hover:opacity-100",
-                                itemArrastando?.id === c.id && "opacity-30 scale-95 ring-2 ring-primary border-primary"
+                                itemArrastando?.id === c.id && "opacity-30 scale-95 ring-2 ring-primary border-primary",
+                                itemArrastando && itemArrastando.id !== c.id && "pointer-events-none"
                               )}
                             >
                               <div className="flex items-center gap-2 min-w-0 flex-1 cursor-grab active:cursor-grabbing">
@@ -1417,10 +1409,8 @@ export default function Inbox() {
                               </div>
 
                               <MenuAcoesCompromisso
-                                c={c}
                                 onEditar={() => abrirDocumento(c)}
                                 onDuplicar={() => duplicarDocumento(c)}
-                                onMudarData={(novaData) => mudarDataDocumento(c, novaData)}
                                 onExcluir={() => setItemParaExcluir(c)}
                               />
                             </div>

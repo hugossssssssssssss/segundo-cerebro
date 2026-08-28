@@ -326,7 +326,7 @@ export function PropriedadesNotion({
 
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
     .filter(k => {
-      if (["titulo", "tipo", "atualizado", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "c", "pomodoro", "pomodoros", "estimativa", "porque", "anotacoes"].includes(k)) return false;
+      if (["titulo", "tipo", "atualizado", "atualizado_em", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "c", "pomodoro", "pomodoros", "estimativa", "porque", "anotacoes"].includes(k)) return false;
       if (ehLembrete && chavesExclusivasTarefa.includes(k)) return false;
       if (!ehLembrete && chavesLembrete.includes(k)) return false;
       return true;
@@ -358,7 +358,7 @@ export function PropriedadesNotion({
     if (chave === "caminho" || chave === "pasta") return "Caminho";
     if (chave === "criado_por" || chave === "autor") return "Criado por";
     if (chave === "criado_em" || chave === "criado") return "Criado em";
-    if (chave === "ultima_edicao" || chave === "atualizado") return "Última edição em";
+    if (chave === "ultima_edicao" || chave === "atualizado" || chave === "atualizado_em") return "Última edição em";
     if (chave === "status") return "Status";
     if (chave === "prazo") return rotuloTipo?.toLowerCase().includes("lembrete") ? "Data do Lembrete" : "Prazo";
     if (chave === "tags") return "Tags";
@@ -568,7 +568,7 @@ export function PropriedadesNotion({
       chave === "relacionamentos" || chave === "relacao" ? "relation" :
       chave === "criado_por" ? "criado_por" :
       chave === "criado_em" || chave === "criado" ? "criado_em" :
-      chave === "ultima_edicao" || chave === "atualizado" ? "ultima_edicao" :
+      chave === "ultima_edicao" || chave === "atualizado" || chave === "atualizado_em" ? "ultima_edicao" :
       chave === "aviso_inbox" || chave === "aviso_telegram" || chave === "aviso_email" ? "checkbox" :
       chave === "data" || chave === "prazo" ? "data" :
       fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : typeof valor === "boolean" ? "checkbox" : "texto");
@@ -611,9 +611,9 @@ export function PropriedadesNotion({
       );
     }
 
-    if (tipo === "ultima_edicao" || chave === "ultima_edicao" || chave === "atualizado") {
+    if (tipo === "ultima_edicao" || chave === "ultima_edicao" || chave === "atualizado" || chave === "atualizado_em") {
       let dataObj: Date | undefined;
-      const raw = dados.atualizado || dados.ultima_edicao || valor;
+      const raw = dados.atualizado || dados.atualizado_em || dados.ultima_edicao || valor;
       if (typeof raw === "string" && raw.trim()) {
         const parsed = new Date(raw);
         if (!isNaN(parsed.getTime())) dataObj = parsed;
@@ -1306,7 +1306,7 @@ export function PropriedadesNotion({
       chave === "caminho" ? "texto" :
       chave === "criado_por" ? "criado_por" :
       chave === "criado_em" || chave === "criado" ? "criado_em" :
-      chave === "ultima_edicao" || chave === "atualizado" ? "ultima_edicao" :
+      chave === "ultima_edicao" || chave === "atualizado" || chave === "atualizado_em" ? "ultima_edicao" :
       chave === "aviso_inbox" || chave === "aviso_telegram" || chave === "aviso_email" ? "checkbox" :
       chave === "data" || chave === "prazo" ? "data" :
       fixo?.tipo || esquema[chave] || "texto";
@@ -1320,7 +1320,7 @@ export function PropriedadesNotion({
       chave === "data" || chave === "prazo" ? CalendarIcon :
       fixo?.icone ? () => <>{fixo.icone}</> : 
       ICONES_TIPO[tipoAtual as TipoPropriedade] || Type;
-    const visDefault = ["criado_por", "criado_em", "criado", "ultima_edicao", "atualizado", "caminho"].includes(chave) ? "esconder" : "sempre";
+    const visDefault = ["criado_por", "criado_em", "criado", "ultima_edicao", "atualizado", "atualizado_em", "caminho"].includes(chave) ? "esconder" : "sempre";
     const visAtual = visibilidadeMap[chave] || visDefault;
     const rotuloAtual = nomeExibido(chave);
     const idMenu = `prop-${chave}`;
