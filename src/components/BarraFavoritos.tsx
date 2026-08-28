@@ -29,9 +29,15 @@ import {
   Pencil,
   Palette,
   Trash2,
+  MoreVertical,
+  ArrowLeft,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -54,8 +60,8 @@ import {
 } from "@/lib/favoritos";
 import { cn } from "@/lib/utils";
 import {
-  ModalSelecionarIconeFavorito,
   RenderizadorIconeItem,
+  SeletorGradeIcones,
 } from "@/components/ModalSelecionarIconeFavorito";
 import { sugerirIconePorUrl } from "@/lib/catalogoIconesMarcas";
 
@@ -76,9 +82,9 @@ function FaviconIcone({
   // Reseta estado de erro se a URL mudar
   useEffect(() => {
     setErro(false);
-  }, [src]);
+  }, [src, url, iconeCustomizado]);
 
-  // Se o usuário selecionou um ícone customizado explicitamente
+  // 1. Se o usuário selecionou um ícone customizado explicitamente
   if (iconeCustomizado) {
     return (
       <RenderizadorIconeItem
@@ -89,7 +95,7 @@ function FaviconIcone({
     );
   }
 
-  // Sugestão automática e inteligente para serviços famosos (WhatsApp, Gmail, Drive, etc.)
+  // 2. Sugestão automática inteligente para serviços famosos (YouTube Music, WhatsApp, Gmail, Drive, etc.)
   const iconeSugerido = sugerirIconePorUrl(url);
   if (iconeSugerido && !erro) {
     return (
@@ -101,6 +107,7 @@ function FaviconIcone({
     );
   }
 
+  // 3. Favicon padrão do Google
   if (erro || !src) {
     return <Globe size={14} className="shrink-0 text-muted-foreground/80" />;
   }
@@ -120,18 +127,24 @@ function FaviconIcone({
 
 interface ItemFavoritoProps {
   item: FavoritoItem;
-  onContextMenu: (e: React.MouseEvent, item: FavoritoItem) => void;
   onRegistrarLargura: (id: string, largura: number) => void;
   onNavegar: (url: string) => void;
+  onEditar: (item: FavoritoItem) => void;
+  onExcluir: (id: string) => void;
+  onSalvarIcone: (id: string, iconeCustomizado?: string) => void;
 }
 
 const ItemFavorito = memo(function ItemFavorito({
   item,
-  onContextMenu,
   onRegistrarLargura,
   onNavegar,
+  onEditar,
+  onExcluir,
+  onSalvarIcone,
 }: ItemFavoritoProps) {
   const elementoRef = useRef<HTMLDivElement | null>(null);
+  const [popoverAberto, setPopoverAberto] = useState(false);
+  const [modoVisao, setModoVisao] = useState<"menu" | "icone">("menu");
 
   const {
     attributes,
@@ -171,6 +184,13 @@ const ItemFavorito = memo(function ItemFavorito({
     }
   };
 
+  const lidarContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setModoVisao("menu");
+    setPopoverAberto(true);
+  };
+
   return (
     <div
       ref={refCombinada}
@@ -178,12 +198,13 @@ const ItemFavorito = memo(function ItemFavorito({
       {...attributes}
       {...listeners}
       className={cn(
-        "group relative flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-medium cursor-pointer select-none touch-none shrink-0 transition-colors border border-transparent",
+        "group relative flex items-center gap-1 h-7 pl-2 pr-1 rounded-md text-xs font-medium cursor-pointer select-none touch-none shrink-0 transition-colors border border-transparent",
         "text-muted-foreground hover:text-foreground hover:bg-accent/70 hover:border-border/50",
         isDragging && "shadow-md bg-accent text-foreground ring-1 ring-primary/30",
+        popoverAberto && "bg-accent text-foreground",
       )}
       onClick={lidarClique}
-      onContextMenu={(e) => onContextMenu(e, item)}
+      onContextMenu={lidarContextMenu}
     >
       <Tooltip conteudo={textoTooltip} posicao="bottom">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -199,9 +220,329 @@ const ItemFavorito = memo(function ItemFavorito({
           )}
         </div>
       </Tooltip>
+
+      {/* Botão de Opções / Três Pontinhos (aparece no hover ou se o popover estiver aberto) */}
+      <Popover
+        open={popoverAberto}
+        onOpenChange={(aberto) => {
+          setPopoverAberto(aberto);
+          if (!aberto) setModoVisao("menu");
+        }}
+      >
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            className={cn(
+              "flex items-center justify-center h-5 w-4 rounded opacity-0 group-hover:opacity-100 hover:bg-background/80 transition-opacity text-muted-foreground hover:text-foreground shrink-0 cursor-pointer ml-0.5",
+              popoverAberto && "opacity-100 bg-background/80 text-foreground",
+            )}
+            title="Opções do favorito"
+            aria-label="Opções do favorito"
+          >
+            <MoreVertical size={11} />
+          </button>
+        </PopoverTrigger>
+
+        {/* Popover Ancorado diretamente no ícone selecionado! */}
+        <PopoverContent
+          align="start"
+          side="bottom"
+          sideOffset={6}
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            "shadow-2xl bg-card border border-border rounded-xl backdrop-blur-md z-50 animate-in fade-in zoom-in-95 duration-100",
+            modoVisao === "icone" ? "w-80 sm:w-96 p-3" : "w-48 p-1",
+          )}
+        >
+          {modoVisao === "menu" ? (
+            <div className="space-y-0.5">
+              <div className="px-2.5 py-1 text-[11px] font-medium text-muted-foreground truncate border-b border-border/40 mb-1">
+                {item.nome || extrairDominio(item.url) || "Opções"}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setModoVisao("icone")}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left font-medium"
+              >
+                <Palette size={13} className="shrink-0 opacity-70 text-primary" />
+                <span>Alterar ícone</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPopoverAberto(false);
+                  onEditar(item);
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
+              >
+                <Pencil size={13} className="shrink-0 opacity-70" />
+                <span>Editar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPopoverAberto(false);
+                  window.open(item.url, "_blank");
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
+              >
+                <ExternalLink size={13} className="shrink-0 opacity-70" />
+                <span>Abrir em nova guia</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPopoverAberto(false);
+                  window.open(
+                    item.url,
+                    "_blank",
+                    "location=yes,status=yes,scrollbars=yes",
+                  );
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
+              >
+                <AppWindow size={13} className="shrink-0 opacity-70" />
+                <span>Abrir em nova janela</span>
+              </button>
+
+              <div className="h-px bg-border/40 my-1" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPopoverAberto(false);
+                  onExcluir(item.id);
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-destructive hover:bg-destructive/10 transition-colors cursor-pointer text-left"
+              >
+                <Trash2 size={13} className="shrink-0 opacity-70" />
+                <span>Excluir</span>
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center gap-1 mb-1.5">
+                <button
+                  type="button"
+                  onClick={() => setModoVisao("menu")}
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                >
+                  <ArrowLeft size={12} />
+                  <span>Voltar</span>
+                </button>
+              </div>
+              <SeletorGradeIcones
+                iconeAtual={item.iconeCustomizado}
+                titulo={item.nome || item.url}
+                tamanhoPequeno={true}
+                onSelecionar={(novoIcone) => {
+                  onSalvarIcone(item.id, novoIcone.id);
+                  setPopoverAberto(false);
+                }}
+                onRestaurar={() => {
+                  onSalvarIcone(item.id, undefined);
+                  setPopoverAberto(false);
+                }}
+                onFechar={() => setPopoverAberto(false)}
+              />
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
     </div>
   );
 });
+
+/* -------------------------------------------------- Item no Menu Overflow */
+
+function ItemOverflow({
+  item,
+  onNavegar,
+  onEditar,
+  onExcluir,
+  onSalvarIcone,
+  onFecharOverflow,
+}: {
+  item: FavoritoItem;
+  onNavegar: (url: string) => void;
+  onEditar: (item: FavoritoItem) => void;
+  onExcluir: (id: string) => void;
+  onSalvarIcone: (id: string, iconeCustomizado?: string) => void;
+  onFecharOverflow: () => void;
+}) {
+  const [popoverAberto, setPopoverAberto] = useState(false);
+  const [modoVisao, setModoVisao] = useState<"menu" | "icone">("menu");
+
+  return (
+    <div
+      onClick={(e) => {
+        if (e.button === 0) {
+          onFecharOverflow();
+          onNavegar(item.url);
+        }
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setModoVisao("menu");
+        setPopoverAberto(true);
+      }}
+      className="flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer group"
+    >
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <FaviconIcone
+          url={item.url}
+          nome={item.nome}
+          iconeCustomizado={item.iconeCustomizado}
+        />
+        <span className="truncate flex-1" title={item.nome || item.url}>
+          {item.nome || extrairDominio(item.url) || item.url}
+        </span>
+      </div>
+
+      <Popover
+        open={popoverAberto}
+        onOpenChange={(aberto) => {
+          setPopoverAberto(aberto);
+          if (!aberto) setModoVisao("menu");
+        }}
+      >
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            className="flex items-center justify-center h-5 w-5 rounded opacity-0 group-hover:opacity-100 hover:bg-card transition-opacity text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+            title="Opções do favorito"
+          >
+            <MoreVertical size={12} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          side="right"
+          sideOffset={6}
+          onClick={(e) => e.stopPropagation()}
+          className={cn(
+            "shadow-2xl bg-card border border-border rounded-xl backdrop-blur-md z-50 animate-in fade-in zoom-in-95 duration-100",
+            modoVisao === "icone" ? "w-80 sm:w-96 p-3" : "w-48 p-1",
+          )}
+        >
+          {modoVisao === "menu" ? (
+            <div className="space-y-0.5">
+              <div className="px-2.5 py-1 text-[11px] font-medium text-muted-foreground truncate border-b border-border/40 mb-1">
+                {item.nome || extrairDominio(item.url) || "Opções"}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setModoVisao("icone")}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left font-medium"
+              >
+                <Palette size={13} className="shrink-0 opacity-70 text-primary" />
+                <span>Alterar ícone</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPopoverAberto(false);
+                  onFecharOverflow();
+                  onEditar(item);
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
+              >
+                <Pencil size={13} className="shrink-0 opacity-70" />
+                <span>Editar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPopoverAberto(false);
+                  onFecharOverflow();
+                  window.open(item.url, "_blank");
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
+              >
+                <ExternalLink size={13} className="shrink-0 opacity-70" />
+                <span>Abrir em nova guia</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPopoverAberto(false);
+                  onFecharOverflow();
+                  window.open(
+                    item.url,
+                    "_blank",
+                    "location=yes,status=yes,scrollbars=yes",
+                  );
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
+              >
+                <AppWindow size={13} className="shrink-0 opacity-70" />
+                <span>Abrir em nova janela</span>
+              </button>
+
+              <div className="h-px bg-border/40 my-1" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPopoverAberto(false);
+                  onExcluir(item.id);
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-destructive hover:bg-destructive/10 transition-colors cursor-pointer text-left"
+              >
+                <Trash2 size={13} className="shrink-0 opacity-70" />
+                <span>Excluir</span>
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center gap-1 mb-1.5">
+                <button
+                  type="button"
+                  onClick={() => setModoVisao("menu")}
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                >
+                  <ArrowLeft size={12} />
+                  <span>Voltar</span>
+                </button>
+              </div>
+              <SeletorGradeIcones
+                iconeAtual={item.iconeCustomizado}
+                titulo={item.nome || item.url}
+                tamanhoPequeno={true}
+                onSelecionar={(novoIcone) => {
+                  onSalvarIcone(item.id, novoIcone.id);
+                  setPopoverAberto(false);
+                  onFecharOverflow();
+                }}
+                onRestaurar={() => {
+                  onSalvarIcone(item.id, undefined);
+                  setPopoverAberto(false);
+                  onFecharOverflow();
+                }}
+                onFechar={() => setPopoverAberto(false)}
+              />
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 /* ----------------------------------------------------- Barra de Favoritos */
 
@@ -217,26 +558,6 @@ export function BarraFavoritos({ className }: { className?: string }) {
   const [formNome, setFormNome] = useState("");
   const [formErro, setFormErro] = useState("");
 
-  // Modal de Seleção de Ícone
-  const [modalIconeAberto, setModalIconeAberto] = useState(false);
-  const [itemIcone, setItemIcone] = useState<FavoritoItem | null>(null);
-
-  // Menu de Contexto (botão direito)
-  const [menuContexto, setMenuContexto] = useState<{
-    aberto: boolean;
-    x: number;
-    y: number;
-    item: FavoritoItem | null;
-  }>({ aberto: false, x: 0, y: 0, item: null });
-
-  const lidarSalvarIconeCustomizado = (id: string, iconeCustomizado?: string) => {
-    const novaLista = favoritos.map((f) =>
-      f.id === id ? { ...f, iconeCustomizado } : f,
-    );
-    setFavoritos(novaLista);
-    agendarPersistenciaRemota(cfg, novaLista, 300);
-  };
-
   // Popover de Overflow (>>)
   const [overflowAberto, setOverflowAberto] = useState(false);
 
@@ -248,6 +569,15 @@ export function BarraFavoritos({ className }: { className?: string }) {
 
   const cfg = useMemo(() => lerConfig(), []);
   const pronto = configCompleta(cfg);
+
+  // Salvar ícone customizado selecionado
+  const lidarSalvarIconeCustomizado = (id: string, iconeCustomizado?: string) => {
+    const novaLista = favoritos.map((f) =>
+      f.id === id ? { ...f, iconeCustomizado } : f,
+    );
+    setFavoritos(novaLista);
+    agendarPersistenciaRemota(cfg, novaLista, 300);
+  };
 
   // Carregar favoritos iniciais e sincronizar com eventos locais
   useEffect(() => {
@@ -304,18 +634,6 @@ export function BarraFavoritos({ className }: { className?: string }) {
     [cfg],
   );
 
-  // Fechar menu de contexto ao clicar fora
-  useEffect(() => {
-    if (!menuContexto.aberto) return;
-    const fechar = () => setMenuContexto((prev) => ({ ...prev, aberto: false }));
-    window.addEventListener("click", fechar);
-    window.addEventListener("contextmenu", fechar);
-    return () => {
-      window.removeEventListener("click", fechar);
-      window.removeEventListener("contextmenu", fechar);
-    };
-  }, [menuContexto.aberto]);
-
   // Observer de redimensionamento do container para cálculo de overflow
   useEffect(() => {
     if (!containerRef.current || typeof ResizeObserver === "undefined") return;
@@ -343,32 +661,44 @@ export function BarraFavoritos({ className }: { className?: string }) {
 
     const larguraBotaoAdicionar = 28;
     const larguraBotaoOverflow = 30;
-    const gap = 4;
+    const espacamento = 4;
 
-    // Espaço disponível descontando o botão "+"
-    const espacoTotal = larguraContainer - larguraBotaoAdicionar;
-
-    let larguraAcumulada = 0;
+    let larguraAcumulada = larguraBotaoAdicionar + espacamento;
     let cabem = 0;
 
     for (let i = 0; i < favoritos.length; i++) {
-      const it = favoritos[i];
-      const w = largurasRef.current.get(it.id) || (it.nome ? 95 : 32);
-      const precisaOverflow = i < favoritos.length - 1;
-      const margemReserva = precisaOverflow ? larguraBotaoOverflow + gap : 0;
+      const id = favoritos[i].id;
+      const larguraEstimada = largurasRef.current.get(id) || 75;
 
-      if (larguraAcumulada + w + margemReserva <= espacoTotal) {
-        larguraAcumulada += w + gap;
+      const precisaDeOverflowParaRestante = i < favoritos.length - 1;
+      const margemOverflow = precisaDeOverflowParaRestante
+        ? larguraBotaoOverflow + espacamento
+        : 0;
+
+      if (larguraAcumulada + larguraEstimada + margemOverflow <= larguraContainer) {
+        larguraAcumulada += larguraEstimada + espacamento;
         cabem++;
       } else {
         break;
       }
     }
 
-    setQuantidadeVisivel(Math.max(0, cabem));
+    setQuantidadeVisivel(Math.max(1, cabem));
   }, [larguraContainer, favoritos]);
 
-  // Sensores de Drag-and-Drop
+  const itensVisiveis = useMemo(() => {
+    return favoritos.slice(0, quantidadeVisivel);
+  }, [favoritos, quantidadeVisivel]);
+
+  const itensOverflow = useMemo(() => {
+    return favoritos.slice(quantidadeVisivel);
+  }, [favoritos, quantidadeVisivel]);
+
+  const idsVisiveis = useMemo(() => {
+    return itensVisiveis.map((f) => f.id);
+  }, [itensVisiveis]);
+
+  // Sensores de arrastar e soltar (Pointer com distância mínima para não interferir em cliques)
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -379,18 +709,19 @@ export function BarraFavoritos({ className }: { className?: string }) {
 
   const lidarDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const indexAntigo = favoritos.findIndex((f) => f.id === active.id);
-      const indexNovo = favoritos.findIndex((f) => f.id === over.id);
-      if (indexAntigo !== -1 && indexNovo !== -1) {
-        const novaLista = [...favoritos];
-        const [removido] = novaLista.splice(indexAntigo, 1);
-        novaLista.splice(indexNovo, 0, removido);
+    if (!over || active.id === over.id) return;
 
-        setFavoritos(novaLista);
-        salvarFavoritosLocal(novaLista);
-        agendarPersistenciaRemota(cfg, novaLista);
-      }
+    const indexAntigo = favoritos.findIndex((f) => f.id === active.id);
+    const indexNovo = favoritos.findIndex((f) => f.id === over.id);
+
+    if (indexAntigo !== -1 && indexNovo !== -1) {
+      const novaLista = [...favoritos];
+      const [removido] = novaLista.splice(indexAntigo, 1);
+      novaLista.splice(indexNovo, 0, removido);
+
+      setFavoritos(novaLista);
+      salvarFavoritosLocal(novaLista);
+      agendarPersistenciaRemota(cfg, novaLista, 2000);
     }
   };
 
@@ -416,7 +747,7 @@ export function BarraFavoritos({ className }: { className?: string }) {
   const excluirFavorito = (id: string) => {
     const novaLista = favoritos.filter((f) => f.id !== id);
     setFavoritos(novaLista);
-    agendarPersistenciaRemota(cfg, novaLista);
+    agendarPersistenciaRemota(cfg, novaLista, 300);
   };
 
   // Submissão do formulário de salvar/adicionar
@@ -437,7 +768,7 @@ export function BarraFavoritos({ className }: { className?: string }) {
         f.id === itemEditando.id ? { ...f, url: urlNormalizada, nome: nomeLimpo } : f,
       );
       setFavoritos(novaLista);
-      agendarPersistenciaRemota(cfg, novaLista);
+      agendarPersistenciaRemota(cfg, novaLista, 300);
     } else {
       // Novo item
       const novoItem: FavoritoItem = {
@@ -448,32 +779,11 @@ export function BarraFavoritos({ className }: { className?: string }) {
       };
       const novaLista = [...favoritos, novoItem];
       setFavoritos(novaLista);
-      agendarPersistenciaRemota(cfg, novaLista);
+      agendarPersistenciaRemota(cfg, novaLista, 300);
     }
 
     setModalAberto(false);
   };
-
-  const lidarContextMenu = (e: React.MouseEvent, item: FavoritoItem) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setMenuContexto({
-      aberto: true,
-      x: Math.min(e.clientX, window.innerWidth - 180),
-      y: Math.min(e.clientY, window.innerHeight - 180),
-      item,
-    });
-  };
-
-  const itensVisiveis = useMemo(() => {
-    return favoritos.slice(0, quantidadeVisivel);
-  }, [favoritos, quantidadeVisivel]);
-
-  const itensOverflow = useMemo(() => {
-    return favoritos.slice(quantidadeVisivel);
-  }, [favoritos, quantidadeVisivel]);
-
-  const idsVisiveis = useMemo(() => itensVisiveis.map((f) => f.id), [itensVisiveis]);
 
   return (
     <div
@@ -507,9 +817,11 @@ export function BarraFavoritos({ className }: { className?: string }) {
               <ItemFavorito
                 key={item.id}
                 item={item}
-                onContextMenu={lidarContextMenu}
                 onRegistrarLargura={registrarLarguraItem}
                 onNavegar={navegarParaUrl}
+                onEditar={abrirModalEditar}
+                onExcluir={excluirFavorito}
+                onSalvarIcone={lidarSalvarIconeCustomizado}
               />
             ))}
           </div>
@@ -550,116 +862,19 @@ export function BarraFavoritos({ className }: { className?: string }) {
             </div>
             <div className="space-y-0.5">
               {itensOverflow.map((it) => (
-                <div
+                <ItemOverflow
                   key={it.id}
-                  onClick={(e) => {
-                    if (e.button === 0) {
-                      setOverflowAberto(false);
-                      navegarParaUrl(it.url);
-                    }
-                  }}
-                  onContextMenu={(e) => {
-                    setOverflowAberto(false);
-                    lidarContextMenu(e, it);
-                  }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer group"
-                >
-                  <FaviconIcone
-                    url={it.url}
-                    nome={it.nome}
-                    iconeCustomizado={it.iconeCustomizado}
-                  />
-                  <span className="truncate flex-1" title={it.nome || it.url}>
-                    {it.nome || extrairDominio(it.url) || it.url}
-                  </span>
-                </div>
+                  item={it}
+                  onNavegar={navegarParaUrl}
+                  onEditar={abrirModalEditar}
+                  onExcluir={excluirFavorito}
+                  onSalvarIcone={lidarSalvarIconeCustomizado}
+                  onFecharOverflow={() => setOverflowAberto(false)}
+                />
               ))}
             </div>
           </PopoverContent>
         </Popover>
-      )}
-
-      {/* Menu de Contexto (botão direito) */}
-      {menuContexto.aberto && menuContexto.item && (
-        <div
-          style={{ top: menuContexto.y, left: menuContexto.x }}
-          className="fixed z-50 w-48 rounded-xl border border-border bg-card/95 p-1 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground truncate border-b border-border/40 mb-1">
-            {menuContexto.item.nome || extrairDominio(menuContexto.item.url) || "Opções"}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              window.open(menuContexto.item!.url, "_blank");
-              setMenuContexto((prev) => ({ ...prev, aberto: false }));
-            }}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
-          >
-            <ExternalLink size={13} className="shrink-0 opacity-70" />
-            <span>Abrir em nova guia</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              window.open(
-                menuContexto.item!.url,
-                "_blank",
-                "location=yes,status=yes,scrollbars=yes",
-              );
-              setMenuContexto((prev) => ({ ...prev, aberto: false }));
-            }}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
-          >
-            <AppWindow size={13} className="shrink-0 opacity-70" />
-            <span>Abrir em nova janela</span>
-          </button>
-
-          <div className="h-px bg-border/40 my-1" />
-
-          <button
-            type="button"
-            onClick={() => {
-              const itemParaIcone = menuContexto.item!;
-              setMenuContexto((prev) => ({ ...prev, aberto: false }));
-              setItemIcone(itemParaIcone);
-              setModalIconeAberto(true);
-            }}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
-          >
-            <Palette size={13} className="shrink-0 opacity-70 text-primary" />
-            <span>Alterar ícone</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              const itemParaEditar = menuContexto.item!;
-              setMenuContexto((prev) => ({ ...prev, aberto: false }));
-              abrirModalEditar(itemParaEditar);
-            }}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-foreground hover:bg-accent transition-colors cursor-pointer text-left"
-          >
-            <Pencil size={13} className="shrink-0 opacity-70" />
-            <span>Editar</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              const id = menuContexto.item!.id;
-              setMenuContexto((prev) => ({ ...prev, aberto: false }));
-              excluirFavorito(id);
-            }}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-destructive hover:bg-destructive/10 transition-colors cursor-pointer text-left"
-          >
-            <Trash2 size={13} className="shrink-0 opacity-70" />
-            <span>Excluir</span>
-          </button>
-        </div>
       )}
 
       {/* Modal / Dialog de Adicionar e Editar Favorito */}
@@ -685,13 +900,10 @@ export function BarraFavoritos({ className }: { className?: string }) {
                 value={formUrl}
                 onChange={(e) => {
                   setFormUrl(e.target.value);
-                  if (formErro) setFormErro("");
+                  setFormErro("");
                 }}
-                placeholder="ex: https://github.com ou figma.com"
-                className={cn(
-                  "w-full px-3 py-2 text-sm rounded-lg border bg-background text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40",
-                  formErro ? "border-destructive" : "border-border",
-                )}
+                placeholder="ex: github.com ou https://notion.so"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
                 autoFocus
               />
               {formErro && (
@@ -737,17 +949,6 @@ export function BarraFavoritos({ className }: { className?: string }) {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Modal de Escolha de Ícone de Marca ou Genérico */}
-      <ModalSelecionarIconeFavorito
-        aberto={modalIconeAberto}
-        aoFechar={() => {
-          setModalIconeAberto(false);
-          setItemIcone(null);
-        }}
-        favorito={itemIcone}
-        aoSalvarIcone={lidarSalvarIconeCustomizado}
-      />
     </div>
   );
 }

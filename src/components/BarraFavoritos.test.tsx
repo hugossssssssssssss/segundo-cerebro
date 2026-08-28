@@ -108,8 +108,8 @@ describe("BarraFavoritos", () => {
     expect(botaoAlterarIcone).toBeDefined();
     fireEvent.click(botaoAlterarIcone);
 
-    // Modal de ícones aberto
-    expect(screen.getByText("Alterar Ícone do Favorito")).toBeDefined();
+    // Seletor de ícones aberto
+    expect(screen.getByPlaceholderText(/buscar ícone/i)).toBeDefined();
 
     // Clica no ícone do WhatsApp na grade
     const iconeWhatsApp = screen.getByTitle("WhatsApp");
@@ -119,5 +119,24 @@ describe("BarraFavoritos", () => {
       const salvo = JSON.parse(localStorage.getItem(CHAVE_STORAGE_FAVORITOS) || "[]");
       expect(salvo[0].iconeCustomizado).toBe("si:whatsapp");
     });
+  });
+
+  it("abre opções ao clicar no botão de três pontinhos (MoreVertical)", async () => {
+    const itens: FavoritoItem[] = [
+      { id: "fav-dots", url: "https://music.youtube.com", nome: "YouTube Music" },
+    ];
+    salvarFavoritosLocal(itens);
+
+    render(<BarraFavoritos />);
+
+    await screen.findByText("YouTube Music");
+
+    const botaoTresPontinhos = screen.getByTitle("Opções do favorito");
+    expect(botaoTresPontinhos).toBeDefined();
+    fireEvent.click(botaoTresPontinhos);
+
+    expect(screen.getByText("Alterar ícone")).toBeDefined();
+    expect(screen.getByText("Editar")).toBeDefined();
+    expect(screen.getByText("Abrir em nova guia")).toBeDefined();
   });
 });
