@@ -24,7 +24,6 @@ import { PropriedadesNotion, abrirItemSpa } from "@/components/PropriedadesNotio
 import { EditorNotion } from "@/components/EditorNotion";
 import { Subtarefas } from "@/components/Subtarefas";
 import { MencionadoEm } from "@/components/Links";
-import { MapaMentalEmbed } from "@/components/MapaMentalEmbed";
 import { sincronizarRelacionamentos } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
@@ -33,6 +32,12 @@ import { useSalvar } from "@/lib/useSalvar";
 import { cache, invalidarCache } from "@/lib/repo";
 import { lerConfig } from "@/lib/settings";
 import { toast } from "@/lib/toast";
+
+const MapaMentalEmbed = lazy(() =>
+  import("@/components/MapaMentalEmbed").then((m) => ({
+    default: m.MapaMentalEmbed,
+  })),
+);
 
 const HistoricoDiffModal = lazy(() =>
   import("@/components/HistoricoDiffModal").then((m) => ({
@@ -1020,17 +1025,18 @@ export function PainelNotionBase({
           }}
         />
         {lousasMencionadas.map((l) => (
-          <MapaMentalEmbed
-            key={l.caminho}
-            item={{
-              caminho: l.caminho,
-              nome: l.caminho.split("/").pop() || "",
-              sha: "",
-              texto: "",
-              tamanho: 0,
-              doc: { dados: { titulo: l.titulo, tipo: "lousa" }, corpo: "" },
-            }}
-          />
+          <Suspense key={l.caminho} fallback={<div className="p-4 text-center text-xs text-muted-foreground animate-pulse">Carregando visualização do mapa mental...</div>}>
+            <MapaMentalEmbed
+              item={{
+                caminho: l.caminho,
+                nome: l.caminho.split("/").pop() || "",
+                sha: "",
+                texto: "",
+                tamanho: 0,
+                doc: { dados: { titulo: l.titulo, tipo: "lousa" }, corpo: "" },
+              }}
+            />
+          </Suspense>
         ))}
       </div>
 

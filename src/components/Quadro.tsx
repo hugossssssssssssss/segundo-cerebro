@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Timer, GripVertical, Pause, ChevronDown, ChevronUp, ChevronRight, ChevronsRight, Folder } from "lucide-react";
+import { Timer, GripVertical, Pause, ChevronDown, ChevronUp, ChevronRight, ChevronsRight, Folder, Sparkles } from "lucide-react";
 import {
   urgencia,
   textoPrazo,
@@ -96,8 +96,13 @@ function ConteudoDoCartao({ t }: { t: Tarefa }) {
         tamanho={13}
       />
 
-      {(u !== "nenhuma" || min > 0 || passos.total > 0 || t.tags.length > 0 || subpasta) && (
+      {(u !== "nenhuma" || min > 0 || passos.total > 0 || t.tags.length > 0 || subpasta || Boolean(t.bruto?.ia_sugeriu)) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {Boolean(t.bruto?.ia_sugeriu) && (
+            <Selo tom="aviso" className="flex items-center gap-1 text-[10px] bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-medium">
+              <Sparkles size={10} /> IA
+            </Selo>
+          )}
           {subpasta && (
             <Selo className="opacity-75 flex items-center gap-1 text-[10px]">
               <Folder size={10} />

@@ -2,15 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Send, Sparkles, Trash2, Copy, Check, RefreshCw, MessageSquare } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { carregarRepo, type ItemRepo } from "@/lib/repo";
+import { useAcervoRepo } from "@/lib/useItemRepo";
 import { conversar, PROMPTS, type Mensagem, type PromptSalvo } from "@/lib/gemini";
 import { acoesDeChamadas, executar, type Acao } from "@/lib/acoes";
 import { CartaoAcao } from "@/components/CartaoAcao";
 import { Botao, Cartao, AreaTexto, Aviso, Vazio, Selo } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
-
-import { buscar } from "@/lib/busca";
+import { montarContextoSemantico } from "@/lib/ragLocal";
 
 /** Uma fala da conversa, com as ações que a IA propôs junto dela. */
 type Fala = Mensagem & { acoes?: Acao[] };
@@ -18,13 +17,12 @@ type Fala = Mensagem & { acoes?: Acao[] };
 export default function Chat() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
+  const { acervo, carregando: carregandoAcervo, recarregar } = useAcervoRepo(cfg);
 
   const [falas, setFalas] = useState<Fala[]>([]);
   const [entrada, setEntrada] = useState("");
   const [pensando, setPensando] = useState(false);
   const [erro, setErro] = useState("");
-  const [acervo, setAcervo] = useState<ItemRepo[]>([]);
-  const [carregandoAcervo, setCarregandoAcervo] = useState(false);
   const [copiado, setCopiado] = useState<number | null>(null);
   const [descartadas, setDescartadas] = useState<Set<string>>(new Set());
 
@@ -32,60 +30,6 @@ export default function Chat() {
   useEffect(() => {
     fim.current?.scrollIntoView({ behavior: "smooth" });
   }, [falas, pensando]);
-
-  useEffect(() => {
-    const aoAtualizar = () => setAcervo([]);
-    window.addEventListener("acervo-atualizado", aoAtualizar);
-    return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
-  }, []);
-
-  /**
-   * Carrega o acervo uma vez e mantém.
-   *
-   * Antes o conteúdo só ia junto nos prompts prontos: qualquer pergunta de
-   * seguimento saía sem contexto nenhum, e a IA parecia esquecer no meio da
-   * conversa o que tinha acabado de discutir.
-   */
-  async function garantirAcervo(): Promise<ItemRepo[]> {
-    if (acervo.length > 0) return acervo;
-    setCarregandoAcervo(true);
-    try {
-      const itens = await carregarRepo(cfg);
-      setAcervo(itens);
-      return itens;
-    } finally {
-      setCarregandoAcervo(false);
-    }
-  }
-
-  function montarContextoTexto(itens: ItemRepo[], consulta?: string): string {
-    const TETO = 120_000;
-    let total = 0;
-    const partes: string[] = [];
-
-    // 1. Busca por itens relevantes baseados na consulta do usuário
-    let itensOrdenados: ItemRepo[] = [...itens];
-    if (consulta && consulta.trim().length >= 2) {
-      const resultadosBusca = buscar(itens, consulta);
-      const caminhosRelevantes = new Set(resultadosBusca.map((r) => r.caminho));
-      const relevantes = itens.filter((i) => caminhosRelevantes.has(i.caminho));
-      const outros = itens.filter((i) => !caminhosRelevantes.has(i.caminho));
-      itensOrdenados = [...relevantes, ...outros];
-    }
-
-    for (const i of itensOrdenados) {
-      const bloco = `\n### ${i.caminho}\n${i.texto}`;
-      if (total + bloco.length > TETO) {
-        partes.push(
-          `\n... (contexto cortado em ${TETO} caracteres para não exceder o limite do modelo)`,
-        );
-        break;
-      }
-      partes.push(bloco);
-      total += bloco.length;
-    }
-    return partes.join("\n");
-  }
 
   async function enviar(texto: string) {
     if (!texto.trim() || pensando) return;
@@ -97,11 +41,11 @@ export default function Chat() {
     setErro("");
 
     try {
-      const itens = await garantirAcervo();
+      const contexto = montarContextoSemantico(acervo, texto);
       const { texto: limpo, chamadas } = await conversar(
         cfg,
         novas.map(({ papel, texto }) => ({ papel, texto })),
-        montarContextoTexto(itens, texto),
+        contexto,
       );
 
       const acoes = acoesDeChamadas(chamadas);
@@ -124,10 +68,8 @@ export default function Chat() {
   }
 
   async function aplicar(acao: Acao) {
-    const itens = await garantirAcervo();
-    await executar(cfg, acao, itens);
-    // o acervo mudou: força recarga na próxima pergunta
-    setAcervo([]);
+    await executar(cfg, acao, acervo);
+    recarregar();
   }
 
   async function copiar(texto: string, i: number) {
@@ -339,7 +281,7 @@ export default function Chat() {
             <Selo>{cfg.geminiModel}</Selo>
             {acervo.length > 0 && (
               <button
-                onClick={() => setAcervo([])}
+                onClick={() => recarregar()}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                 title="Reler seus arquivos"
               >

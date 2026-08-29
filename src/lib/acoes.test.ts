@@ -238,7 +238,7 @@ describe("a marca da IA", () => {
     return corpo;
   }
 
-  it("marca a entrega, onde existe tela para conferir", async () => {
+  it("marca a entrega com ia_sugeriu", async () => {
     const corpo = await gravadoPor({
       tipo: "criar",
       pasta: "pdi/entregas",
@@ -247,24 +247,22 @@ describe("a marca da IA", () => {
     expect(corpo).toContain("ia_sugeriu: true");
   });
 
-  it("NÃO marca tarefa: nada exibiria e nada removeria a marca", async () => {
-    // marca que ninguém pode tirar vira lixo permanente no arquivo, porque
-    // mesclarFrontmatter a reescreve fielmente em todo save
+  it("marca tarefa para conferência humana", async () => {
     const corpo = await gravadoPor({
       tipo: "criar",
       pasta: "tarefas",
       titulo: "Ligar",
     });
-    expect(corpo).not.toContain("ia_sugeriu");
+    expect(corpo).toContain("ia_sugeriu: true");
   });
 
-  it("NÃO marca nota nem referência", async () => {
+  it("marca notas e referências para conferência", async () => {
     expect(
       await gravadoPor({ tipo: "criar", pasta: "notas", titulo: "Ideia" }),
-    ).not.toContain("ia_sugeriu");
+    ).toContain("ia_sugeriu: true");
     expect(
       await gravadoPor({ tipo: "criar", pasta: "referencias", titulo: "Grade" }),
-    ).not.toContain("ia_sugeriu");
+    ).toContain("ia_sugeriu: true");
   });
 });
 

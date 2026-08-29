@@ -65,8 +65,9 @@ export type ResumoMeta = {
 
 export function resumir(metas: Meta[], entregas: Entrega[]): ResumoMeta[] {
   return metas.map((meta) => {
+    const slugArquivo = idDoCaminho(meta.caminho);
     const ligadas = entregas
-      .filter((e) => e.metas.includes(meta.id))
+      .filter((e) => e.metas.includes(meta.id) || (Boolean(slugArquivo) && e.metas.includes(slugArquivo)))
       .sort((a, b) => b.data.localeCompare(a.data));
 
     const ultima = ligadas[0];

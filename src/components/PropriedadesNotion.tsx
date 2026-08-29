@@ -20,6 +20,7 @@ import {
   Send as SendIcon,
   Mail as MailIcon,
   SlidersHorizontal,
+  Sparkles,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -1533,6 +1534,28 @@ export function PropriedadesNotion({
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
+      {/* Banner de Homologação de Sugestão da IA */}
+      {Boolean(dados.ia_sugeriu) && (
+        <div className="mb-2 p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-between gap-2 text-xs text-purple-700 dark:text-purple-300">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Sparkles size={14} className="shrink-0 text-purple-600 dark:text-purple-400" />
+            <span className="truncate">Sugerido por IA. Confira as informações deste item.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const novos = { ...dados };
+              delete novos.ia_sugeriu;
+              onChange(novos);
+              toast("Sugestão da IA aprovada!");
+            }}
+            className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium text-[11px] shrink-0 cursor-pointer shadow-sm transition-colors"
+          >
+            Aprovar sugestão
+          </button>
+        </div>
+      )}
+
       {/* Lista de Propriedades Visíveis */}
       {chavesVisiveis.map((chave) => {
         const fixo = camposFixos[chave];

@@ -1,9 +1,3 @@
-import { pipeline, env } from "@xenova/transformers";
-
-// Configura o HuggingFace Transformers.js no navegador
-env.allowLocalModels = false;
-env.useBrowserCache = true;
-
 let pipelineInstancia: any = null;
 let modeloAtual: string = "";
 
@@ -14,6 +8,11 @@ export async function obterTranscritorWhisperLocal(
   if (pipelineInstancia && modeloAtual === nomeModelo) return pipelineInstancia;
 
   aoProgresso?.(`Carregando modelo aberto ${nomeModelo.replace("Xenova/", "")} (IA 100% no navegador)...`);
+
+  const { pipeline, env } = await import("@xenova/transformers");
+  // Configura o HuggingFace Transformers.js no navegador
+  env.allowLocalModels = false;
+  env.useBrowserCache = true;
 
   pipelineInstancia = await pipeline(
     "automatic-speech-recognition",

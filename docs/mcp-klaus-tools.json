@@ -1,0 +1,131 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schema/tools.json",
+  "name": "klaus-segundo-cerebro",
+  "description": "Ferramentas do Klaus para agentes de IA interagirem com arquivos Markdown soberanos.",
+  "tools": [
+    {
+      "name": "klaus_criar_item",
+      "description": "Cria um novo item (.md) em uma pasta do Klaus com frontmatter YAML padronizado.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "pasta": {
+            "type": "string",
+            "enum": [
+              "tarefas",
+              "notas",
+              "referencias",
+              "reunioes",
+              "pdi/metas",
+              "pdi/entregas",
+              "contatos"
+            ],
+            "description": "Pasta de destino dentro do repositório"
+          },
+          "titulo": {
+            "type": "string",
+            "description": "Título do item"
+          },
+          "corpo": {
+            "type": "string",
+            "description": "Conteúdo livre em Markdown. Use @Título para mencionar outros itens."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "a-fazer",
+              "fazendo",
+              "feito"
+            ],
+            "description": "Exclusivo para tarefas"
+          },
+          "prazo": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Data de entrega ou limite AAAA-MM-DD"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "motivo": {
+            "type": "string",
+            "description": "Justificativa da criação para o usuário"
+          }
+        },
+        "required": [
+          "pasta",
+          "titulo"
+        ]
+      }
+    },
+    {
+      "name": "klaus_editar_item",
+      "description": "Modifica os metadados ou o corpo de um arquivo .md existente no repositório Klaus.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "caminho": {
+            "type": "string",
+            "description": "Caminho relativo exato do arquivo (ex: tarefas/2026-08-29-design.md)"
+          },
+          "titulo": {
+            "type": "string",
+            "description": "Novo título se for alterar"
+          },
+          "corpo": {
+            "type": "string",
+            "description": "Novo corpo em Markdown. Use '<limpar>' para esvaziar."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "a-fazer",
+              "fazendo",
+              "feito"
+            ]
+          },
+          "prazo": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "motivo": {
+            "type": "string",
+            "description": "Motivo da alteração"
+          }
+        },
+        "required": [
+          "caminho"
+        ]
+      }
+    },
+    {
+      "name": "klaus_apagar_item",
+      "description": "Exclui um arquivo .md do repositório após confirmação humana.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "caminho": {
+            "type": "string",
+            "description": "Caminho relativo exato do arquivo a excluir"
+          },
+          "motivo": {
+            "type": "string",
+            "description": "Justificativa da exclusão"
+          }
+        },
+        "required": [
+          "caminho"
+        ]
+      }
+    }
+  ]
+}

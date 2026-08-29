@@ -29,8 +29,23 @@ import {
   type Referencia,
   type Contato,
 } from "./tipos";
+import {
+  validarSchemaPassivo,
+  NotaSchema,
+  TarefaSchema,
+  MetaSchema,
+  EntregaSchema,
+  ContatoSchema,
+  ReferenciaSchema,
+} from "./schemas";
 
 /* ------------------------------------------------------------ helpers */
+
+export function gerarIdEstavel(prefixo = "item"): string {
+  const agora = Date.now().toString(36);
+  const aleatorio = Math.random().toString(36).slice(2, 7);
+  return `${prefixo}_${agora}_${aleatorio}`;
+}
 
 function idDoCaminho(caminho: string): string {
   return caminho.split("/").pop()!.replace(/\.md$/, "");
@@ -58,6 +73,7 @@ export function comoNota(
   sha: string,
   tituloFallback: string,
 ): Nota {
+  validarSchemaPassivo(NotaSchema, doc.dados, caminho);
   const d = doc.dados;
   const tipoRaw = typeof d.tipo === "string" ? d.tipo : "";
   const tipo: Nota["tipo"] =
@@ -123,6 +139,7 @@ export function comoTarefa(
   sha: string,
   tituloFallback: string,
 ): Tarefa {
+  validarSchemaPassivo(TarefaSchema, doc.dados, caminho);
   const d = doc.dados;
 
   const pomodorosEstimados =
@@ -214,6 +231,7 @@ export function comoMeta(
   sha: string,
   tituloFallback: string,
 ): Meta {
+  validarSchemaPassivo(MetaSchema, doc.dados, caminho);
   const d = doc.dados;
   const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
   const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
@@ -240,9 +258,13 @@ export function comoMeta(
 export function metaParaArquivo(m: Meta): { dados: Frontmatter; corpo: string } {
   const agora = new Date().toISOString();
   const criadoEm = m.criadoEm || m.bruto.criado_em || m.bruto.criado || agora;
+  const idFinal =
+    (typeof m.bruto.id === "string" && m.bruto.id.trim()) ||
+    (typeof m.id === "string" && m.id.trim() ? m.id.trim() : idDoCaminho(m.caminho));
+
   return {
     dados: mesclarFrontmatter(m.bruto, {
-      id:            m.id || idDoCaminho(m.caminho),
+      id:            idFinal,
       titulo:        m.titulo,
       tipo:          "meta",
       status:        m.status,
@@ -267,6 +289,7 @@ export function comoEntrega(
   sha: string,
   tituloFallback: string,
 ): Entrega {
+  validarSchemaPassivo(EntregaSchema, doc.dados, caminho);
   const d = doc.dados;
   const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
   const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
@@ -323,6 +346,7 @@ export function comoReferencia(
   sha: string,
   tituloFallback: string,
 ): Referencia {
+  validarSchemaPassivo(ReferenciaSchema, doc.dados, caminho);
   const d = doc.dados;
   const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
   const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
@@ -376,6 +400,7 @@ export function comoContato(
   sha: string,
   tituloFallback: string,
 ): Contato {
+  validarSchemaPassivo(ContatoSchema, doc.dados, caminho);
   const d = doc.dados;
 
   const propriedades: Record<string, string> = {};

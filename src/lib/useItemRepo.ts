@@ -208,3 +208,141 @@ export function useItemRepo<T>(
 
   return { itens, acervo, titulos, carregando, erro, ilegiveis, recarregar };
 }
+
+export type EstadoAcervoRepo = {
+  acervo: ItemRepo[];
+  titulos: Record<string, string>;
+  carregando: boolean;
+  erro: string;
+  ilegiveis: string[];
+  recarregar: () => void;
+};
+
+/**
+ * Hook para telas que precisam do repositório inteiro (ex: Chat, Grafo, Inbox)
+ * com suporte completo a SWR, Optimistic UI, fila offline e reatividade a eventos.
+ */
+export function useAcervoRepo(cfg: Settings): EstadoAcervoRepo {
+  const [acervo, setAcervo] = useState<ItemRepo[]>([]);
+  const [titulos, setTitulos] = useState<Record<string, string>>({});
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+  const [ilegiveis, setIlegiveis] = useState<string[]>([]);
+  const jaCarregouRef = useRef(false);
+
+  const carregar = useCallback(
+    async (silencioso = false, forcar = false) => {
+      if (!cfg.githubToken || !cfg.repoOwner || !cfg.repoName) {
+        setCarregando(false);
+        return;
+      }
+
+      const cacheValido = obterCacheExistente(cfg);
+      if (cacheValido) {
+        const rascunhos = obterRascunhosLocais();
+        let todos = [...cacheValido.itens];
+
+        if (rascunhos.length > 0) {
+          const mapaRascunhos = new Map(rascunhos.map((r) => [r.caminho, r]));
+
+          todos = todos.map((item) => {
+            const rascunho = mapaRascunhos.get(item.caminho);
+            if (rascunho) {
+              mapaRascunhos.delete(item.caminho);
+              if (rascunho.acao === "apagar") return null;
+              const docRascunho = lerMarkdown(rascunho.texto);
+              return { ...item, texto: rascunho.texto, doc: docRascunho };
+            }
+            return item;
+          }).filter((i): i is NonNullable<typeof i> => i !== null);
+
+          for (const rascunho of mapaRascunhos.values()) {
+            if (rascunho.acao === "apagar") continue;
+            const docRascunho = lerMarkdown(rascunho.texto);
+            const nome = rascunho.caminho.split("/").pop() || "rascunho.md";
+            todos.push({
+              caminho: rascunho.caminho,
+              nome,
+              sha: rascunho.sha || "",
+              tamanho: rascunho.texto.length,
+              texto: rascunho.texto,
+              doc: docRascunho,
+            });
+          }
+        }
+
+        setAcervo(todos);
+        setTitulos(
+          Object.fromEntries(todos.map((i) => [i.caminho, tituloProvavel(i.doc, i.nome)])),
+        );
+        if (!jaCarregouRef.current) setCarregando(false);
+      } else if (!silencioso) {
+        setCarregando(true);
+      }
+
+      setErro("");
+
+      try {
+        const todosBase = await carregarRepo(cfg, {
+          memoria: forcar ? 0 : 15_000,
+          forcarRede: forcar,
+        });
+        const rascunhos = obterRascunhosLocais();
+
+        let todos = [...todosBase];
+        if (rascunhos.length > 0) {
+          const mapaRascunhos = new Map(rascunhos.map((r) => [r.caminho, r]));
+
+          todos = todos.map((item) => {
+            const rascunho = mapaRascunhos.get(item.caminho);
+            if (rascunho) {
+              mapaRascunhos.delete(item.caminho);
+              if (rascunho.acao === "apagar") return null;
+              const docRascunho = lerMarkdown(rascunho.texto);
+              return { ...item, texto: rascunho.texto, doc: docRascunho };
+            }
+            return item;
+          }).filter((i): i is NonNullable<typeof i> => i !== null);
+
+          for (const rascunho of mapaRascunhos.values()) {
+            if (rascunho.acao === "apagar") continue;
+            const docRascunho = lerMarkdown(rascunho.texto);
+            const nome = rascunho.caminho.split("/").pop() || "rascunho.md";
+            todos.push({
+              caminho: rascunho.caminho,
+              nome,
+              sha: rascunho.sha || "",
+              tamanho: rascunho.texto.length,
+              texto: rascunho.texto,
+              doc: docRascunho,
+            });
+          }
+        }
+
+        setIlegiveis(arquivosIlegiveis());
+        setAcervo(todos);
+        setTitulos(
+          Object.fromEntries(todos.map((i) => [i.caminho, tituloProvavel(i.doc, i.nome)])),
+        );
+      } catch (e) {
+        if (!cacheValido) {
+          setErro(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        jaCarregouRef.current = true;
+        setCarregando(false);
+      }
+    },
+    [cfg.githubToken, cfg.repoOwner, cfg.repoName, cfg.branch],
+  );
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  useAoAtualizarAcervo(() => carregar(true));
+
+  const recarregar = useCallback(() => carregar(true, true), [carregar]);
+
+  return { acervo, titulos, carregando, erro, ilegiveis, recarregar };
+}

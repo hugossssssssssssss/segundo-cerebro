@@ -239,8 +239,8 @@ function nomeDoCaminho(caminho: string): string {
  * permanente: nada exibia, nada removia, e `mesclarFrontmatter` a reescrevia
  * fielmente em todo save. Marca que ninguém pode tirar não é marca, é sujeira.
  */
-function marcaDaIA(pasta: string): Record<string, unknown> {
-  return pasta === "pdi/entregas" ? { ia_sugeriu: true } : {};
+function marcaDaIA(_pasta: string): Record<string, unknown> {
+  return { ia_sugeriu: true };
 }
 /**
  * Caminhos já entregues nesta sessão, mesmo que o acervo ainda não saiba.

@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Contato",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "titulo": {
+      "type": "string",
+      "description": "Nome do contato"
+    },
+    "cargo": {
+      "type": "string"
+    },
+    "empresa": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "telefone": {
+      "type": "string"
+    },
+    "pai_id": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "titulo"
+  ],
+  "additionalProperties": true
+}

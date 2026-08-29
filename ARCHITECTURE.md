@@ -1,6 +1,6 @@
 # Arquitetura do Klaus
 
-> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-28.**
+> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-29.**
 > Não edite este arquivo à mão — ele é reescrito a cada `npm run build`.
 > Para mudar o que está aqui, mude `src/lib/tipos.ts` e `src/lib/entidades.ts`.
 
@@ -218,12 +218,12 @@ direto · `não usa` = não toca no repositório de dados.
 | Tela | Carregar | Gravar |
 |---|---|---|
 | `src/pages/BoasVindas.tsx` | não usa | não usa |
-| `src/pages/Chat.tsx` | na mão | não usa |
+| `src/pages/Chat.tsx` | não usa | não usa |
 | `src/pages/Configuracoes.tsx` | na mão | hook |
 | `src/pages/Contatos.tsx` | hook | hook |
 | `src/pages/Conversor.tsx` | na mão | hook |
 | `src/pages/FerramentasPDF.tsx` | não usa | não usa |
-| `src/pages/GrafoNeural.tsx` | na mão | hook |
+| `src/pages/GrafoNeural.tsx` | não usa | hook |
 | `src/pages/Home.tsx` | na mão | hook |
 | `src/pages/Inbox.tsx` | na mão | hook |
 | `src/pages/Jogos.test.tsx` | não usa | não usa |
@@ -237,7 +237,7 @@ direto · `não usa` = não toca no repositório de dados.
 | `src/pages/Sons.tsx` | não usa | não usa |
 | `src/pages/Tarefas.tsx` | hook | hook |
 | `src/pages/TestadorHardware.tsx` | não usa | não usa |
-| `src/pages/Transcritor.tsx` | na mão | hook |
+| `src/pages/Transcritor.tsx` | não usa | hook |
 
 ## Como criar uma tela nova
 

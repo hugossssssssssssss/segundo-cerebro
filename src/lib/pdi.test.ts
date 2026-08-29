@@ -105,6 +105,27 @@ describe("resumir", () => {
     expect(r[1].entregas).toHaveLength(1);
   });
 
+  it("suporta resolução híbrida: entrega apontando para slug de arquivo legado e para meta.id estável", () => {
+    // Meta tem ID novo estável no frontmatter, mas caminho legado no repositório
+    const metaComIdNovo = meta({
+      id: "meta_k7j2a9b",
+      caminho: "pdi/metas/2026-08-10-aprender-ingles.md",
+    });
+
+    const entregaAntiga = entrega({
+      id: "entrega-1",
+      metas: ["2026-08-10-aprender-ingles"], // aponta pelo slug legado
+    });
+
+    const entregaNova = entrega({
+      id: "entrega-2",
+      metas: ["meta_k7j2a9b"], // aponta pelo ID estável
+    });
+
+    const res = resumir([metaComIdNovo], [entregaAntiga, entregaNova]);
+    expect(res[0].entregas).toHaveLength(2);
+  });
+
   it("calcula dias desde a última entrega", () => {
     const r = resumir(
       [meta({ id: "a" })],

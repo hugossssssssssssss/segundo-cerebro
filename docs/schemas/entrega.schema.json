@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Entrega (PDI)",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "titulo": {
+      "type": "string",
+      "description": "O que foi entregue"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "entrega"
+      ],
+      "default": "entrega"
+    },
+    "data": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "metas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs das metas vinculadas"
+    },
+    "ia_sugeriu": {
+      "type": "boolean"
+    },
+    "criado_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "atualizado_em": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "titulo",
+    "data",
+    "metas"
+  ],
+  "additionalProperties": true
+}

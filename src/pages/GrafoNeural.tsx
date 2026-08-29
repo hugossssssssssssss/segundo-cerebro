@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Network } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { carregarRepo, type ItemRepo } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
+import { useAcervoRepo } from "@/lib/useItemRepo";
 import { escreverMarkdown, tituloProvavel, mesclarFrontmatter } from "@/lib/markdown";
 import { montarIndice, alvosUnicos, mencoesA } from "@/lib/links";
 import { Botao, Vazio, Carregando, Aviso } from "@/components/ui";
@@ -25,33 +25,10 @@ export default function GrafoNeural() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
   const { salvarTexto, apagarItem, salvando, erro: erroSalvar } = useSalvar(cfg);
+  const { acervo, carregando, erro } = useAcervoRepo(cfg);
 
-  const [acervo, setAcervo] = useState<ItemRepo[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState("");
   const [aberto, setAberto] = useState<ItemAberto | null>(null);
   const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>("lado");
-
-  const carregar = useCallback(async () => {
-    if (!pronto) return;
-    setCarregando(true);
-    setErro("");
-    try {
-      const todos = await carregarRepo(cfg);
-      setAcervo(todos);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-    } finally {
-      setCarregando(false);
-    }
-  }, [pronto, cfg.githubToken, cfg.repoOwner, cfg.repoName, cfg.branch]);
-
-  useEffect(() => {
-    carregar();
-    const aoAtualizar = () => carregar();
-    window.addEventListener("acervo-atualizado", aoAtualizar);
-    return () => window.removeEventListener("acervo-atualizado", aoAtualizar);
-  }, [carregar]);
 
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
   const opcoesRelacionamento = useMemo(

@@ -24,8 +24,8 @@ import {
 } from "@/lib/whisperLocal";
 import { transcreverAudioComIA } from "@/lib/gemini";
 import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
-import { carregarRepo } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
+import { useAcervoRepo } from "@/lib/useItemRepo";
 
 type MotorTranscricao = "whisper_base" | "gemini";
 
@@ -43,6 +43,7 @@ interface ItemTranscricao {
 export default function Transcritor() {
   const cfg = lerConfig();
   const { salvarTexto } = useSalvar(cfg);
+  const { acervo } = useAcervoRepo(cfg);
   const pronto = configCompleta(cfg);
   const chaveStorage = pronto ? `sc_transcricoes_${cfg.repoOwner}_${cfg.repoName}` : null;
 
@@ -263,7 +264,6 @@ export default function Transcritor() {
 
     try {
       const titulo = `Transcrição: ${item.nomeArquivo.replace(/\.[^/.]+$/, "")}`;
-      const acervo = await carregarRepo(cfg);
       const caminho = nomeLivre("notas", titulo, acervo.map((i) => i.caminho));
       const doc = {
         dados: { titulo, criado_em: new Date().toISOString() },

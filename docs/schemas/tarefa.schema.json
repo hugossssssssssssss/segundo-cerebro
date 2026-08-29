@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tarefa",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Identificador estável da tarefa"
+    },
+    "titulo": {
+      "type": "string",
+      "description": "Título da tarefa"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "tarefa"
+      ],
+      "default": "tarefa"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "a-fazer",
+        "fazendo",
+        "feito"
+      ],
+      "default": "a-fazer"
+    },
+    "prazo": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "AAAA-MM-DD"
+    },
+    "prioridade": {
+      "type": "string",
+      "enum": [
+        "baixa",
+        "media",
+        "alta",
+        "urgente"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "pomodoros_estimados": {
+      "type": "number",
+      "minimum": 0
+    },
+    "pomodoros_realizados": {
+      "type": "number",
+      "minimum": 0
+    },
+    "criado_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "atualizado_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ia_sugeriu": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "titulo",
+    "status"
+  ],
+  "additionalProperties": true
+}
