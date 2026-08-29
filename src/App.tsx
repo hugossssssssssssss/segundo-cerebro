@@ -51,7 +51,7 @@ import { ConsoleDesenvolvedor } from "@/components/ConsoleDesenvolvedor";
 import { inicializarLogger } from "@/lib/logger";
 import { CronometroProvider, useCronometro, LISTA_SONS_AMBIENTE } from "@/components/ContextoCronometro";
 import { Pomodoro } from "@/components/Pomodoro";
-import { obterRotuloRota, EVENTO_MENU_ATUALIZADO } from "@/lib/menuPersonalizado";
+import { obterRotuloRota, EVENTO_MENU_ATUALIZADO, sincronizarMenuComGithub } from "@/lib/menuPersonalizado";
 
 inicializarLogger();
 
@@ -202,6 +202,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
             detalhes: "Um ou mais rascunhos offline falharam ao tentar sincronizar com o GitHub (conflito 409 ou erro de rede).\n\nAcesse a Caixa de Entrada > Rascunhos Offline para aceitar a versão local ou descartar.",
           });
         }
+        sincronizarMenuComGithub(cfg).catch(() => {});
       }
     };
     window.addEventListener("online", aoVoltarOnline);

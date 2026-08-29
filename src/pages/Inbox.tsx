@@ -227,7 +227,7 @@ export default function Inbox() {
     } finally {
       setCarregando(false);
     }
-  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch, atualizarRascunhos]);
+  }, [pronto, cfg, atualizarRascunhos]);
 
   useEffect(() => {
     carregar();
@@ -383,7 +383,7 @@ export default function Inbox() {
       }
 
       // 5. Lembretes inline no texto [⏰ Lembrete: Título | YYYY-MM-DD HH:mm]
-      const matches = item.texto.matchAll(/\[⏰\s*Lembrete:\s*([^|]+)\|\s*([\d\s\-\:T]+)\]/gi);
+      const matches = item.texto.matchAll(/\[⏰\s*Lembrete:\s*([^|]+)\|\s*([\d\s\-:T]+)\]/gi);
       for (const m of matches) {
         const tit = m[1]?.trim();
         const dh = m[2]?.trim();

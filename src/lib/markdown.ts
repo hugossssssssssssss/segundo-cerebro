@@ -172,7 +172,7 @@ export function restaurarWikilinks(markdown: string): string {
   //
   // `[[alvo|texto exibido]]` fica com o TEXTO, não com o alvo mais a barra.
   let limpo = semCodigo.replace(
-    /\\?\[\\?\[([^\[\]\n]{1,200}?)\\?\]\\?\]/g,
+    /\\?\[\\?\[([^[\n\]]{1,200}?)\\?\]\\?\]/g,
     (_todo, alvo: string) => {
       const barra = alvo.indexOf("|");
       const escolhido = barra >= 0 ? alvo.slice(barra + 1) : alvo;

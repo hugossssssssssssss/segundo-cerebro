@@ -48,8 +48,8 @@ export function formatarTagLembrete(titulo: string, dataHora: string): string {
  * - `[⏰ Lembrete: Título | 2026-08-18]`
  * - `@lembrete 2026-08-18 Título`
  */
-const RE_LEMBRETE_TAG = /\[⏰\s*Lembrete:\s*([^|]+)\|\s*([\d\s\-\:T]+)\]/gi;
-const RE_LEMBRETE_AT = /(?:@lembrete|@me\s+lembre)\s+([\d\-\:T]+)\s+([^\n]+)/gi;
+const RE_LEMBRETE_TAG = /\[⏰\s*Lembrete:\s*([^|]+)\|\s*([\d\s\-:T]+)\]/gi;
+const RE_LEMBRETE_AT = /(?:@lembrete|@me\s+lembre)\s+([\d\-:T]+)\s+([^\n]+)/gi;
 
 /**
  * Extrai todos os lembretes contidos no texto de um documento.

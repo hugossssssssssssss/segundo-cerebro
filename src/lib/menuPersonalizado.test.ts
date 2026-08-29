@@ -104,4 +104,46 @@ describe("menuPersonalizado", () => {
     expect(obterRotuloRota("/tarefas")).toBe("Minhas Tarefas");
     expect(obterRotuloRota("/notas")).toBe("Caderno Digital");
   });
+
+  it("sincroniza menu a partir do repositório remoto (.klaus/menu.json)", async () => {
+    const { sincronizarMenuComGithub } = await import("./menuPersonalizado");
+    const github = await import("./github");
+
+    const gruposRemotos: GrupoMenuPersonalizado[] = [
+      {
+        id: "dia-a-dia",
+        titulo: "Menu Sincronizado do Mac",
+        itens: [
+          { id: "home", para: "/home", rotulo: "Principal", iconeNome: "Home", cor: "#10b981" },
+        ],
+      },
+    ];
+
+    const spyLer = vi.spyOn(github, "ler").mockResolvedValue({
+      texto: JSON.stringify(gruposRemotos),
+      sha: "sha-menu-123",
+    });
+
+    const cfg = {
+      githubToken: "token-valido",
+      repoOwner: "dono",
+      repoName: "repo",
+      branch: "main",
+      nomeUsuario: "",
+      profissaoUsuario: "",
+      onboardingConcluido: true,
+      geminiKey: "",
+      geminiModel: "",
+    };
+
+    const res = await sincronizarMenuComGithub(cfg);
+    expect(res.sincronizado).toBe(true);
+
+    const carregados = carregarMenuPersonalizado();
+    expect(carregados[0].titulo).toBe("Menu Sincronizado do Mac");
+    expect(carregados[0].itens[0].rotulo).toBe("Principal");
+    expect(carregados[0].itens[0].cor).toBe("#10b981");
+
+    spyLer.mockRestore();
+  });
 });

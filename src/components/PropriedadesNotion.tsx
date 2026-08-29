@@ -1092,7 +1092,7 @@ export function PropriedadesNotion({
             <Button variant="ghost" size="sm" className="h-auto min-h-7 px-2 py-1 text-left justify-start font-normal flex-wrap gap-1 hover:bg-transparent">
               {unicosMencoes.length > 0 ? (
                 unicosMencoes.map((r: string) => {
-                  const nomePuro = r.replace(/^[\[@]+/, "").replace(/\]\]$/, "").trim();
+                  const nomePuro = r.replace(/^[@[]+/, "").replace(/\]\]$/, "").trim();
                   const normNome = nomePuro.toLowerCase();
                   const itemAlvo = opcoesRelacionamento.find((o) => {
                     const normTitulo = o.titulo.toLowerCase().trim();

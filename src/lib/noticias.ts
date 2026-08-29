@@ -251,25 +251,21 @@ export function obterFeedsCustomizados(): FeedCustomizado[] {
 }
 
 export function adicionarFeedCustomizado(nome: string, url: string, categoria: CategoriaNoticia): FeedCustomizado[] {
-  try {
-    const urlLimpa = url.trim();
-    if (!/^https?:\/\//i.test(urlLimpa)) {
-      throw new Error("URL de feed inválida. Deve iniciar com http:// ou https://");
-    }
-
-    const atuais = obterFeedsCustomizados();
-    const novo: FeedCustomizado = {
-      id: `custom-${Date.now()}`,
-      nome: nome.trim() || "Feed Personalizado",
-      url: urlLimpa,
-      categoria,
-    };
-    const atualizados = [...atuais, novo];
-    localStorage.setItem(CHAVE_FEEDS_CUSTOM, JSON.stringify(atualizados));
-    return atualizados;
-  } catch (e) {
-    throw e;
+  const urlLimpa = url.trim();
+  if (!/^https?:\/\//i.test(urlLimpa)) {
+    throw new Error("URL de feed inválida. Deve iniciar com http:// ou https://");
   }
+
+  const atuais = obterFeedsCustomizados();
+  const novo: FeedCustomizado = {
+    id: `custom-${Date.now()}`,
+    nome: nome.trim() || "Feed Personalizado",
+    url: urlLimpa,
+    categoria,
+  };
+  const atualizados = [...atuais, novo];
+  localStorage.setItem(CHAVE_FEEDS_CUSTOM, JSON.stringify(atualizados));
+  return atualizados;
 }
 
 export function removerFeedCustomizado(id: string): FeedCustomizado[] {

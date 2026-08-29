@@ -1,3 +1,6 @@
+import type { Settings } from "./settings";
+import { ler, gravar } from "./github";
+
 export interface ItemMenuPersonalizado {
   id: string;
   para: string;
@@ -31,6 +34,7 @@ export const PRESETS_CORES_ICONE: PresetCor[] = [
   { nome: "Rosa Choque", hex: "#f43f5e" },
 ];
 
+export const CAMINHO_MENU = ".klaus/menu.json";
 export const CHAVE_STORAGE_MENU = "klaus_menu_customizado";
 export const EVENTO_MENU_ATUALIZADO = "menu-personalizado-atualizado";
 
@@ -148,11 +152,96 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
   }
 }
 
+let ultimoShaMenu: string | undefined = undefined;
+let timerDebounceMenu: ReturnType<typeof setTimeout> | null = null;
+
+export function registrarShaMenu(sha?: string): void {
+  if (sha) ultimoShaMenu = sha;
+}
+
+export function obterShaMenu(): string | undefined {
+  return ultimoShaMenu;
+}
+
+/**
+ * Enfileira a persistência assíncrona do menu no repositório GitHub com debounce suave.
+ */
+export function agendarPersistenciaMenuRemoto(
+  cfg: Settings,
+  grupos: GrupoMenuPersonalizado[],
+  delayMs = 1500,
+): void {
+  if (!cfg.githubToken || !cfg.repoOwner || !cfg.repoName) return;
+
+  if (timerDebounceMenu) {
+    clearTimeout(timerDebounceMenu);
+  }
+
+  timerDebounceMenu = setTimeout(async () => {
+    timerDebounceMenu = null;
+    try {
+      const conteudo = JSON.stringify(grupos, null, 2);
+      let shaFinal = ultimoShaMenu;
+      if (!shaFinal) {
+        try {
+          const res = await ler(cfg, CAMINHO_MENU, { silenciar404: true });
+          if (res?.sha) shaFinal = res.sha;
+        } catch {}
+      }
+      const novoSha = await gravar(
+        cfg,
+        CAMINHO_MENU,
+        conteudo,
+        shaFinal,
+        "config: atualizar preferências do menu personalizado",
+      );
+      if (novoSha) ultimoShaMenu = novoSha;
+    } catch {
+      // Falha silenciosa de rede mantém localStorage íntegro
+    }
+  }, delayMs);
+}
+
+/**
+ * Carrega a configuração do menu salva no repositório GitHub e mescla com a local.
+ */
+export async function sincronizarMenuComGithub(
+  cfg: Settings,
+): Promise<{ sincronizado: boolean; grupos: GrupoMenuPersonalizado[] }> {
+  const locais = carregarMenuPersonalizado();
+  if (!cfg.githubToken || !cfg.repoOwner || !cfg.repoName) {
+    return { sincronizado: false, grupos: locais };
+  }
+
+  try {
+    const res = await ler(cfg, CAMINHO_MENU, { silenciar404: true });
+    if (res?.texto) {
+      registrarShaMenu(res.sha);
+      const parsed = JSON.parse(res.texto);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        localStorage.setItem(CHAVE_STORAGE_MENU, JSON.stringify(parsed));
+        window.dispatchEvent(new CustomEvent(EVENTO_MENU_ATUALIZADO));
+        return { sincronizado: true, grupos: parsed };
+      }
+    } else if (locais && locais.length > 0) {
+      // Se não existe remoto mas temos personalização local, envia para o GitHub
+      agendarPersistenciaMenuRemoto(cfg, locais, 1000);
+    }
+  } catch {
+    // Falha silenciosa
+  }
+
+  return { sincronizado: false, grupos: locais };
+}
+
 /**
  * Salva a nova configuração do menu no localStorage e dispara o evento de atualização.
- * Retorna true em caso de sucesso ou false se falhar (ex: cota cheia / modo privado).
+ * Se houver configuração do GitHub, agenda também a sincronização remota.
  */
-export function salvarMenuPersonalizado(grupos: GrupoMenuPersonalizado[]): boolean {
+export function salvarMenuPersonalizado(
+  grupos: GrupoMenuPersonalizado[],
+  cfg?: Settings,
+): boolean {
   try {
     const gruposLimpos = (grupos || [])
       .filter((g) => g && typeof g === "object")
@@ -163,6 +252,11 @@ export function salvarMenuPersonalizado(grupos: GrupoMenuPersonalizado[]): boole
 
     localStorage.setItem(CHAVE_STORAGE_MENU, JSON.stringify(gruposLimpos));
     window.dispatchEvent(new CustomEvent(EVENTO_MENU_ATUALIZADO));
+
+    if (cfg) {
+      agendarPersistenciaMenuRemoto(cfg, gruposLimpos);
+    }
+
     return true;
   } catch (err) {
     console.error("Erro ao salvar menu personalizado:", err);
@@ -172,12 +266,16 @@ export function salvarMenuPersonalizado(grupos: GrupoMenuPersonalizado[]): boole
 
 /**
  * Restaura o menu lateral para as configurações originais de fábrica.
- * Retorna true em caso de sucesso ou false se falhar.
  */
-export function restaurarMenuPadrao(): boolean {
+export function restaurarMenuPadrao(cfg?: Settings): boolean {
   try {
     localStorage.removeItem(CHAVE_STORAGE_MENU);
     window.dispatchEvent(new CustomEvent(EVENTO_MENU_ATUALIZADO));
+
+    if (cfg) {
+      agendarPersistenciaMenuRemoto(cfg, GRUPOS_MENU_PADRAO);
+    }
+
     return true;
   } catch (err) {
     console.error("Erro ao restaurar menu padrão:", err);

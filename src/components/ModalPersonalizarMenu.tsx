@@ -30,6 +30,7 @@ import { ModalConfirmacao } from "./ui";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
+import { lerConfig } from "@/lib/settings";
 
 interface ModalPersonalizarMenuProps {
   aberta: boolean;
@@ -194,7 +195,8 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
   };
 
   const salvar = () => {
-    const ok = salvarMenuPersonalizado(grupos);
+    const cfg = lerConfig();
+    const ok = salvarMenuPersonalizado(grupos, cfg);
     if (!ok) {
       toast("Não foi possível salvar as alterações no navegador (armazenamento indisponível ou cota cheia).", { tipo: "erro" });
       return;
@@ -211,7 +213,8 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
   };
 
   const executarReset = () => {
-    const ok = restaurarMenuPadrao();
+    const cfg = lerConfig();
+    const ok = restaurarMenuPadrao(cfg);
     if (!ok) {
       toast("Não foi possível restaurar os padrões no navegador.", { tipo: "erro" });
       setConfirmarReset(false);
