@@ -15,7 +15,7 @@ import { registrarRespostaGitHub } from "./telemetriaRequisicoes";
 
 const BASE = "https://api.github.com";
 
-function conteudosSemelhantes(textoA: string, textoB: string): boolean {
+export function conteudosSemelhantes(textoA: string, textoB: string): boolean {
   if (textoA === textoB) return true;
   try {
     const docA = lerMarkdown(textoA);

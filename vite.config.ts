@@ -11,17 +11,13 @@ const base = process.env.NODE_ENV === "production" ? "/segundo-cerebro/" : "/";
 export default defineConfig({
   base,
   plugins: [react(), tailwindcss()],
-  esbuild: {
-    keepNames: true,
-    minifyIdentifiers: false,
-  } as any,
   resolve: {
     // fileURLToPath e não .pathname: o caminho tem espaço e acento,
     // que .pathname devolveria percent-encoded ("Segundo%20Cere%CC%81bro").
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   build: {
-    minify: false,
+    minify: "oxc",
     chunkSizeWarningLimit: 1200,
     rollupOptions: {
       output: {

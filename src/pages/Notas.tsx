@@ -753,20 +753,6 @@ export default function Notas() {
 
 
 
-  if (!pronto) {
-    return (
-      <Vazio
-        titulo="Falta conectar sua conta"
-        descricao="Para guardar suas anotações, preencha sua conta do GitHub e o token na aba de Ajustes."
-        acao={
-          <Link to="/config">
-            <Botao>Ir para Ajustes</Botao>
-          </Link>
-        }
-      />
-    );
-  }
-
   const naPasta = todasNotas.filter((a) => {
     const partes = a.caminho.split("/");
     const pastaDoItem = partes.slice(1, -1).join("/");
@@ -870,6 +856,20 @@ export default function Notas() {
     }
     return contagens;
   }, [subpastas, pastaAtual, todasNotas]);
+
+  if (!pronto) {
+    return (
+      <Vazio
+        titulo="Falta conectar sua conta"
+        descricao="Para guardar suas anotações, preencha sua conta do GitHub e o token na aba de Ajustes."
+        acao={
+          <Link to="/config">
+            <Botao>Ir para Ajustes</Botao>
+          </Link>
+        }
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">

@@ -7,7 +7,7 @@
 
 import { lerConfig, configCompleta } from "./settings";
 import type { Settings } from "./settings";
-import { gravar, ler, apagar, ErroGitHub } from "./github";
+import { gravar, ler, apagar, ErroGitHub, conteudosSemelhantes } from "./github";
 import { atualizarCacheLocal, invalidarCache, removerDoCacheLocal, cache, obterCacheExistente } from "./repo";
 import { lerMarkdown } from "./markdown";
 import { notificarOutrasAbas } from "./syncChannel";
@@ -259,7 +259,7 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
         }
 
         if (status === 409 || msg.includes("409") || msg.includes("conflito") || msg.includes("does not match")) {
-          // Tenta auto-recuperação buscando a SHA mais recente no GitHub
+          let resolvidoSemConflito = false;
           try {
             const remoto = await ler(cfg, item.caminho);
             if (remoto && remoto.sha) {
@@ -268,18 +268,22 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
                 removerRascunhoLocal(item.id);
                 removerDoCacheLocal(item.caminho);
                 concluidos++;
-                continue;
-              } else {
-                const novoSha = await gravar(cfg, item.caminho, item.texto, remoto.sha, item.mensagemCommit);
+                resolvidoSemConflito = true;
+              } else if (conteudosSemelhantes(remoto.texto, item.texto)) {
+                // Conteúdo idêntico (salvamento redundante), aceita SHA remoto sem conflito
                 removerRascunhoLocal(item.id);
                 const doc = lerMarkdown(item.texto);
-                atualizarCacheLocal(item.caminho, item.texto, doc, novoSha);
+                atualizarCacheLocal(item.caminho, item.texto, doc, remoto.sha);
                 concluidos++;
-                continue;
+                resolvidoSemConflito = true;
               }
             }
           } catch {
-            // Se a leitura também falhar, marca como conflito para resolução manual
+            // Leitura falhou ou arquivo indisponível
+          }
+
+          if (resolvidoSemConflito) {
+            continue;
           }
 
           const erroTxt = "Conflito de edição no GitHub (HTTP 409). O arquivo foi modificado diretamente no repositório.";

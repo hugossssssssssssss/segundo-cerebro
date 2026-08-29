@@ -409,20 +409,7 @@ export default function PDI() {
     recarregar();
   }
 
-  // ── Sem configuração ────────────────────────────────────────────────────────
-  if (!pronto) {
-    return (
-      <Vazio
-        titulo="Falta conectar sua conta"
-        descricao="Preencha sua conta do GitHub e o token na aba de Ajustes."
-        acao={
-          <Link to="/config">
-            <Botao>Ir para Ajustes</Botao>
-          </Link>
-        }
-      />
-    );
-  }
+
 
   const metasExibidas = useMemo(() => {
     if (!pastaMetaSelecionada) return metas;
@@ -514,21 +501,35 @@ export default function PDI() {
     setOrigEntrega(vazia);
   };
 
-const novaEntregaParaMeta = (meta: Meta) => {
-  const vazia: Entrega = {
-    bruto: {},
-    caminho: "",
-    id: "",
-    sha: "",
-    titulo: "",
-    data: hojeISO(),
-    metas: [meta.id],
-    iaSugeriu: false,
-    corpo: "",
+  const novaEntregaParaMeta = (meta: Meta) => {
+    const vazia: Entrega = {
+      bruto: {},
+      caminho: "",
+      id: "",
+      sha: "",
+      titulo: "",
+      data: hojeISO(),
+      metas: [meta.id],
+      iaSugeriu: false,
+      corpo: "",
+    };
+    setEditandoEntrega(vazia);
+    setOrigEntrega(vazia);
   };
-  setEditandoEntrega(vazia);
-  setOrigEntrega(vazia);
-};
+
+  if (!pronto) {
+    return (
+      <Vazio
+        titulo="Falta conectar sua conta"
+        descricao="Preencha sua conta do GitHub e o token na aba de Ajustes."
+        acao={
+          <Link to="/config">
+            <Botao>Ir para Ajustes</Botao>
+          </Link>
+        }
+      />
+    );
+  }
 
   return (
     <div id="conteudo-pdi-pdf" className="space-y-6 animate-in fade-in duration-200">

@@ -337,21 +337,6 @@ export default function Tarefas() {
     }
   }
 
-  // ── Sem configuração ────────────────────────────────────────────────────────
-  if (!pronto) {
-    return (
-      <Vazio
-        titulo="Falta conectar sua conta"
-        descricao="Preencha sua conta do GitHub e o token na aba de Ajustes."
-        acao={
-          <Link to="/config">
-            <Botao>Ir para Ajustes</Botao>
-          </Link>
-        }
-      />
-    );
-  }
-
   const propriedadesDisponiveis = useMemo<DefinicaoPropriedade[]>(() => {
     return [
       { id: "titulo", rotulo: "Título / Nome", tipo: "texto" },
@@ -393,6 +378,21 @@ export default function Tarefas() {
 
     return lista;
   }, [tarefas, pastaSelecionada, busca, regrasFiltro]);
+
+  // ── Sem configuração ────────────────────────────────────────────────────────
+  if (!pronto) {
+    return (
+      <Vazio
+        titulo="Falta conectar sua conta"
+        descricao="Preencha sua conta do GitHub e o token na aba de Ajustes."
+        acao={
+          <Link to="/config">
+            <Botao>Ir para Ajustes</Botao>
+          </Link>
+        }
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">

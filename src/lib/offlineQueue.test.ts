@@ -63,5 +63,43 @@ describe("offlineQueue", () => {
     limparTodosRascunhosLocais();
     expect(obterRascunhosLocais()).toHaveLength(0);
   });
+
+  it("marca rascunho como conflito em 409 se o conteúdo remoto for diferente", async () => {
+    const { sincronizarFilaOffline } = await import("./offlineQueue");
+    const github = await import("./github");
+
+    const spyGravar = vi.spyOn(github, "gravar").mockRejectedValue(
+      new github.ErroGitHub("Conflito de edição no GitHub (HTTP 409)", 409),
+    );
+    const spyLer = vi.spyOn(github, "ler").mockResolvedValue({
+      texto: "# Versão Remota no GitHub",
+      sha: "sha-remoto-novo",
+    });
+
+    salvarRascunhoLocal("notas/conflito.md", "# Versão Local Diferente", "sha-antigo", undefined, false);
+
+    const cfg = {
+      githubToken: "token",
+      repoOwner: "dono",
+      repoName: "repo",
+      branch: "main",
+      nomeUsuario: "",
+      profissaoUsuario: "",
+      onboardingConcluido: true,
+      geminiKey: "",
+      geminiModel: "",
+    };
+
+    const res = await sincronizarFilaOffline(cfg);
+    expect(res.falhas).toBe(1);
+
+    const rascunhos = obterRascunhosLocais();
+    expect(rascunhos).toHaveLength(1);
+    expect(rascunhos[0].status).toBe("conflito");
+
+    spyGravar.mockRestore();
+    spyLer.mockRestore();
+  });
 });
+
 

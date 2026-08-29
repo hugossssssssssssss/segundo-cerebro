@@ -59,6 +59,8 @@ export function useItemRepo<T>(
    * dispararia um carregamento extra do repositório.
    */
   const jaCarregouRef = useRef(false);
+  const converterRef = useRef(converter);
+  converterRef.current = converter;
 
   const carregar = useCallback(
     async (silencioso = false, forcar = false) => {
@@ -112,7 +114,7 @@ export function useItemRepo<T>(
         setAcervo(todos);
 
         const lista = daPasta(todos, pasta, Boolean(opcoes?.recursivo));
-        setItens(lista.map(converter));
+        setItens(lista.map(converterRef.current));
         setTitulos(
           Object.fromEntries(
             todos.map((i) => [i.caminho, tituloProvavel(i.doc, i.nome)]),
@@ -175,7 +177,7 @@ export function useItemRepo<T>(
         setAcervo(todos);
 
         const lista = daPasta(todos, pasta, Boolean(opcoes?.recursivo));
-        setItens(lista.map(converter));
+        setItens(lista.map(converterRef.current));
         setTitulos(
           Object.fromEntries(
             todos.map((i) => [i.caminho, tituloProvavel(i.doc, i.nome)]),

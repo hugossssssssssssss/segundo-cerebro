@@ -465,7 +465,10 @@ export function PainelNotionBase({
   const [fechandoESalvando, setFechandoESalvando] = useState(false);
   const fechandoRef = useRef(false);
 
-  // ── Auto-save invisível com debounce de 2s ──────────────────────────────
+  const aoSalvarRef = useRef(aoSalvar);
+  aoSalvarRef.current = aoSalvar;
+
+  // ── Auto-save invisível com debounce de 12s ──────────────────────────────
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -480,11 +483,11 @@ export function PainelNotionBase({
     autoSaveTimerRef.current = setTimeout(async () => {
       if (!temMudancasRef.current || salvandoRef.current || fechandoRef.current) return;
       try {
-        await aoSalvar();
+        await aoSalvarRef.current();
       } catch {
         // Falha silenciosa — o save por fechar ainda funciona como fallback
       }
-    }, 2000);
+    }, 12000);
 
     return () => {
       if (autoSaveTimerRef.current) {
