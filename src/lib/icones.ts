@@ -94,6 +94,7 @@ import {
   PieChart,
   Gamepad2,
   Dices,
+  Trash2,
 } from "lucide-react";
 
 export interface ItemGaleriaIcone {
@@ -150,12 +151,13 @@ export const CATALOGO_ICONES: ItemGaleriaIcone[] = [
 
   // Produtividade
   { nome: "Target", rotulo: "Alvo, Metas, PDI, Objetivos", categoria: "Produtividade", Icone: Target },
-  { nome: "Calendar", rotulo: "Calendário, Datas, Agenda", categoria: "Produtividade", Icone: Calendar },
   { nome: "Clock", rotulo: "Relógio, Tempo, Horas", categoria: "Produtividade", Icone: Clock },
   { nome: "CheckCircle2", rotulo: "Concluído, Sucesso", categoria: "Produtividade", Icone: CheckCircle2 },
   { nome: "ListTodo", rotulo: "Lista de Afazeres", categoria: "Produtividade", Icone: ListTodo },
   { nome: "Briefcase", rotulo: "Maleta, Trabalho, Projetos", categoria: "Produtividade", Icone: Briefcase },
   { nome: "Archive", rotulo: "Arquivo, Guardado", categoria: "Produtividade", Icone: Archive },
+  { nome: "Trash2", rotulo: "Lixeira, Excluídos, Lixo", categoria: "Produtividade", Icone: Trash2 },
+  { nome: "Calendar", rotulo: "Calendário, Agenda, Datas", categoria: "Produtividade", Icone: Calendar },
   { nome: "Award", rotulo: "Prêmio, Conquista", categoria: "Produtividade", Icone: Award },
   { nome: "Crown", rotulo: "Coroa, Prioridade Máxima", categoria: "Produtividade", Icone: Crown },
   { nome: "Flag", rotulo: "Bandeira, Marco, Milestones", categoria: "Produtividade", Icone: Flag },

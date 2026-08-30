@@ -7,6 +7,7 @@ import {
   lerEstadoInboxLocal,
   salvarEstadoInboxLocal,
   adiarDataHora,
+  aplicarEstadoInboxNoFrontmatter,
 } from "./inbox";
 import type { ItemRepo } from "./repo";
 
@@ -221,6 +222,33 @@ prazo: 2026-08-20 → 2026-08-25
     expect(caixa).toHaveLength(1);
     expect(caixa[0].dataVencimento).toBe("2026-08-20 → 2026-08-25");
     expect(caixa[0].descricao).toContain("Em andamento hoje");
+  });
+
+  it("aplica estado diretamente no frontmatter e reconhece na compilação", () => {
+    const textoOriginal = "---\ntitulo: Tarefa Urgente\nprazo: 2026-08-15\n---\nCorpo da tarefa";
+    const textoComVisto = aplicarEstadoInboxNoFrontmatter(textoOriginal, {
+      visto: true,
+      vistoEm: "2026-08-15T12:00:00.000Z",
+    });
+
+    expect(textoComVisto).toContain("visto_em: '2026-08-15T12:00:00.000Z'");
+
+    const doc = { dados: { titulo: "Tarefa Urgente", prazo: "2026-08-15", visto_em: "2026-08-15T12:00:00.000Z" }, corpo: "Corpo da tarefa" };
+    const itensRepo: ItemRepo[] = [
+      {
+        caminho: "tarefas/urgente.md",
+        nome: "urgente.md",
+        sha: "111",
+        tamanho: 100,
+        texto: textoComVisto,
+        doc,
+      },
+    ];
+
+    const agora = new Date(2026, 7, 20);
+    const caixa = compilarItensInbox(itensRepo, {}, agora);
+    expect(caixa).toHaveLength(1);
+    expect(caixa[0].visto).toBe(true);
   });
 });
 

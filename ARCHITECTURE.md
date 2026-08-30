@@ -1,6 +1,6 @@
 # Arquitetura do Klaus
 
-> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-29.**
+> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-30.**
 > Não edite este arquivo à mão — ele é reescrito a cada `npm run build`.
 > Para mudar o que está aqui, mude `src/lib/tipos.ts` e `src/lib/entidades.ts`.
 
@@ -228,6 +228,7 @@ direto · `não usa` = não toca no repositório de dados.
 | `src/pages/Inbox.tsx` | na mão | hook |
 | `src/pages/Jogos.test.tsx` | não usa | não usa |
 | `src/pages/Jogos.tsx` | não usa | não usa |
+| `src/pages/Lixeira.tsx` | não usa | na mão |
 | `src/pages/Lousas.tsx` | hook | hook |
 | `src/pages/Notas.tsx` | hook | hook |
 | `src/pages/Noticias.tsx` | não usa | não usa |

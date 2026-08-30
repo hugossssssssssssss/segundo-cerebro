@@ -13,7 +13,7 @@ import { atualizarCacheLocal } from "./repo";
 import { salvarRascunhoLocal } from "./offlineQueue";
 import type { ItemInbox, Lembrete } from "./tipos";
 import type { Settings } from "./settings";
-import { lerMarkdown, tituloProvavel } from "./markdown";
+import { lerMarkdown, escreverMarkdown, tituloProvavel } from "./markdown";
 import { comoTarefa } from "./entidades";
 import { extrairIntervaloTarefa } from "./tarefas";
 import { ler } from "./github";
@@ -234,7 +234,13 @@ export function compilarItensInbox(
           const id = `tarefa-${item.caminho}`;
           const estado = mapaEstado[id];
 
-          if (!estado?.descartado) {
+          const vistoNoDoc = Boolean(doc.dados.visto_em || doc.dados.inbox_visto);
+          const vistoEmNoDoc = (doc.dados.visto_em as string) || undefined;
+          const descartadoNoDoc = Boolean(doc.dados.inbox_descartado);
+
+          const descartadoFinal = descartadoNoDoc || Boolean(estado?.descartado);
+
+          if (!descartadoFinal) {
             const anoF = intervalo.fim.getFullYear();
             const mesF = String(intervalo.fim.getMonth() + 1).padStart(2, "0");
             const diaF = String(intervalo.fim.getDate()).padStart(2, "0");
@@ -263,8 +269,8 @@ export function compilarItensInbox(
               caminhoOrigem: item.caminho,
               tituloOrigem: tituloDoc,
               dataVencimento: intervalo.textoFormatado,
-              visto: Boolean(estado?.visto),
-              vistoEm: estado?.vistoEm,
+              visto: vistoNoDoc || Boolean(estado?.visto),
+              vistoEm: vistoEmNoDoc || estado?.vistoEm,
               notificadoTelegram: estado?.notificadoTelegram,
               notificadoEmail: estado?.notificadoEmail,
               tags: tagsDoc,
@@ -588,4 +594,66 @@ export function precisaEscalationInatividade(
   const diferencaMs = agora.getTime() - dataVenc.getTime();
 
   return diferencaMs >= limiteMs;
+}
+
+/**
+ * Aplica o estado de visualização e descarte diretamente no frontmatter do arquivo .md de origem.
+ */
+export function aplicarEstadoInboxNoFrontmatter(
+  textoOriginal: string,
+  novoEstado: { visto?: boolean; vistoEm?: string; descartado?: boolean },
+): string {
+  const doc = lerMarkdown(textoOriginal);
+  const dados = { ...doc.dados };
+
+  if (novoEstado.visto !== undefined) {
+    if (novoEstado.visto) {
+      dados.visto_em = novoEstado.vistoEm || new Date().toISOString();
+      delete dados.inbox_visto;
+    } else {
+      delete dados.visto_em;
+    }
+  }
+
+  if (novoEstado.descartado !== undefined) {
+    if (novoEstado.descartado) {
+      dados.inbox_descartado = true;
+    } else {
+      delete dados.inbox_descartado;
+    }
+  }
+
+  return escreverMarkdown({ dados, corpo: doc.corpo });
+}
+
+/**
+ * Migra o estado legado do caixa-entrada/estado.json distribuindo os metadados
+ * diretamente nos arquivos .md do repositório para fidelidade à Regra 1.
+ */
+export function migrarEstadoLegadoParaItens(
+  itens: ItemRepo[],
+  mapaEstado: MapaEstadoInbox,
+): Array<{ caminho: string; textoNovo: string }> {
+  const alterados: Array<{ caminho: string; textoNovo: string }> = [];
+
+  for (const item of itens) {
+    const chavesItem = Object.keys(mapaEstado).filter(
+      (k) => k.includes(item.caminho) && (mapaEstado[k].visto || mapaEstado[k].descartado),
+    );
+
+    if (chavesItem.length > 0) {
+      const estado = mapaEstado[chavesItem[0]];
+      const textoNovo = aplicarEstadoInboxNoFrontmatter(item.texto, {
+        visto: estado.visto,
+        vistoEm: estado.vistoEm,
+        descartado: estado.descartado,
+      });
+
+      if (textoNovo !== item.texto) {
+        alterados.push({ caminho: item.caminho, textoNovo });
+      }
+    }
+  }
+
+  return alterados;
 }

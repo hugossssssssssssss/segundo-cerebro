@@ -79,6 +79,7 @@ const PesquisaLivros = lazy(() => import("@/pages/PesquisaLivros"));
 const TestadorHardware = lazy(() => import("@/pages/TestadorHardware"));
 const Sons = lazy(() => import("@/pages/Sons"));
 const Jogos = lazy(() => import("@/pages/Jogos"));
+const Lixeira = lazy(() => import("@/pages/Lixeira"));
 
 
 
@@ -617,6 +618,7 @@ function AppInterno() {
             <Route path="/config" element={<Configuracoes />} />
             <Route path="/sons" element={<Sons />} />
             <Route path="/jogos" element={<Jogos />} />
+            <Route path="/lixeira" element={<Lixeira />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </Suspense>

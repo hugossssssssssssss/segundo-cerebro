@@ -11,6 +11,7 @@
 
 import type { Settings } from "./settings";
 import { lerMarkdown } from "./markdown";
+import { autoMergeDocumentoMarkdown } from "./autoMergeMarkdown";
 import { registrarRespostaGitHub } from "./telemetriaRequisicoes";
 
 const BASE = "https://api.github.com";
@@ -240,13 +241,14 @@ export async function gravar(
   }
 
   const promessaAtual = (async () => {
-    const fazerPut = async (shaParaEnviar?: string) => {
+    const fazerPut = async (shaParaEnviar?: string, textoCustom?: string) => {
+      const conteudoFinal = textoCustom !== undefined ? textoCustom : texto;
       return await buscar(urlDeCaminho(cfg, caminho), {
         method: "PUT",
         headers: { ...cabecalhos(cfg), "Content-Type": "application/json" },
         body: JSON.stringify({
           message: mensagem ?? `${shaParaEnviar ? "atualiza" : "cria"} ${caminho}`,
-          content: paraBase64(texto),
+          content: paraBase64(conteudoFinal),
           branch: cfg.branch,
           ...(shaParaEnviar ? { sha: shaParaEnviar } : {}),
         }),
@@ -272,13 +274,23 @@ export async function gravar(
           if (conteudosSemelhantes(textoDestino, texto)) {
             // O conteúdo útil é idêntico! Retornamos o shaDestino atual do GitHub (salvamento redundante F5)
             return shaDestino;
-          } else {
-            // O conteúdo útil mudou: lança erro de conflito real de concorrência
-            throw new ErroGitHub(
-              `Conflito de edição no GitHub (HTTP 409). O arquivo foi modificado diretamente no repositório.\n\nAcesse a Caixa de Entrada > Rascunhos Offline para aceitar a versão local ou descartar.`,
-              409
-            );
           }
+
+          // 1. Tenta Auto-Merge Semântico 3-Way entre a versão remota e a versão local
+          const merge = autoMergeDocumentoMarkdown("", texto, textoDestino);
+          if (merge.sucesso) {
+            const putRes = await fazerPut(shaDestino, merge.textoMesclado);
+            if (putRes.ok) {
+              const dadosMerge = await putRes.json();
+              return dadosMerge.content.sha as string;
+            }
+          }
+
+          // 2. O conteúdo tem conflito real de mesma linha: lança erro explicativo
+          throw new ErroGitHub(
+            `Conflito de edição no GitHub (HTTP 409). O arquivo foi modificado por outro aparelho simultaneamente.\n\nAcesse a Caixa de Entrada > Rascunhos Offline para reconciliar a versão local ou remota.`,
+            409,
+          );
         } catch (lerErr) {
           if (lerErr instanceof ErroGitHub) throw lerErr;
           break;

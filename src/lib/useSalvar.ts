@@ -19,6 +19,7 @@ import { formatarNomeAmigavel } from "./utils";
 import { salvarRascunhoLocal, obterRascunhosLocais, sincronizarFilaOffline } from "./offlineQueue";
 import { lerConfig, configCompleta, type Settings } from "./settings";
 import { dispararAtualizacaoAcervo, EVENTO_ACERVO_ATUALIZADO } from "./eventos";
+import { moverParaLixeira } from "./lixeira";
 
 export type EstadoSalvar = {
   /**
@@ -37,6 +38,11 @@ export type EstadoSalvar = {
    * Apaga um arquivo localmente e remove do cache na hora.
    */
   apagarItem: (caminho: string, sha: string, silencioso?: boolean) => Promise<void>;
+
+  /**
+   * Move um arquivo para a Lixeira Soberana (.lixeira/) com reversibilidade total.
+   */
+  moverParaLixeiraItem: (caminho: string, sha: string, silencioso?: boolean) => Promise<void>;
 
   salvando: boolean;
   erro: string;
@@ -139,9 +145,32 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
     }
   }
 
+  async function moverParaLixeiraItem(caminho: string, sha: string, silencioso = false): Promise<void> {
+    setErro("");
+    try {
+      const cfg = lerConfig();
+      if (configCompleta(cfg) && navigator.onLine) {
+        await moverParaLixeira(cfg, caminho, sha);
+        removerDoCacheLocal(caminho);
+        if (!silencioso) {
+          const nomeItem = formatarNomeAmigavel(caminho);
+          toast(`"${nomeItem}" movido para a Lixeira`, { tipo: "info" });
+        }
+      } else {
+        // Fallback offline: enfileira como apagar
+        await apagarItem(caminho, sha, silencioso);
+      }
+    } catch (e) {
+      const mensagem = e instanceof Error ? e.message : String(e);
+      setErro(mensagem);
+      throw e;
+    }
+  }
+
   return {
     salvarTexto,
     apagarItem,
+    moverParaLixeiraItem,
     salvando,
     erro,
     limparErro: () => setErro(""),

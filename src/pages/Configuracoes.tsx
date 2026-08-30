@@ -14,6 +14,7 @@ import { PASTAS } from "@/lib/tipos";
 import { analisarAcervoParaMigracao, executarMigracaoEmLote, type RelatorioAnaliseAcervo } from "@/lib/migracaoLote";
 import { identificarArquivosProcessos, apagarArquivosProcessosEmLote } from "@/lib/limpezaProcessos";
 import { CardConsumoGitHub } from "@/components/CardConsumoGitHub";
+import { instalarWorkflowLembretes } from "@/lib/instaladorWorkflow";
 
 export default function Configuracoes() {
   const [cfg, setCfg] = useState<Settings>(lerConfig);
@@ -42,6 +43,23 @@ export default function Configuracoes() {
   const [excluindoProcessos, setExcluindoProcessos] = useState(false);
   const [progressoProcessos, setProgressoProcessos] = useState<{ atual: number; total: number; msg: string } | null>(null);
   const [msgProcessos, setMsgProcessos] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
+
+  // Estados do Agendador Autônomo GitHub Actions
+  const [instalandoWorkflow, setInstalandoWorkflow] = useState(false);
+  const [msgWorkflow, setMsgWorkflow] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
+
+  const instalarWorkflow = async () => {
+    setInstalandoWorkflow(true);
+    setMsgWorkflow(null);
+    try {
+      const res = await instalarWorkflowLembretes(cfg);
+      setMsgWorkflow({ tom: "sucesso", texto: res.mensagem });
+    } catch (e: any) {
+      setMsgWorkflow({ tom: "erro", texto: e.message || String(e) });
+    } finally {
+      setInstalandoWorkflow(false);
+    }
+  };
 
   const analisarPadronizacao = async () => {
     setAnalisandoAcervo(true);
@@ -496,6 +514,32 @@ export default function Configuracoes() {
                     onChange={(e) => setCfg((c) => ({ ...c, inboxEscalaHoras: Number(e.target.value) || 3 }))}
                     placeholder="3"
                   />
+                </div>
+
+                <div className="pt-3 border-t border-border/40 mt-4">
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 text-xs text-muted-foreground space-y-2.5">
+                    <div className="font-semibold text-sm text-foreground flex items-center gap-2">
+                      <Sparkles size={16} className="text-primary" />
+                      Agendador Autônomo de Lembretes (GitHub Actions)
+                    </div>
+                    <p>
+                      Instale o workflow gratuito do GitHub Actions no seu repositório de dados para receber os alertas
+                      do Telegram na hora marcada, mesmo com o computador desligado e o navegador fechado.
+                    </p>
+                    {msgWorkflow && (
+                      <Aviso tom={msgWorkflow.tom === "sucesso" ? "sucesso" : "erro"}>
+                        {msgWorkflow.texto}
+                      </Aviso>
+                    )}
+                    <Botao
+                      variante="primario"
+                      tamanho="pequeno"
+                      onClick={instalarWorkflow}
+                      disabled={instalandoWorkflow}
+                    >
+                      {instalandoWorkflow ? "Instalando Workflow..." : "Instalar Agendador no Repositório de Dados"}
+                    </Botao>
+                  </div>
                 </div>
               </div>
             </div>
