@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ler, gravar, apagar, ErroGitHub } from "./github";
+import { ler, gravar, apagar, gravarLoteGit, ErroGitHub } from "./github";
 import { PADRAO, type Settings } from "./settings";
 
 const cfg: Settings = {
@@ -214,3 +214,38 @@ describe("token com sujeira do copiar-e-colar", () => {
     expect(init.headers.Authorization).not.toContain("\n");
   });
 });
+
+describe("gravarLoteGit - gravação atômica via Git Data API", () => {
+  it("recusa lote vazio com erro 400", async () => {
+    await expect(gravarLoteGit(cfg, [], "teste")).rejects.toThrow(
+      /Nenhum arquivo informado/
+    );
+  });
+
+  it("executa fluxo de 5 etapas atômicas e retorna commitSha e treeSha", async () => {
+    // 1. GET /git/ref/heads/main
+    fetchFalso.mockResolvedValueOnce(resposta({ object: { sha: "commit-pai-123" } }));
+    // 2. GET /git/commits/commit-pai-123
+    fetchFalso.mockResolvedValueOnce(resposta({ tree: { sha: "tree-base-456" } }));
+    // 3. POST /git/trees
+    fetchFalso.mockResolvedValueOnce(resposta({ sha: "nova-tree-789" }));
+    // 4. POST /git/commits
+    fetchFalso.mockResolvedValueOnce(resposta({ sha: "novo-commit-abc" }));
+    // 5. PATCH /git/refs/heads/main
+    fetchFalso.mockResolvedValueOnce(resposta({ object: { sha: "novo-commit-abc" } }));
+
+    const res = await gravarLoteGit(
+      cfg,
+      [
+        { caminho: "notas/a.md", conteudo: "# A" },
+        { caminho: "notas/b.md", conteudo: "# B" },
+      ],
+      "refatorar: lote teste",
+    );
+
+    expect(res.commitSha).toBe("novo-commit-abc");
+    expect(res.treeSha).toBe("nova-tree-789");
+    expect(fetchFalso).toHaveBeenCalledTimes(5);
+  });
+});
+

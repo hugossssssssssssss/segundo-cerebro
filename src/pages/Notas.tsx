@@ -26,6 +26,8 @@ import { comoNota, notaParaArquivo, dataDoNome } from "@/lib/entidades";
 import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
 import { invalidarCache } from "@/lib/repo";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
+import { planejarRefatoracao, type PlanoRefatoracao } from "@/lib/refatorarLinks";
+import { ModalRefatorarLinks } from "@/components/ModalRefatorarLinks";
 import {
   escreverMarkdown,
   tituloProvavel,
@@ -92,6 +94,11 @@ export default function Notas() {
   }, [modoLayout]);
 
   const [aberta, setAberta] = useState<NotaAberta | null>(null);
+  const [refatoracaoPendente, setRefatoracaoPendente] = useState<{
+    plano: PlanoRefatoracao;
+    tituloAntigo: string;
+    tituloNovo: string;
+  } | null>(null);
 
   const [pastaAtual, setPastaAtual] = useState("");
   const [pastasCriadas, setPastasCriadas] = useState<string[]>([]);
@@ -324,6 +331,7 @@ export default function Notas() {
     const texto = escreverMarkdown({ dados, corpo });
     const caminho = n.caminho || nomeLivre(pastaAtual ? `${PASTAS.notas}/${pastaAtual}` : PASTAS.notas, titulo, todasNotas.map((a) => a.caminho));
 
+    const tituloOriginal = n.original?.titulo?.trim();
     const novaSha = await salvarTexto(caminho, texto, n.sha || undefined);
 
     setAberta((atual) => {
@@ -332,6 +340,18 @@ export default function Notas() {
     });
 
     recarregar();
+
+    // Se houve renomeação de um arquivo pré-existente, verifica se outros arquivos o mencionam
+    if (tituloOriginal && tituloOriginal !== titulo && n.caminho) {
+      const plano = planejarRefatoracao(acervo, tituloOriginal, titulo, n.caminho, caminho);
+      if (plano.totalArquivos > 0) {
+        setRefatoracaoPendente({
+          plano,
+          tituloAntigo: tituloOriginal,
+          tituloNovo: titulo,
+        });
+      }
+    }
   }
 
   async function remover() {
@@ -1428,6 +1448,20 @@ export default function Notas() {
         }}
         aoCancelar={() => setMostrarConfirmacaoDescarte(false)}
       />
+
+      {refatoracaoPendente && (
+        <ModalRefatorarLinks
+          aberto={Boolean(refatoracaoPendente)}
+          onFechar={() => setRefatoracaoPendente(null)}
+          tituloAntigo={refatoracaoPendente.tituloAntigo}
+          tituloNovo={refatoracaoPendente.tituloNovo}
+          plano={refatoracaoPendente.plano}
+          aoConcluir={() => {
+            setRefatoracaoPendente(null);
+            recarregar();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -599,3 +599,91 @@ export async function testarConexao(
     return { ok: false, erro: e instanceof Error ? e.message : String(e) };
   }
 }
+
+export type ArquivoLoteGit = {
+  caminho: string;
+  conteudo: string;
+};
+
+/**
+ * Grava múltiplos arquivos em exatamente UM ÚNICO commit atômico usando a Git Data API.
+ * Isso garante que todas as alterações ocorram juntas (ACID) ou nenhuma seja aplicada,
+ * sem poluir o histórico do Git com dezenas de commits sequenciais.
+ */
+export async function gravarLoteGit(
+  cfg: Settings,
+  arquivos: ArquivoLoteGit[],
+  mensagem: string,
+): Promise<{ commitSha: string; treeSha: string }> {
+  if (!arquivos || arquivos.length === 0) {
+    throw new ErroGitHub("Nenhum arquivo informado para gravação em lote.", 400);
+  }
+
+  const repoBase = `${BASE}/repos/${cfg.repoOwner}/${cfg.repoName}`;
+  const headers = cabecalhos(cfg);
+
+  // 1. Obter o SHA do commit atual da branch
+  const refRes = await buscar(`${repoBase}/git/ref/heads/${cfg.branch}`, { headers });
+  await conferir(refRes);
+  const refDados = await refRes.json();
+  const commitPaiSha: string = refDados.object?.sha;
+  if (!commitPaiSha) {
+    throw new ErroGitHub(`Não foi possível localizar o commit inicial da branch ${cfg.branch}.`, 404);
+  }
+
+  // 2. Obter a árvore (base_tree) associada a esse commit pai
+  const commitPaiRes = await buscar(`${repoBase}/git/commits/${commitPaiSha}`, { headers });
+  await conferir(commitPaiRes);
+  const commitPaiDados = await commitPaiRes.json();
+  const baseTreeSha: string = commitPaiDados.tree?.sha;
+
+  // 3. Criar uma nova árvore com todos os arquivos do lote
+  const itensArvore = arquivos.map((arq) => ({
+    path: arq.caminho,
+    mode: "100644",
+    type: "blob",
+    content: arq.conteudo,
+  }));
+
+  const treeRes = await buscar(`${repoBase}/git/trees`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      base_tree: baseTreeSha,
+      tree: itensArvore,
+    }),
+  });
+  await conferir(treeRes);
+  const treeDados = await treeRes.json();
+  const novaTreeSha: string = treeDados.sha;
+
+  // 4. Criar o commit apontando para a nova árvore e com o pai anterior
+  const novoCommitRes = await buscar(`${repoBase}/git/commits`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      message: mensagem,
+      tree: novaTreeSha,
+      parents: [commitPaiSha],
+    }),
+  });
+  await conferir(novoCommitRes);
+  const novoCommitDados = await novoCommitRes.json();
+  const novoCommitSha: string = novoCommitDados.sha;
+
+  // 5. Atualizar o ponteiro da branch para o novo commit
+  const patchRefRes = await buscar(`${repoBase}/git/refs/heads/${cfg.branch}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({
+      sha: novoCommitSha,
+      force: false,
+    }),
+  });
+  await conferir(patchRefRes);
+
+  return {
+    commitSha: novoCommitSha,
+    treeSha: novaTreeSha,
+  };
+}

@@ -10,13 +10,13 @@
  * 5. Oferece `planejarRefatoracao` para visualização e confirmação antes de gravar.
  */
 
+import { gravar, gravarLoteGit } from "./github";
+import type { Settings } from "./settings";
 import type { ItemRepo } from "./repo";
 import { tituloProvavel, lerMarkdown } from "./markdown";
 import { atualizarCacheLocal, invalidarCache } from "./repo";
 import { dispararAtualizacaoAcervo } from "./eventos";
 import { notificarOutrasAbas } from "./syncChannel";
-import type { Settings } from "./settings";
-import { gravar } from "./github";
 
 export type AlteracaoProposta = {
   caminho: string;
@@ -157,13 +157,55 @@ export function planejarRefatoracao(
 }
 
 /**
- * Executa o plano de refatoração no GitHub sequencialmente com pausa preventiva.
+ * Executa o plano de refatoração no GitHub.
+ *
+ * Estratégia de Atomicidade:
+ * Quando houver múltiplos arquivos (>= 2), tenta gravar todos em UM ÚNICO commit
+ * via Git Data API (gravarLoteGit). Isso garante consistência total (ACID) e não polui o histórico.
+ * Se houver restrição ou falha na API de lote, recorre ao método sequencial de fallback.
  */
 export async function executarPlanoRefatoracao(
   cfg: Settings,
   plano: PlanoRefatoracao,
   aoProgredir?: (atual: number, total: number) => void,
-): Promise<{ sucessos: number; falhas: string[] }> {
+): Promise<{ sucessos: number; falhas: string[]; modo: "atomico" | "sequencial" }> {
+  if (plano.alteracoes.length === 0) {
+    return { sucessos: 0, falhas: [], modo: "atomico" };
+  }
+
+  // 1. Tentativa de gravação atômica em lote (1 único commit para N arquivos)
+  if (plano.alteracoes.length >= 2) {
+    try {
+      const arquivosLote = plano.alteracoes.map((alt) => ({
+        caminho: alt.caminho,
+        conteudo: alt.textoDepois,
+      }));
+
+      await gravarLoteGit(
+        cfg,
+        arquivosLote,
+        `refatorar: atualizar menções em ${plano.alteracoes.length} arquivos em cascata`,
+      );
+
+      if (aoProgredir) {
+        aoProgredir(plano.alteracoes.length, plano.alteracoes.length);
+      }
+
+      invalidarCache();
+      dispararAtualizacaoAcervo();
+      notificarOutrasAbas();
+
+      return {
+        sucessos: plano.alteracoes.length,
+        falhas: [],
+        modo: "atomico",
+      };
+    } catch {
+      // Falha na gravação atômica (ex: permissão restrita no token). Procede com fallback sequencial.
+    }
+  }
+
+  // 2. Gravação sequencial arquivo por arquivo (ou fallback)
   const falhas: string[] = [];
   let sucessos = 0;
 
@@ -188,7 +230,6 @@ export async function executarPlanoRefatoracao(
       aoProgredir(i + 1, plano.alteracoes.length);
     }
 
-    // Pequena pausa entre requisições para evitar rate-limit agressivo
     if (i < plano.alteracoes.length - 1) {
       await new Promise((r) => setTimeout(r, 150));
     }
@@ -200,5 +241,6 @@ export async function executarPlanoRefatoracao(
     notificarOutrasAbas();
   }
 
-  return { sucessos, falhas };
+  return { sucessos, falhas, modo: "sequencial" };
 }
+

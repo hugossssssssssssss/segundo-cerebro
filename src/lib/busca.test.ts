@@ -8,6 +8,7 @@ import {
   filtrarPorCategoria,
   alternarFavoritoBusca,
   ehFavoritoBusca,
+  resetarIndiceBusca,
 } from "./busca";
 import type { ItemRepo } from "./repo";
 
@@ -205,5 +206,31 @@ describe("agrupar", () => {
     const grupos = agrupar(buscar(acervo, "a".repeat(1)).concat(buscar(acervo, "acme")));
     expect(grupos.length).toBeGreaterThan(0);
     expect(grupos[0][1].length).toBeGreaterThanOrEqual(grupos[grupos.length - 1][1].length);
+  });
+});
+
+describe("cache quente e indexação incremental", () => {
+  it("atualiza busca imediatamente após alteração incremental de item", () => {
+    resetarIndiceBusca();
+    const item1 = item("notas/logo.md", "# Logotipo da Empresa\nBriefing de design");
+    const item2 = item("notas/paleta.md", "# Cores e Tipografia");
+    
+    // Busca inicial
+    const r1 = buscar([item1, item2], "logotipo");
+    expect(r1.length).toBe(1);
+    expect(r1[0].caminho).toBe("notas/logo.md");
+
+    // Item 1 alterado (novo sha/conteúdo)
+    const item1Modificado = {
+      ...item1,
+      sha: "sha-novo",
+      texto: "# Branding e Identidade\nRedesign completo",
+      doc: lerMarkdown("# Branding e Identidade\nRedesign completo"),
+    };
+
+    // Nova busca deve achar pelo novo conteúdo incrementalmente sem quebrar
+    const r2 = buscar([item1Modificado, item2], "branding");
+    expect(r2.length).toBe(1);
+    expect(r2[0].caminho).toBe("notas/logo.md");
   });
 });

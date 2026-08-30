@@ -101,52 +101,132 @@ type Fichado = {
 
 const PESO_CAMPO = { titulo: 5, tags: 2, corpo: 1 };
 
+export function ficharItem(item: ItemRepo): Fichado {
+  const d = item.doc?.dados || {};
+  const extras = [
+    typeof d.cargo === "string" ? d.cargo : "",
+    typeof d.empresa === "string" ? d.empresa : "",
+    typeof d.email === "string" ? d.email : "",
+    typeof d.telefone === "string" ? d.telefone : "",
+    typeof d.cliente === "string" ? d.cliente : "",
+    typeof d.descricao === "string" ? d.descricao : "",
+    typeof d.indicador === "string" ? d.indicador : "",
+    typeof d.porque === "string" ? d.porque : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return {
+    id: item.caminho,
+    titulo: tituloProvavel(item.doc, item.nome),
+    tags: comoLista(d.tags).join(" "),
+    corpo: ((item.doc?.corpo || "") + " " + extras).trim(),
+  };
+}
+
 function novoIndice(itens: ItemRepo[]): MiniSearch<Fichado> {
   const mini = new MiniSearch<Fichado>({
     fields: ["titulo", "tags", "corpo"],
-    idField: "id",
-    processTerm: (termo) => normalizar(termo),
+    storeFields: ["id", "titulo"],
+    searchOptions: {
+      boost: PESO_CAMPO,
+      prefix: true,
+      fuzzy: 0.2,
+      combineWith: "AND",
+    },
   });
 
   const itensValidos = itens.filter((i) => !ehArquivoInternoOuSistema(i.caminho));
-
-  mini.addAll(
-    itensValidos.map((item) => {
-      const d = item.doc.dados;
-      const extras = [
-        typeof d.cargo === "string" ? d.cargo : "",
-        typeof d.empresa === "string" ? d.empresa : "",
-        typeof d.email === "string" ? d.email : "",
-        typeof d.telefone === "string" ? d.telefone : "",
-        typeof d.cliente === "string" ? d.cliente : "",
-        typeof d.descricao === "string" ? d.descricao : "",
-        typeof d.indicador === "string" ? d.indicador : "",
-        typeof d.porque === "string" ? d.porque : "",
-      ]
-        .filter(Boolean)
-        .join(" ");
-
-      return {
-        id: item.caminho,
-        titulo: tituloProvavel(item.doc, item.nome),
-        tags: comoLista(item.doc.dados.tags).join(" "),
-        corpo: ((item.doc.corpo || "") + " " + extras).trim(),
-      };
-    }),
-  );
-
+  mini.addAll(itensValidos.map(ficharItem));
   return mini;
 }
 
-const indices = new WeakMap<ItemRepo[], MiniSearch<Fichado>>();
+let indiceCacheGlobal: MiniSearch<Fichado> | null = null;
+let mapaShasIndexados = new Map<string, string>();
 
-function indiceDe(itens: ItemRepo[]): MiniSearch<Fichado> {
-  const guardado = indices.get(itens);
-  if (guardado) return guardado;
+/** Reseta o cache de busca em memória (usado nos testes e logout). */
+export function resetarIndiceBusca(): void {
+  indiceCacheGlobal = null;
+  mapaShasIndexados.clear();
+}
 
-  const novo = novoIndice(itens);
-  indices.set(itens, novo);
-  return novo;
+/**
+ * Retorna o índice de busca em memória com suporte a reuso imediato (0ms)
+ * e indexação incremental seletiva (replace/discard) quando arquivos mudam.
+ */
+export function indiceDe(itens: ItemRepo[]): MiniSearch<Fichado> {
+  const itensValidos = itens.filter((i) => !ehArquivoInternoOuSistema(i.caminho));
+
+  if (!indiceCacheGlobal) {
+    indiceCacheGlobal = novoIndice(itens);
+    mapaShasIndexados.clear();
+    for (const item of itensValidos) {
+      mapaShasIndexados.set(item.caminho, item.sha || item.texto?.slice(0, 50) || "");
+    }
+    return indiceCacheGlobal;
+  }
+
+  // 1. Identifica alterações entre os itens recebidos e o cache existente
+  const caminhosAtuais = new Set(itensValidos.map((i) => i.caminho));
+  const alterados: ItemRepo[] = [];
+  const removidos: string[] = [];
+
+  for (const [caminho] of mapaShasIndexados) {
+    if (!caminhosAtuais.has(caminho)) {
+      removidos.push(caminho);
+    }
+  }
+
+  for (const item of itensValidos) {
+    const shaAnterior = mapaShasIndexados.get(item.caminho);
+    const shaAtual = item.sha || item.texto?.slice(0, 50) || "";
+    if (shaAnterior !== shaAtual) {
+      alterados.push(item);
+    }
+  }
+
+  // 2. Se nada mudou, reaproveita o índice existente instantaneamente (0ms)
+  if (alterados.length === 0 && removidos.length === 0) {
+    return indiceCacheGlobal;
+  }
+
+  // 3. Poucas mudanças: mutação incremental pontual (replace / discard)
+  if (alterados.length + removidos.length <= Math.max(10, Math.floor(itensValidos.length * 0.2))) {
+    for (const caminho of removidos) {
+      try {
+        indiceCacheGlobal.discard(caminho);
+      } catch {}
+      mapaShasIndexados.delete(caminho);
+    }
+
+    for (const item of alterados) {
+      try {
+        if (mapaShasIndexados.has(item.caminho)) {
+          indiceCacheGlobal.replace(ficharItem(item));
+        } else {
+          indiceCacheGlobal.add(ficharItem(item));
+        }
+        mapaShasIndexados.set(item.caminho, item.sha || item.texto?.slice(0, 50) || "");
+      } catch {
+        // Fallback para reconstrução completa em caso de inconsistência interna
+        indiceCacheGlobal = novoIndice(itens);
+        mapaShasIndexados.clear();
+        for (const i of itensValidos) {
+          mapaShasIndexados.set(i.caminho, i.sha || i.texto?.slice(0, 50) || "");
+        }
+        return indiceCacheGlobal;
+      }
+    }
+    return indiceCacheGlobal;
+  }
+
+  // 4. Muitas mudanças: recria o índice completo
+  indiceCacheGlobal = novoIndice(itens);
+  mapaShasIndexados.clear();
+  for (const item of itensValidos) {
+    mapaShasIndexados.set(item.caminho, item.sha || item.texto?.slice(0, 50) || "");
+  }
+  return indiceCacheGlobal;
 }
 
 /* ------------------------------------------------------------------ busca */
