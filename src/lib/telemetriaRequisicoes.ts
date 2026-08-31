@@ -9,6 +9,8 @@
  * - Distribuição de consumo por tipo de operação (Árvore, Conteúdo, Gravação, Favoritos, etc.)
  */
 
+import { hojeISO } from "./utils";
+
 export interface MetricasRequisicoes {
   limiteHora: number;
   restanteHora: number;
@@ -39,8 +41,7 @@ export interface MetricasRequisicoes {
 const CHAVE_METRICAS_STORAGE = "klaus:metricas-requisicoes-hoje";
 
 function carregarMetricasIniciais(): MetricasRequisicoes {
-  const agora = new Date();
-  const hojeStr = agora.toISOString().slice(0, 10);
+  const hojeStr = hojeISO();
 
   try {
     const salvo = localStorage.getItem(CHAVE_METRICAS_STORAGE);
@@ -78,7 +79,7 @@ const listeners = new Set<() => void>();
 
 function salvarMetricas(): void {
   try {
-    const hojeStr = new Date().toISOString().slice(0, 10);
+    const hojeStr = hojeISO();
     localStorage.setItem(
       CHAVE_METRICAS_STORAGE,
       JSON.stringify({ data: hojeStr, metricas: estadoMetricas }),

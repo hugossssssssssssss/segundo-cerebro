@@ -77,7 +77,15 @@ export async function restaurarDaLixeira(
   const textoRestaurado = escreverMarkdown({ dados: dadosOriginais, corpo: doc.corpo });
 
   // 1. Regrava no destino original
-  const novoSha = await gravar(cfg, caminhoOrigem, textoRestaurado, undefined, `lixeira: restaurar ${caminhoOrigem}`);
+  let novoSha: string;
+  try {
+    novoSha = await gravar(cfg, caminhoOrigem, textoRestaurado, undefined, `lixeira: restaurar ${caminhoOrigem}`);
+  } catch (err: any) {
+    if (err?.message?.includes("sha") || err?.message?.includes("422") || err?.message?.includes("já existe")) {
+      throw new Error(`Já existe um arquivo ativo com o caminho "${caminhoOrigem}". Renomeie ou exclua o arquivo existente antes de restaurar este item.`);
+    }
+    throw err;
+  }
 
   // 2. Remove da lixeira
   await apagar(cfg, caminhoLixeira, shaLixeira);

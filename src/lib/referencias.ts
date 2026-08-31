@@ -66,7 +66,13 @@ export function caminhoCompletoDaImagem(caminho: string): string {
     : `${PASTA_REFS}/${caminho.replace(/^\.?\//, "")}`;
 }
 
+const MAX_CACHE_BLOBS = 60;
 const cacheBlobs = new Map<string, Blob>();
+
+/** Limpa a memória retida por blobs de imagem privados */
+export function limparCacheBlobs(): void {
+  cacheBlobs.clear();
+}
 
 /**
  * Baixa uma imagem do repositório PRIVADO e devolve um `blob:` utilizável.
@@ -97,6 +103,10 @@ export async function baixarImagemPrivada(
     if (!resposta.ok) throw new Error(`Não consegui baixar a imagem (${resposta.status}).`);
 
     blob = await resposta.blob();
+    if (cacheBlobs.size >= MAX_CACHE_BLOBS) {
+      const primeiro = cacheBlobs.keys().next().value;
+      if (primeiro) cacheBlobs.delete(primeiro);
+    }
     cacheBlobs.set(cacheKey, blob);
   }
 

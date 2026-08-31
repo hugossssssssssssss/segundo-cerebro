@@ -346,7 +346,7 @@ export async function gravar(
     if (resposta) {
       await conferir(resposta);
       const dados = await resposta.json();
-      return dados.content.sha as string;
+      return (dados.content?.sha || dados.commit?.sha || "") as string;
     }
     throw new Error("Não foi possível gravar o arquivo após múltiplas tentativas.");
   })();

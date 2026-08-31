@@ -184,8 +184,15 @@ export function restaurarWikilinks(markdown: string): string {
   limpo = limpo.replace(
     /(?:https?:\/\/[^\s)]+|#\/[^\s)]+)\?abrir=([a-zA-Z0-9_%.-]+)/g,
     (_todo, rawCaminho) => {
-      const dec = decodeURIComponent(rawCaminho);
-      const nomeOuTitulo = dec.split("/").pop()!.replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/\.md$/, "");
+      let dec = rawCaminho;
+      try {
+        dec = decodeURIComponent(rawCaminho);
+      } catch {
+        dec = rawCaminho;
+      }
+      const partes = dec.split("/");
+      const ultimo = partes.pop() || dec;
+      const nomeOuTitulo = ultimo.replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/\.md$/, "");
       return `@${nomeOuTitulo}`;
     }
   );

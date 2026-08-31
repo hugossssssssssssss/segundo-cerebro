@@ -167,7 +167,7 @@ export function Subtarefas({
               <li key={`${s.texto}-${s.linha}`} className="group flex items-start gap-2">
                 <button
                   type="button"
-                  onClick={() => onChange(alternarSubtarefa(corpo, s.texto, s.feita))}
+                  onClick={() => onChange(alternarSubtarefa(corpo, s.linha, s.feita))}
                   className="-m-1.5 shrink-0 p-1.5"
                   aria-label={s.feita ? "Desmarcar" : "Marcar como feita"}
                 >
@@ -194,7 +194,7 @@ export function Subtarefas({
 
                 <button
                   type="button"
-                  onClick={() => onChange(removerSubtarefa(corpo, s.texto, s.feita))}
+                  onClick={() => onChange(removerSubtarefa(corpo, s.linha, s.feita))}
                   className="-m-1.5 shrink-0 p-1.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 focus:opacity-100"
                   aria-label="Remover subtarefa"
                 >

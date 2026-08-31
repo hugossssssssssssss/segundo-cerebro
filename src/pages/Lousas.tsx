@@ -24,7 +24,7 @@ import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
 import { tituloProvavel, nomeLivre, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
 import { propagarRenomeacao } from "@/lib/links";
-import { correspondeBusca } from "@/lib/utils";
+import { correspondeBusca, lerParametroAbrir } from "@/lib/utils";
 import { Botao, Campo, Aviso, Vazio, Carregando, ModalConfirmacao } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
@@ -149,21 +149,18 @@ export default function Lousas() {
         return;
       }
 
-      if (hash.includes("abrir=") && lousas.length > 0) {
-        const urlParams = new URLSearchParams(hash.split("?")[1] || "");
-        const caminhoAbrir = urlParams.get("abrir");
-        if (caminhoAbrir) {
-          const target = caminhoAbrir.toLowerCase().trim();
-          const itemEncontrado = lousas.find((i) => {
-            const t = ((i.doc.dados.titulo as string) || tituloProvavel(i.doc, i.nome)).toLowerCase().trim();
-            const c = i.caminho.toLowerCase().trim();
-            const base = i.nome.replace(/\.(md|json|excalidraw)$/i, "").toLowerCase().trim();
-            return c === target || c.includes(target) || t === target || t.includes(target) || base === target;
-          });
-          if (itemEncontrado && (!aberta || aberta.caminho !== itemEncontrado.caminho)) {
-            window.history.replaceState(null, "", window.location.pathname + "#/lousas");
-            abrir(itemEncontrado);
-          }
+      const caminhoAbrir = lerParametroAbrir(window.location);
+      if (caminhoAbrir && lousas.length > 0) {
+        const target = caminhoAbrir.toLowerCase().trim();
+        const itemEncontrado = lousas.find((i) => {
+          const t = ((i.doc.dados.titulo as string) || tituloProvavel(i.doc, i.nome)).toLowerCase().trim();
+          const c = i.caminho.toLowerCase().trim();
+          const base = i.nome.replace(/\.(md|json|excalidraw)$/i, "").toLowerCase().trim();
+          return c === target || c.includes(target) || t === target || t.includes(target) || base === target;
+        });
+        if (itemEncontrado && (!aberta || aberta.caminho !== itemEncontrado.caminho)) {
+          window.history.replaceState(null, "", window.location.pathname + "#/lousas");
+          abrir(itemEncontrado);
         }
       }
     }

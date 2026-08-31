@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check, AlertCircle } from "lucide-react";
 import { type Tarefa, urgencia, textoPrazo } from "@/lib/tarefas";
-import { cn } from "@/lib/utils";
+import { cn, hojeISO } from "@/lib/utils";
 
 interface WidgetFocoHojeProps {
   tarefas: Tarefa[];
@@ -17,7 +17,7 @@ export function WidgetFocoHoje({
   aoCriarRapida,
 }: WidgetFocoHojeProps) {
   const [novoTitulo, setNovoTitulo] = useState("");
-  const hoje = new Date().toISOString().split("T")[0];
+  const hoje = hojeISO();
 
   const pendentes = tarefas.filter((t) => t.status !== "feito");
 

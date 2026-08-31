@@ -71,7 +71,7 @@ export function resumir(metas: Meta[], entregas: Entrega[]): ResumoMeta[] {
       .sort((a, b) => b.data.localeCompare(a.data));
 
     const ultima = ligadas[0];
-    const dias = ultima ? -(diasAte(ultima.data) ?? 0) : null;
+    const dias = ultima ? Math.max(0, -(diasAte(ultima.data) ?? 0)) : null;
 
     return { meta, entregas: ligadas, diasSemMovimento: dias };
   });

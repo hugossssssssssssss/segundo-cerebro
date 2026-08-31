@@ -80,7 +80,17 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const abaAtivaIdRef = useRef(abaAtivaId);
   abaAtivaIdRef.current = abaAtivaId;
 
-  const cfg = useMemo(() => lerConfig(), []);
+  const [cfg, setCfg] = useState(() => lerConfig());
+  useEffect(() => {
+    const aoAtualizarConfig = () => setCfg(lerConfig());
+    window.addEventListener("storage", aoAtualizarConfig);
+    window.addEventListener("klaus-config-atualizada", aoAtualizarConfig);
+    return () => {
+      window.removeEventListener("storage", aoAtualizarConfig);
+      window.removeEventListener("klaus-config-atualizada", aoAtualizarConfig);
+    };
+  }, []);
+
   const { salvarTexto } = useSalvar(cfg);
 
   const timersAutoSaveRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());

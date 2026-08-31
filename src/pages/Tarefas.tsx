@@ -142,7 +142,7 @@ export default function Tarefas() {
         setOriginal(alvo);
       }
     }
-  }, [location.pathname, location.search, location.hash, tarefas.length > 0]);
+  }, [location.pathname, location.search, location.hash, tarefas, focarFlutuante]);
 
   useEffect(() => {
     const aoAbrirItem = (e: Event) => {

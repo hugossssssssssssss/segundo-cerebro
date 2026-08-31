@@ -242,8 +242,15 @@ export function formatarTextoAoColar(texto: string): string | null {
   // Se for URL com ?abrir=...
   const matchUrl = texto.match(/(?:https?:\/\/[^\s)]+|#\/[^\s)]+)\?abrir=([a-zA-Z0-9_%.-]+)/);
   if (matchUrl) {
-    const dec = decodeURIComponent(matchUrl[1]);
-    const nomeOuTitulo = dec.split("/").pop()!.replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/\.md$/, "");
+    let dec = matchUrl[1];
+    try {
+      dec = decodeURIComponent(matchUrl[1]);
+    } catch {
+      dec = matchUrl[1];
+    }
+    const partes = dec.split("/");
+    const ultimo = partes.pop() || dec;
+    const nomeOuTitulo = ultimo.replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/\.md$/, "");
     return `@${nomeOuTitulo}`;
   }
 
@@ -505,11 +512,16 @@ export function EditorNotion({
     return () => observador.disconnect();
   }, []);
 
+  const prontoRef = useRef(pronto);
+  useEffect(() => {
+    prontoRef.current = pronto;
+  }, [pronto]);
+
   useEffect(() => {
     let cancelado = false;
 
     async function atualizarBlocos() {
-      if (markdown === ultimoMd.current && pronto) return;
+      if (markdown === ultimoMd.current && prontoRef.current) return;
       try {
         const blocos = await editor.tryParseMarkdownToBlocks(markdown || "");
         if (!cancelado && Array.isArray(blocos)) {
@@ -534,7 +546,15 @@ export function EditorNotion({
     const substituicao = formatarTextoAoColar(raw);
     if (substituicao) {
       e.preventDefault();
-      document.execCommand("insertText", false, substituicao);
+      try {
+        if (typeof (editor as any).insertInlineContent === "function") {
+          (editor as any).insertInlineContent(substituicao);
+        } else {
+          document.execCommand("insertText", false, substituicao);
+        }
+      } catch {
+        document.execCommand("insertText", false, substituicao);
+      }
     }
   };
 

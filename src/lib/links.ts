@@ -161,9 +161,16 @@ export function extrairLinks(
       alvo = indice.get(chave(bruto)) ?? null;
     } else if (m[4]) {
       // Formato URL https://.../?abrir=tarefas%2F...
-      const caminhoDec = decodeURIComponent(m[4]);
-      alvo = indice.get(chave(caminhoDec)) ?? indice.get(chave(caminhoDec.split("/").pop()!.replace(/\.md$/, ""))) ?? null;
-      bruto = alvo ? alvo.titulo : caminhoDec.split("/").pop()!.replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/\.md$/, "");
+      let caminhoDec = m[4];
+      try {
+        caminhoDec = decodeURIComponent(m[4]);
+      } catch {
+        caminhoDec = m[4];
+      }
+      const partes = caminhoDec.split("/");
+      const ultimo = partes.pop() || caminhoDec;
+      alvo = indice.get(chave(caminhoDec)) ?? indice.get(chave(ultimo.replace(/\.md$/, ""))) ?? null;
+      bruto = alvo ? alvo.titulo : ultimo.replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/\.md$/, "");
       exibir = bruto;
     }
 

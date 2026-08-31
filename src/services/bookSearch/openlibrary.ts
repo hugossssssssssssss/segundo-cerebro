@@ -31,7 +31,7 @@ export const openlibraryConector: ConectorBusca = {
         queryCompleta += " language:eng";
       }
       const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(queryCompleta)}&limit=40`;
-      const resposta = await fetch(url);
+      const resposta = await fetch(url, { signal: AbortSignal.timeout(8000) });
       
       if (!resposta.ok) {
         throw new Error(`Erro HTTP: ${resposta.status}`);

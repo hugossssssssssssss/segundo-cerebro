@@ -208,7 +208,7 @@ export default function Configuracoes() {
     setDiagnosticando(false);
   }
 
-  const atualizar = (campo: keyof Settings, valor: string) => {
+  const atualizar = <K extends keyof Settings>(campo: K, valor: Settings[K]) => {
     setCfg((c) => ({ ...c, [campo]: valor }));
     setResultado(null);
   };
@@ -551,7 +551,7 @@ export default function Configuracoes() {
             <input
               type="checkbox"
               checked={cfg.googleEmailAtivo}
-              onChange={(e) => setCfg((c) => ({ ...c, googleEmailAtivo: e.target.checked }))}
+              onChange={(e) => atualizar("googleEmailAtivo", e.target.checked)}
               className="rounded border-border text-primary focus:ring-primary h-4 w-4"
             />
             Ativar Envio de E-mail via Google (Apps Script)

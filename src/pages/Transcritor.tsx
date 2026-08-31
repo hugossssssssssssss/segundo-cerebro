@@ -58,16 +58,16 @@ export default function Transcritor() {
     if (!salvo) return [];
     try {
       const lido: ItemTranscricao[] = JSON.parse(salvo);
-      return lido.map((item) =>
-        item.status === "processando" || item.status === "pendente"
-          ? {
-              ...item,
-              status: "erro" as const,
-              erroMsg:
-                "A transcrição foi interrompida quando a página recarregou. Envie o áudio de novo.",
-            }
-          : item,
-      );
+      return lido.map((item) => {
+        if (item.status === "processando" || item.status === "pendente") {
+          return Object.assign({}, item, {
+            status: "erro" as const,
+            erroMsg:
+              "A transcrição foi interrompida quando a página recarregou. Envie o áudio de novo.",
+          });
+        }
+        return item;
+      });
     } catch {
       return [];
     }

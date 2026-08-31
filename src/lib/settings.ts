@@ -261,9 +261,13 @@ export function lerConfig(): Settings {
     //    ofuscado ≠ protegido)
     const enc = localStorage.getItem(CHAVE_OFUSCADA);
     if (enc) {
-      const decodificado = decodificarTexto(enc);
-      const parsed = JSON.parse(decodificado);
-      return limpar({ ...PADRAO, ...parsed });
+      try {
+        const decodificado = decodificarTexto(enc);
+        const parsed = JSON.parse(decodificado);
+        return limpar({ ...PADRAO, ...parsed });
+      } catch {
+        // Se a chave ofuscada falhar (ex: salt resetado), tenta recuperar do formato legado
+      }
     }
 
     // 2. Fallback para formato antigo em texto puro (migração transparente)

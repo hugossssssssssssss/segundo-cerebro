@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { Botao, Cartao, Aviso } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
-import { cn } from "@/lib/utils";
+import { cn, hojeISO } from "@/lib/utils";
 import { lerConfig } from "@/lib/settings";
 import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
 import { carregarRepo } from "@/lib/repo";
@@ -879,7 +879,7 @@ export default function Conversor() {
       const acervo = await carregarRepo(cfg);
       const caminho = nomeLivre("notas", tituloProvavel, acervo.map((i) => i.caminho));
       const mdFormatado = escreverMarkdown({
-        dados: { titulo: tituloProvavel, criado_em: new Date().toISOString().slice(0, 10) },
+        dados: { titulo: tituloProvavel, criado_em: hojeISO() },
         corpo: markdownResultado,
       });
 

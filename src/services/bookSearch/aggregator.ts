@@ -16,18 +16,18 @@ export async function buscarLivrosUnificado(
 
   // Executa todas as buscas em paralelo
   const promessas = CONECTORES.map(async (conector) => {
+    let timerId: ReturnType<typeof setTimeout> | undefined;
     try {
-      // Cria uma promessa de timeout para o conector
-      const timeoutPromessa = new Promise<LivroBuscado[]>((_, reject) =>
-        setTimeout(() => reject(new Error(`Timeout na fonte: ${conector.nome}`)), timeoutMs)
-      );
+      const timeoutPromessa = new Promise<LivroBuscado[]>((_, reject) => {
+        timerId = setTimeout(() => reject(new Error(`Timeout na fonte: ${conector.nome}`)), timeoutMs);
+      });
 
-      // Corrida entre a busca real e o timeout
       return await Promise.race([conector.buscar(termoBusca, idioma), timeoutPromessa]);
     } catch (erro) {
       console.warn(`[Buscador de Livros] Erro ou timeout na fonte ${conector.nome}:`, erro);
-      // Lança o erro para sabermos quais fontes falharam no allSettled
       throw erro;
+    } finally {
+      if (timerId) clearTimeout(timerId);
     }
   });
 

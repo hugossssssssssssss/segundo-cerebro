@@ -11,6 +11,7 @@ import type { Settings } from "./settings";
 import { escreverMarkdown, nomeDeArquivo, lerMarkdown } from "./markdown";
 import { atualizarCacheLocal } from "./repo";
 import { salvarRascunhoLocal } from "./offlineQueue";
+import { hojeISO } from "./utils";
 
 export type CategoriaNoticia = "futebol" | "design" | "tech" | "brasil" | "curiosidades" | "personalizado";
 export type ModoExibicao = "revista" | "cards" | "feed";
@@ -309,9 +310,19 @@ export async function buscarRssJornalismo(
 
   const idsCurtidos = new Set(obterIdsCurtidos());
 
+  const parseDataIsoSegura = (val?: string | null): string => {
+    if (!val) return new Date().toISOString();
+    try {
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+    } catch {
+      return new Date().toISOString();
+    }
+  };
+
   for (const proxyUrl of proxies) {
     try {
-      const res = await fetch(proxyUrl);
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(6000) });
       if (!res.ok) continue;
 
       // 1. rss2json (retorna JSON estruturado com o campo `content` integral!)
@@ -338,7 +349,7 @@ export async function buscarRssJornalismo(
               descricao: descCard ? `${descCard}...` : undefined,
               conteudoCompleto: rawContent, // Matéria integral SEM CORTE!
               tempoLeituraMinutos: calcularTempoLeitura(rawContent),
-              data: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
+              data: parseDataIsoSegura(item.pubDate),
               curtido: idsCurtidos.has(id),
             };
           });
@@ -372,7 +383,7 @@ export async function buscarRssJornalismo(
             descricao: descCard ? `${descCard}...` : undefined,
             conteudoCompleto: rawContent, // Matéria integral SEM CORTE!
             tempoLeituraMinutos: calcularTempoLeitura(rawContent),
-            data: new Date(pubDate).toISOString(),
+            data: parseDataIsoSegura(pubDate),
             curtido: idsCurtidos.has(id),
           };
         });
@@ -506,7 +517,7 @@ export async function buscarNoticiasPorCategoria(categoria: CategoriaNoticia): P
 // ── INTEGRAÇÕES COM O SEGUNDO CÉREBRO ─────────────────────────────────────────────
 
 export async function criarNotaDaNoticia(noticia: ItemNoticia, _cfg: Settings): Promise<string> {
-  const dataHoje = new Date().toISOString().slice(0, 10);
+  const dataHoje = hojeISO();
   const nomeArq = `notas/${nomeDeArquivo(`Nota - ${noticia.titulo}`)}`;
 
   const frontmatter = {
@@ -541,7 +552,7 @@ export async function criarNotaDaNoticia(noticia: ItemNoticia, _cfg: Settings): 
 }
 
 export async function salvarNoticiaComoReferencia(noticia: ItemNoticia, _cfg: Settings): Promise<string> {
-  const dataHoje = new Date().toISOString().slice(0, 10);
+  const dataHoje = hojeISO();
   const nomeArq = `referencias/${nomeDeArquivo(noticia.titulo)}`;
 
   const frontmatter = {
@@ -582,7 +593,7 @@ export async function salvarNoticiaComoReferencia(noticia: ItemNoticia, _cfg: Se
 }
 
 export async function criarTarefaDaNoticia(noticia: ItemNoticia, _cfg: Settings): Promise<string> {
-  const dataHoje = new Date().toISOString().slice(0, 10);
+  const dataHoje = hojeISO();
   const tituloTarefa = `Ler e analisar: ${noticia.titulo}`;
   const nomeArq = `tarefas/${nomeDeArquivo(tituloTarefa)}`;
 

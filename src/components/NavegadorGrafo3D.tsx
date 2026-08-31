@@ -42,6 +42,11 @@ export function NavegadorGrafo3D({
   const [simulando, setSimulando] = useState(true);
   const [noHover, setNoHover] = useState<NoGrafo | null>(null);
 
+  const noHoverRef = useRef<NoGrafo | null>(noHover);
+  useEffect(() => {
+    noHoverRef.current = noHover;
+  }, [noHover]);
+
   // Posição de Pan e Zoom 2D da Câmera
   const cameraRef = useRef({
     panX: 0,
@@ -106,14 +111,15 @@ export function NavegadorGrafo3D({
       ctx.clearRect(0, 0, largura, altura);
 
       const { nos, arestas } = grafoRef.current;
+      const hoverItem = noHoverRef.current;
 
       // Mapeamento de nós conectados ao nó sob hover
       const conexoesHover = new Set<string>();
-      if (noHover) {
-        conexoesHover.add(noHover.id);
+      if (hoverItem) {
+        conexoesHover.add(hoverItem.id);
         for (const a of arestas) {
-          if (a.origem === noHover.id) conexoesHover.add(a.destino);
-          if (a.destino === noHover.id) conexoesHover.add(a.origem);
+          if (a.origem === hoverItem.id) conexoesHover.add(a.destino);
+          if (a.destino === hoverItem.id) conexoesHover.add(a.origem);
         }
       }
 
@@ -136,7 +142,7 @@ export function NavegadorGrafo3D({
         const y2 = centroY + n2.y * zoom;
 
         const estaConectadoAoHover =
-          noHover && (a.origem === noHover.id || a.destino === noHover.id);
+          hoverItem && (a.origem === hoverItem.id || a.destino === hoverItem.id);
 
         ctx.beginPath();
         ctx.moveTo(x1, y1);
@@ -149,7 +155,7 @@ export function NavegadorGrafo3D({
         } else {
           ctx.strokeStyle = escuro ? "rgba(148, 163, 184, 0.18)" : "rgba(100, 116, 139, 0.22)";
           ctx.lineWidth = 1 * zoom;
-          ctx.globalAlpha = noHover ? 0.08 : 0.4;
+          ctx.globalAlpha = hoverItem ? 0.08 : 0.4;
         }
         ctx.stroke();
         ctx.globalAlpha = 1.0;
@@ -166,12 +172,12 @@ export function NavegadorGrafo3D({
           ? no.titulo.toLowerCase().includes(pesquisa.toLowerCase())
           : true;
 
-        const ehHover = noHover?.id === no.id;
+        const ehHover = hoverItem?.id === no.id;
         const ehConectadoAoHover = conexoesHover.has(no.id);
 
         let alpha = 1.0;
         if (pesquisa && !coincidePesquisa) alpha = 0.15;
-        else if (noHover && !ehConectadoAoHover) alpha = 0.2;
+        else if (hoverItem && !ehConectadoAoHover) alpha = 0.2;
 
         const raioBase = Math.max(4, Math.min(no.raio * 0.7, 16));
         const raioFinal = (ehHover ? raioBase * 1.3 : raioBase) * zoom;
@@ -202,7 +208,7 @@ export function NavegadorGrafo3D({
         // Rótulo do Título (aparece no hover, no zoom próximo ou na busca)
         const deveMostrarRotulo =
           ehHover ||
-          (noHover && ehConectadoAoHover) ||
+          (hoverItem && ehConectadoAoHover) ||
           zoom > 1.2 ||
           (pesquisa && coincidePesquisa);
 
@@ -223,7 +229,7 @@ export function NavegadorGrafo3D({
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [simulando, filtroTipo, pesquisa, noHover]);
+  }, [simulando, filtroTipo, pesquisa]);
 
   // Controles de Pan (Arraste 2D do Canvas)
   const estaArrastandoRef = useRef(false);

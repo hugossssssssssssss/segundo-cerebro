@@ -34,7 +34,7 @@ export const gutenbergConector: ConectorBusca = {
       if (idioma && idioma !== "todos") {
         url += `&languages=${idioma}`;
       }
-      const resposta = await fetch(url);
+      const resposta = await fetch(url, { signal: AbortSignal.timeout(8000) });
       
       if (!resposta.ok) {
         throw new Error(`Erro HTTP: ${resposta.status}`);

@@ -66,7 +66,7 @@ function normalizar(s: string): string {
  * Recorta ~120 caracteres em volta do que casou.
  */
 function recortar(corpo: string, termos: readonly string[]): string {
-  const limpo = corpo.replace(/\s+/g, " ").trim();
+  const limpo = (corpo || "").replace(/\s+/g, " ").trim();
   const corpoNorm = normalizar(limpo);
 
   let pos = -1;
@@ -257,7 +257,7 @@ export function buscar(itens: ItemRepo[], termo: string): Resultado[] {
       caminho: item.caminho,
       titulo: tituloProvavel(item.doc, item.nome),
       tipo: tipoDoItem(item),
-      trecho: recortar(item.doc.corpo, achado.terms),
+      trecho: recortar(item.doc?.corpo || "", achado.terms),
       peso: achado.score,
     });
   }
@@ -274,19 +274,19 @@ export function buscar(itens: ItemRepo[], termo: string): Resultado[] {
           caminho: item.caminho,
           titulo: tituloProvavel(item.doc, item.nome),
           tipo: tipoDoItem(item),
-          trecho: recortar(item.doc.corpo, [termoNorm]),
+          trecho: recortar(item.doc?.corpo || "", [termoNorm]),
           peso: 3,
         });
         continue;
       }
 
-      const tagsNorm = normalizar(comoLista(item.doc.dados.tags).join(" "));
+      const tagsNorm = normalizar(comoLista(item.doc?.dados?.tags).join(" "));
       if (tagsNorm.includes(termoNorm)) {
         saida.push({
           caminho: item.caminho,
           titulo: tituloProvavel(item.doc, item.nome),
           tipo: tipoDoItem(item),
-          trecho: recortar(item.doc.corpo, [termoNorm]),
+          trecho: recortar(item.doc?.corpo || "", [termoNorm]),
           peso: 1,
         });
         continue;

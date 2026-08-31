@@ -123,7 +123,7 @@ export default function Referencias() {
         navegar(location.pathname, { replace: true });
       }
     }
-  }, [location.pathname, location.search, location.hash, refs]);
+  }, [location.pathname, location.search, location.hash, refs, editando?.caminho, navegar]);
 
   // ── Ações de Mídia ────────────────────────────────────────────────────────
 
@@ -224,6 +224,11 @@ export default function Referencias() {
     toast("Texto extraído e inserido nas anotações da referência!");
   }
 
+  const enviarImagemRef = useRef(enviarImagem);
+  enviarImagemRef.current = enviarImagem;
+  const editandoRef = useRef(editando);
+  editandoRef.current = editando;
+
   // ── Drag & Drop e Paste Global ────────────────────────────────────────────
   useEffect(() => {
     const aoArrastarSobreGlobal = (e: DragEvent) => {
@@ -247,7 +252,7 @@ export default function Referencias() {
       if (files && files.length > 0) {
         const file = files[0];
         if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
-          enviarImagem(file, editando);
+          enviarImagemRef.current(file, editandoRef.current);
         }
       }
     };
@@ -259,7 +264,7 @@ export default function Referencias() {
         if (item.type.startsWith("image/") || item.type.startsWith("video/")) {
           const file = item.getAsFile();
           if (file) {
-            enviarImagem(file, editando);
+            enviarImagemRef.current(file, editandoRef.current);
             break;
           }
         }
@@ -277,7 +282,7 @@ export default function Referencias() {
       window.removeEventListener("drop", aoSoltarGlobal);
       window.removeEventListener("paste", aoColarGlobal);
     };
-  }, [editando]);
+  }, []);
 
   // ── Criar pasta ────────────────────────────────────────────────────────────
   function criarPasta() {

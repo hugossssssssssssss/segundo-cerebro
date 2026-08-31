@@ -4,6 +4,8 @@ import { Network } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useSalvar } from "@/lib/useSalvar";
 import { useAcervoRepo } from "@/lib/useItemRepo";
+import { invalidarCache } from "@/lib/repo";
+import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import { escreverMarkdown, tituloProvavel, mesclarFrontmatter } from "@/lib/markdown";
 import { montarIndice, alvosUnicos, mencoesA } from "@/lib/links";
 import { Botao, Vazio, Carregando, Aviso } from "@/components/ui";
@@ -81,12 +83,16 @@ export default function GrafoNeural() {
           }
         : null
     );
+    invalidarCache();
+    dispararAtualizacaoAcervo();
   };
 
   const removerItemAberto = async () => {
     if (!aberto) return;
     await apagarItem(aberto.caminho, aberto.sha);
     setAberto(null);
+    invalidarCache();
+    dispararAtualizacaoAcervo();
   };
 
   if (!pronto) {

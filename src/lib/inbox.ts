@@ -113,7 +113,10 @@ export function adiarDataHora(
   opcao: "1h" | "amanha" | "3dias" | "proxima_segunda",
   agora: Date = new Date(),
 ): string {
-  let baseDate = new Date(dataHoraBase);
+  const dataNormalizada = dataHoraBase.includes(" ") && !dataHoraBase.includes("T")
+    ? dataHoraBase.replace(" ", "T")
+    : dataHoraBase;
+  let baseDate = new Date(dataNormalizada);
   if (isNaN(baseDate.getTime())) {
     baseDate = new Date(agora);
   }

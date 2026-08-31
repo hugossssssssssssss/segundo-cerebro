@@ -8,7 +8,26 @@ import { Gamepad2 } from "lucide-react";
 export type AbaJogos = "termo" | "cruzadinha";
 
 export default function Jogos() {
-  const [abaAtiva, setAbaAtiva] = useState<AbaJogos>("termo");
+  const [abaAtiva, setAbaAtiva] = useState<AbaJogos>(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      const abaUrl = p.get("aba") as AbaJogos | null;
+      if (abaUrl === "termo" || abaUrl === "cruzadinha") return abaUrl;
+      const salva = localStorage.getItem("klaus_aba_jogos") as AbaJogos | null;
+      if (salva === "termo" || salva === "cruzadinha") return salva;
+    }
+    return "termo";
+  });
+
+  const mudarAba = (aba: AbaJogos) => {
+    setAbaAtiva(aba);
+    try {
+      localStorage.setItem("klaus_aba_jogos", aba);
+      const url = new URL(window.location.href);
+      url.searchParams.set("aba", aba);
+      window.history.replaceState(null, "", url.toString());
+    } catch {}
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-200 w-full">
@@ -30,7 +49,7 @@ export default function Jogos() {
       <div className="flex items-center gap-2 border-b border-border/80 pb-2">
         <button
           type="button"
-          onClick={() => setAbaAtiva("termo")}
+          onClick={() => mudarAba("termo")}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
             abaAtiva === "termo"
               ? "bg-primary text-primary-foreground shadow-xs scale-102"
@@ -44,7 +63,7 @@ export default function Jogos() {
 
         <button
           type="button"
-          onClick={() => setAbaAtiva("cruzadinha")}
+          onClick={() => mudarAba("cruzadinha")}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
             abaAtiva === "cruzadinha"
               ? "bg-primary text-primary-foreground shadow-xs scale-102"

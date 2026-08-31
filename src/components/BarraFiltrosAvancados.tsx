@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, hojeISO } from "@/lib/utils";
 
 export type TipoPropriedadeFiltro = "texto" | "tags" | "status" | "data" | "numero" | "checkbox";
 
@@ -158,7 +158,7 @@ export function BarraFiltrosAvancados({
     if (prop.tipo === "status" && prop.opcoes && prop.opcoes.length > 0) {
       valorInicial = prop.opcoes[0];
     } else if (prop.tipo === "data") {
-      valorInicial = new Date().toISOString().split("T")[0];
+      valorInicial = hojeISO();
     }
 
     const novaRegra: RegraFiltro = {
@@ -402,7 +402,7 @@ export function filtrarItensPorRegras<T>(
 ): T[] {
   if (regras.length === 0) return itens;
 
-  const hojeIso = new Date().toISOString().split("T")[0];
+  const hojeIso = hojeISO();
 
   return itens.filter((item) => {
     return regras.every((regra) => {

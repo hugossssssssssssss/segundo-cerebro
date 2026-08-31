@@ -110,14 +110,14 @@ export function HistoricoDiffModal({
       .then((txt: string) => setConteudoAntigo(txt))
       .catch(() => setConteudoAntigo(""))
       .finally(() => setCarregandoDiff(false));
-  }, [commitSelecionado, caminho, cfg]);
+  }, [commitSelecionado, caminho, cfg.repoOwner, cfg.repoName, cfg.githubToken]);
 
   useEffect(() => {
     if (!aberto || !caminho || conteudoAtual !== undefined) return;
     lerOuVazio(cfg, caminho)
       .then((txt: string) => setConteudoSalvo(txt))
       .catch(() => setConteudoSalvo(""));
-  }, [aberto, caminho, conteudoAtual, cfg]);
+  }, [aberto, caminho, conteudoAtual, cfg.repoOwner, cfg.repoName, cfg.githubToken]);
 
   const textoAtual = conteudoAtual ?? conteudoSalvo;
   const ehModoEscuro = document.documentElement.classList.contains("dark");

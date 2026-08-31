@@ -269,7 +269,7 @@ export default function Contatos() {
       });
     }
     setAberta({ ...c, original: { titulo: c.titulo, corpo: c.corpo, bruto: c.bruto } });
-    window.history.replaceState(null, "", `?abrir=${encodeURIComponent(c.caminho)}`);
+    navegar(`?abrir=${encodeURIComponent(c.caminho)}`, { replace: true });
   };
 
   const novoContato = (paiIdInicial?: string) => {

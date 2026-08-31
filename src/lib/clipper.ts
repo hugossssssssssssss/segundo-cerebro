@@ -315,6 +315,7 @@ export async function capturarUrlWeb(url: string): Promise<ResultadoClipping> {
     try {
       const resp = await fetch(montarUrl(urlLimpa), {
         headers: { Accept: "text/html,application/xhtml+xml" },
+        signal: AbortSignal.timeout(8000),
       });
       if (resp.ok) {
         html = await resp.text();

@@ -38,6 +38,10 @@ export function useMutacaoItem<T extends ItemBase>(
 
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const itensPendentesRef = useRef<Map<string, { item: T; commitMsg?: string }>>(new Map());
+  const opcoesRef = useRef(opcoes);
+  opcoesRef.current = opcoes;
+  const salvarTextoRef = useRef(salvarTexto);
+  salvarTextoRef.current = salvarTexto;
 
   // Limpa e executa qualquer gravação pendente ao desmontar o componente
   useEffect(() => {
@@ -46,9 +50,9 @@ export function useMutacaoItem<T extends ItemBase>(
         clearTimeout(timer);
         const pendente = itensPendentesRef.current.get(caminho);
         if (pendente) {
-          const doc = opcoes.serializar(pendente.item);
+          const doc = opcoesRef.current.serializar(pendente.item);
           const texto = escreverMarkdown(doc);
-          salvarTexto(pendente.item.caminho, texto, pendente.item.sha || undefined, pendente.commitMsg, true).catch(
+          salvarTextoRef.current(pendente.item.caminho, texto, pendente.item.sha || undefined, pendente.commitMsg, true).catch(
             () => {},
           );
         }
@@ -56,7 +60,7 @@ export function useMutacaoItem<T extends ItemBase>(
       timersRef.current.clear();
       itensPendentesRef.current.clear();
     };
-  }, [opcoes, salvarTexto]);
+  }, []);
 
   const mutar = useCallback(
     async (item: T, commitMsg?: string, imediato = false): Promise<string> => {

@@ -34,10 +34,11 @@ import { tituloProvavel, escreverMarkdown, lerMarkdown, nomeLivre } from "@/lib/
 import { ler as lerArquivoGithub } from "@/lib/github";
 import { PASTAS } from "@/lib/tipos";
 import { toast } from "@/lib/toast";
+import { hojeISO } from "@/lib/utils";
 import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 
-import { Vazio } from "@/components/ui";
+import { Vazio, Aviso } from "@/components/ui";
 
 // Suíte Modular Bento Home
 import {
@@ -117,6 +118,7 @@ export default function Home() {
   }
 
   const [notaAbertaHome, setNotaAbertaHome] = useState<NotaAbertaHome | null>(null);
+  const [erroCarregarHome, setErroCarregarHome] = useState<string | null>(null);
   const [modoVisaoNotaHome, setModoVisaoNotaHome] = useState<ModoVisaoNotion>(() => {
     const salvo = localStorage.getItem("klaus_modo_visao_notas");
     return (salvo as ModoVisaoNotion) || "lado";
@@ -178,7 +180,7 @@ export default function Home() {
         }
       }
     },
-    [notas, pronto, cfg],
+    [notas, pronto, cfg.githubToken, cfg.repoOwner, cfg.repoName, cfg.branch],
   );
 
   const salvarNotaHome = useCallback(async () => {
@@ -351,8 +353,9 @@ export default function Home() {
       } catch {
         // ignora se localStorage estiver lotado
       }
-    } catch {
-      // Erro tratado silenciosamente para não quebrar a UI
+      setErroCarregarHome(null);
+    } catch (e: any) {
+      setErroCarregarHome(e?.message || "Não foi possível carregar os dados mais recentes do GitHub.");
     }
   }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
@@ -399,7 +402,7 @@ export default function Home() {
 
   // Criar tarefa rápida
   const aoCriarTarefaRapida = async (titulo: string) => {
-    const hoje = new Date().toISOString().split("T")[0];
+    const hoje = hojeISO();
     const nova: Tarefa = {
       bruto: {},
       caminho: "",
@@ -438,7 +441,7 @@ export default function Home() {
     const texto = escreverMarkdown({
       dados: {
         titulo,
-        criado: new Date().toISOString().split("T")[0],
+        criado: hojeISO(),
         tags: ["rascunho"],
       },
       corpo,
@@ -509,6 +512,12 @@ export default function Home() {
         aoAlternarModoEdicao={alternarModoEdicao}
         aoRestaurarPadrao={restaurarPadrao}
       />
+
+      {erroCarregarHome && (
+        <Aviso tom="erro">
+          {erroCarregarHome}. Os itens exibidos abaixo usam a cópia local em cache.
+        </Aviso>
+      )}
 
       {/* 2. Malha de 12 Colunas com Total Liberdade de Largura e Altura */}
       <div className="grid grid-cols-12 gap-3.5 items-start w-full">

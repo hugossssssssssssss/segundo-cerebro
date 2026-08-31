@@ -586,7 +586,7 @@ export function BarraFavoritos({ className }: { className?: string }) {
       cancelado = true;
       window.removeEventListener(EVENTO_FAVORITOS_ATUALIZADOS, atualizarDaChave);
     };
-  }, [pronto, cfg]);
+  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
   // Salva imediatamente qualquer alteração pendente se o usuário fechar a aba ou janela
   useEffect(() => {
@@ -599,14 +599,14 @@ export function BarraFavoritos({ className }: { className?: string }) {
       window.removeEventListener("beforeunload", aoSair);
       window.removeEventListener("pagehide", aoSair);
     };
-  }, [cfg]);
+  }, [cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
   const navegarParaUrl = useCallback(
     (url: string) => {
       flushPersistenciaPendente(cfg);
       window.location.href = url;
     },
-    [cfg],
+    [cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch],
   );
 
   // Observer de redimensionamento do container para cálculo de overflow

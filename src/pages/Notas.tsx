@@ -177,7 +177,7 @@ export default function Notas() {
         setAberta({ ...nota, original: { titulo: nota.titulo, corpo: nota.corpo, bruto: nota.bruto } });
       }
     }
-  }, [location.pathname, location.search, location.hash, acervo.length > 0, pastaAtual, todasNotas]);
+  }, [location.pathname, location.search, location.hash, acervo, pastaAtual, todasNotas]);
 
   const mudou = aberta
     ? aberta.titulo !== aberta.original.titulo ||
@@ -203,7 +203,7 @@ export default function Notas() {
     };
     addEventListener("popstate", aoVoltar);
     return () => removeEventListener("popstate", aoVoltar);
-  }, [aberta !== null]);
+  }, [aberta !== null, fecharNota]);
 
   useEffect(() => {
     const aoAbrirItem = (e: Event) => {

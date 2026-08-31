@@ -41,7 +41,7 @@ import { Carregando, ModalConfirmacao } from "@/components/ui";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn, formatarNomeAmigavel } from "@/lib/utils";
+import { cn, formatarNomeAmigavel, hojeISO } from "@/lib/utils";
 import { format, startOfWeek, endOfWeek, addDays, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -250,7 +250,7 @@ export default function Inbox() {
 
   // ── Compilação Abrangente de Todos os Compromissos ────────────────────────
   const todosCompromissos = useMemo<CompromissoSemana[]>(() => {
-    const hojeStr = new Date().toISOString().split("T")[0];
+    const hojeStr = hojeISO();
     const lista: CompromissoSemana[] = [];
 
     for (const item of acervo) {
@@ -428,7 +428,7 @@ export default function Inbox() {
   }, [dataReferencia]);
 
   // Compromissos Atrasados: APENAS o que venceu antes de hoje
-  const hojeRealIso = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const hojeRealIso = useMemo(() => hojeISO(), []);
 
   const atrasadosReais = useMemo(() => {
     return todosCompromissos.filter((c) => c.dataIso < hojeRealIso && !c.concluido);
@@ -511,7 +511,7 @@ export default function Inbox() {
   };
 
   const abrirNovoLembrete = () => {
-    const hojeStr = new Date().toISOString().split("T")[0];
+    const hojeStr = hojeISO();
     const novoRascunho: CompromissoSemana = {
       id: "novo-lembrete",
       tipo: "lembrete",
@@ -559,7 +559,7 @@ export default function Inbox() {
     if (!itemAberto) return;
     setSalvandoItem(true);
 
-    const hojeStr = new Date().toISOString().split("T")[0];
+    const hojeStr = hojeISO();
     const ehLembrete = itemAberto.tipo === "lembrete";
     const caminhosExistentes = acervo.map((i) => i.caminho);
     const caminhoReal =

@@ -93,9 +93,13 @@ export function lerParametroAbrir(loc: { search: string; hash: string }): string
   const abrirSearch = paramsSearch.get("abrir");
   if (abrirSearch) return abrirSearch;
 
-  const matchHash = loc.hash.match(/[?&]abrir=([^&]+)/) || window.location.href.match(/[?&]abrir=([^&]+)/);
+  const matchHash = loc.hash.match(/[?&]abrir=([^&]+)/) || (typeof window !== "undefined" ? window.location.href.match(/[?&]abrir=([^&]+)/) : null);
   if (matchHash) {
-    return decodeURIComponent(matchHash[1]);
+    try {
+      return decodeURIComponent(matchHash[1]);
+    } catch {
+      return matchHash[1];
+    }
   }
 
   return null;
