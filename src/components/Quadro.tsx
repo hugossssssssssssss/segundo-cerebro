@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -383,6 +383,7 @@ export function Quadro({
 }) {
   const [arrastando, setArrastando] = useState<Tarefa | null>(null);
   const [colunaAtivaMobile, setColunaAtivaMobile] = useState<Status | "todas">("todas");
+  const [filtroUrgencia, setFiltroUrgencia] = useState<"todas" | "atrasadas" | "hoje" | "urgentes">("todas");
   const [colapsadas, setColapsadas] = useState<Record<Status, boolean>>(() => {
     try {
       const salvo = localStorage.getItem("klaus_kanban_colapsadas");
@@ -399,6 +400,17 @@ export function Quadro({
       return proximo;
     });
   };
+
+  const tarefasFiltradas = useMemo(() => {
+    if (filtroUrgencia === "todas") return tarefas;
+    return tarefas.filter((t) => {
+      const u = urgencia(t);
+      if (filtroUrgencia === "atrasadas") return u === "atrasada";
+      if (filtroUrgencia === "hoje") return u === "hoje";
+      if (filtroUrgencia === "urgentes") return u === "atrasada" || u === "hoje" || u === "proxima";
+      return true;
+    });
+  }, [tarefas, filtroUrgencia]);
 
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -419,21 +431,13 @@ export function Quadro({
     setArrastando(null);
     const { active, over } = e;
     if (!over) return;
-
-    const movida = tarefas.find((t) => t.caminho === active.id);
-    if (!movida) return;
-
-    const destino = STATUS.includes(over.id as Status)
-      ? (over.id as Status)
-      : tarefas.find((t) => t.caminho === over.id)?.status;
-
-    if (!destino || destino === movida.status) return;
-    aoMudarStatus(movida, destino);
+    const destinoStatus = over.id as Status;
+    const tarefaArrastada = tarefas.find((t) => t.caminho === active.id);
+    if (!tarefaArrastada || tarefaArrastada.status === destinoStatus) return;
+    aoMudarStatus(tarefaArrastada, destinoStatus);
   }
 
-  const statusExibidos = colunaAtivaMobile === "todas" 
-    ? STATUS 
-    : STATUS.filter((s) => s === colunaAtivaMobile);
+  const statusExibidos = colunaAtivaMobile === "todas" ? STATUS : [colunaAtivaMobile];
 
   return (
     <DndContext
@@ -443,6 +447,35 @@ export function Quadro({
       onDragEnd={aoTerminar}
       onDragCancel={() => setArrastando(null)}
     >
+      {/* Barra de Filtro Rápido por Urgência / Prazo */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs font-semibold text-muted-foreground mr-1">Prazo:</span>
+          {(
+            [
+              { id: "todas", rotulo: "Todas" },
+              { id: "urgentes", rotulo: "🔥 Urgentes" },
+              { id: "hoje", rotulo: "📅 Para Hoje" },
+              { id: "atrasadas", rotulo: "⚠️ Atrasadas" },
+            ] as const
+          ).map((opcao) => (
+            <button
+              key={opcao.id}
+              type="button"
+              onClick={() => setFiltroUrgencia(opcao.id)}
+              className={cn(
+                "text-xs px-2.5 py-1 rounded-lg transition-colors font-medium cursor-pointer",
+                filtroUrgencia === opcao.id
+                  ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
+                  : "bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+            >
+              {opcao.rotulo}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Seletor rápido de coluna no mobile para visualização simplificada */}
       <div className="flex sm:hidden items-center gap-1 p-1 bg-card rounded-xl border border-border/80 mb-3 shadow-2xs overflow-x-auto">
         <button
@@ -455,10 +488,10 @@ export function Quadro({
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          Todas ({tarefas.length})
+          Todas ({tarefasFiltradas.length})
         </button>
         {STATUS.map((s) => {
-          const qtd = tarefas.filter((t) => t.status === s).length;
+          const qtd = tarefasFiltradas.filter((t) => t.status === s).length;
           const ativa = colunaAtivaMobile === s;
           return (
             <button
@@ -485,7 +518,7 @@ export function Quadro({
           <Coluna
             key={s}
             status={s}
-            tarefas={tarefas.filter((t) => t.status === s)}
+            tarefas={tarefasFiltradas.filter((t) => t.status === s)}
             aoAbrir={aoAbrir}
             aoCronometrar={aoCronometrar}
             gravandoCaminho={gravandoCaminho}

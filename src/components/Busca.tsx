@@ -92,7 +92,30 @@ export function Busca({
   const [erro, setErro] = useState("");
   const [itemFocadoIndex, setItemFocadoIndex] = useState(0);
   const [mostrarTodosRecentes, setMostrarTodosRecentes] = useState(false);
+  const [buscasRecentes, setBuscasRecentes] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("klaus_buscas_recentes") || "[]");
+    } catch {
+      return [];
+    }
+  });
   const entrada = useRef<HTMLInputElement>(null);
+
+  const salvarBuscaRecente = (buscaTermo: string) => {
+    const t = buscaTermo.trim();
+    if (!t || t.length < 2) return;
+    setBuscasRecentes((prev) => {
+      const semDuplicados = prev.filter((item) => item.toLowerCase() !== t.toLowerCase());
+      const novas = [t, ...semDuplicados].slice(0, 6);
+      localStorage.setItem("klaus_buscas_recentes", JSON.stringify(novas));
+      return novas;
+    });
+  };
+
+  const limparBuscasRecentes = () => {
+    setBuscasRecentes([]);
+    localStorage.removeItem("klaus_buscas_recentes");
+  };
 
   let workspace: any = null;
   try {
@@ -101,6 +124,7 @@ export function Busca({
   } catch {}
 
   const aoSelecionarFerramenta = (f: FerramentaApp) => {
+    if (termo.trim()) salvarBuscaRecente(termo);
     aoFechar();
     if (f.rota === "acao:alternar_tema") {
       alternarTema();
@@ -121,6 +145,7 @@ export function Busca({
   };
 
   const aoSelecionarItemRepo = (caminho: string, tipo?: string, titulo?: string) => {
+    if (termo.trim()) salvarBuscaRecente(termo);
     if (workspace?.workspaceAberto) {
       const itemRepo = acervo.find((i) => i.caminho === caminho);
       if (itemRepo) {
@@ -411,6 +436,38 @@ export function Busca({
           ) : termo.trim().length < 2 ? (
             /* ESTADO INICIAL (Sem pesquisa ativa) */
             <div className="p-4 space-y-6">
+              {/* Seção de Buscas Recentes */}
+              {buscasRecentes.length > 0 && (
+                <div className="space-y-2 px-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    <div className="flex items-center gap-1.5">
+                      <Clock size={13} className="text-primary" />
+                      <span>Buscas Recentes</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={limparBuscasRecentes}
+                      className="text-[11px] text-muted-foreground hover:text-foreground font-normal lowercase cursor-pointer"
+                    >
+                      limpar
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {buscasRecentes.map((b, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setTermo(b)}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-secondary/80 hover:bg-secondary text-foreground flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Search size={11} className="opacity-60" />
+                        <span>{b}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Seção de Favoritos */}
               {(itensFavoritados.ferramentas.length > 0 || itensFavoritados.repoItens.length > 0) && (
                 <div className="space-y-2">

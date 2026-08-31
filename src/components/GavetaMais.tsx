@@ -51,6 +51,15 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
     return () => window.removeEventListener(EVENTO_MENU_ATUALIZADO, atualizarMenu);
   }, [atualizarMenu]);
 
+  useEffect(() => {
+    if (!aberta) return;
+    const aoTecla = (e: KeyboardEvent) => {
+      if (e.key === "Escape") aoFechar();
+    };
+    window.addEventListener("keydown", aoTecla);
+    return () => window.removeEventListener("keydown", aoTecla);
+  }, [aberta, aoFechar]);
+
   if (!aberta) return null;
 
   return (

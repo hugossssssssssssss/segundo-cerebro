@@ -52,6 +52,7 @@ import { inicializarLogger } from "@/lib/logger";
 import { CronometroProvider, useCronometro, LISTA_SONS_AMBIENTE } from "@/components/ContextoCronometro";
 import { Pomodoro } from "@/components/Pomodoro";
 import { obterRotuloRota, EVENTO_MENU_ATUALIZADO, sincronizarMenuComGithub } from "@/lib/menuPersonalizado";
+import { alternarTema } from "@/lib/tema";
 
 inicializarLogger();
 
@@ -135,6 +136,9 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         if (!workspaceAberto) {
           setColapsada((v) => !v);
         }
+      } else if (tecla === "l" && e.shiftKey) {
+        e.preventDefault();
+        alternarTema();
       }
     };
     document.addEventListener("keydown", aoTeclar);

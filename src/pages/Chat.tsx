@@ -31,6 +31,15 @@ export default function Chat() {
     fim.current?.scrollIntoView({ behavior: "smooth" });
   }, [falas, pensando]);
 
+  const abortRef = useRef<AbortController | null>(null);
+
+  const cancelarGeracao = () => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+  };
+
   async function enviar(texto: string) {
     if (!texto.trim() || pensando) return;
 
@@ -40,12 +49,16 @@ export default function Chat() {
     setPensando(true);
     setErro("");
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const contexto = montarContextoSemantico(acervo, texto);
       const { texto: limpo, chamadas } = await conversar(
         cfg,
         novas.map(({ papel, texto }) => ({ papel, texto })),
         contexto,
+        controller.signal,
       );
 
       const acoes = acoesDeChamadas(chamadas);
@@ -57,6 +70,7 @@ export default function Chat() {
       setErro(e instanceof Error ? e.message : String(e));
       setFalas(novas); // mantém o que você escreveu
     } finally {
+      abortRef.current = null;
       setPensando(false);
     }
   }
@@ -290,15 +304,26 @@ export default function Chat() {
               </button>
             )}
           </div>
-          <Botao
-            tamanho="pequeno"
-            onClick={() => enviar(entrada)}
-            disabled={pensando || !entrada.trim()}
-            className="gap-1.5"
-          >
-            <Send size={14} />
-            <span>Enviar</span>
-          </Botao>
+          {pensando ? (
+            <Botao
+              tamanho="pequeno"
+              variante="perigo"
+              onClick={cancelarGeracao}
+              className="gap-1.5"
+            >
+              <span>Parar</span>
+            </Botao>
+          ) : (
+            <Botao
+              tamanho="pequeno"
+              onClick={() => enviar(entrada)}
+              disabled={!entrada.trim()}
+              className="gap-1.5"
+            >
+              <Send size={14} />
+              <span>Enviar</span>
+            </Botao>
+          )}
         </div>
       </Cartao>
     </div>

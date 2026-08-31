@@ -15,6 +15,7 @@ import {
   Tag,
   ImageIcon,
   Maximize2,
+  Copy,
   X,
 } from "lucide-react";
 import { lerConfig } from "@/lib/settings";
@@ -600,6 +601,21 @@ export default function Referencias() {
                         alt={r.titulo}
                         className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
+                      {/* Botão de Copiar Markdown */}
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const codigo = `![](${r.imagem})`;
+                          await navigator.clipboard.writeText(codigo);
+                          toast("Código da imagem copiado! Cole em qualquer nota.", { tipo: "sucesso" });
+                        }}
+                        className="absolute top-2 left-2 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
+                        title="Copiar código Markdown da imagem"
+                        aria-label="Copiar código Markdown"
+                      >
+                        <Copy size={13} />
+                      </button>
                       {/* Botão de Zoom / Lightbox */}
                       <button
                         type="button"

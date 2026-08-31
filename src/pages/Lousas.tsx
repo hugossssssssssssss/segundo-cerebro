@@ -11,6 +11,7 @@ import {
   Minimize2,
   Check,
   Link as LinkIcon,
+  Download,
   LayoutGrid,
   List,
   Layers,
@@ -437,6 +438,36 @@ export default function Lousas() {
                   <span className="hidden md:inline">
                     {copiadoId === aberta.caminho ? "Copiado!" : "@Menção"}
                   </span>
+                </Botao>
+
+                <Botao
+                  variante="neutro"
+                  tamanho="pequeno"
+                  onClick={async () => {
+                    try {
+                      const { exportToBlob } = await import("@excalidraw/excalidraw");
+                      if (aberta?.dados?.elements) {
+                        const blob = await exportToBlob({
+                          elements: aberta.dados.elements,
+                          appState: { exportBackground: true, viewBackgroundColor: ehModoEscuro ? "#181825" : "#ffffff" },
+                          files: null,
+                        });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `${aberta.titulo || "lousa"}.png`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast("Imagem PNG exportada com sucesso!", { tipo: "sucesso" });
+                      }
+                    } catch (e: any) {
+                      toast(`Erro ao exportar PNG: ${e?.message || e}`, { tipo: "erro" });
+                    }
+                  }}
+                  title="Exportar lousa como imagem PNG"
+                >
+                  <Download size={14} />
+                  <span className="hidden md:inline">Exportar PNG</span>
                 </Botao>
 
                 <Botao

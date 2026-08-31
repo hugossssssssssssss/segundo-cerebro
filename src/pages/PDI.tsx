@@ -733,6 +733,36 @@ export default function PDI() {
                         </Selo>
                         {textoPrazoMeta(m) && <Selo>{textoPrazoMeta(m)}</Selo>}
                       </div>
+
+                      {/* Barra de Progresso da Meta */}
+                      <div className="mt-3 space-y-1">
+                        <div className="flex justify-between text-[11px] font-medium text-muted-foreground">
+                          <span>Progresso</span>
+                          <span>
+                            {m.status === "concluida"
+                              ? "100%"
+                              : `${Math.min(100, Math.round(ligadas.length * 25))}%`}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-secondary/80 rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-all duration-300",
+                              m.status === "concluida"
+                                ? "bg-emerald-500 w-full"
+                                : ligadas.length > 0
+                                ? "bg-primary"
+                                : "bg-muted-foreground/30"
+                            )}
+                            style={{
+                              width:
+                                m.status === "concluida"
+                                  ? "100%"
+                                  : `${Math.min(100, Math.max(5, ligadas.length * 25))}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
                     </button>
 
                     <div className="mt-3 pt-3 border-t border-border/50 space-y-2">

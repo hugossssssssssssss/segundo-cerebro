@@ -241,7 +241,7 @@ export function buscar(itens: ItemRepo[], termo: string): Resultado[] {
   const achados = indiceDe(itens).search(limpo, {
     boost: PESO_CAMPO,
     prefix: true,
-    fuzzy: 0.2,
+    fuzzy: (term) => (term.length > 3 ? 0.25 : false),
     combineWith: "AND",
   });
 

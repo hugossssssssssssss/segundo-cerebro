@@ -361,3 +361,24 @@ export function progressoSubtarefas(corpo: string): {
     porcento: subs.length ? Math.round((feitas / subs.length) * 100) : 0,
   };
 }
+
+/**
+ * Calcula o próximo prazo de uma tarefa recorrente (diária, semanal ou mensal).
+ */
+export function proximaDataRecorrencia(
+  prazoAtual?: string,
+  frequencia?: "diaria" | "semanal" | "mensal",
+): string {
+  const base = prazoAtual ? new Date(prazoAtual + "T12:00:00") : new Date();
+  if (isNaN(base.getTime())) return dataISO(new Date());
+
+  if (frequencia === "diaria") {
+    base.setDate(base.getDate() + 1);
+  } else if (frequencia === "semanal") {
+    base.setDate(base.getDate() + 7);
+  } else if (frequencia === "mensal") {
+    base.setMonth(base.getMonth() + 1);
+  }
+
+  return dataISO(base);
+}

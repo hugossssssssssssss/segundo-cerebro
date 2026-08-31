@@ -15,6 +15,8 @@ import { analisarAcervoParaMigracao, executarMigracaoEmLote, type RelatorioAnali
 import { identificarArquivosProcessos, apagarArquivosProcessosEmLote } from "@/lib/limpezaProcessos";
 import { CardConsumoGitHub } from "@/components/CardConsumoGitHub";
 import { instalarWorkflowLembretes } from "@/lib/instaladorWorkflow";
+import { hojeISO } from "@/lib/utils";
+import JSZip from "jszip";
 
 export default function Configuracoes() {
   const [cfg, setCfg] = useState<Settings>(lerConfig);
@@ -30,6 +32,8 @@ export default function Configuracoes() {
   const [exportando, setExportando] = useState(false);
   const [importando, setImportando] = useState(false);
   const [msgBackup, setMsgBackup] = useState("");
+  const [testandoGemini, setTestandoGemini] = useState(false);
+  const [resultadoGemini, setResultadoGemini] = useState<{ ok: boolean; texto: string } | null>(null);
 
   // Estados da Padronização Global do Acervo
   const [analisandoAcervo, setAnalisandoAcervo] = useState(false);
@@ -160,13 +164,41 @@ export default function Configuracoes() {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(itens, null, 2));
       const anchor = document.createElement("a");
       anchor.setAttribute("href", dataStr);
-      anchor.setAttribute("download", `klaus_backup_${new Date().toISOString().slice(0, 10)}.json`);
+      anchor.setAttribute("download", `klaus_backup_${hojeISO()}.json`);
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
-      setMsgBackup("Backup exportado com sucesso!");
+      setMsgBackup("Backup JSON exportado com sucesso!");
     } catch (e) {
-      setMsgBackup("Erro ao exportar backup: " + String(e));
+      setMsgBackup("Erro ao exportar backup JSON: " + String(e));
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const exportarBackupZip = async () => {
+    setExportando(true);
+    setMsgBackup("");
+    try {
+      const itens = await carregarRepo(cfg);
+      const zip = new JSZip();
+      for (const item of itens) {
+        if (item.texto) {
+          zip.file(item.caminho, item.texto);
+        }
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.setAttribute("href", url);
+      anchor.setAttribute("download", `klaus_backup_${hojeISO()}.zip`);
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setMsgBackup("Backup completo (.zip) com todas as suas notas exportado com sucesso!");
+    } catch (e: any) {
+      setMsgBackup("Erro ao exportar backup ZIP: " + (e?.message || String(e)));
     } finally {
       setExportando(false);
     }
@@ -211,6 +243,31 @@ export default function Configuracoes() {
   const atualizar = <K extends keyof Settings>(campo: K, valor: Settings[K]) => {
     setCfg((c) => ({ ...c, [campo]: valor }));
     setResultado(null);
+  };
+
+  const testarChaveGemini = async () => {
+    if (!cfg.geminiKey.trim()) {
+      setResultadoGemini({ ok: false, texto: "Preencha a chave do Gemini antes de testar." });
+      return;
+    }
+    setTestandoGemini(true);
+    setResultadoGemini(null);
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cfg.geminiModel)}:generateContent?key=${encodeURIComponent(cfg.geminiKey.trim())}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: "Diga apenas: OK" }] }] }),
+      });
+      if (!res.ok) {
+        throw new Error(`Código ${res.status}: verifique se a chave é válida e tem permissão.`);
+      }
+      setResultadoGemini({ ok: true, texto: "Chave do Gemini válida e conectada com sucesso!" });
+    } catch (e: any) {
+      setResultadoGemini({ ok: false, texto: e?.message || "Erro ao conectar ao Gemini." });
+    } finally {
+      setTestandoGemini(false);
+    }
   };
 
   async function salvarETestar() {
@@ -441,6 +498,28 @@ export default function Configuracoes() {
             <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
             <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
           </select>
+        </div>
+
+        <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <Botao
+            variante="neutro"
+            onClick={testarChaveGemini}
+            disabled={testandoGemini || !cfg.geminiKey}
+          >
+            <Sparkles size={14} className="text-primary" />
+            <span>{testandoGemini ? "Testando chave..." : "Testar Chave do Gemini"}</span>
+          </Botao>
+
+          {resultadoGemini && (
+            <span
+              className={`inline-flex items-center gap-2 text-xs font-medium ${
+                resultadoGemini.ok ? "text-[var(--success)]" : "text-destructive"
+              }`}
+            >
+              {resultadoGemini.ok ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
+              {resultadoGemini.texto}
+            </span>
+          )}
         </div>
       </Cartao>
 
@@ -863,10 +942,15 @@ export default function Configuracoes() {
 
         {msgBackup && <Aviso tom="sucesso">{msgBackup}</Aviso>}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+          <Botao variante="primario" onClick={exportarBackupZip} disabled={exportando}>
+            <Download size={16} />
+            {exportando ? "Exportando..." : "Baixar Tudo (.ZIP)"}
+          </Botao>
+
           <Botao variante="neutro" onClick={exportarBackupJSON} disabled={exportando}>
             <Download size={16} />
-            {exportando ? "Exportando..." : "Exportar Backup (JSON)"}
+            {exportando ? "Exportando..." : "Exportar (JSON)"}
           </Botao>
 
           <label className="cursor-pointer">

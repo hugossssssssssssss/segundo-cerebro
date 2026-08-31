@@ -67,6 +67,7 @@ export async function conversar(
   cfg: Settings,
   historico: Mensagem[],
   contexto?: string,
+  signal?: AbortSignal,
 ): Promise<RespostaIA> {
   if (!cfg.geminiKey) {
     throw new ErroGemini(
@@ -86,6 +87,7 @@ export async function conversar(
       `${BASE}/${encodeURIComponent(cfg.geminiModel)}:generateContent`,
       {
         method: "POST",
+        signal,
         headers: {
           "Content-Type": "application/json",
           "x-goog-api-key": cfg.geminiKey.trim(),
@@ -102,6 +104,9 @@ export async function conversar(
       },
     );
   } catch (e) {
+    if (signal?.aborted) {
+      throw new ErroGemini("Resposta interrompida por você.");
+    }
     throw new ErroGemini(
       navigator.onLine
         ? `Não consegui falar com o Gemini. (${e instanceof Error ? e.message : String(e)})`

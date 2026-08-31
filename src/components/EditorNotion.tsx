@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
 import {
   SuggestionMenuController,
@@ -6,7 +6,8 @@ import {
   getDefaultReactSlashMenuItems,
 } from "@blocknote/react";
 import { filterSuggestionItems } from "@blocknote/core";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ListOrdered, Maximize2, Minimize2, Printer, Table } from "lucide-react";
+import { cn } from "@/lib/utils";
 import * as locales from "@blocknote/core/locales";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -309,7 +310,32 @@ export function EditorNotion({
   const [escuro, setEscuro] = useState(
     () => document.documentElement.classList.contains("dark"),
   );
+  const [modoZen, setModoZen] = useState(false);
+  const [mostrarSumario, setMostrarSumario] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const estatisticas = useMemo(() => {
+    const textoLimpo = (markdown || "").replace(/[#*`_~[\]()-]/g, " ").trim();
+    const palavras = textoLimpo ? textoLimpo.split(/\s+/).filter(Boolean).length : 0;
+    const caracteres = textoLimpo.length;
+    const minutosLeitura = Math.max(1, Math.ceil(palavras / 200));
+    return { palavras, caracteres, minutosLeitura };
+  }, [markdown]);
+
+  const sumario = useMemo(() => {
+    const linhas = (markdown || "").split("\n");
+    const titulos: { nivel: number; texto: string }[] = [];
+    for (const linha of linhas) {
+      const match = linha.match(/^(#{1,3})\s+(.+)$/);
+      if (match) {
+        titulos.push({
+          nivel: match[1].length,
+          texto: match[2].trim(),
+        });
+      }
+    }
+    return titulos;
+  }, [markdown]);
 
   const editor = useCreateBlockNote({
     dictionary: dicionarioCustomizado,
@@ -452,8 +478,37 @@ export function EditorNotion({
         },
       };
 
+      const itemTabela = {
+        title: "Tabela",
+        subtext: "Inserir grade com linhas e colunas",
+        aliases: ["tabela", "table", "grade", "grid"],
+        icon: <Table size={16} className="text-blue-500" />,
+        onItemClick: () => {
+          try {
+            (editor as any).insertBlocks(
+              [
+                {
+                  type: "table",
+                  content: {
+                    type: "tableContent",
+                    rows: [
+                      { cells: [["Coluna 1"], ["Coluna 2"], ["Coluna 3"]] },
+                      { cells: [["Item A"], ["Detalhe A"], ["R$ 0,00"]] },
+                    ],
+                  },
+                },
+              ],
+              editor.getTextCursorPosition()?.block,
+              "after"
+            );
+          } catch {
+            editor.insertInlineContent(["\n\n| Coluna 1 | Coluna 2 |\n| --- | --- |\n| Item 1 | Valor |\n\n"]);
+          }
+        },
+      };
+
       const padrao = getDefaultReactSlashMenuItems(editor);
-      return filterSuggestionItems([itemIA, ...padrao], query);
+      return filterSuggestionItems([itemIA, itemTabela, ...padrao], query);
     },
     [editor],
   );
@@ -772,7 +827,17 @@ export function EditorNotion({
   }, [aoAbrirMencao]);
 
   return (
-    <div ref={wrapperRef} className="notion-editor-wrapper min-h-[300px] relative" onPaste={aoColar} onCopy={aoCopiar}>
+    <div
+      ref={wrapperRef}
+      id="conteudo-nota-pdf"
+      className={cn(
+        modoZen
+          ? "fixed inset-0 z-50 bg-background overflow-y-auto p-4 sm:p-12 notion-editor-wrapper animate-in fade-in"
+          : "notion-editor-wrapper min-h-[300px] relative"
+      )}
+      onPaste={aoColar}
+      onCopy={aoCopiar}
+    >
       {!pronto && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/60 backdrop-blur-xs text-xs text-muted-foreground animate-pulse">
           Carregando editor…
@@ -801,6 +866,75 @@ export function EditorNotion({
           getItems={handleGetSlashItems}
         />
       </BlockNoteView>
+
+      {/* Rodapé Inteligente do Editor: Estatísticas, Sumário, Modo Zen e Imprimir */}
+      <div className="flex items-center justify-between gap-2 pt-3 pb-1 border-t border-border/40 text-[11px] text-muted-foreground mt-4 select-none px-2 sm:px-6 no-print">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <span title="Total de palavras">{estatisticas.palavras} palavras</span>
+          <span>•</span>
+          <span title="Total de caracteres">{estatisticas.caracteres} caracteres</span>
+          <span className="hidden sm:inline">•</span>
+          <span className="hidden sm:inline" title="Tempo estimado de leitura">~{estatisticas.minutosLeitura} min de leitura</span>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {sumario.length > 0 && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMostrarSumario(!mostrarSumario)}
+                className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                title="Ver sumário de títulos da nota"
+              >
+                <ListOrdered size={13} />
+                <span className="hidden sm:inline">Sumário ({sumario.length})</span>
+              </button>
+              {mostrarSumario && (
+                <div className="absolute right-0 bottom-full mb-2 w-64 max-h-60 overflow-y-auto rounded-xl border border-border bg-card p-3 shadow-xl z-50 animate-in fade-in zoom-in-95">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-border/60 mb-2 font-semibold text-xs text-foreground">
+                    <span>Sumário de Títulos</span>
+                    <button type="button" onClick={() => setMostrarSumario(false)} className="text-muted-foreground hover:text-foreground cursor-pointer">✕</button>
+                  </div>
+                  <div className="space-y-1">
+                    {sumario.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "truncate text-xs py-0.5 hover:text-primary transition-colors cursor-pointer",
+                          item.nivel === 1 ? "font-semibold text-foreground" : item.nivel === 2 ? "pl-2 text-muted-foreground" : "pl-4 text-muted-foreground/80"
+                        )}
+                        onClick={() => setMostrarSumario(false)}
+                      >
+                        {item.texto}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            title="Imprimir nota ou salvar como PDF limpo"
+          >
+            <Printer size={13} />
+            <span className="hidden sm:inline">Imprimir PDF</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setModoZen(!modoZen)}
+            className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            title={modoZen ? "Sair do modo tela cheia" : "Modo Zen / Foco em tela cheia"}
+          >
+            {modoZen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+            <span className="hidden sm:inline">{modoZen ? "Sair do Foco" : "Modo Foco"}</span>
+          </button>
+        </div>
+      </div>
 
       <ModalLembrete
         aberto={modalLembreteAberto}
