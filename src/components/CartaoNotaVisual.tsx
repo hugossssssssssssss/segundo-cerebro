@@ -9,6 +9,8 @@ import {
   Sparkles,
   Pin,
   MoreHorizontal,
+  CheckSquare,
+  Image as ImageIcon,
 } from "lucide-react";
 import { TagChip } from "@/components/TagChip";
 import { cn } from "@/lib/utils";
@@ -27,6 +29,8 @@ interface CartaoNotaVisualProps {
   onDragEnd?: (e: React.DragEvent) => void;
   draggable?: boolean;
   className?: string;
+  totalTarefas?: { concluidas: number; total: number };
+  totalMoodboard?: number;
 }
 
 /**
@@ -120,6 +124,8 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
       onDragEnd,
       draggable = true,
       className,
+      totalTarefas,
+      totalMoodboard,
     },
     ref
   ) => {
@@ -204,6 +210,20 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
                 {subtitulo && (
                   <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-secondary/80 text-muted-foreground shrink-0 max-w-[120px] truncate">
                     <Folder size={10} /> {subtitulo}
+                  </span>
+                )}
+
+                {totalTarefas && totalTarefas.total > 0 && (
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-secondary/80 text-muted-foreground shrink-0" title={`${totalTarefas.concluidas} de ${totalTarefas.total} tarefas concluídas`}>
+                    <CheckSquare size={10} className="text-emerald-500" />
+                    <span>{totalTarefas.concluidas}/{totalTarefas.total}</span>
+                  </span>
+                )}
+
+                {totalMoodboard !== undefined && totalMoodboard > 0 && (
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-secondary/80 text-muted-foreground shrink-0" title={`${totalMoodboard} referências visuais`}>
+                    <ImageIcon size={10} className="text-purple-500" />
+                    <span>{totalMoodboard}</span>
                   </span>
                 )}
               </div>
@@ -428,12 +448,26 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
             </div>
           )}
 
-          {/* Metadados: Data + Leitura */}
+          {/* Metadados: Data + Leitura + Vínculos */}
           <div className="flex items-center justify-between text-[10px] text-muted-foreground/80 font-medium">
-            <span className="flex items-center gap-1">
-              <Calendar size={11} className="opacity-60" />
-              {dataExibicao || "Recente"}
-            </span>
+            <div className="flex items-center gap-1.5">
+              {totalTarefas && totalTarefas.total > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-medium" title={`${totalTarefas.concluidas} de ${totalTarefas.total} tarefas concluídas`}>
+                  <CheckSquare size={10} className="text-emerald-500" />
+                  <span>{totalTarefas.concluidas}/{totalTarefas.total}</span>
+                </span>
+              )}
+              {totalMoodboard !== undefined && totalMoodboard > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-medium" title={`${totalMoodboard} referências visuais`}>
+                  <ImageIcon size={10} className="text-purple-500" />
+                  <span>{totalMoodboard}</span>
+                </span>
+              )}
+              <span className="flex items-center gap-1">
+                <Calendar size={11} className="opacity-60" />
+                {dataExibicao || "Recente"}
+              </span>
+            </div>
 
             <span className="flex items-center gap-1 opacity-70">
               <Clock size={10} />

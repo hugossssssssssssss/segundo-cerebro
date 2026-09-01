@@ -8,6 +8,7 @@ import {
   Calendar,
   Tag,
   Folder,
+  LayoutGrid,
 } from "lucide-react";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -16,6 +17,8 @@ import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
 import { comoTarefa, tarefaParaArquivo } from "@/lib/entidades";
 import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
+import { invalidarCache } from "@/lib/repo";
+import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import {
   escreverMarkdown,
   tituloProvavel,
@@ -47,6 +50,8 @@ import { ModalVincularPDI } from "@/components/ModalVincularPDI";
 import { toast } from "@/lib/toast";
 import { urgencia } from "@/lib/tarefas";
 
+type ModoVisaoTela = "quadro" | "calendario" | "hibrido";
+
 export default function Tarefas() {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
@@ -77,9 +82,22 @@ export default function Tarefas() {
   const [tarefaParaPDI, setTarefaParaPDI] = useState<Tarefa | null>(null);
   const [tarefaParaExcluir, setTarefaParaExcluir] = useState<Tarefa | null>(null);
   const [pastaSelecionada, setPastaSelecionada] = useState<string | null>(null);
-  const [visao, setVisao] = useState<"quadro" | "calendario">(() => {
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
+
+  const alternarSelecao = (caminho: string) => {
+    setSelecionadas((prev) => {
+      const novo = new Set(prev);
+      if (novo.has(caminho)) novo.delete(caminho);
+      else novo.add(caminho);
+      return novo;
+    });
+  };
+
+  const limparSelecao = () => setSelecionadas(new Set());
+
+  const [visao, setVisao] = useState<ModoVisaoTela>(() => {
     const salvo = localStorage.getItem("tarefa-visao");
-    return salvo === "calendario" ? salvo : "quadro";
+    return (salvo as ModoVisaoTela) || "quadro";
   });
   const [gravandoCaminho, setGravandoCaminho] = useState<string | null>(null);
   const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>(() => {
@@ -485,16 +503,75 @@ export default function Tarefas() {
     );
   }
 
+  /** Ações em Lote para tarefas selecionadas */
+  async function concluirSelecionadas() {
+    const alvos = tarefas.filter((t) => selecionadas.has(t.caminho));
+    if (alvos.length === 0) return;
+    limparSelecao();
+    try {
+      for (const t of alvos) {
+        const atualizada: Tarefa = { ...t, status: "feito" };
+        const { dados, corpo } = tarefaParaArquivo(atualizada);
+        const md = escreverMarkdown({ dados, corpo });
+        await salvarTexto(t.caminho, md, t.sha, `conclui lote ${t.titulo}`);
+      }
+      invalidarCache();
+      dispararAtualizacaoAcervo();
+      recarregar();
+      toast(`${alvos.length} tarefa(s) concluída(s)!`);
+    } catch (err: any) {
+      toast(`Erro ao concluir tarefas: ${err?.message || err}`, { tipo: "erro" });
+    }
+  }
+
+  async function adiarSelecionadas(dias: number) {
+    const alvos = tarefas.filter((t) => selecionadas.has(t.caminho));
+    if (alvos.length === 0) return;
+    limparSelecao();
+    try {
+      const dataBase = new Date();
+      dataBase.setDate(dataBase.getDate() + dias);
+      const iso = dataBase.toISOString().split("T")[0];
+      for (const t of alvos) {
+        const atualizada: Tarefa = { ...t, prazo: iso, bruto: { ...t.bruto, prazo: iso } };
+        const { dados, corpo } = tarefaParaArquivo(atualizada);
+        const md = escreverMarkdown({ dados, corpo });
+        await salvarTexto(t.caminho, md, t.sha, `prazo lote ${iso}`);
+      }
+      invalidarCache();
+      dispararAtualizacaoAcervo();
+      recarregar();
+      toast(`${alvos.length} tarefa(s) reagendada(s) para ${iso}!`);
+    } catch (err: any) {
+      toast(`Erro ao reagendar tarefas: ${err?.message || err}`, { tipo: "erro" });
+    }
+  }
+
+  async function excluirSelecionadas() {
+    const alvos = tarefas.filter((t) => selecionadas.has(t.caminho));
+    if (alvos.length === 0) return;
+    if (!confirm(`Deseja realmente excluir ${alvos.length} tarefa(s) selecionada(s)?`)) return;
+    limparSelecao();
+    try {
+      for (const t of alvos) {
+        await apagarItem(t.caminho, t.sha);
+      }
+      invalidarCache();
+      dispararAtualizacaoAcervo();
+      recarregar();
+      toast(`${alvos.length} tarefa(s) excluída(s)!`);
+    } catch (err: any) {
+      toast(`Erro ao excluir tarefas: ${err?.message || err}`, { tipo: "erro" });
+    }
+  }
+
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 animate-in fade-in duration-200">
       <CabecalhoPagina
-        titulo="Tarefas"
-        descricao="Acompanhe o que precisa ser feito, registre passos e foco de trabalho."
-        badge={
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground border border-border/70">
-            {tarefas.length}
-          </span>
-        }
+        titulo="Tarefas e Metas"
+        descricao="Gerencie seu fluxo diário, prazos e prioridades de trabalho."
+        icone={<ListTodo size={20} />}
+        corIcone="bg-primary/10 text-primary"
         acoes={
           <DropdownNovoViaModelo
             rotuloPrincipal="Nova Tarefa"
@@ -549,13 +626,14 @@ export default function Tarefas() {
           <AlternadorVisao
             valorAtivo={visao}
             aoAlternar={(v) => {
-              const novaVisao = v as "quadro" | "calendario";
+              const novaVisao = v as ModoVisaoTela;
               setVisao(novaVisao);
               localStorage.setItem("tarefa-visao", novaVisao);
             }}
             opcoes={[
-              { id: "quadro", rotulo: "Quadro (Kanban)", icone: <Columns3 size={15} /> },
+              { id: "quadro", rotulo: "Quadro", icone: <Columns3 size={15} /> },
               { id: "calendario", rotulo: "Calendário", icone: <CalendarDays size={15} /> },
+              { id: "hibrido", rotulo: "Quadro + Agenda", icone: <LayoutGrid size={15} /> },
             ]}
           />
         }
@@ -617,9 +695,76 @@ export default function Tarefas() {
           aoExcluir={(t) => setTarefaParaExcluir(t)}
           aoRegistrarEntregaPDI={(t) => setTarefaParaPDI(t)}
           gravandoCaminho={gravandoCaminho}
+          selecionadas={selecionadas}
+          aoToggleSelecionar={alternarSelecao}
+        />
+      ) : visao === "calendario" ? (
+        <Calendario
+          tarefas={tarefasExibidas}
+          aoAbrir={abrir}
+          aoAlternarStatus={(t) => mudarStatus(t, t.status === "feito" ? "a-fazer" : "feito")}
+          aoAdiarPrazo={adiarPrazo}
+          aoDuplicar={duplicarTarefa}
+          aoExcluir={(t) => setTarefaParaExcluir(t)}
         />
       ) : (
-        <Calendario tarefas={tarefasExibidas} aoAbrir={abrir} />
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
+          <div className="xl:col-span-2">
+            <Quadro
+              tarefas={tarefasExibidas}
+              aoAbrir={abrir}
+              aoCronometrar={iniciar}
+              aoMudarStatus={mudarStatus}
+              aoCriarRapido={criarTarefaRapida}
+              aoAdiarPrazo={adiarPrazo}
+              aoDuplicar={duplicarTarefa}
+              aoExcluir={(t) => setTarefaParaExcluir(t)}
+              aoRegistrarEntregaPDI={(t) => setTarefaParaPDI(t)}
+              gravandoCaminho={gravandoCaminho}
+              selecionadas={selecionadas}
+              aoToggleSelecionar={alternarSelecao}
+            />
+          </div>
+          <div className="xl:col-span-1 border border-border/80 rounded-2xl p-2 bg-card/40 shadow-xs">
+            <Calendario
+              tarefas={tarefasExibidas}
+              aoAbrir={abrir}
+              aoAlternarStatus={(t) => mudarStatus(t, t.status === "feito" ? "a-fazer" : "feito")}
+              aoAdiarPrazo={adiarPrazo}
+              aoDuplicar={duplicarTarefa}
+              aoExcluir={(t) => setTarefaParaExcluir(t)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Barra Flutuante de Ações em Lote */}
+      {selecionadas.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-2xl border border-border bg-card/95 backdrop-blur-md px-4 py-2.5 shadow-2xl animate-in slide-in-from-bottom duration-200">
+          <span className="text-xs font-bold text-foreground">
+            {selecionadas.size} selecionada{selecionadas.size > 1 ? "s" : ""}
+          </span>
+          <div className="h-4 w-px bg-border mx-1" />
+          <Botao tamanho="pequeno" variante="neutro" onClick={() => adiarSelecionadas(0)}>
+            Hoje
+          </Botao>
+          <Botao tamanho="pequeno" variante="neutro" onClick={() => adiarSelecionadas(1)}>
+            Amanhã
+          </Botao>
+          <Botao tamanho="pequeno" onClick={concluirSelecionadas}>
+            Concluir
+          </Botao>
+          <Botao tamanho="pequeno" variante="perigo" onClick={excluirSelecionadas}>
+            Excluir
+          </Botao>
+          <button
+            onClick={limparSelecao}
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-semibold ml-1 cursor-pointer"
+            title="Limpar seleção"
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       {/* painel de edição */}

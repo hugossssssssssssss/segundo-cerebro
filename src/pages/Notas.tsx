@@ -12,6 +12,10 @@ import {
   LayoutGrid,
   List,
   Columns,
+  CheckSquare,
+  Image as ImageIcon,
+  Circle,
+  CheckCircle2,
 } from "lucide-react";
 import { Masonry } from "react-plock";
 import {
@@ -22,7 +26,8 @@ import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
-import { comoNota, notaParaArquivo, dataDoNome } from "@/lib/entidades";
+import { comoNota, comoTarefa, comoReferencia, notaParaArquivo, tarefaParaArquivo, dataDoNome } from "@/lib/entidades";
+import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
 import { invalidarCache } from "@/lib/repo";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
@@ -72,6 +77,115 @@ export default function Notas() {
       comoNota(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
     );
 
+  const { itens: todasTarefas, recarregar: recarregarTarefas } = useItemRepo(
+    cfg,
+    PASTAS.tarefas,
+    (item) => comoTarefa(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+    { recursivo: true }
+  );
+
+  const { itens: todasReferencias } = useItemRepo(
+    cfg,
+    PASTAS.referencias,
+    (item) => comoReferencia(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+    { recursivo: true }
+  );
+
+  const [pastaAtual, setPastaAtual] = useState("");
+  const [pastasCriadas, setPastasCriadas] = useState<string[]>([]);
+  const [abaPasta, setAbaPasta] = useState<"documentos" | "tarefas" | "moodboard">("documentos");
+
+  const contagemTarefasPorNota = useMemo(() => {
+    const mapa = new Map<string, { concluidas: number; total: number }>();
+    for (const t of todasTarefas) {
+      const mencoes = t.relacionamentos || [];
+      for (const m of mencoes) {
+        const nomeLimpo = m.replace(/^@/, "").trim().toLowerCase();
+        const atual = mapa.get(nomeLimpo) || { concluidas: 0, total: 0 };
+        atual.total++;
+        if (t.status === "feito") atual.concluidas++;
+        mapa.set(nomeLimpo, atual);
+      }
+    }
+    return mapa;
+  }, [todasTarefas]);
+
+  const contagemMoodboardPorNota = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const r of todasReferencias) {
+      const mencoes = r.relacionamentos || [];
+      for (const m of mencoes) {
+        const nomeLimpo = m.replace(/^@/, "").trim().toLowerCase();
+        mapa.set(nomeLimpo, (mapa.get(nomeLimpo) || 0) + 1);
+      }
+    }
+    return mapa;
+  }, [todasReferencias]);
+
+  const tarefasDaPasta = useMemo(() => {
+    if (!pastaAtual) return [];
+    const prefixo = `${PASTAS.tarefas}/${pastaAtual}/`;
+    return todasTarefas.filter(
+      (t) =>
+        t.caminho.startsWith(prefixo) ||
+        t.relacionamentos?.some((r) => r.toLowerCase().includes(pastaAtual.toLowerCase()))
+    );
+  }, [todasTarefas, pastaAtual]);
+
+  const refsDaPasta = useMemo(() => {
+    if (!pastaAtual) return [];
+    const prefixo = `${PASTAS.referencias}/${pastaAtual}/`;
+    return todasReferencias.filter(
+      (r) =>
+        r.caminho.startsWith(prefixo) ||
+        r.relacionamentos?.some((m) => m.toLowerCase().includes(pastaAtual.toLowerCase()))
+    );
+  }, [todasReferencias, pastaAtual]);
+
+  const [novoTituloTarefa, setNovoTituloTarefa] = useState("");
+
+  async function criarTarefaRapidaProjeto(e: React.FormEvent) {
+    e.preventDefault();
+    const titulo = novoTituloTarefa.trim();
+    if (!titulo || !pastaAtual) return;
+    setNovoTituloTarefa("");
+    const slug = titulo.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const caminho = `${PASTAS.tarefas}/${pastaAtual}/${slug}.md`;
+    const nova: any = {
+      bruto: { pasta: pastaAtual },
+      caminho,
+      sha: "",
+      titulo,
+      status: "a-fazer",
+      tags: [pastaAtual.split("/").pop() || pastaAtual],
+      corpo: `Projeto: @${pastaAtual}`,
+    };
+    try {
+      const { dados, corpo } = tarefaParaArquivo(nova);
+      const md = escreverMarkdown({ dados, corpo });
+      await salvarTexto(nova.caminho, md, "", `cria ${titulo}`);
+      invalidarCache();
+      recarregarTarefas();
+      toast(`Tarefa "${titulo}" adicionada ao projeto!`);
+    } catch (err: any) {
+      toast(`Erro ao criar tarefa: ${err?.message || err}`, { tipo: "erro" });
+    }
+  }
+
+  async function alternarStatusTarefaProjeto(t: any) {
+    const novoStatus = t.status === "feito" ? "a-fazer" : "feito";
+    const atualizada = { ...t, status: novoStatus };
+    try {
+      const { dados, corpo } = tarefaParaArquivo(atualizada);
+      const md = escreverMarkdown({ dados, corpo });
+      await salvarTexto(t.caminho, md, t.sha, `status: ${novoStatus}`);
+      invalidarCache();
+      recarregarTarefas();
+    } catch (err: any) {
+      toast(`Erro ao mudar status: ${err?.message || err}`, { tipo: "erro" });
+    }
+  }
+
   const { salvarTexto, apagarItem, salvando, erro: erroSalvar, limparErro } = useSalvar(cfg);
   const erro = erroCarregar || erroSalvar;
 
@@ -99,9 +213,6 @@ export default function Notas() {
     tituloAntigo: string;
     tituloNovo: string;
   } | null>(null);
-
-  const [pastaAtual, setPastaAtual] = useState("");
-  const [pastasCriadas, setPastasCriadas] = useState<string[]>([]);
 
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
@@ -1097,6 +1208,51 @@ export default function Notas() {
         </div>
       )}
 
+      {/* Hub do Projeto Integrado: Abas de Projeto quando pasta ativa */}
+      {pastaAtual && (
+        <div className="flex items-center gap-1.5 bg-secondary/50 p-1 rounded-2xl border border-border/60 w-fit">
+          <button
+            type="button"
+            onClick={() => setAbaPasta("documentos")}
+            className={cn(
+              "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5",
+              abaPasta === "documentos"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <FileText size={13} />
+            <span>Notas ({naPasta.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setAbaPasta("tarefas")}
+            className={cn(
+              "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5",
+              abaPasta === "tarefas"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <CheckSquare size={13} />
+            <span>Tarefas ({tarefasDaPasta.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setAbaPasta("moodboard")}
+            className={cn(
+              "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5",
+              abaPasta === "moodboard"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <ImageIcon size={13} />
+            <span>Moodboard ({refsDaPasta.length})</span>
+          </button>
+        </div>
+      )}
+
       {arquivos.length > 0 && (
         <BarraFerramentas
           busca={busca}
@@ -1347,7 +1503,86 @@ export default function Notas() {
         </div>
       )}
 
-      {carregando ? (
+      {pastaAtual && abaPasta === "tarefas" ? (
+        <div className="space-y-4 max-w-2xl py-2">
+          <form onSubmit={criarTarefaRapidaProjeto} className="flex gap-2">
+            <input
+              type="text"
+              value={novoTituloTarefa}
+              onChange={(e) => setNovoTituloTarefa(e.target.value)}
+              placeholder={`Nova tarefa para ${pastaAtual}...`}
+              className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <Botao tamanho="pequeno" type="submit">
+              <Plus size={14} /> Adicionar
+            </Botao>
+          </form>
+
+          {tarefasDaPasta.length === 0 ? (
+            <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl text-muted-foreground text-xs">
+              Nenhuma tarefa vinculada a esta pasta de projeto ainda. Use o campo acima para adicionar!
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {tarefasDaPasta.map((t) => {
+                const ehFeito = t.status === "feito";
+                return (
+                  <div
+                    key={t.caminho}
+                    className={cn(
+                      "flex items-center justify-between gap-3 p-3 rounded-xl border bg-card hover:bg-accent/30 transition-colors",
+                      ehFeito ? "border-border/40 opacity-70" : "border-border/80"
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => alternarStatusTarefaProjeto(t)}
+                        className="text-muted-foreground hover:text-primary transition-colors cursor-pointer shrink-0"
+                      >
+                        {ehFeito ? (
+                          <CheckCircle2 size={16} className="text-emerald-500 fill-emerald-500/20" />
+                        ) : (
+                          <Circle size={16} />
+                        )}
+                      </button>
+                      <span className={cn("text-xs font-semibold truncate", ehFeito && "line-through text-muted-foreground")}>
+                        {t.titulo}
+                      </span>
+                    </div>
+                    {t.prazo && (
+                      <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                        {t.prazo}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : pastaAtual && abaPasta === "moodboard" ? (
+        <div className="space-y-4 py-2">
+          {refsDaPasta.length === 0 ? (
+            <div className="p-8 text-center border border-dashed border-border/80 rounded-2xl text-muted-foreground text-xs">
+              Nenhuma referência visual vinculada a esta pasta de projeto ainda.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {refsDaPasta.map((r) => (
+                <div key={r.caminho} className="rounded-2xl border border-border/80 overflow-hidden bg-card space-y-1.5 p-2">
+                  {r.imagem && (
+                    <div className="aspect-square rounded-xl overflow-hidden bg-black/5">
+                      <ImagemPrivada caminho={r.imagem} alt={r.titulo} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <p className="text-xs font-bold truncate px-1">{r.titulo}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : carregando ? (
         <Carregando texto="Buscando suas notas…" />
       ) : todasNotas.length === 0 && pastasCriadas.length === 0 ? (
         <Vazio
@@ -1412,6 +1647,8 @@ export default function Notas() {
                     subtitulo={subtitulo}
                     selecionado={estaSelecionada}
                     visao="grade"
+                    totalTarefas={contagemTarefasPorNota.get(tituloNota.toLowerCase())}
+                    totalMoodboard={contagemMoodboardPorNota.get(tituloNota.toLowerCase())}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.effectAllowed = "move";
@@ -1468,6 +1705,8 @@ export default function Notas() {
                     subtitulo={subtitulo}
                     selecionado={estaSelecionada}
                     visao="lista"
+                    totalTarefas={contagemTarefasPorNota.get(tituloNota.toLowerCase())}
+                    totalMoodboard={contagemMoodboardPorNota.get(tituloNota.toLowerCase())}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.effectAllowed = "move";
@@ -1530,6 +1769,8 @@ export default function Notas() {
                     subtitulo={subtitulo}
                     selecionado={estaSelecionada}
                     visao="mural"
+                    totalTarefas={contagemTarefasPorNota.get(tituloNota.toLowerCase())}
+                    totalMoodboard={contagemMoodboardPorNota.get(tituloNota.toLowerCase())}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.effectAllowed = "move";

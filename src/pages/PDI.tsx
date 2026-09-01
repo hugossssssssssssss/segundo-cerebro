@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -13,14 +13,19 @@ import {
   Plus,
   Folder,
   Tag,
+  ListTodo,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
-import { comoMeta, comoEntrega, metaParaArquivo, entregaParaArquivo } from "@/lib/entidades";
+import { comoMeta, comoEntrega, comoTarefa, metaParaArquivo, entregaParaArquivo, tarefaParaArquivo } from "@/lib/entidades";
 import { propagarRenomeacaoId } from "@/lib/links";
-import { carregarRepo } from "@/lib/repo";
+import { carregarRepo, invalidarCache } from "@/lib/repo";
+import { dispararAtualizacaoAcervo } from "@/lib/eventos";
+import { toast } from "@/lib/toast";
+import type { Tarefa } from "@/lib/tarefas";
+import { CheckCircle2, Circle } from "lucide-react";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import {
@@ -103,11 +108,18 @@ export default function PDI() {
       { recursivo: true }
     );
 
+  const { itens: todasTarefas, recarregar: recarregarTarefas } =
+    useItemRepo(cfg, PASTAS.tarefas, (item) =>
+      comoTarefa(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+      { recursivo: true }
+    );
+
   const carregando = carregandoMetas || carregandoEntregas;
 
   function recarregar() {
     recarregarMetas();
     recarregarEntregas();
+    recarregarTarefas();
   }
 
   // ── Salvamento ────────────────────────────────────────────────────────────
@@ -125,6 +137,88 @@ export default function PDI() {
   const [esconderEntregas, setEsconderEntregas] = useState(() => localStorage.getItem("klaus-pdi-esconder-entregas") === "true");
   const [dropHoverId, setDropHoverId] = useState<string | null>(null);
   const [pastaMetaSelecionada, setPastaMetaSelecionada] = useState<string | null>(null);
+  const [novaTarefaMetaId, setNovaTarefaMetaId] = useState<string | null>(null);
+  const [novoTextoTarefa, setNovoTextoTarefa] = useState("");
+  const [salvandoTarefaMeta, setSalvandoTarefaMeta] = useState(false);
+
+  // Busca tarefas vinculadas a uma meta específica
+  const tarefasDaMeta = useCallback(
+    (meta: Meta) => {
+      const normTitulo = meta.titulo.toLowerCase().trim();
+      const idMeta = meta.id.toLowerCase().trim();
+      const caminhoNorm = meta.caminho.toLowerCase().trim();
+
+      return todasTarefas.filter((t) => {
+        const rels = (t.relacionamentos || []).map((r) =>
+          r.replace(/^[@[]+/, "").replace(/\]\]$/, "").toLowerCase().trim()
+        );
+        const relMatch = rels.some(
+          (r) => r === normTitulo || r === idMeta || r === caminhoNorm || (normTitulo && (r.includes(normTitulo) || normTitulo.includes(r)))
+        );
+
+        const metasTarefa = ((t.bruto?.metas as string[]) || []).map((m) => m.toLowerCase().trim());
+        const metaMatch = metasTarefa.includes(idMeta) || metasTarefa.includes(normTitulo);
+
+        const corpoNorm = (t.corpo || "").toLowerCase();
+        const corpoMatch = normTitulo && (corpoNorm.includes(`@${normTitulo}`) || corpoNorm.includes(`[[${normTitulo}]]`));
+
+        return relMatch || metaMatch || corpoMatch;
+      });
+    },
+    [todasTarefas]
+  );
+
+  // Concluir ou reabrir tarefa com 1 clique diretamente no PDI
+  const toggleStatusTarefa = async (tarefa: Tarefa) => {
+    const novoStatus = tarefa.status === "feito" ? "a-fazer" : "feito";
+    try {
+      const atualizada: Tarefa = { ...tarefa, status: novoStatus };
+      const { dados, corpo } = tarefaParaArquivo(atualizada);
+      const md = escreverMarkdown({ dados, corpo });
+      await salvarTexto(tarefa.caminho, md, tarefa.sha, `status: ${novoStatus} (${tarefa.titulo})`);
+      invalidarCache();
+      dispararAtualizacaoAcervo();
+      recarregarTarefas();
+      toast(`Tarefa "${tarefa.titulo}" marcada como ${novoStatus === "feito" ? "concluída" : "a fazer"}!`);
+    } catch (err: any) {
+      toast(`Erro ao atualizar status da tarefa: ${err?.message || err}`, { tipo: "erro" });
+    }
+  };
+
+  // Criar tarefa inline rápida vinculada à meta
+  const criarTarefaRapidaParaMeta = async (meta: Meta) => {
+    const texto = novoTextoTarefa.trim();
+    if (!texto || salvandoTarefaMeta) return;
+
+    setSalvandoTarefaMeta(true);
+    try {
+      const todosItens = carregarRepo ? (await carregarRepo(cfg)).map((i) => i.caminho) : [];
+      const caminhoNovo = nomeLivre(PASTAS.tarefas, texto, todosItens);
+      const nova: Tarefa = {
+        caminho: caminhoNovo,
+        sha: "",
+        bruto: { metas: [meta.id] },
+        titulo: texto,
+        status: "a-fazer",
+        tags: ["pdi"],
+        corpo: `Tarefa vinculada à meta do PDI: @${meta.titulo}`,
+        relacionamentos: [`@${meta.titulo}`],
+      };
+      const { dados, corpo } = tarefaParaArquivo(nova);
+      const md = escreverMarkdown({ dados, corpo });
+      await salvarTexto(caminhoNovo, md, undefined, `criar tarefa para meta: ${meta.titulo}`);
+      invalidarCache();
+      dispararAtualizacaoAcervo();
+      recarregarTarefas();
+      setNovoTextoTarefa("");
+      setNovaTarefaMetaId(null);
+      toast(`Tarefa "${texto}" criada para a meta "${meta.titulo}"!`);
+    } catch (err: any) {
+      toast(`Erro ao criar tarefa: ${err?.message || err}`, { tipo: "erro" });
+    } finally {
+      setSalvandoTarefaMeta(false);
+    }
+  };
 
   // Pastas de metas existentes
   const pastasMetasExistentes = useMemo(() => {
@@ -728,9 +822,18 @@ export default function PDI() {
 
                       <div className="mt-3 flex flex-wrap items-center gap-1.5">
                         <Selo tom={ligadas.length ? "sucesso" : "neutro"}>
-                          {ligadas.length} entrega
-                          {ligadas.length === 1 ? "" : "s"}
+                          {ligadas.length} entrega{ligadas.length === 1 ? "" : "s"}
                         </Selo>
+                        {(() => {
+                          const tarefasAtivas = tarefasDaMeta(m).filter((t: any) => t.status !== "feito");
+                          if (tarefasAtivas.length === 0) return null;
+                          return (
+                            <Selo tom="primario">
+                              <ListTodo size={11} className="mr-0.5" />
+                              {tarefasAtivas.length} tarefa{tarefasAtivas.length === 1 ? "" : "s"} ativa{tarefasAtivas.length === 1 ? "" : "s"}
+                            </Selo>
+                          );
+                        })()}
                         {textoPrazoMeta(m) && <Selo>{textoPrazoMeta(m)}</Selo>}
                       </div>
 
@@ -765,7 +868,105 @@ export default function PDI() {
                       </div>
                     </button>
 
+                    {/* Bloco de Tarefas do Dia a Dia Vinculadas à Meta */}
+                    {(() => {
+                      const tarefasMeta = tarefasDaMeta(m);
+                      return (
+                        <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                              <ListTodo size={12} className="text-primary" /> Tarefas em Andamento ({tarefasMeta.filter((t: any) => t.status !== "feito").length})
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                setNovaTarefaMetaId(novaTarefaMetaId === m.id ? null : m.id);
+                                setNovoTextoTarefa("");
+                              }}
+                              className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
+                            >
+                              {novaTarefaMetaId === m.id ? "Cancelar" : "+ Nova Tarefa"}
+                            </button>
+                          </div>
+
+                          {/* Campo de criação rápida inline */}
+                          {novaTarefaMetaId === m.id && (
+                            <div className="flex items-center gap-1.5 pt-1 animate-in fade-in duration-150">
+                              <input
+                                type="text"
+                                autoFocus
+                                value={novoTextoTarefa}
+                                onChange={(e) => setNovoTextoTarefa(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    criarTarefaRapidaParaMeta(m);
+                                  } else if (e.key === "Escape") {
+                                    setNovaTarefaMetaId(null);
+                                  }
+                                }}
+                                placeholder="Nome da tarefa... (Enter para salvar)"
+                                className="flex-1 text-xs rounded-lg border border-border bg-background px-2.5 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-primary"
+                              />
+                              <Botao
+                                tamanho="pequeno"
+                                onClick={() => criarTarefaRapidaParaMeta(m)}
+                                disabled={!novoTextoTarefa.trim() || salvandoTarefaMeta}
+                              >
+                                {salvandoTarefaMeta ? "..." : "Criar"}
+                              </Botao>
+                            </div>
+                          )}
+
+                          {tarefasMeta.length > 0 ? (
+                            <ul className="space-y-1">
+                              {tarefasMeta.slice(0, 4).map((t: any) => {
+                                const feita = t.status === "feito";
+                                return (
+                                  <li key={t.caminho} className="flex items-center gap-2 text-xs py-1 px-1.5 rounded hover:bg-accent/40 transition-colors">
+                                    <button
+                                      type="button"
+                                      onClick={(ev) => {
+                                        ev.stopPropagation();
+                                        toggleStatusTarefa(t);
+                                      }}
+                                      className="text-muted-foreground hover:text-primary transition-colors cursor-pointer shrink-0"
+                                      title={feita ? "Reabrir tarefa" : "Concluir tarefa"}
+                                    >
+                                      {feita ? (
+                                        <CheckCircle2 size={14} className="text-emerald-500" />
+                                      ) : (
+                                        <Circle size={14} />
+                                      )}
+                                    </button>
+                                    <span
+                                      onClick={() => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
+                                      className={cn(
+                                        "truncate flex-1 cursor-pointer hover:underline",
+                                        feita && "text-muted-foreground line-through decoration-muted-foreground/60"
+                                      )}
+                                    >
+                                      {t.titulo}
+                                    </span>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground/70 italic py-0.5">
+                              Nenhuma tarefa ativa. Clique em "+ Nova Tarefa" para planejar passos.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Bloco de Entregas Consolidadas */}
                     <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                        <Sparkles size={12} className="text-purple-500" /> Entregas Realizadas ({ligadas.length})
+                      </span>
                       {ligadas.length > 0 && (
                         <ul className="space-y-1">
                           {ligadas.slice(0, 4).map((e) => (
@@ -798,7 +999,7 @@ export default function PDI() {
                         </ul>
                       )}
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between pt-1">
                         <button
                           type="button"
                           onClick={(ev) => {

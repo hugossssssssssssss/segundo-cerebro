@@ -104,6 +104,63 @@ export default function Referencias() {
   const [pastaAtual, setPastaAtual] = useState("");
   const [pastasCriadas, setPastasCriadas] = useState<string[]>([]);
 
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
+
+  const alternarSelecao = (caminho: string) => {
+    setSelecionadas((prev) => {
+      const novo = new Set(prev);
+      if (novo.has(caminho)) novo.delete(caminho);
+      else novo.add(caminho);
+      return novo;
+    });
+  };
+
+  const limparSelecao = () => setSelecionadas(new Set());
+
+  async function adicionarTagSelecionadas() {
+    const tag = prompt("Digite o nome da tag para adicionar às referências selecionadas:")?.trim();
+    if (!tag) return;
+    const tagLimpa = tag.replace(/^#/, "");
+    const alvos = refs.filter((r) => selecionadas.has(r.caminho));
+    if (alvos.length === 0) return;
+    limparSelecao();
+    try {
+      for (const r of alvos) {
+        const tagsNovas = Array.from(new Set([...r.tags, tagLimpa]));
+        const atualizada: Referencia = {
+          ...r,
+          tags: tagsNovas,
+          bruto: { ...r.bruto, tags: tagsNovas },
+        };
+        const { dados, corpo } = referenciaParaArquivo(atualizada);
+        const md = escreverMarkdown({ dados, corpo });
+        await salvarTexto(r.caminho, md, r.sha, `tag #${tagLimpa} em lote`);
+      }
+      invalidarCache();
+      recarregar();
+      toast(`Tag #${tagLimpa} adicionada a ${alvos.length} referência(s)!`);
+    } catch (err: any) {
+      toast(`Erro ao adicionar tag: ${err?.message || err}`, { tipo: "erro" });
+    }
+  }
+
+  async function excluirSelecionadas() {
+    const alvos = refs.filter((r) => selecionadas.has(r.caminho));
+    if (alvos.length === 0) return;
+    if (!confirm(`Deseja realmente excluir ${alvos.length} referência(s) selecionada(s)?`)) return;
+    limparSelecao();
+    try {
+      for (const r of alvos) {
+        await apagarItem(r.caminho, r.sha);
+      }
+      invalidarCache();
+      recarregar();
+      toast(`${alvos.length} referência(s) excluída(s)!`);
+    } catch (err: any) {
+      toast(`Erro ao excluir referências: ${err?.message || err}`, { tipo: "erro" });
+    }
+  }
+
   // ── Modo de visualização ──────────────────────────────────────────────────
   const [modoVisao, setModoVisao] = useState<ModoVisaoRef>(() => {
     const salvo = localStorage.getItem("klaus_modo_visao_refs");
@@ -643,8 +700,29 @@ export default function Referencias() {
                     setEditando(r);
                     setOrigRef(r);
                   }}
-                  className="group relative rounded-2xl sm:rounded-3xl overflow-hidden border border-border/80 bg-card hover:bg-accent/20 hover:border-border transition-colors duration-200 cursor-pointer mb-2.5 sm:mb-4"
+                  className={cn(
+                    "group relative rounded-2xl sm:rounded-3xl overflow-hidden border border-border/80 bg-card hover:bg-accent/20 hover:border-border transition-colors duration-200 cursor-pointer mb-2.5 sm:mb-4",
+                    selecionadas.has(r.caminho) && "border-primary ring-2 ring-primary/40 bg-primary/5"
+                  )}
                 >
+                  {/* Checkbox de seleção em lote */}
+                  <div className="absolute top-2 left-2 z-20">
+                    <input
+                      type="checkbox"
+                      checked={selecionadas.has(r.caminho)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        alternarSelecao(r.caminho);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className={cn(
+                        "h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer transition-opacity shadow-sm",
+                        selecionadas.size > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      )}
+                      title="Selecionar imagem"
+                    />
+                  </div>
+
                   {r.imagem ? (
                     <div className="relative aspect-auto overflow-hidden bg-black/5 dark:bg-black/20">
                       <ImagemPrivada
@@ -661,7 +739,7 @@ export default function Referencias() {
                           await navigator.clipboard.writeText(codigo);
                           toast("Código da imagem copiado! Cole em qualquer nota.", { tipo: "sucesso" });
                         }}
-                        className="absolute top-2 left-2 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
+                        className="absolute top-2 left-8 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
                         title="Copiar código Markdown da imagem"
                         aria-label="Copiar código Markdown"
                       >
@@ -1000,6 +1078,29 @@ export default function Referencias() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Barra Flutuante de Ações em Lote para Referências */}
+      {selecionadas.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-2xl border border-border bg-card/95 backdrop-blur-md px-4 py-2.5 shadow-2xl animate-in slide-in-from-bottom duration-200">
+          <span className="text-xs font-bold text-foreground">
+            {selecionadas.size} selecionada{selecionadas.size > 1 ? "s" : ""}
+          </span>
+          <div className="h-4 w-px bg-border mx-1" />
+          <Button size="sm" variant="outline" onClick={adicionarTagSelecionadas}>
+            + Adicionar Tag
+          </Button>
+          <Button size="sm" variant="destructive" onClick={excluirSelecionadas}>
+            Excluir
+          </Button>
+          <button
+            onClick={limparSelecao}
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-semibold ml-1 cursor-pointer"
+            title="Limpar seleção"
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>

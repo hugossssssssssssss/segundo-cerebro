@@ -32,6 +32,7 @@ import {
   CheckCircle2,
   Circle,
   Plus,
+  Target,
 } from "lucide-react";
 import {
   urgencia,
@@ -111,11 +112,16 @@ function ConteudoDoCartao({ t }: { t: Tarefa }) {
         tamanho={13}
       />
 
-      {(u !== "nenhuma" || min > 0 || passos.total > 0 || t.tags.length > 0 || subpasta || Boolean(t.bruto?.ia_sugeriu)) && (
+      {(u !== "nenhuma" || min > 0 || passos.total > 0 || t.tags.length > 0 || subpasta || Boolean(t.bruto?.ia_sugeriu) || Boolean((t.bruto?.metas as any)?.length)) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {Boolean(t.bruto?.ia_sugeriu) && (
             <Selo tom="aviso" className="flex items-center gap-1 text-[10px] bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-medium">
               <Sparkles size={10} /> IA
+            </Selo>
+          )}
+          {Boolean((t.bruto?.metas as any)?.length) && (
+            <Selo className="flex items-center gap-1 text-[10px] bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 font-medium">
+              <Target size={10} /> Meta PDI
             </Selo>
           )}
           {subpasta && (
@@ -157,6 +163,8 @@ function CartaoArrastavel({
   aoRegistrarEntregaPDI,
   aoExcluir,
   gravando,
+  selecionadas,
+  aoToggleSelecionar,
 }: {
   t: Tarefa;
   aoAbrir: (t: Tarefa) => void;
@@ -167,6 +175,8 @@ function CartaoArrastavel({
   aoRegistrarEntregaPDI?: (t: Tarefa) => void;
   aoExcluir?: (t: Tarefa) => void;
   gravando: boolean;
+  selecionadas?: Set<string>;
+  aoToggleSelecionar?: (caminho: string) => void;
 }) {
   const {
     attributes,
@@ -179,6 +189,7 @@ function CartaoArrastavel({
 
   const { tarefa: tarefaAtiva, rodando, pausar, retomar } = useCronometro();
   const isAtivo = tarefaAtiva?.caminho === t.caminho;
+  const isSelecionado = Boolean(selecionadas?.has(t.caminho));
 
   const aoClicarCronometro = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -204,6 +215,7 @@ function CartaoArrastavel({
         isDragging && "opacity-30",
         gravando && "animate-pulse border-primary",
         isAtivo && "border-primary/60 bg-primary/5",
+        isSelecionado && "border-primary bg-primary/10 ring-1 ring-primary/40",
       )}
       onClick={() => aoAbrir(t)}
     >
@@ -217,6 +229,24 @@ function CartaoArrastavel({
       )}
 
       <div className="flex items-start gap-2">
+        {/* Checkbox de seleção em lote */}
+        {aoToggleSelecionar && (
+          <input
+            type="checkbox"
+            checked={isSelecionado}
+            onChange={(e) => {
+              e.stopPropagation();
+              aoToggleSelecionar(t.caminho);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              "mt-0.5 h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer transition-opacity shrink-0",
+              selecionadas && selecionadas.size > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            )}
+            title="Selecionar tarefa para ação em lote"
+          />
+        )}
+
         {/* Checkbox circular de conclusão direta */}
         <button
           type="button"
@@ -314,6 +344,8 @@ function Coluna({
   gravandoCaminho,
   colapsada,
   aoAlternarColapso,
+  selecionadas,
+  aoToggleSelecionar,
 }: {
   status: Status;
   tarefas: Tarefa[];
@@ -328,6 +360,8 @@ function Coluna({
   gravandoCaminho: string | null;
   colapsada: boolean;
   aoAlternarColapso: () => void;
+  selecionadas?: Set<string>;
+  aoToggleSelecionar?: (caminho: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const [expandida, setExpandida] = useState(false);
@@ -419,6 +453,8 @@ function Coluna({
               aoRegistrarEntregaPDI={aoRegistrarEntregaPDI}
               aoExcluir={aoExcluir}
               gravando={gravandoCaminho === t.caminho}
+              selecionadas={selecionadas}
+              aoToggleSelecionar={aoToggleSelecionar}
             />
           ))}
 
@@ -519,6 +555,8 @@ export function Quadro({
   aoExcluir,
   aoCriarRapido,
   gravandoCaminho,
+  selecionadas,
+  aoToggleSelecionar,
 }: {
   tarefas: Tarefa[];
   aoAbrir: (t: Tarefa) => void;
@@ -531,6 +569,8 @@ export function Quadro({
   aoExcluir?: (t: Tarefa) => void;
   aoCriarRapido?: (status: Status, titulo: string) => Promise<void> | void;
   gravandoCaminho: string | null;
+  selecionadas?: Set<string>;
+  aoToggleSelecionar?: (caminho: string) => void;
 }) {
   const [arrastando, setArrastando] = useState<Tarefa | null>(null);
   const [colunaAtivaMobile, setColunaAtivaMobile] = useState<Status | "todas">("todas");
@@ -687,6 +727,8 @@ export function Quadro({
             gravandoCaminho={gravandoCaminho}
             colapsada={Boolean(colapsadas[s])}
             aoAlternarColapso={() => alternarColapso(s)}
+            selecionadas={selecionadas}
+            aoToggleSelecionar={aoToggleSelecionar}
           />
         ))}
       </div>

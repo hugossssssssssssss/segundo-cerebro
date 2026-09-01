@@ -1,12 +1,28 @@
-import { useEffect, useRef, useState } from "react";
-import { CheckSquare, FileText, Image, Send, X } from "lucide-react";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { CheckSquare, FileText, Image, Send, X, Calendar, Folder } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { carregarRepo } from "@/lib/repo";
+import { carregarRepo, cache } from "@/lib/repo";
 import { escreverMarkdown, nomeLivre } from "@/lib/markdown";
 import { hojeISO } from "@/lib/utils";
 import { useSalvar } from "@/lib/useSalvar";
 import { Botao, AreaTexto, Cartao } from "@/components/ui";
 import { cn } from "@/lib/utils";
+
+function calcularDataPrazo(tipo: string): string | undefined {
+  const d = new Date();
+  if (tipo === "hoje") return hojeISO();
+  if (tipo === "amanha") {
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+  if (tipo === "segunda") {
+    const diaSemana = d.getDay();
+    const diasAteSegunda = ((8 - diaSemana) % 7) || 7;
+    d.setDate(d.getDate() + diasAteSegunda);
+    return d.toISOString().slice(0, 10);
+  }
+  return undefined;
+}
 
 /**
  * Captura rápida: uma caixa, você escreve, salvou.
@@ -81,26 +97,57 @@ export function CapturaRapida({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [salvo, setSalvo] = useState(false);
+  const [prazoSelecionado, setPrazoSelecionado] = useState<string>("sem_prazo");
+  const [subpastaSelecionada, setSubpastaSelecionada] = useState<string>("");
+
   // campos que a captura da web descobriu (autor, data, site) e que vão para
   // o frontmatter na hora de salvar
   const [dadosDaCaptura, setDadosDaCaptura] = useState<Record<string, string>>({});
   const area = useRef<HTMLTextAreaElement>(null);
 
+  // Pastas disponíveis baseadas no destino selecionado
+  const pastasDisponiveis = useMemo(() => {
+    if (!cache?.itens) return [];
+    const prefixo = `${destino}/`;
+    const conjunto = new Set<string>();
+    for (const item of cache.itens) {
+      if (item.caminho.startsWith(prefixo)) {
+        const resto = item.caminho.slice(prefixo.length);
+        const partes = resto.split("/");
+        if (partes.length > 1) {
+          conjunto.add(partes.slice(0, -1).join("/"));
+        }
+      }
+    }
+    return Array.from(conjunto).sort();
+  }, [destino]);
+
   useEffect(() => {
     if (!aberta) return;
     setTexto(textoInicial);
-    setDestino(textoInicial ? adivinharDestino(textoInicial) : "notas");
+    const dest = textoInicial ? adivinharDestino(textoInicial) : "notas";
+    setDestino(dest);
     setTocouNoDestino(false);
     setErro("");
     setSalvo(false);
-    // sem isto, o autor da captura anterior grudava na próxima nota
+    setSubpastaSelecionada("");
+    setPrazoSelecionado("sem_prazo");
     setDadosDaCaptura({});
     setTimeout(() => area.current?.focus(), 50);
   }, [aberta, textoInicial]);
 
-  // enquanto você não escolher à mão, o destino acompanha o que está escrito
+  // enquanto você não escolher à mão, o destino e prazo acompanham o que está escrito
   useEffect(() => {
-    if (!tocouNoDestino && texto.trim()) setDestino(adivinharDestino(texto));
+    if (!tocouNoDestino && texto.trim()) {
+      const dest = adivinharDestino(texto);
+      setDestino(dest);
+
+      // Detecção inteligente de prazo
+      const tNorm = texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (/\bhoje\b/.test(tNorm)) setPrazoSelecionado("hoje");
+      else if (/\bamanha\b/.test(tNorm)) setPrazoSelecionado("amanha");
+      else if (/\bsegunda\b/.test(tNorm)) setPrazoSelecionado("segunda");
+    }
   }, [texto, tocouNoDestino]);
 
   useEffect(() => {
@@ -126,8 +173,11 @@ export function CapturaRapida({
     try {
       const { titulo, corpo } = partir(texto);
       const acervo = await carregarRepo(cfg);
+      const pastaDestino = subpastaSelecionada
+        ? `${destino}/${subpastaSelecionada}`
+        : destino;
       const caminho = nomeLivre(
-        destino,
+        pastaDestino,
         titulo,
         acervo.map((i) => i.caminho),
       );
@@ -147,15 +197,14 @@ export function CapturaRapida({
           ? (corpo ? `![](${fonteUrl})\n\n${corpo}` : `![](${fonteUrl})`)
           : corpo;
 
+      const prazoFinal = destino === "tarefas" ? calcularDataPrazo(prazoSelecionado) : undefined;
+
       const conteudo = escreverMarkdown({
         dados: {
           titulo,
           tipo: tipos[destino],
-          // o que a captura da web descobriu (autor, publicado, site, fonte)
-          // vem primeiro, para os campos abaixo ainda poderem ter a palavra
-          // final sobre título e tipo
           ...dadosDaCaptura,
-          ...(destino === "tarefas" ? { status: "a-fazer" } : {}),
+          ...(destino === "tarefas" ? { status: "a-fazer", ...(prazoFinal ? { prazo: prazoFinal } : {}) } : {}),
           ...(destino === "notas" ? { atualizado: hojeISO() } : {}),
           ...(destino === "referencias" && fonteUrl
             ? { fonte: fonteUrl, ...(ehImagemUrl ? { imagem: fonteUrl } : {}) }
@@ -214,70 +263,124 @@ export function CapturaRapida({
           className="min-h-28 resize-none"
         />
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {DESTINOS.map(({ id, rotulo, Icone }) => (
-            <button
-              key={id}
-              onClick={() => {
-                setDestino(id);
-                setTocouNoDestino(true);
-              }}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors",
-                destino === id
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-secondary-foreground hover:bg-accent",
-              )}
-            >
-              <Icone size={14} />
-              {rotulo}
-            </button>
-          ))}
+          {/* Barra de chips contextuais rápidos (Prazo, Pasta, Tags) */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 border-t border-border/50 text-xs">
+            {destino === "tarefas" && (
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
+                  <Calendar size={11} /> Prazo:
+                </span>
+                {[
+                  { id: "hoje", rotulo: "Hoje" },
+                  { id: "amanha", rotulo: "Amanhã" },
+                  { id: "segunda", rotulo: "Segunda" },
+                  { id: "sem_prazo", rotulo: "Sem prazo" },
+                ].map((p) => {
+                  const ativo = prazoSelecionado === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setPrazoSelecionado(ativo ? "sem_prazo" : p.id)}
+                      className={cn(
+                        "px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors cursor-pointer",
+                        ativo
+                          ? "bg-primary/20 text-primary border border-primary/30 font-semibold"
+                          : "bg-secondary/70 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      )}
+                    >
+                      {p.rotulo}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
-          <Botao
-            tamanho="pequeno"
-            variante="neutro"
-            onClick={async () => {
-              const entrada = texto.trim();
-              if (!entrada || salvando) return;
-              setSalvando(true);
-              setErro("");
-              try {
-                const { capturarUrlWeb, converterHtmlParaMarkdown } = await import("@/lib/clipper");
-                let res;
-                if (/^https?:\/\//i.test(entrada)) {
-                  res = await capturarUrlWeb(entrada);
-                } else {
-                  res = converterHtmlParaMarkdown(entrada);
+            {pastasDisponiveis.length > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] text-muted-foreground flex items-center gap-0.5 ml-1">
+                  <Folder size={11} /> Pasta:
+                </span>
+                <select
+                  value={subpastaSelecionada}
+                  onChange={(e) => setSubpastaSelecionada(e.target.value)}
+                  className="text-[11px] rounded-md border border-border bg-background px-1.5 py-0.5 text-muted-foreground focus:text-foreground focus:outline-hidden"
+                >
+                  <option value="">(Raiz)</option>
+                  {pastasDisponiveis.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {DESTINOS.map(({ id, rotulo, Icone }) => (
+              <button
+                key={id}
+                onClick={() => {
+                  setDestino(id);
+                  setTocouNoDestino(true);
+                }}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors cursor-pointer",
+                  destino === id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground hover:bg-accent",
+                )}
+              >
+                <Icone size={14} />
+                {rotulo}
+              </button>
+            ))}
+
+            <Botao
+              tamanho="pequeno"
+              variante="neutro"
+              onClick={async () => {
+                const entrada = texto.trim();
+                if (!entrada || salvando) return;
+                setSalvando(true);
+                setErro("");
+                try {
+                  const { capturarUrlWeb, converterHtmlParaMarkdown } = await import("@/lib/clipper");
+                  let res;
+                  if (/^https?:\/\//i.test(entrada)) {
+                    res = await capturarUrlWeb(entrada);
+                  } else {
+                    res = converterHtmlParaMarkdown(entrada);
+                  }
+                  setTexto(`${res.titulo}\n\n${res.markdown}`);
+                  // autor, data e site vão para o frontmatter, não para o meio
+                  // do texto: assim a busca e as outras telas os enxergam como
+                  // campos, e não como uma linha solta que ninguém lê
+                  setDadosDaCaptura(res.dados);
+                  setDestino("notas");
+                } catch (e) {
+                  setErro(e instanceof Error ? e.message : String(e));
+                } finally {
+                  setSalvando(false);
                 }
-                setTexto(`${res.titulo}\n\n${res.markdown}`);
-                // autor, data e site vão para o frontmatter, não para o meio
-                // do texto: assim a busca e as outras telas os enxergam como
-                // campos, e não como uma linha solta que ninguém lê
-                setDadosDaCaptura(res.dados);
-                setDestino("notas");
-              } catch (e) {
-                setErro(e instanceof Error ? e.message : String(e));
-              } finally {
-                setSalvando(false);
-              }
-            }}
-            disabled={salvando || !texto.trim()}
-            title="Baixa a página web ou converte o HTML colado em Markdown limpo"
-          >
-            {salvando ? "Buscando site…" : "Capturar Web"}
-          </Botao>
+              }}
+              disabled={salvando || !texto.trim()}
+              title="Baixa a página web ou converte o HTML colado em Markdown limpo"
+            >
+              {salvando ? "Buscando site…" : "Capturar Web"}
+            </Botao>
 
-          <Botao
-            tamanho="pequeno"
-            onClick={salvar}
-            disabled={salvando || !texto.trim()}
-            className="ml-auto"
-          >
-            <Send size={14} />
-            {salvo ? "Salvo!" : salvando ? "Salvando…" : "Salvar"}
-          </Botao>
-        </div>
+            <Botao
+              tamanho="pequeno"
+              onClick={salvar}
+              disabled={salvando || !texto.trim()}
+              className="ml-auto"
+            >
+              <Send size={14} />
+              {salvo ? "Salvo!" : salvando ? "Salvando…" : "Salvar"}
+            </Botao>
+          </div>
 
         {erro && <p className="mt-2 text-xs text-destructive">{erro}</p>}
 

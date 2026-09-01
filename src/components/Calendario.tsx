@@ -18,7 +18,6 @@ import {
   ChevronRight,
   Calendar as CalendarIcon,
   Clock,
-  ArrowRight,
   Filter,
   CheckCircle2,
 } from "lucide-react";
@@ -26,6 +25,8 @@ import { SeloStatus } from "@/components/SeloStatus";
 import { cn } from "@/lib/utils";
 import { urgencia, extrairIntervaloTarefa, type Tarefa } from "@/lib/tarefas";
 import { CORES_NOTION, lerConfigPropriedadesGlobais } from "@/components/PropriedadesNotion";
+import { MenuAcoesTarefa } from "@/components/MenuAcoesTarefa";
+import { Circle } from "lucide-react";
 
 type FiltroStatusCalendario = "todas" | "pendentes" | "atrasadas" | "concluidas";
 
@@ -92,9 +93,17 @@ function obterEstiloTagCalendario(t: Tarefa): { bg: string; text: string; border
 export function Calendario({
   tarefas,
   aoAbrir,
+  aoAlternarStatus,
+  aoAdiarPrazo,
+  aoDuplicar,
+  aoExcluir,
 }: {
   tarefas: Tarefa[];
   aoAbrir: (t: Tarefa) => void;
+  aoAlternarStatus?: (t: Tarefa) => void;
+  aoAdiarPrazo?: (t: Tarefa, dias: number) => void;
+  aoDuplicar?: (t: Tarefa) => void;
+  aoExcluir?: (t: Tarefa) => void;
 }) {
   const [mesAtual, setMesAtual] = useState(new Date());
   const [selecionado, setSelecionado] = useState<Date>(new Date());
@@ -438,15 +447,40 @@ export function Calendario({
                       )}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p
-                          className={cn(
-                            "text-xs font-bold group-hover:text-primary transition-colors leading-snug",
-                            ehFeito && "line-through text-muted-foreground font-normal",
-                          )}
-                        >
-                          {t.titulo}
-                        </p>
-                        <ArrowRight size={14} className="text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 mt-0.5" />
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (aoAlternarStatus) aoAlternarStatus(t);
+                            }}
+                            className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                            title={ehFeito ? "Reabrir tarefa" : "Concluir tarefa"}
+                          >
+                            {ehFeito ? (
+                              <CheckCircle2 size={15} className="text-emerald-500 fill-emerald-500/20" />
+                            ) : (
+                              <Circle size={15} className="hover:text-primary" />
+                            )}
+                          </button>
+                          <p
+                            className={cn(
+                              "text-xs font-bold group-hover:text-primary transition-colors leading-snug truncate flex-1",
+                              ehFeito && "line-through text-muted-foreground font-normal",
+                            )}
+                          >
+                            {t.titulo}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <MenuAcoesTarefa
+                            tarefa={t}
+                            aoAlternarStatus={aoAlternarStatus ? () => aoAlternarStatus(t) : undefined}
+                            aoAdiarPrazo={aoAdiarPrazo ? (dias) => aoAdiarPrazo(t, dias) : undefined}
+                            aoDuplicar={aoDuplicar ? () => aoDuplicar(t) : undefined}
+                            aoExcluir={aoExcluir ? () => aoExcluir(t) : undefined}
+                          />
+                        </div>
                       </div>
 
                       {/* Intervalo de Datas se houver */}
