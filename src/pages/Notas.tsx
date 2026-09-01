@@ -149,6 +149,14 @@ export default function Notas() {
 
   const [novoTituloTarefa, setNovoTituloTarefa] = useState("");
 
+  useEffect(() => {
+    if (abaPasta === "tarefas" && tarefasDaPasta.length === 0) {
+      setAbaPasta("documentos");
+    } else if (abaPasta === "moodboard" && refsDaPasta.length === 0) {
+      setAbaPasta("documentos");
+    }
+  }, [abaPasta, tarefasDaPasta.length, refsDaPasta.length]);
+
   async function criarTarefaRapidaProjeto(e: React.FormEvent) {
     e.preventDefault();
     const titulo = novoTituloTarefa.trim();
@@ -1216,8 +1224,8 @@ export default function Notas() {
         </div>
       )}
 
-      {/* Hub do Projeto Integrado: Abas de Projeto quando pasta ativa */}
-      {pastaAtual && (
+      {/* Hub do Projeto Integrado: Abas de Projeto quando pasta ativa (somente se houver tarefas ou referências) */}
+      {pastaAtual && (tarefasDaPasta.length > 0 || refsDaPasta.length > 0) && (
         <div className="flex items-center gap-1.5 bg-secondary/50 p-1 rounded-2xl border border-border/60 w-fit">
           <button
             type="button"
@@ -1232,32 +1240,36 @@ export default function Notas() {
             <FileText size={13} />
             <span>Notas ({naPasta.length})</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setAbaPasta("tarefas")}
-            className={cn(
-              "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5",
-              abaPasta === "tarefas"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <CheckSquare size={13} />
-            <span>Tarefas ({tarefasDaPasta.length})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setAbaPasta("moodboard")}
-            className={cn(
-              "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5",
-              abaPasta === "moodboard"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <ImageIcon size={13} />
-            <span>Moodboard ({refsDaPasta.length})</span>
-          </button>
+          {tarefasDaPasta.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setAbaPasta("tarefas")}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5",
+                abaPasta === "tarefas"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <CheckSquare size={13} />
+              <span>Tarefas ({tarefasDaPasta.length})</span>
+            </button>
+          )}
+          {refsDaPasta.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setAbaPasta("moodboard")}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5",
+                abaPasta === "moodboard"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <ImageIcon size={13} />
+              <span>Moodboard ({refsDaPasta.length})</span>
+            </button>
+          )}
         </div>
       )}
 

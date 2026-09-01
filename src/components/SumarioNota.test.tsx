@@ -41,8 +41,14 @@ describe("SumarioNota", () => {
     expect(screen.getByText("Requisitos Visuais")).toBeDefined();
   });
 
-  it("não polui a interface se a nota tiver menos de 2 seções e menos de 100 palavras", () => {
+  it("não polui a interface se a nota tiver menos de 2 seções", () => {
     const { container } = render(<SumarioNota corpo="Apenas uma linha simples." />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("não polui a interface se o texto for longo mas não tiver títulos", () => {
+    const textoLongoSemTitulos = Array(150).fill("palavra qualquer sem cabeçalho").join(" ");
+    const { container } = render(<SumarioNota corpo={textoLongoSemTitulos} />);
     expect(container.firstChild).toBeNull();
   });
 });

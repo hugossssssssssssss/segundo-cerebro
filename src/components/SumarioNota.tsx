@@ -45,7 +45,8 @@ export function SumarioNota({ corpo, className }: SumarioNotaProps) {
     return { itens: encontrados, palavras: palavrasLimpas, minutosLeitura: minutos };
   }, [corpo]);
 
-  if (itens.length < 2 && palavras < 100) return null;
+  // Exibe o sumário apenas se houver seções com títulos para navegação
+  if (itens.length < 2) return null;
 
   const rolarAteTitulo = (textoTitulo: string) => {
     // Procura o cabeçalho no DOM do BlockNote

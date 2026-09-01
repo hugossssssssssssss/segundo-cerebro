@@ -7,8 +7,8 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { cache, invalidarCache } from "@/lib/repo";
-import { comoReferencia, referenciaParaArquivo } from "@/lib/entidades";
-import { escreverMarkdown, nomeLivre, tituloProvavel } from "@/lib/markdown";
+import { referenciaParaArquivo } from "@/lib/entidades";
+import { escreverMarkdown, nomeLivre } from "@/lib/markdown";
 import { lerConfig } from "@/lib/settings";
 import { useSalvar } from "@/lib/useSalvar";
 import { gravarBinario } from "@/lib/github";
@@ -18,12 +18,14 @@ import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import { abrirItemSpa } from "@/components/PropriedadesNotion";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { toast } from "@/lib/toast";
+import { obterReferenciasVinculadas } from "@/lib/vinculosNota";
 
 interface PainelReferenciasNotaProps {
   tituloNota: string;
   caminhoNota?: string;
   relacionamentos?: string[];
   aoAtualizar?: () => void;
+  referenciasPrecarregadas?: Referencia[];
 }
 
 export function PainelReferenciasNota({
@@ -31,6 +33,7 @@ export function PainelReferenciasNota({
   caminhoNota,
   relacionamentos = [],
   aoAtualizar,
+  referenciasPrecarregadas,
 }: PainelReferenciasNotaProps) {
   const [expandido, setExpandido] = useState(true);
   const [enviandoImagem, setEnviandoImagem] = useState(false);
@@ -39,66 +42,11 @@ export function PainelReferenciasNota({
   const cfg = useMemo(() => lerConfig(), []);
   const { salvarTexto } = useSalvar(cfg);
 
-  // Busca no cache todas as referências visuais ligadas a esta nota
+  // Busca no cache todas as referências visuais ligadas a esta nota ou usa pré-carregadas
   const referenciasVinculadas = useMemo<Referencia[]>(() => {
-    if (!tituloNota && !caminhoNota) return [];
-    if (!cache?.itens) return [];
-
-    const normTitulo = tituloNota.toLowerCase().trim();
-    const normCaminho = caminhoNota?.toLowerCase().trim() || "";
-    const baseCaminho = caminhoNota
-      ? caminhoNota.split("/").pop()?.replace(/\.md$/, "").toLowerCase().trim() || ""
-      : "";
-
-    const resultados: Referencia[] = [];
-
-    for (const item of cache.itens) {
-      if (!item.caminho.startsWith("referencias/")) continue;
-      if (!item.caminho.endsWith(".md")) continue;
-
-      const r = comoReferencia(
-        item.doc,
-        item.caminho,
-        item.sha,
-        tituloProvavel(item.doc, item.nome)
-      );
-
-      const relsRef = (r.relacionamentos || []).map((rel) =>
-        rel.replace(/^[@[]+/, "").replace(/\]\]$/, "").toLowerCase().trim()
-      );
-
-      const relacionadoPeloCampo = relsRef.some(
-        (rel) =>
-          (normTitulo && (rel === normTitulo || rel.includes(normTitulo) || normTitulo.includes(rel))) ||
-          (normCaminho && rel === normCaminho) ||
-          (baseCaminho && rel === baseCaminho)
-      );
-
-      const normTituloRef = r.titulo.toLowerCase().trim();
-      const normCaminhoRef = r.caminho.toLowerCase().trim();
-      const baseCaminhoRef = r.caminho.split("/").pop()?.replace(/\.md$/, "").toLowerCase().trim() || "";
-
-      const relacionadoPelaNota = relacionamentos.some((rel) => {
-        const limpo = rel.replace(/^[@[]+/, "").replace(/\]\]$/, "").toLowerCase().trim();
-        return (
-          limpo === normTituloRef ||
-          limpo === normCaminhoRef ||
-          limpo === baseCaminhoRef
-        );
-      });
-
-      const corpoNorm = (r.corpo || "").toLowerCase();
-      const citadoNoCorpo =
-        normTitulo &&
-        (corpoNorm.includes(`@${normTitulo}`) || corpoNorm.includes(`[[${normTitulo}]]`));
-
-      if (relacionadoPeloCampo || relacionadoPelaNota || citadoNoCorpo) {
-        resultados.push(r);
-      }
-    }
-
-    return resultados;
-  }, [tituloNota, caminhoNota, relacionamentos]);
+    if (referenciasPrecarregadas !== undefined) return referenciasPrecarregadas;
+    return obterReferenciasVinculadas(tituloNota, caminhoNota, relacionamentos);
+  }, [referenciasPrecarregadas, tituloNota, caminhoNota, relacionamentos]);
 
   // Upload rápido de imagem anexada à nota
   const processarEnvioImagem = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -10,8 +10,8 @@ import {
   Timer,
 } from "lucide-react";
 import { cache, invalidarCache } from "@/lib/repo";
-import { comoTarefa, tarefaParaArquivo } from "@/lib/entidades";
-import { escreverMarkdown, nomeLivre, tituloProvavel } from "@/lib/markdown";
+import { tarefaParaArquivo } from "@/lib/entidades";
+import { escreverMarkdown, nomeLivre } from "@/lib/markdown";
 import { lerConfig } from "@/lib/settings";
 import { useSalvar } from "@/lib/useSalvar";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
@@ -19,6 +19,7 @@ import { abrirItemSpa } from "@/components/PropriedadesNotion";
 import { toast } from "@/lib/toast";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { obterTarefasVinculadas } from "@/lib/vinculosNota";
 import type { Tarefa } from "@/lib/tipos";
 
 interface PainelTarefasNotaProps {
@@ -26,6 +27,7 @@ interface PainelTarefasNotaProps {
   caminhoNota?: string;
   relacionamentos?: string[];
   aoAtualizar?: () => void;
+  tarefasPrecarregadas?: Tarefa[];
 }
 
 export function PainelTarefasNota({
@@ -33,6 +35,7 @@ export function PainelTarefasNota({
   caminhoNota,
   relacionamentos = [],
   aoAtualizar,
+  tarefasPrecarregadas,
 }: PainelTarefasNotaProps) {
   const [expandido, setExpandido] = useState(true);
   const [novaTarefaTexto, setNovaTarefaTexto] = useState("");
@@ -42,74 +45,11 @@ export function PainelTarefasNota({
   const cfg = useMemo(() => lerConfig(), []);
   const { salvarTexto } = useSalvar(cfg);
 
-  // Busca no cache todas as tarefas ligadas a esta nota
+  // Busca no cache todas as tarefas ligadas a esta nota ou usa pré-carregadas
   const tarefasVinculadas = useMemo<Tarefa[]>(() => {
-    if (!tituloNota && !caminhoNota) return [];
-    if (!cache?.itens) return [];
-
-    const normTitulo = tituloNota.toLowerCase().trim();
-    const normCaminho = caminhoNota?.toLowerCase().trim() || "";
-    const baseCaminho = caminhoNota
-      ? caminhoNota.split("/").pop()?.replace(/\.md$/, "").toLowerCase().trim() || ""
-      : "";
-
-    const resultados: Tarefa[] = [];
-
-    for (const item of cache.itens) {
-      if (!item.caminho.startsWith("tarefas/")) continue;
-      if (!item.caminho.endsWith(".md")) continue;
-
-      const t = comoTarefa(
-        item.doc,
-        item.caminho,
-        item.sha,
-        tituloProvavel(item.doc, item.nome)
-      );
-
-      // Checa se a tarefa tem relacionamento com a nota atual
-      const relsTarefa = (t.relacionamentos || []).map((r) =>
-        r.replace(/^[@[]+/, "").replace(/\]\]$/, "").toLowerCase().trim()
-      );
-
-      const relacionadoPeloCampo = relsTarefa.some(
-        (r) =>
-          (normTitulo && (r === normTitulo || r.includes(normTitulo) || normTitulo.includes(r))) ||
-          (normCaminho && r === normCaminho) ||
-          (baseCaminho && r === baseCaminho)
-      );
-
-      // Checa se a nota atual lista essa tarefa em seus relacionamentos
-      const normTituloTarefa = t.titulo.toLowerCase().trim();
-      const normCaminhoTarefa = t.caminho.toLowerCase().trim();
-      const baseCaminhoTarefa = t.caminho.split("/").pop()?.replace(/\.md$/, "").toLowerCase().trim() || "";
-
-      const relacionadoPelaNota = relacionamentos.some((r) => {
-        const limpo = r.replace(/^[@[]+/, "").replace(/\]\]$/, "").toLowerCase().trim();
-        return (
-          limpo === normTituloTarefa ||
-          limpo === normCaminhoTarefa ||
-          limpo === baseCaminhoTarefa
-        );
-      });
-
-      // Checa se o corpo da tarefa cita a nota
-      const corpoNorm = (t.corpo || "").toLowerCase();
-      const citadoNoCorpo =
-        normTitulo &&
-        (corpoNorm.includes(`@${normTitulo}`) || corpoNorm.includes(`[[${normTitulo}]]`));
-
-      if (relacionadoPeloCampo || relacionadoPelaNota || citadoNoCorpo) {
-        resultados.push(t);
-      }
-    }
-
-    // Ordena: pendentes primeiro, concluídas depois
-    return resultados.sort((a, b) => {
-      if (a.status === "feito" && b.status !== "feito") return 1;
-      if (a.status !== "feito" && b.status === "feito") return -1;
-      return a.titulo.localeCompare(b.titulo);
-    });
-  }, [tituloNota, caminhoNota, relacionamentos]);
+    if (tarefasPrecarregadas !== undefined) return tarefasPrecarregadas;
+    return obterTarefasVinculadas(tituloNota, caminhoNota, relacionamentos);
+  }, [tarefasPrecarregadas, tituloNota, caminhoNota, relacionamentos]);
 
   const concluidasCount = useMemo(
     () => tarefasVinculadas.filter((t) => t.status === "feito").length,

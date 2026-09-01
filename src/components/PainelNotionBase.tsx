@@ -33,6 +33,7 @@ import { MencionadoEm } from "@/components/Links";
 import { PainelTarefasNota } from "@/components/PainelTarefasNota";
 import { PainelReferenciasNota } from "@/components/PainelReferenciasNota";
 import { SumarioNota } from "@/components/SumarioNota";
+import { obterTarefasVinculadas, obterReferenciasVinculadas } from "@/lib/vinculosNota";
 import { sincronizarRelacionamentos } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
@@ -985,6 +986,47 @@ export function PainelNotionBase({
   const eTarefa = rotuloTipo?.toLowerCase().includes("tarefa");
   const eNota = !eTarefa && (!rotuloTipo || rotuloTipo.toLowerCase().includes("nota") || rotuloTipo.toLowerCase().includes("rascunho") || Boolean(caminhoItem?.startsWith("notas/")));
 
+  // Busca tarefas e referências vinculadas para controlar a exibição condicional de visões e blocos
+  const tarefasVinculadas = useMemo(
+    () => obterTarefasVinculadas(titulo, caminhoItem, dadosProps.relacionamentos),
+    [titulo, caminhoItem, dadosProps.relacionamentos]
+  );
+
+  const referenciasVinculadas = useMemo(
+    () => obterReferenciasVinculadas(titulo, caminhoItem, dadosProps.relacionamentos),
+    [titulo, caminhoItem, dadosProps.relacionamentos]
+  );
+
+  const temTarefas = tarefasVinculadas.length > 0;
+  const temReferencias = referenciasVinculadas.length > 0;
+  const temConexoes = mencoes.length > 0;
+  const temMaisDeUmaVisao = temTarefas || temReferencias || temConexoes;
+
+  // Ajusta aba ativa para não ficar presa numa visão sem conteúdo
+  const abaEfetiva: AbaContextoPainel = useMemo(() => {
+    if (abaAtiva === "tarefas" && !temTarefas) return "tudo";
+    if (abaAtiva === "moodboard" && !temReferencias) return "tudo";
+    if (abaAtiva === "conexoes" && !temConexoes) return "tudo";
+    return abaAtiva;
+  }, [abaAtiva, temTarefas, temReferencias, temConexoes]);
+
+  const abasDisponiveis = useMemo(() => {
+    if (!temMaisDeUmaVisao) return [];
+    return [
+      { id: "tudo", rotulo: "Visão Completa", icone: <Layout className="w-3.5 h-3.5" /> },
+      { id: "documento", rotulo: "Documento", icone: <FileText className="w-3.5 h-3.5 text-blue-500" /> },
+      ...(temTarefas
+        ? [{ id: "tarefas", rotulo: `Tarefas (${tarefasVinculadas.length})`, icone: <ListTodo className="w-3.5 h-3.5 text-primary" /> }]
+        : []),
+      ...(temReferencias
+        ? [{ id: "moodboard", rotulo: `Moodboard (${referenciasVinculadas.length})`, icone: <ImageIcon className="w-3.5 h-3.5 text-purple-500" /> }]
+        : []),
+      ...(temConexoes
+        ? [{ id: "conexoes", rotulo: `Conexões (${mencoes.length})`, icone: <LinkIcon className="w-3.5 h-3.5 text-amber-500" /> }]
+        : []),
+    ];
+  }, [temMaisDeUmaVisao, temTarefas, tarefasVinculadas.length, temReferencias, referenciasVinculadas.length, temConexoes, mencoes.length]);
+
   const conteudo = (
     <div className="space-y-5 max-w-4xl mx-auto w-full">
       {erro && <Aviso tom="erro">{erro}</Aviso>}
@@ -1015,36 +1057,30 @@ export function PainelNotionBase({
 
       {elementoAcimaCorpo}
 
-      {/* Abas Superiores de Contexto (Visão Completa | Documento | Tarefas | Moodboard | Conexões) */}
-      <div className="flex items-center gap-1.5 border-b border-border/60 pb-2 overflow-x-auto select-none pt-1">
-        {[
-          { id: "tudo", rotulo: "Visão Completa", icone: <Layout className="w-3.5 h-3.5" /> },
-          { id: "documento", rotulo: "Documento", icone: <FileText className="w-3.5 h-3.5 text-blue-500" /> },
-          { id: "tarefas", rotulo: "Tarefas do Projeto", icone: <ListTodo className="w-3.5 h-3.5 text-primary" /> },
-          { id: "moodboard", rotulo: "Moodboard", icone: <ImageIcon className="w-3.5 h-3.5 text-purple-500" /> },
-          ...(mencoes.length > 0
-            ? [{ id: "conexoes", rotulo: `Conexões (${mencoes.length})`, icone: <LinkIcon className="w-3.5 h-3.5 text-amber-500" /> }]
-            : []),
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => trocarAba(tab.id as AbaContextoPainel)}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap",
-              abaAtiva === tab.id
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
-            )}
-          >
-            {tab.icone}
-            <span>{tab.rotulo}</span>
-          </button>
-        ))}
-      </div>
+      {/* Abas Superiores de Contexto (só exibe se houver mais de uma visão disponível) */}
+      {temMaisDeUmaVisao && abasDisponiveis.length > 1 && (
+        <div className="flex items-center gap-1.5 border-b border-border/60 pb-2 overflow-x-auto select-none pt-1">
+          {abasDisponiveis.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => trocarAba(tab.id as AbaContextoPainel)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap",
+                abaEfetiva === tab.id
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+              )}
+            >
+              {tab.icone}
+              <span>{tab.rotulo}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Bloco 1: Documento (Editor e Subtarefas) */}
-      {(abaAtiva === "tudo" || abaAtiva === "documento") && (
+      {(abaEfetiva === "tudo" || abaEfetiva === "documento") && (
         <div className="space-y-4 animate-in fade-in duration-150">
           {eNota && <SumarioNota corpo={corpo} />}
 
@@ -1099,30 +1135,32 @@ export function PainelNotionBase({
         </div>
       )}
 
-      {/* Bloco 2: Tarefas do Projeto */}
-      {(abaAtiva === "tudo" || abaAtiva === "tarefas") && (
+      {/* Bloco 2: Tarefas do Projeto (só exibe se houver tarefas vinculadas) */}
+      {temTarefas && (abaEfetiva === "tudo" || abaEfetiva === "tarefas") && (
         <div className="space-y-3 pt-2 animate-in fade-in duration-150">
           <PainelTarefasNota
             tituloNota={titulo}
             caminhoNota={caminhoItem}
             relacionamentos={dadosProps.relacionamentos}
+            tarefasPrecarregadas={tarefasVinculadas}
           />
         </div>
       )}
 
-      {/* Bloco 3: Moodboard e Referências Visuais */}
-      {(abaAtiva === "tudo" || abaAtiva === "moodboard") && (
+      {/* Bloco 3: Moodboard e Referências Visuais (só exibe se houver referências vinculadas) */}
+      {temReferencias && (abaEfetiva === "tudo" || abaEfetiva === "moodboard") && (
         <div className="space-y-3 pt-2 animate-in fade-in duration-150">
           <PainelReferenciasNota
             tituloNota={titulo}
             caminhoNota={caminhoItem}
             relacionamentos={dadosProps.relacionamentos}
+            referenciasPrecarregadas={referenciasVinculadas}
           />
         </div>
       )}
 
-      {/* Bloco 4: Conexões e Menções */}
-      {(abaAtiva === "tudo" || abaAtiva === "conexoes") && mencoes.length > 0 && (
+      {/* Bloco 4: Conexões e Menções (só exibe se houver conexões) */}
+      {temConexoes && (abaEfetiva === "tudo" || abaEfetiva === "conexoes") && (
         <div className="mt-6 border-t border-border pt-5 animate-in fade-in duration-150">
           <MencionadoEm mencoes={mencoes} />
         </div>
