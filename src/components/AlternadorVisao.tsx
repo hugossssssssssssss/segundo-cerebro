@@ -38,7 +38,6 @@ export function AlternadorVisao<T extends string = string>({
           <Tooltip
             key={opcao.id}
             conteudo={`Alternar para visão ${opcao.rotulo}`}
-            posicao="top"
           >
             <button
               type="button"

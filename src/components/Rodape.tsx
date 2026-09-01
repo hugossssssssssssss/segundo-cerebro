@@ -25,6 +25,7 @@ import { lerConfig, type Settings } from "@/lib/settings";
 import { obterRascunhosLocais } from "@/lib/offlineQueue";
 import { cn, formatarAtalho } from "@/lib/utils";
 import { ModalCreditosOpenSource } from "./ModalCreditosOpenSource";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const FRASES_INSPIRADORAS = [
   "A simplicidade é o último grau da sofisticação.",
@@ -253,17 +254,18 @@ export function Rodape() {
                 <li className="flex items-center justify-between">
                   <span className="text-zinc-700 dark:text-zinc-300 font-medium">GitHub:</span>
                   {temRepo ? (
-                    <a
-                      href={repoUrl || "#"}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 font-mono text-[11px] font-bold text-black dark:text-white hover:text-primary transition-colors truncate max-w-[140px]"
-                      title={`${cfg.repoOwner}/${cfg.repoName} (${cfg.branch || "main"})`}
-                    >
-                      <GitBranch size={12} className="shrink-0 text-primary" />
-                      <span className="truncate">{cfg.repoName}</span>
-                      <ExternalLink size={10} className="shrink-0 opacity-70" />
-                    </a>
+                    <Tooltip conteudo={`Repositório: ${cfg.repoOwner}/${cfg.repoName} (${cfg.branch || "main"})`}>
+                      <a
+                        href={repoUrl || "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 font-mono text-[11px] font-bold text-black dark:text-white hover:text-primary transition-colors truncate max-w-[140px]"
+                      >
+                        <GitBranch size={12} className="shrink-0 text-primary" />
+                        <span className="truncate">{cfg.repoName}</span>
+                        <ExternalLink size={10} className="shrink-0 opacity-70" />
+                      </a>
+                    </Tooltip>
                   ) : (
                     <Link
                       to="/config"
@@ -323,16 +325,17 @@ export function Rodape() {
 
               <span className="text-zinc-400">•</span>
 
-              <button
-                type="button"
-                onClick={rolarParaTopo}
-                className="flex items-center gap-1 text-black dark:text-white hover:text-primary font-black transition-colors cursor-pointer"
-                title="Voltar ao topo da página"
-                aria-label="Voltar ao topo da página"
-              >
-                <ArrowUp size={13} strokeWidth={3} />
-                <span>Topo</span>
-              </button>
+              <Tooltip conteudo="Voltar ao topo da página" posicao="top">
+                <button
+                  type="button"
+                  onClick={rolarParaTopo}
+                  className="flex items-center gap-1 text-black dark:text-white hover:text-primary font-black transition-colors cursor-pointer"
+                  aria-label="Voltar ao topo da página"
+                >
+                  <ArrowUp size={13} strokeWidth={3} />
+                  <span>Topo</span>
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>

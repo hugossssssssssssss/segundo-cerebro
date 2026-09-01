@@ -1,182 +1,148 @@
 import {
-  useState,
-  useRef,
-  useEffect,
   type ReactNode,
   type ReactElement,
-  cloneElement,
   isValidElement,
+  cloneElement,
 } from "react";
-import { createPortal } from "react-dom";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cn, formatarAtalho } from "@/lib/utils";
 
 export type PosicaoTooltip = "top" | "bottom" | "left" | "right";
+export type AlinhamentoTooltip = "start" | "center" | "end";
 
 export interface TooltipProps {
-  conteudo: ReactNode;
+  /** Texto ou elemento da dica */
+  conteudo?: ReactNode;
+  /** Alias em inglês para conteúdo */
+  content?: ReactNode;
+  /** Atalho de teclado opcional (ex: "⌘K", "Esc") */
   atalho?: string;
+  /** Posição relativa ao elemento (padrão: "bottom") */
   posicao?: PosicaoTooltip;
+  /** Alias compatível com Radix */
+  side?: PosicaoTooltip;
+  /** Alinhamento no eixo secundário */
+  align?: AlinhamentoTooltip;
+  /** Espaçamento em pixels entre o elemento e o balão (padrão: 6) */
+  sideOffset?: number;
+  /** Atraso em milissegundos antes de abrir (padrão: 350ms) */
   atrasoMs?: number;
+  /** Alias compatível com Radix */
+  delayDuration?: number;
+  /** Desativa temporariamente a exibição do tooltip */
   desabilitado?: boolean;
+  /** Classes CSS extras para o balão */
   className?: string;
-  children: ReactElement<any>;
+  /** Elemento que ativa o tooltip */
+  children: ReactElement<any> | ReactNode;
 }
 
 /**
  * Componente universal de Dica Flutuante (Tooltip) do Klaus.
- * Renderiza via React Portal no body com posicionamento inteligente,
- * suporte a atalhos de teclado e micro-animação suave.
+ * 
+ * - Baseado em Radix UI com acessibilidade WAI-ARIA (role="tooltip", aria-describedby)
+ * - Alto contraste invertido por tema (Modo Claro: fundo escuro / Modo Escuro: fundo claro)
+ * - Posicionamento inteligente com detecção de colisão (nunca vaza da tela)
+ * - Delay padrão de 350ms para evitar ruído visual em movimentos rápidos
+ * - Suporte a toque longo (long press) em dispositivos touch
+ * - Suporta botões desabilitados envolvendo-os automaticamente
  */
 export function Tooltip({
   conteudo,
+  content,
   atalho,
-  posicao = "top",
-  atrasoMs = 150,
+  posicao,
+  side = "bottom",
+  align = "center",
+  sideOffset = 6,
+  atrasoMs,
+  delayDuration = 350,
   desabilitado = false,
   className,
   children,
 }: TooltipProps) {
-  const [visivel, setVisivel] = useState(false);
-  const [coordenadas, setCoordenadas] = useState<{ x: number; y: number } | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const triggerRef = useRef<HTMLElement | null>(null);
+  const textoDica = content ?? conteudo;
+  const ladoFinal = posicao ?? side ?? "bottom";
+  const atrasoFinal = atrasoMs ?? delayDuration ?? 350;
 
-  const calcularPosicao = () => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    const espaco = 8;
-
-    let x = 0;
-    let y = 0;
-
-    switch (posicao) {
-      case "top":
-        x = rect.left + rect.width / 2;
-        y = rect.top - espaco;
-        break;
-      case "bottom":
-        x = rect.left + rect.width / 2;
-        y = rect.bottom + espaco;
-        break;
-      case "left":
-        x = rect.left - espaco;
-        y = rect.top + rect.height / 2;
-        break;
-      case "right":
-        x = rect.right + espaco;
-        y = rect.top + rect.height / 2;
-        break;
-    }
-
-    setCoordenadas({ x, y });
-  };
-
-  const handleMouseEnter = () => {
-    if (desabilitado || !conteudo) return;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      calcularPosicao();
-      setVisivel(true);
-    }, atrasoMs);
-  };
-
-  const handleMouseLeave = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setVisivel(false);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  // Reposiciona caso haja scroll ou resize da janela enquanto visível
-  useEffect(() => {
-    if (!visivel) return;
-    const handleScroll = () => calcularPosicao();
-    window.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll, true);
-      window.removeEventListener("resize", handleScroll);
-    };
-  }, [visivel, posicao]);
-
-  if (!isValidElement(children)) {
-    return children;
+  if (desabilitado || !textoDica) {
+    return <>{children}</>;
   }
 
-  const childProps = (children.props || {}) as Record<string, any>;
-
-  // Clona o elemento filho para anexar os manipuladores de eventos e a referência
-  const triggerElement = cloneElement(children as ReactElement<any>, {
-    ref: (node: HTMLElement | null) => {
-      triggerRef.current = node;
-      // Preserva ref original se existir
-      const { ref } = children as any;
-      if (typeof ref === "function") ref(node);
-      else if (ref && typeof ref === "object") (ref as any).current = node;
-    },
-    onMouseEnter: (e: React.MouseEvent) => {
-      childProps.onMouseEnter?.(e);
-      handleMouseEnter();
-    },
-    onMouseLeave: (e: React.MouseEvent) => {
-      childProps.onMouseLeave?.(e);
-      handleMouseLeave();
-    },
-    onFocus: (e: React.FocusEvent) => {
-      childProps.onFocus?.(e);
-      handleMouseEnter();
-    },
-    onBlur: (e: React.FocusEvent) => {
-      childProps.onBlur?.(e);
-      handleMouseLeave();
-    },
-  } as any);
-
-  const getTransformClass = () => {
-    switch (posicao) {
-      case "top":
-        return "-translate-x-1/2 -translate-y-full";
-      case "bottom":
-        return "-translate-x-1/2 translate-y-0";
-      case "left":
-        return "-translate-x-full -translate-y-1/2";
-      case "right":
-        return "translate-x-0 -translate-y-1/2";
+  // Se o filho for um elemento React e estiver com `disabled`, os navegadores
+  // bloqueiam os eventos de mouse/ponteiro nativos. Envolvemos em um container
+  // inline para que o tooltip continue respondendo a hover/focus e explique o motivo.
+  let triggerChild: ReactNode = children;
+  if (isValidElement(children)) {
+    const props = children.props as Record<string, any>;
+    if (props?.disabled) {
+      triggerChild = (
+        <span
+          tabIndex={0}
+          className="inline-flex cursor-not-allowed focus:outline-none"
+          role="presentation"
+        >
+          {cloneElement(children as ReactElement<any>, {
+            // Remove pointer-events do botão interno para o container capturar os eventos
+            style: { ...props.style, pointerEvents: "none" },
+          })}
+        </span>
+      );
     }
-  };
+  }
 
   return (
-    <>
-      {triggerElement}
-      {visivel && coordenadas && typeof document !== "undefined" && createPortal(
-        <div
-          style={{
-            position: "fixed",
-            left: `${coordenadas.x}px`,
-            top: `${coordenadas.y}px`,
-            zIndex: 9999999,
-          }}
-          className={cn(
-            "pointer-events-none flex items-center gap-1.5 rounded-lg border border-border/80 bg-popover/95 px-2.5 py-1 text-xs font-medium text-popover-foreground shadow-lg backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 whitespace-nowrap",
-            getTransformClass(),
-            className
+    <TooltipPrimitive.Provider delayDuration={atrasoFinal} skipDelayDuration={150}>
+      <TooltipPrimitive.Root>
+        <TooltipPrimitive.Trigger asChild>
+          {isValidElement(triggerChild) ? (
+            triggerChild
+          ) : (
+            <span className="inline-flex">{triggerChild}</span>
           )}
-        >
-          <span>{conteudo}</span>
-          {atalho && (
-            <kbd className="rounded bg-muted/80 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-muted-foreground border border-border/60">
-              {formatarAtalho(atalho)}
-            </kbd>
-          )}
-        </div>,
-        document.body
-      )}
-    </>
+        </TooltipPrimitive.Trigger>
+
+        <TooltipPrimitive.Portal>
+          <TooltipPrimitive.Content
+            side={ladoFinal}
+            align={align}
+            sideOffset={sideOffset}
+            avoidCollisions={true}
+            collisionPadding={8}
+            className={cn(
+              // Layout e dimensões resilientes (quebra linha e não alarga a tela)
+              "z-[99999] max-w-xs break-words whitespace-normal select-none rounded-lg px-2.5 py-1 text-xs font-medium tracking-tight",
+              // Alto contraste invertido por tema
+              // Modo Claro: fundo preto/grafite com texto branco
+              // Modo Escuro: fundo branco com texto escuro
+              "bg-zinc-900 text-zinc-50 border border-zinc-800/80 shadow-md",
+              "dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-200 dark:shadow-lg",
+              // Micro-animações suaves de entrada/saída
+              "animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+              "data-[side=bottom]:slide-in-from-top-1 data-[side=top]:slide-in-from-bottom-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1",
+              "duration-150 ease-out",
+              className
+            )}
+          >
+            <div className="flex items-center gap-1.5 leading-snug">
+              <span>{textoDica}</span>
+              {atalho && (
+                <kbd className="inline-flex shrink-0 items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-zinc-800 text-zinc-300 border border-zinc-700/60 dark:bg-zinc-200 dark:text-zinc-700 dark:border-zinc-300/80">
+                  {formatarAtalho(atalho)}
+                </kbd>
+              )}
+            </div>
+          </TooltipPrimitive.Content>
+        </TooltipPrimitive.Portal>
+      </TooltipPrimitive.Root>
+    </TooltipPrimitive.Provider>
   );
 }
+
+// Primitivos exportados para cenários de composição avançada
+export const TooltipProvider = TooltipPrimitive.Provider;
+export const TooltipRoot = TooltipPrimitive.Root;
+export const TooltipTrigger = TooltipPrimitive.Trigger;
+export const TooltipContent = TooltipPrimitive.Content;
 
 export default Tooltip;

@@ -1,5 +1,6 @@
 import { Search, X } from "lucide-react";
 import { Campo } from "@/components/ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface BarraFerramentasProps {
@@ -43,14 +44,16 @@ export function BarraFerramentas({
               className="pl-9 pr-8 text-xs sm:text-sm"
             />
             {busca && (
-              <button
-                type="button"
-                onClick={() => aoMudarBusca("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors"
-                title="Limpar busca"
-              >
-                <X size={14} />
-              </button>
+              <Tooltip conteudo="Limpar busca">
+                <button
+                  type="button"
+                  onClick={() => aoMudarBusca("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  aria-label="Limpar busca"
+                >
+                  <X size={14} />
+                </button>
+              </Tooltip>
             )}
           </div>
         )}
