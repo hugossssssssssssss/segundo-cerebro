@@ -3,7 +3,7 @@ import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { SeloStatus } from "@/components/SeloStatus";
 import { JogoTermo } from "@/components/jogos/JogoTermo";
 import { JogoCruzadinha } from "@/components/jogos/cruzadinha/JogoCruzadinha";
-import { Gamepad2 } from "lucide-react";
+import { Gamepad2, Target, Grid3X3 } from "lucide-react";
 
 export type AbaJogos = "termo" | "cruzadinha";
 
@@ -56,7 +56,7 @@ export default function Jogos() {
               : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
           }`}
         >
-          <span className="text-base sm:text-lg">🎯</span>
+          <Target size={16} className="shrink-0" />
           <span>Termo</span>
           <span className="text-[10px] opacity-70 font-mono hidden sm:inline">(Wordle)</span>
         </button>
@@ -70,7 +70,7 @@ export default function Jogos() {
               : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
           }`}
         >
-          <span className="text-base sm:text-lg">📝</span>
+          <Grid3X3 size={16} className="shrink-0" />
           <span>Palavras Cruzadas</span>
           <span className="text-[10px] opacity-70 font-mono hidden sm:inline">(Cruzadinha)</span>
         </button>

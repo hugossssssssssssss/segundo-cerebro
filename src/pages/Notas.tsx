@@ -16,7 +16,9 @@ import {
   Image as ImageIcon,
   Circle,
   CheckCircle2,
+  Pin,
 } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Masonry } from "react-plock";
 import {
   obterModeloPadrao,
@@ -1139,13 +1141,16 @@ export default function Notas() {
         }
         acoes={
           <>
-            <Botao
-              variante="neutro"
-              onClick={() => setMenuContexto({ x: window.innerWidth / 2 - 120, y: 96, emCartao: false })}
-            >
-              <FolderPlus size={16} />
-              Nova Pasta
-            </Botao>
+            <Tooltip conteudo="Criar nova pasta de notas" posicao="bottom">
+              <Botao
+                variante="neutro"
+                tamanho="icone"
+                onClick={() => setMenuContexto({ x: window.innerWidth / 2 - 120, y: 96, emCartao: false })}
+                aria-label="Nova Pasta"
+              >
+                <FolderPlus size={16} />
+              </Botao>
+            </Tooltip>
 
             <DropdownNovoViaModelo
               rotuloPrincipal="Nova Nota"
@@ -1306,7 +1311,8 @@ export default function Notas() {
                   : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
               )}
             >
-              <span>📌 Fixadas</span>
+              <Pin size={12} className="shrink-0 text-amber-500" />
+              <span>Fixadas</span>
               <span className="text-[10px] opacity-80">
                 ({naPasta.filter((n) => n.fixado).length})
               </span>
@@ -1384,25 +1390,31 @@ export default function Notas() {
               title="Digite tags separadas por vírgula e pressione Enter"
             />
 
-            <Botao
-              variante="fantasma"
-              tamanho="pequeno"
-              onClick={() => {
-                processarAcaoMenu({ tipo: "excluir" });
-              }}
-              className="gap-1 text-[11px] text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 size={13} /> Excluir
-            </Botao>
-            <Botao
-              variante="fantasma"
-              tamanho="icone"
-              onClick={limparSelecao}
-              title="Limpar seleção"
-              className="h-7 w-7"
-            >
-              <X size={13} />
-            </Botao>
+            <Tooltip conteudo="Excluir notas selecionadas" posicao="top">
+              <Botao
+                variante="fantasma"
+                tamanho="icone"
+                onClick={() => {
+                  processarAcaoMenu({ tipo: "excluir" });
+                }}
+                className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                aria-label="Excluir notas selecionadas"
+              >
+                <Trash2 size={14} />
+              </Botao>
+            </Tooltip>
+
+            <Tooltip conteudo="Desmarcar seleção" posicao="top">
+              <Botao
+                variante="fantasma"
+                tamanho="icone"
+                onClick={limparSelecao}
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                aria-label="Desmarcar seleção"
+              >
+                <X size={13} />
+              </Botao>
+            </Tooltip>
           </div>
         </div>
       )}

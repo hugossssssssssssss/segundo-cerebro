@@ -77,7 +77,7 @@ export function NavegadorTagsModal({
   };
 
   return (
-    <Modal aberto={aberto} aoFechar={aoFechar} titulo="🏷️ Navegador de Tags Universais">
+    <Modal aberto={aberto} aoFechar={aoFechar} titulo="Navegador de Tags Universais">
       <div className="space-y-5">
         <div className="relative">
           <Hash size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />

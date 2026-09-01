@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Trash2, History as IconeHistorico } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2, History as IconeHistorico, Check } from "lucide-react";
 import { Botao, Tooltip } from "@/components/ui";
 import { useWorkspace } from "./WorkspaceContext";
 
@@ -97,7 +97,9 @@ export function WorkspaceRodape({
             ) : temMudancas ? (
               <span className="text-amber-600 dark:text-amber-400 font-medium">Salva em background</span>
             ) : (
-              <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ Sincronizado</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                <Check size={12} /> Sincronizado
+              </span>
             )}
           </span>
         </Tooltip>

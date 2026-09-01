@@ -478,7 +478,7 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
                               )}
                               title="Cor padrão do sistema"
                             >
-                              ✓
+                              <Check size={11} />
                             </button>
 
                             {/* Presets */}

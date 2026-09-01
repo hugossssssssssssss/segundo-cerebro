@@ -27,9 +27,11 @@ import {
   Flame,
   CheckSquare,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn, hojeISO } from "@/lib/utils";
 
 export type TipoPropriedadeFiltro = "texto" | "tags" | "status" | "data" | "numero" | "checkbox";
@@ -379,14 +381,16 @@ export function BarraFiltrosAvancados({
 
       {/* Botão de Limpar Todos os Filtros */}
       {regras.length > 0 && (
-        <button
-          type="button"
-          onClick={limparTodosFiltros}
-          className="text-[11px] font-medium text-muted-foreground hover:text-destructive px-2 py-1.5 rounded-lg hover:bg-destructive/10 transition-all cursor-pointer select-none"
-          title="Limpar todos os filtros"
-        >
-          Limpar filtros
-        </button>
+        <Tooltip conteudo="Remover todos os filtros" posicao="top">
+          <button
+            type="button"
+            onClick={limparTodosFiltros}
+            className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg hover:bg-destructive/10 transition-colors cursor-pointer select-none"
+            aria-label="Limpar todos os filtros"
+          >
+            <RotateCcw size={13} />
+          </button>
+        </Tooltip>
       )}
     </div>
   );

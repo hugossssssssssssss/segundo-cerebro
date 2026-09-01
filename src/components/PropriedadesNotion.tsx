@@ -21,6 +21,8 @@ import {
   Mail as MailIcon,
   SlidersHorizontal,
   Sparkles,
+  Check,
+  Layout,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -501,7 +503,7 @@ export function PropriedadesNotion({
                 )}
               >
                 <span>{c.nome}</span>
-                {coresMap[nomeTag] === k && <span className="text-[10px]">✓</span>}
+                {coresMap[nomeTag] === k && <Check size={12} className="text-primary shrink-0" />}
               </button>
             ))}
           </div>
@@ -551,7 +553,7 @@ export function PropriedadesNotion({
                   )}
                 >
                   <span>{stInfo.label}</span>
-                  {val === stKey && <span className="text-xs">✓</span>}
+                  {val === stKey && <Check size={12} className="shrink-0" />}
                 </button>
               );
             })}
@@ -1125,7 +1127,7 @@ export function PropriedadesNotion({
                     >
                       {ehMapaMental ? (
                         <>
-                          <span className="text-xs">🗺️</span>
+                          <Layout size={11} className="text-indigo-500 shrink-0" />
                           <span className="font-bold">Mapa Mental:</span> @{nomePuro}
                         </>
                       ) : (

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Send, Sparkles, Trash2, Copy, Check, RefreshCw, MessageSquare } from "lucide-react";
+import { Send, Sparkles, Trash2, Copy, Check, RefreshCw, MessageSquare, Sun, Target, Lightbulb, Zap } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useAcervoRepo } from "@/lib/useItemRepo";
 import { conversar, PROMPTS, type Mensagem, type PromptSalvo } from "@/lib/gemini";
@@ -250,10 +250,10 @@ export default function Chat() {
       {/* Sugestões Rápidas em Chips Roláveis */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 select-none snap-x snap-mandatory">
         {[
-          { label: "🌅 Resumir meu dia", prompt: "O que tenho agendado e pendente para hoje? Faça um resumo rápido das minhas tarefas e prioridades." },
-          { label: "🎯 Minhas prioridades", prompt: "Analise minhas metas e tarefas da semana e sugira por onde devo começar hoje." },
-          { label: "💡 Ideias de design", prompt: "Com base nas minhas notas e referências visuais, me dê 3 ideias criativas para explorar." },
-          { label: "⚡ Criar tarefa rápida", prompt: "Crie uma tarefa para " },
+          { label: "Resumir meu dia", icone: <Sun size={12} className="text-amber-500 shrink-0" />, prompt: "O que tenho agendado e pendente para hoje? Faça um resumo rápido das minhas tarefas e prioridades." },
+          { label: "Minhas prioridades", icone: <Target size={12} className="text-teal-500 shrink-0" />, prompt: "Analise minhas metas e tarefas da semana e sugira por onde devo começar hoje." },
+          { label: "Ideias de design", icone: <Lightbulb size={12} className="text-yellow-500 shrink-0" />, prompt: "Com base nas minhas notas e referências visuais, me dê 3 ideias criativas para explorar." },
+          { label: "Criar tarefa rápida", icone: <Zap size={12} className="text-indigo-500 shrink-0" />, prompt: "Crie uma tarefa para " },
         ].map((chip, idx) => (
           <button
             key={idx}
@@ -265,9 +265,10 @@ export default function Chat() {
                 enviar(chip.prompt);
               }
             }}
-            className="px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/80 border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors whitespace-nowrap shrink-0 snap-start cursor-pointer"
+            className="px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/80 border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors whitespace-nowrap shrink-0 snap-start cursor-pointer flex items-center gap-1.5"
           >
-            {chip.label}
+            {chip.icone}
+            <span>{chip.label}</span>
           </button>
         ))}
       </div>

@@ -15,7 +15,10 @@ import {
   LayoutGrid,
   List,
   Layers,
+  MoreVertical,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip } from "@/components/ui/tooltip";
 import "@excalidraw/excalidraw/index.css";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { lerOuVazio } from "@/lib/github";
@@ -387,13 +390,20 @@ export default function Lousas() {
             : "flex flex-col gap-4 h-[calc(100vh-120px)] w-full"
         }
       >
-        {/* Barra Superior da Lousa Aberta */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card/90 backdrop-blur-md p-3 px-4 rounded-2xl border border-border/80 shadow-2xs">
+        {/* Barra Superior da Lousa Aberta com Divulgação Progressiva */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card/90 backdrop-blur-md p-2.5 px-4 rounded-2xl border border-border/80 shadow-2xs">
           <div className="flex items-center gap-2 flex-1 max-w-lg min-w-0">
-            <Botao variante="fantasma" tamanho="pequeno" onClick={() => setAberta(null)}>
-              <ArrowLeft size={16} />
-              <span>Voltar</span>
-            </Botao>
+            <Tooltip conteudo="Voltar para a galeria de lousas" posicao="bottom">
+              <Botao
+                variante="fantasma"
+                tamanho="icone"
+                onClick={() => setAberta(null)}
+                className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                aria-label="Voltar"
+              >
+                <ArrowLeft size={16} />
+              </Botao>
+            </Tooltip>
 
             <div className="h-5 w-px bg-border/60 mx-1 shrink-0" />
 
@@ -401,85 +411,94 @@ export default function Lousas() {
               value={aberta.titulo}
               onChange={(e) => setAberta({ ...aberta, titulo: e.target.value })}
               placeholder="Nome do Mapa Mental / Lousa"
-              className="text-sm font-semibold flex-1"
+              className="text-sm font-semibold flex-1 h-9"
             />
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <div className="flex items-center gap-2 shrink-0">
             {/* Badge de contagem de elementos */}
             <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-xl bg-secondary text-muted-foreground border border-border/60">
               <Layers size={13} className="text-cyan-500" />
               {totalElementosAtual} {totalElementosAtual === 1 ? "elemento" : "elementos"}
             </span>
 
-            <Botao
-              variante="neutro"
-              tamanho="icone"
-              onClick={() => setTelaCheia(!telaCheia)}
-              title={telaCheia ? "Sair da Tela Cheia" : "Tela Cheia"}
-              aria-label="Tela Cheia"
-            >
-              {telaCheia ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-            </Botao>
+            <Tooltip conteudo={telaCheia ? "Sair da Tela Cheia" : "Tela Cheia"} posicao="bottom">
+              <Botao
+                variante="neutro"
+                tamanho="icone"
+                onClick={() => setTelaCheia(!telaCheia)}
+                className="h-9 w-9"
+                aria-label="Tela Cheia"
+              >
+                {telaCheia ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </Botao>
+            </Tooltip>
 
             {aberta.caminho && (
-              <>
-                <Botao
-                  variante="neutro"
-                  tamanho="pequeno"
-                  onClick={(e) => copiarWikilink(aberta.caminho, aberta.titulo, e)}
-                  title="Copiar @menção"
-                >
-                  {copiadoId === aberta.caminho ? (
-                    <Check size={14} className="text-emerald-500" />
-                  ) : (
-                    <LinkIcon size={14} />
-                  )}
-                  <span className="hidden md:inline">
-                    {copiadoId === aberta.caminho ? "Copiado!" : "@Menção"}
-                  </span>
-                </Botao>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Botao
+                    variante="neutro"
+                    tamanho="icone"
+                    className="h-9 w-9"
+                    title="Mais opções da lousa"
+                    aria-label="Mais opções"
+                  >
+                    <MoreVertical size={16} />
+                  </Botao>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-52 p-1.5 space-y-1">
+                  <button
+                    onClick={(e) => copiarWikilink(aberta.caminho, aberta.titulo, e)}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
+                  >
+                    {copiadoId === aberta.caminho ? (
+                      <Check size={14} className="text-emerald-500 shrink-0" />
+                    ) : (
+                      <LinkIcon size={14} className="opacity-70 shrink-0" />
+                    )}
+                    <span>{copiadoId === aberta.caminho ? "Copiado!" : "Copiar @Menção"}</span>
+                  </button>
 
-                <Botao
-                  variante="neutro"
-                  tamanho="pequeno"
-                  onClick={async () => {
-                    try {
-                      const { exportToBlob } = await import("@excalidraw/excalidraw");
-                      if (aberta?.dados?.elements) {
-                        const blob = await exportToBlob({
-                          elements: aberta.dados.elements,
-                          appState: { exportBackground: true, viewBackgroundColor: ehModoEscuro ? "#181825" : "#ffffff" },
-                          files: null,
-                        });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = `${aberta.titulo || "lousa"}.png`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                        toast("Imagem PNG exportada com sucesso!", { tipo: "sucesso" });
+                  <button
+                    onClick={async () => {
+                      try {
+                        const { exportToBlob } = await import("@excalidraw/excalidraw");
+                        if (aberta?.dados?.elements) {
+                          const blob = await exportToBlob({
+                            elements: aberta.dados.elements,
+                            appState: { exportBackground: true, viewBackgroundColor: ehModoEscuro ? "#181825" : "#ffffff" },
+                            files: null,
+                          });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `${aberta.titulo || "lousa"}.png`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          toast("Imagem PNG exportada com sucesso!", { tipo: "sucesso" });
+                        }
+                      } catch (e: any) {
+                        toast(`Erro ao exportar PNG: ${e?.message || e}`, { tipo: "erro" });
                       }
-                    } catch (e: any) {
-                      toast(`Erro ao exportar PNG: ${e?.message || e}`, { tipo: "erro" });
-                    }
-                  }}
-                  title="Exportar lousa como imagem PNG"
-                >
-                  <Download size={14} />
-                  <span className="hidden md:inline">Exportar PNG</span>
-                </Botao>
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
+                  >
+                    <Download size={14} className="opacity-70 shrink-0" />
+                    <span>Exportar PNG</span>
+                  </button>
 
-                <Botao
-                  variante="fantasma"
-                  tamanho="icone"
-                  onClick={() => setLousaParaDeletar({ caminho: aberta.caminho, sha: aberta.sha, titulo: aberta.titulo })}
-                  title="Apagar lousa"
-                  aria-label="Apagar lousa"
-                >
-                  <Trash2 size={16} className="text-red-500" />
-                </Botao>
-              </>
+                  <div className="my-1 border-t border-border/60" />
+
+                  <button
+                    onClick={() => setLousaParaDeletar({ caminho: aberta.caminho, sha: aberta.sha, titulo: aberta.titulo })}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <Trash2 size={14} className="shrink-0" />
+                    <span>Apagar lousa</span>
+                  </button>
+                </PopoverContent>
+              </Popover>
             )}
 
             <Botao variante="primario" tamanho="pequeno" onClick={salvar} disabled={salvando}>

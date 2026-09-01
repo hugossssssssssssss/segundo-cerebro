@@ -491,7 +491,7 @@ export default function BoasVindas() {
         </div>
 
         <p className="text-[11px] text-muted-foreground">
-          💡 Dica: Se preferir, cole a URL completa do repositório em qualquer um dos campos que preenchemos automaticamente.
+          Dica: Se preferir, cole a URL completa do repositório em qualquer um dos campos que preenchemos automaticamente.
         </p>
       </div>
     </div>,
@@ -692,14 +692,14 @@ export default function BoasVindas() {
         </div>
         <div className="flex items-center justify-between py-1 border-b border-border">
           <span className="text-muted-foreground">Token GitHub:</span>
-          <span className="font-medium text-foreground">
-            {cfg.githubToken ? "Configurado ✓" : "Pendente"}
+          <span className="font-medium text-foreground flex items-center gap-1">
+            {cfg.githubToken ? <>Configurado <Check size={13} className="text-emerald-500" /></> : "Pendente"}
           </span>
         </div>
         <div className="flex items-center justify-between py-1">
           <span className="text-muted-foreground">Assistente IA:</span>
-          <span className="font-medium text-foreground">
-            {cfg.geminiKey ? "Ativo ✓" : "Opcional (Desativado)"}
+          <span className="font-medium text-foreground flex items-center gap-1">
+            {cfg.geminiKey ? <>Ativo <Check size={13} className="text-emerald-500" /></> : "Opcional (Desativado)"}
           </span>
         </div>
       </div>

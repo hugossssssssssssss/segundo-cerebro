@@ -41,7 +41,7 @@ O **Klaus** é o seu ambiente de trabalho criativo e produtivo. Aqui, suas notas
 
 ---
 
-### 🧠 Como tirar o melhor proveito do Klaus
+### Como tirar o melhor proveito do Klaus
 
 1. **Conecte ideias com menções (@)**
    Digite \`@\` em qualquer nota para criar ligações vivas com outras notas, tarefas ou referências (como a tarefa @Primeiros passos no seu Segundo Cérebro).

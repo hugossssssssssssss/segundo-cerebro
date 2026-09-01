@@ -8,7 +8,9 @@ import {
   ChevronUp,
   GripVertical,
   GripHorizontal,
+  Network,
 } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { lerMarkdown } from "@/lib/markdown";
 import { lerConfig } from "@/lib/settings";
 import { lerOuVazio } from "@/lib/github";
@@ -192,7 +194,7 @@ export function MapaMentalEmbed({
           >
             {expandido ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
           </button>
-          <span className="text-base">🗺️</span>
+          <Network size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
           <span className="font-bold text-sm text-indigo-700 dark:text-indigo-300 truncate max-w-[180px] sm:max-w-[280px]">
             Mapa Mental: {titulo}
           </span>
@@ -231,15 +233,18 @@ export function MapaMentalEmbed({
           </div>
         )}
 
-        <Botao
-          variante="fantasma"
-          tamanho="pequeno"
-          onClick={abrirNoExcalidraw}
-          className="text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 flex items-center gap-1.5 ml-auto"
-        >
-          <span>Abrir no Editor</span>
-          <ExternalLink size={13} />
-        </Botao>
+        <Tooltip conteudo="Abrir no editor completo Excalidraw" posicao="bottom">
+          <Botao
+            variante="fantasma"
+            tamanho="pequeno"
+            onClick={abrirNoExcalidraw}
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 flex items-center gap-1.5 ml-auto"
+            aria-label="Abrir no editor"
+          >
+            <span className="hidden sm:inline">Abrir no Editor</span>
+            <ExternalLink size={13} />
+          </Botao>
+        </Tooltip>
       </div>
 
       {/* Corpo da Lousa Incorporada com Redimensionamento pelo Canto */}
@@ -263,7 +268,7 @@ export function MapaMentalEmbed({
               />
             ) : (
               <div className="text-center text-sm text-muted-foreground p-6">
-                <span>🗺️ Mapa Mental sem elementos desenhados ainda.</span>
+                <span>Mapa Mental sem elementos desenhados ainda.</span>
                 <div className="mt-2 text-xs text-indigo-500 font-semibold underline">
                   Clique aqui para abrir e desenhar no Excalidraw
                 </div>

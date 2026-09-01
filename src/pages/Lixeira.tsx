@@ -5,6 +5,7 @@ import { useAcervoRepo } from "@/lib/useItemRepo";
 import { listarItensLixeira, restaurarDaLixeira, type ItemLixeira } from "@/lib/lixeira";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { Botao, Cartao, Vazio, Carregando, Aviso } from "@/components/ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import { toast } from "@/lib/toast";
 import { apagar } from "@/lib/github";
 import { invalidarCache } from "@/lib/repo";
@@ -115,28 +116,32 @@ export default function Lixeira() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                  <Botao
-                    variante="neutro"
-                    tamanho="pequeno"
-                    onClick={() => restaurar(item)}
-                    disabled={processandoCaminho === item.caminho}
-                    className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400"
-                  >
-                    <RotateCcw size={13} />
-                    <span>Restaurar</span>
-                  </Botao>
+                <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                  <Tooltip conteudo="Restaurar para o local original" posicao="top">
+                    <Botao
+                      variante="neutro"
+                      tamanho="icone"
+                      onClick={() => restaurar(item)}
+                      disabled={processandoCaminho === item.caminho}
+                      className="h-8 w-8 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                      aria-label="Restaurar arquivo"
+                    >
+                      <RotateCcw size={14} />
+                    </Botao>
+                  </Tooltip>
 
-                  <Botao
-                    variante="fantasma"
-                    tamanho="pequeno"
-                    onClick={() => excluirPermanente(item)}
-                    disabled={processandoCaminho === item.caminho}
-                    className="text-xs text-destructive hover:bg-destructive/10"
-                    title="Excluir permanentemente do repositório"
-                  >
-                    <Trash2 size={13} />
-                  </Botao>
+                  <Tooltip conteudo="Excluir permanentemente do repositório" posicao="top">
+                    <Botao
+                      variante="fantasma"
+                      tamanho="icone"
+                      onClick={() => excluirPermanente(item)}
+                      disabled={processandoCaminho === item.caminho}
+                      className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                      aria-label="Excluir permanentemente"
+                    >
+                      <Trash2 size={14} />
+                    </Botao>
+                  </Tooltip>
                 </div>
               </Cartao>
             ))}

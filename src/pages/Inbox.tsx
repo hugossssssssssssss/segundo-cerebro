@@ -41,6 +41,7 @@ import { Carregando, ModalConfirmacao } from "@/components/ui";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn, formatarNomeAmigavel, hojeISO } from "@/lib/utils";
 import { format, startOfWeek, endOfWeek, addDays, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -892,41 +893,48 @@ export default function Inbox() {
         <div className="flex items-center gap-2">
           {abaAtiva === "agenda" ? (
             <>
-              {/* Navegação Semanal Clara */}
+              {/* Navegação Semanal Minimalista */}
               <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => setDataReferencia((d) => subWeeks(d, 1))}
-                  className="px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer flex items-center gap-1"
-                  title="Semana anterior"
-                >
-                  <ChevronLeft size={14} />
-                  <span className="hidden sm:inline">Anterior</span>
-                </button>
+                <Tooltip conteudo="Semana anterior" posicao="bottom">
+                  <button
+                    type="button"
+                    onClick={() => setDataReferencia((d) => subWeeks(d, 1))}
+                    className="p-1.5 sm:px-2 sm:py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer flex items-center gap-1"
+                    aria-label="Semana anterior"
+                  >
+                    <ChevronLeft size={14} />
+                    <span className="hidden md:inline">Anterior</span>
+                  </button>
+                </Tooltip>
 
-                <button
-                  type="button"
-                  onClick={() => setDataReferencia(new Date())}
-                  className={cn(
-                    "px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer",
-                    isSameDay(inicioSemana, startOfWeek(hoje, { weekStartsOn: 1 }))
-                      ? "bg-secondary text-foreground font-bold"
-                      : "text-primary hover:bg-primary/10"
-                  )}
-                  title="Ir para a semana atual"
-                >
-                  Semana Atual
-                </button>
+                <Tooltip conteudo="Voltar para a semana atual" posicao="bottom">
+                  <button
+                    type="button"
+                    onClick={() => setDataReferencia(new Date())}
+                    className={cn(
+                      "px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1",
+                      isSameDay(inicioSemana, startOfWeek(hoje, { weekStartsOn: 1 }))
+                        ? "bg-secondary text-foreground font-bold"
+                        : "text-primary hover:bg-primary/10"
+                    )}
+                    aria-label="Ir para a semana atual"
+                  >
+                    <Calendar size={13} className="shrink-0" />
+                    <span>Semana Atual</span>
+                  </button>
+                </Tooltip>
 
-                <button
-                  type="button"
-                  onClick={() => setDataReferencia((d) => addWeeks(d, 1))}
-                  className="px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer flex items-center gap-1"
-                  title="Próxima semana"
-                >
-                  <span className="hidden sm:inline">Próxima</span>
-                  <ChevronRight size={14} />
-                </button>
+                <Tooltip conteudo="Próxima semana" posicao="bottom">
+                  <button
+                    type="button"
+                    onClick={() => setDataReferencia((d) => addWeeks(d, 1))}
+                    className="p-1.5 sm:px-2 sm:py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer flex items-center gap-1"
+                    aria-label="Próxima semana"
+                  >
+                    <span className="hidden md:inline">Próxima</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </Tooltip>
               </div>
 
               {/* Botão + Novo Lembrete */}

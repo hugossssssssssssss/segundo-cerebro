@@ -18,6 +18,7 @@ import {
   Copy,
   X,
 } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { lerConfig } from "@/lib/settings";
 import { correspondeBusca, lerParametroAbrir } from "@/lib/utils";
 import { gravarBinario } from "@/lib/github";
@@ -276,7 +277,7 @@ export default function Referencias() {
   function aoExtrairTextoOcr(textoExtraido: string) {
     if (!editando) return;
     const corpoAtual = editando.corpo ? editando.corpo.trim() : "";
-    const novoCorpo = corpoAtual ? `${corpoAtual}\n\n> 🔍 **Texto extraído (OCR):**\n> ${textoExtraido.replace(/\n/g, "\n> ")}` : `> 🔍 **Texto extraído (OCR):**\n> ${textoExtraido.replace(/\n/g, "\n> ")}`;
+    const novoCorpo = corpoAtual ? `${corpoAtual}\n\n> **Texto extraído (OCR):**\n> ${textoExtraido.replace(/\n/g, "\n> ")}` : `> **Texto extraído (OCR):**\n> ${textoExtraido.replace(/\n/g, "\n> ")}`;
     
     setEditando({
       ...editando,
@@ -542,15 +543,17 @@ export default function Referencias() {
         corIcone="bg-purple-500/10 text-purple-600 dark:text-purple-400"
         acoes={
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={criarPasta}
-              className="gap-2 text-xs text-muted-foreground hover:text-foreground bg-background shadow-2xs"
-            >
-              <FolderPlus size={14} />
-              <span>Nova Pasta</span>
-            </Button>
+            <Tooltip conteudo="Criar nova pasta de referências" posicao="bottom">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={criarPasta}
+                className="h-9 w-9 text-muted-foreground hover:text-foreground bg-background shadow-2xs"
+                aria-label="Nova Pasta"
+              >
+                <FolderPlus size={15} />
+              </Button>
+            </Tooltip>
 
             <DropdownNovoViaModelo
               rotuloPrincipal="Nova Referência"
@@ -624,10 +627,10 @@ export default function Referencias() {
               <div className="flex items-center gap-1 bg-secondary/50 p-0.5 rounded-xl border border-border/60">
                 {(
                   [
-                    { id: "todas", rotulo: "Todas" },
-                    { id: "com_imagem", rotulo: "🖼️ Com Imagem" },
-                    { id: "links", rotulo: "🔗 Links" },
-                    { id: "sem_tags", rotulo: "Sem Tags" },
+                    { id: "todas", rotulo: "Todas", icone: null },
+                    { id: "com_imagem", rotulo: "Com Imagem", icone: <ImageIcon size={12} className="shrink-0" /> },
+                    { id: "links", rotulo: "Links", icone: <LinkIcon size={12} className="shrink-0" /> },
+                    { id: "sem_tags", rotulo: "Sem Tags", icone: null },
                   ] as const
                 ).map((op) => (
                   <button
@@ -635,13 +638,14 @@ export default function Referencias() {
                     type="button"
                     onClick={() => setFiltroRapido(op.id)}
                     className={cn(
-                      "text-xs px-2.5 py-1 rounded-lg transition-all font-medium cursor-pointer",
+                      "text-xs px-2.5 py-1 rounded-lg transition-all font-medium cursor-pointer flex items-center gap-1.5",
                       filtroRapido === op.id
                         ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
                     )}
                   >
-                    {op.rotulo}
+                    {op.icone}
+                    <span>{op.rotulo}</span>
                   </button>
                 ))}
               </div>
@@ -1094,13 +1098,15 @@ export default function Referencias() {
           <Button size="sm" variant="destructive" onClick={excluirSelecionadas}>
             Excluir
           </Button>
-          <button
-            onClick={limparSelecao}
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-semibold ml-1 cursor-pointer"
-            title="Limpar seleção"
-          >
-            ✕
-          </button>
+          <Tooltip conteudo="Desmarcar seleção" posicao="top">
+            <button
+              onClick={limparSelecao}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-semibold ml-1 cursor-pointer"
+              aria-label="Desmarcar seleção"
+            >
+              <X size={14} />
+            </button>
+          </Tooltip>
         </div>
       )}
     </div>

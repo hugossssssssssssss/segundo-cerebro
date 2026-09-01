@@ -209,27 +209,27 @@ export interface AtalhoDorkRapido {
 export const ATALHOS_DORKS_RAPIDOS: AtalhoDorkRapido[] = [
   {
     rotulo: "Documentos em PDF",
-    icone: "📄",
+    icone: "FileText",
     filtros: { filetype: "pdf" },
   },
   {
     rotulo: "Repositórios GitHub",
-    icone: "💻",
+    icone: "Code",
     filtros: { site: "github.com" },
   },
   {
     rotulo: "Artigos da Wikipédia",
-    icone: "📚",
+    icone: "BookOpen",
     filtros: { site: "wikipedia.org" },
   },
   {
     rotulo: "Planilhas Excel",
-    icone: "📊",
+    icone: "FileSpreadsheet",
     filtros: { filetype: "xlsx" },
   },
   {
     rotulo: "Apresentações PPT",
-    icone: "📽️",
+    icone: "Presentation",
     filtros: { filetype: "pptx" },
   },
 ];

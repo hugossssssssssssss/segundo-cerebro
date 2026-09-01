@@ -450,7 +450,7 @@ export default function Noticias() {
                       <div className="space-y-1.5 cursor-pointer" onClick={() => handleAbrirLeitor(item)}>
                         <div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium">
                           <span>{new Date(item.data).toLocaleDateString("pt-BR")}</span>
-                          <span>⏱️ {item.tempoLeituraMinutos} min</span>
+                          <span className="flex items-center gap-1"><Clock size={10} className="opacity-70" /> {item.tempoLeituraMinutos} min</span>
                         </div>
                         <h2 className="font-bold text-sm leading-snug tracking-tight text-foreground line-clamp-2 group-hover:text-primary transition-colors">
                           {item.titulo}
@@ -537,7 +537,7 @@ export default function Noticias() {
                     <div className="space-y-1.5 cursor-pointer" onClick={() => handleAbrirLeitor(item)}>
                       <div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium">
                         <span>{new Date(item.data).toLocaleDateString("pt-BR")}</span>
-                        <span>⏱️ {item.tempoLeituraMinutos} min</span>
+                        <span className="flex items-center gap-1"><Clock size={10} className="opacity-70" /> {item.tempoLeituraMinutos} min</span>
                       </div>
                       <h2 className="font-bold text-sm leading-snug tracking-tight text-foreground line-clamp-2 transition-colors">
                         {item.titulo}
@@ -622,7 +622,7 @@ export default function Noticias() {
                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium">
                         <span>{new Date(item.data).toLocaleDateString("pt-BR")}</span>
                         <span>•</span>
-                        <span>⏱️ {item.tempoLeituraMinutos} min de leitura</span>
+                        <span className="flex items-center gap-1"><Clock size={10} className="opacity-70" /> {item.tempoLeituraMinutos} min de leitura</span>
                       </div>
                       <h2 className="font-bold text-base leading-snug text-foreground group-hover:text-primary transition-colors">
                         {item.titulo}
@@ -702,7 +702,7 @@ export default function Noticias() {
           setNoticiaParaLer(null);
           setResumoIa("");
         }}
-        titulo="📖 Leitor de Notícias do Klaus"
+        titulo="Leitor de Notícias do Klaus"
       >
         {noticiaParaLer && (
           <div className="space-y-5 max-h-[78dvh] overflow-y-auto pr-1">
@@ -833,7 +833,7 @@ export default function Noticias() {
       <Modal
         aberto={modalAssuntosAberta}
         aoFechar={() => setModalAssuntosAberta(false)}
-        titulo="⚙️ Personalizar Assuntos & Feeds"
+        titulo="Personalizar Assuntos & Feeds"
       >
         <div className="space-y-5 max-h-[75dvh] overflow-y-auto pr-1">
           <div className="space-y-2">

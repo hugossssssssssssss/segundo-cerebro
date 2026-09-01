@@ -1,6 +1,7 @@
 import { useState, useRef, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { X, ArrowUpRight } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { ColunasWidget } from "./types";
 
@@ -167,25 +168,28 @@ export function WidgetWrapper({
           {acoes}
 
           {aoAbrirPopup && !modoEdicao && (
-            <button
-              type="button"
-              onClick={aoAbrirPopup}
-              className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 p-1 rounded hover:bg-accent transition-colors cursor-pointer"
-              title="Abrir em janela flutuante"
-            >
-              <span>Abrir</span>
-              <ArrowUpRight size={11} />
-            </button>
+            <Tooltip conteudo="Abrir em janela flutuante" posicao="top">
+              <button
+                type="button"
+                onClick={aoAbrirPopup}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-accent transition-colors cursor-pointer"
+                aria-label="Abrir em janela flutuante"
+              >
+                <ArrowUpRight size={13} />
+              </button>
+            </Tooltip>
           )}
 
           {linkVerMais && !aoAbrirPopup && !modoEdicao && (
-            <Link
-              to={linkVerMais}
-              className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 p-1 rounded hover:bg-accent transition-colors"
-            >
-              <span>Ver mais</span>
-              <ArrowUpRight size={11} />
-            </Link>
+            <Tooltip conteudo="Ver mais detalhes" posicao="top">
+              <Link
+                to={linkVerMais}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-accent transition-colors"
+                aria-label="Ver mais detalhes"
+              >
+                <ArrowUpRight size={13} />
+              </Link>
+            </Tooltip>
           )}
         </div>
       </div>

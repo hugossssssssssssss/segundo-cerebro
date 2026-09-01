@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import type { Nota } from "../lib/tipos";
 import { TagChip } from "./TagChip";
-import { ChevronDown, ChevronUp, Plus, Trash2, Tag, Calendar, Users, Sliders } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Trash2, Tag, Calendar, Users, Sliders, Check, X } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface PainelPropriedadesNotaProps {
   nota: Nota;
@@ -185,19 +186,25 @@ export const PainelPropriedadesNota: React.FC<PainelPropriedadesNotaProps> = ({
                     autoFocus
                     className="h-6 rounded border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary w-24"
                   />
-                  <button
-                    type="submit"
-                    className="h-6 rounded bg-primary px-2 text-[11px] font-medium text-primary-foreground hover:bg-primary/90"
-                  >
-                    OK
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAdicionandoTag(false)}
-                    className="h-6 px-1 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    ✕
-                  </button>
+                  <Tooltip conteudo="Confirmar tag" posicao="top">
+                    <button
+                      type="submit"
+                      className="h-6 w-6 rounded bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors"
+                      aria-label="Confirmar tag"
+                    >
+                      <Check size={12} />
+                    </button>
+                  </Tooltip>
+                  <Tooltip conteudo="Cancelar" posicao="top">
+                    <button
+                      type="button"
+                      onClick={() => setAdicionandoTag(false)}
+                      className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                      aria-label="Cancelar"
+                    >
+                      <X size={12} />
+                    </button>
+                  </Tooltip>
                 </form>
               ) : (
                 <button

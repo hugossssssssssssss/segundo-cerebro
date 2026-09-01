@@ -6,7 +6,8 @@ import {
   getDefaultReactSlashMenuItems,
 } from "@blocknote/react";
 import { filterSuggestionItems } from "@blocknote/core";
-import { Sparkles, ListOrdered, Maximize2, Minimize2, Printer, Table, CheckSquare } from "lucide-react";
+import { Sparkles, ListOrdered, Maximize2, Minimize2, Printer, Table, CheckSquare, X } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import * as locales from "@blocknote/core/locales";
 import "@blocknote/core/fonts/inter.css";
@@ -582,19 +583,19 @@ export function EditorNotion({
       const itens = filtrarAlvos(alvosRef.current, query, 35).map((s) => {
         const ehLousa = s.tipo === "lousa" || s.caminho.startsWith("lousas/");
         const categoria = ehLousa
-          ? "🗺️ Mapa Mental Excalidraw"
+          ? "Mapa Mental Excalidraw"
           : s.caminho.startsWith("tarefas/")
-          ? "📋 Tarefa"
+          ? "Tarefa"
           : s.caminho.startsWith("notas/")
-          ? "📝 Nota"
+          ? "Nota"
           : s.caminho.startsWith("pdi/")
-          ? "🎯 Meta / Entrega PDI"
+          ? "Meta / Entrega PDI"
           : s.caminho.startsWith("referencias/")
-          ? "🖼️ Referência Visual"
-          : "📄 Documento";
+          ? "Referência Visual"
+          : "Documento";
 
         return {
-          title: ehLousa ? `🗺️ @${s.titulo}` : `@${s.titulo}`,
+          title: `@${s.titulo}`,
           subtext: categoria,
           onItemClick: () => {
             editor.insertInlineContent([`@${s.titulo} `]);
@@ -605,7 +606,7 @@ export function EditorNotion({
       const q = query.toLowerCase().trim();
       if (!q || "lembrete".includes(q) || "lembre".includes(q)) {
         itens.unshift({
-          title: "⏰ @lembrete — Agendar Lembrete",
+          title: "@lembrete — Agendar Lembrete",
           subtext: "Abrir seletor de data, hora e notificações",
           onItemClick: () => {
             setModalLembreteAberto(true);
@@ -1033,20 +1034,24 @@ export function EditorNotion({
         <div className="flex items-center gap-1.5 shrink-0">
           {sumario.length > 0 && (
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => setMostrarSumario(!mostrarSumario)}
-                className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                title="Ver sumário de títulos da nota"
-              >
-                <ListOrdered size={13} />
-                <span className="hidden sm:inline">Sumário ({sumario.length})</span>
-              </button>
+              <Tooltip conteudo={`Sumário de títulos (${sumario.length})`} posicao="top">
+                <button
+                  type="button"
+                  onClick={() => setMostrarSumario(!mostrarSumario)}
+                  className="flex items-center gap-1 p-1.5 sm:px-2 sm:py-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  aria-label="Ver sumário de títulos"
+                >
+                  <ListOrdered size={14} />
+                  <span className="hidden sm:inline text-xs">Sumário</span>
+                </button>
+              </Tooltip>
               {mostrarSumario && (
                 <div className="absolute right-0 bottom-full mb-2 w-64 max-h-60 overflow-y-auto rounded-xl border border-border bg-card p-3 shadow-xl z-50 animate-in fade-in zoom-in-95">
                   <div className="flex items-center justify-between pb-1.5 border-b border-border/60 mb-2 font-semibold text-xs text-foreground">
                     <span>Sumário de Títulos</span>
-                    <button type="button" onClick={() => setMostrarSumario(false)} className="text-muted-foreground hover:text-foreground cursor-pointer">✕</button>
+                    <button type="button" onClick={() => setMostrarSumario(false)} className="p-1 text-muted-foreground hover:text-foreground cursor-pointer rounded-md" aria-label="Fechar sumário">
+                      <X size={14} />
+                    </button>
                   </div>
                   <div className="space-y-1">
                     {sumario.map((item, idx) => (
@@ -1067,25 +1072,29 @@ export function EditorNotion({
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            title="Imprimir nota ou salvar como PDF limpo"
-          >
-            <Printer size={13} />
-            <span className="hidden sm:inline">Imprimir PDF</span>
-          </button>
+          <Tooltip conteudo="Imprimir nota ou salvar como PDF" posicao="top">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="flex items-center gap-1 p-1.5 sm:px-2 sm:py-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Imprimir nota ou salvar como PDF"
+            >
+              <Printer size={14} />
+              <span className="hidden sm:inline text-xs">Imprimir</span>
+            </button>
+          </Tooltip>
 
-          <button
-            type="button"
-            onClick={() => setModoZen(!modoZen)}
-            className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            title={modoZen ? "Sair do modo tela cheia" : "Modo Zen / Foco em tela cheia"}
-          >
-            {modoZen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-            <span className="hidden sm:inline">{modoZen ? "Sair do Foco" : "Modo Foco"}</span>
-          </button>
+          <Tooltip conteudo={modoZen ? "Sair do modo tela cheia" : "Modo Zen / Foco em tela cheia"} posicao="top">
+            <button
+              type="button"
+              onClick={() => setModoZen(!modoZen)}
+              className="flex items-center gap-1 p-1.5 sm:px-2 sm:py-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              aria-label={modoZen ? "Sair do modo foco" : "Modo foco"}
+            >
+              {modoZen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              <span className="hidden sm:inline text-xs">{modoZen ? "Sair" : "Foco"}</span>
+            </button>
+          </Tooltip>
         </div>
       </div>
 

@@ -7,6 +7,7 @@
 
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useState } from "react";
+import { X } from "lucide-react";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -364,7 +365,7 @@ export function Modal({
             onClick={tentarFechar}
             aria-label="Fechar"
           >
-            ✕
+            <X size={18} />
           </Botao>
         </div>
 
@@ -444,7 +445,7 @@ export function TagInput({
             className="rounded-full opacity-70 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={`Remover tag ${tag}`}
           >
-            ✕
+            <X size={12} />
           </button>
         </span>
       ))}

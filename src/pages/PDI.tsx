@@ -14,7 +14,9 @@ import {
   Folder,
   Tag,
   ListTodo,
+  Printer,
 } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
@@ -638,14 +640,18 @@ export default function PDI() {
               <Target size={15} />
               Nova Meta
             </Botao>
-            <Botao
-              variante="neutro"
-              onClick={() => {
-                window.print();
-              }}
-            >
-              Exportar PDF
-            </Botao>
+            <Tooltip conteudo="Imprimir ou exportar PDI em PDF" posicao="bottom">
+              <Botao
+                variante="neutro"
+                tamanho="icone"
+                onClick={() => {
+                  window.print();
+                }}
+                aria-label="Exportar PDF"
+              >
+                <Printer size={15} />
+              </Botao>
+            </Tooltip>
           </>
         }
       />
@@ -1118,7 +1124,11 @@ export default function PDI() {
                               </Selo>
                             ))
                           )}
-                          {e.iaSugeriu && <Selo tom="primario">🤖 conferir</Selo>}
+                          {e.iaSugeriu && (
+                            <Selo tom="primario" className="inline-flex items-center gap-1">
+                              <Sparkles size={10} /> conferir
+                            </Selo>
+                          )}
                         </div>
                       </Cartao>
                     ))}

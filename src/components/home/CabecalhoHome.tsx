@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Plus, SlidersHorizontal, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface CabecalhoHomeProps {
@@ -50,15 +51,17 @@ export function CabecalhoHome({
       {/* Ações de Layout & Widgets */}
       <div className="flex items-center gap-2">
         {modoEdicao && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={aoRestaurarPadrao}
-            className="text-xs text-muted-foreground hover:text-foreground h-8 rounded-lg"
-          >
-            <RotateCcw size={12} className="mr-1.5" />
-            Restaurar Padrão
-          </Button>
+          <Tooltip conteudo="Restaurar grade padrão de widgets" posicao="bottom">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={aoRestaurarPadrao}
+              className="text-muted-foreground hover:text-foreground h-8 w-8 rounded-lg"
+              aria-label="Restaurar grade padrão"
+            >
+              <RotateCcw size={13} />
+            </Button>
+          </Tooltip>
         )}
 
         <Button
@@ -80,7 +83,7 @@ export function CabecalhoHome({
           className="text-xs font-semibold rounded-lg h-8 gap-1.5 shadow-2xs cursor-pointer"
         >
           <Plus size={14} />
-          <span>Adicionar Widget</span>
+          <span className="hidden sm:inline">Adicionar Widget</span>
         </Button>
       </div>
     </div>

@@ -803,6 +803,31 @@ export function PainelNotionBase({
                       </button>
                     );
                   })}
+
+                  <div className="my-1 border-t border-border/60" />
+                  <button
+                    onClick={() => {
+                      setMenuAcoesAberto(false);
+                      setVendoHistorico(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
+                  >
+                    <IconeHistorico size={14} className="opacity-70 shrink-0" />
+                    <span>Histórico de versões</span>
+                  </button>
+
+                  {aoRemover && (
+                    <button
+                      onClick={() => {
+                        setMenuAcoesAberto(false);
+                        setConfirmandoApagar(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      <Trash2 size={14} className="shrink-0" />
+                      <span>Apagar documento</span>
+                    </button>
+                  )}
                 </>
               ) : (
                 <div className="px-2.5 py-2 text-xs text-muted-foreground text-center">
@@ -813,14 +838,16 @@ export function PainelNotionBase({
           </PopoverContent>
         </Popover>
 
-        <button
-          onClick={tentarFechar}
-          disabled={fechandoESalvando}
-          className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-wait"
-          title={fechandoESalvando ? "Salvando…" : "Fechar e Salvar"}
-        >
-          <X size={17} />
-        </button>
+        <Tooltip conteudo={fechandoESalvando ? "Salvando…" : "Fechar e Salvar"} posicao="bottom">
+          <button
+            onClick={tentarFechar}
+            disabled={fechandoESalvando}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-wait"
+            aria-label="Fechar e Salvar"
+          >
+            <X size={17} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   );
@@ -829,21 +856,29 @@ export function PainelNotionBase({
     <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-4 sm:px-5 py-2 sm:py-2.5 pb-[max(env(safe-area-inset-bottom),10px)] sm:pb-2.5 bg-card">
       <div className="flex items-center gap-1">
         {aoRemover ? (
-          <Botao variante="fantasma" onClick={() => setConfirmandoApagar(true)} className="text-destructive hover:bg-destructive/10 text-xs">
-            <Trash2 size={14} />
-            <span>Apagar</span>
-          </Botao>
+          <Tooltip conteudo="Apagar documento" posicao="top">
+            <Botao
+              variante="fantasma"
+              tamanho="icone"
+              onClick={() => setConfirmandoApagar(true)}
+              className="h-8 w-8 text-destructive hover:bg-destructive/10 text-xs"
+              aria-label="Apagar documento"
+            >
+              <Trash2 size={14} />
+            </Botao>
+          </Tooltip>
         ) : null}
 
         {caminhoItem && (
           <Tooltip conteudo="Ver histórico de alterações e versões no Git" posicao="top">
             <Botao
               variante="fantasma"
+              tamanho="icone"
               onClick={() => setVendoHistorico(true)}
-              className="text-xs text-muted-foreground cursor-pointer"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground text-xs cursor-pointer"
+              aria-label="Ver histórico de alterações"
             >
               <IconeHistorico size={14} />
-              <span>Histórico</span>
             </Botao>
           </Tooltip>
         )}

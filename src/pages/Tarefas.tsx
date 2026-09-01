@@ -6,10 +6,17 @@ import {
   CalendarDays,
   ListTodo,
   Calendar,
+  CalendarPlus,
+  CheckCircle2,
+  Trash2,
+  X,
+  Flame,
+  AlertTriangle,
   Tag,
   Folder,
   LayoutGrid,
 } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
@@ -592,11 +599,11 @@ export default function Tarefas() {
             <div className="flex items-center gap-1 bg-secondary/50 p-0.5 rounded-xl border border-border/60">
               {(
                 [
-                  { id: "todas", rotulo: "Todas" },
-                  { id: "hoje", rotulo: "📅 Hoje" },
-                  { id: "urgentes", rotulo: "🔥 Urgentes" },
-                  { id: "atrasadas", rotulo: "⚠️ Atrasadas" },
-                  { id: "sem_prazo", rotulo: "Sem Prazo" },
+                  { id: "todas", rotulo: "Todas", icone: null },
+                  { id: "hoje", rotulo: "Hoje", icone: <Calendar size={12} className="shrink-0" /> },
+                  { id: "urgentes", rotulo: "Urgentes", icone: <Flame size={12} className="shrink-0 text-rose-500" /> },
+                  { id: "atrasadas", rotulo: "Atrasadas", icone: <AlertTriangle size={12} className="shrink-0 text-amber-500" /> },
+                  { id: "sem_prazo", rotulo: "Sem Prazo", icone: null },
                 ] as const
               ).map((op) => (
                 <button
@@ -604,13 +611,14 @@ export default function Tarefas() {
                   type="button"
                   onClick={() => setFiltroRapido(op.id)}
                   className={cn(
-                    "text-xs px-2.5 py-1 rounded-lg transition-all font-medium cursor-pointer",
+                    "text-xs px-2.5 py-1 rounded-lg transition-all font-medium cursor-pointer flex items-center gap-1.5",
                     filtroRapido === op.id
                       ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
                   )}
                 >
-                  {op.rotulo}
+                  {op.icone}
+                  <span>{op.rotulo}</span>
                 </button>
               ))}
             </div>
@@ -738,32 +746,47 @@ export default function Tarefas() {
         </div>
       )}
 
-      {/* Barra Flutuante de Ações em Lote */}
+      {/* Barra Flutuante de Ações em Lote Minimalista */}
       {selecionadas.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-2xl border border-border bg-card/95 backdrop-blur-md px-4 py-2.5 shadow-2xl animate-in slide-in-from-bottom duration-200">
-          <span className="text-xs font-bold text-foreground">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 rounded-2xl border border-border/80 bg-card/95 backdrop-blur-xl px-3.5 py-2 shadow-2xl animate-in slide-in-from-bottom duration-200">
+          <span className="text-xs font-bold text-foreground px-1">
             {selecionadas.size} selecionada{selecionadas.size > 1 ? "s" : ""}
           </span>
-          <div className="h-4 w-px bg-border mx-1" />
-          <Botao tamanho="pequeno" variante="neutro" onClick={() => adiarSelecionadas(0)}>
-            Hoje
-          </Botao>
-          <Botao tamanho="pequeno" variante="neutro" onClick={() => adiarSelecionadas(1)}>
-            Amanhã
-          </Botao>
-          <Botao tamanho="pequeno" onClick={concluirSelecionadas}>
-            Concluir
-          </Botao>
-          <Botao tamanho="pequeno" variante="perigo" onClick={excluirSelecionadas}>
-            Excluir
-          </Botao>
-          <button
-            onClick={limparSelecao}
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-semibold ml-1 cursor-pointer"
-            title="Limpar seleção"
-          >
-            ✕
-          </button>
+          <div className="h-4 w-px bg-border/60 mx-1" />
+
+          <Tooltip conteudo="Reagendar para Hoje" posicao="top">
+            <Botao tamanho="icone" variante="neutro" onClick={() => adiarSelecionadas(0)} className="h-8 w-8" aria-label="Reagendar para Hoje">
+              <Calendar size={14} />
+            </Botao>
+          </Tooltip>
+
+          <Tooltip conteudo="Reagendar para Amanhã" posicao="top">
+            <Botao tamanho="icone" variante="neutro" onClick={() => adiarSelecionadas(1)} className="h-8 w-8" aria-label="Reagendar para Amanhã">
+              <CalendarPlus size={14} />
+            </Botao>
+          </Tooltip>
+
+          <Tooltip conteudo="Concluir tarefas selecionadas" posicao="top">
+            <Botao tamanho="icone" onClick={concluirSelecionadas} className="h-8 w-8" aria-label="Concluir tarefas selecionadas">
+              <CheckCircle2 size={14} />
+            </Botao>
+          </Tooltip>
+
+          <Tooltip conteudo="Excluir tarefas selecionadas" posicao="top">
+            <Botao tamanho="icone" variante="perigo" onClick={excluirSelecionadas} className="h-8 w-8" aria-label="Excluir tarefas selecionadas">
+              <Trash2 size={14} />
+            </Botao>
+          </Tooltip>
+
+          <Tooltip conteudo="Desmarcar seleção" posicao="top">
+            <button
+              onClick={limparSelecao}
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors ml-1 cursor-pointer"
+              aria-label="Desmarcar seleção"
+            >
+              <X size={14} />
+            </button>
+          </Tooltip>
         </div>
       )}
 

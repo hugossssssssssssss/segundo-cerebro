@@ -122,7 +122,7 @@ export function LixeiraGitModal({
   };
 
   return (
-    <Modal aberto={aberto} aoFechar={aoFechar} titulo="🗑️ Lixeira e Histórico Git de Deletados">
+    <Modal aberto={aberto} aoFechar={aoFechar} titulo="Lixeira e Histórico de Deletados">
       <div className="space-y-4">
         {sucesso && <Aviso tom="sucesso">{sucesso}</Aviso>}
         {erro && <Aviso tom="erro">{erro}</Aviso>}

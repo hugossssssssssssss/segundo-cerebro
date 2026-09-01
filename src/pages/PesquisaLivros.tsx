@@ -150,9 +150,9 @@ export default function PesquisaLivros() {
           disabled={carregando}
           className="flex h-11 rounded-lg border border-input bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 text-foreground cursor-pointer outline-none shrink-0"
         >
-          <option value="pt">🇧🇷 Português</option>
-          <option value="todos">🌍 Todos</option>
-          <option value="en">🇬🇧 Inglês</option>
+          <option value="pt">Português</option>
+          <option value="todos">Todos os idiomas</option>
+          <option value="en">Inglês</option>
         </select>
         <Botao type="submit" disabled={carregando || !busca.trim()} className="shrink-0">
           {carregando ? <Loader2 size={16} className="animate-spin" /> : "Pesquisar"}

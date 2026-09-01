@@ -19,7 +19,10 @@ import {
   FileSpreadsheet,
   User,
   Tag,
+  MoreVertical,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip } from "@/components/ui/tooltip";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { PASTAS, type Contato } from "@/lib/tipos";
 import { comoContato, contatoParaArquivo } from "@/lib/entidades";
@@ -521,33 +524,46 @@ export default function Contatos() {
         icone={<FolderTree size={20} />}
         corIcone="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
         acoes={
-          <>
+          <div className="flex items-center gap-1.5">
             <Botao onClick={() => novoContato()} className="gap-1.5 text-xs font-semibold">
-              <Plus size={16} />
-              Novo Contato
+              <Plus size={15} />
+              <span>Novo Contato</span>
             </Botao>
 
-            <Botao
-              variante="neutro"
-              onClick={() => setModalCSVAberta(true)}
-              className="gap-1.5 text-xs"
-            >
-              <Upload size={15} />
-              Importar CSV
-            </Botao>
+            <Popover>
+              <Tooltip conteudo="Opções de contatos e importação" posicao="bottom">
+                <PopoverTrigger asChild>
+                  <Botao
+                    variante="neutro"
+                    tamanho="icone"
+                    className="h-10 w-10 text-muted-foreground hover:text-foreground"
+                    aria-label="Mais opções"
+                  >
+                    <MoreVertical size={16} />
+                  </Botao>
+                </PopoverTrigger>
+              </Tooltip>
+              <PopoverContent align="end" className="w-52 p-1.5 space-y-1">
+                <button
+                  onClick={() => setModalCSVAberta(true)}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
+                >
+                  <Upload size={14} className="opacity-70 shrink-0" />
+                  <span>Importar CSV</span>
+                </button>
 
-            {contatosLocais.length > 0 && (
-              <Botao
-                variante="neutro"
-                onClick={handleExportarCSV}
-                className="gap-1.5 text-xs"
-                title="Exportar contatos para CSV"
-              >
-                <Download size={15} />
-                Exportar
-              </Botao>
-            )}
-          </>
+                {contatosLocais.length > 0 && (
+                  <button
+                    onClick={handleExportarCSV}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors"
+                  >
+                    <Download size={14} className="opacity-70 shrink-0" />
+                    <span>Exportar para CSV</span>
+                  </button>
+                )}
+              </PopoverContent>
+            </Popover>
+          </div>
         }
       />
 

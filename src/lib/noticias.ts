@@ -538,7 +538,7 @@ export async function criarNotaDaNoticia(noticia: ItemNoticia, _cfg: Settings): 
   }
 
   if (noticia.resumoIa) {
-    corpo += `### 🤖 Resumo da IA\n${noticia.resumoIa}\n\n`;
+    corpo += `### Resumo da IA\n${noticia.resumoIa}\n\n`;
   }
 
   corpo += `### Conteúdo Integral da Matéria\n${limparTexto(noticia.conteudoCompleto || noticia.descricao || "")}\n\n`;

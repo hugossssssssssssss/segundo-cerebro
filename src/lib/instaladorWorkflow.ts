@@ -83,7 +83,7 @@ jobs:
             process.exit(0);
           }
 
-          const texto = \`🧠 *Klaus - Lembretes do Dia*\n\nVocê tem \${pendencias.length} item(ns) aguardando sua atenção:\n\n\` + pendencias.join('\\n');
+          const texto = \`*Klaus - Lembretes do Dia*\n\nVocê tem \${pendencias.length} item(ns) aguardando sua atenção:\n\n\` + pendencias.join('\\n');
 
           fetch(\`https://api.telegram.org/bot\${token}/sendMessage\`, {
             method: 'POST',

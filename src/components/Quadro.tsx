@@ -33,6 +33,9 @@ import {
   Circle,
   Plus,
   Target,
+  Flame,
+  Calendar,
+  AlertTriangle,
 } from "lucide-react";
 import {
   urgencia,
@@ -650,10 +653,10 @@ export function Quadro({
           <span className="text-xs font-semibold text-muted-foreground mr-1">Prazo:</span>
           {(
             [
-              { id: "todas", rotulo: "Todas" },
-              { id: "urgentes", rotulo: "🔥 Urgentes" },
-              { id: "hoje", rotulo: "📅 Para Hoje" },
-              { id: "atrasadas", rotulo: "⚠️ Atrasadas" },
+              { id: "todas", rotulo: "Todas", icone: null },
+              { id: "urgentes", rotulo: "Urgentes", icone: <Flame size={12} className="text-rose-500 shrink-0" /> },
+              { id: "hoje", rotulo: "Para Hoje", icone: <Calendar size={12} className="shrink-0" /> },
+              { id: "atrasadas", rotulo: "Atrasadas", icone: <AlertTriangle size={12} className="text-amber-500 shrink-0" /> },
             ] as const
           ).map((opcao) => (
             <button
@@ -661,13 +664,14 @@ export function Quadro({
               type="button"
               onClick={() => setFiltroUrgencia(opcao.id)}
               className={cn(
-                "text-xs px-2.5 py-1 rounded-lg transition-colors font-medium cursor-pointer",
+                "text-xs px-2.5 py-1 rounded-lg transition-colors font-medium cursor-pointer flex items-center gap-1.5",
                 filtroUrgencia === opcao.id
                   ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
                   : "bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted"
               )}
             >
-              {opcao.rotulo}
+              {opcao.icone}
+              <span>{opcao.rotulo}</span>
             </button>
           ))}
         </div>
