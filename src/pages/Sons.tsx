@@ -1,6 +1,7 @@
 import { useCronometro, LISTA_SONS_AMBIENTE } from "@/components/ContextoCronometro";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { Cartao, Botao } from "@/components/ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import { 
   CloudRain, 
   Flame, 
@@ -113,13 +114,15 @@ export default function Sons() {
 
           {/* Slider de Volume e Botão de Mute */}
           <div className="flex items-center gap-4 w-full md:w-auto md:min-w-[300px]">
-            <button
-              onClick={() => setVolumeSomAmbiente(volumeSomAmbiente === 0 ? 0.5 : 0)}
-              className="p-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              title={volumeSomAmbiente === 0 ? "Ativar som" : "Mutar som"}
-            >
-              {volumeSomAmbiente === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
-            </button>
+            <Tooltip conteudo={volumeSomAmbiente === 0 ? "Ativar som" : "Mutar som"}>
+              <button
+                onClick={() => setVolumeSomAmbiente(volumeSomAmbiente === 0 ? 0.5 : 0)}
+                className="p-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                aria-label={volumeSomAmbiente === 0 ? "Ativar som" : "Mutar som"}
+              >
+                {volumeSomAmbiente === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+              </button>
+            </Tooltip>
             <div className="flex-1 flex items-center gap-2">
               <span className="text-[10px] font-mono text-muted-foreground w-6 select-none">0%</span>
               <input
@@ -130,7 +133,7 @@ export default function Sons() {
                 value={volumeSomAmbiente}
                 onChange={(e) => setVolumeSomAmbiente(Number(e.target.value))}
                 className="flex-1 accent-primary bg-secondary/80 h-1.5 rounded-lg appearance-none cursor-pointer"
-                title="Ajustar volume geral"
+                aria-label="Ajustar volume geral"
               />
               <span className="text-[10px] font-mono text-muted-foreground w-8 select-none">
                 {Math.round(volumeSomAmbiente * 100)}%

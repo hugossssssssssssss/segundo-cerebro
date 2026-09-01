@@ -396,9 +396,11 @@ function ItemOverflow({
             nome={item.nome}
             iconeCustomizado={item.iconeCustomizado}
           />
-          <span className="truncate flex-1" title={item.nome || item.url}>
-            {item.nome || extrairDominio(item.url) || item.url}
-          </span>
+          <Tooltip conteudo={item.nome || item.url}>
+            <span className="truncate flex-1">
+              {item.nome || extrairDominio(item.url) || item.url}
+            </span>
+          </Tooltip>
         </div>
       </PopoverAnchor>
 

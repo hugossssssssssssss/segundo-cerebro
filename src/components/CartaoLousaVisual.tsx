@@ -11,6 +11,7 @@ import {
   Shapes,
 } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Tooltip } from "@/components/ui/tooltip";
 import { sanitizarHTML } from "@/lib/sanitizer";
 import type { ItemRepo } from "@/lib/repo";
 
@@ -194,13 +195,15 @@ export function CartaoLousaVisual({
         <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
           <Popover>
             <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                title="Opções da lousa"
-              >
-                <MoreVertical size={16} />
-              </button>
+              <Tooltip conteudo="Opções da lousa">
+                <button
+                  type="button"
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                  aria-label="Opções da lousa"
+                >
+                  <MoreVertical size={16} />
+                </button>
+              </Tooltip>
             </PopoverTrigger>
             <PopoverContent className="w-44 p-1 shadow-xl border-border" align="end">
               <button
@@ -307,13 +310,15 @@ export function CartaoLousaVisual({
         >
           <Popover>
             <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="p-1.5 rounded-xl bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground border border-border/60 shadow-xs backdrop-blur-md transition-all"
-                title="Opções da lousa"
-              >
-                <MoreVertical size={14} />
-              </button>
+              <Tooltip conteudo="Opções da lousa">
+                <button
+                  type="button"
+                  className="p-1.5 rounded-xl bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground border border-border/60 shadow-xs backdrop-blur-md transition-all cursor-pointer"
+                  aria-label="Opções da lousa"
+                >
+                  <MoreVertical size={14} />
+                </button>
+              </Tooltip>
             </PopoverTrigger>
             <PopoverContent
               className="w-44 p-1 shadow-xl border-border"

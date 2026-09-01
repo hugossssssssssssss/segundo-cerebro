@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { inscreverToasts, removerToast, type ItemToast } from "@/lib/toast";
 import { Modal, Botao } from "@/components/ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 function SingleToast({
@@ -107,16 +108,18 @@ function SingleToast({
           </button>
         )}
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            removerToast(t.id);
-          }}
-          className="rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          title="Fechar notificação"
-        >
-          <X size={14} />
-        </button>
+        <Tooltip conteudo="Fechar notificação">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              removerToast(t.id);
+            }}
+            className="rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            aria-label="Fechar notificação"
+          >
+            <X size={14} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   );

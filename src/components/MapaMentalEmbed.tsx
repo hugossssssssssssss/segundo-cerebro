@@ -187,13 +187,15 @@ export function MapaMentalEmbed({
             <GripVertical size={16} />
           </div>
 
-          <button
-            onClick={() => setExpandido(!expandido)}
-            className="p-1 hover:bg-indigo-500/20 rounded-md text-indigo-700 dark:text-indigo-300 transition-colors"
-            title={expandido ? "Minimizar mapa mental" : "Expandir mapa mental"}
-          >
-            {expandido ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-          </button>
+          <Tooltip conteudo={expandido ? "Minimizar mapa mental" : "Expandir mapa mental"}>
+            <button
+              onClick={() => setExpandido(!expandido)}
+              className="p-1 hover:bg-indigo-500/20 rounded-md text-indigo-700 dark:text-indigo-300 transition-colors cursor-pointer"
+              aria-label={expandido ? "Minimizar mapa mental" : "Expandir mapa mental"}
+            >
+              {expandido ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
+          </Tooltip>
           <Network size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
           <span className="font-bold text-sm text-indigo-700 dark:text-indigo-300 truncate max-w-[180px] sm:max-w-[280px]">
             Mapa Mental: {titulo}
@@ -203,33 +205,39 @@ export function MapaMentalEmbed({
         {/* Barra de Zoom Flutuante Estilo Pill Badge */}
         {expandido && (
           <div className="flex items-center gap-1 bg-indigo-500/10 dark:bg-indigo-950/60 border border-indigo-500/30 backdrop-blur-md rounded-full px-2.5 py-1 text-xs shadow-xs">
-            <button
-              onClick={() => setZoomScale((z: number) => Math.max(0.3, z - 0.15))}
-              className="p-1 hover:bg-indigo-500/20 rounded-full text-indigo-700 dark:text-indigo-300 transition-all active:scale-95"
-              title="Diminuir Zoom (Zoom Out)"
-            >
-              <ZoomOut size={13} />
-            </button>
+            <Tooltip conteudo="Diminuir Zoom (Zoom Out)">
+              <button
+                onClick={() => setZoomScale((z: number) => Math.max(0.3, z - 0.15))}
+                className="p-1 hover:bg-indigo-500/20 rounded-full text-indigo-700 dark:text-indigo-300 transition-all active:scale-95 cursor-pointer"
+                aria-label="Diminuir Zoom"
+              >
+                <ZoomOut size={13} />
+              </button>
+            </Tooltip>
 
             <span className="font-mono text-[11px] font-bold text-indigo-800 dark:text-indigo-200 px-1 min-w-[34px] text-center">
               {Math.round(zoomScale * 100)}%
             </span>
 
-            <button
-              onClick={() => setZoomScale((z: number) => Math.min(1.5, z + 0.15))}
-              className="p-1 hover:bg-indigo-500/20 rounded-full text-indigo-700 dark:text-indigo-300 transition-all active:scale-95"
-              title="Aumentar Zoom (Zoom In)"
-            >
-              <ZoomIn size={13} />
-            </button>
+            <Tooltip conteudo="Aumentar Zoom (Zoom In)">
+              <button
+                onClick={() => setZoomScale((z: number) => Math.min(1.5, z + 0.15))}
+                className="p-1 hover:bg-indigo-500/20 rounded-full text-indigo-700 dark:text-indigo-300 transition-all active:scale-95 cursor-pointer"
+                aria-label="Aumentar Zoom"
+              >
+                <ZoomIn size={13} />
+              </button>
+            </Tooltip>
 
-            <button
-              onClick={() => setZoomScale(0.75)}
-              className="p-1 hover:bg-indigo-500/20 rounded-full text-indigo-600 dark:text-indigo-400 transition-all active:scale-95 ml-0.5"
-              title="Restaurar Zoom Padrão (75%)"
-            >
-              <RotateCcw size={12} />
-            </button>
+            <Tooltip conteudo="Restaurar Zoom Padrão (75%)">
+              <button
+                onClick={() => setZoomScale(0.75)}
+                className="p-1 hover:bg-indigo-500/20 rounded-full text-indigo-600 dark:text-indigo-400 transition-all active:scale-95 ml-0.5 cursor-pointer"
+                aria-label="Restaurar Zoom Padrão"
+              >
+                <RotateCcw size={12} />
+              </button>
+            </Tooltip>
           </div>
         )}
 
@@ -253,11 +261,12 @@ export function MapaMentalEmbed({
           style={{ height: `${altura}px` }}
           className="w-full bg-background/50 dark:bg-neutral-950/50 flex items-center justify-center relative overflow-hidden transition-all duration-75"
         >
-          <div
-            onClick={abrirNoExcalidraw}
-            className="w-full h-full p-3 flex items-center justify-center cursor-pointer hover:bg-accent/20 transition-colors group/canvas"
-            title="Clique para abrir e editar em Tela Cheia no Excalidraw"
-          >
+          <Tooltip conteudo="Clique para abrir e editar em Tela Cheia no Excalidraw">
+            <div
+              onClick={abrirNoExcalidraw}
+              className="w-full h-full p-3 flex items-center justify-center cursor-pointer hover:bg-accent/20 transition-colors group/canvas"
+              aria-label="Abrir e editar em Tela Cheia no Excalidraw"
+            >
             {carregandoSvg ? (
               <Carregando texto="Gerando visualização do mapa mental..." />
             ) : svgHtml ? (
@@ -275,15 +284,19 @@ export function MapaMentalEmbed({
               </div>
             )}
           </div>
+        </Tooltip>
 
           {/* Alça de Arraste no Canto Inferior Direito para Redimensionar */}
-          <div
-            onMouseDown={iniciarRedimensionamento}
-            className="absolute bottom-0 right-0 w-6 h-6 bg-indigo-500/20 hover:bg-indigo-500/40 dark:bg-indigo-500/30 cursor-se-resize flex items-center justify-center rounded-tl-lg transition-colors border-t border-l border-indigo-500/30"
-            title="Clique e arraste pelo canto para mudar o tamanho no documento"
-          >
-            <GripHorizontal size={14} className="text-indigo-600 dark:text-indigo-300 transform -rotate-45" />
-          </div>
+          <Tooltip conteudo="Clique e arraste pelo canto para mudar o tamanho no documento">
+            <div
+              onMouseDown={iniciarRedimensionamento}
+              className="absolute bottom-0 right-0 w-6 h-6 bg-indigo-500/20 hover:bg-indigo-500/40 dark:bg-indigo-500/30 cursor-se-resize flex items-center justify-center rounded-tl-lg transition-colors border-t border-l border-indigo-500/30"
+              role="separator"
+              aria-label="Redimensionar mapa mental"
+            >
+              <GripHorizontal size={14} className="text-indigo-600 dark:text-indigo-300 transform -rotate-45" />
+            </div>
+          </Tooltip>
         </div>
       )}
     </div>

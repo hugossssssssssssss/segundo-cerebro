@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { FilePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface WidgetScratchpadProps {
   aoConverterEmNota: (conteudo: string) => void;
@@ -42,14 +43,16 @@ export function WidgetScratchpad({ aoConverterEmNota }: WidgetScratchpadProps) {
 
         <div className="flex items-center gap-1.5">
           {texto && (
-            <button
-              type="button"
-              onClick={() => setTexto("")}
-              className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              title="Limpar rascunho"
-            >
-              <Trash2 size={13} />
-            </button>
+            <Tooltip conteudo="Limpar rascunho">
+              <button
+                type="button"
+                onClick={() => setTexto("")}
+                className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                aria-label="Limpar rascunho"
+              >
+                <Trash2 size={13} />
+              </button>
+            </Tooltip>
           )}
 
           <Button

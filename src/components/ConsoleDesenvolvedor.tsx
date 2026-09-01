@@ -18,6 +18,7 @@ import {
   Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 import { lerConfig, salvarConfig } from "@/lib/settings";
 
 export function ConsoleDesenvolvedor() {
@@ -384,47 +385,53 @@ export function ConsoleDesenvolvedor() {
 
         <div className="flex items-center gap-2">
           {/* Ações */}
-          <button
-            onClick={copiarTudo}
-            disabled={logsFiltrados.length === 0}
-            className="flex items-center gap-1 rounded bg-slate-900 border border-slate-800 px-2.5 py-1 text-[11px] text-slate-300 hover:bg-slate-850 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            title="Copiar logs exibidos"
-          >
-            {copiadoTudo ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
-            <span>{copiadoTudo ? "Copiado!" : "Copiar Tudo"}</span>
-          </button>
+          <Tooltip conteudo="Copiar logs exibidos">
+            <button
+              onClick={copiarTudo}
+              disabled={logsFiltrados.length === 0}
+              className="flex items-center gap-1 rounded bg-slate-900 border border-slate-800 px-2.5 py-1 text-[11px] text-slate-300 hover:bg-slate-850 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              aria-label="Copiar logs exibidos"
+            >
+              {copiadoTudo ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+              <span>{copiadoTudo ? "Copiado!" : "Copiar Tudo"}</span>
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={limparLogs}
-            disabled={logs.length === 0}
-            className="flex items-center gap-1 rounded bg-slate-900 border border-slate-800 px-2.5 py-1 text-[11px] text-slate-300 hover:bg-slate-850 hover:text-white hover:border-red-500/30 hover:text-red-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            title="Limpar console"
-          >
-            <Trash2 size={12} />
-            <span>Limpar</span>
-          </button>
+          <Tooltip conteudo="Limpar console">
+            <button
+              onClick={limparLogs}
+              disabled={logs.length === 0}
+              className="flex items-center gap-1 rounded bg-slate-900 border border-slate-800 px-2.5 py-1 text-[11px] text-slate-300 hover:bg-slate-850 hover:text-white hover:border-red-500/30 hover:text-red-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              aria-label="Limpar console"
+            >
+              <Trash2 size={12} />
+              <span>Limpar</span>
+            </button>
+          </Tooltip>
 
           <span className="text-slate-700">|</span>
 
           {/* Minimizar/Fechar temporariamente */}
-          <button
-            onClick={() => {
-              // Desativa o console alterando a config
-              try {
-                const cfg = lerConfig();
-                const novaCfg = { ...cfg, modoDesenvolvedor: false };
-                salvarConfig(novaCfg);
-              } catch {
-                // fallback manual
-                localStorage.setItem("segundo-cerebro:config:enc", "");
-              }
-              window.dispatchEvent(new CustomEvent("klaus-config-mudou"));
-            }}
-            className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
-            title="Fechar console (Desativar em Ajustes)"
-          >
-            <X size={14} />
-          </button>
+          <Tooltip conteudo="Fechar console (Desativar em Ajustes)">
+            <button
+              onClick={() => {
+                // Desativa o console alterando a config
+                try {
+                  const cfg = lerConfig();
+                  const novaCfg = { ...cfg, modoDesenvolvedor: false };
+                  salvarConfig(novaCfg);
+                } catch {
+                  // fallback manual
+                  localStorage.setItem("segundo-cerebro:config:enc", "");
+                }
+                window.dispatchEvent(new CustomEvent("klaus-config-mudou"));
+              }}
+              className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+              aria-label="Fechar console"
+            >
+              <X size={14} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -520,18 +527,20 @@ export function ConsoleDesenvolvedor() {
                   </span>
 
                   {/* Copiar individual */}
-                  <button
-                    onClick={(e) => copiarLog(e, log)}
-                    className="opacity-0 group-hover:opacity-100 hover:bg-slate-800 p-1 rounded text-slate-500 hover:text-slate-200 transition-all select-none shrink-0 cursor-pointer"
-                    style={{ contentVisibility: "auto" }} // Otimizacao de performance
-                    title="Copiar esta entrada"
-                  >
-                    {copiadoLogId === log.id ? (
-                      <Check size={12} className="text-emerald-500 animate-in fade-in" />
-                    ) : (
-                      <Copy size={12} className="hover:scale-105" />
-                    )}
-                  </button>
+                  <Tooltip conteudo="Copiar esta entrada">
+                    <button
+                      onClick={(e) => copiarLog(e, log)}
+                      className="opacity-0 group-hover:opacity-100 hover:bg-slate-800 p-1 rounded text-slate-500 hover:text-slate-200 transition-all select-none shrink-0 cursor-pointer"
+                      style={{ contentVisibility: "auto" }} // Otimizacao de performance
+                      aria-label="Copiar esta entrada"
+                    >
+                      {copiadoLogId === log.id ? (
+                        <Check size={12} className="text-emerald-500 animate-in fade-in" />
+                      ) : (
+                        <Copy size={12} className="hover:scale-105" />
+                      )}
+                    </button>
+                  </Tooltip>
                 </div>
 
                 {/* Detalhes expandidos */}
@@ -571,17 +580,20 @@ export function ConsoleDesenvolvedor() {
       />
 
       {/* Canto SE (Inferior Direito com alça visual) */}
-      <div
-        onMouseDown={(e) => iniciarRedimensionamento("se", e)}
-        onTouchStart={(e) => iniciarRedimensionamento("se", e)}
-        className="absolute right-0 bottom-0 w-4 h-4 cursor-se-resize flex items-center justify-center text-slate-500 hover:text-amber-500 hover:scale-125 transition-all z-20"
-        title="Arrastar para redimensionar"
-      >
-        <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor">
-          <path d="M6 0L10 4L4 10L0 6L6 0Z" opacity="0.4" />
-          <path d="M8 4L10 6L6 10L4 8L8 4Z" opacity="0.8" />
-        </svg>
-      </div>
+      <Tooltip conteudo="Arrastar para redimensionar">
+        <div
+          onMouseDown={(e) => iniciarRedimensionamento("se", e)}
+          onTouchStart={(e) => iniciarRedimensionamento("se", e)}
+          className="absolute right-0 bottom-0 w-4 h-4 cursor-se-resize flex items-center justify-center text-slate-500 hover:text-amber-500 hover:scale-125 transition-all z-20"
+          role="separator"
+          aria-label="Redimensionar console"
+        >
+          <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor">
+            <path d="M6 0L10 4L4 10L0 6L6 0Z" opacity="0.4" />
+            <path d="M8 4L10 6L6 10L4 8L8 4Z" opacity="0.8" />
+          </svg>
+        </div>
+      </Tooltip>
 
       <div
         onMouseDown={(e) => iniciarRedimensionamento("sw", e)}

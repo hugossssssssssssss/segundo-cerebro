@@ -114,19 +114,20 @@ function MenuAcoesCompromisso({
 
   return (
     <Popover open={aberto} onOpenChange={setAberto}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-          className="p-1 rounded-md text-muted-foreground/70 hover:text-foreground hover:bg-muted/80 transition-colors shrink-0 cursor-pointer"
-          title="Opções do documento"
-          aria-label="Opções do documento"
-        >
-          <MoreVertical size={14} />
-        </button>
-      </PopoverTrigger>
+      <Tooltip conteudo="Opções do documento">
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            className="p-1 rounded-md text-muted-foreground/70 hover:text-foreground hover:bg-muted/80 transition-colors shrink-0 cursor-pointer"
+            aria-label="Opções do documento"
+          >
+            <MoreVertical size={14} />
+          </button>
+        </PopoverTrigger>
+      </Tooltip>
       <PopoverContent
         align="end"
         sideOffset={4}
@@ -1585,15 +1586,17 @@ export default function Inbox() {
                           <span>Ver</span>
                         </Button>
 
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => aoDescartarRascunho(r.id)}
-                          className="text-xs h-7 px-2 rounded-lg text-muted-foreground hover:text-destructive cursor-pointer"
-                          title="Descartar rascunho local"
-                        >
-                          <Trash2 size={13} />
-                        </Button>
+                        <Tooltip conteudo="Descartar rascunho local">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => aoDescartarRascunho(r.id)}
+                            className="text-xs h-7 px-2 rounded-lg text-muted-foreground hover:text-destructive cursor-pointer"
+                            aria-label="Descartar rascunho"
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                        </Tooltip>
                       </div>
                     </div>
                   );

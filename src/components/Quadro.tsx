@@ -233,20 +233,22 @@ function CartaoArrastavel({
       <div className="flex items-start gap-2">
         {/* Checkbox de seleção em lote */}
         {aoToggleSelecionar && (
-          <input
-            type="checkbox"
-            checked={isSelecionado}
-            onChange={(e) => {
-              e.stopPropagation();
-              aoToggleSelecionar(t.caminho);
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className={cn(
-              "mt-0.5 h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer transition-opacity shrink-0",
-              selecionadas && selecionadas.size > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            )}
-            title="Selecionar tarefa para ação em lote"
-          />
+          <Tooltip conteudo="Selecionar tarefa para ação em lote">
+            <input
+              type="checkbox"
+              checked={isSelecionado}
+              onChange={(e) => {
+                e.stopPropagation();
+                aoToggleSelecionar(t.caminho);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                "mt-0.5 h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer transition-opacity shrink-0",
+                selecionadas && selecionadas.size > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              )}
+              aria-label="Selecionar tarefa"
+            />
+          </Tooltip>
         )}
 
         <div className="flex-1 min-w-0">
@@ -272,7 +274,6 @@ function CartaoArrastavel({
                     ? "text-emerald-500 hover:bg-emerald-500/15"
                     : "text-muted-foreground/60 hover:text-emerald-500 hover:bg-emerald-500/10 opacity-0 group-hover:opacity-100 sm:opacity-0 focus:opacity-100"
                 )}
-                title={t.status === "feito" ? "Reabrir tarefa" : "Concluir tarefa"}
                 aria-label={t.status === "feito" ? `Reabrir ${t.titulo}` : `Concluir ${t.titulo}`}
               >
                 {t.status === "feito" ? (
@@ -325,17 +326,18 @@ function CartaoArrastavel({
           />
 
           {/* Alça de arrasto visível no hover */}
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            className="p-1 text-muted-foreground/40 hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded"
-            title="Arrastar tarefa"
-            aria-label={`Mover ${t.titulo}`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <GripVertical size={14} />
-          </button>
+          <Tooltip conteudo="Arrastar tarefa">
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              className="p-1 text-muted-foreground/40 hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded"
+              aria-label={`Mover ${t.titulo}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical size={14} />
+            </button>
+          </Tooltip>
         </div>
       </div>
     </Cartao>
@@ -395,28 +397,30 @@ function Coluna({
 
   if (colapsada) {
     return (
-      <div
-        ref={setNodeRef}
-        onClick={aoAlternarColapso}
-        className={cn(
-          "flex w-12 shrink-0 flex-col items-center justify-between rounded-2xl border border-border bg-secondary/30 py-4 transition-all cursor-pointer hover:bg-accent/60 select-none",
-          isOver && "border-primary/50 bg-primary/10",
-        )}
-        title={`Coluna ${ROTULO_STATUS[status]} recolhida. Clique para expandir.`}
-      >
-        <div className="flex flex-col items-center gap-2">
-          <span className={cn("h-2.5 w-2.5 rounded-full", COR_COLUNA[status])} />
-          <span className="text-[11px] font-bold tabular-nums px-1.5 py-0.5 rounded-full bg-card shadow-2xs">
-            {tarefas.length}
+      <Tooltip conteudo={`Coluna ${ROTULO_STATUS[status]} recolhida. Clique para expandir.`} posicao="right">
+        <div
+          ref={setNodeRef}
+          onClick={aoAlternarColapso}
+          className={cn(
+            "flex w-12 shrink-0 flex-col items-center justify-between rounded-2xl border border-border bg-secondary/30 py-4 transition-all cursor-pointer hover:bg-accent/60 select-none",
+            isOver && "border-primary/50 bg-primary/10",
+          )}
+          aria-label={`Expandir coluna ${ROTULO_STATUS[status]}`}
+        >
+          <div className="flex flex-col items-center gap-2">
+            <span className={cn("h-2.5 w-2.5 rounded-full", COR_COLUNA[status])} />
+            <span className="text-[11px] font-bold tabular-nums px-1.5 py-0.5 rounded-full bg-card shadow-2xs">
+              {tarefas.length}
+            </span>
+          </div>
+
+          <span className="[writing-mode:vertical-rl] rotate-180 text-xs font-semibold text-muted-foreground tracking-wide py-2">
+            {ROTULO_STATUS[status]}
           </span>
+
+          <ChevronRight size={14} className="text-muted-foreground" />
         </div>
-
-        <span className="[writing-mode:vertical-rl] rotate-180 text-xs font-semibold text-muted-foreground tracking-wide py-2">
-          {ROTULO_STATUS[status]}
-        </span>
-
-        <ChevronRight size={14} className="text-muted-foreground" />
-      </div>
+      </Tooltip>
     );
   }
 

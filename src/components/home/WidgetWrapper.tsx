@@ -136,14 +136,16 @@ export function WidgetWrapper({
           <div className="h-3 w-px bg-border/60 mx-0.5" />
 
           {aoRemover && (
-            <button
-              type="button"
-              onClick={aoRemover}
-              className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-              title="Remover widget"
-            >
-              <X size={12} />
-            </button>
+            <Tooltip conteudo="Remover widget">
+              <button
+                type="button"
+                onClick={aoRemover}
+                className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                aria-label="Remover widget"
+              >
+                <X size={12} />
+              </button>
+            </Tooltip>
           )}
         </div>
       )}
@@ -198,20 +200,23 @@ export function WidgetWrapper({
       <div className="flex-1 pt-3 flex flex-col overflow-hidden">{children}</div>
 
       {/* Alça de Arraste Livre no Canto Inferior Direito */}
-      <div
-        onMouseDown={iniciarArrasto}
-        className={cn(
-          "absolute bottom-0 right-0 w-6 h-6 flex items-end justify-end p-1.5 cursor-se-resize select-none transition-opacity",
-          modoEdicao ? "opacity-100 text-primary" : "opacity-0 group-hover:opacity-40 hover:opacity-100 text-muted-foreground"
-        )}
-        title="Arraste para redimensionar na malha de 12 colunas"
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-          <circle cx="8" cy="8" r="1.2" />
-          <circle cx="4" cy="8" r="1.2" />
-          <circle cx="8" cy="4" r="1.2" />
-        </svg>
-      </div>
+      <Tooltip conteudo="Arraste para redimensionar na malha de 12 colunas">
+        <div
+          onMouseDown={iniciarArrasto}
+          className={cn(
+            "absolute bottom-0 right-0 w-6 h-6 flex items-end justify-end p-1.5 cursor-se-resize select-none transition-opacity",
+            modoEdicao ? "opacity-100 text-primary" : "opacity-0 group-hover:opacity-40 hover:opacity-100 text-muted-foreground"
+          )}
+          role="separator"
+          aria-label="Redimensionar widget"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+            <circle cx="8" cy="8" r="1.2" />
+            <circle cx="4" cy="8" r="1.2" />
+            <circle cx="8" cy="4" r="1.2" />
+          </svg>
+        </div>
+      </Tooltip>
     </div>
   );
 }

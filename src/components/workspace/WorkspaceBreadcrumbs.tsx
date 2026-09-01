@@ -1,6 +1,7 @@
 import React from "react";
 import { ChevronRight, Search, Folder } from "lucide-react";
 import { useWorkspace } from "./WorkspaceContext";
+import { Tooltip } from "@/components/ui/tooltip";
 import { formatarNomeAmigavel, formatarTituloAmigavel, formatarAtalho } from "@/lib/utils";
 
 interface WorkspaceBreadcrumbsProps {
@@ -35,14 +36,15 @@ export function WorkspaceBreadcrumbs({ caminho, titulo }: WorkspaceBreadcrumbsPr
   }, [caminho, titulo]);
 
   return (
-    <div
-      onClick={() => setBuscaGlobalAberta(true)}
-      role="button"
-      tabIndex={0}
-      className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent/70 cursor-pointer transition-all select-none border border-transparent hover:border-border/60 max-w-full overflow-hidden"
-      title={`Clique para pesquisar ou alternar documento (${formatarAtalho("⌘K")})`}
-    >
-      <Folder size={13} className="text-primary/70 shrink-0 group-hover:text-primary transition-colors" />
+    <Tooltip conteudo="Pesquisar ou alternar documento" atalho="⌘K">
+      <div
+        onClick={() => setBuscaGlobalAberta(true)}
+        role="button"
+        tabIndex={0}
+        className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent/70 cursor-pointer transition-all select-none border border-transparent hover:border-border/60 max-w-full overflow-hidden"
+        aria-label="Pesquisar ou alternar documento"
+      >
+        <Folder size={13} className="text-primary/70 shrink-0 group-hover:text-primary transition-colors" />
 
       <div className="flex items-center gap-1 min-w-0 truncate">
         {partes.map((parte, idx) => (
@@ -65,6 +67,7 @@ export function WorkspaceBreadcrumbs({ caminho, titulo }: WorkspaceBreadcrumbsPr
         <Search size={12} />
         <span className="hidden sm:inline font-mono">{formatarAtalho("⌘K")}</span>
       </div>
-    </div>
+      </div>
+    </Tooltip>
   );
 }

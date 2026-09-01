@@ -42,7 +42,8 @@ import { Carregando } from "@/components/ui";
 import { PainelNotificacoesHeader } from "@/components/PainelNotificacoesHeader";
 import { BarraFavoritos } from "@/components/BarraFavoritos";
 import { Rodape } from "@/components/Rodape";
-import { cn, formatarAtalho } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { lerConfig, configCompleta, precisaOnboarding } from "@/lib/settings";
 import { carregarRepo } from "@/lib/repo";
 import { carregarEstadoInbox, compilarItensInbox } from "@/lib/inbox";
@@ -341,37 +342,39 @@ function Estrutura({ children }: { children: React.ReactNode }) {
 
             {/* Lado Direito: Captura Rápida, Caixa de Som, Inbox, Busca e Sair da Tela Cheia */}
             <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
-              <button
-                onClick={() => setCapturando(true)}
-                className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
-                title={`Captura rápida (${formatarAtalho("⌘J")})`}
-                aria-label="Captura rápida"
-              >
-                <Plus size={18} />
-              </button>
+              <Tooltip conteudo="Captura rápida" atalho="⌘J">
+                <button
+                  onClick={() => setCapturando(true)}
+                  className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+                  aria-label="Captura rápida"
+                >
+                  <Plus size={18} />
+                </button>
+              </Tooltip>
 
               {/* Botão de Som Ambiente no Header */}
               {somAmbiente && (
                 <div className="relative">
-                  <button
-                    onClick={() => setSomMenuAberto(!somMenuAberto)}
-                    className={cn(
-                      "rounded-lg p-1.5 sm:p-2 transition-colors relative flex items-center justify-center cursor-pointer",
-                      somAmbienteTocando 
-                        ? "bg-primary/10 text-primary" 
-                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                    )}
-                    title="Configurações de som ambiente"
-                    aria-label="Controle de áudio"
-                  >
-                    <Headphones size={18} className={somAmbienteTocando ? "animate-pulse" : ""} />
-                    {somAmbienteTocando && (
-                      <span className="absolute bottom-1 right-1 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                      </span>
-                    )}
-                  </button>
+                  <Tooltip conteudo="Configurações de som ambiente">
+                    <button
+                      onClick={() => setSomMenuAberto(!somMenuAberto)}
+                      className={cn(
+                        "rounded-lg p-1.5 sm:p-2 transition-colors relative flex items-center justify-center cursor-pointer",
+                        somAmbienteTocando 
+                          ? "bg-primary/10 text-primary" 
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      )}
+                      aria-label="Controle de áudio"
+                    >
+                      <Headphones size={18} className={somAmbienteTocando ? "animate-pulse" : ""} />
+                      {somAmbienteTocando && (
+                        <span className="absolute bottom-1 right-1 flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                        </span>
+                      )}
+                    </button>
+                  </Tooltip>
 
                   {/* Menu suspenso de áudio */}
                   {somMenuAberto && (
@@ -404,7 +407,6 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                                   ? "bg-primary/15 text-primary font-semibold"
                                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
                               )}
-                              title={s.nome}
                             >
                               {s.nome}
                             </button>
@@ -413,13 +415,15 @@ function Estrutura({ children }: { children: React.ReactNode }) {
 
                         {/* Controles de Play/Pause/Volume */}
                         <div className="flex items-center justify-between border-t border-border/40 pt-2.5 mt-1 gap-2">
-                          <button
-                            onClick={() => setSomAmbienteTocando(!somAmbienteTocando)}
-                            className="p-1.5 rounded-lg bg-secondary text-foreground hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
-                            title={somAmbienteTocando ? "Pausar som" : "Tocar som"}
-                          >
-                            {somAmbienteTocando ? <Pause size={14} /> : <Play size={14} />}
-                          </button>
+                          <Tooltip conteudo={somAmbienteTocando ? "Pausar som" : "Tocar som"}>
+                            <button
+                              onClick={() => setSomAmbienteTocando(!somAmbienteTocando)}
+                              className="p-1.5 rounded-lg bg-secondary text-foreground hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
+                              aria-label={somAmbienteTocando ? "Pausar som" : "Tocar som"}
+                            >
+                              {somAmbienteTocando ? <Pause size={14} /> : <Play size={14} />}
+                            </button>
+                          </Tooltip>
                           
                           {/* Slider de volume */}
                           <div className="flex-1 flex items-center gap-1.5">
@@ -431,23 +435,25 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                               value={volumeSomAmbiente}
                               onChange={(e) => setVolumeSomAmbiente(Number(e.target.value))}
                               className="w-full accent-primary h-1 rounded bg-secondary appearance-none cursor-pointer"
-                              title="Volume"
+                              aria-label="Volume"
                             />
                             <span className="text-[10px] font-mono text-muted-foreground w-6 text-right select-none">
                               {Math.round(volumeSomAmbiente * 100)}%
                             </span>
                           </div>
 
-                          <button
-                            onClick={() => {
-                              setSomAmbiente(null);
-                              setSomMenuAberto(false);
-                            }}
-                            className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-                            title="Desligar e fechar"
-                          >
-                            <VolumeX size={14} />
-                          </button>
+                          <Tooltip conteudo="Desligar e fechar áudio">
+                            <button
+                              onClick={() => {
+                                setSomAmbiente(null);
+                                setSomMenuAberto(false);
+                              }}
+                              className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                              aria-label="Desligar e fechar"
+                            >
+                              <VolumeX size={14} />
+                            </button>
+                          </Tooltip>
                         </div>
                       </div>
                     </div>
@@ -459,35 +465,38 @@ function Estrutura({ children }: { children: React.ReactNode }) {
               <PainelNotificacoesHeader />
 
               {/* Busca Web Externa */}
-              <button
-                type="button"
-                onClick={() => setBuscandoWeb(true)}
-                className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
-                title="Busca Web Externa"
-                aria-label="Busca Web"
-              >
-                <Globe size={18} />
-              </button>
+              <Tooltip conteudo="Busca Web Externa">
+                <button
+                  type="button"
+                  onClick={() => setBuscandoWeb(true)}
+                  className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+                  aria-label="Busca Web"
+                >
+                  <Globe size={18} />
+                </button>
+              </Tooltip>
 
-              <button
-                onClick={() => setBuscando(true)}
-                className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
-                title={`Buscar (${formatarAtalho("⌘K")})`}
-                aria-label="Buscar"
-              >
-                <Search size={18} />
-              </button>
+              <Tooltip conteudo="Buscar em tudo" atalho="⌘K">
+                <button
+                  onClick={() => setBuscando(true)}
+                  className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+                  aria-label="Buscar"
+                >
+                  <Search size={18} />
+                </button>
+              </Tooltip>
 
               {/* Botão de Sair do modo Workspace / Tela Cheia */}
               {workspaceAberto && (
-                <button
-                  onClick={fecharWorkspace}
-                  className="rounded-lg p-1.5 sm:p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors ml-0.5 sm:ml-1 cursor-pointer"
-                  title="Sair do modo tela cheia"
-                  aria-label="Sair do modo tela cheia"
-                >
-                  <Minimize2 size={18} />
-                </button>
+                <Tooltip conteudo="Sair do modo tela cheia">
+                  <button
+                    onClick={fecharWorkspace}
+                    className="rounded-lg p-1.5 sm:p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors ml-0.5 sm:ml-1 cursor-pointer"
+                    aria-label="Sair do modo tela cheia"
+                  >
+                    <Minimize2 size={18} />
+                  </button>
+                </Tooltip>
               )}
             </div>
           </div>

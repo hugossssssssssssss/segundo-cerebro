@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { Search, ArrowRight } from "lucide-react";
 import { useMotorBuscaWeb, type WebSearchEngine } from "@/lib/buscaWeb";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export function WidgetBuscaWeb() {
@@ -55,19 +56,21 @@ export function WidgetBuscaWeb() {
           <option value="duckduckgo">DuckDuckGo</option>
         </select>
 
-        <button
-          type="submit"
-          disabled={!termo.trim()}
-          className={cn(
-            "p-1.5 rounded-lg text-xs transition-colors flex items-center justify-center cursor-pointer",
-            termo.trim()
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground opacity-30 cursor-not-allowed"
-          )}
-          title="Pesquisar"
-        >
-          <ArrowRight size={13} />
-        </button>
+        <Tooltip conteudo="Pesquisar">
+          <button
+            type="submit"
+            disabled={!termo.trim()}
+            className={cn(
+              "p-1.5 rounded-lg text-xs transition-colors flex items-center justify-center cursor-pointer",
+              termo.trim()
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground opacity-30 cursor-not-allowed"
+            )}
+            aria-label="Pesquisar"
+          >
+            <ArrowRight size={13} />
+          </button>
+        </Tooltip>
       </div>
     </form>
   );

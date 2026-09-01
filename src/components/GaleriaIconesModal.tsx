@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { X, Search, Check, Sparkles } from "lucide-react";
 import { CATALOGO_ICONES, CATEGORIAS_ICONES, obterIconePorNome } from "@/lib/icones";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
 
 interface GaleriaIconesModalProps {
@@ -140,31 +141,32 @@ export function GaleriaIconesModal({
               {iconesFiltrados.map(({ nome, rotulo, Icone }) => {
                 const ativo = selecionadoTemporario === nome;
                 return (
-                  <button
-                    key={nome}
-                    onClick={() => setSelecionadoTemporario(nome)}
-                    title={`${nome} (${rotulo})`}
-                    className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-xl border transition-all relative group text-center aspect-square",
-                      ativo
-                        ? "bg-primary/10 border-primary text-primary shadow-xs ring-2 ring-primary/30"
-                        : "bg-card border-border/80 text-foreground hover:border-primary/50 hover:bg-accent/60"
-                    )}
-                  >
-                    <Icone
-                      size={24}
-                      style={{ color: ativo && corAtual ? corAtual : undefined }}
-                      className="shrink-0 transition-transform group-hover:scale-110"
-                    />
-                    <span className="mt-1 text-[10px] font-mono font-medium truncate w-full opacity-80 group-hover:opacity-100">
-                      {nome}
-                    </span>
-                    {ativo && (
-                      <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-[8px]">
-                        <Check size={10} />
+                  <Tooltip key={nome} conteudo={`${nome} (${rotulo})`}>
+                    <button
+                      onClick={() => setSelecionadoTemporario(nome)}
+                      aria-label={`${nome} (${rotulo})`}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-3 rounded-xl border transition-all relative group text-center aspect-square cursor-pointer",
+                        ativo
+                          ? "bg-primary/10 border-primary text-primary shadow-xs ring-2 ring-primary/30"
+                          : "bg-card border-border/80 text-foreground hover:border-primary/50 hover:bg-accent/60"
+                      )}
+                    >
+                      <Icone
+                        size={24}
+                        style={{ color: ativo && corAtual ? corAtual : undefined }}
+                        className="shrink-0 transition-transform group-hover:scale-110"
+                      />
+                      <span className="mt-1 text-[10px] font-mono font-medium truncate w-full opacity-80 group-hover:opacity-100">
+                        {nome}
                       </span>
-                    )}
-                  </button>
+                      {ativo && (
+                        <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px]">
+                          <Check size={10} strokeWidth={3} />
+                        </span>
+                      )}
+                    </button>
+                  </Tooltip>
                 );
               })}
             </div>

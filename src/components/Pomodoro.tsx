@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Play, Pause, RotateCcw, X, Settings, Headphones } from "lucide-react";
 import { Botao, Cartao } from "@/components/ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useCronometro, LISTA_SONS_AMBIENTE } from "@/components/ContextoCronometro";
 import { PrismasFoco } from "@/components/PrismasFoco";
 import { minutosRegistrados } from "@/lib/tarefas";
@@ -60,40 +61,50 @@ export function Pomodoro() {
               {modo === "foco" ? "Foco Ativo" : "Descanso / Pausa"}
             </p>
           </div>
-          <p className="truncate text-xs font-semibold text-foreground select-none" title={tarefa.titulo}>
-            {tarefa.titulo}
-          </p>
+          <Tooltip conteudo={tarefa.titulo}>
+            <p className="truncate text-xs font-semibold text-foreground select-none cursor-default">
+              {tarefa.titulo}
+            </p>
+          </Tooltip>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={() => {
-              setAbertoConfig(false);
-              setAbertoSom((v) => !v);
-            }}
-            className={`rounded-lg p-1.5 transition-colors cursor-pointer ${abertoSom ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-accent"}`}
-            title="Sons ambiente para imersão"
-          >
-            <Headphones size={15} />
-          </button>
-          <button
-            onClick={() => {
-              setAbertoSom(false);
-              setTempoFocoTemp(config.tempoFoco);
-              setTempoPausaTemp(config.tempoPausa);
-              setAbertoConfig((v) => !v);
-            }}
-            className={`rounded-lg p-1.5 transition-colors cursor-pointer ${abertoConfig ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-accent"}`}
-            title="Ajustes de tempo"
-          >
-            <Settings size={15} />
-          </button>
-          <button
-            onClick={parar}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors cursor-pointer"
-            title="Parar foco atual"
-          >
-            <X size={15} />
-          </button>
+          <Tooltip conteudo="Sons ambiente para imersão">
+            <button
+              onClick={() => {
+                setAbertoConfig(false);
+                setAbertoSom((v) => !v);
+              }}
+              className={`rounded-lg p-1.5 transition-colors cursor-pointer ${abertoSom ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-accent"}`}
+              aria-label="Sons ambiente para imersão"
+            >
+              <Headphones size={15} />
+            </button>
+          </Tooltip>
+
+          <Tooltip conteudo="Ajustes de tempo">
+            <button
+              onClick={() => {
+                setAbertoSom(false);
+                setTempoFocoTemp(config.tempoFoco);
+                setTempoPausaTemp(config.tempoPausa);
+                setAbertoConfig((v) => !v);
+              }}
+              className={`rounded-lg p-1.5 transition-colors cursor-pointer ${abertoConfig ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-accent"}`}
+              aria-label="Ajustes de tempo"
+            >
+              <Settings size={15} />
+            </button>
+          </Tooltip>
+
+          <Tooltip conteudo="Parar foco atual">
+            <button
+              onClick={parar}
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors cursor-pointer"
+              aria-label="Parar foco atual"
+            >
+              <X size={15} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -210,15 +221,17 @@ export function Pomodoro() {
               {rodando ? <Pause size={14} /> : <Play size={14} />}
               {rodando ? "Pausar" : modo === "foco" ? "Iniciar Foco" : "Iniciar Descanso"}
             </Botao>
-            <Botao 
-              variante="neutro" 
-              tamanho="pequeno" 
-              onClick={reiniciar} 
-              title="Reiniciar ciclo"
-              className="hover:bg-accent transition-colors cursor-pointer"
-            >
-              <RotateCcw size={14} />
-            </Botao>
+            <Tooltip conteudo="Reiniciar ciclo">
+              <Botao 
+                variante="neutro" 
+                tamanho="pequeno" 
+                onClick={reiniciar} 
+                aria-label="Reiniciar ciclo"
+                className="hover:bg-accent transition-colors cursor-pointer"
+              >
+                <RotateCcw size={14} />
+              </Botao>
+            </Tooltip>
           </div>
         </>
       )}

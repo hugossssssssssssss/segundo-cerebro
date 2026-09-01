@@ -17,6 +17,7 @@ import { useSalvar } from "@/lib/useSalvar";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import { abrirItemSpa } from "@/components/PropriedadesNotion";
 import { toast } from "@/lib/toast";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Tarefa } from "@/lib/tipos";
 
@@ -242,19 +243,21 @@ export function PainelTarefasNota({
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <button
-                        type="button"
-                        disabled={carregandoItem}
-                        onClick={() => toggleStatusTarefa(t)}
-                        className="text-muted-foreground hover:text-primary transition-colors cursor-pointer shrink-0 disabled:opacity-50"
-                        title={feita ? "Reabrir tarefa" : "Concluir tarefa"}
-                      >
-                        {feita ? (
-                          <CheckSquare size={16} className="text-emerald-500" />
-                        ) : (
-                          <Square size={16} />
-                        )}
-                      </button>
+                      <Tooltip conteudo={feita ? "Reabrir tarefa" : "Concluir tarefa"}>
+                        <button
+                          type="button"
+                          disabled={carregandoItem}
+                          onClick={() => toggleStatusTarefa(t)}
+                          className="text-muted-foreground hover:text-primary transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                          aria-label={feita ? "Reabrir tarefa" : "Concluir tarefa"}
+                        >
+                          {feita ? (
+                            <CheckSquare size={16} className="text-emerald-500" />
+                          ) : (
+                            <Square size={16} />
+                          )}
+                        </button>
+                      </Tooltip>
 
                       <span
                         className={cn(
@@ -273,14 +276,16 @@ export function PainelTarefasNota({
                           {t.Pomodoro}
                         </span>
                       ) : null}
-                      <button
-                        type="button"
-                        onClick={() => abrirItemSpa(t.caminho)}
-                        className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                        title="Abrir no quadro de tarefas"
-                      >
-                        <ExternalLink size={12} />
-                      </button>
+                      <Tooltip conteudo="Abrir no quadro de tarefas">
+                        <button
+                          type="button"
+                          onClick={() => abrirItemSpa(t.caminho)}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                          aria-label="Abrir no quadro de tarefas"
+                        >
+                          <ExternalLink size={12} />
+                        </button>
+                      </Tooltip>
                     </div>
                   </div>
                 );

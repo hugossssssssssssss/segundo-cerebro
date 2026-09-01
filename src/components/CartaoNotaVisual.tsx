@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { TagChip } from "@/components/TagChip";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Nota } from "@/lib/tipos";
 
@@ -214,17 +215,21 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
                 )}
 
                 {totalTarefas && totalTarefas.total > 0 && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-secondary/80 text-muted-foreground shrink-0" title={`${totalTarefas.concluidas} de ${totalTarefas.total} tarefas concluídas`}>
-                    <CheckSquare size={10} className="text-emerald-500" />
-                    <span>{totalTarefas.concluidas}/{totalTarefas.total}</span>
-                  </span>
+                  <Tooltip conteudo={`${totalTarefas.concluidas} de ${totalTarefas.total} tarefas concluídas`}>
+                    <span className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-secondary/80 text-muted-foreground shrink-0 cursor-default">
+                      <CheckSquare size={10} className="text-emerald-500" />
+                      <span>{totalTarefas.concluidas}/{totalTarefas.total}</span>
+                    </span>
+                  </Tooltip>
                 )}
 
                 {totalMoodboard !== undefined && totalMoodboard > 0 && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-secondary/80 text-muted-foreground shrink-0" title={`${totalMoodboard} referências visuais`}>
-                    <ImageIcon size={10} className="text-purple-500" />
-                    <span>{totalMoodboard}</span>
-                  </span>
+                  <Tooltip conteudo={`${totalMoodboard} referências visuais`}>
+                    <span className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-secondary/80 text-muted-foreground shrink-0 cursor-default">
+                      <ImageIcon size={10} className="text-purple-500" />
+                      <span>{totalMoodboard}</span>
+                    </span>
+                  </Tooltip>
                 )}
               </div>
 
@@ -258,49 +263,55 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
             )}
 
             {onToggleFixar && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleFixar();
-                }}
-                title={nota.fixado ? "Desafixar do topo" : "Fixar no topo"}
-                className={cn(
-                  "p-1.5 rounded-lg hover:bg-accent transition-all cursor-pointer",
-                  nota.fixado
-                    ? "text-amber-500 opacity-100"
-                    : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Pin size={13} className={nota.fixado ? "fill-amber-500/40 rotate-12" : ""} />
-              </button>
+              <Tooltip conteudo={nota.fixado ? "Desafixar do topo" : "Fixar no topo"}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFixar();
+                  }}
+                  aria-label={nota.fixado ? "Desafixar do topo" : "Fixar no topo"}
+                  className={cn(
+                    "p-1.5 rounded-lg hover:bg-accent transition-all cursor-pointer",
+                    nota.fixado
+                      ? "text-amber-500 opacity-100"
+                      : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Pin size={13} className={nota.fixado ? "fill-amber-500/40 rotate-12" : ""} />
+                </button>
+              </Tooltip>
             )}
 
-            <button
-              type="button"
-              onClick={copiarMencao}
-              title="Copiar @menção"
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              {copiado ? (
-                <Check size={13} className="text-emerald-500" />
-              ) : (
-                <LinkIcon size={13} />
-              )}
-            </button>
-
-            {onContextMenu && (
+            <Tooltip conteudo="Copiar @menção">
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onContextMenu(e);
-                }}
-                title="Mais opções da nota"
+                onClick={copiarMencao}
+                aria-label="Copiar @menção"
                 className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                <MoreHorizontal size={14} />
+                {copiado ? (
+                  <Check size={13} className="text-emerald-500" />
+                ) : (
+                  <LinkIcon size={13} />
+                )}
               </button>
+            </Tooltip>
+
+            {onContextMenu && (
+              <Tooltip conteudo="Mais opções da nota">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onContextMenu(e);
+                  }}
+                  aria-label="Mais opções da nota"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <MoreHorizontal size={14} />
+                </button>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -362,55 +373,63 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
             {/* Ações rápidas no topo do cartão */}
             <div className="flex items-center gap-0.5 shrink-0">
               {nota.fixado && !onToggleFixar && (
-                <span title="Nota fixada" className="text-amber-500 p-1">
-                  <Pin size={13} className="fill-amber-500/40 rotate-12" />
-                </span>
+                <Tooltip conteudo="Nota fixada">
+                  <span className="text-amber-500 p-1">
+                    <Pin size={13} className="fill-amber-500/40 rotate-12" />
+                  </span>
+                </Tooltip>
               )}
 
               {onToggleFixar && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleFixar();
-                  }}
-                  title={nota.fixado ? "Desafixar do topo" : "Fixar no topo"}
-                  className={cn(
-                    "p-1.5 rounded-lg hover:bg-accent transition-all cursor-pointer",
-                    nota.fixado
-                      ? "text-amber-500 opacity-100"
-                      : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Pin size={13} className={nota.fixado ? "fill-amber-500/40 rotate-12" : ""} />
-                </button>
+                <Tooltip conteudo={nota.fixado ? "Desafixar do topo" : "Fixar no topo"}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleFixar();
+                    }}
+                    aria-label={nota.fixado ? "Desafixar do topo" : "Fixar no topo"}
+                    className={cn(
+                      "p-1.5 rounded-lg hover:bg-accent transition-all cursor-pointer",
+                      nota.fixado
+                        ? "text-amber-500 opacity-100"
+                        : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Pin size={13} className={nota.fixado ? "fill-amber-500/40 rotate-12" : ""} />
+                  </button>
+                </Tooltip>
               )}
 
-              <button
-                type="button"
-                onClick={copiarMencao}
-                title="Copiar @menção"
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                {copiado ? (
-                  <Check size={13} className="text-emerald-500" />
-                ) : (
-                  <LinkIcon size={13} />
-                )}
-              </button>
-
-              {onContextMenu && (
+              <Tooltip conteudo="Copiar @menção">
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onContextMenu(e);
-                  }}
-                  title="Mais opções da nota"
+                  onClick={copiarMencao}
+                  aria-label="Copiar @menção"
                   className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
                 >
-                  <MoreHorizontal size={14} />
+                  {copiado ? (
+                    <Check size={13} className="text-emerald-500" />
+                  ) : (
+                    <LinkIcon size={13} />
+                  )}
                 </button>
+              </Tooltip>
+
+              {onContextMenu && (
+                <Tooltip conteudo="Mais opções da nota">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onContextMenu(e);
+                    }}
+                    aria-label="Mais opções da nota"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    <MoreHorizontal size={14} />
+                  </button>
+                </Tooltip>
               )}
             </div>
           </div>
@@ -451,18 +470,23 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
           {/* Metadados: Data + Leitura + Vínculos */}
           <div className="flex items-center justify-between text-[10px] text-muted-foreground/80 font-medium">
             <div className="flex items-center gap-1.5">
-              {totalTarefas && totalTarefas.total > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-medium" title={`${totalTarefas.concluidas} de ${totalTarefas.total} tarefas concluídas`}>
-                  <CheckSquare size={10} className="text-emerald-500" />
-                  <span>{totalTarefas.concluidas}/{totalTarefas.total}</span>
-                </span>
-              )}
-              {totalMoodboard !== undefined && totalMoodboard > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-medium" title={`${totalMoodboard} referências visuais`}>
-                  <ImageIcon size={10} className="text-purple-500" />
-                  <span>{totalMoodboard}</span>
-                </span>
-              )}
+                {totalTarefas && totalTarefas.total > 0 && (
+                  <Tooltip conteudo={`${totalTarefas.concluidas} de ${totalTarefas.total} tarefas concluídas`}>
+                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-medium cursor-default">
+                      <CheckSquare size={10} className="text-emerald-500" />
+                      <span>{totalTarefas.concluidas}/{totalTarefas.total}</span>
+                    </span>
+                  </Tooltip>
+                )}
+
+                {totalMoodboard !== undefined && totalMoodboard > 0 && (
+                  <Tooltip conteudo={`${totalMoodboard} referências visuais`}>
+                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-medium cursor-default">
+                      <ImageIcon size={10} className="text-purple-500" />
+                      <span>{totalMoodboard}</span>
+                    </span>
+                  </Tooltip>
+                )}
               <span className="flex items-center gap-1">
                 <Calendar size={11} className="opacity-60" />
                 {dataExibicao || "Recente"}

@@ -436,17 +436,18 @@ export default function Lousas() {
 
             {aberta.caminho && (
               <Popover>
-                <PopoverTrigger asChild>
-                  <Botao
-                    variante="neutro"
-                    tamanho="icone"
-                    className="h-9 w-9"
-                    title="Mais opções da lousa"
-                    aria-label="Mais opções"
-                  >
-                    <MoreVertical size={16} />
-                  </Botao>
-                </PopoverTrigger>
+                <Tooltip conteudo="Mais opções da lousa">
+                  <PopoverTrigger asChild>
+                    <Botao
+                      variante="neutro"
+                      tamanho="icone"
+                      className="h-9 w-9"
+                      aria-label="Mais opções da lousa"
+                    >
+                      <MoreVertical size={16} />
+                    </Botao>
+                  </PopoverTrigger>
+                </Tooltip>
                 <PopoverContent align="end" className="w-52 p-1.5 space-y-1">
                   <button
                     onClick={(e) => copiarWikilink(aberta.caminho, aberta.titulo, e)}

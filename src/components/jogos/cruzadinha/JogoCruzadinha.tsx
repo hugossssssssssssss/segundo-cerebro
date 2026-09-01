@@ -3,6 +3,7 @@ import { GradeCruzadinha } from "./GradeCruzadinha";
 import { ListaPistasCruzadinha } from "./ListaPistasCruzadinha";
 import { TecladoTermo } from "../TecladoTermo";
 import { Botao, Cartao, Modal } from "@/components/ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   CheckCircle2,
   Sparkles,
@@ -450,35 +451,43 @@ export function JogoCruzadinha() {
                 <CheckCircle2 size={14} />
                 <span>Verificar</span>
               </Botao>
-              <Botao
-                variante="neutro"
-                tamanho="pequeno"
-                onClick={lidarRevelarLetra}
-                className="text-xs"
-                title="Revelar letra da casa selecionada"
-              >
-                <Eye size={14} />
-                <span className="hidden sm:inline">Revelar Letra</span>
-              </Botao>
-              <Botao
-                variante="neutro"
-                tamanho="pequeno"
-                onClick={lidarRevelarPalavra}
-                className="text-xs"
-                title="Revelar palavra da pista selecionada"
-              >
-                <Sparkles size={14} />
-                <span className="hidden sm:inline">Revelar Palavra</span>
-              </Botao>
-              <Botao
-                variante="neutro"
-                tamanho="pequeno"
-                onClick={lidarLimparTudo}
-                className="text-xs text-muted-foreground hover:text-destructive"
-                title="Limpar todas as letras"
-              >
-                <Trash2 size={14} />
-              </Botao>
+              <Tooltip conteudo="Revelar letra da casa selecionada">
+                <Botao
+                  variante="neutro"
+                  tamanho="pequeno"
+                  onClick={lidarRevelarLetra}
+                  className="text-xs cursor-pointer"
+                  aria-label="Revelar letra da casa selecionada"
+                >
+                  <Eye size={14} />
+                  <span className="hidden sm:inline">Revelar Letra</span>
+                </Botao>
+              </Tooltip>
+
+              <Tooltip conteudo="Revelar palavra da pista selecionada">
+                <Botao
+                  variante="neutro"
+                  tamanho="pequeno"
+                  onClick={lidarRevelarPalavra}
+                  className="text-xs cursor-pointer"
+                  aria-label="Revelar palavra da pista selecionada"
+                >
+                  <Sparkles size={14} />
+                  <span className="hidden sm:inline">Revelar Palavra</span>
+                </Botao>
+              </Tooltip>
+
+              <Tooltip conteudo="Limpar todas as letras">
+                <Botao
+                  variante="neutro"
+                  tamanho="pequeno"
+                  onClick={lidarLimparTudo}
+                  className="text-xs text-muted-foreground hover:text-destructive cursor-pointer"
+                  aria-label="Limpar todas as letras"
+                >
+                  <Trash2 size={14} />
+                </Botao>
+              </Tooltip>
             </div>
           </div>
 

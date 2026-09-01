@@ -159,14 +159,16 @@ export function ModalIADocumento({
             <span>Inteligência Artificial</span>
           </div>
 
-          <button
-            type="button"
-            onClick={lidarExcluir}
-            className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-accent transition-colors cursor-pointer"
-            title="Fechar (Esc)"
-          >
-            <X size={14} />
-          </button>
+          <Tooltip conteudo="Fechar" atalho="Esc">
+            <button
+              type="button"
+              onClick={lidarExcluir}
+              className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-accent transition-colors cursor-pointer"
+              aria-label="Fechar"
+            >
+              <X size={14} />
+            </button>
+          </Tooltip>
         </div>
 
         {/* 1. Modo de Pergunta / Input */}
@@ -182,18 +184,21 @@ export function ModalIADocumento({
                 disabled={carregando}
                 className="w-full pl-3 pr-9 py-2 text-xs rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
               />
-              <button
-                type="submit"
-                disabled={!prompt.trim() || carregando}
-                className="absolute right-1.5 p-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-opacity cursor-pointer"
-                title="Enviar (Enter)"
-              >
-                {carregando ? (
-                  <Loader2 size={12} className="animate-spin" />
-                ) : (
-                  <Send size={12} />
-                )}
-              </button>
+              <Tooltip conteudo="Enviar" atalho="Enter">
+                <button
+                  type="submit"
+                  disabled={!prompt.trim() || carregando}
+                  className="absolute right-1.5 p-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-opacity cursor-pointer"
+                  title="Enviar"
+                  aria-label="Enviar"
+                >
+                  {carregando ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <Send size={12} />
+                  )}
+                </button>
+              </Tooltip>
             </div>
 
             {erro && (

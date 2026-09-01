@@ -11,6 +11,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Tarefa } from "@/lib/tarefas";
 
@@ -42,24 +43,26 @@ export function MenuAcoesTarefa({
 
   return (
     <Popover open={aberto} onOpenChange={setAberto}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-          className={cn(
-            "p-1 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/80 transition-colors shrink-0 cursor-pointer",
-            triggerVisivelSempre ? "opacity-100" : "opacity-0 group-hover:opacity-100 sm:opacity-0 focus:opacity-100",
-            aberto && "opacity-100 bg-muted/80 text-foreground",
-            className
-          )}
-          title="Opções da tarefa"
-          aria-label={`Opções para ${tarefa.titulo}`}
-        >
-          <MoreVertical size={14} />
-        </button>
-      </PopoverTrigger>
+      <Tooltip conteudo="Opções da tarefa">
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            className={cn(
+              "p-1 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/80 transition-colors shrink-0 cursor-pointer",
+              triggerVisivelSempre ? "opacity-100" : "opacity-0 group-hover:opacity-100 sm:opacity-0 focus:opacity-100",
+              aberto && "opacity-100 bg-muted/80 text-foreground",
+              className
+            )}
+            title="Opções da tarefa"
+            aria-label={`Opções para ${tarefa.titulo}`}
+          >
+            <MoreVertical size={14} />
+          </button>
+        </PopoverTrigger>
+      </Tooltip>
       <PopoverContent
         align="end"
         sideOffset={4}

@@ -119,49 +119,55 @@ export function ModalBuscaWeb({ aberta, aoFechar }: ModalBuscaWebProps) {
           />
 
           {termo && (
-            <button
-              type="button"
-              onClick={() => {
-                setTermo("");
-                entradaRef.current?.focus();
-              }}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
-              title="Limpar texto"
-            >
-              <X size={16} />
-            </button>
+            <Tooltip conteudo="Limpar texto">
+              <button
+                type="button"
+                onClick={() => {
+                  setTermo("");
+                  entradaRef.current?.focus();
+                }}
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
+                aria-label="Limpar texto"
+              >
+                <X size={16} />
+              </button>
+            </Tooltip>
           )}
 
           {/* Botão de Filtros */}
-          <button
-            type="button"
-            onClick={() => setFiltrosAbertos(!filtrosAbertos)}
-            className={cn(
-              "flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer shrink-0",
-              filtrosAbertos || totalFiltros > 0
-                ? "bg-primary/10 text-primary border-primary/30"
-                : "text-muted-foreground hover:text-foreground border-border/60 hover:bg-accent"
-            )}
-            title="Filtros avançados"
-          >
-            <SlidersHorizontal size={13} />
-            <span>Filtros</span>
-            {totalFiltros > 0 && (
-              <Badge variant="default" className="h-4 min-w-4 px-1 rounded-full text-[10px]">
-                {totalFiltros}
-              </Badge>
-            )}
-          </button>
+          <Tooltip conteudo="Filtros avançados">
+            <button
+              type="button"
+              onClick={() => setFiltrosAbertos(!filtrosAbertos)}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer shrink-0",
+                filtrosAbertos || totalFiltros > 0
+                  ? "bg-primary/10 text-primary border-primary/30"
+                  : "text-muted-foreground hover:text-foreground border-border/60 hover:bg-accent"
+              )}
+              aria-label="Filtros avançados"
+            >
+              <SlidersHorizontal size={13} />
+              <span>Filtros</span>
+              {totalFiltros > 0 && (
+                <Badge variant="default" className="h-4 min-w-4 px-1 rounded-full text-[10px]">
+                  {totalFiltros}
+                </Badge>
+              )}
+            </button>
+          </Tooltip>
 
           {/* Botão Fechar Modal */}
-          <button
-            type="button"
-            onClick={aoFechar}
-            className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-            title="Fechar (Esc)"
-          >
-            <X size={18} />
-          </button>
+          <Tooltip conteudo="Fechar" atalho="Esc">
+            <button
+              type="button"
+              onClick={aoFechar}
+              className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Fechar"
+            >
+              <X size={18} />
+            </button>
+          </Tooltip>
         </form>
 
         {/* Corpo: Painel de Propriedades (Estilo Notion / Klaus) */}

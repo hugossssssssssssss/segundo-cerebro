@@ -11,6 +11,7 @@ import { useEffect, useState, useCallback } from "react";
 import { LogoKlaus } from "./LogoKlaus";
 import { ModalPersonalizarMenu } from "./ModalPersonalizarMenu";
 import { ModalInstalarPwa } from "./ModalInstalarPwa";
+import { Tooltip } from "@/components/ui/tooltip";
 
 import { alternarTema, lerTemaSalvo, type Tema } from "@/lib/tema";
 
@@ -138,14 +139,16 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
 
           {/* Rodapé da Gaveta: Instalar App, Personalizar Menu, Ajustes e Tema */}
           <div className="pt-2 border-t border-border grid grid-cols-4 gap-1.5">
-            <button
-              onClick={() => setModalInstalarAberta(true)}
-              className="flex items-center justify-center gap-1 rounded-xl p-2 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent transition-colors cursor-pointer"
-              title="Instalar Klaus no celular"
-            >
-              <Smartphone size={15} className="text-primary shrink-0" />
-              <span className="truncate">App</span>
-            </button>
+            <Tooltip conteudo="Instalar Klaus no celular">
+              <button
+                onClick={() => setModalInstalarAberta(true)}
+                className="flex items-center justify-center gap-1 rounded-xl p-2 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent transition-colors cursor-pointer"
+                aria-label="Instalar Klaus no celular"
+              >
+                <Smartphone size={15} className="text-primary shrink-0" />
+                <span className="truncate">App</span>
+              </button>
+            </Tooltip>
 
             <button
               onClick={() => setModalPersonalizarAberta(true)}

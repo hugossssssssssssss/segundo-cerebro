@@ -1204,17 +1204,20 @@ export function PainelNotionBase({
         />
 
         {/* Canto SE (Inferior Direito com alça visual) */}
-        <div
-          onMouseDown={(e) => iniciarRedimensionamento("se", e)}
-          onTouchStart={(e) => iniciarRedimensionamento("se", e)}
-          className="absolute right-0 bottom-0 w-5 h-5 cursor-se-resize flex items-center justify-center text-muted-foreground/40 hover:text-foreground hover:scale-125 transition-all z-20"
-          title="Arrastar para redimensionar"
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-            <path d="M6 0L10 4L4 10L0 6L6 0Z" opacity="0.4" />
-            <path d="M8 4L10 6L6 10L4 8L8 4Z" opacity="0.8" />
-          </svg>
-        </div>
+        <Tooltip conteudo="Arrastar para redimensionar">
+          <div
+            onMouseDown={(e) => iniciarRedimensionamento("se", e)}
+            onTouchStart={(e) => iniciarRedimensionamento("se", e)}
+            className="absolute right-0 bottom-0 w-5 h-5 cursor-se-resize flex items-center justify-center text-muted-foreground/40 hover:text-foreground hover:scale-125 transition-all z-20"
+            role="separator"
+            aria-label="Redimensionar janela flutuante"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+              <path d="M6 0L10 4L4 10L0 6L6 0Z" opacity="0.4" />
+              <path d="M8 4L10 6L6 10L4 8L8 4Z" opacity="0.8" />
+            </svg>
+          </div>
+        </Tooltip>
 
         <div
           onMouseDown={(e) => iniciarRedimensionamento("sw", e)}

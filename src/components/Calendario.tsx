@@ -22,6 +22,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { SeloStatus } from "@/components/SeloStatus";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { urgencia, extrairIntervaloTarefa, type Tarefa } from "@/lib/tarefas";
 import { CORES_NOTION, lerConfigPropriedadesGlobais } from "@/components/PropriedadesNotion";
@@ -202,20 +203,24 @@ export function Calendario({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-4 rounded-2xl border border-border/80 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 bg-secondary/60 p-1 rounded-xl border border-border/60">
-            <button
-              onClick={mesAnterior}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
-              title="Mês anterior"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              onClick={proximoMes}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
-              title="Próximo mês"
-            >
-              <ChevronRight size={18} />
-            </button>
+            <Tooltip conteudo="Mês anterior">
+              <button
+                onClick={mesAnterior}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                aria-label="Mês anterior"
+              >
+                <ChevronLeft size={18} />
+              </button>
+            </Tooltip>
+            <Tooltip conteudo="Próximo mês">
+              <button
+                onClick={proximoMes}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                aria-label="Próximo mês"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </Tooltip>
           </div>
 
           <h2 className="text-lg font-bold text-foreground capitalize tracking-tight flex items-center gap-2">
@@ -353,30 +358,35 @@ export function Calendario({
                           }
                         }
 
+                        const textoTooltip = ehIntervalo
+                          ? `${t.titulo} (${intervalo?.textoFormatado})`
+                          : t.titulo;
+
                         return (
-                          <div
-                            key={t.caminho}
-                            className={cn(
-                              "h-5 flex items-center text-[10px] font-medium border leading-tight transition-all",
-                              formaIntervalo,
-                              ehFeito
-                                ? "bg-secondary/40 text-muted-foreground border-transparent line-through opacity-65"
-                                : ehAtrasada
-                                ? "bg-destructive/15 text-destructive border-destructive/30"
-                                : cn(estiloTag.bg, estiloTag.text, estiloTag.border),
-                            )}
-                            title={
-                              ehIntervalo
-                                ? `${t.titulo} (${intervalo?.textoFormatado})`
-                                : t.titulo
-                            }
-                          >
-                            {deveExibirTitulo ? (
-                              <span className="truncate">{t.titulo}</span>
-                            ) : (
-                              <span className="invisible select-none">&nbsp;</span>
-                            )}
-                          </div>
+                          <Tooltip key={t.caminho} conteudo={textoTooltip}>
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelecionado(d);
+                              }}
+                              className={cn(
+                                "h-5 flex items-center text-[10px] font-medium border leading-tight transition-all cursor-pointer",
+                                formaIntervalo,
+                                ehFeito
+                                  ? "bg-secondary/40 text-muted-foreground border-transparent line-through opacity-65"
+                                  : ehAtrasada
+                                  ? "bg-destructive/15 text-destructive border-destructive/30"
+                                  : cn(estiloTag.bg, estiloTag.text, estiloTag.border),
+                              )}
+                              aria-label={textoTooltip}
+                            >
+                              {deveExibirTitulo ? (
+                                <span className="truncate">{t.titulo}</span>
+                              ) : (
+                                <span className="invisible select-none">&nbsp;</span>
+                              )}
+                            </div>
+                          </Tooltip>
                         );
                       })}
                       {tarefasDia.length > 2 && (
@@ -393,14 +403,19 @@ export function Calendario({
                         const ehFeito = t.status === "feito";
                         const ehAtrasada = !ehFeito && urgencia(t) === "atrasada";
                         return (
-                          <span
-                            key={t.caminho}
-                            className={cn(
-                              "h-1.5 w-1.5 rounded-full shrink-0",
-                              ehFeito ? "bg-emerald-500" : ehAtrasada ? "bg-destructive" : estilo.dot,
-                            )}
-                            title={t.titulo}
-                          />
+                          <Tooltip key={t.caminho} conteudo={t.titulo}>
+                            <span
+                              className={cn(
+                                "h-1.5 w-1.5 rounded-full shrink-0 cursor-pointer",
+                                ehFeito ? "bg-emerald-500" : ehAtrasada ? "bg-destructive" : estilo.dot,
+                              )}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelecionado(d);
+                              }}
+                              aria-label={t.titulo}
+                            />
+                          </Tooltip>
                         );
                       })}
                     </div>
@@ -448,21 +463,23 @@ export function Calendario({
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-2 flex-1 min-w-0">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (aoAlternarStatus) aoAlternarStatus(t);
-                            }}
-                            className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                            title={ehFeito ? "Reabrir tarefa" : "Concluir tarefa"}
-                          >
-                            {ehFeito ? (
-                              <CheckCircle2 size={15} className="text-emerald-500 fill-emerald-500/20" />
-                            ) : (
-                              <Circle size={15} className="hover:text-primary" />
-                            )}
-                          </button>
+                          <Tooltip conteudo={ehFeito ? "Reabrir tarefa" : "Concluir tarefa"}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (aoAlternarStatus) aoAlternarStatus(t);
+                              }}
+                              className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                              aria-label={ehFeito ? "Reabrir tarefa" : "Concluir tarefa"}
+                            >
+                              {ehFeito ? (
+                                <CheckCircle2 size={15} className="text-emerald-500 fill-emerald-500/20" />
+                              ) : (
+                                <Circle size={15} className="hover:text-primary" />
+                              )}
+                            </button>
+                          </Tooltip>
                           <p
                             className={cn(
                               "text-xs font-bold group-hover:text-primary transition-colors leading-snug truncate flex-1",

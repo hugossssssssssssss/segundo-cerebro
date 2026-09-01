@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Botao } from "./ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import { formatarAtalho } from "@/lib/utils";
 
 interface ModalTourGuiadoProps {
@@ -184,32 +185,35 @@ export function ModalTourGuiado({ aberta, aoFechar }: ModalTourGuiadoProps) {
               </p>
             </div>
           </div>
-          <button
-            onClick={aoFechar}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            title="Fechar tour"
-          >
-            <X size={18} />
-          </button>
+          <Tooltip conteudo="Fechar tour">
+            <button
+              onClick={aoFechar}
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+              aria-label="Fechar tour"
+            >
+              <X size={18} />
+            </button>
+          </Tooltip>
         </div>
 
         {/* Trilha de Progresso */}
         <div className="flex gap-1 px-5 pt-3 pb-1 bg-card">
           {ETAPAS_TOUR.map((t, idx) => (
-            <button
-              key={t.id}
-              onClick={() => setEtapa(idx)}
-              className="flex-1 h-1.5 rounded-full transition-all focus:outline-none"
-              style={{
-                backgroundColor:
-                  idx === etapa
-                    ? "var(--primary)"
-                    : idx < etapa
-                    ? "rgba(var(--primary-rgb, 59, 130, 246), 0.4)"
-                    : "var(--border)",
-              }}
-              title={t.titulo}
-            />
+            <Tooltip key={t.id} conteudo={t.titulo}>
+              <button
+                onClick={() => setEtapa(idx)}
+                className="flex-1 h-1.5 rounded-full transition-all focus:outline-none cursor-pointer"
+                style={{
+                  backgroundColor:
+                    idx === etapa
+                      ? "var(--primary)"
+                      : idx < etapa
+                      ? "rgba(var(--primary-rgb, 59, 130, 246), 0.4)"
+                      : "var(--border)",
+                }}
+                aria-label={t.titulo}
+              />
+            </Tooltip>
           ))}
         </div>
 

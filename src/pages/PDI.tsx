@@ -983,21 +983,23 @@ export default function PDI() {
                                       const feita = t.status === "feito";
                                       return (
                                         <li key={t.caminho} className="flex items-center gap-2 text-xs py-1 px-1.5 rounded hover:bg-accent/40 transition-colors">
-                                          <button
-                                            type="button"
-                                            onClick={(ev) => {
-                                              ev.stopPropagation();
-                                              toggleStatusTarefa(t);
-                                            }}
-                                            className="text-muted-foreground hover:text-primary transition-colors cursor-pointer shrink-0"
-                                            title={feita ? "Reabrir tarefa" : "Concluir tarefa"}
-                                          >
-                                            {feita ? (
-                                              <CheckCircle2 size={14} className="text-emerald-500" />
-                                            ) : (
-                                              <Circle size={14} />
-                                            )}
-                                          </button>
+                                          <Tooltip conteudo={feita ? "Reabrir tarefa" : "Concluir tarefa"}>
+                                            <button
+                                              type="button"
+                                              onClick={(ev) => {
+                                                ev.stopPropagation();
+                                                toggleStatusTarefa(t);
+                                              }}
+                                              className="text-muted-foreground hover:text-primary transition-colors cursor-pointer shrink-0"
+                                              aria-label={feita ? "Reabrir tarefa" : "Concluir tarefa"}
+                                            >
+                                              {feita ? (
+                                                <CheckCircle2 size={14} className="text-emerald-500" />
+                                              ) : (
+                                                <Circle size={14} />
+                                              )}
+                                            </button>
+                                          </Tooltip>
                                           <span
                                             onClick={() => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
                                             className={cn(

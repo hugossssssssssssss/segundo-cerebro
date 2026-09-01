@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, ChevronDown, Star, Copy, Trash2, FileEdit, LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   type TemplateItem,
@@ -166,28 +167,32 @@ export function DropdownNovoViaModelo({
   return (
     <div className={`inline-flex items-center shadow-2xs rounded-xl overflow-hidden ${className}`}>
       {/* Botão Principal de Criação (Mesma altura exata h-9) */}
-      <Button
-        onClick={aoClicarPrincipal}
-        className="h-9 rounded-r-none gap-1.5 font-semibold text-xs cursor-pointer"
-        title={modeloPadrao ? `Criar novo usando modelo padrão: "${modeloPadrao.titulo}"` : undefined}
-      >
-        {iconePrincipal}
-        <span>{rotuloPrincipal}</span>
-        {modeloPadrao && <Star size={12} className="text-amber-300 fill-amber-300 inline shrink-0" />}
-      </Button>
+      <Tooltip conteudo={modeloPadrao ? `Criar novo usando modelo padrão: "${modeloPadrao.titulo}"` : undefined} desabilitado={!modeloPadrao}>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={aoClicarPrincipal}
+          className="h-9 rounded-r-none gap-1.5 font-semibold text-xs cursor-pointer"
+        >
+          {iconePrincipal}
+          <span>{rotuloPrincipal}</span>
+          {modeloPadrao && <Star size={12} className="text-amber-300 fill-amber-300 inline shrink-0" />}
+        </Button>
+      </Tooltip>
 
       {/* Botão de Modelos / Dropdown (Exatamente da mesma altura h-9) */}
       <Popover open={aberto} onOpenChange={setAberto}>
         <PopoverTrigger asChild>
-          <Button
-            variant="default"
-            size="sm"
-            className="h-9 px-2.5 rounded-l-none border-l border-primary-foreground/20 hover:bg-primary/90 transition-colors cursor-pointer"
-            title="Escolher ou gerenciar modelos"
-            aria-label="Opções de modelos"
-          >
-            <ChevronDown size={14} />
-          </Button>
+          <Tooltip conteudo="Escolher ou gerenciar modelos">
+            <Button
+              variant="default"
+              size="sm"
+              className="h-9 px-2.5 rounded-l-none border-l border-primary-foreground/20 hover:bg-primary/90 transition-colors cursor-pointer"
+              aria-label="Opções de modelos"
+            >
+              <ChevronDown size={14} />
+            </Button>
+          </Tooltip>
         </PopoverTrigger>
 
         <PopoverContent className="w-80 p-1.5 shadow-2xl border-border rounded-xl" align="end">
@@ -197,15 +202,17 @@ export function DropdownNovoViaModelo({
                 <LayoutTemplate size={13} className="text-primary" />
                 <span>Modelos de Documento</span>
               </span>
-              <button
-                type="button"
-                onClick={handleCriarNovoModelo}
-                className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-                title="Criar um novo modelo personalizado"
-              >
-                <Plus size={12} />
-                <span>Novo Modelo</span>
-              </button>
+              <Tooltip conteudo="Criar um novo modelo personalizado">
+                <button
+                  type="button"
+                  onClick={handleCriarNovoModelo}
+                  className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                  aria-label="Criar um novo modelo personalizado"
+                >
+                  <Plus size={12} />
+                  <span>Novo Modelo</span>
+                </button>
+              </Tooltip>
             </div>
 
             <div className="max-h-64 overflow-y-auto divide-y divide-border/20 pt-1">
@@ -244,42 +251,50 @@ export function DropdownNovoViaModelo({
                         className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <button
-                          type="button"
-                          className="p-1 rounded-md text-muted-foreground hover:text-amber-500 hover:bg-muted transition-colors cursor-pointer"
-                          onClick={(e) => handleDefinirPadrao(e, m)}
-                          title={ehPadrao ? "Remover como padrão" : "Definir como padrão"}
-                        >
-                          <Star size={13} className={ehPadrao ? "text-amber-500 fill-amber-500" : ""} />
-                        </button>
-
-                        <button
-                          type="button"
-                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                          onClick={(e) => handleEditar(e, m)}
-                          title="Editar modelo"
-                        >
-                          <FileEdit size={13} />
-                        </button>
-
-                        <button
-                          type="button"
-                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                          onClick={(e) => handleDuplicar(e, m)}
-                          title="Duplicar modelo"
-                        >
-                          <Copy size={13} />
-                        </button>
-
-                        {ehCustom && m.caminho && (
+                        <Tooltip conteudo={ehPadrao ? "Remover como padrão" : "Definir como padrão"}>
                           <button
                             type="button"
-                            className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-                            onClick={(e) => handleExcluir(e, m)}
-                            title="Excluir modelo"
+                            className="p-1 rounded-md text-muted-foreground hover:text-amber-500 hover:bg-muted transition-colors cursor-pointer"
+                            onClick={(e) => handleDefinirPadrao(e, m)}
+                            aria-label={ehPadrao ? "Remover como padrão" : "Definir como padrão"}
                           >
-                            <Trash2 size={13} />
+                            <Star size={13} className={ehPadrao ? "text-amber-500 fill-amber-500" : ""} />
                           </button>
+                        </Tooltip>
+
+                        <Tooltip conteudo="Editar modelo">
+                          <button
+                            type="button"
+                            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                            onClick={(e) => handleEditar(e, m)}
+                            aria-label="Editar modelo"
+                          >
+                            <FileEdit size={13} />
+                          </button>
+                        </Tooltip>
+
+                        <Tooltip conteudo="Duplicar modelo">
+                          <button
+                            type="button"
+                            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                            onClick={(e) => handleDuplicar(e, m)}
+                            aria-label="Duplicar modelo"
+                          >
+                            <Copy size={13} />
+                          </button>
+                        </Tooltip>
+
+                        {ehCustom && m.caminho && (
+                          <Tooltip conteudo="Excluir modelo">
+                            <button
+                              type="button"
+                              className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                              onClick={(e) => handleExcluir(e, m)}
+                              aria-label="Excluir modelo"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </Tooltip>
                         )}
                       </div>
                     </div>

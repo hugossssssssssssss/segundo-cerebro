@@ -23,6 +23,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Botao, Cartao, Aviso } from "@/components/ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn, hojeISO } from "@/lib/utils";
 import { lerConfig } from "@/lib/settings";
@@ -1550,19 +1551,23 @@ export default function Conversor() {
                     {item.tipo === "PDF para EPUB" ? <BookOpen size={20} /> : <FileImage size={20} />}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-semibold text-xs text-foreground truncate" title={item.nome}>{item.nome}</p>
+                    <Tooltip conteudo={item.nome}>
+                      <p className="font-semibold text-xs text-foreground truncate cursor-help">{item.nome}</p>
+                    </Tooltip>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
                       {item.tipo} • {new Date(item.data).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => baixarArquivoDoHistorico(item)}
-                  className="p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors shrink-0 ml-2 cursor-pointer"
-                  title="Baixar Arquivo"
-                >
-                  <Download size={18} />
-                </button>
+                <Tooltip conteudo="Baixar Arquivo">
+                  <button
+                    onClick={() => baixarArquivoDoHistorico(item)}
+                    className="p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors shrink-0 ml-2 cursor-pointer"
+                    aria-label="Baixar Arquivo"
+                  >
+                    <Download size={18} />
+                  </button>
+                </Tooltip>
               </div>
             ))}
           </div>

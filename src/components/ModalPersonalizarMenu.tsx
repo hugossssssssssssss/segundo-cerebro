@@ -27,6 +27,7 @@ import {
 import { obterIconePorNome } from "@/lib/icones";
 import { GaleriaIconesModal } from "./GaleriaIconesModal";
 import { ModalConfirmacao } from "./ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
@@ -351,34 +352,41 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
                     </span>
 
                     {/* Reordenar Categoria Cima/Baixo */}
-                    <button
-                      type="button"
-                      onClick={() => moverGrupo(idxGrupo, "cima")}
-                      disabled={idxGrupo === 0}
-                      className="p-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-30 transition-colors"
-                      title="Mover categoria para cima"
-                    >
-                      <ChevronUp size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moverGrupo(idxGrupo, "baixo")}
-                      disabled={idxGrupo === grupos.length - 1}
-                      className="p-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-30 transition-colors"
-                      title="Mover categoria para baixo"
-                    >
-                      <ChevronDown size={16} />
-                    </button>
+                    <Tooltip conteudo="Mover categoria para cima">
+                      <button
+                        type="button"
+                        onClick={() => moverGrupo(idxGrupo, "cima")}
+                        disabled={idxGrupo === 0}
+                        className="p-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-30 transition-colors cursor-pointer"
+                        aria-label="Mover categoria para cima"
+                      >
+                        <ChevronUp size={16} />
+                      </button>
+                    </Tooltip>
+
+                    <Tooltip conteudo="Mover categoria para baixo">
+                      <button
+                        type="button"
+                        onClick={() => moverGrupo(idxGrupo, "baixo")}
+                        disabled={idxGrupo === grupos.length - 1}
+                        className="p-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-30 transition-colors cursor-pointer"
+                        aria-label="Mover categoria para baixo"
+                      >
+                        <ChevronDown size={16} />
+                      </button>
+                    </Tooltip>
 
                     {/* Excluir Categoria */}
-                    <button
-                      type="button"
-                      onClick={() => removerCategoria(idxGrupo)}
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                      title="Excluir categoria"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <Tooltip conteudo="Excluir categoria">
+                      <button
+                        type="button"
+                        onClick={() => removerCategoria(idxGrupo)}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                        aria-label="Excluir categoria"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </Tooltip>
                   </div>
                 </div>
 
@@ -416,17 +424,19 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
                           <GripVertical size={16} className="text-muted-foreground/60 shrink-0" />
 
                           {/* Botão de escolha do Ícone */}
-                          <button
-                            type="button"
-                            onClick={() => setItemEmEdicaoIcone({ idxGrupo, idxItem })}
-                            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-accent/50 hover:bg-accent hover:scale-105 transition-all group"
-                            title="Clique para escolher um novo ícone na Galeria"
-                          >
-                            <IconeComp size={20} style={{ color: item.cor }} />
-                            <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-[9px] shadow-xs group-hover:scale-110 transition-transform">
-                              <Sparkles size={10} />
-                            </span>
-                          </button>
+                          <Tooltip conteudo="Clique para escolher um novo ícone na Galeria">
+                            <button
+                              type="button"
+                              onClick={() => setItemEmEdicaoIcone({ idxGrupo, idxItem })}
+                              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-accent/50 hover:bg-accent hover:scale-105 transition-all group cursor-pointer"
+                              aria-label="Escolher ícone na galeria"
+                            >
+                              <IconeComp size={20} style={{ color: item.cor }} />
+                              <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-[9px] shadow-xs group-hover:scale-110 transition-transform">
+                                <Sparkles size={10} />
+                              </span>
+                            </button>
+                          </Tooltip>
 
                           {/* Input do Nome do Item */}
                           <div className="flex-1 min-w-0">
@@ -448,102 +458,116 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
                         {/* Lado Direito: Seletor de Categoria Destino, Cores & Ações */}
                         <div className="flex items-center gap-2 justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-border/40">
                           {/* Seletor "Mover para Categoria" */}
-                          <div className="flex items-center gap-1 bg-accent/30 p-1 rounded-lg border border-border/60">
-                            <MoveHorizontal size={12} className="text-muted-foreground ml-1" />
-                            <select
-                              value={idxGrupo}
-                              onChange={(e) =>
-                                moverItemParaGrupo(idxGrupo, idxItem, Number(e.target.value))
-                              }
-                              className="text-xs bg-transparent border-0 text-foreground font-medium focus:outline-hidden cursor-pointer max-w-[110px] sm:max-w-[130px] truncate"
-                              title="Mover para outra categoria"
-                            >
-                              {grupos.map((gDest, gIdx) => (
-                                <option key={gDest.id || gIdx} value={gIdx}>
-                                  {gDest.titulo}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          <Tooltip conteudo="Mover para outra categoria">
+                            <div className="flex items-center gap-1 bg-accent/30 p-1 rounded-lg border border-border/60">
+                              <MoveHorizontal size={12} className="text-muted-foreground ml-1" />
+                              <select
+                                value={idxGrupo}
+                                onChange={(e) =>
+                                  moverItemParaGrupo(idxGrupo, idxItem, Number(e.target.value))
+                                }
+                                className="text-xs bg-transparent border-0 text-foreground font-medium focus:outline-hidden cursor-pointer max-w-[110px] sm:max-w-[130px] truncate"
+                                aria-label="Mover para outra categoria"
+                              >
+                                {grupos.map((gDest, gIdx) => (
+                                  <option key={gDest.id || gIdx} value={gIdx}>
+                                    {gDest.titulo}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </Tooltip>
 
                           {/* Paleta de Cores */}
                           <div className="flex items-center gap-1 bg-accent/40 p-1 rounded-lg border border-border/60">
                             {/* Sem cor */}
-                            <button
-                              type="button"
-                              onClick={() => atualizarItem(idxGrupo, idxItem, { cor: undefined })}
-                              className={cn(
-                                "h-5 w-5 rounded-full border border-border flex items-center justify-center text-[9px] transition-transform",
-                                !item.cor && "ring-2 ring-primary scale-110 font-bold"
-                              )}
-                              title="Cor padrão do sistema"
-                            >
-                              <Check size={11} />
-                            </button>
+                            <Tooltip conteudo="Cor padrão do sistema">
+                              <button
+                                type="button"
+                                onClick={() => atualizarItem(idxGrupo, idxItem, { cor: undefined })}
+                                className={cn(
+                                  "h-5 w-5 rounded-full border border-border flex items-center justify-center text-[9px] transition-transform cursor-pointer",
+                                  !item.cor && "ring-2 ring-primary scale-110 font-bold"
+                                )}
+                                aria-label="Cor padrão do sistema"
+                              >
+                                <Check size={11} />
+                              </button>
+                            </Tooltip>
 
                             {/* Presets */}
                             {PRESETS_CORES_ICONE.map((preset) => (
-                              <button
-                                key={preset.hex}
-                                type="button"
-                                onClick={() => atualizarItem(idxGrupo, idxItem, { cor: preset.hex })}
-                                style={{ backgroundColor: preset.hex }}
-                                className={cn(
-                                  "h-5 w-5 rounded-full transition-transform hover:scale-110 border border-black/10",
-                                  item.cor === preset.hex && "ring-2 ring-primary ring-offset-1 scale-110"
-                                )}
-                                title={preset.nome}
-                              />
+                              <Tooltip key={preset.hex} conteudo={preset.nome}>
+                                <button
+                                  type="button"
+                                  onClick={() => atualizarItem(idxGrupo, idxItem, { cor: preset.hex })}
+                                  style={{ backgroundColor: preset.hex }}
+                                  className={cn(
+                                    "h-5 w-5 rounded-full transition-transform hover:scale-110 border border-black/10 cursor-pointer",
+                                    item.cor === preset.hex && "ring-2 ring-primary ring-offset-1 scale-110"
+                                  )}
+                                  aria-label={preset.nome}
+                                />
+                              </Tooltip>
                             ))}
 
                             {/* Color Picker Livre */}
-                            <input
-                              type="color"
-                              value={item.cor || "#3b82f6"}
-                              onChange={(e) =>
-                                atualizarItem(idxGrupo, idxItem, { cor: e.target.value })
-                              }
-                              className="h-5 w-5 rounded-full border-0 p-0 cursor-pointer bg-transparent"
-                              title="Escolher cor personalizada..."
-                            />
+                            <Tooltip conteudo="Escolher cor personalizada...">
+                              <input
+                                type="color"
+                                value={item.cor || "#3b82f6"}
+                                onChange={(e) =>
+                                  atualizarItem(idxGrupo, idxItem, { cor: e.target.value })
+                                }
+                                className="h-5 w-5 rounded-full border-0 p-0 cursor-pointer bg-transparent"
+                                aria-label="Escolher cor personalizada"
+                              />
+                            </Tooltip>
                           </div>
 
                           {/* Reordenar Cima / Baixo no mesmo grupo */}
                           <div className="flex items-center gap-0.5">
-                            <button
-                              type="button"
-                              onClick={() => moverItemMesmoGrupo(idxGrupo, idxItem, "cima")}
-                              disabled={idxItem === 0}
-                              className="p-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-30 transition-colors"
-                              title="Mover para cima"
-                            >
-                              <ChevronUp size={16} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => moverItemMesmoGrupo(idxGrupo, idxItem, "baixo")}
-                              disabled={idxItem === itensDoGrupo.length - 1}
-                              className="p-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-30 transition-colors"
-                              title="Mover para baixo"
-                            >
-                              <ChevronDown size={16} />
-                            </button>
+                            <Tooltip conteudo="Mover para cima">
+                              <button
+                                type="button"
+                                onClick={() => moverItemMesmoGrupo(idxGrupo, idxItem, "cima")}
+                                disabled={idxItem === 0}
+                                className="p-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-30 transition-colors cursor-pointer"
+                                aria-label="Mover para cima"
+                              >
+                                <ChevronUp size={16} />
+                              </button>
+                            </Tooltip>
+
+                            <Tooltip conteudo="Mover para baixo">
+                              <button
+                                type="button"
+                                onClick={() => moverItemMesmoGrupo(idxGrupo, idxItem, "baixo")}
+                                disabled={idxItem === itensDoGrupo.length - 1}
+                                className="p-1 rounded-md text-muted-foreground hover:bg-accent disabled:opacity-30 transition-colors cursor-pointer"
+                                aria-label="Mover para baixo"
+                              >
+                                <ChevronDown size={16} />
+                              </button>
+                            </Tooltip>
                           </div>
 
                           {/* Ocultar / Mostrar */}
-                          <button
-                            type="button"
-                            onClick={() => alternarOculto(idxGrupo, idxItem)}
-                            className={cn(
-                              "p-1.5 rounded-lg border transition-colors",
-                              item.oculto
-                                ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
-                                : "bg-card text-muted-foreground border-border hover:text-foreground"
-                            )}
-                            title={item.oculto ? "Mostrar item no menu" : "Ocultar item do menu"}
-                          >
-                            {item.oculto ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </button>
+                          <Tooltip conteudo={item.oculto ? "Mostrar item no menu" : "Ocultar item do menu"}>
+                            <button
+                              type="button"
+                              onClick={() => alternarOculto(idxGrupo, idxItem)}
+                              className={cn(
+                                "p-1.5 rounded-lg border transition-colors cursor-pointer",
+                                item.oculto
+                                  ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                                  : "bg-card text-muted-foreground border-border hover:text-foreground"
+                              )}
+                              aria-label={item.oculto ? "Mostrar item no menu" : "Ocultar item do menu"}
+                            >
+                              {item.oculto ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                          </Tooltip>
                         </div>
                       </div>
                     );

@@ -394,16 +394,18 @@ export default function Noticias() {
               <span>Assuntos</span>
             </Button>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => carregar(categoria)}
-              disabled={carregando}
-              className="rounded-xl h-9 w-9 p-0 text-muted-foreground cursor-pointer"
-              title="Atualizar Notícias"
-            >
-              <RefreshCw size={16} className={carregando ? "animate-spin" : ""} />
-            </Button>
+            <Tooltip conteudo="Atualizar Notícias">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => carregar(categoria)}
+                disabled={carregando}
+                className="rounded-xl h-9 w-9 p-0 text-muted-foreground cursor-pointer"
+                aria-label="Atualizar Notícias"
+              >
+                <RefreshCw size={16} className={carregando ? "animate-spin" : ""} />
+              </Button>
+            </Tooltip>
           </>
         }
       />
@@ -998,13 +1000,15 @@ export default function Noticias() {
                         <span className="font-semibold block truncate">{f.nome}</span>
                         <span className="text-[10px] text-muted-foreground truncate block">{f.url}</span>
                       </div>
-                      <button
-                        onClick={() => handleRemoverFeed(f.id)}
-                        className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition-colors"
-                        title="Remover"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <Tooltip conteudo="Remover feed">
+                        <button
+                          onClick={() => handleRemoverFeed(f.id)}
+                          className="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition-colors cursor-pointer"
+                          aria-label="Remover feed"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </Tooltip>
                     </div>
                   ))}
                 </div>

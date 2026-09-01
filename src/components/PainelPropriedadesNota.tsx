@@ -137,16 +137,18 @@ export const PainelPropriedadesNota: React.FC<PainelPropriedadesNotaProps> = ({
         </div>
 
         {/* Botão para alternar detalhes */}
-        <button
-          type="button"
-          onClick={() => setExpandido(!expandido)}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium px-2 py-1 rounded-md hover:bg-accent transition-colors"
-          title={expandido ? "Ocultar metadados" : "Ver propriedades e metadados"}
-        >
-          <Sliders className="w-3.5 h-3.5" />
-          <span>{expandido ? "Ocultar" : "Propriedades"}</span>
-          {expandido ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-        </button>
+        <Tooltip conteudo={expandido ? "Ocultar metadados" : "Ver propriedades e metadados"}>
+          <button
+            type="button"
+            onClick={() => setExpandido(!expandido)}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium px-2 py-1 rounded-md hover:bg-accent transition-colors cursor-pointer"
+            aria-label={expandido ? "Ocultar metadados" : "Ver propriedades e metadados"}
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>{expandido ? "Ocultar" : "Propriedades"}</span>
+            {expandido ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        </Tooltip>
       </div>
 
       {/* Painel expandido de propriedades */}
@@ -165,14 +167,16 @@ export const PainelPropriedadesNota: React.FC<PainelPropriedadesNotaProps> = ({
                   className="inline-flex items-center gap-1 rounded-md bg-secondary/80 px-2 py-0.5 text-xs text-secondary-foreground"
                 >
                   #{t}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoverTag(t)}
-                    className="text-muted-foreground hover:text-destructive transition-colors ml-0.5"
-                    title={`Remover tag #${t}`}
-                  >
-                    ×
-                  </button>
+                  <Tooltip conteudo={`Remover tag #${t}`}>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoverTag(t)}
+                      className="text-muted-foreground hover:text-destructive transition-colors ml-0.5 cursor-pointer"
+                      aria-label={`Remover tag #${t}`}
+                    >
+                      ×
+                    </button>
+                  </Tooltip>
                 </span>
               ))}
 
@@ -290,14 +294,16 @@ export const PainelPropriedadesNota: React.FC<PainelPropriedadesNotaProps> = ({
                         {valor}
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoverPropriedade(chave)}
-                      className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                      title={`Remover propriedade ${chave}`}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <Tooltip conteudo={`Remover propriedade ${chave}`}>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoverPropriedade(chave)}
+                        className="text-muted-foreground hover:text-destructive transition-colors p-1 cursor-pointer"
+                        aria-label={`Remover propriedade ${chave}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </Tooltip>
                   </div>
                 ))}
               </div>

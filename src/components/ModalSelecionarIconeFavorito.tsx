@@ -38,6 +38,7 @@ import {
   obterUrlsSimpleIcon,
 } from "@/lib/catalogoIconesMarcas";
 import type { FavoritoItem } from "@/lib/favoritos";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 const MAPA_LUCIDE: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -190,15 +191,17 @@ export function SeletorGradeIcones({
           </span>
         </div>
         {iconeAtual && onRestaurar && (
-          <button
-            type="button"
-            onClick={onRestaurar}
-            className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors cursor-pointer shrink-0"
-            title="Voltar ao favicon automático da página"
-          >
-            <RotateCcw size={11} />
-            <span>Favicon original</span>
-          </button>
+          <Tooltip conteudo="Voltar ao favicon automático da página">
+            <button
+              type="button"
+              onClick={onRestaurar}
+              className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors cursor-pointer shrink-0"
+              aria-label="Favicon original"
+            >
+              <RotateCcw size={11} />
+              <span>Favicon original</span>
+            </button>
+          </Tooltip>
         )}
       </div>
 
@@ -251,32 +254,34 @@ export function SeletorGradeIcones({
             {iconesFiltrados.map((item) => {
               const selecionado = iconeAtual === item.id;
               return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onSelecionar(item)}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-2 rounded-lg border transition-all cursor-pointer group relative text-center",
-                    selecionado
-                      ? "bg-primary/10 border-primary shadow-xs ring-1 ring-primary/40"
-                      : "bg-card/70 hover:bg-accent border-border/60 hover:border-border",
-                  )}
-                  title={item.nome}
-                >
-                  {selecionado && (
-                    <span className="absolute top-1 right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <Check size={9} strokeWidth={3} />
+                <Tooltip key={item.id} conteudo={item.nome}>
+                  <button
+                    type="button"
+                    onClick={() => onSelecionar(item)}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-2 rounded-lg border transition-all cursor-pointer group relative text-center",
+                      selecionado
+                        ? "bg-primary/10 border-primary shadow-xs ring-1 ring-primary/40"
+                        : "bg-card/70 hover:bg-accent border-border/60 hover:border-border",
+                    )}
+                    title={item.nome}
+                    aria-label={item.nome}
+                  >
+                    {selecionado && (
+                      <span className="absolute top-1 right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Check size={9} strokeWidth={3} />
+                      </span>
+                    )}
+
+                    <div className="h-6 w-6 flex items-center justify-center mb-1 transition-transform group-hover:scale-115">
+                      <RenderizadorIconeItem iconeId={item.id} tamanho={18} />
+                    </div>
+
+                    <span className="text-[11px] font-medium text-muted-foreground group-hover:text-foreground truncate w-full">
+                      {item.nome}
                     </span>
-                  )}
-
-                  <div className="h-6 w-6 flex items-center justify-center mb-1 transition-transform group-hover:scale-115">
-                    <RenderizadorIconeItem iconeId={item.id} tamanho={18} />
-                  </div>
-
-                  <span className="text-[10px] font-medium text-foreground truncate w-full px-0.5">
-                    {item.nome}
-                  </span>
-                </button>
+                  </button>
+                </Tooltip>
               );
             })}
           </div>

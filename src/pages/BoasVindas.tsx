@@ -42,6 +42,7 @@ import {
 import { testarConexao } from "@/lib/github";
 import { criarKitInicial } from "@/lib/starterKit";
 import { Botao, Campo, Rotulo, Aviso } from "@/components/ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import { LogoKlaus } from "@/components/LogoKlaus";
 import { ModalTourGuiado } from "@/components/ModalTourGuiado";
 
@@ -550,14 +551,16 @@ export default function BoasVindas() {
               spellCheck={false}
               className="pr-12 font-mono text-sm sm:text-xs"
             />
-            <button
-              type="button"
-              onClick={() => setVerToken(!verToken)}
-              className="absolute right-0 h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-              title={verToken ? "Ocultar token" : "Exibir token"}
-            >
-              {verToken ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+            <Tooltip conteudo={verToken ? "Ocultar token" : "Exibir token"}>
+              <button
+                type="button"
+                onClick={() => setVerToken(!verToken)}
+                className="absolute right-0 h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                aria-label={verToken ? "Ocultar token" : "Exibir token"}
+              >
+                {verToken ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </Tooltip>
           </div>
         </div>
 
@@ -633,14 +636,16 @@ export default function BoasVindas() {
               spellCheck={false}
               className="pr-12 font-mono text-sm sm:text-xs"
             />
-            <button
-              type="button"
-              onClick={() => setVerGemini(!verGemini)}
-              className="absolute right-0 h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-              title={verGemini ? "Ocultar chave" : "Exibir chave"}
-            >
-              {verGemini ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+            <Tooltip conteudo={verGemini ? "Ocultar chave" : "Exibir chave"}>
+              <button
+                type="button"
+                onClick={() => setVerGemini(!verGemini)}
+                className="absolute right-0 h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                aria-label={verGemini ? "Ocultar chave" : "Exibir chave"}
+              >
+                {verGemini ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </Tooltip>
           </div>
           <a
             href="https://aistudio.google.com/apikey"
@@ -767,28 +772,30 @@ export default function BoasVindas() {
 
               return (
                 <li key={p.id} className="flex-1">
-                  <button
-                    type="button"
-                    onClick={() => irPara(i)}
-                    className="w-full group text-left focus:outline-none py-1"
-                    title={`Ir para ${p.rotulo}`}
-                  >
-                    <div
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                        concluido
-                          ? "bg-primary"
-                          : ativo
-                          ? "bg-primary ring-2 ring-primary/30"
-                          : "bg-border"
-                      }`}
-                    />
-                    <div className="hidden sm:flex items-center gap-1 mt-1 text-[11px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-                      <Icone size={12} className={ativo ? "text-primary" : ""} />
-                      <span className={ativo ? "text-foreground font-semibold" : ""}>
-                        {p.rotulo}
-                      </span>
-                    </div>
-                  </button>
+                  <Tooltip conteudo={`Ir para ${p.rotulo}`}>
+                    <button
+                      type="button"
+                      onClick={() => irPara(i)}
+                      className="w-full group text-left focus:outline-none py-1 cursor-pointer"
+                      aria-label={`Ir para ${p.rotulo}`}
+                    >
+                      <div
+                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                          concluido
+                            ? "bg-primary"
+                            : ativo
+                            ? "bg-primary ring-2 ring-primary/30"
+                            : "bg-border"
+                        }`}
+                      />
+                      <div className="hidden sm:flex items-center gap-1 mt-1 text-[11px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                        <Icone size={12} className={ativo ? "text-primary" : ""} />
+                        <span className={ativo ? "text-foreground font-semibold" : ""}>
+                          {p.rotulo}
+                        </span>
+                      </div>
+                    </button>
+                  </Tooltip>
                 </li>
               );
             })}

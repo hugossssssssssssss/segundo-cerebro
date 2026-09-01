@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { BookOpen, Search, Download, Loader2, X, Book, ExternalLink, AlertTriangle } from "lucide-react";
 import { Botao, Cartao, Aviso, Vazio, Carregando, Selo, Campo } from "@/components/ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { buscarLivrosUnificado } from "@/services/bookSearch/aggregator";
 import type { LivroBuscado } from "@/services/bookSearch/types";
@@ -133,15 +134,17 @@ export default function PesquisaLivros() {
             disabled={carregando}
           />
           {busca && (
-            <button
-              type="button"
-              onClick={limparBusca}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded-md hover:bg-accent"
-              title="Limpar busca"
-              disabled={carregando}
-            >
-              <X size={14} />
-            </button>
+            <Tooltip conteudo="Limpar busca">
+              <button
+                type="button"
+                onClick={limparBusca}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded-md hover:bg-accent cursor-pointer"
+                aria-label="Limpar busca"
+                disabled={carregando}
+              >
+                <X size={14} />
+              </button>
+            </Tooltip>
           )}
         </div>
         <select
@@ -220,9 +223,11 @@ export default function PesquisaLivros() {
                 {/* Metadados e Ações */}
                 <div className="flex flex-col flex-1 min-w-0">
                   <div className="space-y-1">
-                    <h4 className="font-bold text-sm sm:text-base text-foreground leading-tight line-clamp-2" title={livro.titulo}>
-                      {livro.titulo}
-                    </h4>
+                    <Tooltip conteudo={livro.titulo}>
+                      <h4 className="font-bold text-sm sm:text-base text-foreground leading-tight line-clamp-2 cursor-default">
+                        {livro.titulo}
+                      </h4>
+                    </Tooltip>
                     {livro.autores.length > 0 && (
                       <p className="text-xs text-muted-foreground font-medium truncate">
                         por {livro.autores.join(", ")}
@@ -253,24 +258,24 @@ export default function PesquisaLivros() {
                       const baixando = baixandoIds[livro.id];
 
                       return (
-                        <Botao
-                          key={formato}
-                          variante={isWeb ? "fantasma" : "neutro"}
-                          tamanho="pequeno"
-                          disabled={baixando}
-                          onClick={() => aoBaixarLivro(livro, formato)}
-                          className="text-[11px] h-7 px-2 gap-1 font-semibold"
-                          title={formato}
-                        >
-                          {baixando ? (
-                            <Loader2 size={10} className="animate-spin" />
-                          ) : isWeb ? (
-                            <ExternalLink size={10} />
-                          ) : (
-                            <Download size={10} />
-                          )}
-                          {rotuloCurto}
-                        </Botao>
+                        <Tooltip key={formato} conteudo={`Baixar livro em formato ${formato.toUpperCase()}`}>
+                          <Botao
+                            variante={isWeb ? "fantasma" : "neutro"}
+                            tamanho="pequeno"
+                            disabled={baixando}
+                            onClick={() => aoBaixarLivro(livro, formato)}
+                            className="text-[11px] h-7 px-2 gap-1 font-semibold"
+                          >
+                            {baixando ? (
+                              <Loader2 size={10} className="animate-spin" />
+                            ) : isWeb ? (
+                              <ExternalLink size={10} />
+                            ) : (
+                              <Download size={10} />
+                            )}
+                            {rotuloCurto}
+                          </Botao>
+                        </Tooltip>
                       );
                     })}
                   </div>

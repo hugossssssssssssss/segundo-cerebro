@@ -1,4 +1,5 @@
 import { Tag as TagIcon, X } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface TagChipProps {
@@ -36,17 +37,19 @@ export function TagChip({
       <TagIcon size={11} className="opacity-70 shrink-0" />
       <span>#{nomeLimpo}</span>
       {aoRemover && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            aoRemover();
-          }}
-          className="ml-0.5 rounded-xs p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors"
-          title="Remover tag"
-        >
-          <X size={10} />
-        </button>
+        <Tooltip conteudo="Remover tag">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              aoRemover();
+            }}
+            className="ml-0.5 rounded-xs p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors cursor-pointer"
+            aria-label="Remover tag"
+          >
+            <X size={10} />
+          </button>
+        </Tooltip>
       )}
     </span>
   );

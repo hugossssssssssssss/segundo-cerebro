@@ -6,6 +6,7 @@ import { escreverMarkdown, nomeLivre } from "@/lib/markdown";
 import { hojeISO } from "@/lib/utils";
 import { useSalvar } from "@/lib/useSalvar";
 import { Botao, AreaTexto, Cartao } from "@/components/ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 function calcularDataPrazo(tipo: string): string | undefined {
@@ -337,39 +338,37 @@ export function CapturaRapida({
               </button>
             ))}
 
-            <Botao
-              tamanho="pequeno"
-              variante="neutro"
-              onClick={async () => {
-                const entrada = texto.trim();
-                if (!entrada || salvando) return;
-                setSalvando(true);
-                setErro("");
-                try {
-                  const { capturarUrlWeb, converterHtmlParaMarkdown } = await import("@/lib/clipper");
-                  let res;
-                  if (/^https?:\/\//i.test(entrada)) {
-                    res = await capturarUrlWeb(entrada);
-                  } else {
-                    res = converterHtmlParaMarkdown(entrada);
+            <Tooltip conteudo="Baixa a página web ou converte o HTML colado em Markdown limpo">
+              <Botao
+                tamanho="pequeno"
+                variante="neutro"
+                onClick={async () => {
+                  const entrada = texto.trim();
+                  if (!entrada || salvando) return;
+                  setSalvando(true);
+                  setErro("");
+                  try {
+                    const { capturarUrlWeb, converterHtmlParaMarkdown } = await import("@/lib/clipper");
+                    let res;
+                    if (/^https?:\/\//i.test(entrada)) {
+                      res = await capturarUrlWeb(entrada);
+                    } else {
+                      res = converterHtmlParaMarkdown(entrada);
+                    }
+                    setTexto(`${res.titulo}\n\n${res.markdown}`);
+                    setDadosDaCaptura(res.dados);
+                    setDestino("notas");
+                  } catch (e) {
+                    setErro(e instanceof Error ? e.message : String(e));
+                  } finally {
+                    setSalvando(false);
                   }
-                  setTexto(`${res.titulo}\n\n${res.markdown}`);
-                  // autor, data e site vão para o frontmatter, não para o meio
-                  // do texto: assim a busca e as outras telas os enxergam como
-                  // campos, e não como uma linha solta que ninguém lê
-                  setDadosDaCaptura(res.dados);
-                  setDestino("notas");
-                } catch (e) {
-                  setErro(e instanceof Error ? e.message : String(e));
-                } finally {
-                  setSalvando(false);
-                }
-              }}
-              disabled={salvando || !texto.trim()}
-              title="Baixa a página web ou converte o HTML colado em Markdown limpo"
-            >
-              {salvando ? "Buscando site…" : "Capturar Web"}
-            </Botao>
+                }}
+                disabled={salvando || !texto.trim()}
+              >
+                {salvando ? "Buscando site…" : "Capturar Web"}
+              </Botao>
+            </Tooltip>
 
             <Botao
               tamanho="pequeno"

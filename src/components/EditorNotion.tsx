@@ -1023,11 +1023,17 @@ export function EditorNotion({
       {/* Rodapé Inteligente do Editor: Estatísticas, Sumário, Modo Zen e Imprimir */}
       <div className="flex items-center justify-between gap-2 pt-3 pb-1 border-t border-border/40 text-[11px] text-muted-foreground mt-4 select-none px-2 sm:px-6 no-print">
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <span title="Total de palavras">{estatisticas.palavras} palavras</span>
+          <Tooltip conteudo="Total de palavras">
+            <span className="cursor-help">{estatisticas.palavras} palavras</span>
+          </Tooltip>
           <span>•</span>
-          <span title="Total de caracteres">{estatisticas.caracteres} caracteres</span>
+          <Tooltip conteudo="Total de caracteres">
+            <span className="cursor-help">{estatisticas.caracteres} caracteres</span>
+          </Tooltip>
           <span className="hidden sm:inline">•</span>
-          <span className="hidden sm:inline" title="Tempo estimado de leitura">~{estatisticas.minutosLeitura} min de leitura</span>
+          <Tooltip conteudo="Tempo estimado de leitura">
+            <span className="hidden sm:inline cursor-help">~{estatisticas.minutosLeitura} min de leitura</span>
+          </Tooltip>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">

@@ -7,6 +7,7 @@ import { conversar, PROMPTS, type Mensagem, type PromptSalvo } from "@/lib/gemin
 import { acoesDeChamadas, executar, type Acao } from "@/lib/acoes";
 import { CartaoAcao } from "@/components/CartaoAcao";
 import { Botao, Cartao, AreaTexto, Aviso, Vazio, Selo } from "@/components/ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
 import { montarContextoSemantico } from "@/lib/ragLocal";
@@ -295,14 +296,16 @@ export default function Chat() {
           <div className="flex items-center gap-2">
             <Selo>{cfg.geminiModel}</Selo>
             {acervo.length > 0 && (
-              <button
-                onClick={() => recarregar()}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-                title="Reler seus arquivos"
-              >
-                <RefreshCw size={12} />
-                <span className="hidden sm:inline">{acervo.length} arquivos</span>
-              </button>
+              <Tooltip conteudo="Reler seus arquivos do repositório">
+                <button
+                  onClick={() => recarregar()}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                  aria-label="Reler seus arquivos"
+                >
+                  <RefreshCw size={12} />
+                  <span className="hidden sm:inline">{acervo.length} arquivos</span>
+                </button>
+              </Tooltip>
             )}
           </div>
           {pensando ? (

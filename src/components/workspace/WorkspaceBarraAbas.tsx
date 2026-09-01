@@ -133,9 +133,11 @@ const AbaItem = memo(function AbaItem({
     >
       <div {...listeners} className="flex items-center gap-1.5 min-w-0 flex-1">
         {obterIconeTipo(aba.rotuloTipo, aba.caminho)}
-        <span className="truncate" title={tituloLimpo}>
-          {tituloLimpo}
-        </span>
+        <Tooltip conteudo={tituloLimpo}>
+          <span className="truncate cursor-default">
+            {tituloLimpo}
+          </span>
+        </Tooltip>
       </div>
 
       {/* Indicador de Status (Salvando / Modificado) */}

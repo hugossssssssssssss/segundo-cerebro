@@ -114,39 +114,43 @@ export function WebSearchBar({
         />
 
         {termo && (
-          <button
-            type="button"
-            onClick={() => {
-              setTermo("");
-              inputRef.current?.focus();
-            }}
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            title="Limpar texto"
-          >
-            <X size={15} />
-          </button>
+          <Tooltip conteudo="Limpar texto">
+            <button
+              type="button"
+              onClick={() => {
+                setTermo("");
+                inputRef.current?.focus();
+              }}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Limpar texto"
+            >
+              <X size={15} />
+            </button>
+          </Tooltip>
         )}
 
         {/* Botão de Filtros */}
-        <button
-          type="button"
-          onClick={() => setFiltrosAbertos(!filtrosAbertos)}
-          className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer shrink-0",
-            filtrosAbertos || totalFiltrosAtivos > 0
-              ? "bg-primary/10 text-primary border-primary/30"
-              : "text-muted-foreground hover:text-foreground border-border/60 hover:bg-accent"
-          )}
-          title="Filtros avançados (Site, Formato, Termo exato)"
-        >
-          <SlidersHorizontal size={13} />
-          <span>Filtros</span>
-          {totalFiltrosAtivos > 0 && (
-            <Badge variant="default" className="h-4 min-w-4 px-1 rounded-full text-[10px]">
-              {totalFiltrosAtivos}
-            </Badge>
-          )}
-        </button>
+        <Tooltip conteudo="Filtros avançados (Site, Formato, Termo exato)">
+          <button
+            type="button"
+            onClick={() => setFiltrosAbertos(!filtrosAbertos)}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer shrink-0",
+              filtrosAbertos || totalFiltrosAtivos > 0
+                ? "bg-primary/10 text-primary border-primary/30"
+                : "text-muted-foreground hover:text-foreground border-border/60 hover:bg-accent"
+            )}
+            aria-label="Filtros avançados"
+          >
+            <SlidersHorizontal size={13} />
+            <span>Filtros</span>
+            {totalFiltrosAtivos > 0 && (
+              <Badge variant="default" className="h-4 min-w-4 px-1 rounded-full text-[10px]">
+                {totalFiltrosAtivos}
+              </Badge>
+            )}
+          </button>
+        </Tooltip>
 
         {/* Botão Buscar */}
         <Button

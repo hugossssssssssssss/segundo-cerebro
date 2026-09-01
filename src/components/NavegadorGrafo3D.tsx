@@ -16,6 +16,7 @@ import {
   CORES_TIPOS_GRAFO,
 } from "@/lib/grafo";
 import type { ItemRepo } from "@/lib/repo";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface NavegadorGrafoProps {
@@ -393,44 +394,52 @@ export function NavegadorGrafo3D({
         </div>
 
         <div className="flex items-center gap-1 bg-card/90 backdrop-blur-md p-1 rounded-xl border border-border/80 shadow-md pointer-events-auto">
-          <button
-            onClick={() => setSimulando(!simulando)}
-            className={cn(
-              "p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1",
-              simulando ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground hover:bg-accent"
-            )}
-            title={simulando ? "Pausar física" : "Ativar física"}
-          >
-            {simulando ? <Pause size={14} /> : <Play size={14} />}
-          </button>
+          <Tooltip conteudo={simulando ? "Pausar física" : "Ativar física"}>
+            <button
+              onClick={() => setSimulando(!simulando)}
+              className={cn(
+                "p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 cursor-pointer",
+                simulando ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground hover:bg-accent"
+              )}
+              aria-label={simulando ? "Pausar física" : "Ativar física"}
+            >
+              {simulando ? <Pause size={14} /> : <Play size={14} />}
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => {
-              cameraRef.current.zoom = Math.min(cameraRef.current.zoom * 1.25, 3.5);
-            }}
-            className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            title="Aumentar Zoom"
-          >
-            <ZoomIn size={14} />
-          </button>
+          <Tooltip conteudo="Aumentar Zoom">
+            <button
+              onClick={() => {
+                cameraRef.current.zoom = Math.min(cameraRef.current.zoom * 1.25, 3.5);
+              }}
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Aumentar Zoom"
+            >
+              <ZoomIn size={14} />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => {
-              cameraRef.current.zoom = Math.max(cameraRef.current.zoom * 0.8, 0.4);
-            }}
-            className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            title="Diminuir Zoom"
-          >
-            <ZoomOut size={14} />
-          </button>
+          <Tooltip conteudo="Diminuir Zoom">
+            <button
+              onClick={() => {
+                cameraRef.current.zoom = Math.max(cameraRef.current.zoom * 0.8, 0.4);
+              }}
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Diminuir Zoom"
+            >
+              <ZoomOut size={14} />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={reajustarCentralizacao}
-            className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            title="Centralizar Câmera"
-          >
-            <Crosshair size={14} />
-          </button>
+          <Tooltip conteudo="Centralizar Câmera">
+            <button
+              onClick={reajustarCentralizacao}
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Centralizar Câmera"
+            >
+              <Crosshair size={14} />
+            </button>
+          </Tooltip>
         </div>
       </div>
     </div>

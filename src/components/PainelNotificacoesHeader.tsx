@@ -40,6 +40,7 @@ import { carregarRepo } from "@/lib/repo";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip } from "@/components/ui/tooltip";
 import { ModalLembrete } from "@/components/ModalLembrete";
 import { toast } from "@/lib/toast";
 
@@ -230,25 +231,26 @@ export function PainelNotificacoesHeader() {
     <>
       <Popover open={aberto} onOpenChange={setAberto}>
         <PopoverTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "rounded-xl p-2 transition-all relative cursor-pointer flex items-center justify-center border",
-              aberto
-                ? "bg-accent border-border/80 text-foreground shadow-xs"
-                : "border-transparent text-muted-foreground hover:bg-accent/80 hover:text-foreground"
-            )}
-            title={naoVistosCount > 0 ? `${naoVistosCount} nova(s) notificação(ões)` : "Central de Notificações & Agenda"}
-            aria-label="Notificações e Lembretes"
-          >
-            <Bell size={18} />
-            {naoVistosCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary ring-2 ring-background"></span>
-              </span>
-            )}
-          </button>
+          <Tooltip conteudo={naoVistosCount > 0 ? `${naoVistosCount} nova(s) notificação(ões)` : "Central de Notificações & Agenda"}>
+            <button
+              type="button"
+              className={cn(
+                "rounded-xl p-2 transition-all relative cursor-pointer flex items-center justify-center border",
+                aberto
+                  ? "bg-accent border-border/80 text-foreground shadow-xs"
+                  : "border-transparent text-muted-foreground hover:bg-accent/80 hover:text-foreground"
+              )}
+              aria-label="Notificações e Lembretes"
+            >
+              <Bell size={18} />
+              {naoVistosCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary ring-2 ring-background"></span>
+                </span>
+              )}
+            </button>
+          </Tooltip>
         </PopoverTrigger>
 
         <PopoverContent
@@ -276,29 +278,32 @@ export function PainelNotificacoesHeader() {
             </div>
 
             <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setAberto(false);
-                  setModalLembreteAberto(true);
-                }}
-                className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                title="Agendar novo lembrete"
-              >
-                <Plus size={13} />
-                <span>Novo Lembrete</span>
-              </button>
-
-              {naoVistosCount > 0 && (
+              <Tooltip conteudo="Agendar novo lembrete">
                 <button
                   type="button"
-                  onClick={marcarTodosComoLidos}
-                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
-                  title="Marcar todas como lidas"
-                  aria-label="Marcar todas como lidas"
+                  onClick={() => {
+                    setAberto(false);
+                    setModalLembreteAberto(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                  aria-label="Novo Lembrete"
                 >
-                  <CheckCheck size={16} />
+                  <Plus size={13} />
+                  <span>Novo Lembrete</span>
                 </button>
+              </Tooltip>
+
+              {naoVistosCount > 0 && (
+                <Tooltip conteudo="Marcar todas como lidas">
+                  <button
+                    type="button"
+                    onClick={marcarTodosComoLidos}
+                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                    aria-label="Marcar todas como lidas"
+                  >
+                    <CheckCheck size={16} />
+                  </button>
+                </Tooltip>
               )}
             </div>
           </div>
@@ -433,26 +438,29 @@ export function PainelNotificacoesHeader() {
                       )}
 
                       {ehNovo && (
-                        <button
-                          type="button"
-                          onClick={(e) => marcarComoLido(item.id, e)}
-                          className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-0.5 cursor-pointer ml-0.5"
-                          title="Marcar como lido"
-                        >
-                          <Check size={11} />
-                          <span>Lido</span>
-                        </button>
+                        <Tooltip conteudo="Marcar como lido">
+                          <button
+                            type="button"
+                            onClick={(e) => marcarComoLido(item.id, e)}
+                            className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-0.5 cursor-pointer ml-0.5"
+                            aria-label="Marcar como lido"
+                          >
+                            <Check size={11} />
+                            <span>Lido</span>
+                          </button>
+                        </Tooltip>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={(e) => limparItem(item.id, e)}
-                        className="p-1 rounded text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-                        title="Limpar notificação"
-                        aria-label="Limpar notificação"
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                      <Tooltip conteudo="Limpar notificação">
+                        <button
+                          type="button"
+                          onClick={(e) => limparItem(item.id, e)}
+                          className="p-1 rounded text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                          aria-label="Limpar notificação"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </Tooltip>
                     </div>
                   </div>
                 );

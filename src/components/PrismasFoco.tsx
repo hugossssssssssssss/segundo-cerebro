@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface PrismasFocoProps {
   estimativa?: number; // Mapeia para a propriedade "Pomodoro" do frontmatter (1 a 5)
@@ -27,10 +28,11 @@ export function PrismasFoco({
   const descricaoTooltip = `${concluidoLimpo} completos, ${fraturadosLimpos} quebrados de ${estimativaLimpa} estimados`;
 
   return (
-    <div 
-      className={cn("flex items-center gap-1.5", className)} 
-      title={descricaoTooltip}
-    >
+    <Tooltip conteudo={descricaoTooltip}>
+      <div 
+        className={cn("flex items-center gap-1.5 cursor-default", className)} 
+        aria-label={descricaoTooltip}
+      >
       {Array.from({ length: totalSlots }).map((_, idx) => {
         const isConcluido = idx < concluidoLimpo;
         const isFraturado = !isConcluido && idx < (concluidoLimpo + fraturadosLimpos);
@@ -92,6 +94,7 @@ export function PrismasFoco({
           </svg>
         );
       })}
-    </div>
+      </div>
+    </Tooltip>
   );
 }

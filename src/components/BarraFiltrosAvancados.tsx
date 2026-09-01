@@ -200,16 +200,17 @@ export function BarraFiltrosAvancados({
       <Popover open={menuAddAberto} onOpenChange={setMenuAddAberto}>
         <PopoverTrigger asChild>
           {regras.length === 0 ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 px-2.5 rounded-xl border border-border/80 bg-background/80 hover:bg-accent text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-2xs gap-1.5 font-medium"
-              title="Filtrar por propriedade"
-              aria-label="Filtrar por propriedade"
-            >
-              <Filter size={14} className="text-primary/80" />
-              <span className="text-xs">Filtro</span>
-            </Button>
+            <Tooltip conteudo="Filtrar por propriedade">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-2.5 rounded-xl border border-border/80 bg-background/80 hover:bg-accent text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-2xs gap-1.5 font-medium"
+                aria-label="Filtrar por propriedade"
+              >
+                <Filter size={14} className="text-primary/80" />
+                <span className="text-xs">Filtro</span>
+              </Button>
+            </Tooltip>
           ) : (
             <Button
               variant="outline"
@@ -366,15 +367,16 @@ export function BarraFiltrosAvancados({
             )}
 
             {/* Bloco 4: Botão de Remover Filtro */}
-            <button
-              type="button"
-              onClick={() => removerRegra(regra.id)}
-              className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
-              title="Remover filtro"
-              aria-label="Remover filtro"
-            >
-              <X size={12} />
-            </button>
+            <Tooltip conteudo="Remover filtro">
+              <button
+                type="button"
+                onClick={() => removerRegra(regra.id)}
+                className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
+                aria-label="Remover filtro"
+              >
+                <X size={12} />
+              </button>
+            </Tooltip>
           </div>
         );
       })}

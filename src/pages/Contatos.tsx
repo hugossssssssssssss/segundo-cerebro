@@ -753,30 +753,36 @@ export default function Contatos() {
                         </td>
                         <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => novoContato(c.id)}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-primary transition-colors"
-                              title="Adicionar Subordinado / Filho"
-                            >
-                              <UserPlus size={14} />
-                            </button>
-                            <button
-                              onClick={() => abrirContato(c)}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                              title="Editar Contato"
-                            >
-                              <Edit2 size={14} />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setAberta({ ...c, original: { titulo: c.titulo, corpo: c.corpo, bruto: c.bruto } });
-                                removerContato();
-                              }}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                              title="Excluir Contato"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            <Tooltip conteudo="Adicionar Subordinado / Filho">
+                              <button
+                                onClick={() => novoContato(c.id)}
+                                className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-primary transition-colors cursor-pointer"
+                                aria-label="Adicionar Subordinado"
+                              >
+                                <UserPlus size={14} />
+                              </button>
+                            </Tooltip>
+                            <Tooltip conteudo="Editar Contato">
+                              <button
+                                onClick={() => abrirContato(c)}
+                                className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+                                aria-label="Editar Contato"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                            </Tooltip>
+                            <Tooltip conteudo="Excluir Contato">
+                              <button
+                                onClick={() => {
+                                  setAberta({ ...c, original: { titulo: c.titulo, corpo: c.corpo, bruto: c.bruto } });
+                                  removerContato();
+                                }}
+                                className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
+                                aria-label="Excluir Contato"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </Tooltip>
                           </div>
                         </td>
                       </tr>
@@ -1045,30 +1051,36 @@ function ItemNoArvore({
           className="flex items-center gap-1 self-end sm:self-center shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto justify-end"
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            onClick={() => aoNovoFilho(c.id)}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-            title="Adicionar contato subordinado / vinculado a este"
-          >
-            <UserPlus size={14} />
-            <span className="hidden sm:inline">Add Subordinado</span>
-          </button>
+          <Tooltip conteudo="Adicionar contato subordinado / vinculado a este">
+            <button
+              onClick={() => aoNovoFilho(c.id)}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
+              aria-label="Adicionar subordinado"
+            >
+              <UserPlus size={14} />
+              <span className="hidden sm:inline">Add Subordinado</span>
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => aoEditar(c)}
-            className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            title="Editar contato"
-          >
-            <Edit2 size={14} />
-          </button>
+          <Tooltip conteudo="Editar contato">
+            <button
+              onClick={() => aoEditar(c)}
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Editar contato"
+            >
+              <Edit2 size={14} />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => aoExcluir(c)}
-            className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-            title="Excluir contato"
-          >
-            <Trash2 size={14} />
-          </button>
+          <Tooltip conteudo="Excluir contato">
+            <button
+              onClick={() => aoExcluir(c)}
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
+              aria-label="Excluir contato"
+            >
+              <Trash2 size={14} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -1129,20 +1141,24 @@ function CartaoContato({
             className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              onClick={() => aoEditar(c)}
-              className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-              title="Editar"
-            >
-              <Edit2 size={13} />
-            </button>
-            <button
-              onClick={() => aoExcluir(c)}
-              className="p-1 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              title="Excluir"
-            >
-              <Trash2 size={13} />
-            </button>
+            <Tooltip conteudo="Editar">
+              <button
+                onClick={() => aoEditar(c)}
+                className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+                aria-label="Editar"
+              >
+                <Edit2 size={13} />
+              </button>
+            </Tooltip>
+            <Tooltip conteudo="Excluir">
+              <button
+                onClick={() => aoExcluir(c)}
+                className="p-1 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                aria-label="Excluir"
+              >
+                <Trash2 size={13} />
+              </button>
+            </Tooltip>
           </div>
         </div>
 
@@ -1206,17 +1222,19 @@ function CartaoContato({
           ))}
         </div>
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            aoNovoFilho(c.id);
-          }}
-          className="text-primary hover:underline text-[11px] font-medium flex items-center gap-1 shrink-0 ml-auto"
-          title="Adicionar Subordinado / Contato vinculado"
-        >
-          <UserPlus size={12} />
-          + Subordinado
-        </button>
+        <Tooltip conteudo="Adicionar Subordinado / Contato vinculado">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              aoNovoFilho(c.id);
+            }}
+            className="text-primary hover:underline text-[11px] font-medium flex items-center gap-1 shrink-0 ml-auto cursor-pointer"
+            aria-label="Adicionar Subordinado"
+          >
+            <UserPlus size={12} />
+            + Subordinado
+          </button>
+        </Tooltip>
       </div>
     </Cartao>
   );

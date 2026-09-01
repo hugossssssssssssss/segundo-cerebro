@@ -723,20 +723,22 @@ export default function Referencias() {
                 >
                   {/* Checkbox de seleção em lote */}
                   <div className="absolute top-2 left-2 z-20">
-                    <input
-                      type="checkbox"
-                      checked={selecionadas.has(r.caminho)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        alternarSelecao(r.caminho);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      className={cn(
-                        "h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer transition-opacity shadow-sm",
-                        selecionadas.size > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                      )}
-                      title="Selecionar imagem"
-                    />
+                    <Tooltip conteudo="Selecionar imagem">
+                      <input
+                        type="checkbox"
+                        checked={selecionadas.has(r.caminho)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          alternarSelecao(r.caminho);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className={cn(
+                          "h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer transition-opacity shadow-sm",
+                          selecionadas.size > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}
+                        aria-label="Selecionar imagem"
+                      />
+                    </Tooltip>
                   </div>
 
                   {r.imagem ? (
@@ -747,33 +749,35 @@ export default function Referencias() {
                         className="w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       {/* Botão de Copiar Markdown */}
-                      <button
-                        type="button"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const codigo = `![](${r.imagem})`;
-                          await navigator.clipboard.writeText(codigo);
-                          toast("Código da imagem copiado! Cole em qualquer nota.", { tipo: "sucesso" });
-                        }}
-                        className="absolute top-2 left-8 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
-                        title="Copiar código Markdown da imagem"
-                        aria-label="Copiar código Markdown"
-                      >
-                        <Copy size={13} />
-                      </button>
+                      <Tooltip conteudo="Copiar código Markdown da imagem">
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const codigo = `![](${r.imagem})`;
+                            await navigator.clipboard.writeText(codigo);
+                            toast("Código da imagem copiado! Cole em qualquer nota.", { tipo: "sucesso" });
+                          }}
+                          className="absolute top-2 left-8 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
+                          aria-label="Copiar código Markdown"
+                        >
+                          <Copy size={13} />
+                        </button>
+                      </Tooltip>
                       {/* Botão de Zoom / Lightbox */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLightboxRef(r);
-                        }}
-                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
-                        title="Ver em tela cheia"
-                        aria-label="Ver imagem em tela cheia"
-                      >
-                        <Maximize2 size={13} />
-                      </button>
+                      <Tooltip conteudo="Ver em tela cheia">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLightboxRef(r);
+                          }}
+                          className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
+                          aria-label="Ver imagem em tela cheia"
+                        >
+                          <Maximize2 size={13} />
+                        </button>
+                      </Tooltip>
                     </div>
                   ) : (
                     <div className="p-6 bg-secondary/30 flex items-center justify-center text-muted-foreground/50">
@@ -821,18 +825,19 @@ export default function Referencias() {
                     {r.imagem ? (
                       <>
                         <ImagemPrivada caminho={r.imagem} alt={r.titulo} className="w-full h-full object-cover transition-transform duration-300" />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setLightboxRef(r);
-                          }}
-                          className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
-                          title="Ver em tela cheia"
-                          aria-label="Ver imagem em tela cheia"
-                        >
-                          <Maximize2 size={13} />
-                        </button>
+                        <Tooltip conteudo="Ver em tela cheia">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLightboxRef(r);
+                            }}
+                            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
+                            aria-label="Ver imagem em tela cheia"
+                          >
+                            <Maximize2 size={13} />
+                          </button>
+                        </Tooltip>
                       </>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground/40">

@@ -29,6 +29,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link as LinkIcon } from "lucide-react";
@@ -652,33 +653,34 @@ export function PropriedadesNotion({
             {Array.from({ length: 5 }).map((_, idx) => {
               const ativo = idx < val;
               return (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => {
-                    const novoVal = idx + 1;
-                    atualizar(chave, val === novoVal ? undefined : novoVal);
-                  }}
-                  className="focus:outline-none cursor-pointer transform active:scale-95 transition-transform"
-                  title={`Definir esforço como ${idx + 1} ${idx + 1 === 1 ? "prisma" : "prismas"}`}
-                >
-                  <svg
-                    width={16}
-                    height={16}
-                    viewBox="0 0 20 20"
-                    className={ativo ? "drop-shadow-[0_0_4px_rgba(99,102,241,0.4)]" : ""}
+                <Tooltip key={idx} conteudo={`Definir esforço como ${idx + 1} ${idx + 1 === 1 ? "prisma" : "prismas"}`}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const novoVal = idx + 1;
+                      atualizar(chave, val === novoVal ? undefined : novoVal);
+                    }}
+                    className="focus:outline-none cursor-pointer transform active:scale-95 transition-transform"
+                    aria-label={`Definir esforço como ${idx + 1}`}
                   >
-                    <polygon
-                      points="10,2 17,6 17,14 10,18 3,14 3,6"
-                      className={cn(
-                        "stroke-[1.5] stroke-linejoin-round transition-all duration-200",
-                        ativo 
-                          ? "fill-indigo-500/80 stroke-indigo-400" 
-                          : "fill-muted/20 stroke-muted-foreground/30 hover:stroke-muted-foreground/50"
-                      )}
-                    />
-                  </svg>
-                </button>
+                    <svg
+                      width={16}
+                      height={16}
+                      viewBox="0 0 20 20"
+                      className={ativo ? "drop-shadow-[0_0_4px_rgba(99,102,241,0.4)]" : ""}
+                    >
+                      <polygon
+                        points="10,2 17,6 17,14 10,18 3,14 3,6"
+                        className={cn(
+                          "stroke-[1.5] stroke-linejoin-round transition-all duration-200",
+                          ativo 
+                            ? "fill-indigo-500/80 stroke-indigo-400" 
+                            : "fill-muted/20 stroke-muted-foreground/30 hover:stroke-muted-foreground/50"
+                        )}
+                      />
+                    </svg>
+                  </button>
+                </Tooltip>
               );
             })}
             {val > 0 && (
@@ -770,7 +772,6 @@ export function PropriedadesNotion({
         if (!d) return;
         const dataClicada = format(d, "yyyy-MM-dd");
 
-        // Clique 1 ou Clique 3 (quando não há início ou quando já há um range fechado): define data única
         if (!inicioStr || (inicioStr && fimStr)) {
           atualizar(chave, dataClicada);
           if (dados.endDate) {
@@ -781,13 +782,10 @@ export function PropriedadesNotion({
           return;
         }
 
-        // Clique 2 (quando há início e não há fim):
         if (inicioStr && !fimStr) {
           if (dataClicada === inicioStr) {
-            // Clicou no mesmo dia -> mantém data única
             return;
           }
-          // Clicou em dia diferente -> cria range cronológico
           const [menor, maior] = [inicioStr, dataClicada].sort();
           atualizar(chave, `${menor} → ${maior}`);
         }
@@ -861,20 +859,21 @@ export function PropriedadesNotion({
             {tags.map((hex: string) => {
               const ehCopiado = copiado === hex;
               return (
-                <button
-                  key={hex}
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(hex);
-                    setCopiado(hex);
-                    setTimeout(() => setCopiado(null), 1500);
-                  }}
-                  className="group flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-mono transition-all active:scale-95 hover:opacity-90"
-                  style={{ backgroundColor: hex, color: parseInt(hex.replace('#',''), 16) > 0xffffff/2 ? '#000' : '#fff' }}
-                  title={`Clique para copiar ${hex}`}
-                >
-                  <span>{ehCopiado ? "Copiado!" : hex}</span>
-                </button>
+                <Tooltip key={hex} conteudo={`Clique para copiar ${hex}`}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(hex);
+                      setCopiado(hex);
+                      setTimeout(() => setCopiado(null), 1500);
+                    }}
+                    className="group flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-mono transition-all active:scale-95 hover:opacity-90 cursor-pointer"
+                    style={{ backgroundColor: hex, color: parseInt(hex.replace('#',''), 16) > 0xffffff/2 ? '#000' : '#fff' }}
+                    aria-label={`Copiar cor ${hex}`}
+                  >
+                    <span>{ehCopiado ? "Copiado!" : hex}</span>
+                  </button>
+                </Tooltip>
               );
             })}
           </div>
@@ -935,13 +934,15 @@ export function PropriedadesNotion({
           {tags.map((t: string) => (
             <div key={t} className="group relative flex items-center">
               {renderizarBadgeTag(t)}
-              <button
-                onClick={() => atualizar(chave, tags.filter((x: string) => x !== t))}
-                className="ml-0.5 text-muted-foreground hover:text-destructive opacity-50 hover:opacity-100 transition-all"
-                title="Remover tag deste item"
-              >
-                <X size={11} />
-              </button>
+              <Tooltip conteudo="Remover tag deste item">
+                <button
+                  onClick={() => atualizar(chave, tags.filter((x: string) => x !== t))}
+                  className="ml-0.5 text-muted-foreground hover:text-destructive opacity-50 hover:opacity-100 transition-all cursor-pointer"
+                  aria-label="Remover tag deste item"
+                >
+                  <X size={11} />
+                </button>
+              </Tooltip>
             </div>
           ))}
 
@@ -1029,30 +1030,34 @@ export function PropriedadesNotion({
 
                           {!fixo?.opcoes && (
                             <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditandoTag(tag);
-                                  setNovoNomeTag(tag);
-                                }}
-                                className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent-foreground/10 rounded transition-all"
-                                title="Renomear tag"
-                              >
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-                                </svg>
-                              </button>
+                              <Tooltip conteudo="Renomear tag">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditandoTag(tag);
+                                    setNovoNomeTag(tag);
+                                  }}
+                                  className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent-foreground/10 rounded transition-all cursor-pointer"
+                                  aria-label="Renomear tag"
+                                >
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                                  </svg>
+                                </button>
+                              </Tooltip>
 
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  processarExcluirTag(tag);
-                                }}
-                                className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-all"
-                                title="Excluir tag permanentemente"
-                              >
-                                <Trash2 size={11} />
-                              </button>
+                              <Tooltip conteudo="Excluir tag permanentemente">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    processarExcluirTag(tag);
+                                  }}
+                                  className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-all cursor-pointer"
+                                  aria-label="Excluir tag permanentemente"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </Tooltip>
                             </div>
                           )}
                         </div>
@@ -1105,38 +1110,37 @@ export function PropriedadesNotion({
                   });
                   const ehMapaMental = itemAlvo?.caminho.startsWith("lousas/") || r.toLowerCase().includes("lousa") || r.toLowerCase().includes("mapa");
                   return (
-                    <Badge 
-                      variant="secondary" 
-                      key={r} 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const alvo = itemAlvo || opcoesRelacionamento.find((o) => o.titulo.toLowerCase().includes(normNome));
-                        if (alvo) {
-                          abrirItemSpa(alvo.caminho);
-                        } else if (r.includes("/")) {
-                          abrirItemSpa(r);
-                        }
-                      }}
-                      className={cn(
-                        "font-medium text-[11px] px-2 py-0.5 flex items-center gap-1.5 hover:underline cursor-pointer border transition-all shadow-xs",
-                        ehMapaMental
-                          ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/25"
-                          : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
-                      )}
-                      title={itemAlvo ? `Abrir "${itemAlvo.titulo}"` : `Abrir "${nomePuro}"`}
-                    >
-                      {ehMapaMental ? (
-                        <>
-                          <Layout size={11} className="text-indigo-500 shrink-0" />
-                          <span className="font-bold">Mapa Mental:</span> @{nomePuro}
-                        </>
-                      ) : (
-                        <>
-                          <LinkIcon size={10} className="shrink-0" />
-                          @{nomePuro}
-                        </>
-                      )}
-                    </Badge>
+                    <Tooltip key={r} conteudo={itemAlvo ? `Abrir "${itemAlvo.titulo}"` : `Abrir "${nomePuro}"`}>
+                      <Badge 
+                        variant="secondary" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (itemAlvo) {
+                            abrirItemSpa(itemAlvo.caminho);
+                          } else if (r.includes("/")) {
+                            abrirItemSpa(r);
+                          }
+                        }}
+                        className={cn(
+                          "font-medium text-[11px] px-2 py-0.5 flex items-center gap-1.5 hover:underline cursor-pointer border transition-all shadow-xs",
+                          ehMapaMental
+                            ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/25"
+                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                        )}
+                      >
+                        {ehMapaMental ? (
+                          <>
+                            <Layout size={11} className="text-indigo-500 shrink-0" />
+                            <span className="font-bold">Mapa Mental:</span> @{nomePuro}
+                          </>
+                        ) : (
+                          <>
+                            <LinkIcon size={10} className="shrink-0" />
+                            @{nomePuro}
+                          </>
+                        )}
+                      </Badge>
+                    </Tooltip>
                   );
                 })
               ) : (
@@ -1185,14 +1189,16 @@ export function PropriedadesNotion({
       return (
         <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
           <PopoverTrigger asChild>
-            <button
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-foreground bg-accent/30 hover:bg-accent hover:text-foreground transition-colors cursor-pointer border border-border/40"
-              title="Clique para escolher ou mover de pasta"
-            >
-              <Folder className="h-3.5 w-3.5 text-primary shrink-0" />
-              <span>{trilhaAmigavel}</span>
-              <ChevronDown className="h-3 w-3 opacity-60 ml-0.5" />
-            </button>
+            <Tooltip conteudo="Clique para escolher ou mover de pasta">
+              <button
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-foreground bg-accent/30 hover:bg-accent hover:text-foreground transition-colors cursor-pointer border border-border/40"
+                aria-label="Escolher ou mover de pasta"
+              >
+                <Folder className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span>{trilhaAmigavel}</span>
+                <ChevronDown className="h-3 w-3 opacity-60 ml-0.5" />
+              </button>
+            </Tooltip>
           </PopoverTrigger>
           <PopoverContent className="w-72 p-2 shadow-2xl border-border space-y-2" align="start" onInteractOutside={() => setMenuAberto(null)}>
             <div className="px-1.5 pt-1 pb-1 border-b border-border/60">

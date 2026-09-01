@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Botao } from "@/components/ui";
+import { Tooltip } from "@/components/ui/tooltip";
 import { GradeTermo, type TamanhoGrade } from "./GradeTermo";
 import { TecladoTermo } from "./TecladoTermo";
 import { ModalEstatisticasTermo } from "./ModalEstatisticasTermo";
@@ -449,24 +450,29 @@ export function JogoTermo() {
           </div>
 
           <div className="flex items-center gap-1">
-            <Botao
-              variante="neutro"
-              tamanho="pequeno"
-              onClick={() => setModalComoJogarAberto(true)}
-              className="text-xs h-8 px-2"
-              title="Como jogar"
-            >
-              <HelpCircle size={14} />
-            </Botao>
-            <Botao
-              variante="neutro"
-              tamanho="pequeno"
-              onClick={() => setModalEstatisticasAberto(true)}
-              className="text-xs h-8 px-2"
-              title="Ver estatísticas"
-            >
-              <BarChart3 size={14} />
-            </Botao>
+            <Tooltip conteudo="Como jogar">
+              <Botao
+                variante="neutro"
+                tamanho="pequeno"
+                onClick={() => setModalComoJogarAberto(true)}
+                className="text-xs h-8 px-2 cursor-pointer"
+                aria-label="Como jogar"
+              >
+                <HelpCircle size={14} />
+              </Botao>
+            </Tooltip>
+
+            <Tooltip conteudo="Ver estatísticas">
+              <Botao
+                variante="neutro"
+                tamanho="pequeno"
+                onClick={() => setModalEstatisticasAberto(true)}
+                className="text-xs h-8 px-2 cursor-pointer"
+                aria-label="Ver estatísticas"
+              >
+                <BarChart3 size={14} />
+              </Botao>
+            </Tooltip>
           </div>
 
           {ritmo === "diario" ? (
@@ -475,16 +481,18 @@ export function JogoTermo() {
               <span>{streakAtual} d</span>
             </div>
           ) : (
-            <Botao
-              variante="neutro"
-              tamanho="pequeno"
-              onClick={iniciarNovaPartidaInfinita}
-              className="text-xs shrink-0 h-8 px-2.5"
-              title="Sortear nova palavra"
-            >
-              <RotateCcw size={12} />
-              <span className="hidden sm:inline">Nova Palavra</span>
-            </Botao>
+            <Tooltip conteudo="Sortear nova palavra">
+              <Botao
+                variante="neutro"
+                tamanho="pequeno"
+                onClick={iniciarNovaPartidaInfinita}
+                className="text-xs shrink-0 h-8 px-2.5 cursor-pointer"
+                aria-label="Sortear nova palavra"
+              >
+                <RotateCcw size={12} />
+                <span className="hidden sm:inline">Nova Palavra</span>
+              </Botao>
+            </Tooltip>
           )}
         </div>
       </div>
