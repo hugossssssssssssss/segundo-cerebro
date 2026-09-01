@@ -43,6 +43,8 @@ import {
   Aviso,
   Vazio,
   Carregando,
+  ModalConfirmacao,
+  ModalEntradaTexto,
 } from "@/components/ui";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -118,10 +120,15 @@ export default function Referencias() {
 
   const limparSelecao = () => setSelecionadas(new Set());
 
-  async function adicionarTagSelecionadas() {
-    const tag = prompt("Digite o nome da tag para adicionar às referências selecionadas:")?.trim();
+  const [confirmarExclusaoLote, setConfirmarExclusaoLote] = useState(false);
+  const [modalTagAberto, setModalTagAberto] = useState(false);
+  const [modalPastaAberto, setModalPastaAberto] = useState(false);
+
+  async function confirmarAdicionarTag(tag: string) {
+    setModalTagAberto(false);
     if (!tag) return;
-    const tagLimpa = tag.replace(/^#/, "");
+    const tagLimpa = tag.replace(/^#/, "").trim();
+    if (!tagLimpa) return;
     const alvos = refs.filter((r) => selecionadas.has(r.caminho));
     if (alvos.length === 0) return;
     limparSelecao();
@@ -145,10 +152,15 @@ export default function Referencias() {
     }
   }
 
-  async function excluirSelecionadas() {
+  function pedirExcluirSelecionadas() {
+    if (selecionadas.size === 0) return;
+    setConfirmarExclusaoLote(true);
+  }
+
+  async function confirmarExcluirSelecionadas() {
     const alvos = refs.filter((r) => selecionadas.has(r.caminho));
+    setConfirmarExclusaoLote(false);
     if (alvos.length === 0) return;
-    if (!confirm(`Deseja realmente excluir ${alvos.length} referência(s) selecionada(s)?`)) return;
     limparSelecao();
     try {
       for (const r of alvos) {
@@ -348,8 +360,8 @@ export default function Referencias() {
   }, []);
 
   // ── Criar pasta ────────────────────────────────────────────────────────────
-  function criarPasta() {
-    const nome = prompt("Nome da nova pasta:")?.trim();
+  function confirmarCriarPasta(nome: string) {
+    setModalPastaAberto(false);
     if (!nome) return;
     const slug = nome.replace(/[^a-zA-Z0-9\s-]/g, "").trim().replace(/\s+/g, "-").toLowerCase();
     if (!slug) return;
@@ -547,7 +559,7 @@ export default function Referencias() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={criarPasta}
+                onClick={() => setModalPastaAberto(true)}
                 className="h-9 w-9 text-muted-foreground hover:text-foreground bg-background shadow-2xs"
                 aria-label="Nova Pasta"
               >
@@ -1092,10 +1104,10 @@ export default function Referencias() {
             {selecionadas.size} selecionada{selecionadas.size > 1 ? "s" : ""}
           </span>
           <div className="h-4 w-px bg-border mx-1" />
-          <Button size="sm" variant="outline" onClick={adicionarTagSelecionadas}>
+          <Button size="sm" variant="outline" onClick={() => setModalTagAberto(true)}>
             + Adicionar Tag
           </Button>
-          <Button size="sm" variant="destructive" onClick={excluirSelecionadas}>
+          <Button size="sm" variant="destructive" onClick={pedirExcluirSelecionadas}>
             Excluir
           </Button>
           <Tooltip conteudo="Desmarcar seleção" posicao="top">
@@ -1108,6 +1120,45 @@ export default function Referencias() {
             </button>
           </Tooltip>
         </div>
+      )}
+
+      {/* Modal Nativo de Confirmação para Exclusão em Lote */}
+      {confirmarExclusaoLote && (
+        <ModalConfirmacao
+          aberto={true}
+          titulo="Excluir referências selecionadas"
+          descricao={`Tem certeza que deseja excluir as ${selecionadas.size} referências selecionadas? Esta ação removerá os arquivos e suas imagens associadas permanentemente.`}
+          textoConfirmar="Sim, excluir referências"
+          varianteConfirmar="perigo"
+          aoConfirmar={confirmarExcluirSelecionadas}
+          aoCancelar={() => setConfirmarExclusaoLote(false)}
+        />
+      )}
+
+      {/* Modal Nativo para Adicionar Tag em Lote */}
+      {modalTagAberto && (
+        <ModalEntradaTexto
+          aberto={true}
+          titulo="Adicionar tag às selecionadas"
+          descricao={`Digite o nome da tag que será adicionada a ${selecionadas.size} referência(s).`}
+          placeholder="Ex: tipografia, paleta, logo"
+          textoConfirmar="Adicionar Tag"
+          aoConfirmar={confirmarAdicionarTag}
+          aoCancelar={() => setModalTagAberto(false)}
+        />
+      )}
+
+      {/* Modal Nativo para Criar Nova Pasta */}
+      {modalPastaAberto && (
+        <ModalEntradaTexto
+          aberto={true}
+          titulo="Nova pasta de referências"
+          descricao={pastaAtual ? `Criar subpasta dentro de "${pastaAtual}":` : "Digite o nome da nova pasta:"}
+          placeholder="Ex: Identidades Visuais, UI Web"
+          textoConfirmar="Criar Pasta"
+          aoConfirmar={confirmarCriarPasta}
+          aoCancelar={() => setModalPastaAberto(false)}
+        />
       )}
     </div>
   );

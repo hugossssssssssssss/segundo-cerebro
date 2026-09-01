@@ -4,7 +4,7 @@ import { lerConfig, configCompleta } from "@/lib/settings";
 import { useAcervoRepo } from "@/lib/useItemRepo";
 import { listarItensLixeira, restaurarDaLixeira, type ItemLixeira } from "@/lib/lixeira";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
-import { Botao, Cartao, Vazio, Carregando, Aviso } from "@/components/ui";
+import { Botao, Cartao, Vazio, Carregando, Aviso, ModalConfirmacao } from "@/components/ui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { toast } from "@/lib/toast";
 import { apagar } from "@/lib/github";
@@ -19,6 +19,7 @@ export default function Lixeira() {
 
   const [processandoCaminho, setProcessandoCaminho] = useState<string | null>(null);
   const [erroAcao, setErroAcao] = useState("");
+  const [itemParaExcluirPermanente, setItemParaExcluirPermanente] = useState<ItemLixeira | null>(null);
 
   const itensLixeira = listarItensLixeira(acervo);
 
@@ -36,8 +37,10 @@ export default function Lixeira() {
     }
   }
 
-  async function excluirPermanente(item: ItemLixeira) {
-    if (!confirm(`Excluir permanentemente "${item.titulo}"? Esta ação não pode ser desfeita.`)) return;
+  async function confirmarExcluirPermanente() {
+    if (!itemParaExcluirPermanente) return;
+    const item = itemParaExcluirPermanente;
+    setItemParaExcluirPermanente(null);
 
     setProcessandoCaminho(item.caminho);
     setErroAcao("");
@@ -134,7 +137,7 @@ export default function Lixeira() {
                     <Botao
                       variante="fantasma"
                       tamanho="icone"
-                      onClick={() => excluirPermanente(item)}
+                      onClick={() => setItemParaExcluirPermanente(item)}
                       disabled={processandoCaminho === item.caminho}
                       className="h-8 w-8 text-destructive hover:bg-destructive/10"
                       aria-label="Excluir permanentemente"
@@ -147,6 +150,19 @@ export default function Lixeira() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Modal Nativo de Confirmação para Exclusão Definitiva */}
+      {itemParaExcluirPermanente && (
+        <ModalConfirmacao
+          aberto={true}
+          titulo="Excluir permanentemente"
+          descricao={`Excluir permanentemente "${itemParaExcluirPermanente.titulo}"? Esta ação removerá o arquivo em definitivo do GitHub e não pode ser desfeita.`}
+          textoConfirmar="Sim, excluir permanentemente"
+          varianteConfirmar="perigo"
+          aoConfirmar={confirmarExcluirPermanente}
+          aoCancelar={() => setItemParaExcluirPermanente(null)}
+        />
       )}
     </div>
   );

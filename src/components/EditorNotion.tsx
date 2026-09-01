@@ -534,8 +534,7 @@ export function EditorNotion({
               }
             }
 
-            const titulo = textoBloco || prompt("Título da nova tarefa:")?.trim();
-            if (!titulo) return;
+            const titulo = textoBloco || "Nova tarefa";
 
             const cfg = lerConfig();
             const todosItens = cache?.itens || [];

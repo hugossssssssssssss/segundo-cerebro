@@ -6,7 +6,7 @@
  */
 
 import { cn } from "@/lib/utils";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import type {
   ButtonHTMLAttributes,
@@ -521,6 +521,97 @@ export function ModalConfirmacao({
           </Botao>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------- Modal de Entrada de Texto */
+
+export function ModalEntradaTexto({
+  aberto,
+  titulo,
+  descricao,
+  placeholder = "",
+  valorInicial = "",
+  textoConfirmar = "Confirmar",
+  textoCancelar = "Cancelar",
+  aoConfirmar,
+  aoCancelar,
+}: {
+  aberto: boolean;
+  titulo: string;
+  descricao?: string;
+  placeholder?: string;
+  valorInicial?: string;
+  textoConfirmar?: string;
+  textoCancelar?: string;
+  aoConfirmar: (valor: string) => void;
+  aoCancelar: () => void;
+}) {
+  const [valor, setValor] = useState(valorInicial);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (aberto) {
+      setValor(valorInicial);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [aberto, valorInicial]);
+
+  useEffect(() => {
+    if (!aberto) return;
+    const aoTecla = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        aoCancelar();
+      }
+    };
+    window.addEventListener("keydown", aoTecla);
+    return () => window.removeEventListener("keydown", aoTecla);
+  }, [aberto, aoCancelar]);
+
+  if (!aberto) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+      onClick={aoCancelar}
+      role="dialog"
+      aria-modal="true"
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (valor.trim()) {
+            aoConfirmar(valor.trim());
+          }
+        }}
+        className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="space-y-1.5">
+          <h3 className="text-base font-semibold text-foreground">{titulo}</h3>
+          {descricao && <p className="text-xs text-muted-foreground leading-relaxed">{descricao}</p>}
+        </div>
+
+        <input
+          ref={inputRef}
+          type="text"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          placeholder={placeholder}
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden focus:ring-1 focus:ring-primary"
+        />
+
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <Botao type="button" variante="neutro" tamanho="pequeno" onClick={aoCancelar}>
+            {textoCancelar}
+          </Botao>
+          <Botao type="submit" variante="primario" tamanho="pequeno" disabled={!valor.trim()}>
+            {textoConfirmar}
+          </Botao>
+        </div>
+      </form>
     </div>
   );
 }

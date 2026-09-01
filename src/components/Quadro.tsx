@@ -30,7 +30,6 @@ import {
   Folder,
   Sparkles,
   CheckCircle2,
-  Circle,
   Plus,
   Target,
   Flame,
@@ -250,29 +249,41 @@ function CartaoArrastavel({
           />
         )}
 
-        {/* Checkbox circular de conclusão direta */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (aoAlternarStatus) aoAlternarStatus(t);
-          }}
-          className="mt-0.5 shrink-0 rounded-full p-0.5 text-muted-foreground/70 hover:text-primary transition-colors cursor-pointer"
-          title={t.status === "feito" ? "Reabrir tarefa" : "Marcar como feita"}
-          aria-label={t.status === "feito" ? `Reabrir ${t.titulo}` : `Concluir ${t.titulo}`}
-        >
-          {t.status === "feito" ? (
-            <CheckCircle2 size={15} className="text-emerald-500 fill-emerald-500/20" />
-          ) : (
-            <Circle size={15} className="hover:text-primary transition-colors" />
-          )}
-        </button>
-
         <div className="flex-1 min-w-0">
           <ConteudoDoCartao t={t} />
         </div>
 
         <div className="flex items-center gap-0.5 shrink-0">
+          {/* Botão de Concluir ou Reabrir com um clique */}
+          {aoAlternarStatus && (
+            <Tooltip
+              conteudo={t.status === "feito" ? "Reabrir tarefa" : "Concluir tarefa"}
+              posicao="top"
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  aoAlternarStatus(t);
+                }}
+                className={cn(
+                  "p-1 rounded-md transition-colors cursor-pointer shrink-0",
+                  t.status === "feito"
+                    ? "text-emerald-500 hover:bg-emerald-500/15"
+                    : "text-muted-foreground/60 hover:text-emerald-500 hover:bg-emerald-500/10 opacity-0 group-hover:opacity-100 sm:opacity-0 focus:opacity-100"
+                )}
+                title={t.status === "feito" ? "Reabrir tarefa" : "Concluir tarefa"}
+                aria-label={t.status === "feito" ? `Reabrir ${t.titulo}` : `Concluir ${t.titulo}`}
+              >
+                {t.status === "feito" ? (
+                  <CheckCircle2 size={13} className="text-emerald-500 fill-emerald-500/20" />
+                ) : (
+                  <CheckCircle2 size={13} />
+                )}
+              </button>
+            </Tooltip>
+          )}
+
           {/* Botão de foco rápido iconizado e minimalista */}
           {t.status !== "feito" && (
             <Tooltip

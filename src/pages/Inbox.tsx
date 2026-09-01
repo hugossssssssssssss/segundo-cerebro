@@ -197,6 +197,7 @@ export default function Inbox() {
   // Rascunhos Offline
   const [rascunhos, setRascunhos] = useState<RascunhoOffline[]>([]);
   const [sincronizandoTudo, setSincronizandoTudo] = useState(false);
+  const [confirmarLimparRascunhos, setConfirmarLimparRascunhos] = useState(false);
 
   // Estado do Painel Notion para Novo Lembrete / Edição de Documento
   const [itemAberto, setItemAberto] = useState<CompromissoSemana | null>(null);
@@ -475,11 +476,14 @@ export default function Inbox() {
   };
 
   const aoLimparTodosRascunhos = () => {
-    if (window.confirm("Deseja realmente limpar todos os rascunhos offline locais?")) {
-      limparTodosRascunhosLocais();
-      atualizarRascunhos();
-      toast("Fila de rascunhos limpa.");
-    }
+    setConfirmarLimparRascunhos(true);
+  };
+
+  const confirmarLimparRascunhosAcao = () => {
+    setConfirmarLimparRascunhos(false);
+    limparTodosRascunhosLocais();
+    atualizarRascunhos();
+    toast("Fila de rascunhos limpa.");
   };
 
   // ── Abertura do Painel Notion ─────────────────────────────────────────────
@@ -1654,6 +1658,17 @@ export default function Inbox() {
         titulo="Excluir documento"
         descricao={`Tem certeza que deseja excluir "${itemParaExcluir?.titulo}"? Esta ação removerá o arquivo permanentemente.`}
         textoConfirmar="Excluir"
+        varianteConfirmar="perigo"
+      />
+
+      {/* Modal de Confirmação de Limpeza de Rascunhos Offline */}
+      <ModalConfirmacao
+        aberto={confirmarLimparRascunhos}
+        aoCancelar={() => setConfirmarLimparRascunhos(false)}
+        aoConfirmar={confirmarLimparRascunhosAcao}
+        titulo="Limpar rascunhos offline"
+        descricao="Deseja realmente limpar todos os rascunhos offline locais? Quaisquer alterações não sincronizadas serão descartadas."
+        textoConfirmar="Sim, limpar rascunhos"
         varianteConfirmar="perigo"
       />
     </div>

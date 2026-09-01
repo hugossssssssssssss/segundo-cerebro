@@ -88,6 +88,7 @@ export default function Tarefas() {
   const [filtroRapido, setFiltroRapido] = useState<FiltroRapidoTarefa>("todas");
   const [tarefaParaPDI, setTarefaParaPDI] = useState<Tarefa | null>(null);
   const [tarefaParaExcluir, setTarefaParaExcluir] = useState<Tarefa | null>(null);
+  const [confirmarExclusaoLote, setConfirmarExclusaoLote] = useState(false);
   const [pastaSelecionada, setPastaSelecionada] = useState<string | null>(null);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
 
@@ -554,10 +555,15 @@ export default function Tarefas() {
     }
   }
 
-  async function excluirSelecionadas() {
+  function pedirExcluirSelecionadas() {
+    if (selecionadas.size === 0) return;
+    setConfirmarExclusaoLote(true);
+  }
+
+  async function confirmarExcluirSelecionadas() {
     const alvos = tarefas.filter((t) => selecionadas.has(t.caminho));
+    setConfirmarExclusaoLote(false);
     if (alvos.length === 0) return;
-    if (!confirm(`Deseja realmente excluir ${alvos.length} tarefa(s) selecionada(s)?`)) return;
     limparSelecao();
     try {
       for (const t of alvos) {
@@ -773,7 +779,7 @@ export default function Tarefas() {
           </Tooltip>
 
           <Tooltip conteudo="Excluir tarefas selecionadas" posicao="top">
-            <Botao tamanho="icone" variante="perigo" onClick={excluirSelecionadas} className="h-8 w-8" aria-label="Excluir tarefas selecionadas">
+            <Botao tamanho="icone" variante="perigo" onClick={pedirExcluirSelecionadas} className="h-8 w-8" aria-label="Excluir tarefas selecionadas">
               <Trash2 size={14} />
             </Botao>
           </Tooltip>
@@ -847,6 +853,19 @@ export default function Tarefas() {
           varianteConfirmar="perigo"
           aoConfirmar={confirmarRemoverTarefa}
           aoCancelar={() => setTarefaParaExcluir(null)}
+        />
+      )}
+
+      {/* Modal de confirmação de exclusão em lote */}
+      {confirmarExclusaoLote && (
+        <ModalConfirmacao
+          aberto={true}
+          titulo="Excluir tarefas selecionadas"
+          descricao={`Tem certeza que deseja excluir as ${selecionadas.size} tarefas selecionadas? Esta ação removerá os arquivos permanentemente.`}
+          textoConfirmar="Sim, excluir tarefas"
+          varianteConfirmar="perigo"
+          aoConfirmar={confirmarExcluirSelecionadas}
+          aoCancelar={() => setConfirmarExclusaoLote(false)}
         />
       )}
 
