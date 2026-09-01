@@ -109,4 +109,24 @@ describe("Quadro", () => {
     expect(screen.getByText("1/2 passos")).toBeTruthy();
     expect(screen.getByText("#cliente")).toBeTruthy();
   });
+
+  it("clicar no checkbox alterna o status sem abrir o cartão", async () => {
+    const { aoAbrir, aoMudarStatus } = montar();
+    const botaoConcluir = screen.getByLabelText("Concluir Revisar layout");
+    await userEvent.click(botaoConcluir);
+    expect(aoMudarStatus).toHaveBeenCalledTimes(1);
+    expect(aoMudarStatus.mock.calls[0][1]).toBe("feito");
+    expect(aoAbrir).not.toHaveBeenCalled();
+  });
+
+  it("permite criar tarefa rápida inline na coluna", async () => {
+    const aoCriarRapido = vi.fn();
+    montar({ aoCriarRapido });
+    const botoesAdicionar = screen.getAllByText("Adicionar tarefa");
+    await userEvent.click(botoesAdicionar[0]); // na coluna a-fazer
+    const input = screen.getByPlaceholderText("Nova tarefa em A fazer...");
+    await userEvent.type(input, "Nova tarefa teste{enter}");
+    expect(aoCriarRapido).toHaveBeenCalledWith("a-fazer", "Nova tarefa teste");
+  });
 });
+

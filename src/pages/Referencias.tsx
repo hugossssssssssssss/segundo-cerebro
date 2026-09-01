@@ -26,6 +26,7 @@ import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
 import { comoReferencia, referenciaParaArquivo } from "@/lib/entidades";
+import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
 import { escreverMarkdown, tituloProvavel, nomeLivre } from "@/lib/markdown";
 import {
   nomeDeImagem,
@@ -65,7 +66,7 @@ export default function Referencias() {
   const { focarFlutuante } = useItemFlutuante();
 
   // ── Carregamento (recursivo para suportar subpastas) ─────────────────────
-  const { itens: refs, carregando, erro: erroCarregar, recarregar } =
+  const { itens: refs, acervo, carregando, erro: erroCarregar, recarregar } =
     useItemRepo(cfg, PASTAS.referencias, (item) =>
       comoReferencia(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
       { recursivo: true }
@@ -78,6 +79,9 @@ export default function Referencias() {
   const [busca, setBusca] = useState("");
   const [erroLocal, setErroLocal] = useState("");
   const erro = erroLocal || erroCarregar || erroSalvar;
+
+  type FiltroRapidoRef = "todas" | "com_imagem" | "links" | "sem_tags";
+  const [filtroRapido, setFiltroRapido] = useState<FiltroRapidoRef>("todas");
 
   const [regrasFiltro, setRegrasFiltro] = useState<RegraFiltro[]>([]);
 
@@ -412,6 +416,18 @@ export default function Referencias() {
     ];
   }, [todasTags]);
 
+  const indice = useMemo(() => montarIndice(acervo), [acervo]);
+  const mencoesDaRef = useMemo(
+    () => (editando?.caminho ? mencoesA(editando.caminho, acervo, indice) : []),
+    [editando?.caminho, acervo, indice],
+  );
+  const opcoesRelacionamento = useMemo(() =>
+    alvosUnicos(indice)
+      .map(a => ({ titulo: a.titulo, caminho: a.caminho }))
+      .sort((a, b) => a.titulo.localeCompare(b.titulo)),
+    [indice],
+  );
+
   const visiveis = useMemo(() => {
     let lista = refs.filter((r) => {
       if (pastaAtual) {
@@ -420,6 +436,14 @@ export default function Referencias() {
       }
       if (busca && !correspondeBusca(r.titulo, busca) && !correspondeBusca(r.porque, busca) && !correspondeBusca(r.corpo, busca)) {
         return false;
+      }
+      if (filtroRapido === "com_imagem") {
+        const temImg = Boolean(r.imagem || (r.corpo && /\.(png|jpe?g|webp|gif|svg)/i.test(r.corpo)));
+        if (!temImg) return false;
+      } else if (filtroRapido === "links") {
+        if (!r.fonte) return false;
+      } else if (filtroRapido === "sem_tags") {
+        if (r.tags && r.tags.length > 0) return false;
       }
       return true;
     });
@@ -435,7 +459,7 @@ export default function Referencias() {
     });
 
     return lista;
-  }, [refs, pastaAtual, busca, regrasFiltro]);
+  }, [refs, pastaAtual, busca, regrasFiltro, filtroRapido]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 w-full pb-10">
@@ -539,11 +563,38 @@ export default function Referencias() {
           aoMudarBusca={setBusca}
           placeholderBusca="Buscar inspirações, cores, notas..."
           filtros={
-            <BarraFiltrosAvancados
-              propriedadesDisponiveis={propriedadesDisponiveis}
-              regras={regrasFiltro}
-              aoMudarRegras={setRegrasFiltro}
-            />
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1 bg-secondary/50 p-0.5 rounded-xl border border-border/60">
+                {(
+                  [
+                    { id: "todas", rotulo: "Todas" },
+                    { id: "com_imagem", rotulo: "🖼️ Com Imagem" },
+                    { id: "links", rotulo: "🔗 Links" },
+                    { id: "sem_tags", rotulo: "Sem Tags" },
+                  ] as const
+                ).map((op) => (
+                  <button
+                    key={op.id}
+                    type="button"
+                    onClick={() => setFiltroRapido(op.id)}
+                    className={cn(
+                      "text-xs px-2.5 py-1 rounded-lg transition-all font-medium cursor-pointer",
+                      filtroRapido === op.id
+                        ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+                    )}
+                  >
+                    {op.rotulo}
+                  </button>
+                ))}
+              </div>
+
+              <BarraFiltrosAvancados
+                propriedadesDisponiveis={propriedadesDisponiveis}
+                regras={regrasFiltro}
+                aoMudarRegras={setRegrasFiltro}
+              />
+            </div>
           }
           acoes={
             <AlternadorVisao
@@ -874,6 +925,8 @@ export default function Referencias() {
           aoSalvar={async () => { await salvar(false); }}
           aoRemover={editando.caminho ? async () => { await remover(editando); } : undefined}
           erro={erroSalvar}
+          mencoes={mencoesDaRef}
+          opcoesRelacionamento={opcoesRelacionamento}
         />
       )}
 

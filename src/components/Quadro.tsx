@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -19,7 +19,20 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Timer, GripVertical, Pause, ChevronDown, ChevronUp, ChevronRight, ChevronsRight, Folder, Sparkles } from "lucide-react";
+import {
+  Timer,
+  GripVertical,
+  Pause,
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  ChevronsRight,
+  Folder,
+  Sparkles,
+  CheckCircle2,
+  Circle,
+  Plus,
+} from "lucide-react";
 import {
   urgencia,
   textoPrazo,
@@ -33,6 +46,7 @@ import {
 import { Cartao, Selo, Tooltip } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { PrismasFoco } from "@/components/PrismasFoco";
+import { MenuAcoesTarefa } from "@/components/MenuAcoesTarefa";
 
 /**
  * Quadro de tarefas em colunas — a fazer, fazendo, feito.
@@ -137,11 +151,21 @@ function CartaoArrastavel({
   t,
   aoAbrir,
   aoCronometrar,
+  aoAlternarStatus,
+  aoAdiarPrazo,
+  aoDuplicar,
+  aoRegistrarEntregaPDI,
+  aoExcluir,
   gravando,
 }: {
   t: Tarefa;
   aoAbrir: (t: Tarefa) => void;
   aoCronometrar: (t: Tarefa) => void;
+  aoAlternarStatus?: (t: Tarefa) => void;
+  aoAdiarPrazo?: (t: Tarefa, dias: number) => void;
+  aoDuplicar?: (t: Tarefa) => void;
+  aoRegistrarEntregaPDI?: (t: Tarefa) => void;
+  aoExcluir?: (t: Tarefa) => void;
   gravando: boolean;
 }) {
   const {
@@ -176,7 +200,7 @@ function CartaoArrastavel({
       ref={setNodeRef}
       style={estilo}
       className={cn(
-        "group relative flex flex-col gap-1 p-3 text-xs select-none cursor-pointer transition-colors hover:bg-accent/30",
+        "group relative flex flex-col gap-1.5 p-3 text-xs select-none cursor-pointer transition-colors hover:bg-accent/30",
         isDragging && "opacity-30",
         gravando && "animate-pulse border-primary",
         isAtivo && "border-primary/60 bg-primary/5",
@@ -192,28 +216,59 @@ function CartaoArrastavel({
         />
       )}
 
-      <div className="flex items-start justify-between gap-1">
+      <div className="flex items-start gap-2">
+        {/* Checkbox circular de conclusão direta */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (aoAlternarStatus) aoAlternarStatus(t);
+          }}
+          className="mt-0.5 shrink-0 rounded-full p-0.5 text-muted-foreground/70 hover:text-primary transition-colors cursor-pointer"
+          title={t.status === "feito" ? "Reabrir tarefa" : "Marcar como feita"}
+          aria-label={t.status === "feito" ? `Reabrir ${t.titulo}` : `Concluir ${t.titulo}`}
+        >
+          {t.status === "feito" ? (
+            <CheckCircle2 size={15} className="text-emerald-500 fill-emerald-500/20" />
+          ) : (
+            <Circle size={15} className="hover:text-primary transition-colors" />
+          )}
+        </button>
+
         <div className="flex-1 min-w-0">
           <ConteudoDoCartao t={t} />
         </div>
 
-        {/* Alça de arrasto visível no hover */}
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          className="shrink-0 p-1 text-muted-foreground/40 hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded"
-          title="Arrastar tarefa"
-          aria-label={`Mover ${t.titulo}`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <GripVertical size={14} />
-        </button>
+        <div className="flex items-center gap-0.5 shrink-0">
+          {/* Menu de ações rápidas (...) */}
+          <MenuAcoesTarefa
+            tarefa={t}
+            aoAlternarStatus={aoAlternarStatus ? () => aoAlternarStatus(t) : undefined}
+            aoAdiarPrazo={aoAdiarPrazo ? (dias) => aoAdiarPrazo(t, dias) : undefined}
+            aoCronometrar={() => aoCronometrar(t)}
+            aoDuplicar={aoDuplicar ? () => aoDuplicar(t) : undefined}
+            aoRegistrarEntregaPDI={aoRegistrarEntregaPDI ? () => aoRegistrarEntregaPDI(t) : undefined}
+            aoExcluir={aoExcluir ? () => aoExcluir(t) : undefined}
+          />
+
+          {/* Alça de arrasto visível no hover */}
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="p-1 text-muted-foreground/40 hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing rounded"
+            title="Arrastar tarefa"
+            aria-label={`Mover ${t.titulo}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Botão de foco rápido */}
       {t.status !== "feito" && (
-        <div className="mt-1 flex justify-end">
+        <div className="mt-0.5 flex justify-end">
           <button
             type="button"
             onClick={aoClicarCronometro}
@@ -250,6 +305,12 @@ function Coluna({
   tarefas,
   aoAbrir,
   aoCronometrar,
+  aoAlternarStatus,
+  aoAdiarPrazo,
+  aoDuplicar,
+  aoRegistrarEntregaPDI,
+  aoExcluir,
+  aoCriarRapido,
   gravandoCaminho,
   colapsada,
   aoAlternarColapso,
@@ -258,15 +319,33 @@ function Coluna({
   tarefas: Tarefa[];
   aoAbrir: (t: Tarefa) => void;
   aoCronometrar: (t: Tarefa) => void;
+  aoAlternarStatus?: (t: Tarefa) => void;
+  aoAdiarPrazo?: (t: Tarefa, dias: number) => void;
+  aoDuplicar?: (t: Tarefa) => void;
+  aoRegistrarEntregaPDI?: (t: Tarefa) => void;
+  aoExcluir?: (t: Tarefa) => void;
+  aoCriarRapido?: (status: Status, titulo: string) => Promise<void> | void;
   gravandoCaminho: string | null;
   colapsada: boolean;
   aoAlternarColapso: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const [expandida, setExpandida] = useState(false);
+  const [criandoInline, setCriandoInline] = useState(false);
+  const [textoRapido, setTextoRapido] = useState("");
+  const inputRapidoRef = useRef<HTMLInputElement>(null);
 
   const tarefasExibidas = expandida ? tarefas : tarefas.slice(0, LIMITE_PADRAO_COLUNA);
   const temMais = tarefas.length > LIMITE_PADRAO_COLUNA;
+
+  const lidarEnviarCriacao = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const titulo = textoRapido.trim();
+    if (!titulo || !aoCriarRapido) return;
+    setTextoRapido("");
+    setCriandoInline(false);
+    await aoCriarRapido(status, titulo);
+  };
 
   if (colapsada) {
     return (
@@ -334,11 +413,16 @@ function Coluna({
               t={t}
               aoAbrir={aoAbrir}
               aoCronometrar={aoCronometrar}
+              aoAlternarStatus={aoAlternarStatus}
+              aoAdiarPrazo={aoAdiarPrazo}
+              aoDuplicar={aoDuplicar}
+              aoRegistrarEntregaPDI={aoRegistrarEntregaPDI}
+              aoExcluir={aoExcluir}
               gravando={gravandoCaminho === t.caminho}
             />
           ))}
 
-          {tarefas.length === 0 && (
+          {tarefas.length === 0 && !criandoInline && (
             <p className="px-1 py-6 text-center text-xs text-muted-foreground">
               Arraste algo para cá
             </p>
@@ -364,6 +448,61 @@ function Coluna({
           )}
         </div>
       </SortableContext>
+
+      {/* Criação Rápida Inline no Rodapé da Coluna */}
+      {aoCriarRapido && (
+        <div className="mt-2 pt-1.5 border-t border-border/50">
+          {criandoInline ? (
+            <form onSubmit={lidarEnviarCriacao} className="space-y-1.5 animate-in fade-in duration-150">
+              <input
+                ref={inputRapidoRef}
+                type="text"
+                value={textoRapido}
+                onChange={(e) => setTextoRapido(e.target.value)}
+                placeholder={`Nova tarefa em ${ROTULO_STATUS[status]}...`}
+                className="w-full text-xs rounded-lg border border-primary/50 bg-background px-2.5 py-1.5 shadow-2xs focus:ring-1 focus:ring-primary focus:outline-hidden"
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setCriandoInline(false);
+                    setTextoRapido("");
+                  }
+                }}
+              />
+              <div className="flex items-center justify-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCriandoInline(false);
+                    setTextoRapido("");
+                  }}
+                  className="px-2 py-1 text-[11px] rounded-md text-muted-foreground hover:bg-accent cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!textoRapido.trim()}
+                  className="px-2.5 py-1 text-[11px] font-semibold rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 cursor-pointer transition-opacity"
+                >
+                  Adicionar (Enter)
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setCriandoInline(true);
+                setTimeout(() => inputRapidoRef.current?.focus(), 50);
+              }}
+              className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-card/70 rounded-xl transition-colors cursor-pointer font-medium"
+            >
+              <Plus size={13} className="text-primary" />
+              <span>Adicionar tarefa</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -373,12 +512,24 @@ export function Quadro({
   aoAbrir,
   aoCronometrar,
   aoMudarStatus,
+  aoAlternarStatus,
+  aoAdiarPrazo,
+  aoDuplicar,
+  aoRegistrarEntregaPDI,
+  aoExcluir,
+  aoCriarRapido,
   gravandoCaminho,
 }: {
   tarefas: Tarefa[];
   aoAbrir: (t: Tarefa) => void;
   aoCronometrar: (t: Tarefa) => void;
   aoMudarStatus: (t: Tarefa, novo: Status) => void;
+  aoAlternarStatus?: (t: Tarefa) => void;
+  aoAdiarPrazo?: (t: Tarefa, dias: number) => void;
+  aoDuplicar?: (t: Tarefa) => void;
+  aoRegistrarEntregaPDI?: (t: Tarefa) => void;
+  aoExcluir?: (t: Tarefa) => void;
+  aoCriarRapido?: (status: Status, titulo: string) => Promise<void> | void;
   gravandoCaminho: string | null;
 }) {
   const [arrastando, setArrastando] = useState<Tarefa | null>(null);
@@ -391,6 +542,12 @@ export function Quadro({
     } catch {
       return { "a-fazer": false, fazendo: false, feito: false };
     }
+  });
+
+  // Alternador padrão de status caso não seja injetado externamente
+  const lidarAlternarStatus = aoAlternarStatus || ((t: Tarefa) => {
+    const novoStatus: Status = t.status === "feito" ? "a-fazer" : "feito";
+    aoMudarStatus(t, novoStatus);
   });
 
   const alternarColapso = (s: Status) => {
@@ -521,6 +678,12 @@ export function Quadro({
             tarefas={tarefasFiltradas.filter((t) => t.status === s)}
             aoAbrir={aoAbrir}
             aoCronometrar={aoCronometrar}
+            aoAlternarStatus={lidarAlternarStatus}
+            aoAdiarPrazo={aoAdiarPrazo}
+            aoDuplicar={aoDuplicar}
+            aoRegistrarEntregaPDI={aoRegistrarEntregaPDI}
+            aoExcluir={aoExcluir}
+            aoCriarRapido={aoCriarRapido}
             gravandoCaminho={gravandoCaminho}
             colapsada={Boolean(colapsadas[s])}
             aoAlternarColapso={() => alternarColapso(s)}

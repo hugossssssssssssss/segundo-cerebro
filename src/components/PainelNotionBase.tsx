@@ -17,6 +17,11 @@ import {
   ArrowRightLeft,
   ChevronLeft,
   ChevronRight,
+  Layout,
+  FileText,
+  ListTodo,
+  Image as ImageIcon,
+  Link as LinkIcon,
 } from "lucide-react";
 import { Botao, Aviso, ModalConfirmacao, Tooltip } from "@/components/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -100,6 +105,17 @@ export function PainelNotionBase({
   const [vendoHistorico, setVendoHistorico] = useState(false);
   const [menuAcoesAberto, setMenuAcoesAberto] = useState(false);
   const [confirmandoConversao, setConfirmandoConversao] = useState<{ novoTipo: string; novaPasta: string } | null>(null);
+
+  type AbaContextoPainel = "tudo" | "documento" | "tarefas" | "moodboard" | "conexoes";
+  const [abaAtiva, setAbaAtiva] = useState<AbaContextoPainel>(() => {
+    const salvo = localStorage.getItem("klaus_aba_contexto_painel");
+    return (salvo as AbaContextoPainel) || "tudo";
+  });
+
+  const trocarAba = (nova: AbaContextoPainel) => {
+    setAbaAtiva(nova);
+    localStorage.setItem("klaus_aba_contexto_painel", nova);
+  };
 
   const cfg = useMemo(() => lerConfig(), []);
   const { salvarTexto, apagarItem } = useSalvar(cfg);
@@ -995,64 +1011,104 @@ export function PainelNotionBase({
 
       {elementoAcimaCorpo}
 
-      {eNota && <SumarioNota corpo={corpo} />}
-
-      {eTarefa && (
-        <>
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Passos / Subtarefas
-            </label>
-            <Subtarefas
-              corpo={corpo}
-              onChange={(novoCorpo) => setCorpo(novoCorpo)}
-            />
-          </div>
-          <hr className="border-border" />
-        </>
-      )}
-
-      <div className="min-h-[220px] space-y-4">
-        <EditorNotion
-          key={caminhoItem || "nota-editor"}
-          markdown={corpo}
-          alvosOverride={alvosOverride}
-          aoAbrirMencao={async (alvo) => {
-            if (temMudancas) {
-              try {
-                await aoSalvar();
-              } catch {}
-            }
-            abrirItemSpa(alvo.caminho);
-          }}
-          onChange={(v) => {
-            const nCorpo = v ?? "";
-            setCorpo(nCorpo);
-          }}
-        />
-        {lousasMencionadas.map((l) => (
-          <Suspense key={l.caminho} fallback={<div className="p-4 text-center text-xs text-muted-foreground animate-pulse">Carregando visualização do mapa mental...</div>}>
-            <MapaMentalEmbed
-              item={{
-                caminho: l.caminho,
-                nome: l.caminho.split("/").pop() || "",
-                sha: "",
-                texto: "",
-                tamanho: 0,
-                doc: { dados: { titulo: l.titulo, tipo: "lousa" }, corpo: "" },
-              }}
-            />
-          </Suspense>
+      {/* Abas Superiores de Contexto (Visão Completa | Documento | Tarefas | Moodboard | Conexões) */}
+      <div className="flex items-center gap-1.5 border-b border-border/60 pb-2 overflow-x-auto select-none pt-1">
+        {[
+          { id: "tudo", rotulo: "Visão Completa", icone: <Layout className="w-3.5 h-3.5" /> },
+          { id: "documento", rotulo: "Documento", icone: <FileText className="w-3.5 h-3.5 text-blue-500" /> },
+          { id: "tarefas", rotulo: "Tarefas do Projeto", icone: <ListTodo className="w-3.5 h-3.5 text-primary" /> },
+          { id: "moodboard", rotulo: "Moodboard", icone: <ImageIcon className="w-3.5 h-3.5 text-purple-500" /> },
+          ...(mencoes.length > 0
+            ? [{ id: "conexoes", rotulo: `Conexões (${mencoes.length})`, icone: <LinkIcon className="w-3.5 h-3.5 text-amber-500" /> }]
+            : []),
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => trocarAba(tab.id as AbaContextoPainel)}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap",
+              abaAtiva === tab.id
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+            )}
+          >
+            {tab.icone}
+            <span>{tab.rotulo}</span>
+          </button>
         ))}
       </div>
 
-      {eNota && (
-        <div className="space-y-3 pt-2">
+      {/* Bloco 1: Documento (Editor e Subtarefas) */}
+      {(abaAtiva === "tudo" || abaAtiva === "documento") && (
+        <div className="space-y-4 animate-in fade-in duration-150">
+          {eNota && <SumarioNota corpo={corpo} />}
+
+          {eTarefa && (
+            <>
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Passos / Subtarefas
+                </label>
+                <Subtarefas
+                  corpo={corpo}
+                  onChange={(novoCorpo) => setCorpo(novoCorpo)}
+                />
+              </div>
+              <hr className="border-border" />
+            </>
+          )}
+
+          <div className="min-h-[220px] space-y-4">
+            <EditorNotion
+              key={caminhoItem || "nota-editor"}
+              markdown={corpo}
+              alvosOverride={alvosOverride}
+              aoAbrirMencao={async (alvo) => {
+                if (temMudancas) {
+                  try {
+                    await aoSalvar();
+                  } catch {}
+                }
+                abrirItemSpa(alvo.caminho);
+              }}
+              onChange={(v) => {
+                const nCorpo = v ?? "";
+                setCorpo(nCorpo);
+              }}
+            />
+            {lousasMencionadas.map((l) => (
+              <Suspense key={l.caminho} fallback={<div className="p-4 text-center text-xs text-muted-foreground animate-pulse">Carregando visualização do mapa mental...</div>}>
+                <MapaMentalEmbed
+                  item={{
+                    caminho: l.caminho,
+                    nome: l.caminho.split("/").pop() || "",
+                    sha: "",
+                    texto: "",
+                    tamanho: 0,
+                    doc: { dados: { titulo: l.titulo, tipo: "lousa" }, corpo: "" },
+                  }}
+                />
+              </Suspense>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bloco 2: Tarefas do Projeto */}
+      {(abaAtiva === "tudo" || abaAtiva === "tarefas") && (
+        <div className="space-y-3 pt-2 animate-in fade-in duration-150">
           <PainelTarefasNota
             tituloNota={titulo}
             caminhoNota={caminhoItem}
             relacionamentos={dadosProps.relacionamentos}
           />
+        </div>
+      )}
+
+      {/* Bloco 3: Moodboard e Referências Visuais */}
+      {(abaAtiva === "tudo" || abaAtiva === "moodboard") && (
+        <div className="space-y-3 pt-2 animate-in fade-in duration-150">
           <PainelReferenciasNota
             tituloNota={titulo}
             caminhoNota={caminhoItem}
@@ -1061,8 +1117,9 @@ export function PainelNotionBase({
         </div>
       )}
 
-      {mencoes.length > 0 && (
-        <div className="mt-6 border-t border-border pt-5">
+      {/* Bloco 4: Conexões e Menções */}
+      {(abaAtiva === "tudo" || abaAtiva === "conexoes") && mencoes.length > 0 && (
+        <div className="mt-6 border-t border-border pt-5 animate-in fade-in duration-150">
           <MencionadoEm mencoes={mencoes} />
         </div>
       )}

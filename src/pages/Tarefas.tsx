@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
   Columns3,
@@ -34,6 +34,7 @@ import {
   Aviso,
   Vazio,
   Carregando,
+  ModalConfirmacao,
 } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
@@ -42,6 +43,9 @@ import { cn, lerParametroAbrir, correspondeBusca } from "@/lib/utils";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { BarraFiltrosAvancados, filtrarItensPorRegras, type DefinicaoPropriedade, type RegraFiltro } from "@/components/BarraFiltrosAvancados";
 import { DropdownNovoViaModelo } from "@/components/DropdownNovoViaModelo";
+import { ModalVincularPDI } from "@/components/ModalVincularPDI";
+import { toast } from "@/lib/toast";
+import { urgencia } from "@/lib/tarefas";
 
 export default function Tarefas() {
   const cfg = lerConfig();
@@ -68,6 +72,10 @@ export default function Tarefas() {
   const [original, setOriginal] = useState<Tarefa | null>(null);
   const { iniciar } = useCronometro();
   const [regrasFiltro, setRegrasFiltro] = useState<RegraFiltro[]>([]);
+  type FiltroRapidoTarefa = "todas" | "urgentes" | "hoje" | "atrasadas" | "sem_prazo";
+  const [filtroRapido, setFiltroRapido] = useState<FiltroRapidoTarefa>("todas");
+  const [tarefaParaPDI, setTarefaParaPDI] = useState<Tarefa | null>(null);
+  const [tarefaParaExcluir, setTarefaParaExcluir] = useState<Tarefa | null>(null);
   const [pastaSelecionada, setPastaSelecionada] = useState<string | null>(null);
   const [visao, setVisao] = useState<"quadro" | "calendario">(() => {
     const salvo = localStorage.getItem("tarefa-visao");
@@ -318,6 +326,76 @@ export default function Tarefas() {
     recarregar();
   }
 
+  async function criarTarefaRapida(status: Status, titulo: string) {
+    if (!titulo.trim()) return;
+    const nova: Tarefa = {
+      bruto: {},
+      caminho: "",
+      sha: "",
+      titulo: titulo.trim(),
+      status,
+      tags: [],
+      corpo: "",
+    };
+    try {
+      await gravarTarefa(nova, `cria ${titulo.trim()}`);
+      recarregar();
+      toast(`Tarefa "${titulo.trim()}" criada!`);
+    } catch (e: any) {
+      toast(`Erro ao criar tarefa: ${e?.message || e}`, { tipo: "erro" });
+    }
+  }
+
+  async function adiarPrazo(t: Tarefa, dias: number) {
+    const dataBase = t.prazo ? new Date(t.prazo + "T12:00:00") : new Date();
+    dataBase.setDate(dataBase.getDate() + dias);
+    const iso = dataBase.toISOString().split("T")[0];
+    const nova: Tarefa = {
+      ...t,
+      prazo: iso,
+      bruto: { ...t.bruto, prazo: iso },
+    };
+    try {
+      await gravarTarefa(nova, `prazo: ${iso} (${t.titulo})`);
+      recarregar();
+      toast(`Prazo de "${t.titulo}" adiado para ${iso}!`);
+    } catch (e: any) {
+      toast(`Erro ao adiar prazo: ${e?.message || e}`, { tipo: "erro" });
+    }
+  }
+
+  async function duplicarTarefa(t: Tarefa) {
+    const novoTitulo = `Cópia de ${t.titulo}`;
+    const nova: Tarefa = {
+      ...t,
+      caminho: "",
+      sha: "",
+      titulo: novoTitulo,
+    };
+    try {
+      await gravarTarefa(nova, `duplicar ${t.titulo}`);
+      recarregar();
+      toast(`Tarefa duplicada com sucesso!`);
+    } catch (e: any) {
+      toast(`Erro ao duplicar tarefa: ${e?.message || e}`, { tipo: "erro" });
+    }
+  }
+
+  async function confirmarRemoverTarefa() {
+    if (!tarefaParaExcluir) return;
+    try {
+      await apagarItem(tarefaParaExcluir.caminho, tarefaParaExcluir.sha);
+      setTarefaParaExcluir(null);
+      if (editando?.caminho === tarefaParaExcluir.caminho) {
+        fechar();
+      }
+      recarregar();
+      toast(`Tarefa excluída!`);
+    } catch (e: any) {
+      toast(`Erro ao excluir tarefa: ${e?.message || e}`, { tipo: "erro" });
+    }
+  }
+
   /**
    * Troca o status de uma tarefa e grava.
    * A tela muda ANTES da gravação e volta atrás se der erro.
@@ -356,11 +434,23 @@ export default function Tarefas() {
         if (!t.caminho.startsWith(prefixo)) return false;
       }
       if (busca.trim()) {
-        return (
+        const atendeBusca =
           correspondeBusca(t.titulo, busca) ||
           correspondeBusca(t.corpo, busca) ||
-          t.tags.some((tag) => correspondeBusca(tag, busca))
-        );
+          t.tags.some((tag) => correspondeBusca(tag, busca));
+        if (!atendeBusca) return false;
+      }
+      if (filtroRapido === "hoje") {
+        const u = urgencia(t);
+        if (u !== "hoje") return false;
+      } else if (filtroRapido === "atrasadas") {
+        const u = urgencia(t);
+        if (u !== "atrasada") return false;
+      } else if (filtroRapido === "urgentes") {
+        const u = urgencia(t);
+        if (u !== "atrasada" && u !== "hoje" && u !== "proxima") return false;
+      } else if (filtroRapido === "sem_prazo") {
+        if (t.prazo) return false;
       }
       return true;
     });
@@ -377,52 +467,41 @@ export default function Tarefas() {
     });
 
     return lista;
-  }, [tarefas, pastaSelecionada, busca, regrasFiltro]);
+  }, [tarefas, pastaSelecionada, busca, regrasFiltro, filtroRapido]);
 
   // ── Sem configuração ────────────────────────────────────────────────────────
   if (!pronto) {
     return (
       <Vazio
-        titulo="Falta conectar sua conta"
-        descricao="Preencha sua conta do GitHub e o token na aba de Ajustes."
+        icone={<ListTodo size={24} />}
+        titulo="Tarefas do seu repositório"
+        descricao="Conecte seu repositório do GitHub em Ajustes para ver e gerenciar suas tarefas aqui."
         acao={
-          <Link to="/config">
-            <Botao>Ir para Ajustes</Botao>
-          </Link>
+          <Botao variante="primario" onClick={() => navegar("/configuracoes")}>
+            Ir para Ajustes
+          </Botao>
         }
       />
     );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-4 max-w-7xl mx-auto pb-12">
       <CabecalhoPagina
         titulo="Tarefas"
-        descricao="Organize suas pendências, prazos e prioridades do dia a dia."
-        icone={<ListTodo size={20} />}
-        corIcone="bg-blue-500/10 text-blue-600 dark:text-blue-400"
-        badge={undefined}
+        descricao="Acompanhe o que precisa ser feito, registre passos e foco de trabalho."
+        badge={
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground border border-border/70">
+            {tarefas.length}
+          </span>
+        }
         acoes={
           <DropdownNovoViaModelo
             rotuloPrincipal="Nova Tarefa"
-            iconePrincipal={<Plus size={16} />}
+            iconePrincipal={<Plus size={15} />}
             aoCriarNovo={abrirNova}
             categoria="tarefa"
             aoCriarComTemplate={criarComModelo}
-            aoEditarTemplate={(tmpl) => {
-              const rascunho: Tarefa = {
-                titulo: tmpl.titulo,
-                status: "a-fazer",
-                caminho: tmpl.caminho || `.klaus/templates/${tmpl.id}.md`,
-                sha: tmpl.sha || "",
-                corpo: tmpl.corpoPadrao,
-                tags: tmpl.frontmatter?.tags || [],
-                Pomodoro: 0,
-                bruto: tmpl.frontmatter || {},
-              };
-              setEditando(rascunho);
-              setOriginal(rascunho);
-            }}
           />
         }
       />
@@ -432,11 +511,39 @@ export default function Tarefas() {
         aoMudarBusca={setBusca}
         placeholderBusca="Buscar tarefa por título..."
         filtros={
-          <BarraFiltrosAvancados
-            propriedadesDisponiveis={propriedadesDisponiveis}
-            regras={regrasFiltro}
-            aoMudarRegras={setRegrasFiltro}
-          />
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1 bg-secondary/50 p-0.5 rounded-xl border border-border/60">
+              {(
+                [
+                  { id: "todas", rotulo: "Todas" },
+                  { id: "hoje", rotulo: "📅 Hoje" },
+                  { id: "urgentes", rotulo: "🔥 Urgentes" },
+                  { id: "atrasadas", rotulo: "⚠️ Atrasadas" },
+                  { id: "sem_prazo", rotulo: "Sem Prazo" },
+                ] as const
+              ).map((op) => (
+                <button
+                  key={op.id}
+                  type="button"
+                  onClick={() => setFiltroRapido(op.id)}
+                  className={cn(
+                    "text-xs px-2.5 py-1 rounded-lg transition-all font-medium cursor-pointer",
+                    filtroRapido === op.id
+                      ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+                  )}
+                >
+                  {op.rotulo}
+                </button>
+              ))}
+            </div>
+
+            <BarraFiltrosAvancados
+              propriedadesDisponiveis={propriedadesDisponiveis}
+              regras={regrasFiltro}
+              aoMudarRegras={setRegrasFiltro}
+            />
+          </div>
         }
         acoes={
           <AlternadorVisao
@@ -494,8 +601,6 @@ export default function Tarefas() {
         </div>
       )}
 
-
-
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 
       {carregando ? (
@@ -506,6 +611,11 @@ export default function Tarefas() {
           aoAbrir={abrir}
           aoCronometrar={iniciar}
           aoMudarStatus={mudarStatus}
+          aoCriarRapido={criarTarefaRapida}
+          aoAdiarPrazo={adiarPrazo}
+          aoDuplicar={duplicarTarefa}
+          aoExcluir={(t) => setTarefaParaExcluir(t)}
+          aoRegistrarEntregaPDI={(t) => setTarefaParaPDI(t)}
           gravandoCaminho={gravandoCaminho}
         />
       ) : (
@@ -559,6 +669,31 @@ export default function Tarefas() {
         />
       )}
 
+      {/* Modal de confirmação de exclusão rápida */}
+      {tarefaParaExcluir && (
+        <ModalConfirmacao
+          aberto={true}
+          titulo="Excluir tarefa"
+          descricao={`Tem certeza que deseja excluir a tarefa "${tarefaParaExcluir.titulo}"? Esta ação removerá o arquivo do repositório.`}
+          textoConfirmar="Sim, excluir"
+          varianteConfirmar="perigo"
+          aoConfirmar={confirmarRemoverTarefa}
+          aoCancelar={() => setTarefaParaExcluir(null)}
+        />
+      )}
+
+      {/* Modal de registrar como entrega no PDI */}
+      {tarefaParaPDI && (
+        <ModalVincularPDI
+          tarefa={tarefaParaPDI}
+          aberto={true}
+          aoFechar={() => setTarefaParaPDI(null)}
+          aoSucesso={() => {
+            setTarefaParaPDI(null);
+            recarregar();
+          }}
+        />
+      )}
       {/* O temporizador Pomodoro é agora renderizado globalmente via App.tsx */}
     </div>
   );

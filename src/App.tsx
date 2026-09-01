@@ -31,6 +31,7 @@ import { WorkspaceBarraAbas } from "@/components/workspace/WorkspaceBarraAbas";
 import { Busca } from "@/components/Busca";
 import { ModalBuscaWeb } from "@/components/ModalBuscaWeb";
 import { CapturaRapida } from "@/components/CapturaRapida";
+import { ModalGuiaAtalhos } from "@/components/ModalGuiaAtalhos";
 import { ToastsContainer } from "@/components/ToastsContainer";
 import { NavegacaoLateral } from "@/components/NavegacaoLateral";
 import { LimiteDeErro } from "@/components/LimiteDeErro";
@@ -97,6 +98,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
   const [buscando, setBuscando] = useState(false);
   const [buscandoWeb, setBuscandoWeb] = useState(false);
   const [capturando, setCapturando] = useState(false);
+  const [guiaAtalhosAberto, setGuiaAtalhosAberto] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
   const [textoCompartilhado, setTextoCompartilhado] = useState("");
   const [colapsada, setColapsada] = useState(() => {
@@ -118,7 +120,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
     localStorage.setItem("sidebar-colapsada", String(colapsada));
   }, [colapsada]);
 
-  // ⌘K busca, ⌘J captura, ⌘B toggle da barra lateral (Com exclusividade mútua)
+  // ⌘K busca, ⌘J captura, ⌘B toggle da barra lateral, ⌘/ guia de atalhos
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
@@ -139,6 +141,9 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       } else if (tecla === "l" && e.shiftKey) {
         e.preventDefault();
         alternarTema();
+      } else if (tecla === "/" || tecla === ";") {
+        e.preventDefault();
+        setGuiaAtalhosAberto((v) => !v);
       }
     };
     document.addEventListener("keydown", aoTeclar);
@@ -572,6 +577,10 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       <ModalBuscaWeb
         aberta={buscandoWeb}
         aoFechar={() => setBuscandoWeb(false)}
+      />
+      <ModalGuiaAtalhos
+        aberto={guiaAtalhosAberto}
+        aoFechar={() => setGuiaAtalhosAberto(false)}
       />
       <Pomodoro />
       <ToastsContainer />
