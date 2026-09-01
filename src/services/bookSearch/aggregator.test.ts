@@ -125,7 +125,9 @@ describe("buscarLivrosUnificado", () => {
       return { ok: false } as any;
     });
 
+    const spyWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const resultados = await buscarLivrosUnificado("Memórias");
+    spyWarn.mockRestore();
 
     // Deve retornar apenas o livro do Open Library sem estourar erro
     expect(resultados).toHaveLength(1);

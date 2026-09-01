@@ -41,7 +41,17 @@ describe("mcp-server - protocolo JSON-RPC sobre stdio", () => {
       params: {},
     });
 
-    await new Promise((r) => setTimeout(r, 600));
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, 2000);
+      const verificar = () => {
+        if (respostas.some((r) => r.id === 1) && respostas.some((r) => r.id === 2)) {
+          clearTimeout(timer);
+          resolve();
+        }
+      };
+      proc.stdout.on("data", verificar);
+      verificar();
+    });
     proc.kill();
 
     const respInit = respostas.find((r) => r.id === 1);

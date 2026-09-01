@@ -2,6 +2,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { WebSearchBar } from "./WebSearchBar";
 
+vi.mock("../lib/buscaWeb", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("../lib/buscaWeb")>();
+  return {
+    ...mod,
+    executarBuscaWeb: vi.fn(),
+  };
+});
+
 describe("WebSearchBar Component", () => {
   beforeEach(() => {
     localStorage.clear();

@@ -78,8 +78,10 @@ describe("menuPersonalizado", () => {
   });
 
   it("deve lidar graciosamente com JSON corrompido no localStorage", () => {
+    const spyError = vi.spyOn(console, "error").mockImplementation(() => {});
     localStorage.setItem(CHAVE_STORAGE_MENU, "{ json_invalido: ");
     const grupos = carregarMenuPersonalizado();
+    spyError.mockRestore();
     expect(grupos).toEqual(GRUPOS_MENU_PADRAO);
   });
 
