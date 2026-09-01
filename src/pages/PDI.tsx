@@ -965,7 +965,7 @@ export default function PDI() {
           aoFechar={fecharMeta}
           aoSalvar={async () => { if (editandoMeta) await salvarMeta(editandoMeta); }}
           aoRemover={editandoMeta.caminho ? async () => { await removerMeta(editandoMeta); } : undefined}
-          erro={erro}
+          erro={erroSalvar}
         />
       )}
 
@@ -1006,7 +1006,7 @@ export default function PDI() {
           aoFechar={fecharEntrega}
           aoSalvar={async () => { if (editandoEntrega) await salvarEntrega(); }}
           aoRemover={editandoEntrega.caminho ? async () => { await removerEntrega(editandoEntrega); } : undefined}
-          erro={erro}
+          erro={erroSalvar}
         />
       )}
 

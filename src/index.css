@@ -189,9 +189,19 @@
   }
 }
 
-/* Indicador de foco acessível para navegação por teclado */
+/* Seleção de texto suave, moderna e discreta em todo o aplicativo */
+::selection {
+  background-color: hsl(var(--primary) / 0.18);
+  color: inherit;
+}
+::-moz-selection {
+  background-color: hsl(var(--primary) / 0.18);
+  color: inherit;
+}
+
+/* Indicador de foco sutil e discreto para navegação */
 :focus-visible {
-  outline: 2px solid hsl(var(--primary) / 0.7);
+  outline: 2px solid hsl(var(--primary) / 0.35);
   outline-offset: 2px;
 }
 

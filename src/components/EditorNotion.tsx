@@ -957,9 +957,64 @@ export function EditorNotion({
         @media (min-width: 640px) {
           .notion-editor-wrapper .bn-editor { padding-left: 24px; padding-right: 24px; }
         }
-        .dark .notion-editor-wrapper {
+
+        /* Sobrescreve as cores de bloco e seleção do BlockNote para tons suaves e discretos */
+        .notion-editor-wrapper,
+        .bn-root {
+          --bn-colors-selected-background: hsl(var(--primary) / 0.12) !important;
+          --bn-colors-selected-text: inherit !important;
+          --bn-colors-hovered-background: hsl(var(--muted) / 0.7) !important;
+          --bn-colors-hovered-text: inherit !important;
+        }
+        .dark .notion-editor-wrapper,
+        .dark .bn-root {
+          --bn-colors-selected-background: hsl(var(--primary) / 0.25) !important;
+          --bn-colors-selected-text: inherit !important;
+          --bn-colors-hovered-background: hsl(var(--accent) / 0.6) !important;
+          --bn-colors-hovered-text: inherit !important;
           --bn-colors-editor-background: transparent;
           --bn-colors-editor-text: var(--foreground);
+        }
+
+        /* Seleção de texto no editor de notas: suave e translúcida, sem contraste preto agressivo */
+        .notion-editor-wrapper ::selection,
+        .bn-editor ::selection {
+          background-color: hsl(var(--primary) / 0.18) !important;
+          color: inherit !important;
+        }
+        .dark .notion-editor-wrapper ::selection,
+        .dark .bn-editor ::selection {
+          background-color: hsl(var(--primary) / 0.3) !important;
+          color: inherit !important;
+        }
+
+        /* Destaque suave em nós selecionados do ProseMirror */
+        .bn-block-content.ProseMirror-selectednode > *::after,
+        .ProseMirror-selectednode > .bn-block-content > *::after,
+        .bn-block-content .ProseMirror-selectednode::after,
+        .bn-inline-content .ProseMirror-selectednode::after {
+          background-color: hsl(var(--primary) / 0.08) !important;
+          box-shadow: inset 0 0 0 2px hsl(var(--primary) / 0.2) !important;
+        }
+
+        /* Item ativo no menu de sugestões (Slash "/" e Menções "@") */
+        .bn-mantine .bn-suggestion-menu-item[aria-selected="true"],
+        .bn-suggestion-menu-item[aria-selected="true"] {
+          background-color: hsl(var(--accent) / 0.8) !important;
+          color: hsl(var(--foreground)) !important;
+        }
+        .bn-mantine .bn-suggestion-menu-item[aria-selected="true"] .bn-mt-suggestion-menu-item-title,
+        .bn-suggestion-menu-item[aria-selected="true"] .bn-mt-suggestion-menu-item-title {
+          color: hsl(var(--foreground)) !important;
+        }
+
+        /* Botões ativos na barra de ferramentas sem fundo preto sólido */
+        .bn-toolbar .mantine-Button-root[data-selected],
+        .bn-toolbar .mantine-ActionIcon-root[data-selected],
+        .bn-action-toolbar .mantine-Button-root[data-selected],
+        .bn-action-toolbar .mantine-ActionIcon-root[data-selected] {
+          background-color: hsl(var(--primary) / 0.12) !important;
+          color: hsl(var(--foreground)) !important;
         }
         .notion-editor-wrapper a {
           color: #3b82f6;

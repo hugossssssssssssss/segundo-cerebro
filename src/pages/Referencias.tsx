@@ -873,7 +873,7 @@ export default function Referencias() {
           aoFechar={fecharPainel}
           aoSalvar={async () => { await salvar(false); }}
           aoRemover={editando.caminho ? async () => { await remover(editando); } : undefined}
-          erro={erro}
+          erro={erroSalvar}
         />
       )}
 

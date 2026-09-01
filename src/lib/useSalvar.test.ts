@@ -19,6 +19,9 @@ vi.mock("./repo", () => ({
 vi.mock("./offlineQueue", () => ({
   salvarRascunhoLocal: vi.fn().mockReturnValue({ ok: true }),
   obterRascunhosLocais: vi.fn().mockReturnValue([]),
+  limparRascunhosComErro: vi.fn(),
+  redefinirRascunhosComErroParaPendente: vi.fn(),
+  sincronizarFilaOffline: vi.fn().mockResolvedValue({ concluidos: 0, falhas: 0 }),
 }));
 
 import { atualizarCacheLocal, removerDoCacheLocal } from "./repo";

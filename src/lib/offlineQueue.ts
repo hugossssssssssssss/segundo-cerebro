@@ -184,6 +184,40 @@ export function limparTodosRascunhosLocais(): void {
   dispararAtualizacaoAcervo();
 }
 
+/** Redefine rascunhos que falharam para "pendente", permitindo nova tentativa com credenciais atualizadas */
+export function redefinirRascunhosComErroParaPendente(): void {
+  const rascunhos = obterRascunhosLocais();
+  let mudou = false;
+  for (const r of rascunhos) {
+    if (r.status === "erro" || r.status === "conflito") {
+      r.status = "pendente";
+      r.ultimoErro = undefined;
+      r.tentativas = 0;
+      mudou = true;
+    }
+  }
+  if (mudou) {
+    memoriaRascunhos = [...rascunhos];
+    try {
+      localStorage.setItem(CHAVE_RASCUNHOS, JSON.stringify(rascunhos));
+    } catch {}
+    dispararAtualizacaoAcervo();
+  }
+}
+
+/** Remove todos os rascunhos com erro da fila offline */
+export function limparRascunhosComErro(): void {
+  const rascunhos = obterRascunhosLocais();
+  const filtrados = rascunhos.filter((r) => r.status !== "erro" && r.status !== "conflito");
+  if (filtrados.length !== rascunhos.length) {
+    memoriaRascunhos = filtrados;
+    try {
+      localStorage.setItem(CHAVE_RASCUNHOS, JSON.stringify(filtrados));
+    } catch {}
+    dispararAtualizacaoAcervo();
+  }
+}
+
 let sincronizandoFila = false;
 
 /** Tenta descarregar a fila de rascunhos offline para o GitHub */

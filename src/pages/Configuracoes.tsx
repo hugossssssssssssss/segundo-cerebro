@@ -16,6 +16,12 @@ import { identificarArquivosProcessos, apagarArquivosProcessosEmLote } from "@/l
 import { CardConsumoGitHub } from "@/components/CardConsumoGitHub";
 import { instalarWorkflowLembretes } from "@/lib/instaladorWorkflow";
 import { hojeISO } from "@/lib/utils";
+import {
+  obterRascunhosLocais,
+  limparRascunhosComErro,
+  redefinirRascunhosComErroParaPendente,
+  sincronizarFilaOffline,
+} from "@/lib/offlineQueue";
 import JSZip from "jszip";
 
 export default function Configuracoes() {
@@ -34,6 +40,9 @@ export default function Configuracoes() {
   const [msgBackup, setMsgBackup] = useState("");
   const [testandoGemini, setTestandoGemini] = useState(false);
   const [resultadoGemini, setResultadoGemini] = useState<{ ok: boolean; texto: string } | null>(null);
+  const [rascunhosComErro, setRascunhosComErro] = useState<number>(() => {
+    return obterRascunhosLocais().filter((r) => r.status === "erro" || r.status === "conflito").length;
+  });
 
   // Estados da Padronização Global do Acervo
   const [analisandoAcervo, setAnalisandoAcervo] = useState(false);
@@ -279,6 +288,11 @@ export default function Configuracoes() {
     setResultado(null);
 
     const r = await testarConexao(limpa);
+    if (r.ok) {
+      redefinirRascunhosComErroParaPendente();
+      sincronizarFilaOffline(limpa).catch(() => {});
+      setRascunhosComErro(0);
+    }
     setResultado(
       r.ok
         ? { ok: true, texto: `Conectado em ${r.repo}. Tudo certo.` }
@@ -652,6 +666,38 @@ export default function Configuracoes() {
           )}
         </div>
       </Cartao>
+
+      {rascunhosComErro > 0 && (
+        <Aviso tom="neutro">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+            <span>
+              Existem <strong>{rascunhosComErro}</strong> alteração(ões) salvas localmente que não puderam ser enviadas ao GitHub por falha de token anterior.
+            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <Botao
+                tamanho="pequeno"
+                onClick={() => {
+                  redefinirRascunhosComErroParaPendente();
+                  sincronizarFilaOffline(cfg).catch(() => {});
+                  setRascunhosComErro(0);
+                }}
+              >
+                Tentar novamente
+              </Botao>
+              <Botao
+                tamanho="pequeno"
+                variante="perigo"
+                onClick={() => {
+                  limparRascunhosComErro();
+                  setRascunhosComErro(0);
+                }}
+              >
+                Limpar pendências
+              </Botao>
+            </div>
+          </div>
+        </Aviso>
+      )}
 
       <CardConsumoGitHub />
 

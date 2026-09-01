@@ -553,7 +553,7 @@ export default function Tarefas() {
           aoFechar={fechar}
           aoSalvar={async () => { await salvar(editando); }}
           aoRemover={editando.caminho ? async () => { await remover(editando); } : undefined}
-          erro={erro}
+          erro={erroSalvar}
           mencoes={mencoesDaTarefa}
           opcoesRelacionamento={opcoesRelacionamento}
         />

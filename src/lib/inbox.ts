@@ -264,6 +264,13 @@ export function compilarItensInbox(
               ? `Em andamento hoje • Status: ${statusAmigavel}`
               : `Agendada para ${intervalo.textoFormatado} • Status: ${statusAmigavel}`;
 
+            const criadoRecentemente = (() => {
+              const c = (doc.dados.criado_em as string) || (doc.dados.criado as string);
+              if (!c) return false;
+              const t = new Date(c).getTime();
+              return !isNaN(t) && Math.abs(agora.getTime() - t) < 24 * 60 * 60 * 1000;
+            })();
+
             resultado.push({
               id,
               tipo: ehAtrasada ? "tarefa_atrasada" : "lembrete",
@@ -272,8 +279,8 @@ export function compilarItensInbox(
               caminhoOrigem: item.caminho,
               tituloOrigem: tituloDoc,
               dataVencimento: intervalo.textoFormatado,
-              visto: vistoNoDoc || Boolean(estado?.visto),
-              vistoEm: vistoEmNoDoc || estado?.vistoEm,
+              visto: vistoNoDoc || Boolean(estado?.visto) || (criadoRecentemente && !ehAtrasada),
+              vistoEm: vistoEmNoDoc || estado?.vistoEm || (criadoRecentemente ? agora.toISOString() : undefined),
               notificadoTelegram: estado?.notificadoTelegram,
               notificadoEmail: estado?.notificadoEmail,
               tags: tagsDoc,
@@ -312,7 +319,7 @@ export function compilarItensInbox(
       }
     }
 
-    // 3. Outras entidades com campo de data ou prazo (Metas PDI, Entregas, Notas)
+    // 3. Outras entidades com campo de data ou prazo (Metas PDI, Entregas, Notas, Contatos)
     if (!item.caminho.startsWith("tarefas/")) {
       const dataCampos = ["data", "prazo", "data_reuniao", "data_inicio", "data_fim"];
       let dataValor: string | undefined;
@@ -337,7 +344,13 @@ export function compilarItensInbox(
         const id = `entidade-data-${item.caminho}`;
         const estado = mapaEstado[id];
 
-        if (!estado?.descartado) {
+        const vistoNoDoc = Boolean(doc.dados.visto_em || doc.dados.inbox_visto);
+        const vistoEmNoDoc = (doc.dados.visto_em as string) || undefined;
+        const descartadoNoDoc = Boolean(doc.dados.inbox_descartado);
+
+        const descartadoFinal = descartadoNoDoc || Boolean(estado?.descartado);
+
+        if (!descartadoFinal) {
           let tipoEntidade = "nota";
           if (item.caminho.startsWith("pdi/metas/")) tipoEntidade = "meta";
           else if (item.caminho.startsWith("pdi/entregas/")) tipoEntidade = "entrega";
@@ -358,6 +371,13 @@ export function compilarItensInbox(
             ? `${rotuloEntidade} com data vencida em ${formatarDataPtBR(dataValor)}.`
             : `${rotuloEntidade} agendada para ${formatarDataPtBR(dataValor)}.`;
 
+          const criadoRecentemente = (() => {
+            const c = (doc.dados.criado_em as string) || (doc.dados.criado as string);
+            if (!c) return false;
+            const t = new Date(c).getTime();
+            return !isNaN(t) && Math.abs(agora.getTime() - t) < 24 * 60 * 60 * 1000;
+          })();
+
           resultado.push({
             id,
             tipo: ehAtrasado ? "tarefa_atrasada" : "lembrete",
@@ -366,8 +386,8 @@ export function compilarItensInbox(
             caminhoOrigem: item.caminho,
             tituloOrigem: tituloDoc,
             dataVencimento: dataValor,
-            visto: Boolean(estado?.visto),
-            vistoEm: estado?.vistoEm,
+            visto: vistoNoDoc || Boolean(estado?.visto) || (criadoRecentemente && !ehAtrasado),
+            vistoEm: vistoEmNoDoc || estado?.vistoEm || (criadoRecentemente ? agora.toISOString() : undefined),
             notificadoTelegram: estado?.notificadoTelegram,
             notificadoEmail: estado?.notificadoEmail,
             tags: tagsDoc,
@@ -417,6 +437,20 @@ export function salvarEstadoInboxLocal(mapa: MapaEstadoInbox): void {
   } catch {
     // ignora erro de quota
   }
+}
+
+/** Marca um documento específico como visto localmente no mapa da inbox */
+export function marcarItemComoVistoLocal(caminhoOuId: string): void {
+  try {
+    const mapa = lerEstadoInboxLocal();
+    const agoraIso = new Date().toISOString();
+    const idEntidade = `entidade-data-${caminhoOuId}`;
+    const idTarefa = `tarefa-${caminhoOuId}`;
+    mapa[idEntidade] = { ...mapa[idEntidade], visto: true, vistoEm: agoraIso };
+    mapa[idTarefa] = { ...mapa[idTarefa], visto: true, vistoEm: agoraIso };
+    mapa[caminhoOuId] = { ...mapa[caminhoOuId], visto: true, vistoEm: agoraIso };
+    salvarEstadoInboxLocal(mapa);
+  } catch {}
 }
 
 export function mesclarEstadosInbox(local: MapaEstadoInbox, remoto: MapaEstadoInbox): MapaEstadoInbox {

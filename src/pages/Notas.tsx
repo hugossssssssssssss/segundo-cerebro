@@ -1430,7 +1430,7 @@ export default function Notas() {
           aoFechar={fecharNota}
           aoSalvar={async () => { if (aberta) await salvar(aberta); }}
           aoRemover={aberta.caminho ? async () => { await remover(); } : undefined}
-          erro={erro}
+          erro={erroSalvar}
           mencoes={mencoesNotaAberta}
           opcoesRelacionamento={opcoesRelacionamento}
         />

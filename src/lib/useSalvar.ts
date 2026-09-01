@@ -16,10 +16,16 @@ import { lerMarkdown } from "./markdown";
 import { notificarOutrasAbas } from "./syncChannel";
 import { toast } from "./toast";
 import { formatarNomeAmigavel } from "./utils";
-import { salvarRascunhoLocal, obterRascunhosLocais, sincronizarFilaOffline } from "./offlineQueue";
+import {
+  salvarRascunhoLocal,
+  obterRascunhosLocais,
+  sincronizarFilaOffline,
+  limparRascunhosComErro,
+} from "./offlineQueue";
 import { lerConfig, configCompleta, type Settings } from "./settings";
 import { dispararAtualizacaoAcervo, EVENTO_ACERVO_ATUALIZADO } from "./eventos";
 import { moverParaLixeira } from "./lixeira";
+import { marcarItemComoVistoLocal } from "./inbox";
 
 export type EstadoSalvar = {
   /**
@@ -94,6 +100,9 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
       // 2. Atualiza o cache local em memória imediatamente
       const doc = lerMarkdown(texto);
       atualizarCacheLocal(caminho, texto, doc, shaFinal);
+
+      // Marca como visto localmente para evitar notificações de não lido para o próprio autor
+      marcarItemComoVistoLocal(caminho);
 
       if (!silencioso) {
         // 3. Notifica atualizações de estado local com agrupamento inteligente
@@ -173,6 +182,9 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
     moverParaLixeiraItem,
     salvando,
     erro,
-    limparErro: () => setErro(""),
+    limparErro: () => {
+      setErro("");
+      limparRascunhosComErro();
+    },
   };
 }
