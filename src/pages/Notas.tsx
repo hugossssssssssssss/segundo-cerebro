@@ -114,7 +114,9 @@ export default function Notas() {
     x: number;
     y: number;
     emCartao: boolean;
+    notaAlvo?: Nota | null;
   } | null>(null);
+  const [filtroRapido, setFiltroRapido] = useState<string>("todas");
 
   // Drag and drop: nota arrastada sobre pasta
   const [notaArrastada, setNotaArrastada] = useState<string | null>(null);
@@ -427,9 +429,51 @@ export default function Notas() {
     };
   }, [arrastando]);
 
-  function abrirMenuContexto(e: React.MouseEvent, emCartao: boolean) {
+  function abrirMenuContexto(e: React.MouseEvent, emCartao: boolean, notaAlvo?: Nota) {
     e.preventDefault();
-    setMenuContexto({ x: e.clientX, y: e.clientY, emCartao });
+    setMenuContexto({ x: e.clientX, y: e.clientY, emCartao, notaAlvo });
+  }
+
+  async function toggleFixarNota(nota: Nota) {
+    const novoFixado = !nota.fixado;
+    const notaAtualizada: Nota = { ...nota, fixado: novoFixado };
+    const { dados, corpo } = notaParaArquivo(notaAtualizada);
+    const texto = escreverMarkdown({ dados, corpo });
+    try {
+      await salvarTexto(nota.caminho, texto, nota.sha, `${novoFixado ? "fixar" : "desafixar"}: ${nota.titulo}`);
+      invalidarCache();
+      dispararAtualizacaoAcervo(PASTAS.notas);
+      toast(novoFixado ? `Nota "${nota.titulo}" fixada no topo!` : `Nota "${nota.titulo}" desafixada!`);
+      recarregar();
+    } catch (e: any) {
+      toast(`Erro ao atualizar nota: ${e?.message || e}`, { tipo: "erro" });
+    }
+  }
+
+  async function duplicarNota(nota: Nota) {
+    const caminhosExistentes = todasNotas.map((n) => n.caminho);
+    const pasta = nota.caminho.split("/").slice(0, -1).join("/") || PASTAS.notas;
+    const novoTitulo = `Cópia de ${nota.titulo}`;
+    const caminhoNovo = nomeLivre(pasta, novoTitulo, caminhosExistentes);
+
+    const notaDuplicada: Nota = {
+      ...nota,
+      caminho: caminhoNovo,
+      sha: "",
+      titulo: novoTitulo,
+      fixado: false,
+    };
+    const { dados, corpo } = notaParaArquivo(notaDuplicada);
+    const texto = escreverMarkdown({ dados, corpo });
+    try {
+      await salvarTexto(caminhoNovo, texto, undefined, `duplicar ${nota.caminho}`);
+      invalidarCache();
+      dispararAtualizacaoAcervo(PASTAS.notas);
+      toast(`Nota duplicada com sucesso!`);
+      recarregar();
+    } catch (e: any) {
+      toast(`Erro ao duplicar nota: ${e?.message || e}`, { tipo: "erro" });
+    }
   }
 
   // Resolve notas e pastas selecionadas para uma lista de operações individuais em notas
@@ -768,6 +812,19 @@ export default function Notas() {
         recarregar();
         break;
       }
+      case "fixar":
+      case "desafixar": {
+        if (menuContexto?.notaAlvo) {
+          await toggleFixarNota(menuContexto.notaAlvo);
+        }
+        break;
+      }
+      case "duplicar": {
+        if (menuContexto?.notaAlvo) {
+          await duplicarNota(menuContexto.notaAlvo);
+        }
+        break;
+      }
     }
   }
 
@@ -834,6 +891,13 @@ export default function Notas() {
       return correspondeBusca(titulo, busca) || correspondeBusca(a.corpo, busca);
     });
 
+    if (filtroRapido === "fixadas") {
+      lista = lista.filter((a) => a.fixado);
+    } else if (filtroRapido.startsWith("tag:")) {
+      const tagAlvo = filtroRapido.slice(4);
+      lista = lista.filter((a) => a.tags && a.tags.includes(tagAlvo));
+    }
+
     lista = filtrarItensPorRegras(lista, regrasFiltro, (item, propId) => {
       if (propId === "titulo" || propId === "nome") return titulos[item.caminho] ?? item.titulo ?? item.caminho;
       if (propId === "tags") return item.tags || [];
@@ -844,8 +908,17 @@ export default function Notas() {
       return (item as any)[propId] || item.bruto?.[propId];
     });
 
+    // Notas fixadas sempre no topo, seguidas das mais recentes
+    lista.sort((a, b) => {
+      if (a.fixado && !b.fixado) return -1;
+      if (!a.fixado && b.fixado) return 1;
+      const dataA = a.atualizadoEm || a.criadoEm || a.bruto?.criado || a.caminho;
+      const dataB = b.atualizadoEm || b.criadoEm || b.bruto?.criado || b.caminho;
+      return String(dataB).localeCompare(String(dataA));
+    });
+
     return lista;
-  }, [naPasta, titulos, busca, regrasFiltro]);
+  }, [naPasta, titulos, busca, regrasFiltro, filtroRapido]);
 
   // `subpastas` serve só para desenhar a pasta atual. Para mover, porém,
   // precisamos oferecer também as pastas mais profundas e as que acabaram de
@@ -876,6 +949,55 @@ export default function Notas() {
     }
     return contagens;
   }, [subpastas, pastaAtual, todasNotas]);
+
+  // Atalhos de teclado específicos da tela de Notas (⌘N, /, ⌘A, Del)
+  useEffect(() => {
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (aberta !== null || menuContexto !== null) return;
+
+      const el = e.target as HTMLElement | null;
+      const ehInput =
+        el?.tagName === "INPUT" ||
+        el?.tagName === "TEXTAREA" ||
+        el?.tagName === "SELECT" ||
+        Boolean(el?.isContentEditable);
+
+      // ⌘N para criar nova nota
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n" && !e.shiftKey) {
+        e.preventDefault();
+        nova();
+        return;
+      }
+
+      // / para focar no campo de busca de notas
+      if (e.key === "/" && !ehInput && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        const inputBusca = document.querySelector("input[placeholder*='Buscar nota']") as HTMLInputElement;
+        if (inputBusca) {
+          inputBusca.focus();
+          inputBusca.select();
+        }
+        return;
+      }
+
+      // ⌘A para selecionar todas as notas visíveis
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a" && !ehInput) {
+        e.preventDefault();
+        setSelecionadas(new Set(visiveis.map((n) => n.caminho)));
+        return;
+      }
+
+      // Delete / Backspace para excluir selecionadas
+      if ((e.key === "Delete" || e.key === "Backspace") && !ehInput && selecionadas.size > 0) {
+        e.preventDefault();
+        executarExcluir();
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [aberta, menuContexto, visiveis, selecionadas]);
 
   if (!pronto) {
     return (
@@ -999,6 +1121,65 @@ export default function Notas() {
             />
           }
         />
+      )}
+
+      {/* Barra de Filtros Rápidos (Pills de 1 Clique) */}
+      {arquivos.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+          <button
+            type="button"
+            onClick={() => setFiltroRapido("todas")}
+            className={cn(
+              "px-3 py-1.5 rounded-full font-medium transition-all shrink-0 cursor-pointer border",
+              filtroRapido === "todas"
+                ? "bg-primary text-primary-foreground border-primary shadow-xs font-semibold"
+                : "bg-muted/40 text-muted-foreground border-border/60 hover:bg-accent hover:text-foreground"
+            )}
+          >
+            Todas ({naPasta.length})
+          </button>
+
+          {todasNotas.some((n) => n.fixado) && (
+            <button
+              type="button"
+              onClick={() => setFiltroRapido(filtroRapido === "fixadas" ? "todas" : "fixadas")}
+              className={cn(
+                "px-3 py-1.5 rounded-full font-medium transition-all shrink-0 cursor-pointer border flex items-center gap-1.5",
+                filtroRapido === "fixadas"
+                  ? "bg-amber-500 text-white border-amber-600 shadow-xs font-semibold"
+                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
+              )}
+            >
+              <span>📌 Fixadas</span>
+              <span className="text-[10px] opacity-80">
+                ({naPasta.filter((n) => n.fixado).length})
+              </span>
+            </button>
+          )}
+
+          {todasTags.slice(0, 8).map((tag) => {
+            const ativa = filtroRapido === `tag:${tag}`;
+            const contagem = naPasta.filter((n) => n.tags?.includes(tag)).length;
+            if (contagem === 0) return null;
+
+            return (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => setFiltroRapido(ativa ? "todas" : `tag:${tag}`)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full font-medium transition-all shrink-0 cursor-pointer border flex items-center gap-1",
+                  ativa
+                    ? "bg-foreground text-background border-foreground shadow-xs font-semibold"
+                    : "bg-muted/40 text-muted-foreground border-border/60 hover:bg-accent hover:text-foreground"
+                )}
+              >
+                <span>#{tag}</span>
+                <span className="text-[10px] opacity-60">({contagem})</span>
+              </button>
+            );
+          })}
+        </div>
       )}
 
       {selecionadas.size > 0 && (
@@ -1248,9 +1429,10 @@ export default function Notas() {
                         cartoesRef.current.delete(nota.caminho);
                       }
                     }}
+                    onToggleFixar={() => toggleFixarNota(nota)}
                     onContextMenu={(e) => {
                       e.stopPropagation();
-                      abrirMenuContexto(e, true);
+                      abrirMenuContexto(e, true, nota);
                     }}
                     onClick={() => {
                       if (selecionadas.size > 0) {
@@ -1303,9 +1485,10 @@ export default function Notas() {
                         cartoesRef.current.delete(nota.caminho);
                       }
                     }}
+                    onToggleFixar={() => toggleFixarNota(nota)}
                     onContextMenu={(e) => {
                       e.stopPropagation();
-                      abrirMenuContexto(e, true);
+                      abrirMenuContexto(e, true, nota);
                     }}
                     onClick={() => {
                       if (selecionadas.size > 0) {
@@ -1364,9 +1547,10 @@ export default function Notas() {
                         cartoesRef.current.delete(nota.caminho);
                       }
                     }}
+                    onToggleFixar={() => toggleFixarNota(nota)}
                     onContextMenu={(e) => {
                       e.stopPropagation();
-                      abrirMenuContexto(e, true);
+                      abrirMenuContexto(e, true, nota);
                     }}
                     onClick={() => {
                       if (selecionadas.size > 0) {
@@ -1405,6 +1589,7 @@ export default function Notas() {
         temSelecao={selecionadas.size > 0}
         emCartao={menuContexto?.emCartao ?? false}
         temClipboard={clipboard !== null && clipboard.caminhos.length > 0}
+        notaAlvo={menuContexto?.notaAlvo}
       />
 
 

@@ -6,16 +6,21 @@ import {
   getDefaultReactSlashMenuItems,
 } from "@blocknote/react";
 import { filterSuggestionItems } from "@blocknote/core";
-import { Sparkles, ListOrdered, Maximize2, Minimize2, Printer, Table } from "lucide-react";
+import { Sparkles, ListOrdered, Maximize2, Minimize2, Printer, Table, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as locales from "@blocknote/core/locales";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { lerConfig } from "@/lib/settings";
-import { carregarRepo, type ItemRepo } from "@/lib/repo";
+import { carregarRepo, cache, invalidarCache, type ItemRepo } from "@/lib/repo";
 import { montarIndice, alvosUnicos, filtrarAlvos, type Alvo } from "@/lib/links";
-import { restaurarWikilinks } from "@/lib/markdown";
+import { restaurarWikilinks, nomeLivre, escreverMarkdown } from "@/lib/markdown";
 import { formatarTagLembrete } from "@/lib/inbox";
+import { tarefaParaArquivo } from "@/lib/entidades";
+import { gravar } from "@/lib/github";
+import { dispararAtualizacaoAcervo } from "@/lib/eventos";
+import { toast } from "@/lib/toast";
+import type { Tarefa } from "@/lib/tipos";
 import { ModalLembrete } from "./ModalLembrete";
 import { ModalIADocumento } from "./ModalIADocumento";
 import { abrirItemSpa } from "./PropriedadesNotion";
@@ -507,8 +512,66 @@ export function EditorNotion({
         },
       };
 
+      const itemTarefaKanban = {
+        title: "Criar Tarefa no Kanban",
+        subtext: "Gera uma nova tarefa no quadro a partir deste bloco",
+        badge: "Kanban",
+        aliases: ["tarefa", "task", "kanban", "todo", "fazer", "acao"],
+        icon: <CheckSquare size={16} className="text-emerald-500" />,
+        onItemClick: async () => {
+          try {
+            const cursor = editor.getTextCursorPosition();
+            let textoBloco = "";
+            if (cursor?.block) {
+              const currentBlock = cursor.block;
+              if (Array.isArray(currentBlock.content)) {
+                textoBloco = currentBlock.content
+                  .map((c: any) => c.text || "")
+                  .join("")
+                  .replace(/^\//, "")
+                  .trim();
+              }
+            }
+
+            const titulo = textoBloco || prompt("Título da nova tarefa:")?.trim();
+            if (!titulo) return;
+
+            const cfg = lerConfig();
+            const todosItens = cache?.itens || [];
+            const caminhoNovo = nomeLivre("tarefas", titulo, todosItens.map((i) => i.caminho));
+
+            const novaTarefa: Tarefa = {
+              caminho: caminhoNovo,
+              sha: "",
+              bruto: {},
+              titulo,
+              status: "a-fazer",
+              tags: [],
+              corpo: "",
+              relacionamentos: [],
+            };
+            const { dados, corpo: corpoTarefa } = tarefaParaArquivo(novaTarefa);
+            const md = escreverMarkdown({ dados, corpo: corpoTarefa });
+            await gravar(cfg, caminhoNovo, md, `criar tarefa: ${titulo}`);
+            invalidarCache();
+            dispararAtualizacaoAcervo();
+
+            if (cursor?.block) {
+              editor.updateBlock(cursor.block, {
+                content: [{ type: "text", text: `@${titulo} `, styles: {} }],
+              });
+            } else {
+              editor.insertInlineContent([`@${titulo} `]);
+            }
+            toast(`Tarefa "${titulo}" criada com sucesso no Kanban!`);
+          } catch (e: any) {
+            toast(`Erro ao criar tarefa: ${e?.message || e}`, { tipo: "erro" });
+          }
+        },
+      };
+
       const padrao = getDefaultReactSlashMenuItems(editor);
-      return filterSuggestionItems([itemIA, itemTabela, ...padrao], query);
+      return filterSuggestionItems([itemIA, itemTarefaKanban, itemTabela, ...padrao], query);
     },
     [editor],
   );
@@ -826,6 +889,72 @@ export function EditorNotion({
     };
   }, [aoAbrirMencao]);
 
+  const [selecaoTexto, setSelecaoTexto] = useState<{ texto: string; x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const aoMudarSelecao = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) {
+        setSelecaoTexto(null);
+        return;
+      }
+      const txt = sel.toString().trim();
+      if (txt.length < 3 || txt.length > 160 || txt.includes("\n\n")) {
+        setSelecaoTexto(null);
+        return;
+      }
+      const elAlvo = sel.anchorNode?.parentElement;
+      if (!wrapperRef.current?.contains(elAlvo || null)) {
+        setSelecaoTexto(null);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        setSelecaoTexto(null);
+        return;
+      }
+      setSelecaoTexto({
+        texto: txt,
+        x: Math.max(16, rect.left + rect.width / 2),
+        y: Math.max(10, rect.top - 36),
+      });
+    };
+
+    document.addEventListener("selectionchange", aoMudarSelecao);
+    return () => document.removeEventListener("selectionchange", aoMudarSelecao);
+  }, []);
+
+  const converterSelecaoEmTarefa = async (texto: string) => {
+    try {
+      const cfg = lerConfig();
+      const todosItens = cache?.itens || [];
+      const caminhoNovo = nomeLivre("tarefas", texto, todosItens.map((i) => i.caminho));
+
+      const novaTarefa: Tarefa = {
+        caminho: caminhoNovo,
+        sha: "",
+        bruto: {},
+        titulo: texto,
+        status: "a-fazer",
+        tags: [],
+        corpo: "",
+        relacionamentos: [],
+      };
+      const { dados, corpo: corpoTarefa } = tarefaParaArquivo(novaTarefa);
+      const md = escreverMarkdown({ dados, corpo: corpoTarefa });
+      await gravar(cfg, caminhoNovo, md, `criar tarefa: ${texto}`);
+      invalidarCache();
+      dispararAtualizacaoAcervo();
+
+      document.execCommand("insertText", false, `@${texto} `);
+      setSelecaoTexto(null);
+      toast(`Tarefa "${texto}" criada no Kanban!`);
+    } catch (e: any) {
+      toast(`Erro ao criar tarefa: ${e?.message || e}`, { tipo: "erro" });
+    }
+  };
+
   return (
     <div
       ref={wrapperRef}
@@ -838,6 +967,30 @@ export function EditorNotion({
       onPaste={aoColar}
       onCopy={aoCopiar}
     >
+      {selecaoTexto && (
+        <div
+          style={{
+            position: "fixed",
+            left: `${selecaoTexto.x}px`,
+            top: `${selecaoTexto.y}px`,
+            transform: "translateX(-50%)",
+            zIndex: 10000,
+          }}
+          className="animate-in fade-in zoom-in-95 duration-100"
+        >
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              converterSelecaoEmTarefa(selecaoTexto.texto);
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card/95 text-foreground text-xs font-semibold shadow-lg border border-border/80 backdrop-blur hover:bg-accent hover:scale-105 active:scale-95 transition-all cursor-pointer select-none"
+          >
+            <CheckSquare size={13} className="text-emerald-500 shrink-0" />
+            <span>Criar Tarefa</span>
+          </button>
+        </div>
+      )}
       {!pronto && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/60 backdrop-blur-xs text-xs text-muted-foreground animate-pulse">
           Carregando editor…

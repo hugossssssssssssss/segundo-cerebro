@@ -65,6 +65,7 @@ export interface Nota extends ItemBase {
   tipo: "nota" | "referencia" | "rascunho";
   subtipo?: "nota" | "reuniao" | "briefing" | "rascunho";
   tags: string[];
+  fixado?: boolean;
   atualizado?: string;
   dataReuniao?: string;
   participantes?: string[];

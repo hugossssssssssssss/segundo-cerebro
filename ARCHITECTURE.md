@@ -1,6 +1,6 @@
 # Arquitetura do Klaus
 
-> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-08-30.**
+> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-09-01.**
 > Não edite este arquivo à mão — ele é reescrito a cada `npm run build`.
 > Para mudar o que está aqui, mude `src/lib/tipos.ts` e `src/lib/entidades.ts`.
 
@@ -51,6 +51,7 @@ Uma nota ou rascunho em `notas/`.
 | `tipo` | `"nota" \| "referencia" \| "rascunho"` | sim | — |
 | `subtipo` | `"nota" \| "reuniao" \| "briefing" \| "rascunho"` | não | — |
 | `tags` | `string[]` | sim | — |
+| `fixado` | `boolean` | não | — |
 | `atualizado` | `string` | não | — |
 | `dataReuniao` | `string` | não | — |
 | `participantes` | `string[]` | não | — |

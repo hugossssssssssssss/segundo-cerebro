@@ -24,6 +24,9 @@ import { PropriedadesNotion, abrirItemSpa } from "@/components/PropriedadesNotio
 import { EditorNotion } from "@/components/EditorNotion";
 import { Subtarefas } from "@/components/Subtarefas";
 import { MencionadoEm } from "@/components/Links";
+import { PainelTarefasNota } from "@/components/PainelTarefasNota";
+import { PainelReferenciasNota } from "@/components/PainelReferenciasNota";
+import { SumarioNota } from "@/components/SumarioNota";
 import { sincronizarRelacionamentos } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
@@ -960,6 +963,7 @@ export function PainelNotionBase({
   }, [opcoesRelacionamento, corpo, dadosProps.relacionamentos]);
 
   const eTarefa = rotuloTipo?.toLowerCase().includes("tarefa");
+  const eNota = !eTarefa && (!rotuloTipo || rotuloTipo.toLowerCase().includes("nota") || rotuloTipo.toLowerCase().includes("rascunho") || Boolean(caminhoItem?.startsWith("notas/")));
 
   const conteudo = (
     <div className="space-y-5 max-w-4xl mx-auto w-full">
@@ -990,6 +994,8 @@ export function PainelNotionBase({
       <hr className="border-border" />
 
       {elementoAcimaCorpo}
+
+      {eNota && <SumarioNota corpo={corpo} />}
 
       {eTarefa && (
         <>
@@ -1039,6 +1045,21 @@ export function PainelNotionBase({
           </Suspense>
         ))}
       </div>
+
+      {eNota && (
+        <div className="space-y-3 pt-2">
+          <PainelTarefasNota
+            tituloNota={titulo}
+            caminhoNota={caminhoItem}
+            relacionamentos={dadosProps.relacionamentos}
+          />
+          <PainelReferenciasNota
+            tituloNota={titulo}
+            caminhoNota={caminhoItem}
+            relacionamentos={dadosProps.relacionamentos}
+          />
+        </div>
+      )}
 
       {mencoes.length > 0 && (
         <div className="mt-6 border-t border-border pt-5">

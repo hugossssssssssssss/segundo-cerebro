@@ -10,9 +10,12 @@ import {
     Copy,
     Scissors,
     Clipboard,
+    Pin,
+    CopyPlus,
 } from "lucide-react";
 import { Botao, Campo } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import type { Nota } from "@/lib/tipos";
 
 export type AcaoMenuContexto =
     | { tipo: "criar_pasta"; nome: string }
@@ -22,7 +25,10 @@ export type AcaoMenuContexto =
     | { tipo: "adicionar_tags"; tags: string[] }
     | { tipo: "copiar" }
     | { tipo: "recortar" }
-    | { tipo: "colar" };
+    | { tipo: "colar" }
+    | { tipo: "fixar" }
+    | { tipo: "desafixar" }
+    | { tipo: "duplicar" };
 
 interface MenuContextoNotasProps {
     x: number;
@@ -38,6 +44,8 @@ interface MenuContextoNotasProps {
     emCartao: boolean;
     /** true quando há itens no clipboard do app */
     temClipboard: boolean;
+    /** Nota específica sobre a qual o menu foi aberto */
+    notaAlvo?: Nota | null;
 }
 
 /**
@@ -54,6 +62,7 @@ export function MenuContextoNotas({
     temSelecao,
     emCartao,
     temClipboard,
+    notaAlvo,
 }: MenuContextoNotasProps) {
     const [criandoPasta, setCriandoPasta] = useState(false);
     const [nomePasta, setNomePasta] = useState("");
@@ -147,6 +156,28 @@ export function MenuContextoNotas({
             style={{ left: posX, top: posY, zIndex: 200 }}
             className="fixed w-60 rounded-xl border border-border bg-card shadow-2xl p-1.5 animate-in zoom-in-95 fade-in duration-100"
         >
+            {/* Opções específicas para quando o clique foi em um cartão */}
+            {emCartao && notaAlvo && (
+                <>
+                    <ItemMenu
+                        icone={<Pin size={14} className={notaAlvo.fixado ? "text-amber-500 fill-amber-500/40" : "text-amber-500"} />}
+                        rotulo={notaAlvo.fixado ? "Desafixar do topo" : "Fixar no topo"}
+                        onClick={() => {
+                            aoAcao({ tipo: notaAlvo.fixado ? "desafixar" : "fixar" });
+                            aoFechar();
+                        }}
+                    />
+                    <ItemMenu
+                        icone={<CopyPlus size={14} className="text-purple-500" />}
+                        rotulo="Duplicar nota"
+                        onClick={() => {
+                            aoAcao({ tipo: "duplicar" });
+                            aoFechar();
+                        }}
+                    />
+                    <div className="my-1 border-t border-border/60" />
+                </>
+            )}
             {/* Criar Pasta */}
             {criandoPasta ? (
                 <div className="p-2 space-y-2">

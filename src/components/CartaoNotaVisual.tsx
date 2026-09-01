@@ -7,6 +7,8 @@ import {
   Link as LinkIcon,
   Folder,
   Sparkles,
+  Pin,
+  MoreHorizontal,
 } from "lucide-react";
 import { TagChip } from "@/components/TagChip";
 import { cn } from "@/lib/utils";
@@ -20,6 +22,7 @@ interface CartaoNotaVisualProps {
   visao?: "grade" | "lista" | "mural";
   onClick?: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
+  onToggleFixar?: () => void;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
   draggable?: boolean;
@@ -112,6 +115,7 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
       visao = "grade",
       onClick,
       onContextMenu,
+      onToggleFixar,
       onDragStart,
       onDragEnd,
       draggable = true,
@@ -233,11 +237,30 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
               </span>
             )}
 
+            {onToggleFixar && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleFixar();
+                }}
+                title={nota.fixado ? "Desafixar do topo" : "Fixar no topo"}
+                className={cn(
+                  "p-1.5 rounded-lg hover:bg-accent transition-all cursor-pointer",
+                  nota.fixado
+                    ? "text-amber-500 opacity-100"
+                    : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Pin size={13} className={nota.fixado ? "fill-amber-500/40 rotate-12" : ""} />
+              </button>
+            )}
+
             <button
               type="button"
               onClick={copiarMencao}
               title="Copiar @menção"
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground"
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
             >
               {copiado ? (
                 <Check size={13} className="text-emerald-500" />
@@ -245,6 +268,20 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
                 <LinkIcon size={13} />
               )}
             </button>
+
+            {onContextMenu && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onContextMenu(e);
+                }}
+                title="Mais opções da nota"
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <MoreHorizontal size={14} />
+              </button>
+            )}
           </div>
         </div>
       );
@@ -302,19 +339,60 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
               </div>
             </div>
 
-            {/* Ação rápida de copiar @menção */}
-            <button
-              type="button"
-              onClick={copiarMencao}
-              title="Copiar @menção"
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground shrink-0"
-            >
-              {copiado ? (
-                <Check size={13} className="text-emerald-500" />
-              ) : (
-                <LinkIcon size={13} />
+            {/* Ações rápidas no topo do cartão */}
+            <div className="flex items-center gap-0.5 shrink-0">
+              {nota.fixado && !onToggleFixar && (
+                <span title="Nota fixada" className="text-amber-500 p-1">
+                  <Pin size={13} className="fill-amber-500/40 rotate-12" />
+                </span>
               )}
-            </button>
+
+              {onToggleFixar && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFixar();
+                  }}
+                  title={nota.fixado ? "Desafixar do topo" : "Fixar no topo"}
+                  className={cn(
+                    "p-1.5 rounded-lg hover:bg-accent transition-all cursor-pointer",
+                    nota.fixado
+                      ? "text-amber-500 opacity-100"
+                      : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Pin size={13} className={nota.fixado ? "fill-amber-500/40 rotate-12" : ""} />
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={copiarMencao}
+                title="Copiar @menção"
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                {copiado ? (
+                  <Check size={13} className="text-emerald-500" />
+                ) : (
+                  <LinkIcon size={13} />
+                )}
+              </button>
+
+              {onContextMenu && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onContextMenu(e);
+                  }}
+                  title="Mais opções da nota"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <MoreHorizontal size={14} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Snippet / Trecho do Markdown */}

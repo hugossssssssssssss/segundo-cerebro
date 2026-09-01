@@ -95,6 +95,16 @@ describe("comoNota", () => {
     );
     expect(n.bruto.campo_do_futuro).toBe(42);
   });
+
+  it("lê o campo fixado como booleano", () => {
+    const n = comoNota(
+      doc("---\ntitulo: Fixada\nfixado: true\n---\n"),
+      "notas/a.md",
+      "s",
+      "t",
+    );
+    expect(n.fixado).toBe(true);
+  });
 });
 
 describe("notaParaArquivo", () => {
@@ -112,6 +122,12 @@ describe("notaParaArquivo", () => {
     expect(dados.autor).toBe("Hugo");
     expect(dados.titulo).toBe("Novo título");
     expect(corpo.trim()).toBe("Corpo");
+  });
+
+  it("grava fixado: true quando a nota está fixada", () => {
+    const n = comoNota(doc("---\ntitulo: X\n---\n"), "notas/a.md", "s", "t");
+    n.fixado = true;
+    expect(notaParaArquivo(n).dados.fixado).toBe(true);
   });
 
   it("omite tags quando a lista está vazia", () => {
