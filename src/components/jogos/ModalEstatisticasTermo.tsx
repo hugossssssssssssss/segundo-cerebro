@@ -84,7 +84,7 @@ export function ModalEstatisticasTermo({
         document.execCommand("copy");
         document.body.removeChild(textarea);
       }
-      toast("Resultado copiado para a área de transferência! 📋", { tipo: "sucesso" });
+      toast("Resultado copiado para a área de transferência!", { tipo: "sucesso" });
     } catch {
       toast("Não foi possível copiar automaticamente. Selecione e copie o texto.", { tipo: "erro" });
     }

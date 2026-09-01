@@ -48,12 +48,12 @@ export interface CategoriaConfig {
 }
 
 export const CATEGORIAS_NOTICIAS: CategoriaConfig[] = [
-  { id: "futebol", rotulo: "Futebol & Esportes", icone: "⚽", descricao: "Campeonatos, clubes e bastidores", padraoAtivo: true },
-  { id: "design", rotulo: "Design & Arte", icone: "🎨", descricao: "UI/UX, branding, tendências e inspiração", padraoAtivo: true },
-  { id: "tech", rotulo: "Tecnologia & IA", icone: "🤖", descricao: "Inteligência Artificial, gadgets e software", padraoAtivo: true },
-  { id: "brasil", rotulo: "Brasil & Mundo", icone: "🇧🇷", descricao: "Principais manchetes e acontecimentos", padraoAtivo: true },
-  { id: "curiosidades", rotulo: "Curiosidades", icone: "💡", descricao: "Ciência, inovação e fatos interessantes", padraoAtivo: true },
-  { id: "personalizado", rotulo: "Meus Feeds", icone: "⭐", descricao: "Canais e blogs de sua escolha", padraoAtivo: false },
+  { id: "futebol", rotulo: "Futebol & Esportes", icone: "Trophy", descricao: "Campeonatos, clubes e bastidores", padraoAtivo: true },
+  { id: "design", rotulo: "Design & Arte", icone: "Palette", descricao: "UI/UX, branding, tendências e inspiração", padraoAtivo: true },
+  { id: "tech", rotulo: "Tecnologia & IA", icone: "Cpu", descricao: "Inteligência Artificial, gadgets e software", padraoAtivo: true },
+  { id: "brasil", rotulo: "Brasil & Mundo", icone: "Globe", descricao: "Principais manchetes e acontecimentos", padraoAtivo: true },
+  { id: "curiosidades", rotulo: "Curiosidades", icone: "Lightbulb", descricao: "Ciência, inovação e fatos interessantes", padraoAtivo: true },
+  { id: "personalizado", rotulo: "Meus Feeds", icone: "Rss", descricao: "Canais e blogs de sua escolha", padraoAtivo: false },
 ];
 
 /** Capas em alta definição por categoria */
@@ -576,7 +576,7 @@ export async function salvarNoticiaComoReferencia(noticia: ItemNoticia, _cfg: Se
   }
 
   if (noticia.resumoIa) {
-    corpo += `### 🤖 Resumo da IA\n${noticia.resumoIa}\n\n`;
+    corpo += `### Resumo da IA\n${noticia.resumoIa}\n\n`;
   }
 
   if (noticia.conteudoCompleto || noticia.descricao) {

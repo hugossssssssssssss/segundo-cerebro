@@ -329,7 +329,7 @@ export function JogoCruzadinha() {
     if (res.incorretas === 0 && res.corretas === res.totalDesbloqueadas) {
       setJogoConcluido(true);
       setModalVitoriaAberto(true);
-      toast("Parabéns! Você completou toda a cruzadinha! 🏆", { tipo: "sucesso" });
+      toast("Parabéns! Você completou toda a cruzadinha!", { tipo: "sucesso" });
     } else if (res.incorretas > 0) {
       toast(`Encontradas ${res.incorretas} letra(s) incorreta(s).`, { tipo: "aviso" });
     } else {

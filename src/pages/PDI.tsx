@@ -138,6 +138,11 @@ export default function PDI() {
   const [origEntrega, setOrigEntrega] = useState<Entrega | null>(null);
   const [esconderEntregas, setEsconderEntregas] = useState(() => localStorage.getItem("klaus-pdi-esconder-entregas") === "true");
   const [dropHoverId, setDropHoverId] = useState<string | null>(null);
+  const [metasExpandidas, setMetasExpandidas] = useState<Record<string, boolean>>({});
+
+  const alternarExpansaoMeta = (id: string) => {
+    setMetasExpandidas((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
   const [pastaMetaSelecionada, setPastaMetaSelecionada] = useState<string | null>(null);
   const [novaTarefaMetaId, setNovaTarefaMetaId] = useState<string | null>(null);
   const [novoTextoTarefa, setNovoTextoTarefa] = useState("");
@@ -874,151 +879,191 @@ export default function PDI() {
                       </div>
                     </button>
 
-                    {/* Bloco de Tarefas do Dia a Dia Vinculadas à Meta */}
+                    {/* Barra de Resumo e Divulgação Progressiva */}
                     {(() => {
                       const tarefasMeta = tarefasDaMeta(m);
+                      const tarefasAtivas = tarefasMeta.filter((t: any) => t.status !== "feito");
+                      const estaExpandido = Boolean(metasExpandidas[m.id]);
+
                       return (
-                        <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                              <ListTodo size={12} className="text-primary" /> Tarefas em Andamento ({tarefasMeta.filter((t: any) => t.status !== "feito").length})
-                            </span>
+                        <div className="mt-3 pt-2.5 border-t border-border/50 space-y-2.5">
+                          <div className="flex items-center justify-between gap-2">
                             <button
                               type="button"
                               onClick={(ev) => {
                                 ev.stopPropagation();
-                                setNovaTarefaMetaId(novaTarefaMetaId === m.id ? null : m.id);
-                                setNovoTextoTarefa("");
+                                alternarExpansaoMeta(m.id);
                               }}
-                              className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
+                              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium cursor-pointer transition-colors"
                             >
-                              {novaTarefaMetaId === m.id ? "Cancelar" : "+ Nova Tarefa"}
+                              {estaExpandido ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                              <span>
+                                {estaExpandido
+                                  ? "Recolher detalhes"
+                                  : `${tarefasAtivas.length} tarefa(s) • ${ligadas.length} entrega(s)`}
+                              </span>
                             </button>
+
+                            <div className="flex items-center gap-1">
+                              <Tooltip conteudo="Adicionar tarefa a esta meta" posicao="top">
+                                <button
+                                  type="button"
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    setMetasExpandidas((prev) => ({ ...prev, [m.id]: true }));
+                                    setNovaTarefaMetaId(novaTarefaMetaId === m.id ? null : m.id);
+                                    setNovoTextoTarefa("");
+                                  }}
+                                  className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                                  aria-label="Nova Tarefa"
+                                >
+                                  <Plus size={13} />
+                                </button>
+                              </Tooltip>
+
+                              <Tooltip conteudo="Vincular entrega a esta meta" posicao="top">
+                                <button
+                                  type="button"
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    novaEntregaParaMeta(m);
+                                  }}
+                                  className="p-1.5 rounded-lg text-muted-foreground hover:text-purple-500 hover:bg-purple-500/10 transition-colors cursor-pointer"
+                                  aria-label="Nova Entrega"
+                                >
+                                  <Sparkles size={13} />
+                                </button>
+                              </Tooltip>
+                            </div>
                           </div>
 
-                          {/* Campo de criação rápida inline */}
-                          {novaTarefaMetaId === m.id && (
-                            <div className="flex items-center gap-1.5 pt-1 animate-in fade-in duration-150">
-                              <input
-                                type="text"
-                                autoFocus
-                                value={novoTextoTarefa}
-                                onChange={(e) => setNovoTextoTarefa(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    criarTarefaRapidaParaMeta(m);
-                                  } else if (e.key === "Escape") {
-                                    setNovaTarefaMetaId(null);
-                                  }
-                                }}
-                                placeholder="Nome da tarefa... (Enter para salvar)"
-                                className="flex-1 text-xs rounded-lg border border-border bg-background px-2.5 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-primary"
-                              />
-                              <Botao
-                                tamanho="pequeno"
-                                onClick={() => criarTarefaRapidaParaMeta(m)}
-                                disabled={!novoTextoTarefa.trim() || salvandoTarefaMeta}
-                              >
-                                {salvandoTarefaMeta ? "..." : "Criar"}
-                              </Botao>
-                            </div>
-                          )}
+                          {/* Seção expandida de Tarefas e Entregas */}
+                          {estaExpandido && (
+                            <div className="space-y-3 pt-1 border-t border-border/40 animate-in fade-in duration-150">
+                              {/* Tarefas */}
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                                    <ListTodo size={12} className="text-primary" /> Tarefas em Andamento ({tarefasAtivas.length})
+                                  </span>
+                                </div>
 
-                          {tarefasMeta.length > 0 ? (
-                            <ul className="space-y-1">
-                              {tarefasMeta.slice(0, 4).map((t: any) => {
-                                const feita = t.status === "feito";
-                                return (
-                                  <li key={t.caminho} className="flex items-center gap-2 text-xs py-1 px-1.5 rounded hover:bg-accent/40 transition-colors">
-                                    <button
-                                      type="button"
-                                      onClick={(ev) => {
-                                        ev.stopPropagation();
-                                        toggleStatusTarefa(t);
+                                {/* Campo de criação rápida inline */}
+                                {novaTarefaMetaId === m.id && (
+                                  <div className="flex items-center gap-1.5 pt-1 animate-in fade-in duration-150">
+                                    <input
+                                      type="text"
+                                      autoFocus
+                                      value={novoTextoTarefa}
+                                      onChange={(e) => setNovoTextoTarefa(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          criarTarefaRapidaParaMeta(m);
+                                        } else if (e.key === "Escape") {
+                                          setNovaTarefaMetaId(null);
+                                        }
                                       }}
-                                      className="text-muted-foreground hover:text-primary transition-colors cursor-pointer shrink-0"
-                                      title={feita ? "Reabrir tarefa" : "Concluir tarefa"}
+                                      placeholder="Nome da tarefa... (Enter para salvar)"
+                                      className="flex-1 text-xs rounded-lg border border-border bg-background px-2.5 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-primary"
+                                    />
+                                    <Botao
+                                      tamanho="pequeno"
+                                      onClick={() => criarTarefaRapidaParaMeta(m)}
+                                      disabled={!novoTextoTarefa.trim() || salvandoTarefaMeta}
                                     >
-                                      {feita ? (
-                                        <CheckCircle2 size={14} className="text-emerald-500" />
-                                      ) : (
-                                        <Circle size={14} />
-                                      )}
-                                    </button>
-                                    <span
-                                      onClick={() => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
-                                      className={cn(
-                                        "truncate flex-1 cursor-pointer hover:underline",
-                                        feita && "text-muted-foreground line-through decoration-muted-foreground/60"
-                                      )}
-                                    >
-                                      {t.titulo}
-                                    </span>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          ) : (
-                            <p className="text-[11px] text-muted-foreground/70 italic py-0.5">
-                              Nenhuma tarefa ativa. Clique em "+ Nova Tarefa" para planejar passos.
-                            </p>
+                                      {salvandoTarefaMeta ? "..." : "Criar"}
+                                    </Botao>
+                                  </div>
+                                )}
+
+                                {tarefasMeta.length > 0 ? (
+                                  <ul className="space-y-1">
+                                    {tarefasMeta.slice(0, 4).map((t: any) => {
+                                      const feita = t.status === "feito";
+                                      return (
+                                        <li key={t.caminho} className="flex items-center gap-2 text-xs py-1 px-1.5 rounded hover:bg-accent/40 transition-colors">
+                                          <button
+                                            type="button"
+                                            onClick={(ev) => {
+                                              ev.stopPropagation();
+                                              toggleStatusTarefa(t);
+                                            }}
+                                            className="text-muted-foreground hover:text-primary transition-colors cursor-pointer shrink-0"
+                                            title={feita ? "Reabrir tarefa" : "Concluir tarefa"}
+                                          >
+                                            {feita ? (
+                                              <CheckCircle2 size={14} className="text-emerald-500" />
+                                            ) : (
+                                              <Circle size={14} />
+                                            )}
+                                          </button>
+                                          <span
+                                            onClick={() => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
+                                            className={cn(
+                                              "truncate flex-1 cursor-pointer hover:underline",
+                                              feita && "text-muted-foreground line-through decoration-muted-foreground/60"
+                                            )}
+                                          >
+                                            {t.titulo}
+                                          </span>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                ) : (
+                                  <p className="text-[11px] text-muted-foreground/70 italic py-0.5">
+                                    Nenhuma tarefa vinculada.
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Entregas */}
+                              <div className="space-y-1.5 pt-1.5 border-t border-border/40">
+                                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                                  <Sparkles size={12} className="text-purple-500" /> Entregas Realizadas ({ligadas.length})
+                                </span>
+                                {ligadas.length > 0 ? (
+                                  <ul className="space-y-1">
+                                    {ligadas.slice(0, 4).map((e) => (
+                                      <li key={e.id}>
+                                        <button
+                                          type="button"
+                                          onClick={(ev) => {
+                                            ev.stopPropagation();
+                                            setEditandoEntrega(e);
+                                            setOrigEntrega(e);
+                                            navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
+                                          }}
+                                          className="flex w-full items-center gap-2 text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent/40 rounded px-1.5 py-1 transition-colors cursor-pointer"
+                                        >
+                                          <span className="text-xs tabular-nums opacity-80 shrink-0">
+                                            {dataCurta(e.data)}
+                                          </span>
+                                          <span className="truncate flex-1">{e.titulo}</span>
+                                          {e.iaSugeriu && (
+                                            <Sparkles size={12} className="shrink-0 text-primary" />
+                                          )}
+                                        </button>
+                                      </li>
+                                    ))}
+                                    {ligadas.length > 4 && (
+                                      <li className="text-xs text-muted-foreground/80 px-1.5">
+                                        e mais {ligadas.length - 4}…
+                                      </li>
+                                    )}
+                                  </ul>
+                                ) : (
+                                  <p className="text-[11px] text-muted-foreground/70 italic py-0.5">
+                                    Nenhuma entrega consolidada ainda.
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </div>
                       );
                     })()}
-
-                    {/* Bloco de Entregas Consolidadas */}
-                    <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
-                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                        <Sparkles size={12} className="text-purple-500" /> Entregas Realizadas ({ligadas.length})
-                      </span>
-                      {ligadas.length > 0 && (
-                        <ul className="space-y-1">
-                          {ligadas.slice(0, 4).map((e) => (
-                            <li key={e.id}>
-                              <button
-                                type="button"
-                                onClick={(ev) => {
-                                  ev.stopPropagation();
-                                  setEditandoEntrega(e);
-                                  setOrigEntrega(e);
-                                  navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
-                                }}
-                                className="flex w-full items-center gap-2 text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent/40 rounded px-1.5 py-1 transition-colors cursor-pointer"
-                              >
-                                <span className="text-xs tabular-nums opacity-80 shrink-0">
-                                  {dataCurta(e.data)}
-                                </span>
-                                <span className="truncate flex-1">{e.titulo}</span>
-                                {e.iaSugeriu && (
-                                  <Sparkles size={12} className="shrink-0 text-primary" />
-                                )}
-                              </button>
-                            </li>
-                          ))}
-                          {ligadas.length > 4 && (
-                            <li className="text-xs text-muted-foreground/80 px-1.5">
-                              e mais {ligadas.length - 4}…
-                            </li>
-                          )}
-                        </ul>
-                      )}
-
-                      <div className="flex items-center justify-between pt-1">
-                        <button
-                          type="button"
-                          onClick={(ev) => {
-                            ev.stopPropagation();
-                            novaEntregaParaMeta(m);
-                          }}
-                          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md px-2 py-1 transition-all cursor-pointer font-medium"
-                        >
-                          <Plus size={13} className="text-primary" />
-                          <span>Adicionar entrega</span>
-                        </button>
-                      </div>
-                    </div>
                   </Cartao>
                 ))}
               </div>

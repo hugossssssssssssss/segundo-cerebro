@@ -17,8 +17,11 @@ import {
   Circle,
   CheckCircle2,
   Pin,
+  FolderInput,
+  Tags,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Masonry } from "react-plock";
 import {
   obterModeloPadrao,
@@ -1352,43 +1355,78 @@ export default function Notas() {
             </span>
             nota(s) selecionada(s)
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Mover para pasta — dropdown direto */}
-            <select
-              value=""
-              onChange={(e) => {
-                const destino = e.target.value;
-                if (destino) processarAcaoMenu({ tipo: "mover_para", pasta: destino });
-                e.target.value = "";
-              }}
-              className="rounded-xl border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer shadow-2xs"
-              title="Mover selecionados para pasta"
-            >
-              <option value="" disabled>Mover para pasta...</option>
-              {pastasExistentes.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Mover para pasta com Popover e Ícone */}
+            <Popover>
+              <Tooltip conteudo="Mover notas selecionadas para pasta..." posicao="top">
+                <PopoverTrigger asChild>
+                  <Botao
+                    variante="fantasma"
+                    tamanho="icone"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
+                    aria-label="Mover para pasta"
+                  >
+                    <FolderInput size={14} />
+                  </Botao>
+                </PopoverTrigger>
+              </Tooltip>
+              <PopoverContent className="w-56 p-2 text-xs shadow-xl border-border" align="end">
+                <p className="font-semibold text-muted-foreground text-[10px] uppercase tracking-wider mb-1.5 px-1">
+                  Mover selecionadas para:
+                </p>
+                <div className="max-h-48 overflow-y-auto space-y-0.5">
+                  {pastasExistentes.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => processarAcaoMenu({ tipo: "mover_para", pasta: p })}
+                      className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-accent hover:text-foreground text-xs truncate transition-colors cursor-pointer"
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
 
-            {/* Adicionar tags — input direto */}
-            <input
-              type="text"
-              placeholder="+ tags..."
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  const tags = (e.target as HTMLInputElement).value
-                    .split(",")
-                    .map((t) => t.trim().replace(/^#/, ""))
-                    .filter(Boolean);
-                  if (tags.length > 0) {
-                    processarAcaoMenu({ tipo: "adicionar_tags", tags });
-                    (e.target as HTMLInputElement).value = "";
-                  }
-                }
-              }}
-              className="rounded-xl border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-28 shadow-2xs"
-              title="Digite tags separadas por vírgula e pressione Enter"
-            />
+            {/* Adicionar tags com Popover e Ícone */}
+            <Popover>
+              <Tooltip conteudo="Adicionar tags às notas selecionadas" posicao="top">
+                <PopoverTrigger asChild>
+                  <Botao
+                    variante="fantasma"
+                    tamanho="icone"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
+                    aria-label="Adicionar tags"
+                  >
+                    <Tags size={14} />
+                  </Botao>
+                </PopoverTrigger>
+              </Tooltip>
+              <PopoverContent className="w-60 p-2.5 text-xs shadow-xl border-border" align="end">
+                <p className="font-semibold text-muted-foreground text-[10px] uppercase tracking-wider mb-1.5">
+                  Adicionar tags (separadas por vírgula):
+                </p>
+                <input
+                  type="text"
+                  placeholder="design, projeto, ideias..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const tags = (e.target as HTMLInputElement).value
+                        .split(",")
+                        .map((t) => t.trim().replace(/^#/, ""))
+                        .filter(Boolean);
+                      if (tags.length > 0) {
+                        processarAcaoMenu({ tipo: "adicionar_tags", tags });
+                        (e.target as HTMLInputElement).value = "";
+                      }
+                    }
+                  }}
+                  className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  autoFocus
+                />
+              </PopoverContent>
+            </Popover>
 
             <Tooltip conteudo="Excluir notas selecionadas" posicao="top">
               <Botao
@@ -1397,7 +1435,7 @@ export default function Notas() {
                 onClick={() => {
                   processarAcaoMenu({ tipo: "excluir" });
                 }}
-                className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                className="h-8 w-8 text-destructive hover:bg-destructive/10"
                 aria-label="Excluir notas selecionadas"
               >
                 <Trash2 size={14} />
@@ -1409,7 +1447,7 @@ export default function Notas() {
                 variante="fantasma"
                 tamanho="icone"
                 onClick={limparSelecao}
-                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
                 aria-label="Desmarcar seleção"
               >
                 <X size={13} />

@@ -118,7 +118,7 @@ export function JogoTermo() {
         setPosicaoFoco(0);
         const cfg = lerConfig();
         gravarDadosTermo(cfg, novosDados, shaDados);
-        toast("Novas palavras do dia liberadas! Boa sorte! 🎯", { tipo: "sucesso" });
+        toast("Novas palavras do dia liberadas! Boa sorte!", { tipo: "sucesso" });
       }
     };
 

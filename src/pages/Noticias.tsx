@@ -22,6 +22,13 @@ import {
   Trash2,
   Flame,
   LayoutTemplate,
+  Trophy,
+  Palette,
+  Cpu,
+  Globe,
+  Lightbulb,
+  Rss,
+  MoreHorizontal,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { toast } from "@/lib/toast";
@@ -50,8 +57,110 @@ import {
 } from "@/lib/noticias";
 import { Aviso, Carregando, Modal, Botao } from "@/components/ui";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
+
+function renderizarIconeCategoria(catId: string, tamanho = 14) {
+  switch (catId) {
+    case "futebol":
+      return <Trophy size={tamanho} className="text-emerald-500 shrink-0" />;
+    case "design":
+      return <Palette size={tamanho} className="text-pink-500 shrink-0" />;
+    case "tech":
+      return <Cpu size={tamanho} className="text-purple-500 shrink-0" />;
+    case "brasil":
+      return <Globe size={tamanho} className="text-blue-500 shrink-0" />;
+    case "curiosidades":
+      return <Lightbulb size={tamanho} className="text-amber-500 shrink-0" />;
+    case "personalizado":
+      return <Rss size={tamanho} className="text-indigo-500 shrink-0" />;
+    default:
+      return <Sparkles size={tamanho} className="text-primary shrink-0" />;
+  }
+}
+
+function MenuAcoesNoticia({
+  item,
+  acaoId,
+  onCriarNota,
+  onCriarTarefa,
+  onSalvarReferencia,
+}: {
+  item: ItemNoticia;
+  acaoId: string | null;
+  onCriarNota: (item: ItemNoticia) => void;
+  onCriarTarefa: (item: ItemNoticia) => void;
+  onSalvarReferencia: (item: ItemNoticia) => void;
+}) {
+  return (
+    <Popover>
+      <Tooltip conteudo="Mais opções da matéria" posicao="top">
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+            aria-label="Mais opções"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreHorizontal size={14} />
+          </button>
+        </PopoverTrigger>
+      </Tooltip>
+      <PopoverContent align="end" className="w-52 p-1.5 space-y-0.5 text-xs shadow-xl border-border bg-popover/95 backdrop-blur-md">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCriarNota(item);
+          }}
+          disabled={acaoId === item.id}
+          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left text-foreground hover:bg-accent transition-colors cursor-pointer disabled:opacity-50"
+        >
+          <FileText size={14} className="opacity-70 shrink-0" />
+          <span>Salvar como Nota</span>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCriarTarefa(item);
+          }}
+          disabled={acaoId === item.id}
+          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left text-foreground hover:bg-accent transition-colors cursor-pointer disabled:opacity-50"
+        >
+          <CheckSquare size={14} className="opacity-70 shrink-0" />
+          <span>Gerar Tarefa de Ação</span>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSalvarReferencia(item);
+          }}
+          disabled={acaoId === item.id}
+          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left text-foreground hover:bg-accent transition-colors cursor-pointer disabled:opacity-50"
+        >
+          <Bookmark size={14} className="opacity-70 shrink-0" />
+          <span>Salvar em Referências</span>
+        </button>
+        {item.link && (
+          <a
+            href={item.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left text-foreground hover:bg-accent transition-colors"
+          >
+            <ExternalLink size={14} className="opacity-70 shrink-0" />
+            <span>Abrir Link Original</span>
+          </a>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function Noticias() {
   const cfg = lerConfig();
@@ -328,7 +437,7 @@ export default function Noticias() {
                     : "bg-accent/60 text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
-                <span>{cat.icone}</span>
+                {renderizarIconeCategoria(cat.id, 14)}
                 <span>{cat.rotulo}</span>
               </button>
             );
@@ -464,41 +573,38 @@ export default function Noticias() {
 
                       <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-1">
                         <button
+                          type="button"
                           onClick={() => handleAbrirLeitor(item)}
-                          className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                          className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline cursor-pointer"
                         >
-                          <BookOpen size={14} />
+                          <BookOpen size={13} />
                           <span>Ler</span>
                         </button>
 
                         <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleCurtir(item)}
-                            className={`p-1.5 rounded-lg border transition-colors ${
-                              item.curtido ? "bg-rose-500/15 border-rose-500/30 text-rose-500" : "border-border text-muted-foreground hover:bg-accent"
-                            }`}
-                            title="Curtir"
-                          >
-                            <Heart size={14} className={item.curtido ? "fill-rose-500" : ""} />
-                          </button>
+                          <Tooltip conteudo={item.curtido ? "Remover curtida" : "Curtir matéria"} posicao="top">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCurtir(item);
+                              }}
+                              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                                item.curtido ? "bg-rose-500/15 border-rose-500/30 text-rose-500" : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                              }`}
+                              aria-label="Curtir"
+                            >
+                              <Heart size={14} className={item.curtido ? "fill-rose-500" : ""} />
+                            </button>
+                          </Tooltip>
 
-                          <button
-                            onClick={() => handleCriarNota(item)}
-                            disabled={acaoId === item.id}
-                            className="p-1.5 rounded-lg border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                            title="Criar Nota"
-                          >
-                            <FileText size={14} />
-                          </button>
-
-                          <button
-                            onClick={() => handleCriarTarefa(item)}
-                            disabled={acaoId === item.id}
-                            className="p-1.5 rounded-lg border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                            title="Criar Tarefa"
-                          >
-                            <CheckSquare size={14} />
-                          </button>
+                          <MenuAcoesNoticia
+                            item={item}
+                            acaoId={acaoId}
+                            onCriarNota={handleCriarNota}
+                            onCriarTarefa={handleCriarTarefa}
+                            onSalvarReferencia={handleSalvarReferencia}
+                          />
                         </div>
                       </div>
                     </div>
@@ -551,39 +657,38 @@ export default function Noticias() {
 
                     <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-1">
                       <button
+                        type="button"
                         onClick={() => handleAbrirLeitor(item)}
-                        className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                        className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline cursor-pointer"
                       >
-                        <BookOpen size={14} />
-                        <span>Ler no Klaus</span>
+                        <BookOpen size={13} />
+                        <span>Ler matéria</span>
                       </button>
 
                       <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleCurtir(item)}
-                          className={`p-1.5 rounded-lg border transition-colors ${
-                            item.curtido ? "bg-rose-500/15 border-rose-500/30 text-rose-500" : "border-border text-muted-foreground hover:bg-accent"
-                          }`}
-                          title="Curtir"
-                        >
-                          <Heart size={14} className={item.curtido ? "fill-rose-500" : ""} />
-                        </button>
+                        <Tooltip conteudo={item.curtido ? "Remover curtida" : "Curtir matéria"} posicao="top">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCurtir(item);
+                            }}
+                            className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                              item.curtido ? "bg-rose-500/15 border-rose-500/30 text-rose-500" : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                            }`}
+                            aria-label="Curtir"
+                          >
+                            <Heart size={14} className={item.curtido ? "fill-rose-500" : ""} />
+                          </button>
+                        </Tooltip>
 
-                        <button
-                          onClick={() => handleCriarNota(item)}
-                          className="p-1.5 rounded-lg border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                          title="Criar Nota"
-                        >
-                          <FileText size={14} />
-                        </button>
-
-                        <button
-                          onClick={() => handleCriarTarefa(item)}
-                          className="p-1.5 rounded-lg border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                          title="Criar Tarefa"
-                        >
-                          <CheckSquare size={14} />
-                        </button>
+                        <MenuAcoesNoticia
+                          item={item}
+                          acaoId={acaoId}
+                          onCriarNota={handleCriarNota}
+                          onCriarTarefa={handleCriarTarefa}
+                          onSalvarReferencia={handleSalvarReferencia}
+                        />
                       </div>
                     </div>
                   </div>
@@ -634,55 +739,40 @@ export default function Noticias() {
                       )}
                     </div>
 
-                    <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border/40">
+                    <div className="pt-2 flex items-center justify-between gap-2 border-t border-border/40">
                       <button
+                        type="button"
                         onClick={() => handleAbrirLeitor(item)}
-                        className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                        className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline cursor-pointer"
                       >
-                        <BookOpen size={14} />
+                        <BookOpen size={13} />
                         <span>Ler matéria no Klaus</span>
                       </button>
 
                       <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => handleCurtir(item)}
-                          className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
-                            item.curtido ? "bg-rose-500/15 text-rose-600 border border-rose-500/30" : "border border-border text-muted-foreground hover:bg-accent"
-                          }`}
-                        >
-                          <Heart size={14} className={item.curtido ? "fill-rose-500 text-rose-500" : ""} />
-                          <span>{item.curtido ? "Salvo" : "Curtir"}</span>
-                        </button>
+                        <Tooltip conteudo={item.curtido ? "Remover curtida" : "Curtir matéria"} posicao="top">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCurtir(item);
+                            }}
+                            className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                              item.curtido ? "bg-rose-500/15 border-rose-500/30 text-rose-500" : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                            }`}
+                            aria-label="Curtir"
+                          >
+                            <Heart size={14} className={item.curtido ? "fill-rose-500" : ""} />
+                          </button>
+                        </Tooltip>
 
-                        <button
-                          onClick={() => handleCriarNota(item)}
-                          disabled={acaoId === item.id}
-                          className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                          title="Criar Nota"
-                        >
-                          <FileText size={14} />
-                          <span className="hidden sm:inline">Nota</span>
-                        </button>
-
-                        <button
-                          onClick={() => handleSalvarReferencia(item)}
-                          disabled={acaoId === item.id}
-                          className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                          title="Salvar Referência"
-                        >
-                          <Bookmark size={14} />
-                          <span className="hidden sm:inline">Referência</span>
-                        </button>
-
-                        <button
-                          onClick={() => handleCriarTarefa(item)}
-                          disabled={acaoId === item.id}
-                          className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border border-border text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                          title="Criar Tarefa"
-                        >
-                          <CheckSquare size={14} />
-                          <span className="hidden sm:inline">Tarefa</span>
-                        </button>
+                        <MenuAcoesNoticia
+                          item={item}
+                          acaoId={acaoId}
+                          onCriarNota={handleCriarNota}
+                          onCriarTarefa={handleCriarTarefa}
+                          onSalvarReferencia={handleSalvarReferencia}
+                        />
                       </div>
                     </div>
                   </div>
@@ -850,7 +940,9 @@ export default function Noticias() {
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="text-xl">{cat.icone}</span>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/60 shrink-0">
+                        {renderizarIconeCategoria(cat.id, 16)}
+                      </div>
                       <div>
                         <h4 className="font-semibold text-xs text-foreground">{cat.rotulo}</h4>
                         <p className="text-[11px] text-muted-foreground">{cat.descricao}</p>

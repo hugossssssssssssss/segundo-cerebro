@@ -273,6 +273,35 @@ function CartaoArrastavel({
         </div>
 
         <div className="flex items-center gap-0.5 shrink-0">
+          {/* Botão de foco rápido iconizado e minimalista */}
+          {t.status !== "feito" && (
+            <Tooltip
+              conteudo={isAtivo ? (rodando ? "Pausar pomodoro" : "Retomar pomodoro") : "Iniciar foco (Pomodoro)"}
+              posicao="top"
+            >
+              <button
+                type="button"
+                onClick={aoClicarCronometro}
+                className={cn(
+                  "p-1 rounded-md transition-colors cursor-pointer",
+                  isAtivo
+                    ? rodando
+                      ? "text-primary bg-primary/20 animate-pulse"
+                      : "text-muted-foreground bg-muted"
+                    : "text-muted-foreground/50 hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 sm:opacity-0 focus:opacity-100"
+                )}
+                title={isAtivo ? (rodando ? "Pausar pomodoro" : "Retomar pomodoro") : "Iniciar pomodoro"}
+                aria-label={isAtivo ? (rodando ? "Pausar foco" : "Retomar foco") : "Iniciar foco"}
+              >
+                {isAtivo && rodando ? (
+                  <Pause size={13} className="animate-pulse" />
+                ) : (
+                  <Timer size={13} />
+                )}
+              </button>
+            </Tooltip>
+          )}
+
           {/* Menu de ações rápidas (...) */}
           <MenuAcoesTarefa
             tarefa={t}
@@ -298,37 +327,6 @@ function CartaoArrastavel({
           </button>
         </div>
       </div>
-
-      {/* Botão de foco rápido */}
-      {t.status !== "feito" && (
-        <div className="mt-0.5 flex justify-end">
-          <button
-            type="button"
-            onClick={aoClicarCronometro}
-            className={cn(
-              "flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer",
-              isAtivo
-                ? rodando
-                  ? "bg-primary/20 text-primary font-semibold"
-                  : "bg-muted text-muted-foreground"
-                : "text-muted-foreground hover:bg-primary/10 hover:text-primary",
-            )}
-            title={isAtivo ? (rodando ? "Pausar pomodoro" : "Retomar pomodoro") : "Iniciar pomodoro"}
-          >
-            {isAtivo && rodando ? (
-              <>
-                <Pause size={11} className="animate-pulse" />
-                <span>Pausar</span>
-              </>
-            ) : (
-              <>
-                <Timer size={11} />
-                <span>{isAtivo ? "Retomar" : "Focar"}</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
     </Cartao>
   );
 }
