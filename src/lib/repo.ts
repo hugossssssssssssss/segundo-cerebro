@@ -162,6 +162,9 @@ export function ehArquivoInternoOuSistema(caminho: string): boolean {
   if (!caminho) return true;
   const c = caminho.toLowerCase().trim();
 
+  // Documentos na Lixeira Soberana (.lixeira/) pertencem ao usuário e devem ser carregados no acervo
+  if (c.startsWith(".lixeira/")) return false;
+
   // Arquivos e diretórios ocultos ou de build/código do app / templates do sistema
   if (c.startsWith(".") || c.includes("/.") || c.startsWith(".klaus/") || c.includes("/.klaus/")) return true;
   if (
@@ -510,6 +513,7 @@ export function daPasta(itens: ItemRepo[], pasta: string, recursivo = false): It
     .filter((i) => {
       if (!i.caminho.startsWith(prefixo)) return false;
       if (ehArquivoInternoOuSistema(i.caminho)) return false;
+      if (pasta !== ".lixeira" && i.caminho.startsWith(".lixeira/")) return false;
       if (!recursivo && i.caminho.slice(prefixo.length).includes("/")) return false;
       return true;
     })

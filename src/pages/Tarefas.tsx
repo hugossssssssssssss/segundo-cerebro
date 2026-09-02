@@ -14,7 +14,6 @@ import {
   AlertTriangle,
   Tag,
   Folder,
-  LayoutGrid,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
@@ -57,7 +56,7 @@ import { ModalVincularPDI } from "@/components/ModalVincularPDI";
 import { toast } from "@/lib/toast";
 import { urgencia } from "@/lib/tarefas";
 
-type ModoVisaoTela = "quadro" | "calendario" | "hibrido";
+type ModoVisaoTela = "quadro" | "calendario";
 
 export default function Tarefas() {
   const cfg = lerConfig();
@@ -105,7 +104,7 @@ export default function Tarefas() {
 
   const [visao, setVisao] = useState<ModoVisaoTela>(() => {
     const salvo = localStorage.getItem("tarefa-visao");
-    return (salvo as ModoVisaoTela) || "quadro";
+    return salvo === "calendario" ? "calendario" : "quadro";
   });
   const [gravandoCaminho, setGravandoCaminho] = useState<string | null>(null);
   const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>(() => {
@@ -647,7 +646,6 @@ export default function Tarefas() {
             opcoes={[
               { id: "quadro", rotulo: "Quadro", icone: <Columns3 size={15} /> },
               { id: "calendario", rotulo: "Calendário", icone: <CalendarDays size={15} /> },
-              { id: "hibrido", rotulo: "Quadro + Agenda", icone: <LayoutGrid size={15} /> },
             ]}
           />
         }
@@ -697,7 +695,16 @@ export default function Tarefas() {
 
       {carregando ? (
         <Carregando texto="Buscando suas tarefas…" />
-      ) : visao === "quadro" ? (
+      ) : visao === "calendario" ? (
+        <Calendario
+          tarefas={tarefasExibidas}
+          aoAbrir={abrir}
+          aoAlternarStatus={(t) => mudarStatus(t, t.status === "feito" ? "a-fazer" : "feito")}
+          aoAdiarPrazo={adiarPrazo}
+          aoDuplicar={duplicarTarefa}
+          aoExcluir={(t) => setTarefaParaExcluir(t)}
+        />
+      ) : (
         <Quadro
           tarefas={tarefasExibidas}
           aoAbrir={abrir}
@@ -712,44 +719,6 @@ export default function Tarefas() {
           selecionadas={selecionadas}
           aoToggleSelecionar={alternarSelecao}
         />
-      ) : visao === "calendario" ? (
-        <Calendario
-          tarefas={tarefasExibidas}
-          aoAbrir={abrir}
-          aoAlternarStatus={(t) => mudarStatus(t, t.status === "feito" ? "a-fazer" : "feito")}
-          aoAdiarPrazo={adiarPrazo}
-          aoDuplicar={duplicarTarefa}
-          aoExcluir={(t) => setTarefaParaExcluir(t)}
-        />
-      ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
-          <div className="xl:col-span-2">
-            <Quadro
-              tarefas={tarefasExibidas}
-              aoAbrir={abrir}
-              aoCronometrar={iniciar}
-              aoMudarStatus={mudarStatus}
-              aoCriarRapido={criarTarefaRapida}
-              aoAdiarPrazo={adiarPrazo}
-              aoDuplicar={duplicarTarefa}
-              aoExcluir={(t) => setTarefaParaExcluir(t)}
-              aoRegistrarEntregaPDI={(t) => setTarefaParaPDI(t)}
-              gravandoCaminho={gravandoCaminho}
-              selecionadas={selecionadas}
-              aoToggleSelecionar={alternarSelecao}
-            />
-          </div>
-          <div className="xl:col-span-1 border border-border/80 rounded-2xl p-2 bg-card/40 shadow-xs">
-            <Calendario
-              tarefas={tarefasExibidas}
-              aoAbrir={abrir}
-              aoAlternarStatus={(t) => mudarStatus(t, t.status === "feito" ? "a-fazer" : "feito")}
-              aoAdiarPrazo={adiarPrazo}
-              aoDuplicar={duplicarTarefa}
-              aoExcluir={(t) => setTarefaParaExcluir(t)}
-            />
-          </div>
-        </div>
       )}
 
       {/* Barra Flutuante de Ações em Lote Minimalista */}

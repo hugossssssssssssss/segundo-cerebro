@@ -96,6 +96,7 @@ export function montarIndice(itens: ItemRepo[]): Map<string, Alvo> {
   for (const item of ordenados) {
     if (
       ehArquivoInternoOuSistema(item.caminho) ||
+      item.caminho.startsWith(".lixeira/") ||
       item.caminho.startsWith(".klaus/") ||
       item.caminho.includes("/.klaus/") ||
       item.caminho.includes("templates/")
@@ -591,6 +592,7 @@ export function verificarIntegridadeReferencias(itens: ItemRepo[]): RelatorioInt
   const itensElegiveis = itens.filter(
     (i) =>
       !ehArquivoInternoOuSistema(i.caminho) &&
+      !i.caminho.startsWith(".lixeira/") &&
       !i.caminho.startsWith(".klaus/") &&
       !i.caminho.includes("/.klaus/") &&
       !i.caminho.startsWith("referencias/imagens/") &&

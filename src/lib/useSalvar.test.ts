@@ -24,8 +24,14 @@ vi.mock("./offlineQueue", () => ({
   sincronizarFilaOffline: vi.fn().mockResolvedValue({ concluidos: 0, falhas: 0 }),
 }));
 
+vi.mock("./lixeira", () => ({
+  moverParaLixeira: vi.fn().mockResolvedValue(undefined),
+  PASTA_LIXEIRA: ".lixeira",
+}));
+
 import { atualizarCacheLocal, removerDoCacheLocal } from "./repo";
 import { salvarRascunhoLocal, obterRascunhosLocais } from "./offlineQueue";
+import { moverParaLixeira } from "./lixeira";
 
 const cfg: Settings = {
   githubToken: "tok",
@@ -115,19 +121,39 @@ describe("useSalvar — salvarTexto", () => {
   });
 });
 
-describe("useSalvar — apagarItem", () => {
-  it("enfileira a exclusão e remove do cache local imediatamente", async () => {
-    const ouvinte = vi.fn();
-    window.addEventListener("acervo-atualizado", ouvinte);
-
+describe("useSalvar — apagarItem e Lixeira", () => {
+  it("move para a lixeira por padrão se o arquivo não estiver nela", async () => {
     const { result } = renderHook(() => useSalvar(cfg));
     await act(async () => {
       await result.current.apagarItem("notas/a.md", "sha");
     });
 
-    expect(salvarRascunhoLocal).toHaveBeenCalledWith("notas/a.md", "", "sha", undefined, false, "apagar");
+    expect(moverParaLixeira).toHaveBeenCalledWith(cfg, "notas/a.md", "sha");
     expect(removerDoCacheLocal).toHaveBeenCalledWith("notas/a.md");
+  });
+
+  it("exclui definitivamente se o arquivo já estiver em .lixeira/", async () => {
+    const ouvinte = vi.fn();
+    window.addEventListener("acervo-atualizado", ouvinte);
+
+    const { result } = renderHook(() => useSalvar(cfg));
+    await act(async () => {
+      await result.current.apagarItem(".lixeira/notas/a.md", "sha");
+    });
+
+    expect(salvarRascunhoLocal).toHaveBeenCalledWith(".lixeira/notas/a.md", "", "sha", undefined, false, "apagar");
+    expect(removerDoCacheLocal).toHaveBeenCalledWith(".lixeira/notas/a.md");
     expect(ouvinte).toHaveBeenCalledTimes(1);
     window.removeEventListener("acervo-atualizado", ouvinte);
+  });
+
+  it("apagarDefinitivoItem exclui diretamente via Sync Queue", async () => {
+    const { result } = renderHook(() => useSalvar(cfg));
+    await act(async () => {
+      await result.current.apagarDefinitivoItem("tarefas/t.md", "sha");
+    });
+
+    expect(salvarRascunhoLocal).toHaveBeenCalledWith("tarefas/t.md", "", "sha", undefined, false, "apagar");
+    expect(removerDoCacheLocal).toHaveBeenCalledWith("tarefas/t.md");
   });
 });

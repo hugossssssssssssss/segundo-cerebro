@@ -136,7 +136,7 @@ function novoIndice(itens: ItemRepo[]): MiniSearch<Fichado> {
     },
   });
 
-  const itensValidos = itens.filter((i) => !ehArquivoInternoOuSistema(i.caminho));
+  const itensValidos = itens.filter((i) => !ehArquivoInternoOuSistema(i.caminho) && !i.caminho.startsWith(".lixeira/"));
   mini.addAll(itensValidos.map(ficharItem));
   return mini;
 }
@@ -155,7 +155,7 @@ export function resetarIndiceBusca(): void {
  * e indexação incremental seletiva (replace/discard) quando arquivos mudam.
  */
 export function indiceDe(itens: ItemRepo[]): MiniSearch<Fichado> {
-  const itensValidos = itens.filter((i) => !ehArquivoInternoOuSistema(i.caminho));
+  const itensValidos = itens.filter((i) => !ehArquivoInternoOuSistema(i.caminho) && !i.caminho.startsWith(".lixeira/"));
 
   if (!indiceCacheGlobal) {
     indiceCacheGlobal = novoIndice(itens);

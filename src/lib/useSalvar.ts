@@ -24,7 +24,7 @@ import {
 } from "./offlineQueue";
 import { lerConfig, configCompleta, type Settings } from "./settings";
 import { dispararAtualizacaoAcervo, EVENTO_ACERVO_ATUALIZADO } from "./eventos";
-import { moverParaLixeira } from "./lixeira";
+import { moverParaLixeira, PASTA_LIXEIRA } from "./lixeira";
 import { marcarItemComoVistoLocal } from "./inbox";
 
 export type EstadoSalvar = {
@@ -41,9 +41,14 @@ export type EstadoSalvar = {
   ) => Promise<string>;
 
   /**
-   * Apaga um arquivo localmente e remove do cache na hora.
+   * Apaga um arquivo, movendo-o para a Lixeira Soberana para permitir recuperação.
    */
   apagarItem: (caminho: string, sha: string, silencioso?: boolean) => Promise<void>;
+
+  /**
+   * Exclui um arquivo definitivamente sem enviar para a lixeira.
+   */
+  apagarDefinitivoItem: (caminho: string, sha: string, silencioso?: boolean) => Promise<void>;
 
   /**
    * Move um arquivo para a Lixeira Soberana (.lixeira/) com reversibilidade total.
@@ -56,9 +61,13 @@ export type EstadoSalvar = {
   limparErro: () => void;
 };
 
-export function useSalvar(_cfg: Settings): EstadoSalvar {
+export function useSalvar(cfgProp?: Settings): EstadoSalvar {
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
+
+  function obterConfigAtual(): Settings {
+    return cfgProp && configCompleta(cfgProp) ? cfgProp : lerConfig();
+  }
 
   // Monitora a fila de sincronização em segundo plano para refletir o status de "salvando" de forma informativa
   useEffect(() => {
@@ -124,7 +133,7 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
     }
   }
 
-  async function apagarItem(caminho: string, sha: string, silencioso = false): Promise<void> {
+  async function apagarDefinitivoItem(caminho: string, sha: string, silencioso = false): Promise<void> {
     setErro("");
     try {
       // 1. Enfileira a exclusão na Sync Queue local
@@ -139,11 +148,11 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
         notificarOutrasAbas(caminho);
 
         const nomeItem = formatarNomeAmigavel(caminho);
-        toast(`"${nomeItem}" removido`, { tipo: "info" });
+        toast(`"${nomeItem}" excluído definitivamente`, { tipo: "info" });
       }
 
       // 4. Dispara a sincronização real com o GitHub em background
-      const cfg = lerConfig();
+      const cfg = obterConfigAtual();
       if (configCompleta(cfg) && navigator.onLine) {
         sincronizarFilaOffline(cfg).catch(() => {});
       }
@@ -157,7 +166,7 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
   async function moverParaLixeiraItem(caminho: string, sha: string, silencioso = false): Promise<void> {
     setErro("");
     try {
-      const cfg = lerConfig();
+      const cfg = obterConfigAtual();
       if (configCompleta(cfg) && navigator.onLine) {
         await moverParaLixeira(cfg, caminho, sha);
         removerDoCacheLocal(caminho);
@@ -166,8 +175,8 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
           toast(`"${nomeItem}" movido para a Lixeira`, { tipo: "info" });
         }
       } else {
-        // Fallback offline: enfileira como apagar
-        await apagarItem(caminho, sha, silencioso);
+        // Fallback offline: enfileira como exclusão direta
+        await apagarDefinitivoItem(caminho, sha, silencioso);
       }
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);
@@ -176,9 +185,19 @@ export function useSalvar(_cfg: Settings): EstadoSalvar {
     }
   }
 
+  async function apagarItem(caminho: string, sha: string, silencioso = false): Promise<void> {
+    // Se o arquivo já estiver na pasta da lixeira, apaga em definitivo
+    if (caminho.startsWith(`${PASTA_LIXEIRA}/`)) {
+      return apagarDefinitivoItem(caminho, sha, silencioso);
+    }
+    // Caso contrário, move para a Lixeira Soberana para permitir recuperação
+    return moverParaLixeiraItem(caminho, sha, silencioso);
+  }
+
   return {
     salvarTexto,
     apagarItem,
+    apagarDefinitivoItem,
     moverParaLixeiraItem,
     salvando,
     erro,

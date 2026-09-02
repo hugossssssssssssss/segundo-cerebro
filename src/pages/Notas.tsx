@@ -240,6 +240,7 @@ export default function Notas() {
     emCartao: boolean;
     notaAlvo?: Nota | null;
   } | null>(null);
+  const [notaParaExcluir, setNotaParaExcluir] = useState<Nota | null>(null);
   const [filtroRapido, setFiltroRapido] = useState<string>("todas");
 
   // Drag and drop: nota arrastada sobre pasta
@@ -888,7 +889,11 @@ export default function Notas() {
         break;
       }
       case "excluir": {
-        await executarExcluir();
+        if (menuContexto?.notaAlvo && selecionadas.size === 0) {
+          setNotaParaExcluir(menuContexto.notaAlvo);
+        } else {
+          await executarExcluir();
+        }
         break;
       }
       case "copiar": {
@@ -1936,6 +1941,23 @@ export default function Notas() {
         }}
         aoCancelar={() => setMostrarConfirmacaoDescarte(false)}
       />
+
+      {notaParaExcluir && (
+        <ModalConfirmacao
+          aberto={true}
+          titulo={`Excluir nota "${notaParaExcluir.titulo}"?`}
+          descricao="A nota será enviada para a Lixeira Soberana (.lixeira/) e você poderá recuperá-la a qualquer momento."
+          textoConfirmar="Sim, excluir"
+          varianteConfirmar="perigo"
+          aoConfirmar={async () => {
+            const n = notaParaExcluir;
+            setNotaParaExcluir(null);
+            await apagarItem(n.caminho, n.sha);
+            recarregar();
+          }}
+          aoCancelar={() => setNotaParaExcluir(null)}
+        />
+      )}
 
       {refatoracaoPendente && (
         <ModalRefatorarLinks

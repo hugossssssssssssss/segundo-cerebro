@@ -10,7 +10,7 @@ import type { Settings } from "./settings";
 import type { ItemRepo } from "./repo";
 import { ler, gravar, apagar } from "./github";
 import { lerMarkdown, escreverMarkdown, mesclarFrontmatter, tituloProvavel } from "./markdown";
-import { invalidarCache } from "./repo";
+import { invalidarCache, obterCacheExistente } from "./repo";
 import { dispararAtualizacaoAcervo } from "./eventos";
 import { notificarOutrasAbas } from "./syncChannel";
 
@@ -33,7 +33,14 @@ export async function moverParaLixeira(
   caminho: string,
   sha: string,
 ): Promise<void> {
-  const { texto } = await ler(cfg, caminho);
+  let texto: string;
+  const itemEmCache = obterCacheExistente(cfg)?.itens.find((i) => i.caminho === caminho);
+  if (itemEmCache && itemEmCache.texto) {
+    texto = itemEmCache.texto;
+  } else {
+    const lido = await ler(cfg, caminho);
+    texto = lido.texto;
+  }
   const doc = lerMarkdown(texto);
 
   const caminhoLixeira = `${PASTA_LIXEIRA}/${caminho}`;

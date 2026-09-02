@@ -175,6 +175,15 @@ export function MenuContextoNotas({
                             aoFechar();
                         }}
                     />
+                    <ItemMenu
+                        icone={<Trash2 size={14} className="text-destructive" />}
+                        rotulo="Excluir nota"
+                        perigo
+                        onClick={() => {
+                            aoAcao({ tipo: "excluir" });
+                            aoFechar();
+                        }}
+                    />
                     <div className="my-1 border-t border-border/60" />
                 </>
             )}

@@ -830,7 +830,7 @@ export function PainelNotionBase({
                       className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-destructive hover:bg-destructive/10 transition-colors"
                     >
                       <Trash2 size={14} className="shrink-0" />
-                      <span>Apagar documento</span>
+                      <span>Excluir {rotuloTipo?.toLowerCase() || "item"}</span>
                     </button>
                   )}
                 </>
@@ -893,9 +893,9 @@ export function PainelNotionBase({
     <>
       <ModalConfirmacao
         aberto={confirmandoApagar}
-        titulo={`Apagar "${titulo || "este item"}"?`}
-        descricao="Tem certeza de que deseja apagar? Ele será excluído do repositório no GitHub — mas continua recuperável pelo histórico do Git."
-        textoConfirmar="Sim, apagar"
+        titulo={`Excluir "${titulo || "este item"}"?`}
+        descricao="Tem certeza de que deseja excluir? O item será enviado para a Lixeira Soberana (.lixeira/) e poderá ser recuperado a qualquer momento."
+        textoConfirmar="Sim, excluir"
         textoCancelar="Cancelar"
         varianteConfirmar="perigo"
         aoConfirmar={() => {

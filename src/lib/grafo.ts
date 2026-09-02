@@ -85,6 +85,7 @@ export function construirGrafo3D(
   for (const item of itens) {
     if (
       ehArquivoInternoOuSistema(item.caminho) ||
+      item.caminho.startsWith(".lixeira/") ||
       item.caminho.startsWith(".klaus/") ||
       item.caminho.includes("/.klaus/") ||
       item.caminho.includes("templates/") ||

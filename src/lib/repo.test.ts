@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { daPasta, invalidarCache, type ItemRepo } from "./repo";
+import { daPasta, invalidarCache, ehArquivoInternoOuSistema, type ItemRepo } from "./repo";
 import { lerMarkdown } from "./markdown";
 
 const itemMock = (caminho: string, texto = "# Teste"): ItemRepo => ({
@@ -422,5 +422,28 @@ describe("atualizarCacheLocal não pode mentir sobre o que está gravado", () =>
     const itens = await carregarRepo(cfg);
     expect(itens[0].texto).toBe("texto novo");
     expect(fetchFalso).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("ehArquivoInternoOuSistema e Lixeira", () => {
+  it("permite itens dentro de .lixeira/ para serem indexados pelo acervo", () => {
+    expect(ehArquivoInternoOuSistema(".lixeira/notas/exemplo.md")).toBe(false);
+    expect(ehArquivoInternoOuSistema(".lixeira/tarefas/compras.md")).toBe(false);
+  });
+
+  it("continua bloqueando arquivos internos ocultos ou do sistema", () => {
+    expect(ehArquivoInternoOuSistema(".github/workflows/deploy.yml")).toBe(true);
+    expect(ehArquivoInternoOuSistema(".klaus/config.json")).toBe(true);
+    expect(ehArquivoInternoOuSistema("package.json")).toBe(true);
+  });
+
+  it("daPasta não inclui itens de .lixeira/ ao listar notas ou tarefas normais", () => {
+    const itens = [
+      itemMock("notas/ativa.md"),
+      itemMock(".lixeira/notas/descartada.md"),
+    ];
+    const notas = daPasta(itens, "notas");
+    expect(notas).toHaveLength(1);
+    expect(notas[0].caminho).toBe("notas/ativa.md");
   });
 });
