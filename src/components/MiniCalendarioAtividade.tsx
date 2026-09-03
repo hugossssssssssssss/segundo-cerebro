@@ -95,9 +95,9 @@ export function MiniCalendarioAtividade({
   return (
     <>
       {/* Grade de Calendário sem margens próprias para caber perfeitamente no card */}
-      <div className={cn("w-full space-y-2 select-none", className)}>
+      <div className={cn("w-full space-y-1.5 select-none", className)}>
         {/* Setas minimalistas de navegação */}
-        <div className="flex items-center justify-between text-muted-foreground">
+        <div className="flex items-center justify-between text-muted-foreground px-1">
           <button
             type="button"
             onClick={() => setMesReferencia((m) => subMonths(m, 1))}
@@ -121,19 +121,8 @@ export function MiniCalendarioAtividade({
           </button>
         </div>
 
-        {/* Cabeçalho dos dias da semana (S T Q Q S S D) */}
-        <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-semibold text-muted-foreground/60">
-          <span>S</span>
-          <span>T</span>
-          <span>Q</span>
-          <span>Q</span>
-          <span>S</span>
-          <span>S</span>
-          <span>D</span>
-        </div>
-
-        {/* Grade de Quadradinhos que lembram um calendário */}
-        <div className="grid grid-cols-7 gap-1">
+        {/* Grade de Mini Quadradinhos Compactos estilo GitHub */}
+        <div className="grid grid-cols-7 gap-[3px] max-w-[170px] mx-auto pt-0.5">
           {diasDoGrid.map((dia) => {
             const diaIso = format(dia, "yyyy-MM-dd");
             const pertenceAoMes = isSameMonth(dia, mesReferencia);
@@ -163,7 +152,7 @@ export function MiniCalendarioAtividade({
                   type="button"
                   onClick={() => setDiaModalAberto(diaIso)}
                   className={cn(
-                    "aspect-square w-full rounded-[3px] border transition-all cursor-pointer relative",
+                    "w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-[2px] border transition-all cursor-pointer relative",
                     CORES_NIVEL[nivel],
                     !pertenceAoMes && "opacity-15",
                     ehHoje && "ring-1 ring-primary ring-offset-1 ring-offset-card"
