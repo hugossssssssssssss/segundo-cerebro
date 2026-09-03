@@ -12,15 +12,6 @@
   "host_permissions": [
     "<all_urls>"
   ],
-  "declarative_net_request": {
-    "rule_resources": [
-      {
-        "id": "regras_frame",
-        "enabled": true,
-        "path": "rules.json"
-      }
-    ]
-  },
   "action": {
     "default_icon": {
       "16": "icons/icon16.png",
@@ -37,6 +28,12 @@
       "matches": ["<all_urls>"],
       "js": ["content.js"],
       "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["hud.html", "hud.js", "hud.css"],
+      "matches": ["<all_urls>"]
     }
   ],
   "commands": {

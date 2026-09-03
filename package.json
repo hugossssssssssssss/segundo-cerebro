@@ -4,7 +4,8 @@
   "version": "2.6.0",
   "type": "module",
   "scripts": {
-    "build": "tsc -b && npm run arquitetura && npm run schemas && vite build",
+    "build": "tsc -b && npm run arquitetura && npm run schemas && vite build && npm run build:hud",
+    "build:hud": "vite build --config vite.hud.config.ts",
     "arquitetura": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gerar-arquitetura.ts",
     "schemas": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gerar-schemas-mcp.ts",
     "lint": "oxlint",

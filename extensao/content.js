@@ -19,7 +19,7 @@
   let modalAberto = false;
   let timerFechar = null;
 
-  const KLAUS_URL = "https://hugossssssssssssss.github.io/segundo-cerebro/#/header-hud";
+  const KLAUS_URL = chrome.runtime.getURL("hud.html");
 
   // Cria estrutura HTML no Shadow DOM
   const rootDiv = document.createElement("div");

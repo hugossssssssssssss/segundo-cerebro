@@ -611,6 +611,22 @@ function AppInterno() {
   // depois que o passo a passo saiu de cena, e ao sair ele já gravou.
   const [cfg] = useState(lerConfig);
 
+  useEffect(() => {
+    try {
+      const anyWin = window as any;
+      if (typeof anyWin.chrome !== "undefined" && anyWin.chrome?.storage?.local) {
+        const salvoConfig = localStorage.getItem("klaus_settings");
+        const salvoFav = localStorage.getItem("klaus_favoritos");
+        const salvoTema = localStorage.getItem("klaus_tema_v1");
+        anyWin.chrome.storage.local.set({
+          klaus_settings: salvoConfig,
+          klaus_favoritos: salvoFav ? JSON.parse(salvoFav) : [],
+          klaus_tema_v1: salvoTema || "dark",
+        });
+      }
+    } catch {}
+  }, []);
+
   if (precisaOnboarding(cfg)) {
     return <Navigate to="/boas-vindas" replace />;
   }

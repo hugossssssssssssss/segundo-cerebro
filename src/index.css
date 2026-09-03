@@ -255,8 +255,7 @@
   button,
   .nao-imprimir,
   [role="dialog"],
-  .sonner-toast,
-  .group\\/gadget .group-hover\\/gadget\\:opacity-100 {
+  .sonner-toast {
     display: none !important;
   }
 
