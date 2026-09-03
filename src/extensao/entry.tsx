@@ -31,6 +31,52 @@ function AppExtensao() {
     return () => window.removeEventListener("mousemove", aoMoverMouse, { capture: true } as any);
   }, [modalAberto]);
 
+  // Sincroniza configurações e favoritos do Klaus em tempo real via chrome.storage.local
+  useEffect(() => {
+    if (typeof chrome === "undefined" || !chrome.storage?.local) return;
+
+    const sincronizarDoStorage = () => {
+      chrome.storage.local.get(
+        ["klaus_favoritos", "klaus_settings_enc", "klaus_device_salt"],
+        (res: any) => {
+          if (!res) return;
+          try {
+            if (res.klaus_favoritos && Array.isArray(res.klaus_favoritos)) {
+              localStorage.setItem("klaus_favoritos", JSON.stringify(res.klaus_favoritos));
+              window.dispatchEvent(
+                new CustomEvent("klaus-favoritos-atualizados", { detail: res.klaus_favoritos })
+              );
+            }
+            if (res.klaus_settings_enc) {
+              localStorage.setItem("segundo-cerebro:config:enc", res.klaus_settings_enc);
+            }
+            if (res.klaus_device_salt) {
+              localStorage.setItem("segundo-cerebro:device-salt", res.klaus_device_salt);
+            }
+          } catch {}
+        }
+      );
+    };
+
+    sincronizarDoStorage();
+
+    const aoMudarStorage = (_mudancas: any, area: string) => {
+      if (area === "local") {
+        sincronizarDoStorage();
+      }
+    };
+
+    if (chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener(aoMudarStorage);
+    }
+
+    return () => {
+      if (chrome.storage?.onChanged) {
+        chrome.storage.onChanged.removeListener(aoMudarStorage);
+      }
+    };
+  }, []);
+
   // Atalho Option+K / Alt+K e mensagens da extensão
   useEffect(() => {
     const aoDigitar = (e: KeyboardEvent) => {

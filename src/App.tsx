@@ -56,6 +56,8 @@ import { Pomodoro } from "@/components/Pomodoro";
 import { obterRotuloRota, EVENTO_MENU_ATUALIZADO, sincronizarMenuComGithub } from "@/lib/menuPersonalizado";
 import { alternarTema } from "@/lib/tema";
 
+declare const chrome: any;
+
 inicializarLogger();
 
 /**
@@ -120,6 +122,24 @@ function Estrutura({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem("sidebar-colapsada", String(colapsada));
   }, [colapsada]);
+
+  // Transmite automaticamente os dados do Klaus para a extensão em qualquer site
+  useEffect(() => {
+    try {
+      if (typeof chrome !== "undefined" && chrome?.storage?.local) {
+        const favs = localStorage.getItem("klaus_favoritos");
+        const enc = localStorage.getItem("segundo-cerebro:config:enc");
+        const salt = localStorage.getItem("segundo-cerebro:device-salt");
+        const payload: Record<string, any> = {};
+        if (favs) payload.klaus_favoritos = JSON.parse(favs);
+        if (enc) payload.klaus_settings_enc = enc;
+        if (salt) payload.klaus_device_salt = salt;
+        if (Object.keys(payload).length > 0) {
+          chrome.storage.local.set(payload);
+        }
+      }
+    } catch {}
+  }, []);
 
   // ⌘K busca, ⌘J captura, ⌘B toggle da barra lateral, ⌘/ guia de atalhos
   useEffect(() => {

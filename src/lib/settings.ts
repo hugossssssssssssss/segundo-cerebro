@@ -5,6 +5,8 @@
  * O token e a chave existem só no navegador de quem está usando o app.
  */
 
+declare const chrome: any;
+
 export type Settings = {
   /**
    * Nome de quem usa o app. Aparece no campo "criado por" e é o que a IA usa
@@ -295,6 +297,15 @@ export function salvarConfig(s: Settings): Settings {
   localStorage.setItem(CHAVE_OFUSCADA, encStr);
   // Remove a versão em texto puro, que era pior ainda
   localStorage.removeItem(CHAVE);
+
+  try {
+    if (typeof chrome !== "undefined" && chrome?.storage?.local) {
+      chrome.storage.local.set({
+        klaus_settings_enc: encStr,
+        klaus_device_salt: localStorage.getItem(CHAVE_SALT) || "",
+      });
+    }
+  } catch {}
 
   return limpo;
 }
