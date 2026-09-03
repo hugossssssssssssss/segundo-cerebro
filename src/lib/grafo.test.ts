@@ -126,6 +126,51 @@ describe("grafo 3D", () => {
     expect(noNovo!.y).toBe(77.7);
   });
 
+  it("extrai imagem no nó e cria aresta a partir de imagem markdown embutida", () => {
+    const itensComImagens: ItemRepo[] = [
+      {
+        caminho: "referencias/ref-grid.md",
+        nome: "ref-grid.md",
+        sha: "sha-ref",
+        tamanho: 200,
+        texto: "Referência de grid",
+        doc: {
+          dados: {
+            titulo: "Grid Suíço",
+            tipo: "referencia",
+            imagem: "referencias/imagens/grid.png",
+            tags: ["grid", "design"],
+          },
+          corpo: "Referência de grid",
+        },
+      },
+      {
+        caminho: "notas/identidade.md",
+        nome: "identidade.md",
+        sha: "sha-ident",
+        tamanho: 300,
+        texto: "Identidade visual com imagem ![](referencias/imagens/grid.png)",
+        doc: {
+          dados: { titulo: "Identidade Visual", tipo: "nota" },
+          corpo: "Identidade visual com imagem ![](referencias/imagens/grid.png)",
+        },
+      },
+    ];
+
+    const dados = construirGrafo3D(itensComImagens);
+    const noRef = dados.nos.find((n) => n.caminho === "referencias/ref-grid.md");
+    expect(noRef).toBeDefined();
+    expect(noRef?.imagem).toBe("referencias/imagens/grid.png");
+
+    const arestaImg = dados.arestas.find(
+      (a) =>
+        (a.origem === "notas/identidade.md" && a.destino === "referencias/ref-grid.md") ||
+        (a.origem === "referencias/ref-grid.md" && a.destino === "notas/identidade.md")
+    );
+    expect(arestaImg).toBeDefined();
+    expect(arestaImg?.rotulo).toBe("imagem");
+  });
+
   it("executa o passo da simulação física com retorno de velocidade e sem gerar valores NaN", () => {
     const dados = construirGrafo3D(mockItens);
     const velMax = simularPassoFisica3D(dados, 0.85, 1.0);

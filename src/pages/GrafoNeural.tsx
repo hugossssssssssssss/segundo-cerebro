@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Network } from "lucide-react";
+import { Network, Sparkles, Link as LinkIcon, Tag } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useSalvar } from "@/lib/useSalvar";
 import { useAcervoRepo } from "@/lib/useItemRepo";
@@ -143,6 +143,15 @@ export default function GrafoNeural() {
           dadosProps={aberto.bruto}
           onChangeProps={(novosDados) =>
             setAberto((prev) => (prev ? { ...prev, bruto: novosDados } : null))
+          }
+          camposFixosProps={
+            aberto.caminho.startsWith("referencias/") || aberto.tipoRotulo === "Referência"
+              ? {
+                  porque: { icone: <Sparkles className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" as const },
+                  fonte: { icone: <LinkIcon className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "link" as const },
+                  tags: { icone: <Tag className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" as const },
+                }
+              : undefined
           }
           caminhoItem={aberto.caminho}
           salvando={salvando}

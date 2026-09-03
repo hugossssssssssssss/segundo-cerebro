@@ -18,6 +18,7 @@ import {
 } from "@/lib/grafo";
 import type { ItemRepo } from "@/lib/repo";
 import { Tooltip } from "@/components/ui/tooltip";
+import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { cn } from "@/lib/utils";
 
 interface NavegadorGrafoProps {
@@ -158,7 +159,7 @@ export function NavegadorGrafo3D({
 
       const mapaNos = new Map(nos.map((n) => [n.id, n]));
 
-      // 1. Desenha as Arestas de Conexão (Linhas Nítidas e Conectadas)
+      // 1. Desenha as Arestas de Conexão (Linhas Nítidas, Contrastadas e Conectadas)
       for (const a of arestas) {
         const n1 = mapaNos.get(a.origem);
         const n2 = mapaNos.get(a.destino);
@@ -182,13 +183,14 @@ export function NavegadorGrafo3D({
         ctx.lineTo(x2, y2);
 
         if (estaConectadoAoHover) {
-          ctx.strokeStyle = escuro ? "#60a5fa" : "#2563eb";
-          ctx.lineWidth = 2.2 * zoom;
-          ctx.globalAlpha = 0.95;
+          ctx.strokeStyle = escuro ? "#818cf8" : "#4f46e5";
+          ctx.lineWidth = Math.max(2.4, 2.4 * zoom);
+          ctx.globalAlpha = 1.0;
         } else {
-          ctx.strokeStyle = escuro ? "rgba(148, 163, 184, 0.35)" : "rgba(100, 116, 139, 0.35)";
-          ctx.lineWidth = 1.2 * zoom;
-          ctx.globalAlpha = hoverItem ? 0.12 : 0.65;
+          // Linhas estruturais sempre nítidas e visíveis
+          ctx.strokeStyle = escuro ? "rgba(165, 180, 252, 0.4)" : "rgba(99, 102, 241, 0.35)";
+          ctx.lineWidth = Math.max(1.4, 1.4 * zoom);
+          ctx.globalAlpha = hoverItem ? 0.25 : 0.85;
         }
         ctx.stroke();
         ctx.globalAlpha = 1.0;
@@ -212,7 +214,7 @@ export function NavegadorGrafo3D({
         if (pesquisa && !coincidePesquisa) alpha = 0.15;
         else if (hoverItem && !ehConectadoAoHover) alpha = 0.2;
 
-        const raioBase = Math.max(4, Math.min(no.raio * 0.7, 16));
+        const raioBase = Math.max(5, Math.min(no.raio * 0.75, 18));
         const raioFinal = (ehHover ? raioBase * 1.3 : raioBase) * zoom;
 
         ctx.save();
@@ -221,9 +223,9 @@ export function NavegadorGrafo3D({
         // Anel Externo ao Passar o Mouse
         if (ehHover) {
           ctx.beginPath();
-          ctx.arc(x, y, raioFinal + 4, 0, Math.PI * 2);
+          ctx.arc(x, y, raioFinal + 5, 0, Math.PI * 2);
           ctx.strokeStyle = no.cor;
-          ctx.lineWidth = 2;
+          ctx.lineWidth = 2.5;
           ctx.stroke();
         }
 
@@ -234,24 +236,24 @@ export function NavegadorGrafo3D({
         ctx.fill();
 
         // Borda sutil
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+        ctx.lineWidth = 1.5;
         ctx.stroke();
 
         // Rótulo do Título (aparece no hover, no zoom próximo ou na busca)
         const deveMostrarRotulo =
           ehHover ||
           (hoverItem && ehConectadoAoHover) ||
-          zoom > 1.2 ||
+          zoom > 1.1 ||
           (pesquisa && coincidePesquisa);
 
         if (deveMostrarRotulo) {
           ctx.font = `${ehHover ? "600 12px" : "11px"} sans-serif`;
           ctx.fillStyle = ehHover
             ? (escuro ? "#ffffff" : "#0f172a")
-            : (escuro ? "rgba(226, 232, 240, 0.9)" : "rgba(15, 23, 42, 0.9)");
+            : (escuro ? "rgba(226, 232, 240, 0.95)" : "rgba(15, 23, 42, 0.95)");
           ctx.textAlign = "center";
-          ctx.fillText(no.titulo, x, y + raioFinal + 12);
+          ctx.fillText(no.titulo, x, y + raioFinal + 13);
         }
 
         ctx.restore();
@@ -399,10 +401,19 @@ export function NavegadorGrafo3D({
 
       {/* Cartão Informativo de Hover no Nó Sob o Cursor */}
       {noHover && (
-        <div className="absolute top-16 left-3 pointer-events-none bg-card/95 border border-border rounded-xl p-3 shadow-xl backdrop-blur-md animate-in fade-in duration-100 max-w-xs">
+        <div className="absolute top-16 left-3 pointer-events-none bg-card/95 border border-border rounded-2xl p-3 shadow-2xl backdrop-blur-md animate-in fade-in duration-100 max-w-xs overflow-hidden">
+          {noHover.imagem && (
+            <div className="mb-2.5 rounded-xl overflow-hidden border border-border/70 max-h-32 bg-black/5 dark:bg-black/20">
+              <ImagemPrivada
+                caminho={noHover.imagem}
+                alt={noHover.titulo}
+                className="w-full h-28 object-cover"
+              />
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <span
-              className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+              className="w-2.5 h-2.5 rounded-full inline-block shrink-0 shadow-xs"
               style={{ backgroundColor: noHover.cor }}
             />
             <span className="font-semibold text-xs text-foreground truncate">{noHover.titulo}</span>

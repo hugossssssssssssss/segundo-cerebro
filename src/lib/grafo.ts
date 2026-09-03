@@ -27,6 +27,7 @@ export type NoGrafo3D = {
   titulo: string;
   tipo: TipoNoGrafo;
   tags: string[];
+  imagem?: string;
   x: number;
   y: number;
   z: number;
@@ -89,7 +90,7 @@ function hashStringParaPosicao(str: string): { x: number; y: number; z: number }
 
 /**
  * Resolve um identificador, menção ou caminho para um item do acervo.
- * Tolera acentos, minúsculas/maiúsculas, prefixo '@' e caminhos relativos.
+ * Tolera acentos, minúsculas/maiúsculas, prefixo '@', links markdown e caminhos relativos.
  */
 function resolverAlvoItem(
   termoOuCaminho: string,
@@ -97,16 +98,21 @@ function resolverAlvoItem(
   itens: ItemRepo[]
 ): Alvo | null {
   if (!termoOuCaminho || typeof termoOuCaminho !== "string") return null;
-  const limpo = termoOuCaminho.replace(/^@+/, "").trim();
+  const limpo = termoOuCaminho.replace(/^[@[]+/, "").replace(/[\])]+$/, "").trim();
   if (!limpo) return null;
 
   // 1. Busca direta no índice canônico (por título, nome ou caminho)
   const porChave = indice.get(chave(limpo));
   if (porChave) return porChave;
 
-  // 2. Busca por caminho direto ou relativo no acervo
+  // 2. Busca sem extensão .md no índice
+  const limpoSemMd = limpo.replace(/\.md$/, "");
+  const porChaveSemMd = indice.get(chave(limpoSemMd));
+  if (porChaveSemMd) return porChaveSemMd;
+
+  // 3. Busca por caminho direto ou relativo no acervo
   const porCaminho = itens.find(
-    (i) => i.caminho === limpo || i.caminho.endsWith(`/${limpo}`) || i.caminho.endsWith(`/${limpo}.md`)
+    (i) => i.caminho === limpo || i.caminho.endsWith(`/${limpo}`) || i.caminho === `${limpo}.md` || i.caminho.endsWith(`/${limpo}.md`)
   );
   if (porCaminho) {
     return {
@@ -116,7 +122,7 @@ function resolverAlvoItem(
     };
   }
 
-  // 3. Busca aproximada por título
+  // 4. Busca aproximada por título
   const limpoChave = chave(limpo);
   for (const item of itens) {
     const tit = String(item.doc.dados.titulo || tituloProvavel(item.doc, item.nome));
@@ -182,6 +188,17 @@ export function construirGrafo3D(
     const tipo = determinarTipo(item);
     const tags = Array.isArray(item.doc.dados.tags) ? item.doc.dados.tags : [];
 
+    // Extrai imagem de referência ou capa
+    const imagem =
+      typeof item.doc.dados.imagem === "string" && item.doc.dados.imagem.trim()
+        ? item.doc.dados.imagem.trim()
+        : typeof item.doc.dados.capa === "string" && item.doc.dados.capa.trim()
+        ? item.doc.dados.capa.trim()
+        : (item.caminho.startsWith("referencias/") &&
+            (item.texto?.match(/!\[.*?\]\((referencias\/imagens\/[^)]+)\)/i)?.[1] ||
+             item.doc.corpo?.match(/!\[.*?\]\((referencias\/imagens\/[^)]+)\)/i)?.[1])) ||
+          undefined;
+
     const anterior = mapaAnterior.get(item.caminho);
     let x: number, y: number, z: number, vx: number, vy: number, vz: number;
 
@@ -208,13 +225,14 @@ export function construirGrafo3D(
       titulo,
       tipo,
       tags,
+      imagem,
       x,
       y,
       z,
       vx,
       vy,
       vz,
-      raio: tipo === "meta" || tipo === "lousa" ? 14 : 10,
+      raio: tipo === "meta" || tipo === "lousa" ? 14 : tipo === "referencia" && imagem ? 13 : 10,
       cor: CORES_TIPOS_GRAFO[tipo] || "#89b4fa",
       conexoesCount: 0,
     });
@@ -222,6 +240,15 @@ export function construirGrafo3D(
 
   // 2. Extrai relacionamentos cruzados
   const indiceAlvos = montarIndice(itens);
+
+  // Mapeamento auxiliar de imagens para referências visuais
+  const mapaImagemParaRef = new Map<string, string>();
+  for (const item of itens) {
+    if (item.caminho.startsWith("referencias/") && !item.caminho.startsWith("referencias/imagens/")) {
+      const img = typeof item.doc.dados.imagem === "string" ? item.doc.dados.imagem.trim() : "";
+      if (img) mapaImagemParaRef.set(img.toLowerCase(), item.caminho);
+    }
+  }
 
   const adicionarAresta = (caminhoOrigem: string, caminhoDestino: string, rotulo: string, forca = 1) => {
     if (!caminhoOrigem || !caminhoDestino || caminhoOrigem === caminhoDestino) return;
@@ -272,11 +299,31 @@ export function construirGrafo3D(
       }
     }
 
-    // C. Conexões pelo campo `relacionamentos` do frontmatter
+    // C. Conexões por imagens embutidas ![legenda](referencias/imagens/foto.png)
+    const matchesImg = textoCompleto.matchAll(/!\[(.*?)\]\((referencias\/imagens\/[^)]+)\)/gi);
+    for (const m of matchesImg) {
+      const imgPath = m[2]?.trim().toLowerCase();
+      if (imgPath && mapaImagemParaRef.has(imgPath)) {
+        const refCaminho = mapaImagemParaRef.get(imgPath)!;
+        if (refCaminho !== caminho) {
+          adicionarAresta(caminho, refCaminho, "imagem", 1.2);
+        }
+      }
+    }
+
+    // D. Conexões pelo campo `relacionamentos` / `relacao` / `relacionado` do frontmatter
     const relsFrontmatter = Array.isArray(item.doc.dados.relacionamentos)
       ? item.doc.dados.relacionamentos
       : typeof item.doc.dados.relacionamentos === "string"
       ? [item.doc.dados.relacionamentos]
+      : Array.isArray(item.doc.dados.relacao)
+      ? item.doc.dados.relacao
+      : typeof item.doc.dados.relacao === "string"
+      ? [item.doc.dados.relacao]
+      : Array.isArray(item.doc.dados.relacionado)
+      ? item.doc.dados.relacionado
+      : typeof item.doc.dados.relacionado === "string"
+      ? [item.doc.dados.relacionado]
       : [];
 
     for (const rel of relsFrontmatter) {
@@ -288,7 +335,7 @@ export function construirGrafo3D(
       }
     }
 
-    // D. Conexões por campos contextuais: projeto, contatos, notas vinculadas
+    // E. Conexões por campos contextuais: projeto, contatos, tarefas, referencias
     if (typeof item.doc.dados.projeto === "string" && item.doc.dados.projeto.trim()) {
       const alvoProjeto = resolverAlvoItem(item.doc.dados.projeto, indiceAlvos, itens);
       if (alvoProjeto && alvoProjeto.caminho !== caminho) {
@@ -310,7 +357,35 @@ export function construirGrafo3D(
       }
     }
 
-    // E. Conexões estruturais: Entrega -> Metas
+    const referencias = Array.isArray(item.doc.dados.referencias)
+      ? item.doc.dados.referencias
+      : typeof item.doc.dados.referencia === "string"
+      ? [item.doc.dados.referencia]
+      : [];
+    for (const r of referencias) {
+      if (typeof r === "string" && r.trim()) {
+        const alvoRef = resolverAlvoItem(r, indiceAlvos, itens);
+        if (alvoRef && alvoRef.caminho !== caminho) {
+          adicionarAresta(caminho, alvoRef.caminho, "referencia", 1.1);
+        }
+      }
+    }
+
+    const tarefas = Array.isArray(item.doc.dados.tarefas)
+      ? item.doc.dados.tarefas
+      : typeof item.doc.dados.tarefa === "string"
+      ? [item.doc.dados.tarefa]
+      : [];
+    for (const t of tarefas) {
+      if (typeof t === "string" && t.trim()) {
+        const alvoTar = resolverAlvoItem(t, indiceAlvos, itens);
+        if (alvoTar && alvoTar.caminho !== caminho) {
+          adicionarAresta(caminho, alvoTar.caminho, "tarefa", 1.1);
+        }
+      }
+    }
+
+    // F. Conexões estruturais: Entrega -> Metas
     const metasVinculadas = Array.isArray(item.doc.dados.metas)
       ? item.doc.dados.metas
       : typeof item.doc.dados.meta === "string"
@@ -327,7 +402,7 @@ export function construirGrafo3D(
       }
     }
 
-    // F. Conexões estruturais: Contato -> Contato Pai
+    // G. Conexões estruturais: Contato -> Contato Pai
     const paiId = typeof item.doc.dados.pai_id === "string" ? item.doc.dados.pai_id : typeof item.doc.dados.pai === "string" ? item.doc.dados.pai : undefined;
     if (paiId && paiId.trim()) {
       const alvoPai = resolverAlvoItem(paiId, indiceAlvos, itens) ||

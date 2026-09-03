@@ -33,6 +33,7 @@ import { MencionadoEm } from "@/components/Links";
 import { PainelTarefasNota } from "@/components/PainelTarefasNota";
 import { PainelReferenciasNota } from "@/components/PainelReferenciasNota";
 import { SumarioNota } from "@/components/SumarioNota";
+import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { obterTarefasVinculadas, obterReferenciasVinculadas } from "@/lib/vinculosNota";
 import { sincronizarRelacionamentos } from "@/lib/links";
 import { cn } from "@/lib/utils";
@@ -107,6 +108,7 @@ export function PainelNotionBase({
   const [vendoHistorico, setVendoHistorico] = useState(false);
   const [menuAcoesAberto, setMenuAcoesAberto] = useState(false);
   const [confirmandoConversao, setConfirmandoConversao] = useState<{ novoTipo: string; novaPasta: string } | null>(null);
+  const [lightboxImagem, setLightboxImagem] = useState<{ src: string; titulo: string } | null>(null);
 
   type AbaContextoPainel = "tudo" | "documento" | "tarefas" | "moodboard" | "conexoes";
   const [abaAtiva, setAbaAtiva] = useState<AbaContextoPainel>(() => {
@@ -939,6 +941,59 @@ export function PainelNotionBase({
           />
         </Suspense>
       )}
+
+      {lightboxImagem && (
+        <div
+          className="fixed inset-0 z-[700] bg-black/95 backdrop-blur-md flex flex-col justify-between p-3 sm:p-6 animate-in fade-in duration-200"
+          onClick={() => setLightboxImagem(null)}
+        >
+          <div className="flex items-center justify-between z-10 select-none pt-[env(safe-area-inset-top,0px)]" onClick={(e) => e.stopPropagation()}>
+            <span className="font-bold text-sm text-white/90 truncate max-w-[70vw]">
+              {lightboxImagem.titulo}
+            </span>
+            <button
+              type="button"
+              onClick={() => setLightboxImagem(null)}
+              className="p-2 rounded-full bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer"
+              aria-label="Fechar visualização"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div
+            className="flex-1 flex items-center justify-center p-2 sm:p-4 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ImagemPrivada
+              caminho={lightboxImagem.src}
+              alt={lightboxImagem.titulo}
+              className="max-h-[80vh] max-w-[95vw] object-contain rounded-2xl shadow-2xl"
+            />
+          </div>
+
+          <div
+            className="flex items-center justify-between gap-2 p-3 pb-[max(env(safe-area-inset-bottom),12px)] rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md text-white/90 text-xs z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-[11px] sm:text-xs truncate">
+              {caminhoItem || "Imagem do documento"}
+            </span>
+            <button
+              type="button"
+              onClick={async (e) => {
+                e.stopPropagation();
+                await navigator.clipboard.writeText(`![](${lightboxImagem.src})`);
+                toast("Código Markdown copiado!");
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 transition-colors cursor-pointer text-xs"
+            >
+              <Copy size={13} />
+              <span>Copiar Markdown</span>
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -1055,7 +1110,59 @@ export function PainelNotionBase({
 
       <hr className="border-border" />
 
-      {elementoAcimaCorpo}
+      {elementoAcimaCorpo ? (
+        elementoAcimaCorpo
+      ) : (
+        (() => {
+          const imgPath =
+            (typeof dadosProps.imagem === "string" && dadosProps.imagem.trim()) ||
+            (typeof dadosProps.capa === "string" && dadosProps.capa.trim()) ||
+            (caminhoItem?.startsWith("referencias/") &&
+              corpo?.match(/!\[.*?\]\((referencias\/imagens\/[^)]+)\)/i)?.[1]) ||
+            "";
+
+          if (!imgPath) return null;
+
+          return (
+            <div className="relative group rounded-2xl sm:rounded-3xl overflow-hidden border border-border/80 bg-black/5 dark:bg-black/20 max-h-[380px] flex items-center justify-center">
+              <ImagemPrivada
+                caminho={imgPath}
+                alt={titulo || "Imagem de referência"}
+                className="max-h-[380px] w-full object-contain rounded-2xl transition-transform duration-300 group-hover:scale-[1.01]"
+              />
+              <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <Tooltip conteudo="Copiar código Markdown">
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await navigator.clipboard.writeText(`![](${imgPath})`);
+                      toast("Código da imagem copiado!");
+                    }}
+                    className="p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm hover:scale-110 transition-transform cursor-pointer shadow-md"
+                    aria-label="Copiar código Markdown"
+                  >
+                    <Copy size={13} />
+                  </button>
+                </Tooltip>
+                <Tooltip conteudo="Ver em tela cheia">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLightboxImagem({ src: imgPath, titulo: titulo || "Imagem" });
+                    }}
+                    className="p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm hover:scale-110 transition-transform cursor-pointer shadow-md"
+                    aria-label="Ver em tela cheia"
+                  >
+                    <Maximize2 size={13} />
+                  </button>
+                </Tooltip>
+              </div>
+            </div>
+          );
+        })()
+      )}
 
       {/* Abas Superiores de Contexto (só exibe se houver mais de uma visão disponível) */}
       {temMaisDeUmaVisao && abasDisponiveis.length > 1 && (
