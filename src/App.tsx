@@ -649,6 +649,8 @@ function AppInterno() {
   );
 }
 
+const HeaderHUD = lazy(() => import("@/pages/HeaderHUD"));
+
 export default function App() {
   return (
     <HashRouter>
@@ -663,6 +665,7 @@ export default function App() {
             <ProvedorFerramentasFlutuantes>
               <Suspense fallback={<Carregando />}>
                 <Routes>
+                  <Route path="/header-hud" element={<HeaderHUD />} />
                   <Route path="/boas-vindas" element={<BoasVindas />} />
                   <Route path="*" element={<AppInterno />} />
                 </Routes>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Klaus — Configurações da Extensão</title>
+  <title>Klaus — Header no Navegador</title>
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
@@ -11,54 +11,27 @@
     <img src="icons/icon32.png" alt="Logo Klaus" class="logo" />
     <div>
       <h1>Klaus</h1>
-      <p class="sub">Barra Superior & Web Clipper</p>
+      <p class="sub">Header Oficial em Qualquer Site</p>
     </div>
   </header>
 
   <main class="content">
     <div class="card">
-      <h2>Conexão com o GitHub</h2>
+      <h2>Ambiente do Klaus</h2>
       <div class="field">
-        <label for="githubToken">GitHub Token (PAT)</label>
-        <input type="password" id="githubToken" placeholder="ghp_..." autocomplete="off" />
-      </div>
-
-      <div class="row">
-        <div class="field">
-          <label for="repoOwner">Usuário</label>
-          <input type="text" id="repoOwner" placeholder="hugossssssssssssss" />
-        </div>
-        <div class="field">
-          <label for="repoName">Repositório de Dados</label>
-          <input type="text" id="repoName" placeholder="segundo-cerebro-dados" />
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="klausUrl">URL do Klaus App</label>
+        <label for="klausUrl">URL da Aplicação</label>
         <input type="text" id="klausUrl" placeholder="https://hugossssssssssssss.github.io/segundo-cerebro" />
+        <p class="hint">Use <code>http://localhost:5173</code> se estiver testando localmente com <code>npm run dev</code>.</p>
       </div>
     </div>
 
     <div class="card">
-      <h2>Comportamento da Barra</h2>
+      <h2>Comportamento</h2>
       <label class="toggle-label">
         <input type="checkbox" id="barraFixada" />
-        <span>Manter barra sempre visível (Fixada)</span>
+        <span>Manter header sempre fixado no topo</span>
       </label>
-      <p class="hint">Quando desmarcado, a barra só aparece ao aproximar o mouse do topo da janela.</p>
-    </div>
-
-    <div class="card">
-      <h2>Barra de Favoritos</h2>
-      <div class="field">
-        <div class="row">
-          <input type="text" id="novoFavTitulo" placeholder="Nome (ex: Figma)" />
-          <input type="text" id="novoFavUrl" placeholder="https://..." />
-          <button id="btnAdicionarFav" class="btn-secundario">+ Add</button>
-        </div>
-      </div>
-      <ul id="listaFavoritos" class="fav-list"></ul>
+      <p class="hint">Quando desmarcado, o header desliza suavemente ao aproximar o mouse do topo de qualquer site.</p>
     </div>
   </main>
 
