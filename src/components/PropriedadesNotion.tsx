@@ -1188,8 +1188,8 @@ export function PropriedadesNotion({
       const idPopover = `caminho-${chave}`;
       return (
         <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
-          <PopoverTrigger asChild>
-            <Tooltip conteudo="Clique para escolher ou mover de pasta">
+          <Tooltip conteudo="Clique para escolher ou mover de pasta">
+            <PopoverTrigger asChild>
               <button
                 className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-foreground bg-accent/30 hover:bg-accent hover:text-foreground transition-colors cursor-pointer border border-border/40"
                 aria-label="Escolher ou mover de pasta"
@@ -1198,8 +1198,8 @@ export function PropriedadesNotion({
                 <span>{trilhaAmigavel}</span>
                 <ChevronDown className="h-3 w-3 opacity-60 ml-0.5" />
               </button>
-            </Tooltip>
-          </PopoverTrigger>
+            </PopoverTrigger>
+          </Tooltip>
           <PopoverContent className="w-72 p-2 shadow-2xl border-border space-y-2" align="start" onInteractOutside={() => setMenuAberto(null)}>
             <div className="px-1.5 pt-1 pb-1 border-b border-border/60">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">

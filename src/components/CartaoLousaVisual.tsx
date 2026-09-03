@@ -194,8 +194,8 @@ export function CartaoLousaVisual({
         {/* Menu de Ações */}
         <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
           <Popover>
-            <PopoverTrigger asChild>
-              <Tooltip conteudo="Opções da lousa">
+            <Tooltip conteudo="Opções da lousa">
+              <PopoverTrigger asChild>
                 <button
                   type="button"
                   className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
@@ -203,8 +203,8 @@ export function CartaoLousaVisual({
                 >
                   <MoreVertical size={16} />
                 </button>
-              </Tooltip>
-            </PopoverTrigger>
+              </PopoverTrigger>
+            </Tooltip>
             <PopoverContent className="w-44 p-1 shadow-xl border-border" align="end">
               <button
                 type="button"
@@ -309,8 +309,8 @@ export function CartaoLousaVisual({
           onClick={(e) => e.stopPropagation()}
         >
           <Popover>
-            <PopoverTrigger asChild>
-              <Tooltip conteudo="Opções da lousa">
+            <Tooltip conteudo="Opções da lousa">
+              <PopoverTrigger asChild>
                 <button
                   type="button"
                   className="p-1.5 rounded-xl bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground border border-border/60 shadow-xs backdrop-blur-md transition-all cursor-pointer"
@@ -318,8 +318,8 @@ export function CartaoLousaVisual({
                 >
                   <MoreVertical size={14} />
                 </button>
-              </Tooltip>
-            </PopoverTrigger>
+              </PopoverTrigger>
+            </Tooltip>
             <PopoverContent
               className="w-44 p-1 shadow-xl border-border"
               align="end"

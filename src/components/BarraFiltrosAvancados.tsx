@@ -198,9 +198,9 @@ export function BarraFiltrosAvancados({
     <div className={cn("flex items-center gap-2 flex-wrap text-xs", className)}>
       {/* Botão de Disparo do Filtro */}
       <Popover open={menuAddAberto} onOpenChange={setMenuAddAberto}>
-        <PopoverTrigger asChild>
-          {regras.length === 0 ? (
-            <Tooltip conteudo="Filtrar por propriedade">
+        <Tooltip conteudo="Filtrar por propriedade" desabilitado={regras.length > 0}>
+          <PopoverTrigger asChild>
+            {regras.length === 0 ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -210,18 +210,18 @@ export function BarraFiltrosAvancados({
                 <Filter size={14} className="text-primary/80" />
                 <span className="text-xs">Filtro</span>
               </Button>
-            </Tooltip>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 px-3 text-xs rounded-xl text-primary border-primary/40 bg-primary/10 hover:bg-primary/15 transition-all gap-1.5 cursor-pointer font-semibold shadow-2xs"
-            >
-              <Plus size={13} strokeWidth={2.5} />
-              <span>Filtrar ({regras.length})</span>
-            </Button>
-          )}
-        </PopoverTrigger>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-3 text-xs rounded-xl text-primary border-primary/40 bg-primary/10 hover:bg-primary/15 transition-all gap-1.5 cursor-pointer font-semibold shadow-2xs"
+              >
+                <Plus size={13} strokeWidth={2.5} />
+                <span>Filtrar ({regras.length})</span>
+              </Button>
+            )}
+          </PopoverTrigger>
+        </Tooltip>
 
         <PopoverContent
           className="w-72 p-2 shadow-2xl border-border/80 bg-popover/95 backdrop-blur-xl rounded-2xl animate-in fade-in-50 zoom-in-95 duration-150"

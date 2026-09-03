@@ -60,12 +60,16 @@ export function Tooltip({
   desabilitado = false,
   className,
   children,
-}: TooltipProps) {
+  ...propsExtras
+}: TooltipProps & Record<string, any>) {
   const textoDica = content ?? conteudo;
   const ladoFinal = posicao ?? side ?? "bottom";
   const atrasoFinal = atrasoMs ?? delayDuration ?? 350;
 
   if (desabilitado || !textoDica) {
+    if (isValidElement(children) && Object.keys(propsExtras).length > 0) {
+      return cloneElement(children as ReactElement<any>, propsExtras);
+    }
     return <>{children}</>;
   }
 
@@ -81,6 +85,7 @@ export function Tooltip({
           tabIndex={0}
           className="inline-flex cursor-not-allowed focus:outline-none"
           role="presentation"
+          {...propsExtras}
         >
           {cloneElement(children as ReactElement<any>, {
             // Remove pointer-events do botão interno para o container capturar os eventos
@@ -88,6 +93,20 @@ export function Tooltip({
           })}
         </span>
       );
+    } else if (Object.keys(propsExtras).length > 0) {
+      // Repassa eventos e atributos recebidos de um Trigger pai (ex: PopoverTrigger)
+      const { onClick: onClickExtra, onPointerDown: onPointerDownExtra, ...outrasPropsExtras } = propsExtras;
+      triggerChild = cloneElement(children as ReactElement<any>, {
+        ...outrasPropsExtras,
+        onClick: (e: any) => {
+          props.onClick?.(e);
+          onClickExtra?.(e);
+        },
+        onPointerDown: (e: any) => {
+          props.onPointerDown?.(e);
+          onPointerDownExtra?.(e);
+        },
+      });
     }
   }
 

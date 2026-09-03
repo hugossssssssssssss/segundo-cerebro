@@ -19,6 +19,7 @@ import {
   Pin,
   FolderInput,
   Tags,
+  Pencil,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -98,6 +99,8 @@ export default function Notas() {
 
   const [pastaAtual, setPastaAtual] = useState("");
   const [pastasCriadas, setPastasCriadas] = useState<string[]>([]);
+  const [pastaEmEdicao, setPastaEmEdicao] = useState<{ caminhoCompleto: string; nomeAtual: string } | null>(null);
+  const [textoNovoNomePasta, setTextoNovoNomePasta] = useState("");
   const [abaPasta, setAbaPasta] = useState<"documentos" | "tarefas" | "moodboard">("documentos");
 
   const contagemTarefasPorNota = useMemo(() => {
@@ -199,7 +202,7 @@ export default function Notas() {
     }
   }
 
-  const { salvarTexto, apagarItem, salvando, erro: erroSalvar, limparErro } = useSalvar(cfg);
+  const { salvarTexto, apagarItem, apagarDefinitivoItem, salvando, erro: erroSalvar, limparErro } = useSalvar(cfg);
   const erro = erroCarregar || erroSalvar;
 
   const [busca, setBusca] = useState("");
@@ -828,6 +831,96 @@ export default function Notas() {
     }
   }
 
+  async function executarRenomearPasta(caminhoAntigo: string, novoNome: string) {
+    const nomeLimpo = novoNome
+      .replace(/[^a-zA-Z0-9\s-_]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .toLowerCase();
+
+    setPastaEmEdicao(null);
+
+    if (!nomeLimpo) {
+      toast("O nome da pasta não pode ser vazio.", { tipo: "aviso" });
+      return;
+    }
+
+    const partes = caminhoAntigo.split("/");
+    const nomeAntigo = partes[partes.length - 1];
+
+    if (nomeLimpo === nomeAntigo) {
+      return;
+    }
+
+    partes[partes.length - 1] = nomeLimpo;
+    const caminhoNovo = partes.join("/");
+
+    // Impede renomear para pasta que já existe no mesmo nível
+    const pastasNoMesmoNivel = subpastas.map((s) => (pastaAtual ? `${pastaAtual}/${s}` : s));
+    if (pastasNoMesmoNivel.includes(caminhoNovo)) {
+      toast(`Já existe uma pasta chamada "${nomeLimpo}" neste local.`, { tipo: "erro" });
+      return;
+    }
+
+    const prefixoAntigo = `${PASTAS.notas}/${caminhoAntigo}/`;
+    const prefixoNovo = `${PASTAS.notas}/${caminhoNovo}/`;
+    const notasDaPasta = todasNotas.filter((n) => n.caminho.startsWith(prefixoAntigo));
+
+    toast(`Renomeando pasta para "${nomeLimpo}"...`, { tipo: "info" });
+
+    try {
+      if (notasDaPasta.length > 0) {
+        for (const nota of notasDaPasta) {
+          const caminhoRelativo = nota.caminho.slice(prefixoAntigo.length);
+          const novoCaminho = `${prefixoNovo}${caminhoRelativo}`;
+          const { dados, corpo } = notaParaArquivo(nota);
+          const texto = escreverMarkdown({ dados, corpo });
+          await salvarTexto(novoCaminho, texto, undefined, `renomear pasta para ${caminhoNovo}`, true);
+          await apagarDefinitivoItem(nota.caminho, nota.sha, true);
+        }
+      }
+
+      // Também renomeia tarefas na pasta correspondente, se houver
+      const prefixoAntigoTarefas = `${PASTAS.tarefas}/${caminhoAntigo}/`;
+      const prefixoNovoTarefas = `${PASTAS.tarefas}/${caminhoNovo}/`;
+      const tarefasDaPastaParaMover = todasTarefas.filter((t) => t.caminho.startsWith(prefixoAntigoTarefas));
+      if (tarefasDaPastaParaMover.length > 0) {
+        for (const tarefa of tarefasDaPastaParaMover) {
+          const caminhoRelativo = tarefa.caminho.slice(prefixoAntigoTarefas.length);
+          const novoCaminho = `${prefixoNovoTarefas}${caminhoRelativo}`;
+          const { dados, corpo } = tarefaParaArquivo(tarefa);
+          const texto = escreverMarkdown({ dados, corpo });
+          await salvarTexto(novoCaminho, texto, undefined, `renomear pasta de tarefas para ${caminhoNovo}`, true);
+          await apagarDefinitivoItem(tarefa.caminho, tarefa.sha, true);
+        }
+      }
+
+      // Atualiza pastasCriadas
+      setPastasCriadas((atuais) => {
+        const semAntiga = atuais.filter((p) => p !== caminhoAntigo && !p.startsWith(`${caminhoAntigo}/`));
+        const novas = atuais
+          .filter((p) => p.startsWith(`${caminhoAntigo}/`))
+          .map((p) => `${caminhoNovo}${p.slice(caminhoAntigo.length)}`);
+        return [...new Set([...semAntiga, caminhoNovo, ...novas])];
+      });
+
+      // Se a pasta atual aberta era esta ou descendente, atualiza a navegação
+      if (pastaAtual === caminhoAntigo) {
+        setPastaAtual(caminhoNovo);
+      } else if (pastaAtual.startsWith(`${caminhoAntigo}/`)) {
+        setPastaAtual(`${caminhoNovo}${pastaAtual.slice(caminhoAntigo.length)}`);
+      }
+
+      invalidarCache();
+      dispararAtualizacaoAcervo(PASTAS.notas);
+      recarregar();
+      toast(`Pasta renomeada para "${nomeLimpo}" com sucesso!`, { tipo: "sucesso" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast(`Erro ao renomear pasta: ${msg}`, { tipo: "erro" });
+    }
+  }
+
   async function processarAcaoMenu(acao: AcaoMenuContexto) {
     switch (acao.tipo) {
       case "criar_pasta": {
@@ -1208,21 +1301,66 @@ export default function Notas() {
           {partesPasta.map((parte, i) => {
             const caminhoParcial = partesPasta.slice(0, i + 1).join("/");
             const ehUltimo = i === partesPasta.length - 1;
+            const estaEmEdicao = pastaEmEdicao?.caminhoCompleto === caminhoParcial;
+
             return (
               <span key={caminhoParcial} className="flex items-center gap-1.5">
                 <ChevronRight size={12} className="text-muted-foreground/50" />
-                <button
-                  type="button"
-                  onClick={() => setPastaAtual(caminhoParcial)}
-                  className={cn(
-                    "rounded-xl px-2.5 py-1 transition-colors font-medium cursor-pointer",
-                    ehUltimo
-                      ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/20"
-                      : "text-foreground hover:bg-accent"
-                  )}
-                >
-                  {parte}
-                </button>
+                {estaEmEdicao ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      executarRenomearPasta(caminhoParcial, textoNovoNomePasta);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center"
+                  >
+                    <input
+                      type="text"
+                      value={textoNovoNomePasta}
+                      onChange={(e) => setTextoNovoNomePasta(e.target.value)}
+                      onBlur={() => executarRenomearPasta(caminhoParcial, textoNovoNomePasta)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          e.stopPropagation();
+                          setPastaEmEdicao(null);
+                        }
+                      }}
+                      autoFocus
+                      className="text-xs font-bold px-2 py-0.5 rounded-lg border-2 border-primary bg-background text-foreground shadow-xs focus:outline-none focus:ring-1 focus:ring-primary/40 min-w-[120px]"
+                    />
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPastaAtual(caminhoParcial)}
+                      className={cn(
+                        "rounded-xl px-2.5 py-1 transition-colors font-medium cursor-pointer",
+                        ehUltimo
+                          ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/20 hover:bg-amber-500/15"
+                          : "text-foreground hover:bg-accent"
+                      )}
+                    >
+                      {parte}
+                    </button>
+                    {ehUltimo && (
+                      <button
+                        type="button"
+                        title="Renomear pasta atual"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPastaEmEdicao({ caminhoCompleto: caminhoParcial, nomeAtual: parte });
+                          setTextoNovoNomePasta(parte);
+                        }}
+                        className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                        aria-label="Renomear pasta atual"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                    )}
+                  </div>
+                )}
               </span>
             );
           })}
@@ -1556,9 +1694,58 @@ export default function Notas() {
                     <FolderOpen size={18} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-bold text-xs text-foreground truncate">
-                      {pasta}
-                    </h4>
+                    {pastaEmEdicao?.caminhoCompleto === caminhoPasta ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          executarRenomearPasta(caminhoPasta, textoNovoNomePasta);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="py-0.5"
+                      >
+                        <input
+                          type="text"
+                          value={textoNovoNomePasta}
+                          onChange={(e) => setTextoNovoNomePasta(e.target.value)}
+                          onBlur={() => executarRenomearPasta(caminhoPasta, textoNovoNomePasta)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") {
+                              e.stopPropagation();
+                              setPastaEmEdicao(null);
+                            }
+                          }}
+                          autoFocus
+                          className="w-full text-xs font-bold px-2 py-1 rounded-lg border-2 border-primary bg-background text-foreground shadow-xs focus:outline-none focus:ring-1 focus:ring-primary/40"
+                        />
+                      </form>
+                    ) : (
+                      <div className="flex items-center justify-between gap-1 group/nome">
+                        <h4
+                          title="Clique para renomear"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPastaEmEdicao({ caminhoCompleto: caminhoPasta, nomeAtual: pasta });
+                            setTextoNovoNomePasta(pasta);
+                          }}
+                          className="font-bold text-xs text-foreground truncate hover:text-primary hover:underline cursor-text transition-colors"
+                        >
+                          {pasta}
+                        </h4>
+                        <button
+                          type="button"
+                          title="Renomear pasta"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPastaEmEdicao({ caminhoCompleto: caminhoPasta, nomeAtual: pasta });
+                            setTextoNovoNomePasta(pasta);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-opacity cursor-pointer shrink-0"
+                          aria-label={`Renomear pasta ${pasta}`}
+                        >
+                          <Pencil size={12} />
+                        </button>
+                      </div>
+                    )}
                     <span className="text-[10px] text-muted-foreground font-medium">
                       {qtdNotas} {qtdNotas === 1 ? "nota" : "notas"}
                     </span>

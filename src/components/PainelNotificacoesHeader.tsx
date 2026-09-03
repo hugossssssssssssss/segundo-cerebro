@@ -230,8 +230,8 @@ export function PainelNotificacoesHeader() {
   return (
     <>
       <Popover open={aberto} onOpenChange={setAberto}>
-        <PopoverTrigger asChild>
-          <Tooltip conteudo={naoVistosCount > 0 ? `${naoVistosCount} nova(s) notificação(ões)` : "Central de Notificações & Agenda"}>
+        <Tooltip conteudo={naoVistosCount > 0 ? `${naoVistosCount} nova(s) notificação(ões)` : "Central de Notificações & Agenda"}>
+          <PopoverTrigger asChild>
             <button
               type="button"
               className={cn(
@@ -250,8 +250,8 @@ export function PainelNotificacoesHeader() {
                 </span>
               )}
             </button>
-          </Tooltip>
-        </PopoverTrigger>
+          </PopoverTrigger>
+        </Tooltip>
 
         <PopoverContent
           align="end"

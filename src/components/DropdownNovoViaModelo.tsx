@@ -182,8 +182,8 @@ export function DropdownNovoViaModelo({
 
       {/* Botão de Modelos / Dropdown (Exatamente da mesma altura h-9) */}
       <Popover open={aberto} onOpenChange={setAberto}>
-        <PopoverTrigger asChild>
-          <Tooltip conteudo="Escolher ou gerenciar modelos">
+        <Tooltip conteudo="Escolher ou gerenciar modelos">
+          <PopoverTrigger asChild>
             <Button
               variant="default"
               size="sm"
@@ -192,8 +192,8 @@ export function DropdownNovoViaModelo({
             >
               <ChevronDown size={14} />
             </Button>
-          </Tooltip>
-        </PopoverTrigger>
+          </PopoverTrigger>
+        </Tooltip>
 
         <PopoverContent className="w-80 p-1.5 shadow-2xl border-border rounded-xl" align="end">
           <div className="py-1">
@@ -248,7 +248,7 @@ export function DropdownNovoViaModelo({
 
                       {/* Ações Diretas por Modelo */}
                       <div
-                        className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Tooltip conteudo={ehPadrao ? "Remover como padrão" : "Definir como padrão"}>
