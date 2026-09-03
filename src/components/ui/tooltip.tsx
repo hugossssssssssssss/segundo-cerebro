@@ -6,6 +6,7 @@ import {
 } from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cn, formatarAtalho } from "@/lib/utils";
+import { useShadowContainer } from "@/lib/shadowContext";
 
 export type PosicaoTooltip = "top" | "bottom" | "left" | "right";
 export type AlinhamentoTooltip = "start" | "center" | "end";
@@ -110,6 +111,8 @@ export function Tooltip({
     }
   }
 
+  const shadowContainer = useShadowContainer();
+
   return (
     <TooltipPrimitive.Provider delayDuration={atrasoFinal} skipDelayDuration={150}>
       <TooltipPrimitive.Root>
@@ -121,7 +124,7 @@ export function Tooltip({
           )}
         </TooltipPrimitive.Trigger>
 
-        <TooltipPrimitive.Portal>
+        <TooltipPrimitive.Portal container={shadowContainer || undefined}>
           <TooltipPrimitive.Content
             side={ladoFinal}
             align={align}

@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import cssGlobal from "@/index.css?inline";
 import { HeaderNativoKlaus } from "./HeaderNativoKlaus";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ShadowRootContext } from "@/lib/shadowContext";
 
 declare const chrome: any;
 
@@ -206,11 +207,13 @@ function AppExtensao() {
 
   const root = createRoot(container);
   root.render(
-    <MemoryRouter>
-      <TooltipProvider>
-        <AppExtensao />
-      </TooltipProvider>
-    </MemoryRouter>
+    <ShadowRootContext.Provider value={container}>
+      <MemoryRouter>
+        <TooltipProvider>
+          <AppExtensao />
+        </TooltipProvider>
+      </MemoryRouter>
+    </ShadowRootContext.Provider>
   );
 
   console.log("%c[Klaus]%c Header Oficial autêntico ativo no navegador!", "color: #6366f1; font-weight: bold;", "color: inherit;");

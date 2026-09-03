@@ -1,27 +1,14 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const inputKlausUrl = document.getElementById("klausUrl");
-  const checkFixada = document.getElementById("barraFixada");
-  const btnSalvar = document.getElementById("btnSalvar");
-  const statusMsg = document.getElementById("statusMsg");
+const KLAUS_URL = "https://hugossssssssssssss.github.io/segundo-cerebro/";
 
-  // Carregar dados salvos
-  chrome.storage.sync.get(["klausUrl", "barraFixada"], (res) => {
-    inputKlausUrl.value = res.klausUrl || "https://hugossssssssssssss.github.io/segundo-cerebro";
-    checkFixada.checked = !!res.barraFixada;
-  });
+document.getElementById("btn-toggle-hud").addEventListener("click", async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id) {
+    chrome.tabs.sendMessage(tab.id, { action: "toggle-klaus-bar" });
+    window.close();
+  }
+});
 
-  btnSalvar.addEventListener("click", () => {
-    chrome.storage.sync.set(
-      {
-        klausUrl: inputKlausUrl.value.trim(),
-        barraFixada: checkFixada.checked,
-      },
-      () => {
-        statusMsg.textContent = "Configurações salvas!";
-        setTimeout(() => {
-          statusMsg.textContent = "";
-        }, 2000);
-      }
-    );
-  });
+document.getElementById("btn-abrir-klaus").addEventListener("click", () => {
+  chrome.tabs.create({ url: KLAUS_URL });
+  window.close();
 });

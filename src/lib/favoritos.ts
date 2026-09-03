@@ -49,15 +49,25 @@ export function obterFaviconGoogle(url: string): string {
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(dominio)}&sz=64`;
 }
 
+export const FAVORITOS_PADRAO_KLAUS: FavoritoItem[] = [
+  { id: "fav-notas", nome: "Notas", url: "https://hugossssssssssssss.github.io/segundo-cerebro/#/notas" },
+  { id: "fav-tarefas", nome: "Tarefas", url: "https://hugossssssssssssss.github.io/segundo-cerebro/#/tarefas" },
+  { id: "fav-lousas", nome: "Lousas", url: "https://hugossssssssssssss.github.io/segundo-cerebro/#/lousas" },
+  { id: "fav-grafo", nome: "Grafo", url: "https://hugossssssssssssss.github.io/segundo-cerebro/#/grafo" },
+  { id: "fav-pdi", nome: "PDI", url: "https://hugossssssssssssss.github.io/segundo-cerebro/#/pdi" },
+  { id: "fav-inbox", nome: "Inbox", url: "https://hugossssssssssssss.github.io/segundo-cerebro/#/inbox" },
+  { id: "fav-chat", nome: "Chat", url: "https://hugossssssssssssss.github.io/segundo-cerebro/#/chat" },
+];
+
 /**
  * Lê os favoritos salvos no localStorage ou chrome.storage.
  */
-export function lerFavoritosLocal(): FavoritoItem[] {
+export function lerFavoritosLocal(opcoes: { comPadrao?: boolean } = {}): FavoritoItem[] {
   try {
     const salvo = localStorage.getItem(CHAVE_STORAGE_FAVORITOS);
     if (salvo) {
       const parsed = JSON.parse(salvo);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.filter((it) => it && typeof it === "object" && typeof it.url === "string");
       }
     }
@@ -76,6 +86,10 @@ export function lerFavoritosLocal(): FavoritoItem[] {
       });
     }
   } catch {}
+
+  if (opcoes.comPadrao) {
+    return FAVORITOS_PADRAO_KLAUS;
+  }
 
   return [];
 }

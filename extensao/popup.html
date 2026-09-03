@@ -1,45 +1,68 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Klaus — Header no Navegador</title>
-  <link rel="stylesheet" href="popup.css" />
-</head>
-<body>
-  <header class="header">
-    <img src="icons/icon32.png" alt="Logo Klaus" class="logo" />
-    <div>
-      <h1>Klaus</h1>
-      <p class="sub">Header Oficial em Qualquer Site</p>
-    </div>
-  </header>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Klaus Segundo Cérebro</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="klaus-popup">
+      <header class="popup-header">
+        <div class="popup-brand">
+          <svg width="24" height="24" viewBox="0 0 64 64" fill="none">
+            <defs>
+              <linearGradient id="p-klaus-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#6366F1"></stop>
+                <stop offset="50%" stop-color="#8B5CF6"></stop>
+                <stop offset="100%" stop-color="#D946EF"></stop>
+              </linearGradient>
+              <linearGradient id="p-klaus-k" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#FFFFFF"></stop>
+                <stop offset="100%" stop-color="#F1F5F9"></stop>
+              </linearGradient>
+            </defs>
+            <rect width="64" height="64" rx="16" fill="url(#p-klaus-bg)"></rect>
+            <rect x="16" y="16" width="8" height="32" rx="4" fill="url(#p-klaus-k)"></rect>
+            <path d="M 21 31 L 39.5 16.5 C 41.5 15 44 17 42.5 19 L 27 33.5 Z" fill="url(#p-klaus-k)"></path>
+            <path d="M 23 30 L 41.5 45 C 43.5 46.5 41.5 49 39.5 47.5 L 21 32.5 Z" fill="url(#p-klaus-k)"></path>
+            <circle cx="45" cy="18" r="3" fill="#FFFFFF" opacity="0.9"></circle>
+          </svg>
+          <span class="popup-title">Klaus HUD</span>
+        </div>
+        <span class="popup-badge">Ativo</span>
+      </header>
 
-  <main class="content">
-    <div class="card">
-      <h2>Ambiente do Klaus</h2>
-      <div class="field">
-        <label for="klausUrl">URL da Aplicação</label>
-        <input type="text" id="klausUrl" placeholder="https://hugossssssssssssss.github.io/segundo-cerebro" />
-        <p class="hint">Use <code>http://localhost:5173</code> se estiver testando localmente com <code>npm run dev</code>.</p>
+      <div class="popup-content">
+        <p class="popup-desc">
+          O Header oficial do Klaus aparece no topo da janela ao aproximar o mouse.
+        </p>
+
+        <div class="popup-card">
+          <div class="card-row">
+            <span class="card-label">Atalho rápido</span>
+            <kbd class="card-kbd">Option + K</kbd>
+          </div>
+          <div class="card-row">
+            <span class="card-label">Captura rápida</span>
+            <kbd class="card-kbd">⌘ + J</kbd>
+          </div>
+        </div>
+
+        <div class="popup-actions">
+          <button id="btn-toggle-hud" class="btn btn-primary">
+            Alternar Barra na Página Atual
+          </button>
+          <button id="btn-abrir-klaus" class="btn btn-secondary">
+            Abrir Klaus no GitHub Pages
+          </button>
+        </div>
       </div>
+
+      <footer class="popup-footer">
+        <span>Segundo Cérebro • Hugo Silva</span>
+      </footer>
     </div>
-
-    <div class="card">
-      <h2>Comportamento</h2>
-      <label class="toggle-label">
-        <input type="checkbox" id="barraFixada" />
-        <span>Manter header sempre fixado no topo</span>
-      </label>
-      <p class="hint">Quando desmarcado, o header desliza suavemente ao aproximar o mouse do topo de qualquer site.</p>
-    </div>
-  </main>
-
-  <footer class="footer">
-    <button id="btnSalvar" class="btn-primario">Salvar Configurações</button>
-    <div id="statusMsg" class="status-msg"></div>
-  </footer>
-
-  <script src="popup.js"></script>
-</body>
+    <script src="popup.js"></script>
+  </body>
 </html>

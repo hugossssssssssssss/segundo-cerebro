@@ -17,6 +17,7 @@ import { Busca } from "@/components/Busca";
 import { ModalBuscaWeb } from "@/components/ModalBuscaWeb";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { lerFavoritosLocal, salvarFavoritosLocal, FAVORITOS_PADRAO_KLAUS } from "@/lib/favoritos";
 
 const LISTA_SONS_AMBIENTE = [
   { id: "chuva", nome: "Chuva Suave", url: "https://actions.google.com/sounds/v1/weather/rain_heavy.ogg" },
@@ -48,6 +49,16 @@ export function HeaderNativoKlaus({
   const [somAmbienteTocando, setSomAmbienteTocando] = useState(false);
   const [volumeSomAmbiente, setVolumeSomAmbiente] = useState(0.4);
   const [somMenuAberto, setSomMenuAberto] = useState(false);
+
+  // Inicializa com os atalhos reais do Klaus se o storage estiver vazio
+  useEffect(() => {
+    try {
+      const locais = lerFavoritosLocal();
+      if (!locais || locais.length === 0) {
+        salvarFavoritosLocal(FAVORITOS_PADRAO_KLAUS);
+      }
+    } catch {}
+  }, []);
 
   // Notifica o container se algum modal está aberto
   useEffect(() => {
