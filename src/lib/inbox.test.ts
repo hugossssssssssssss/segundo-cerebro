@@ -250,5 +250,48 @@ prazo: 2026-08-20 → 2026-08-25
     expect(caixa).toHaveLength(1);
     expect(caixa[0].visto).toBe(true);
   });
+
+  it("não inclui notas recém-criadas que não possuam campo explícito de data, ignorando o nome do arquivo", () => {
+    const itensRepo: ItemRepo[] = [
+      {
+        caminho: "notas/2026-08-21-minha-nova-ideia.md",
+        nome: "2026-08-21-minha-nova-ideia.md",
+        sha: "novo1",
+        tamanho: 100,
+        texto: `---
+tipo: nota
+criado: 2026-08-21
+criado_em: 2026-08-21T14:00:00.000Z
+---
+# Minha Nova Ideia`,
+        doc: {
+          dados: { tipo: "nota", criado: "2026-08-21", criado_em: "2026-08-21T14:00:00.000Z" },
+          corpo: "# Minha Nova Ideia",
+        },
+      },
+      {
+        caminho: "notas/nota-com-data-agendada.md",
+        nome: "nota-com-data-agendada.md",
+        sha: "novo2",
+        tamanho: 100,
+        texto: `---
+tipo: nota
+data: 2026-08-21
+---
+# Reunião Agendada`,
+        doc: {
+          dados: { tipo: "nota", data: "2026-08-21" },
+          corpo: "# Reunião Agendada",
+        },
+      },
+    ];
+
+    const agora = new Date(2026, 7, 21, 15, 0, 0);
+    const caixa = compilarItensInbox(itensRepo, {}, agora);
+
+    expect(caixa).toHaveLength(1);
+    expect(caixa[0].titulo).toBe("Reunião Agendada");
+    expect(caixa.map(c => c.caminhoOrigem)).not.toContain("notas/2026-08-21-minha-nova-ideia.md");
+  });
 });
 

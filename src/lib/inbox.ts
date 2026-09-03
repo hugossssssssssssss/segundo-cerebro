@@ -319,7 +319,7 @@ export function compilarItensInbox(
       }
     }
 
-    // 3. Outras entidades com campo de data ou prazo (Metas PDI, Entregas, Notas, Contatos)
+    // 3. Outras entidades com campo de data ou prazo explícito (Metas PDI, Entregas, Notas com data, Contatos)
     if (!item.caminho.startsWith("tarefas/")) {
       const dataCampos = ["data", "prazo", "data_reuniao", "data_inicio", "data_fim"];
       let dataValor: string | undefined;
@@ -333,11 +333,6 @@ export function compilarItensInbox(
             break;
           }
         }
-      }
-
-      if (!dataValor) {
-        const matchNome = item.nome.match(/^(\d{4}-\d{2}-\d{2})/);
-        if (matchNome) dataValor = matchNome[1];
       }
 
       if (dataValor && (incluirFuturos || dataValor <= hojeIso)) {

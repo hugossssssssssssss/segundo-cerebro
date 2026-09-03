@@ -356,18 +356,14 @@ export default function Inbox() {
         }
       }
 
-      // 4. Notas com Data (notas/)
+      // 4. Notas com Data Explícita no Frontmatter (notas/)
       else if (item.caminho.startsWith("notas/")) {
-        const dataNota = (dados.data as string) || (dados.prazo as string) || (dados.data_reuniao as string);
+        const dataNota = (dados.data as string) || (dados.prazo as string) || (dados.data_reuniao as string) || (dados.data_inicio as string) || (dados.data_fim as string);
         let dataEncontrada: string | null = null;
 
         if (dataNota && typeof dataNota === "string") {
           const match = dataNota.match(/\d{4}-\d{2}-\d{2}/);
           if (match) dataEncontrada = match[0];
-        } else {
-          // Checa data no nome do arquivo (ex: 2026-08-27-titulo.md)
-          const matchNome = item.nome.match(/^(\d{4}-\d{2}-\d{2})/);
-          if (matchNome) dataEncontrada = matchNome[1];
         }
 
         if (dataEncontrada) {
