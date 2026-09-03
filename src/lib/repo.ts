@@ -182,6 +182,10 @@ export function ehArquivoInternoOuSistema(caminho: string): boolean {
     c.includes("/templates/") ||
     c.startsWith("jogos/") ||
     c.includes("/jogos/") ||
+    c.startsWith("extensao/") ||
+    c.includes("/extensao/") ||
+    c.startsWith("scripts/") ||
+    c.includes("/scripts/") ||
     c.startsWith("exemplos/")
   ) {
     return true;
