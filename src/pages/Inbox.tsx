@@ -893,14 +893,6 @@ export default function Inbox() {
             </button>
           </div>
 
-          {/* Mini Calendário estilo GitHub integrado diretamente no resumo da semana */}
-          {abaAtiva === "agenda" && (
-            <MiniCalendarioAtividade
-              acervo={acervo}
-              aoAbrirItem={abrirItemDoHistorico}
-            />
-          )}
-
           {/* Tag Minimalista de Pendências Anteriores */}
           {abaAtiva === "agenda" && atrasadosReais.length > 0 && (
             <button
@@ -1482,19 +1474,25 @@ export default function Inbox() {
               {/* 4ª Coluna da Linha 2: Resumo Rápido da Semana */}
               <div
                 className={cn(
-                  "flex flex-col rounded-2xl border border-dashed border-border/80 bg-secondary/10 p-4 justify-between min-h-[260px]",
+                  "flex flex-col rounded-2xl border border-dashed border-border/80 bg-secondary/10 p-4 justify-between min-h-[260px] gap-3",
                   diaSelecionadoMobile !== "todos" && "hidden sm:flex"
                 )}
               >
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <Sparkles size={13} className="text-primary" />
                     <span>Resumo da Semana</span>
                   </span>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Todos os seus compromissos, entregas e tarefas da semana permanecem sincronizados aqui.
+                    Seus compromissos sincronizados e pulso de atividade diária.
                   </p>
                 </div>
+
+                {/* Mini Calendário estilo GitHub (formato calendário clássico, sem margem própria) */}
+                <MiniCalendarioAtividade
+                  acervo={acervo}
+                  aoAbrirItem={abrirItemDoHistorico}
+                />
 
                 <div className="space-y-1.5 pt-2 border-t border-border/40 text-xs">
                   <div className="flex items-center justify-between text-muted-foreground">
