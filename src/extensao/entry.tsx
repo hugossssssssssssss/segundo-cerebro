@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { useState, useEffect } from "react";
+import { MemoryRouter } from "react-router-dom";
 import "@/index.css";
 import { HeaderOficialExtensao } from "./HeaderOficialExtensao";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,7 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 declare const chrome: any;
 
 function AppExtensao() {
-  // Inicialmente aberta para o usuário ver de primeira, podendo desafixar ou recolher
+  // Inicialmente visível para acesso imediato
   const [visivel, setVisivel] = useState(() => {
     try {
       const salvo = localStorage.getItem("klaus_barra_fixada");
@@ -184,9 +185,11 @@ function AppExtensao() {
 
   const root = createRoot(container);
   root.render(
-    <TooltipProvider>
-      <AppExtensao />
-    </TooltipProvider>
+    <MemoryRouter>
+      <TooltipProvider>
+        <AppExtensao />
+      </TooltipProvider>
+    </MemoryRouter>
   );
 
   console.log("%c[Klaus]%c Header Oficial carregado no navegador!", "color: #6366f1; font-weight: bold;", "color: inherit;");
