@@ -1,21 +1,31 @@
 import { createRoot } from "react-dom/client";
 import { useState, useEffect } from "react";
 import "@/index.css";
-import { HeaderExtensao } from "./HeaderExtensao";
-import { WorkspaceProvider } from "@/components/workspace/WorkspaceContext";
+import { HeaderOficialExtensao } from "./HeaderOficialExtensao";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 declare const chrome: any;
 
 function AppExtensao() {
-  const [visivel, setVisivel] = useState(false);
-  const [fixado, setFixado] = useState(() => {
+  // Inicialmente aberta para o usuário ver de primeira, podendo desafixar ou recolher
+  const [visivel, setVisivel] = useState(() => {
     try {
-      return localStorage.getItem("klaus_barra_fixada") === "true";
+      const salvo = localStorage.getItem("klaus_barra_fixada");
+      return salvo !== null ? salvo === "true" : true;
     } catch {
-      return false;
+      return true;
     }
   });
+
+  const [fixado, setFixado] = useState(() => {
+    try {
+      const salvo = localStorage.getItem("klaus_barra_fixada");
+      return salvo !== null ? salvo === "true" : true;
+    } catch {
+      return true;
+    }
+  });
+
   const [modalAberto, setModalAberto] = useState(false);
 
   // Monitora o cursor do mouse no topo de qualquer site
@@ -23,14 +33,14 @@ function AppExtensao() {
     let timerFechar: any = null;
 
     const aoMoverMouse = (e: MouseEvent) => {
-      if (e.clientY <= 10) {
+      if (e.clientY <= 12) {
         clearTimeout(timerFechar);
         setVisivel(true);
       } else if (e.clientY > 75 && !fixado && !modalAberto) {
         clearTimeout(timerFechar);
         timerFechar = setTimeout(() => {
           setVisivel(false);
-        }, 220);
+        }, 250);
       }
     };
 
@@ -69,17 +79,25 @@ function AppExtensao() {
   const alternarFixar = () => {
     const novo = !fixado;
     setFixado(novo);
+    setVisivel(novo || true);
     try {
       localStorage.setItem("klaus_barra_fixada", String(novo));
     } catch {}
-    if (novo) setVisivel(true);
   };
 
   const estaAberto = visivel || fixado || modalAberto;
 
   return (
-    <div className="dark text-foreground" style={{ fontSize: "16px", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
-      {/* Zona de Gatilho no Topo (12px de altura no topo da janela) */}
+    <div
+      className="dark text-foreground select-none"
+      style={{
+        fontSize: "16px",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+        lineHeight: "1.5",
+        boxSizing: "border-box",
+      }}
+    >
+      {/* Zona de Gatilho no Topo (14px de altura no topo da janela) */}
       <div
         onMouseEnter={() => setVisivel(true)}
         style={{
@@ -87,12 +105,37 @@ function AppExtensao() {
           top: 0,
           left: 0,
           width: "100vw",
-          height: "12px",
+          height: "14px",
           zIndex: 2147483646,
           background: "transparent",
           pointerEvents: "auto",
         }}
       />
+
+      {/* Alça visual no topo para indicar presença quando recolhido */}
+      {!estaAberto && (
+        <div
+          onClick={() => setVisivel(true)}
+          onMouseEnter={() => setVisivel(true)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "54px",
+            height: "5px",
+            background: "rgba(99, 102, 241, 0.7)",
+            borderBottomLeftRadius: "6px",
+            borderBottomRightRadius: "6px",
+            zIndex: 2147483646,
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+            pointerEvents: "auto",
+            transition: "height 0.2s ease, background 0.2s ease",
+          }}
+          title="Clique para abrir o Klaus (Option+K)"
+        />
+      )}
 
       {/* Barra do Header Oficial Nativo */}
       <div
@@ -109,7 +152,7 @@ function AppExtensao() {
           pointerEvents: estaAberto ? "auto" : "none",
         }}
       >
-        <HeaderExtensao
+        <HeaderOficialExtensao
           estaFixado={fixado}
           aoAlternarFixar={alternarFixar}
           onModalStateChange={setModalAberto}
@@ -119,7 +162,7 @@ function AppExtensao() {
   );
 }
 
-// Inicializa no documento com reset completo de escala e isolamento
+// Inicializa no documento
 (function iniciarExtensao() {
   if (document.getElementById("klaus-hud-extension-root")) return;
 
@@ -141,10 +184,10 @@ function AppExtensao() {
 
   const root = createRoot(container);
   root.render(
-    <WorkspaceProvider>
-      <TooltipProvider>
-        <AppExtensao />
-      </TooltipProvider>
-    </WorkspaceProvider>
+    <TooltipProvider>
+      <AppExtensao />
+    </TooltipProvider>
   );
+
+  console.log("%c[Klaus]%c Header Oficial carregado no navegador!", "color: #6366f1; font-weight: bold;", "color: inherit;");
 })();
