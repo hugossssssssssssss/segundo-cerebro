@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && npm run arquitetura && npm run schemas && vite build",
+    "build": "tsc -b && npm run arquitetura && npm run schemas && vite build && node scripts/copiar-para-extensao.js",
     "arquitetura": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gerar-arquitetura.ts",
     "schemas": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gerar-schemas-mcp.ts",
     "lint": "oxlint",

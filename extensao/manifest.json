@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Klaus — Segundo Cérebro (Barra Superior)",
+  "name": "Klaus — Segundo Cérebro (Header Oficial)",
   "version": "1.0.0",
-  "description": "Barra de favoritos, cabeçalho e captura rápida do Klaus em qualquer página ao aproximar o mouse do topo.",
+  "description": "Header e barra de favoritos oficiais do Klaus suspensa em qualquer site ao aproximar o mouse do topo.",
   "permissions": [
     "storage",
     "activeTab"
@@ -32,6 +32,7 @@
   "web_accessible_resources": [
     {
       "resources": [
+        "dist/*",
         "icons/*",
         "content.css"
       ],
@@ -44,7 +45,7 @@
         "default": "Alt+K",
         "mac": "Alt+K"
       },
-      "description": "Alternar visibilidade da barra do Klaus"
+      "description": "Alternar visibilidade do Header do Klaus"
     }
   },
   "icons": {
