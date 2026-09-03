@@ -4,8 +4,8 @@
   "version": "2.5.9",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && npm run arquitetura && npm run schemas && vite build && node scripts/copiar-para-extensao.js",
+    "build": "tsc -b && npm run arquitetura && npm run schemas && vite build && npm run build:extensao",
+    "build:extensao": "vite build --config vite.extension.config.ts",
     "arquitetura": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gerar-arquitetura.ts",
     "schemas": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gerar-schemas-mcp.ts",
     "lint": "oxlint",
