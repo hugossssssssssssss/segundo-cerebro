@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { useState, useEffect, useRef } from "react";
 import { MemoryRouter } from "react-router-dom";
-import "@/index.css";
+import cssGlobal from "@/index.css?inline";
 import { HeaderNativoKlaus } from "./HeaderNativoKlaus";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -12,16 +12,7 @@ function AppExtensao() {
   const [modalAberto, setModalAberto] = useState(false);
   const timerFecharRef = useRef<any>(null);
 
-  // Tema
-  const [tema] = useState<string>(() => {
-    try {
-      return localStorage.getItem("klaus_tema_v1") || "dark";
-    } catch {
-      return "dark";
-    }
-  });
-
-  // Monitora cursor do mouse no topo de qualquer página
+  // Monitora cursor do mouse no topo de qualquer página (16px)
   useEffect(() => {
     const aoMoverMouse = (e: MouseEvent) => {
       if (e.clientY <= 16) {
@@ -71,7 +62,7 @@ function AppExtensao() {
 
   return (
     <div
-      className={tema === "light" ? "light text-foreground select-none" : "dark text-foreground select-none"}
+      className="dark text-foreground select-none"
       style={{
         fontSize: "16px",
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
@@ -79,7 +70,7 @@ function AppExtensao() {
         boxSizing: "border-box",
       }}
     >
-      {/* Zona de Gatilho de Hover Superior */}
+      {/* Zona de Gatilho de Hover Superior (16px) */}
       <div
         onMouseEnter={() => {
           clearTimeout(timerFecharRef.current);
@@ -171,12 +162,45 @@ function AppExtensao() {
 
   const shadow = host.attachShadow({ mode: "open" });
 
-  const linkCss = document.createElement("link");
-  linkCss.rel = "stylesheet";
-  linkCss.href = chrome.runtime.getURL("content.css");
-  shadow.appendChild(linkCss);
+  // Injeta o CSS compilado completo diretamente na tag style inline (instantâneo e à prova de falhas de CSP)
+  const styleEl = document.createElement("style");
+  styleEl.textContent = `
+    :host {
+      all: initial;
+      --background: 240 21% 12%;
+      --foreground: 226 64% 88%;
+      --card: 240 21% 15%;
+      --card-foreground: 226 64% 88%;
+      --popover: 240 20% 18%;
+      --popover-foreground: 226 64% 88%;
+      --primary: 267 84% 81%;
+      --primary-foreground: 240 23% 9%;
+      --secondary: 240 16% 23%;
+      --secondary-foreground: 226 64% 88%;
+      --muted: 240 16% 23%;
+      --muted-foreground: 228 24% 72%;
+      --accent: 240 16% 23%;
+      --accent-foreground: 226 64% 88%;
+      --destructive: 343 81% 75%;
+      --destructive-foreground: 240 23% 9%;
+      --success: hsl(115 54% 76%);
+      --warning: hsl(41 86% 83%);
+      --border: 240 16% 23%;
+      --input: 240 16% 23%;
+      --ring: 230 97% 85%;
+      --radius: 0.5rem;
+      font-size: 16px !important;
+      line-height: 1.5 !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      color-scheme: dark !important;
+      display: block !important;
+    }
+    ${cssGlobal}
+  `;
+  shadow.appendChild(styleEl);
 
   const container = document.createElement("div");
+  container.className = "dark";
   container.style.cssText = "all: initial; font-size: 16px !important; line-height: 1.5 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important; display: block !important;";
   shadow.appendChild(container);
 

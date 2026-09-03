@@ -561,12 +561,15 @@ export function BarraFavoritos({ className }: { className?: string }) {
     let cancelado = false;
 
     // Carrega do cache local de imediato
-    setFavoritos(lerFavoritosLocal());
+    const locais = lerFavoritosLocal();
+    if (locais && locais.length > 0) {
+      setFavoritos(locais);
+    }
 
     // Se estiver configurado, busca do GitHub apenas uma vez no carregamento
     if (pronto) {
       carregarFavoritos(cfg).then((res) => {
-        if (!cancelado && res.itens) {
+        if (!cancelado && res.itens && res.itens.length > 0) {
           setFavoritos(res.itens);
         }
       });
