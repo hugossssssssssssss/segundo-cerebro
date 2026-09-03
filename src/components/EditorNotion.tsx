@@ -17,6 +17,7 @@ import { carregarRepo, cache, invalidarCache, type ItemRepo } from "@/lib/repo";
 import { montarIndice, alvosUnicos, filtrarAlvos, type Alvo } from "@/lib/links";
 import { restaurarWikilinks, nomeLivre, escreverMarkdown } from "@/lib/markdown";
 import { formatarTagLembrete } from "@/lib/inbox";
+import { converterHtmlParaMarkdownClipboard, ehHtmlFormatadoRelevante } from "@/lib/pasteHtmlParaMarkdown";
 import { tarefaParaArquivo } from "@/lib/entidades";
 import { gravar } from "@/lib/github";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
@@ -345,6 +346,36 @@ export function EditorNotion({
 
   const editor = useCreateBlockNote({
     dictionary: dicionarioCustomizado,
+    pasteHandler: ({ event, editor: ed, defaultPasteHandler }) => {
+      // 1. Arquivos colados (imagens para upload) mantêm o fluxo nativo
+      if (event.clipboardData?.files && event.clipboardData.files.length > 0) {
+        return defaultPasteHandler();
+      }
+
+      // 2. Links ou referências especiais do Klaus (?abrir=... ou [[alvo]])
+      const textoPuro = event.clipboardData?.getData("text/plain") || "";
+      const substituicao = formatarTextoAoColar(textoPuro);
+      if (substituicao) {
+        ed.insertInlineContent([`${substituicao} `]);
+        return true;
+      }
+
+      // 3. Colagem rica com HTML (ex: Wikipedia, páginas da web, Google Docs, etc.)
+      const htmlCru = event.clipboardData?.getData("text/html");
+      if (htmlCru && ehHtmlFormatadoRelevante(htmlCru, textoPuro)) {
+        const md = converterHtmlParaMarkdownClipboard(htmlCru);
+        if (md) {
+          ed.pasteMarkdown(md);
+          return true;
+        }
+      }
+
+      // 4. Texto puro ou colagem sem formatação (Ctrl+Shift+V / Cmd+Shift+V)
+      return defaultPasteHandler({
+        prioritizeMarkdownOverHTML: true,
+        plainTextAsMarkdown: true,
+      });
+    },
   });
   const ultimoMd = useRef(markdown);
 

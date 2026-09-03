@@ -82,3 +82,24 @@ describe("encontrarMencaoNoPonto", () => {
     document.body.removeChild(container);
   });
 });
+
+describe("formatarTextoAoColar", () => {
+  it("converte URLs de navegação SPA com ?abrir= em menção @", async () => {
+    const { formatarTextoAoColar } = await import("./EditorNotion");
+    const res = formatarTextoAoColar("https://meuapp.com/#/notas?abrir=notas%2F2026-09-03-briefing.md");
+    expect(res).toBe("@briefing");
+  });
+
+  it("converte sintaxe wikilinks [[alvo]] em @alvo", async () => {
+    const { formatarTextoAoColar } = await import("./EditorNotion");
+    expect(formatarTextoAoColar("[[Design System]]")).toBe("@Design System");
+    expect(formatarTextoAoColar("[[notas/briefing.md|Briefing]]")).toBe("@Briefing");
+  });
+
+  it("retorna null para textos comuns sem padrão de atalho", async () => {
+    const { formatarTextoAoColar } = await import("./EditorNotion");
+    expect(formatarTextoAoColar("https://google.com")).toBeNull();
+    expect(formatarTextoAoColar("Apenas texto puro")).toBeNull();
+  });
+});
+
