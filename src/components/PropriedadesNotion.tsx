@@ -23,6 +23,11 @@ import {
   Sparkles,
   Check,
   Layout,
+  Target,
+  Award,
+  Bookmark,
+  Users,
+  FileText,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -213,6 +218,7 @@ type PropriedadesNotionProps = {
   opcoesRelacionamento?: { titulo: string; caminho: string }[];
   caminhoItem?: string;
   rotuloTipo?: string;
+  focoPropriedadeInicial?: string;
   aoMoverPasta?: (novaPasta: string) => Promise<any> | void;
 };
 
@@ -224,6 +230,7 @@ export function PropriedadesNotion({
   opcoesRelacionamento = [],
   caminhoItem,
   rotuloTipo,
+  focoPropriedadeInicial,
   aoMoverPasta,
 }: PropriedadesNotionProps) {
   // Controle estrito de um ÚNICO menu aberto por vez
@@ -888,12 +895,11 @@ export function PropriedadesNotion({
         );
       }
 
-      const tagsDisponiveis = fixo?.opcoes || obterTagsDisponiveis(tags, coresMap);
+      const tagsDisponiveis = Array.from(new Set([...(fixo?.opcoes || []), ...obterTagsDisponiveis(tags, coresMap)]));
       const tagsFiltradas = tagsDisponiveis.filter(t => t.toLowerCase().includes(buscaTag.toLowerCase()));
       const existeExata = tagsDisponiveis.some(t => t.toLowerCase() === buscaTag.toLowerCase().trim());
 
       const processarCriarTag = (nomeNovaTag: string) => {
-        if (fixo?.opcoes) return;
         const nomeLimpo = nomeNovaTag.trim().replace(/^@+/, "");
         if (!nomeLimpo) return;
         const novasTags = Array.from(new Set([...tags, nomeLimpo]));
@@ -905,7 +911,6 @@ export function PropriedadesNotion({
       };
 
       const processarRenomearTag = (velhaTag: string, novaTag: string) => {
-        if (fixo?.opcoes) return;
         const nomeLimpo = novaTag.trim();
         if (!nomeLimpo || velhaTag === nomeLimpo) {
           setEditandoTag(null);
@@ -926,7 +931,6 @@ export function PropriedadesNotion({
       };
 
       const processarExcluirTag = (tagParaExcluir: string) => {
-        if (fixo?.opcoes) return;
         const novasTags = tags.filter((t: string) => t !== tagParaExcluir);
         atualizar(chave, novasTags);
 
@@ -934,7 +938,7 @@ export function PropriedadesNotion({
         delete novasCores[tagParaExcluir];
         salvarConfigPropriedadesGlobais(undefined, novasCores);
         setGlobalConfig(lerConfigPropriedadesGlobais());
-        toast(`Tag "${tagParaExcluir}" excluída.`);
+        toast(`Opção/Tag "${tagParaExcluir}" removida.`);
       };
 
       return (
@@ -942,11 +946,11 @@ export function PropriedadesNotion({
           {tags.map((t: string) => (
             <div key={t} className="group relative flex items-center">
               {renderizarBadgeTag(t)}
-              <Tooltip conteudo="Remover tag deste item">
+              <Tooltip conteudo="Remover deste item">
                 <button
                   onClick={() => atualizar(chave, tags.filter((x: string) => x !== t))}
                   className="ml-0.5 text-muted-foreground hover:text-destructive opacity-50 hover:opacity-100 transition-all cursor-pointer"
-                  aria-label="Remover tag deste item"
+                  aria-label="Remover deste item"
                 >
                   <X size={11} />
                 </button>
@@ -974,7 +978,7 @@ export function PropriedadesNotion({
             <PopoverContent className="w-[260px] p-2 flex flex-col gap-2 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
               {editandoTag ? (
                 <div className="space-y-2 p-1">
-                  <p className="text-[11px] font-semibold text-muted-foreground">Renomear tag "{editandoTag}"</p>
+                  <p className="text-[11px] font-semibold text-muted-foreground">Renomear "{editandoTag}"</p>
                   <input
                     type="text"
                     value={novoNomeTag}
@@ -995,11 +999,11 @@ export function PropriedadesNotion({
                 <>
                   <input
                     type="text"
-                    placeholder={fixo?.opcoes ? "Buscar..." : "Buscar ou criar tag..."}
+                    placeholder="Buscar ou criar opção..."
                     value={buscaTag}
                     onChange={(e) => setBuscaTag(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && buscaTag.trim() && !existeExata && !fixo?.opcoes) {
+                      if (e.key === "Enter" && buscaTag.trim() && !existeExata) {
                         processarCriarTag(buscaTag);
                       }
                     }}
@@ -1023,7 +1027,7 @@ export function PropriedadesNotion({
                                 atualizar(chave, [...tags, tag]);
                               }
                             }}
-                            className="flex-1 flex items-center gap-2 text-left min-w-0"
+                            className="flex-1 flex items-center gap-2 text-left min-w-0 cursor-pointer"
                           >
                             <input
                               type="checkbox"
@@ -1036,55 +1040,53 @@ export function PropriedadesNotion({
                             </div>
                           </button>
 
-                          {!fixo?.opcoes && (
-                            <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0">
-                              <Tooltip conteudo="Renomear tag">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditandoTag(tag);
-                                    setNovoNomeTag(tag);
-                                  }}
-                                  className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent-foreground/10 rounded transition-all cursor-pointer"
-                                  aria-label="Renomear tag"
-                                >
-                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-                                  </svg>
-                                </button>
-                              </Tooltip>
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0">
+                            <Tooltip conteudo="Renomear">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditandoTag(tag);
+                                  setNovoNomeTag(tag);
+                                }}
+                                className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent-foreground/10 rounded transition-all cursor-pointer"
+                                aria-label="Renomear opção"
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                                </svg>
+                              </button>
+                            </Tooltip>
 
-                              <Tooltip conteudo="Excluir tag permanentemente">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    processarExcluirTag(tag);
-                                  }}
-                                  className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-all cursor-pointer"
-                                  aria-label="Excluir tag permanentemente"
-                                >
-                                  <Trash2 size={11} />
-                                </button>
-                              </Tooltip>
-                            </div>
-                          )}
+                            <Tooltip conteudo="Excluir opção">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  processarExcluirTag(tag);
+                                }}
+                                className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-all cursor-pointer"
+                                aria-label="Excluir opção"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </Tooltip>
+                          </div>
                         </div>
                       );
                     })}
 
-                    {buscaTag.trim() && !existeExata && !fixo?.opcoes && (
+                    {buscaTag.trim() && !existeExata && (
                       <button
                         onClick={() => processarCriarTag(buscaTag)}
-                        className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-md flex items-center gap-1.5"
+                        className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-md flex items-center gap-1.5 cursor-pointer"
                       >
                         <Plus size={12} />
-                        <span>Criar tag "{buscaTag.trim()}"</span>
+                        <span>Criar "{buscaTag.trim()}"</span>
                       </button>
                     )}
 
                     {tagsFiltradas.length === 0 && !buscaTag.trim() && (
                       <span className="text-[11px] text-muted-foreground p-2 text-center">
-                        {fixo?.opcoes ? "Nenhuma opção encontrada" : "Nenhuma tag cadastrada"}
+                        Nenhuma opção cadastrada
                       </span>
                     )}
                   </div>
@@ -1102,51 +1104,132 @@ export function PropriedadesNotion({
       const textoMencoes = extrairMencoesTexto(corpoTexto || "", opcoesRelacionamento.map(o => o.titulo));
       const unicosMencoes = Array.from(new Set([...relacoes, ...textoMencoes.map(m => m.trim())]));
 
+      const obterEstiloRel = (r: string) => {
+        const nomePuro = r.replace(/^[@[]+/, "").replace(/\]\]$/, "").trim();
+        const normNome = nomePuro.toLowerCase();
+        const itemAlvo = opcoesRelacionamento.find((o) => {
+          const normTitulo = o.titulo.toLowerCase().trim();
+          const normCaminho = o.caminho.toLowerCase().trim();
+          const normBase = o.caminho.split("/").pop()?.replace(/\.(md|json|excalidraw)$/i, "").toLowerCase().trim() || "";
+          return normTitulo === normNome || normCaminho === normNome || normBase === normNome || normTitulo.includes(normNome) || normNome.includes(normTitulo);
+        });
+
+        const c = itemAlvo?.caminho.toLowerCase() || "";
+        const rLower = r.toLowerCase();
+
+        // 1. Metas do PDI (Verde / Emerald)
+        if (c.startsWith("pdi/metas/") || c.startsWith("metas/") || rLower.includes("meta")) {
+          return {
+            tipo: "meta",
+            icone: <Target size={11} className="text-emerald-500 shrink-0" />,
+            classeBadge: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20",
+            itemAlvo,
+            nomePuro,
+          };
+        }
+
+        // 2. Tarefas (Azul)
+        if (c.startsWith("tarefas/") || rLower.includes("tarefa")) {
+          return {
+            tipo: "tarefa",
+            icone: <CheckSquare size={11} className="text-blue-500 shrink-0" />,
+            classeBadge: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/25 hover:bg-blue-500/20",
+            itemAlvo,
+            nomePuro,
+          };
+        }
+
+        // 3. Notas (Âmbar / Amarelo)
+        if (c.startsWith("notas/") || rLower.includes("nota")) {
+          return {
+            tipo: "nota",
+            icone: <FileText size={11} className="text-amber-500 shrink-0" />,
+            classeBadge: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25 hover:bg-amber-500/20",
+            itemAlvo,
+            nomePuro,
+          };
+        }
+
+        // 4. Entregas / Conquistas (Roxo)
+        if (c.startsWith("pdi/entregas/") || rLower.includes("entrega") || rLower.includes("conquista")) {
+          return {
+            tipo: "entrega",
+            icone: <Award size={11} className="text-purple-500 shrink-0" />,
+            classeBadge: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/25 hover:bg-purple-500/20",
+            itemAlvo,
+            nomePuro,
+          };
+        }
+
+        // 5. Contatos / Pessoas (Teal)
+        if (c.startsWith("contatos/") || rLower.includes("contato") || rLower.includes("pessoa")) {
+          return {
+            tipo: "contato",
+            icone: <Users size={11} className="text-teal-500 shrink-0" />,
+            classeBadge: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/25 hover:bg-teal-500/20",
+            itemAlvo,
+            nomePuro,
+          };
+        }
+
+        // 6. Referências Visuais (Rosa / Rose)
+        if (c.startsWith("referencias/") || rLower.includes("referencia")) {
+          return {
+            tipo: "referencia",
+            icone: <Bookmark size={11} className="text-rose-500 shrink-0" />,
+            classeBadge: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25 hover:bg-rose-500/20",
+            itemAlvo,
+            nomePuro,
+          };
+        }
+
+        // 7. Lousas / Mapa Mental (Índigo)
+        if (c.startsWith("lousas/") || rLower.includes("lousa") || rLower.includes("mapa")) {
+          return {
+            tipo: "lousa",
+            icone: <Layout size={11} className="text-indigo-500 shrink-0" />,
+            classeBadge: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/25",
+            itemAlvo,
+            nomePuro,
+          };
+        }
+
+        // Padrão
+        return {
+          tipo: "outro",
+          icone: <LinkIcon size={10} className="text-blue-500 shrink-0" />,
+          classeBadge: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20",
+          itemAlvo,
+          nomePuro,
+        };
+      };
+
       return (
         <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-auto min-h-7 px-2 py-1 text-left justify-start font-normal flex-wrap gap-1 hover:bg-transparent">
               {unicosMencoes.length > 0 ? (
                 unicosMencoes.map((r: string) => {
-                  const nomePuro = r.replace(/^[@[]+/, "").replace(/\]\]$/, "").trim();
-                  const normNome = nomePuro.toLowerCase();
-                  const itemAlvo = opcoesRelacionamento.find((o) => {
-                    const normTitulo = o.titulo.toLowerCase().trim();
-                    const normCaminho = o.caminho.toLowerCase().trim();
-                    const normBase = o.caminho.split("/").pop()?.replace(/\.(md|json|excalidraw)$/i, "").toLowerCase().trim() || "";
-                    return normTitulo === normNome || normCaminho === normNome || normBase === normNome || normTitulo.includes(normNome) || normNome.includes(normTitulo);
-                  });
-                  const ehMapaMental = itemAlvo?.caminho.startsWith("lousas/") || r.toLowerCase().includes("lousa") || r.toLowerCase().includes("mapa");
+                  const estilo = obterEstiloRel(r);
                   return (
-                    <Tooltip key={r} conteudo={itemAlvo ? `Abrir "${itemAlvo.titulo}"` : `Abrir "${nomePuro}"`}>
+                    <Tooltip key={r} conteudo={estilo.itemAlvo ? `Abrir "${estilo.itemAlvo.titulo}"` : `Abrir "${estilo.nomePuro}"`}>
                       <Badge 
                         variant="secondary" 
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (itemAlvo) {
-                            abrirItemSpa(itemAlvo.caminho);
+                          if (estilo.itemAlvo) {
+                            abrirItemSpa(estilo.itemAlvo.caminho);
                           } else if (r.includes("/")) {
                             abrirItemSpa(r);
                           }
                         }}
                         className={cn(
                           "font-medium text-[11px] px-2 py-0.5 flex items-center gap-1.5 hover:underline cursor-pointer border transition-all shadow-xs",
-                          ehMapaMental
-                            ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/25"
-                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                          estilo.classeBadge
                         )}
                       >
-                        {ehMapaMental ? (
-                          <>
-                            <Layout size={11} className="text-indigo-500 shrink-0" />
-                            <span className="font-bold">Mapa Mental:</span> @{nomePuro}
-                          </>
-                        ) : (
-                          <>
-                            <LinkIcon size={10} className="shrink-0" />
-                            @{nomePuro}
-                          </>
-                        )}
+                        {estilo.icone}
+                        <span>@{estilo.nomePuro}</span>
                       </Badge>
                     </Tooltip>
                   );
@@ -1165,6 +1248,7 @@ export function PropriedadesNotion({
                   {opcoesRelacionamento.map((opcao) => {
                     const tagFormatada = `@${opcao.titulo}`;
                     const selecionado = unicosMencoes.includes(tagFormatada) || unicosMencoes.includes(`[[${opcao.titulo}]]`);
+                    const estiloOpcao = obterEstiloRel(tagFormatada);
                     return (
                       <CommandItem 
                         key={opcao.caminho} 
@@ -1177,9 +1261,10 @@ export function PropriedadesNotion({
                           setMenuAberto(null);
                         }}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 w-full">
                           <CheckSquare className={`h-4 w-4 shrink-0 ${selecionado ? "opacity-100 text-primary" : "opacity-0"}`} />
-                          <span className="truncate text-blue-600 font-medium">@{opcao.titulo}</span>
+                          <span className="shrink-0">{estiloOpcao.icone}</span>
+                          <span className="truncate font-medium flex-1">@{opcao.titulo}</span>
                         </div>
                       </CommandItem>
                     );
@@ -1306,13 +1391,19 @@ export function PropriedadesNotion({
     }
 
     // Texto livre
+    const ehFocoInicial = chave === focoPropriedadeInicial;
     return (
       <input
         type="text"
+        id={`prop-input-${chave}`}
+        autoFocus={ehFocoInicial}
         value={valor || ""}
         onChange={(e) => atualizar(chave, e.target.value)}
         placeholder="Vazio"
-        className="flex-1 bg-transparent border-none outline-none h-7 px-2 text-xs text-foreground/80 placeholder:text-muted-foreground focus:ring-0"
+        className={cn(
+          "flex-1 bg-transparent border-none outline-none h-7 px-2 text-xs text-foreground/80 placeholder:text-muted-foreground focus:ring-0 transition-all",
+          ehFocoInicial && "ring-1 ring-primary/40 rounded bg-primary/5"
+        )}
       />
     );
   }

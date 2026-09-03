@@ -19,8 +19,14 @@ import {
   Users,
   User,
   Award,
+  GripVertical,
+  LayoutGrid,
+  List,
+  Table,
+  Columns3,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
+import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
@@ -47,6 +53,7 @@ import {
   semMeta,
   aConferir,
   textoPrazoMeta,
+  idDoCaminho,
   PASTA_METAS,
   PASTA_ENTREGAS,
   ROTULO_META,
@@ -145,6 +152,24 @@ export default function PDI() {
   const [modalDossieAberto, setModalDossieAberto] = useState(false);
   const [metaHoverId, setMetaHoverId] = useState<string | null>(null);
   const [esconderTarefasGerais, setEsconderTarefasGerais] = useState(() => localStorage.getItem("klaus-pdi-esconder-tarefas") !== "false");
+  const [visaoEntregas, setVisaoEntregas] = useState<"grade" | "lista" | "tabela">(() => {
+    return (localStorage.getItem("klaus_pdi_visao_entregas") as any) || "grade";
+  });
+  const [visaoTarefas, setVisaoTarefas] = useState<"lista" | "grade" | "quadro">(() => {
+    return (localStorage.getItem("klaus_pdi_visao_tarefas") as any) || "lista";
+  });
+  const [campoFocoEntrega, setCampoFocoEntrega] = useState<string | undefined>(undefined);
+
+  const mudarVisaoEntregas = (v: "grade" | "lista" | "tabela") => {
+    setVisaoEntregas(v);
+    localStorage.setItem("klaus_pdi_visao_entregas", v);
+  };
+
+  const mudarVisaoTarefas = (v: "lista" | "grade" | "quadro") => {
+    setVisaoTarefas(v);
+    localStorage.setItem("klaus_pdi_visao_tarefas", v);
+  };
+
   const [editandoMeta, setEditandoMeta] = useState<Meta | null>(null);
   const [editandoEntrega, setEditandoEntrega] = useState<Entrega | null>(null);
   const [modoVisaoMeta, setModoVisaoMeta] = useState<ModoVisaoNotion>("popup");
@@ -219,7 +244,7 @@ export default function PDI() {
       const nova: Tarefa = {
         caminho: caminhoNovo,
         sha: "",
-        bruto: { metas: [meta.id] },
+        bruto: {},
         titulo: texto,
         status: "a-fazer",
         tags: ["pdi"],
@@ -637,7 +662,7 @@ export default function PDI() {
     const vazia: Meta = {
       bruto: {},
       caminho: caminhoNovo,
-      id: "nova-meta",
+      id: idDoCaminho(caminhoNovo),
       sha: "",
       titulo: "",
       status: "a-fazer",
@@ -660,6 +685,7 @@ export default function PDI() {
       iaSugeriu: false,
       corpo: "",
     };
+    setCampoFocoEntrega(undefined);
     setEditandoEntrega(vazia);
     setOrigEntrega(vazia);
   };
@@ -676,6 +702,7 @@ export default function PDI() {
       iaSugeriu: false,
       corpo: "",
     };
+    setCampoFocoEntrega(undefined);
     setEditandoEntrega(vazia);
     setOrigEntrega(vazia);
   };
@@ -686,13 +713,14 @@ export default function PDI() {
       caminho: "",
       id: "",
       sha: "",
-      titulo: `Impacto: ${meta.titulo}`,
+      titulo: "",
       data: hojeISO(),
       metas: [meta.id],
       iaSugeriu: false,
       impacto: "",
       corpo: "",
     };
+    setCampoFocoEntrega("impacto");
     setEditandoEntrega(vazia);
     setOrigEntrega(vazia);
   };
@@ -703,13 +731,14 @@ export default function PDI() {
       caminho: "",
       id: "",
       sha: "",
-      titulo: `Elogio: ${meta.titulo}`,
+      titulo: "",
       data: hojeISO(),
       metas: [meta.id],
       iaSugeriu: false,
       elogio: "",
       corpo: "",
     };
+    setCampoFocoEntrega("elogio");
     setEditandoEntrega(vazia);
     setOrigEntrega(vazia);
   };
@@ -915,16 +944,21 @@ export default function PDI() {
                         const caminhoTarefa = rawData.replace("tarefa:", "");
                         const tarefaAlvo = todasTarefas.find((t) => t.caminho === caminhoTarefa || t.id === caminhoTarefa);
                         if (tarefaAlvo) {
-                          const metasAtuais = ((tarefaAlvo.bruto?.metas as string[]) || []);
                           const relsAtuais = tarefaAlvo.relacionamentos || [];
                           const novaMetaRel = `@${m.titulo}`;
+                          const novoBruto: Record<string, any> = { ...(tarefaAlvo.bruto || {}) };
+                          if (Array.isArray(novoBruto.metas)) {
+                            const filtradas = (novoBruto.metas as string[]).filter((x: string) => x !== "nova-meta" && x !== m.id);
+                            if (filtradas.length === 0) {
+                              delete novoBruto.metas;
+                            } else {
+                              novoBruto.metas = filtradas;
+                            }
+                          }
 
                           const atualizada: Tarefa = {
                             ...tarefaAlvo,
-                            bruto: {
-                              ...tarefaAlvo.bruto,
-                              metas: Array.from(new Set([...metasAtuais, m.id])),
-                            },
+                            bruto: novoBruto,
                             relacionamentos: Array.from(new Set([...relsAtuais, novaMetaRel])),
                           };
                           const { dados, corpo } = tarefaParaArquivo(atualizada);
@@ -1035,13 +1069,14 @@ export default function PDI() {
                       return (
                         <div className="mt-3 pt-2.5 border-t border-border/50 space-y-2.5">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
+                            {/* Detalhamento de tarefas e entregas na ESQUERDA */}
                             <button
                               type="button"
                               onClick={(ev) => {
                                 ev.stopPropagation();
                                 alternarExpansaoMeta(m.id);
                               }}
-                              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium cursor-pointer transition-colors"
+                              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium cursor-pointer transition-colors py-1 px-1.5 -ml-1 rounded-md hover:bg-accent/60 shrink-0"
                             >
                               {estaExpandido ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                               <span>
@@ -1051,8 +1086,8 @@ export default function PDI() {
                               </span>
                             </button>
 
-                            {/* Botões Rápidos e Discretos para Preenchimento Direto */}
-                            <div className="flex items-center gap-1 flex-wrap">
+                            {/* Botões Rápidos e Discretos na DIREITA */}
+                            <div className="flex items-center gap-1 ml-auto shrink-0">
                               <Tooltip conteudo="Criar tarefa rápida para esta meta" posicao="top">
                                 <button
                                   type="button"
@@ -1119,122 +1154,155 @@ export default function PDI() {
                               {/* Tarefas */}
                               <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                                    <ListTodo size={12} className="text-primary" /> Tarefas em Andamento ({tarefasAtivas.length})
+                                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                    Tarefas Vinculadas ({tarefasMeta.length})
                                   </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setNovaTarefaMetaId(novaTarefaMetaId === m.id ? null : m.id);
+                                      setNovoTextoTarefa("");
+                                    }}
+                                    className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
+                                  >
+                                    + Nova tarefa
+                                  </button>
                                 </div>
 
-                                {/* Campo de criação rápida inline */}
                                 {novaTarefaMetaId === m.id && (
-                                  <div className="flex items-center gap-1.5 pt-1 animate-in fade-in duration-150">
+                                  <div className="flex items-center gap-1.5 pt-1">
                                     <input
                                       type="text"
-                                      autoFocus
+                                      placeholder="Título da tarefa..."
                                       value={novoTextoTarefa}
                                       onChange={(e) => setNovoTextoTarefa(e.target.value)}
                                       onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                          e.preventDefault();
-                                          criarTarefaRapidaParaMeta(m);
-                                        } else if (e.key === "Escape") {
-                                          setNovaTarefaMetaId(null);
-                                        }
+                                        if (e.key === "Enter") criarTarefaRapidaParaMeta(m);
+                                        if (e.key === "Escape") setNovaTarefaMetaId(null);
                                       }}
-                                      placeholder="Nome da tarefa... (Enter para salvar)"
-                                      className="flex-1 text-xs rounded-lg border border-border bg-background px-2.5 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-primary"
+                                      autoFocus
+                                      className="flex-1 bg-accent/40 border border-border text-xs px-2.5 py-1 rounded-md outline-none focus:ring-1 focus:ring-primary"
                                     />
                                     <Botao
-                                      tamanho="pequeno"
                                       onClick={() => criarTarefaRapidaParaMeta(m)}
                                       disabled={!novoTextoTarefa.trim() || salvandoTarefaMeta}
+                                      variante="primario"
+                                      className="h-7 text-xs px-2.5"
                                     >
                                       {salvandoTarefaMeta ? "..." : "Criar"}
+                                    </Botao>
+                                    <Botao
+                                      onClick={() => {
+                                        setNovaTarefaMetaId(null);
+                                        setNovoTextoTarefa("");
+                                      }}
+                                      variante="neutro"
+                                      className="h-7 text-xs px-2"
+                                    >
+                                      Cancelar
                                     </Botao>
                                   </div>
                                 )}
 
-                                {tarefasMeta.length > 0 ? (
-                                  <ul className="space-y-1">
-                                    {tarefasMeta.slice(0, 4).map((t: any) => {
+                                {tarefasMeta.length === 0 && novaTarefaMetaId !== m.id ? (
+                                  <p className="text-xs text-muted-foreground/80 italic py-0.5">
+                                    Nenhuma tarefa vinculada a esta meta.
+                                  </p>
+                                ) : (
+                                  <div className="space-y-1">
+                                    {tarefasMeta.map((t) => {
                                       const feita = t.status === "feito";
                                       return (
-                                        <li key={t.caminho} className="flex items-center gap-2 text-xs py-1 px-1.5 rounded hover:bg-accent/40 transition-colors">
-                                          <Tooltip conteudo={feita ? "Reabrir tarefa" : "Concluir tarefa"}>
+                                        <div
+                                          key={t.caminho}
+                                          className="flex items-center justify-between gap-2 p-1.5 rounded-md hover:bg-accent/40 text-xs transition-colors group"
+                                        >
+                                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                                            <GripVertical size={12} className="text-muted-foreground/40 shrink-0" />
                                             <button
                                               type="button"
                                               onClick={(ev) => {
                                                 ev.stopPropagation();
                                                 toggleStatusTarefa(t);
                                               }}
-                                              className="text-muted-foreground hover:text-primary transition-colors cursor-pointer shrink-0"
-                                              aria-label={feita ? "Reabrir tarefa" : "Concluir tarefa"}
+                                              className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
                                             >
                                               {feita ? (
-                                                <CheckCircle2 size={14} className="text-emerald-500" />
+                                                <CheckCircle2 size={13} className="text-emerald-500" />
                                               ) : (
-                                                <Circle size={14} />
+                                                <Circle size={13} />
                                               )}
                                             </button>
-                                          </Tooltip>
-                                          <span
-                                            onClick={() => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
-                                            className={cn(
-                                              "truncate flex-1 cursor-pointer hover:underline",
-                                              feita && "text-muted-foreground line-through decoration-muted-foreground/60"
-                                            )}
-                                          >
-                                            {t.titulo}
-                                          </span>
-                                        </li>
+                                            <span
+                                              onClick={(ev) => {
+                                                ev.stopPropagation();
+                                                navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`);
+                                              }}
+                                              className={cn(
+                                                "truncate hover:text-primary cursor-pointer",
+                                                feita && "line-through text-muted-foreground"
+                                              )}
+                                            >
+                                              {t.titulo}
+                                            </span>
+                                          </div>
+                                          {t.prazo && (
+                                            <span className="text-[10px] text-muted-foreground shrink-0">
+                                              {dataCurta(t.prazo)}
+                                            </span>
+                                          )}
+                                        </div>
                                       );
                                     })}
-                                  </ul>
-                                ) : (
-                                  <p className="text-[11px] text-muted-foreground/70 italic py-0.5">
-                                    Nenhuma tarefa vinculada.
-                                  </p>
+                                  </div>
                                 )}
                               </div>
 
-                              {/* Entregas */}
-                              <div className="space-y-1.5 pt-1.5 border-t border-border/40">
-                                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                                  <Package size={12} className="text-emerald-500" /> Entregas Realizadas ({ligadas.length})
-                                </span>
-                                {ligadas.length > 0 ? (
-                                  <ul className="space-y-1">
-                                    {ligadas.slice(0, 4).map((e) => (
-                                      <li key={e.id}>
-                                        <button
-                                          type="button"
-                                          onClick={(ev) => {
-                                            ev.stopPropagation();
-                                            setEditandoEntrega(e);
-                                            setOrigEntrega(e);
-                                            navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
-                                          }}
-                                          className="flex w-full items-center gap-2 text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent/40 rounded px-1.5 py-1 transition-colors cursor-pointer"
-                                        >
-                                          <span className="text-xs tabular-nums opacity-80 shrink-0">
-                                            {dataCurta(e.data)}
-                                          </span>
-                                          <span className="truncate flex-1">{e.titulo}</span>
-                                          {e.iaSugeriu && (
-                                            <Sparkles size={12} className="shrink-0 text-primary" />
-                                          )}
-                                        </button>
-                                      </li>
-                                    ))}
-                                    {ligadas.length > 4 && (
-                                      <li className="text-xs text-muted-foreground/80 px-1.5">
-                                        e mais {ligadas.length - 4}…
-                                      </li>
-                                    )}
-                                  </ul>
-                                ) : (
-                                  <p className="text-[11px] text-muted-foreground/70 italic py-0.5">
-                                    Nenhuma entrega consolidada ainda.
+                              {/* Entregas vinculadas */}
+                              <div className="space-y-1.5 pt-1 border-t border-border/30">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                    Entregas & Marcos ({ligadas.length})
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => novaEntregaParaMeta(m)}
+                                    className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
+                                  >
+                                    + Nova entrega
+                                  </button>
+                                </div>
+
+                                {ligadas.length === 0 ? (
+                                  <p className="text-xs text-muted-foreground/80 italic py-0.5">
+                                    Nenhuma entrega registrada nesta meta.
                                   </p>
+                                ) : (
+                                  <div className="space-y-1">
+                                    {ligadas.map((e) => (
+                                      <div
+                                        key={e.id}
+                                        onClick={(ev) => {
+                                          ev.stopPropagation();
+                                          setEditandoEntrega(e);
+                                          setOrigEntrega(e);
+                                          navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
+                                        }}
+                                        className="flex items-center justify-between gap-2 p-1.5 rounded-md hover:bg-accent/40 text-xs transition-colors cursor-pointer group"
+                                      >
+                                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                          <GripVertical size={12} className="text-muted-foreground/40 shrink-0" />
+                                          <Package size={12} className="text-purple-500 shrink-0" />
+                                          <span className="truncate font-medium group-hover:text-primary">
+                                            {e.titulo}
+                                          </span>
+                                        </div>
+                                        <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
+                                          {dataCurta(e.data)}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -1254,29 +1322,43 @@ export default function PDI() {
 
           {/* -------------------------------------------------- entregas */}
           <section className="space-y-3">
-            <CabecalhoSecao
-              titulo="Tudo que você entregou"
-              contador={entregas.length}
-              acoes={
-                entregas.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={alternarEsconderEntregas}
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent/60 transition-colors cursor-pointer"
-                  >
-                    {esconderEntregas ? (
-                      <>
-                        <ChevronDown size={14} /> Mostrar ({entregas.length})
-                      </>
-                    ) : (
-                      <>
-                        <ChevronUp size={14} /> Ocultar
-                      </>
-                    )}
-                  </button>
-                ) : undefined
-              }
-            />
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CabecalhoSecao
+                titulo="Tudo que você entregou"
+                contador={entregas.length}
+                acoes={
+                  entregas.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={alternarEsconderEntregas}
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent/60 transition-colors cursor-pointer"
+                    >
+                      {esconderEntregas ? (
+                        <>
+                          <ChevronDown size={14} /> Mostrar ({entregas.length})
+                        </>
+                      ) : (
+                        <>
+                          <ChevronUp size={14} /> Ocultar
+                        </>
+                      )}
+                    </button>
+                  ) : undefined
+                }
+              />
+
+              {!esconderEntregas && entregas.length > 0 && (
+                <AlternadorVisao
+                  valorAtivo={visaoEntregas}
+                  aoAlternar={mudarVisaoEntregas}
+                  opcoes={[
+                    { id: "grade", rotulo: "Grade", icone: <LayoutGrid size={13} /> },
+                    { id: "lista", rotulo: "Lista", icone: <List size={13} /> },
+                    { id: "tabela", rotulo: "Tabela", icone: <Table size={13} /> },
+                  ]}
+                />
+              )}
+            </div>
 
             {entregas.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 p-6 text-center bg-card/30 flex flex-col items-center justify-center gap-2">
@@ -1295,169 +1377,455 @@ export default function PDI() {
               </div>
             ) : (
               !esconderEntregas && (
-                <div className="grid gap-2">
-                  {[...entregas]
-                    .sort((a, b) => b.data.localeCompare(a.data))
-                    .map((e) => (
-                      <Cartao
-                        key={e.id}
-                        className={cn(
-                          "cursor-pointer p-3.5 transition-all border",
-                          dropHoverId === e.id
-                            ? "bg-indigo-500/10 border-indigo-500/40 scale-[1.01] shadow-xs"
-                            : "hover:bg-accent border-transparent"
-                        )}
-                        draggable
-                        onDragStart={(ev) => {
-                          ev.dataTransfer.setData("text/plain", `entrega:${e.id}`);
-                        }}
-                        onClick={() => {
-                          setEditandoEntrega(e);
-                          setOrigEntrega(e);
-                          navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
-                        }}
-                        onDragOver={(ev) => ev.preventDefault()}
-                        onDragEnter={() => setDropHoverId(e.id)}
-                        onDragLeave={() => setDropHoverId(null)}
-                        onDrop={async (ev) => {
-                          ev.preventDefault();
-                          setDropHoverId(null);
-                          const metaId = ev.dataTransfer.getData("text/plain");
-                          if (metaId && !e.metas.includes(metaId)) {
-                            const entregaAtualizada = {
-                              ...e,
-                              metas: [...e.metas, metaId]
-                            };
-                            const { dados, corpo } = entregaParaArquivo(entregaAtualizada);
-                            const texto = escreverMarkdown({ dados, corpo });
-                            await salvarTexto(e.caminho, texto, e.sha);
-                            recarregar();
-                          }
-                        }}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <p className="font-medium">{e.titulo}</p>
-                          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                            {dataCurta(e.data)}
-                          </span>
-                        </div>
+                <>
+                  {/* 1. VISÃO EM GRADE */}
+                  {visaoEntregas === "grade" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {[...entregas]
+                        .sort((a, b) => b.data.localeCompare(a.data))
+                        .map((e) => (
+                          <Cartao
+                            key={e.id}
+                            className={cn(
+                              "cursor-pointer p-3.5 transition-all border group relative flex flex-col justify-between gap-2.5",
+                              dropHoverId === e.id
+                                ? "bg-indigo-500/10 border-indigo-500/40 scale-[1.01] shadow-xs"
+                                : "hover:bg-accent hover:border-primary/30 border-border/70"
+                            )}
+                            draggable
+                            onDragStart={(ev) => {
+                              ev.dataTransfer.setData("text/plain", `entrega:${e.id}`);
+                            }}
+                            onClick={() => {
+                              setEditandoEntrega(e);
+                              setOrigEntrega(e);
+                              navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
+                            }}
+                            onDragOver={(ev) => ev.preventDefault()}
+                            onDragEnter={() => setDropHoverId(e.id)}
+                            onDragLeave={() => setDropHoverId(null)}
+                            onDrop={async (ev) => {
+                              ev.preventDefault();
+                              setDropHoverId(null);
+                              const metaId = ev.dataTransfer.getData("text/plain");
+                              if (metaId && !e.metas.includes(metaId)) {
+                                const entregaAtualizada = {
+                                  ...e,
+                                  metas: [...e.metas, metaId],
+                                };
+                                const { dados, corpo } = entregaParaArquivo(entregaAtualizada);
+                                const texto = escreverMarkdown({ dados, corpo });
+                                await salvarTexto(e.caminho, texto, e.sha);
+                                recarregarEntregas();
+                              }
+                            }}
+                          >
+                            <div>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                  <Tooltip conteudo="Arrastar entrega para vincular à meta">
+                                    <GripVertical size={14} className="text-muted-foreground/60 group-hover:text-foreground cursor-grab active:cursor-grabbing shrink-0" />
+                                  </Tooltip>
+                                  <p className="font-medium text-xs sm:text-sm truncate group-hover:text-primary transition-colors">
+                                    {e.titulo || "Sem título"}
+                                  </p>
+                                </div>
+                                <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                                  {dataCurta(e.data)}
+                                </span>
+                              </div>
 
-                        {/* Impacto da Entrega */}
-                        {e.impacto && (
-                          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 font-medium bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md w-fit">
-                            <TrendingUp size={12} className="shrink-0" />
-                            <span>{e.impacto}</span>
+                              {/* Impacto da Entrega */}
+                              {e.impacto && (
+                                <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 font-medium bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                                  <TrendingUp size={12} className="shrink-0" />
+                                  <span className="truncate">{e.impacto}</span>
+                                </div>
+                              )}
+
+                              {/* Elogio / Feedback recebido */}
+                              {e.elogio && (
+                                <div className="mt-1.5 flex items-center gap-1.5 text-xs text-purple-700 dark:text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md italic">
+                                  <MessageSquareQuote size={12} className="shrink-0" />
+                                  <span className="truncate">
+                                    "{e.elogio}" {e.autorElogio ? `— ${contatos.find((c) => c.id === e.autorElogio || c.titulo === e.autorElogio)?.titulo || e.autorElogio}` : ""}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="mt-1 pt-2 border-t border-border/40 flex flex-wrap items-center gap-1.5">
+                              {e.metas.length === 0 ? (
+                                <Selo tom="aviso">sem meta</Selo>
+                              ) : (
+                                e.metas.map((id) => (
+                                  <Selo key={id} tom="sucesso" className="text-[10px]">
+                                    <Target size={10} className="mr-0.5" />
+                                    {metas.find((m) => m.id === id)?.titulo ?? id}
+                                  </Selo>
+                                ))
+                              )}
+                              {e.colaboracao && e.colaboracao.length > 0 && (
+                                <Selo tom="neutro" className="inline-flex items-center gap-1 text-[10px]">
+                                  <Users size={9} />
+                                  {e.colaboracao.join(", ")}
+                                </Selo>
+                              )}
+                              {e.tags && e.tags.map((t) => (
+                                <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary/80 text-muted-foreground">
+                                  #{t}
+                                </span>
+                              ))}
+                              {e.iaSugeriu && (
+                                <Selo tom="primario" className="inline-flex items-center gap-1 text-[10px]">
+                                  <Sparkles size={9} /> conferir
+                                </Selo>
+                              )}
+                            </div>
+                          </Cartao>
+                        ))}
+                    </div>
+                  )}
+
+                  {/* 2. VISÃO EM LISTA */}
+                  {visaoEntregas === "lista" && (
+                    <div className="divide-y divide-border rounded-xl border border-border bg-card overflow-hidden shadow-2xs">
+                      {[...entregas]
+                        .sort((a, b) => b.data.localeCompare(a.data))
+                        .map((e) => (
+                          <div
+                            key={e.id}
+                            draggable
+                            onDragStart={(ev) => {
+                              ev.dataTransfer.setData("text/plain", `entrega:${e.id}`);
+                            }}
+                            onClick={() => {
+                              setEditandoEntrega(e);
+                              setOrigEntrega(e);
+                              navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
+                            }}
+                            className="flex items-center justify-between gap-3 p-3 hover:bg-accent/50 transition-colors cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <Tooltip conteudo="Arrastar entrega para vincular à meta">
+                                <GripVertical size={14} className="text-muted-foreground/60 group-hover:text-foreground cursor-grab active:cursor-grabbing shrink-0" />
+                              </Tooltip>
+                              <Package size={15} className="text-purple-500 shrink-0" />
+                              <span className="font-medium text-xs sm:text-sm text-foreground truncate group-hover:text-primary">
+                                {e.titulo || "Sem título"}
+                              </span>
+                              {e.impacto && (
+                                <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md truncate max-w-xs">
+                                  <TrendingUp size={11} className="shrink-0" /> {e.impacto}
+                                </span>
+                              )}
+                              {e.elogio && (
+                                <span className="hidden lg:inline-flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md italic truncate max-w-xs">
+                                  <MessageSquareQuote size={11} className="shrink-0" /> "{e.elogio}"
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {e.metas.length > 0 ? (
+                                <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                                  {metas.find((m) => m.id === e.metas[0])?.titulo || e.metas[0]}
+                                  {e.metas.length > 1 && ` +${e.metas.length - 1}`}
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-md">Sem meta</span>
+                              )}
+                              <span className="text-xs text-muted-foreground tabular-nums">{dataCurta(e.data)}</span>
+                            </div>
                           </div>
-                        )}
+                        ))}
+                    </div>
+                  )}
 
-                        {/* Elogio / Feedback recebido */}
-                        {e.elogio && (
-                          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-purple-700 dark:text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md italic w-fit">
-                            <MessageSquareQuote size={12} className="shrink-0" />
-                            <span className="truncate max-w-md">
-                              "{e.elogio}" {e.autorElogio ? `— ${contatos.find((c) => c.id === e.autorElogio || c.titulo === e.autorElogio)?.titulo || e.autorElogio}` : ""}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          {e.metas.length === 0 ? (
-                            <Selo tom="aviso">sem meta</Selo>
-                          ) : (
-                            e.metas.map((id) => (
-                              <Selo key={id} tom="primario">
-                                {metas.find((m) => m.id === id)?.titulo ?? id}
-                              </Selo>
-                            ))
-                          )}
-                          {e.colaboracao && e.colaboracao.length > 0 && (
-                            <Selo tom="neutro" className="inline-flex items-center gap-1">
-                              <Users size={10} />
-                              {e.colaboracao.join(", ")}
-                            </Selo>
-                          )}
-                          {e.tags && e.tags.map((t) => (
-                            <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary/80 text-muted-foreground">
-                              #{t}
-                            </span>
-                          ))}
-                          {e.iaSugeriu && (
-                            <Selo tom="primario" className="inline-flex items-center gap-1">
-                              <Sparkles size={10} /> conferir
-                            </Selo>
-                          )}
-                        </div>
-                      </Cartao>
-                    ))}
-                </div>
+                  {/* 3. VISÃO EM TABELA */}
+                  {visaoEntregas === "tabela" && (
+                    <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-2xs">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-muted/50 border-b border-border font-semibold text-muted-foreground">
+                          <tr>
+                            <th className="px-3.5 py-2.5">Conquista / Entrega</th>
+                            <th className="px-3.5 py-2.5">Data</th>
+                            <th className="px-3.5 py-2.5">Meta Vinculada</th>
+                            <th className="px-3.5 py-2.5">Impacto / Resultado</th>
+                            <th className="px-3.5 py-2.5">Elogio & Autor</th>
+                            <th className="px-3.5 py-2.5">Equipe</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {[...entregas]
+                            .sort((a, b) => b.data.localeCompare(a.data))
+                            .map((e) => (
+                              <tr
+                                key={e.id}
+                                draggable
+                                onDragStart={(ev) => {
+                                  ev.dataTransfer.setData("text/plain", `entrega:${e.id}`);
+                                }}
+                                onClick={() => {
+                                  setEditandoEntrega(e);
+                                  setOrigEntrega(e);
+                                  navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
+                                }}
+                                className="hover:bg-accent/40 transition-colors cursor-pointer group"
+                              >
+                                <td className="px-3.5 py-2.5 font-medium text-foreground">
+                                  <div className="flex items-center gap-2">
+                                    <GripVertical size={14} className="text-muted-foreground/50 group-hover:text-foreground cursor-grab shrink-0" />
+                                    <Package size={14} className="text-purple-500 shrink-0" />
+                                    <span className="truncate group-hover:text-primary">{e.titulo || "Sem título"}</span>
+                                  </div>
+                                </td>
+                                <td className="px-3.5 py-2.5 text-muted-foreground tabular-nums whitespace-nowrap">
+                                  {dataCurta(e.data)}
+                                </td>
+                                <td className="px-3.5 py-2.5">
+                                  {e.metas.length > 0 ? (
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                                      <Target size={10} />
+                                      {metas.find((m) => m.id === e.metas[0])?.titulo || e.metas[0]}
+                                      {e.metas.length > 1 && ` +${e.metas.length - 1}`}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground/60">—</span>
+                                  )}
+                                </td>
+                                <td className="px-3.5 py-2.5 text-muted-foreground max-w-xs truncate">
+                                  {e.impacto ? (
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                      {e.impacto}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground/60">—</span>
+                                  )}
+                                </td>
+                                <td className="px-3.5 py-2.5 text-muted-foreground max-w-xs truncate">
+                                  {e.elogio ? (
+                                    <span className="italic text-purple-600 dark:text-purple-400">
+                                      "{e.elogio}" {e.autorElogio ? `— ${e.autorElogio}` : ""}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground/60">—</span>
+                                  )}
+                                </td>
+                                <td className="px-3.5 py-2.5 text-muted-foreground">
+                                  {e.colaboracao && e.colaboracao.length > 0 ? (
+                                    <span className="inline-flex items-center gap-1 text-[11px]">
+                                      <Users size={10} />
+                                      {e.colaboracao.join(", ")}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground/60">—</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
               )
             )}
           </section>
 
           {/* -------------------------------------------------- banco / histórico de tarefas */}
           <section className="space-y-3">
-            <CabecalhoSecao
-              titulo="Histórico & Banco de Tarefas"
-              contador={todasTarefas.length}
-              acoes={
-                todasTarefas.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={alternarEsconderTarefasGerais}
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent/60 transition-colors cursor-pointer"
-                  >
-                    {esconderTarefasGerais ? (
-                      <>
-                        <ChevronDown size={14} /> Mostrar ({todasTarefas.length})
-                      </>
-                    ) : (
-                      <>
-                        <ChevronUp size={14} /> Ocultar
-                      </>
-                    )}
-                  </button>
-                ) : undefined
-              }
-            />
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CabecalhoSecao
+                titulo="Histórico & Banco de Tarefas"
+                contador={todasTarefas.length}
+                acoes={
+                  todasTarefas.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={alternarEsconderTarefasGerais}
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent/60 transition-colors cursor-pointer"
+                    >
+                      {esconderTarefasGerais ? (
+                        <>
+                          <ChevronDown size={14} /> Mostrar ({todasTarefas.length})
+                        </>
+                      ) : (
+                        <>
+                          <ChevronUp size={14} /> Ocultar
+                        </>
+                      )}
+                    </button>
+                  ) : undefined
+                }
+              />
+
+              {!esconderTarefasGerais && todasTarefas.length > 0 && (
+                <AlternadorVisao
+                  valorAtivo={visaoTarefas}
+                  aoAlternar={mudarVisaoTarefas}
+                  opcoes={[
+                    { id: "lista", rotulo: "Lista", icone: <List size={13} /> },
+                    { id: "grade", rotulo: "Grade", icone: <LayoutGrid size={13} /> },
+                    { id: "quadro", rotulo: "Quadro", icone: <Columns3 size={13} /> },
+                  ]}
+                />
+              )}
+            </div>
 
             {!esconderTarefasGerais && (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  💡 Dica: Você pode <strong>arrastar qualquer tarefa</strong> desta lista e soltar em cima de uma <strong>Meta</strong> acima para vinculá-la instantaneamente.
+                  💡 Dica: Você pode <strong>arrastar qualquer tarefa</strong> (usando o ícone <GripVertical size={12} className="inline mx-0.5" />) desta lista e soltar em cima de uma <strong>Meta</strong> acima para vinculá-la instantaneamente.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                  {todasTarefas.slice(0, 18).map((t) => {
-                    const feita = t.status === "feito";
-                    return (
-                      <Cartao
-                        key={t.caminho}
-                        draggable
-                        onDragStart={(ev) => {
-                          ev.dataTransfer.setData("text/plain", `tarefa:${t.caminho}`);
-                        }}
-                        className="p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 transition-all border border-border/70 flex flex-col justify-between gap-2"
-                        onClick={() => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
-                      >
-                        <div className="flex items-start gap-2">
-                          <Tooltip conteudo={feita ? "Tarefa concluída" : "Tarefa a fazer"}>
-                            <div className="mt-0.5 shrink-0 text-muted-foreground">
+
+                {/* 1. VISÃO EM LISTA */}
+                {visaoTarefas === "lista" && (
+                  <div className="divide-y divide-border rounded-xl border border-border bg-card overflow-hidden shadow-2xs">
+                    {todasTarefas.slice(0, 30).map((t) => {
+                      const feita = t.status === "feito";
+                      return (
+                        <div
+                          key={t.caminho}
+                          draggable
+                          onDragStart={(ev) => {
+                            ev.dataTransfer.setData("text/plain", `tarefa:${t.caminho}`);
+                          }}
+                          onClick={() => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
+                          className="flex items-center justify-between gap-3 p-2.5 hover:bg-accent/50 transition-colors cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <Tooltip conteudo="Arrastar tarefa para vincular à meta">
+                              <GripVertical size={14} className="text-muted-foreground/60 group-hover:text-foreground cursor-grab active:cursor-grabbing shrink-0" />
+                            </Tooltip>
+                            <button
+                              type="button"
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                toggleStatusTarefa(t);
+                              }}
+                              className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                            >
                               {feita ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Circle size={14} />}
-                            </div>
-                          </Tooltip>
-                          <p className={cn("text-xs font-medium truncate flex-1", feita && "line-through text-muted-foreground")}>
-                            {t.titulo}
-                          </p>
+                            </button>
+                            <span className={cn("text-xs font-medium truncate flex-1 group-hover:text-primary", feita && "line-through text-muted-foreground")}>
+                              {t.titulo}
+                            </span>
+                            {t.relacionamentos && t.relacionamentos.length > 0 && (
+                              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                <Target size={9} /> {t.relacionamentos[0]}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0 text-[11px] text-muted-foreground">
+                            {t.prazo && <span>{dataCurta(t.prazo)}</span>}
+                            <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium", feita ? "bg-emerald-500/10 text-emerald-600" : "bg-secondary text-secondary-foreground")}>
+                              {feita ? "Feito" : "A fazer"}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/40">
-                          <span>{t.prazo ? dataCurta(t.prazo) : "Sem prazo"}</span>
-                          <span className="text-[10px] bg-secondary/80 px-1.5 py-0.5 rounded">
-                            {t.status === "feito" ? "Feito" : "A fazer"}
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 2. VISÃO EM GRADE */}
+                {visaoTarefas === "grade" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                    {todasTarefas.slice(0, 24).map((t) => {
+                      const feita = t.status === "feito";
+                      return (
+                        <Cartao
+                          key={t.caminho}
+                          draggable
+                          onDragStart={(ev) => {
+                            ev.dataTransfer.setData("text/plain", `tarefa:${t.caminho}`);
+                          }}
+                          className="p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 transition-all border border-border/70 flex flex-col justify-between gap-2 group"
+                          onClick={() => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
+                        >
+                          <div className="flex items-start gap-2">
+                            <Tooltip conteudo="Arrastar tarefa">
+                              <GripVertical size={13} className="text-muted-foreground/50 group-hover:text-foreground shrink-0 mt-0.5" />
+                            </Tooltip>
+                            <button
+                              type="button"
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                toggleStatusTarefa(t);
+                              }}
+                              className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                            >
+                              {feita ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Circle size={14} />}
+                            </button>
+                            <p className={cn("text-xs font-medium truncate flex-1 group-hover:text-primary", feita && "line-through text-muted-foreground")}>
+                              {t.titulo}
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+                            <span>{t.prazo ? dataCurta(t.prazo) : "Sem prazo"}</span>
+                            <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium", feita ? "bg-emerald-500/10 text-emerald-600" : "bg-secondary text-secondary-foreground")}>
+                              {feita ? "Feito" : "A fazer"}
+                            </span>
+                          </div>
+                        </Cartao>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 3. VISÃO EM QUADRO (KANBAN) */}
+                {visaoTarefas === "quadro" && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {[
+                      { status: "a-fazer", titulo: "A Fazer", itens: todasTarefas.filter((t) => t.status === "a-fazer" || !t.status) },
+                      { status: "fazendo", titulo: "Em Andamento", itens: todasTarefas.filter((t) => t.status === "fazendo" || (t as any).status === "em-andamento") },
+                      { status: "feito", titulo: "Concluído", itens: todasTarefas.filter((t) => t.status === "feito") },
+                    ].map((coluna) => (
+                      <div key={coluna.status} className="bg-muted/30 border border-border/60 rounded-xl p-2.5 flex flex-col gap-2">
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                            {coluna.titulo}
+                          </span>
+                          <span className="text-[11px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                            {coluna.itens.length}
                           </span>
                         </div>
-                      </Cartao>
-                    );
-                  })}
-                </div>
+                        <div className="space-y-1.5 max-h-96 overflow-y-auto pr-0.5">
+                          {coluna.itens.slice(0, 15).map((t) => (
+                            <div
+                              key={t.caminho}
+                              draggable
+                              onDragStart={(ev) => {
+                                ev.dataTransfer.setData("text/plain", `tarefa:${t.caminho}`);
+                              }}
+                              onClick={() => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
+                              className="p-2 bg-card border border-border/70 rounded-lg hover:border-primary/40 transition-all cursor-grab active:cursor-grabbing text-xs shadow-2xs group flex items-start gap-1.5"
+                            >
+                              <GripVertical size={13} className="text-muted-foreground/50 group-hover:text-foreground shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-foreground truncate group-hover:text-primary">
+                                  {t.titulo}
+                                </p>
+                                {t.prazo && (
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                                    {dataCurta(t.prazo)}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          {coluna.itens.length === 0 && (
+                            <div className="py-4 text-center text-xs text-muted-foreground/60 italic">
+                              Nenhuma tarefa
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </section>
@@ -1516,6 +1884,7 @@ export default function PDI() {
           corpo={editandoEntrega.corpo}
           setCorpo={(c) => setEditandoEntrega({ ...editandoEntrega, corpo: c })}
           caminhoItem={editandoEntrega.caminho}
+          campoFocoInicial={campoFocoEntrega}
           dadosProps={{
             data: editandoEntrega.data,
             metas: editandoEntrega.metas.map(id => metas.find(m => m.id === id)?.titulo || "").filter(Boolean),
@@ -1562,7 +1931,7 @@ export default function PDI() {
             colaboracao: {
               icone: <Users className="h-4 w-4 opacity-50 text-indigo-500" />,
               tipo: "multiselect",
-              opcoes: [...OPCOES_COLABORACAO_PADRAO],
+              opcoes: Array.from(new Set([...entregas.flatMap(e => e.colaboracao || []), "Design", "Engenharia", "Produto", "Marketing"])).filter(Boolean),
             },
             tags: {
               icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />,

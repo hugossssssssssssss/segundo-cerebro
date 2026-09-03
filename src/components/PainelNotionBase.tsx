@@ -79,6 +79,7 @@ export interface PainelNotionBaseProps {
   mencoes?: any[];
   opcoesRelacionamento?: { titulo: string; caminho: string }[];
   elementoAcimaCorpo?: React.ReactNode;
+  campoFocoInicial?: string;
 }
 
 export function PainelNotionBase({
@@ -102,6 +103,7 @@ export function PainelNotionBase({
   mencoes = [],
   opcoesRelacionamento = [],
   elementoAcimaCorpo,
+  campoFocoInicial,
 }: PainelNotionBaseProps) {
   const [confirmandoApagar, setConfirmandoApagar] = useState(false);
   const [minimizadoFlutuante, setMinimizadoFlutuante] = useState(false);
@@ -1092,7 +1094,7 @@ export function PainelNotionBase({
         onChange={(e) => setTitulo(e.target.value)}
         placeholder="Sem título"
         className="w-full text-2xl sm:text-3xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0 pt-1"
-        autoFocus
+        autoFocus={!campoFocoInicial}
       />
 
       <div className="flex flex-col gap-2">
@@ -1104,6 +1106,7 @@ export function PainelNotionBase({
           opcoesRelacionamento={opcoesRelacionamento}
           caminhoItem={caminhoItem}
           rotuloTipo={rotuloTipo}
+          focoPropriedadeInicial={campoFocoInicial}
           aoMoverPasta={moverParaPasta}
         />
       </div>
