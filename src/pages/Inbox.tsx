@@ -848,8 +848,8 @@ export default function Inbox() {
   return (
     <div className="space-y-5 w-full max-w-none pb-16 animate-in fade-in duration-150">
       {/* 1. Cabeçalho Minimalista da Agenda Semanal & Rascunhos */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-border/40">
-        <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2.5 pb-3 border-b border-border/40">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Seletor de Abas: Agenda Semanal vs Rascunhos Offline */}
           <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 shadow-2xs">
             <button
@@ -892,6 +892,14 @@ export default function Inbox() {
               )}
             </button>
           </div>
+
+          {/* Mini Calendário estilo GitHub integrado diretamente no resumo da semana */}
+          {abaAtiva === "agenda" && (
+            <MiniCalendarioAtividade
+              acervo={acervo}
+              aoAbrirItem={abrirItemDoHistorico}
+            />
+          )}
 
           {/* Tag Minimalista de Pendências Anteriores */}
           {abaAtiva === "agenda" && atrasadosReais.length > 0 && (
@@ -1071,13 +1079,7 @@ export default function Inbox() {
         carregando ? (
           <Carregando texto="Carregando compromissos..." />
         ) : (
-          <div className="space-y-4">
-            {/* Mini Calendário de Histórico de Atividades (GitHub Heatmap Roxo) */}
-            <MiniCalendarioAtividade
-              acervo={acervo}
-              aoAbrirItem={abrirItemDoHistorico}
-            />
-
+          <div className="space-y-3.5">
             {/* Seletor de Dias em Pílulas / Carrossel no Mobile */}
             <div className="flex sm:hidden items-center gap-1.5 p-1 bg-card rounded-2xl border border-border/80 shadow-2xs overflow-x-auto select-none snap-x snap-mandatory">
               <button
