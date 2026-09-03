@@ -1,13 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Klaus — Segundo Cérebro (Header Oficial)",
+  "name": "Klaus — Segundo Cérebro (Header HUD)",
   "version": "1.0.0",
   "description": "Header e barra de favoritos oficiais do Klaus suspensa em qualquer site ao aproximar o mouse do topo.",
   "permissions": [
     "storage",
-    "activeTab",
-    "scripting",
-    "declarativeNetRequest"
+    "activeTab"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -28,12 +26,6 @@
       "matches": ["<all_urls>"],
       "js": ["content.js"],
       "run_at": "document_end"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["hud.html", "hud.js", "hud.css"],
-      "matches": ["<all_urls>"]
     }
   ],
   "commands": {
