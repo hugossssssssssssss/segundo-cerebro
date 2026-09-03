@@ -6,6 +6,7 @@ import {
   ZoomIn,
   ZoomOut,
   Crosshair,
+  RotateCcw,
 } from "lucide-react";
 import {
   construirGrafo3D as construirGrafo,
@@ -28,7 +29,7 @@ interface NavegadorGrafoProps {
 /**
  * Visualizador de Grafo de Conhecimento Minimalista & Funcional (Estilo Obsidian / Reflect).
  *
- * Apresenta uma visão limpa e interativa de todas as notas, tarefas, metas e conexões.
+ * Apresenta uma visão limpa, interativa e estabilizada de todas as notas, tarefas, metas e conexões.
  */
 export function NavegadorGrafo3D({
   acervo,
@@ -55,19 +56,30 @@ export function NavegadorGrafo3D({
     zoom: 1.0,
   });
 
-  // Estado do grafo
+  // Estado do grafo com persistência espacial
   const grafoRef = useRef<DadosGrafo>({ nos: [], arestas: [] });
+  const alphaRef = useRef(1.0);
+  const repousoRef = useRef(false);
 
-  // Constrói o grafo a partir dos itens do acervo
+  // Constrói o grafo a partir dos itens do acervo preservando posições anteriores
   useEffect(() => {
     if (acervo.length === 0) return;
-    const dados = construirGrafo(acervo, { incluirTags: true });
+    const dados = construirGrafo(acervo, {
+      incluirTags: true,
+      grafoAnterior: grafoRef.current,
+    });
     // Zera Z para manter projeção 2D limpa e previsível
     dados.nos.forEach((n) => {
       n.z = 0;
       n.vz = 0;
     });
     grafoRef.current = dados;
+
+    // Se for primeira vez ou nós novos, acomoda suavemente
+    if (alphaRef.current < 0.3) {
+      alphaRef.current = 0.4;
+      repousoRef.current = false;
+    }
   }, [acervo]);
 
   // Centraliza a câmera no grafo
@@ -75,7 +87,14 @@ export function NavegadorGrafo3D({
     cameraRef.current = { panX: 0, panY: 0, zoom: 1.0 };
   }, []);
 
-  // Loop de Renderização e Animação (60 FPS)
+  // Reaquece a física para reorganizar o grafo sob demanda
+  const reorganizarGrafo = useCallback(() => {
+    alphaRef.current = 1.0;
+    repousoRef.current = false;
+    setSimulando(true);
+  }, []);
+
+  // Loop de Renderização e Animação (60 FPS com Estabilização Física)
   useEffect(() => {
     let animId: number;
 
@@ -92,14 +111,27 @@ export function NavegadorGrafo3D({
         canvas.height = altura;
       }
 
-      // Executa passo de simulação física se ativado
-      if (simulando && grafoRef.current.nos.length > 0) {
-        simularFisica(grafoRef.current, 0.88);
+      // Executa passo de simulação física se ativado e não estiver em repouso estático
+      if (simulando && !repousoRef.current && grafoRef.current.nos.length > 0) {
+        const velMax = simularFisica(grafoRef.current, 0.86, alphaRef.current);
         // Mantém Z zerado para estabilidade 2D
         grafoRef.current.nos.forEach((n) => {
           n.z = 0;
           n.vz = 0;
         });
+
+        // Resfriamento suave da simulação física
+        alphaRef.current *= 0.985;
+
+        // Ao atingir repouso ou energia insignificante, congela a física para estancar qualquer micro-movimento
+        if (alphaRef.current < 0.01 || velMax < 0.04) {
+          repousoRef.current = true;
+          grafoRef.current.nos.forEach((n) => {
+            n.vx = 0;
+            n.vy = 0;
+            n.vz = 0;
+          });
+        }
       }
 
       const { panX, panY, zoom } = cameraRef.current;
@@ -126,7 +158,7 @@ export function NavegadorGrafo3D({
 
       const mapaNos = new Map(nos.map((n) => [n.id, n]));
 
-      // 1. Desenha as Arestas de Conexão (Linhas Finas e Elegantes)
+      // 1. Desenha as Arestas de Conexão (Linhas Nítidas e Conectadas)
       for (const a of arestas) {
         const n1 = mapaNos.get(a.origem);
         const n2 = mapaNos.get(a.destino);
@@ -150,13 +182,13 @@ export function NavegadorGrafo3D({
         ctx.lineTo(x2, y2);
 
         if (estaConectadoAoHover) {
-          ctx.strokeStyle = escuro ? "#60a5fa" : "#3b82f6";
-          ctx.lineWidth = 1.8 * zoom;
-          ctx.globalAlpha = 0.9;
+          ctx.strokeStyle = escuro ? "#60a5fa" : "#2563eb";
+          ctx.lineWidth = 2.2 * zoom;
+          ctx.globalAlpha = 0.95;
         } else {
-          ctx.strokeStyle = escuro ? "rgba(148, 163, 184, 0.18)" : "rgba(100, 116, 139, 0.22)";
-          ctx.lineWidth = 1 * zoom;
-          ctx.globalAlpha = hoverItem ? 0.08 : 0.4;
+          ctx.strokeStyle = escuro ? "rgba(148, 163, 184, 0.35)" : "rgba(100, 116, 139, 0.35)";
+          ctx.lineWidth = 1.2 * zoom;
+          ctx.globalAlpha = hoverItem ? 0.12 : 0.65;
         }
         ctx.stroke();
         ctx.globalAlpha = 1.0;
@@ -202,7 +234,7 @@ export function NavegadorGrafo3D({
         ctx.fill();
 
         // Borda sutil
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
         ctx.lineWidth = 1;
         ctx.stroke();
 
@@ -217,7 +249,7 @@ export function NavegadorGrafo3D({
           ctx.font = `${ehHover ? "600 12px" : "11px"} sans-serif`;
           ctx.fillStyle = ehHover
             ? (escuro ? "#ffffff" : "#0f172a")
-            : (escuro ? "rgba(226, 232, 240, 0.85)" : "rgba(15, 23, 42, 0.85)");
+            : (escuro ? "rgba(226, 232, 240, 0.9)" : "rgba(15, 23, 42, 0.9)");
           ctx.textAlign = "center";
           ctx.fillText(no.titulo, x, y + raioFinal + 12);
         }
@@ -301,11 +333,8 @@ export function NavegadorGrafo3D({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     canvas.addEventListener("wheel", aoRolarWheel, { passive: false });
-    return () => {
-      canvas.removeEventListener("wheel", aoRolarWheel);
-    };
+    return () => canvas.removeEventListener("wheel", aoRolarWheel);
   }, [aoRolarWheel]);
 
   // Clique para abrir o documento no Notion Modal
@@ -345,12 +374,12 @@ export function NavegadorGrafo3D({
 
         {/* Chips de Categoria Minimalistas */}
         <div className="flex items-center gap-1 bg-card/90 backdrop-blur-md p-1 rounded-xl border border-border/80 shadow-md pointer-events-auto overflow-x-auto">
-          {(["todos", "nota", "tarefa", "meta", "referencia", "lousa"] as const).map((t) => (
+          {(["todos", "nota", "tarefa", "meta", "referencia", "lousa", "contato"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setFiltroTipo(t)}
               className={cn(
-                "px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all capitalize shrink-0 flex items-center gap-1.5",
+                "px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all capitalize shrink-0 flex items-center gap-1.5 cursor-pointer",
                 filtroTipo === t
                   ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -373,15 +402,25 @@ export function NavegadorGrafo3D({
         <div className="absolute top-16 left-3 pointer-events-none bg-card/95 border border-border rounded-xl p-3 shadow-xl backdrop-blur-md animate-in fade-in duration-100 max-w-xs">
           <div className="flex items-center gap-2">
             <span
-              className="w-2.5 h-2.5 rounded-full shrink-0"
+              className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
               style={{ backgroundColor: noHover.cor }}
             />
-            <span className="text-xs font-bold text-foreground truncate">{noHover.titulo}</span>
+            <span className="font-semibold text-xs text-foreground truncate">{noHover.titulo}</span>
           </div>
-          <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-1">
             <span className="capitalize">{noHover.tipo}</span>
-            <span>{noHover.conexoesCount} conexão{noHover.conexoesCount === 1 ? "" : "ões"}</span>
+            <span>•</span>
+            <span>{noHover.conexoesCount} {noHover.conexoesCount === 1 ? "conexão" : "conexões"}</span>
           </div>
+          {noHover.tags && noHover.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {noHover.tags.map((tg) => (
+                <span key={tg} className="text-[9px] px-1.5 py-0.5 rounded-md bg-accent text-muted-foreground font-mono">
+                  #{tg}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -396,7 +435,13 @@ export function NavegadorGrafo3D({
         <div className="flex items-center gap-1 bg-card/90 backdrop-blur-md p-1 rounded-xl border border-border/80 shadow-md pointer-events-auto">
           <Tooltip conteudo={simulando ? "Pausar física" : "Ativar física"}>
             <button
-              onClick={() => setSimulando(!simulando)}
+              onClick={() => {
+                if (!simulando) {
+                  alphaRef.current = 0.5;
+                  repousoRef.current = false;
+                }
+                setSimulando(!simulando);
+              }}
               className={cn(
                 "p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 cursor-pointer",
                 simulando ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground hover:bg-accent"
@@ -404,6 +449,16 @@ export function NavegadorGrafo3D({
               aria-label={simulando ? "Pausar física" : "Ativar física"}
             >
               {simulando ? <Pause size={14} /> : <Play size={14} />}
+            </button>
+          </Tooltip>
+
+          <Tooltip conteudo="Reorganizar Layout">
+            <button
+              onClick={reorganizarGrafo}
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Reorganizar Layout"
+            >
+              <RotateCcw size={14} />
             </button>
           </Tooltip>
 
