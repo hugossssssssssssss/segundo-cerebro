@@ -2,6 +2,8 @@ import { createRoot } from "react-dom/client";
 import { useState, useEffect } from "react";
 import "@/index.css";
 import { HeaderExtensao } from "./HeaderExtensao";
+import { WorkspaceProvider } from "@/components/workspace/WorkspaceContext";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 declare const chrome: any;
 
@@ -16,7 +18,7 @@ function AppExtensao() {
   });
   const [modalAberto, setModalAberto] = useState(false);
 
-  // Monitora o cursor do mouse no topo de QUALQUER site com captura global de evento
+  // Monitora o cursor do mouse no topo de qualquer site
   useEffect(() => {
     let timerFechar: any = null;
 
@@ -76,7 +78,7 @@ function AppExtensao() {
   const estaAberto = visivel || fixado || modalAberto;
 
   return (
-    <>
+    <div className="dark text-foreground" style={{ fontSize: "16px", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
       {/* Zona de Gatilho no Topo (12px de altura no topo da janela) */}
       <div
         onMouseEnter={() => setVisivel(true)}
@@ -113,16 +115,17 @@ function AppExtensao() {
           onModalStateChange={setModalAberto}
         />
       </div>
-    </>
+    </div>
   );
 }
 
-// Inicializa no documento
+// Inicializa no documento com reset completo de escala e isolamento
 (function iniciarExtensao() {
   if (document.getElementById("klaus-hud-extension-root")) return;
 
   const host = document.createElement("div");
   host.id = "klaus-hud-extension-root";
+  host.style.cssText = "all: initial; position: fixed; top: 0; left: 0; width: 100vw; height: 0; z-index: 2147483647; display: block !important;";
   document.documentElement.appendChild(host);
 
   const shadow = host.attachShadow({ mode: "open" });
@@ -133,8 +136,15 @@ function AppExtensao() {
   shadow.appendChild(linkCss);
 
   const container = document.createElement("div");
+  container.style.cssText = "all: initial; font-size: 16px !important; line-height: 1.5 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important; color-scheme: dark !important; display: block !important;";
   shadow.appendChild(container);
 
   const root = createRoot(container);
-  root.render(<AppExtensao />);
+  root.render(
+    <WorkspaceProvider>
+      <TooltipProvider>
+        <AppExtensao />
+      </TooltipProvider>
+    </WorkspaceProvider>
+  );
 })();
