@@ -5,13 +5,13 @@
   "description": "Header e barra de favoritos oficiais do Klaus suspensa em qualquer site ao aproximar o mouse do topo.",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
-    "https://api.github.com/*"
+    "<all_urls>"
   ],
   "action": {
-    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

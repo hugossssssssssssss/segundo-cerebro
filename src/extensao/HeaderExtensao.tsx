@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus,
   Search,
+  Globe,
   Headphones,
   Play,
   Pause,
@@ -9,17 +10,14 @@ import {
   Music,
   ExternalLink,
   Pin,
-  Check,
-  X,
-  FileText,
-  CheckSquare,
-  Image as ImageIcon,
 } from "lucide-react";
 import { BarraFavoritos } from "@/components/BarraFavoritos";
 import { LogoKlaus } from "@/components/LogoKlaus";
+import { PainelNotificacoesHeader } from "@/components/PainelNotificacoesHeader";
+import { CapturaRapida } from "@/components/CapturaRapida";
+import { Busca } from "@/components/Busca";
+import { ModalBuscaWeb } from "@/components/ModalBuscaWeb";
 import { Tooltip } from "@/components/ui/tooltip";
-import { lerConfig } from "@/lib/settings";
-import { useSalvar } from "@/lib/useSalvar";
 import { cn } from "@/lib/utils";
 
 const LISTA_SONS_AMBIENTE = [
@@ -40,136 +38,57 @@ export function HeaderExtensao({
   aoAlternarFixar: () => void;
   onModalStateChange: (aberto: boolean) => void;
 }) {
-  const cfg = lerConfig();
-  const { salvarTexto } = useSalvar(cfg);
+  const [capturando, setCapturando] = useState(false);
+  const [buscando, setBuscando] = useState(false);
+  const [buscandoWeb, setBuscandoWeb] = useState(false);
+  const [textoCompartilhado, setTextoCompartilhado] = useState("");
 
-  // Estados dos Modais
-  const [modalCapturaAberto, setModalCapturaAberto] = useState(false);
-  const [modalBuscaAberto, setModalBuscaAberto] = useState(false);
-
-  // Dados da Captura
-  const [tipoDestino, setTipoDestino] = useState<"referencias" | "notas" | "tarefas">("referencias");
-  const [tituloCaptura, setTituloCaptura] = useState("");
-  const [corpoCaptura, setCorpoCaptura] = useState("");
-  const [salvando, setSalvando] = useState(false);
-  const [salvoSucesso, setSalvoSucesso] = useState(false);
-  const [termoBusca, setTermoBusca] = useState("");
-
-  // Som Ambiente
-  const [somAmbiente, setSomAmbiente] = useState<string | null>(() => localStorage.getItem("klaus_som_ambiente"));
+  // Som Ambiente oficial do Klaus
+  const [somAmbiente, setSomAmbiente] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("klaus_som_ambiente");
+    } catch {
+      return null;
+    }
+  });
   const [somAmbienteTocando, setSomAmbienteTocando] = useState(false);
   const [volumeSomAmbiente, setVolumeSomAmbiente] = useState(0.4);
   const [somMenuAberto, setSomMenuAberto] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Notifica o wrapper sobre abertura de modais para manter a barra visível
+  // Mantém a barra visível enquanto houver modal ou menu aberto
   useEffect(() => {
-    const aberto = modalCapturaAberto || modalBuscaAberto || somMenuAberto;
-    onModalStateChange(aberto);
-  }, [modalCapturaAberto, modalBuscaAberto, somMenuAberto, onModalStateChange]);
+    const modalAberto = capturando || buscando || buscandoWeb || somMenuAberto;
+    onModalStateChange(modalAberto);
+  }, [capturando, buscando, buscandoWeb, somMenuAberto, onModalStateChange]);
 
-  // Gerenciamento do Áudio
-  useEffect(() => {
-    if (!somAmbiente || !somAmbienteTocando) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      return;
-    }
-    const itemSom = LISTA_SONS_AMBIENTE.find((s) => s.id === somAmbiente);
-    if (itemSom) {
-      if (!audioRef.current) {
-        audioRef.current = new Audio(itemSom.url);
-        audioRef.current.loop = true;
-      } else {
-        audioRef.current.src = itemSom.url;
-      }
-      audioRef.current.volume = volumeSomAmbiente;
-      audioRef.current.play().catch(() => {});
-    }
-  }, [somAmbiente, somAmbienteTocando]);
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volumeSomAmbiente;
-    }
-  }, [volumeSomAmbiente]);
-
-  // Função para abrir captura rápida com o contexto real da página atual
-  const abrirCapturaContextual = () => {
-    const tituloDoc = document.title || "Referência da Web";
+  // Captura contextual inteligente da página atual
+  const dispararCapturaContextual = () => {
+    const tituloDoc = typeof document !== "undefined" ? document.title || "" : "";
     const urlDoc = typeof window !== "undefined" ? window.location.href || "" : "";
     const selecao = typeof window !== "undefined" && window.getSelection ? window.getSelection()?.toString().trim() || "" : "";
-    const metaDesc =
-      (typeof document !== "undefined" && (
-        document.querySelector('meta[name="description"]')?.getAttribute("content") ||
-        document.querySelector('meta[property="og:description"]')?.getAttribute("content")
-      )) || "";
 
-    setTituloCaptura(tituloDoc);
-    setTipoDestino("referencias");
-
-    const hoje = new Date().toISOString().slice(0, 10);
-    const corpoInicial = `---
-titulo: "${tituloDoc.replace(/"/g, '\\"')}"
-data: ${hoje}
-url: "${urlDoc}"
-tipo: referencia
-tags:
-  - web-clipper
----
-
-# ${tituloDoc}
-
-> **Fonte:** [${urlDoc}](${urlDoc})
-> **Capturado em:** ${hoje}
-
-${selecao ? `### Citação Selecionada:\n> ${selecao}\n\n` : ""}${metaDesc ? `### Resumo:\n${metaDesc}\n` : ""}
-`;
-
-    setCorpoCaptura(corpoInicial);
-    setModalCapturaAberto(true);
-  };
-
-  // Salvar captura direta no GitHub do Klaus
-  const executarSalvarCaptura = async () => {
-    if (!tituloCaptura.trim()) return;
-    setSalvando(true);
-
-    try {
-      const hoje = new Date().toISOString().slice(0, 10);
-      const slug = tituloCaptura
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
-
-      const caminho = `${tipoDestino}/${hoje}-${slug}.md`;
-      await salvarTexto(caminho, corpoCaptura, undefined, `captura rapida: ${tituloCaptura}`, true);
-
-      setSalvoSucesso(true);
-      setTimeout(() => {
-        setSalvoSucesso(false);
-        setModalCapturaAberto(false);
-      }, 1200);
-    } catch (e) {
-      alert(`Não foi possível salvar no GitHub: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setSalvando(false);
+    const partes: string[] = [];
+    if (tituloDoc) partes.push(tituloDoc);
+    if (urlDoc) partes.push(urlDoc);
+    if (selecao) {
+      partes.push("");
+      partes.push(`> ${selecao}`);
     }
+
+    setTextoCompartilhado(partes.join("\n"));
+    setCapturando(true);
   };
 
-  // Escuta atalhos de teclado ⌘J e ⌘K na página
+  // Atalhos de teclado oficiais (⌘J para captura, ⌘K para busca)
   useEffect(() => {
     const aoDigitar = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
       if (meta && e.key.toLowerCase() === "j") {
         e.preventDefault();
-        abrirCapturaContextual();
+        dispararCapturaContextual();
       } else if (meta && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setModalBuscaAberto(true);
+        setBuscando(true);
       }
     };
     window.addEventListener("keydown", aoDigitar);
@@ -177,72 +96,71 @@ ${selecao ? `### Citação Selecionada:\n> ${selecao}\n\n` : ""}${metaDesc ? `##
   }, []);
 
   return (
-    <div className="w-full bg-slate-900/95 backdrop-blur-xl border-b border-white/10 text-slate-100 shadow-2xl select-none relative">
+    <header className="w-full border-b border-border bg-background/95 backdrop-blur-md text-foreground select-none shadow-2xl relative">
       <div className="flex items-center justify-between px-3.5 sm:px-6 h-13 sm:h-14 gap-2 w-full">
-        {/* Lado Esquerdo: Logo Oficial do Klaus e Barra de Favoritos Real */}
+        {/* Lado Esquerdo: Logo do Klaus + Barra de Favoritos Oficial */}
         <div className="flex items-center gap-2.5 flex-1 min-w-0 mr-2">
           <a
             href="https://hugossssssssssssss.github.io/segundo-cerebro/"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 font-bold tracking-tight text-sm text-slate-100 hover:opacity-90 transition-opacity shrink-0 group cursor-pointer"
+            className="flex items-center gap-2 font-bold tracking-tight text-sm text-foreground hover:opacity-90 transition-opacity shrink-0 group cursor-pointer"
             title="Abrir Klaus Segundo Cérebro em nova aba"
           >
             <LogoKlaus tamanho={24} />
             <span className="hidden xs:inline">Klaus</span>
-            <ExternalLink size={12} className="text-slate-400 group-hover:text-slate-200 transition-colors hidden sm:inline" />
+            <ExternalLink size={12} className="text-muted-foreground group-hover:text-foreground transition-colors hidden sm:inline" />
           </a>
 
-          {/* Barra de Favoritos do Klaus */}
+          {/* Barra de Favoritos Real do Klaus */}
           <BarraFavoritos className="flex-1 min-w-0" />
         </div>
 
-        {/* Lado Direito: Ações Rápidas */}
-        <div className="flex items-center gap-1 shrink-0">
-          {/* Captura Rápida Contextual da Página */}
-          <Tooltip conteudo="Capturar página atual no Klaus" atalho="⌘J">
+        {/* Lado Direito: Captura Rápida, Som, Notificações, Busca e Fixar */}
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+          <Tooltip conteudo="Captura rápida da página atual" atalho="⌘J">
             <button
-              onClick={abrirCapturaContextual}
-              className="rounded-lg p-1.5 sm:p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
+              onClick={dispararCapturaContextual}
+              className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
               aria-label="Captura rápida"
             >
               <Plus size={18} />
             </button>
           </Tooltip>
 
-          {/* Som Ambiente */}
+          {/* Som Ambiente Oficial */}
           <div className="relative">
-            <Tooltip conteudo="Sons de fundo e concentração">
+            <Tooltip conteudo="Configurações de som ambiente">
               <button
                 onClick={() => setSomMenuAberto(!somMenuAberto)}
                 className={cn(
                   "rounded-lg p-1.5 sm:p-2 transition-colors relative flex items-center justify-center cursor-pointer",
                   somAmbienteTocando
-                    ? "bg-indigo-500/20 text-indigo-400"
-                    : "text-slate-300 hover:bg-white/10 hover:text-white"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
                 aria-label="Controle de áudio"
               >
                 <Headphones size={18} className={somAmbienteTocando ? "animate-pulse" : ""} />
                 {somAmbienteTocando && (
                   <span className="absolute bottom-1 right-1 flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-500 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                   </span>
                 )}
               </button>
             </Tooltip>
 
             {somMenuAberto && (
-              <div className="absolute right-0 mt-2 w-64 rounded-xl border border-white/15 bg-slate-900/95 p-4 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150 z-50">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-3">
-                  <span className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
-                    <Music size={13} className="text-indigo-400" />
+              <div className="absolute right-0 mt-2 w-64 rounded-xl border border-border bg-card/95 p-4 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+                <div className="flex items-center justify-between border-b border-border/40 pb-2 mb-3">
+                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Music size={13} className="text-primary" />
                     Som de Fundo
                   </span>
                   <button
                     onClick={() => setSomMenuAberto(false)}
-                    className="text-[10px] text-slate-400 hover:text-slate-100 hover:underline cursor-pointer"
+                    className="text-[10px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
                   >
                     Fechar
                   </button>
@@ -261,8 +179,8 @@ ${selecao ? `### Citação Selecionada:\n> ${selecao}\n\n` : ""}${metaDesc ? `##
                         className={cn(
                           "text-[11px] px-2 py-1 rounded-md text-left truncate transition-colors cursor-pointer",
                           somAmbiente === s.id && somAmbienteTocando
-                            ? "bg-indigo-500/20 text-indigo-400 font-semibold"
-                            : "text-slate-300 hover:bg-white/10 hover:text-white"
+                            ? "bg-primary/15 text-primary font-semibold"
+                            : "text-muted-foreground hover:bg-accent hover:text-foreground"
                         )}
                       >
                         {s.nome}
@@ -270,10 +188,10 @@ ${selecao ? `### Citação Selecionada:\n> ${selecao}\n\n` : ""}${metaDesc ? `##
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-white/10 pt-2.5 mt-1 gap-2">
+                  <div className="flex items-center justify-between border-t border-border/40 pt-2.5 mt-1 gap-2">
                     <button
                       onClick={() => setSomAmbienteTocando(!somAmbienteTocando)}
-                      className="p-1.5 rounded-lg bg-white/10 text-slate-100 hover:bg-white/20 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg bg-secondary text-foreground hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
                     >
                       {somAmbienteTocando ? <Pause size={14} /> : <Play size={14} />}
                     </button>
@@ -286,7 +204,7 @@ ${selecao ? `### Citação Selecionada:\n> ${selecao}\n\n` : ""}${metaDesc ? `##
                         step="0.1"
                         value={volumeSomAmbiente}
                         onChange={(e) => setVolumeSomAmbiente(Number(e.target.value))}
-                        className="w-full accent-indigo-500 h-1 rounded bg-slate-700 appearance-none cursor-pointer"
+                        className="w-full accent-primary h-1 rounded bg-secondary appearance-none cursor-pointer"
                       />
                     </div>
 
@@ -297,7 +215,7 @@ ${selecao ? `### Citação Selecionada:\n> ${selecao}\n\n` : ""}${metaDesc ? `##
                         setSomMenuAberto(false);
                         localStorage.removeItem("klaus_som_ambiente");
                       }}
-                      className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                       title="Desligar som"
                     >
                       <VolumeX size={14} />
@@ -308,11 +226,26 @@ ${selecao ? `### Citação Selecionada:\n> ${selecao}\n\n` : ""}${metaDesc ? `##
             )}
           </div>
 
-          {/* Busca em Tudo (⌘K) */}
+          {/* Central de Notificações Oficial */}
+          <PainelNotificacoesHeader />
+
+          {/* Busca Web Externa */}
+          <Tooltip conteudo="Busca Web Externa">
+            <button
+              type="button"
+              onClick={() => setBuscandoWeb(true)}
+              className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+              aria-label="Busca Web"
+            >
+              <Globe size={18} />
+            </button>
+          </Tooltip>
+
+          {/* Busca em tudo oficial */}
           <Tooltip conteudo="Buscar em tudo no Klaus" atalho="⌘K">
             <button
-              onClick={() => setModalBuscaAberto(true)}
-              className="rounded-lg p-1.5 sm:p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
+              onClick={() => setBuscando(true)}
+              className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
               aria-label="Buscar"
             >
               <Search size={18} />
@@ -326,8 +259,8 @@ ${selecao ? `### Citação Selecionada:\n> ${selecao}\n\n` : ""}${metaDesc ? `##
               className={cn(
                 "rounded-lg p-1.5 sm:p-2 transition-colors cursor-pointer",
                 estaFixado
-                  ? "bg-indigo-500/25 text-indigo-400"
-                  : "text-slate-400 hover:bg-white/10 hover:text-slate-200"
+                  ? "bg-primary/20 text-primary font-semibold"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
               <Pin size={17} className={estaFixado ? "rotate-45" : ""} />
@@ -336,142 +269,23 @@ ${selecao ? `### Citação Selecionada:\n> ${selecao}\n\n` : ""}${metaDesc ? `##
         </div>
       </div>
 
-      {/* Modal Nativo de Captura Rápida Contextual */}
-      {modalCapturaAberto && (
-        <div className="fixed top-16 right-4 w-[420px] max-w-[calc(100vw-32px)] bg-slate-900 border border-white/20 rounded-2xl p-4 shadow-2xl text-slate-100 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block animate-pulse" />
-              <h3 className="text-sm font-semibold text-white">Capturar para o Klaus</h3>
-            </div>
-            <button
-              onClick={() => setModalCapturaAberto(false)}
-              className="p-1 rounded-md text-slate-400 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* Seletor de Destino */}
-          <div className="grid grid-cols-3 gap-1.5 mb-3 bg-slate-950/60 p-1 rounded-xl border border-white/5">
-            <button
-              onClick={() => setTipoDestino("referencias")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer",
-                tipoDestino === "referencias" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
-              )}
-            >
-              <ImageIcon size={14} /> Referência
-            </button>
-            <button
-              onClick={() => setTipoDestino("notas")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer",
-                tipoDestino === "notas" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
-              )}
-            >
-              <FileText size={14} /> Nota
-            </button>
-            <button
-              onClick={() => setTipoDestino("tarefas")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer",
-                tipoDestino === "tarefas" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-400 hover:text-white"
-              )}
-            >
-              <CheckSquare size={14} /> Tarefa
-            </button>
-          </div>
-
-          {/* Campo Título */}
-          <div className="space-y-1.5 mb-3">
-            <label className="text-[11px] font-medium text-slate-400">Título</label>
-            <input
-              type="text"
-              value={tituloCaptura}
-              onChange={(e) => setTituloCaptura(e.target.value)}
-              placeholder="Título da nota ou referência..."
-              className="w-full bg-slate-950/70 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
-
-          {/* Campo Conteúdo em Markdown */}
-          <div className="space-y-1.5 mb-4">
-            <label className="text-[11px] font-medium text-slate-400">Conteúdo (Markdown)</label>
-            <textarea
-              value={corpoCaptura}
-              onChange={(e) => setCorpoCaptura(e.target.value)}
-              rows={6}
-              className="w-full bg-slate-950/70 border border-white/10 rounded-xl p-3 text-xs font-mono text-slate-200 placeholder-slate-500 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
-            />
-          </div>
-
-          {/* Rodapé */}
-          <div className="flex items-center justify-end gap-2">
-            <button
-              onClick={() => setModalCapturaAberto(false)}
-              className="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={executarSalvarCaptura}
-              disabled={salvando || !tituloCaptura.trim()}
-              className={cn(
-                "px-4 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer",
-                salvoSucesso
-                  ? "bg-emerald-600 text-white"
-                  : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30"
-              )}
-            >
-              {salvoSucesso ? (
-                <>
-                  <Check size={14} /> Salvo no GitHub!
-                </>
-              ) : salvando ? (
-                "Gravando..."
-              ) : (
-                "Salvar no Klaus"
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Nativo de Busca Global */}
-      {modalBuscaAberto && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 w-[520px] max-w-[calc(100vw-32px)] bg-slate-900 border border-white/20 rounded-2xl p-4 shadow-2xl text-slate-100 z-50 animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex items-center gap-3 border-b border-white/10 pb-3 mb-3">
-            <Search size={18} className="text-slate-400 shrink-0" />
-            <input
-              type="text"
-              autoFocus
-              value={termoBusca}
-              onChange={(e) => setTermoBusca(e.target.value)}
-              placeholder="Buscar em todo o Klaus..."
-              className="w-full bg-transparent border-none text-sm text-slate-100 placeholder-slate-500 outline-none"
-            />
-            <button
-              onClick={() => setModalBuscaAberto(false)}
-              className="p-1 rounded-md text-slate-400 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          <div className="text-center py-6 text-xs text-slate-400">
-            <p>Pressione Enter para abrir a busca no Klaus Web</p>
-            <a
-              href={`https://hugossssssssssssss.github.io/segundo-cerebro/#/home?busca=${encodeURIComponent(termoBusca)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-flex items-center gap-1.5 text-indigo-400 hover:underline font-semibold"
-            >
-              Buscar no Klaus Completo <ExternalLink size={12} />
-            </a>
-          </div>
-        </div>
-      )}
-    </div>
+      {/* Modais Oficiais Integrados do Klaus */}
+      <CapturaRapida
+        aberta={capturando}
+        textoInicial={textoCompartilhado}
+        aoFechar={() => {
+          setCapturando(false);
+          setTextoCompartilhado("");
+        }}
+      />
+      <Busca
+        aberta={buscando}
+        aoFechar={() => setBuscando(false)}
+      />
+      <ModalBuscaWeb
+        aberta={buscandoWeb}
+        aoFechar={() => setBuscandoWeb(false)}
+      />
+    </header>
   );
 }

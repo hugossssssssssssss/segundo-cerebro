@@ -8,31 +8,35 @@ declare const chrome: any;
 function AppExtensao() {
   const [visivel, setVisivel] = useState(false);
   const [fixado, setFixado] = useState(() => {
-    return localStorage.getItem("klaus_barra_fixada") === "true";
+    try {
+      return localStorage.getItem("klaus_barra_fixada") === "true";
+    } catch {
+      return false;
+    }
   });
   const [modalAberto, setModalAberto] = useState(false);
 
-  // Monitora o cursor do mouse no topo de qualquer site
+  // Monitora o cursor do mouse no topo de QUALQUER site com captura global de evento
   useEffect(() => {
     let timerFechar: any = null;
 
     const aoMoverMouse = (e: MouseEvent) => {
-      if (e.clientY <= 8) {
+      if (e.clientY <= 10) {
         clearTimeout(timerFechar);
         setVisivel(true);
-      } else if (e.clientY > 65 && !fixado && !modalAberto) {
+      } else if (e.clientY > 75 && !fixado && !modalAberto) {
         clearTimeout(timerFechar);
         timerFechar = setTimeout(() => {
           setVisivel(false);
-        }, 250);
+        }, 220);
       }
     };
 
-    window.addEventListener("mousemove", aoMoverMouse);
-    return () => window.removeEventListener("mousemove", aoMoverMouse);
+    window.addEventListener("mousemove", aoMoverMouse, { capture: true, passive: true });
+    return () => window.removeEventListener("mousemove", aoMoverMouse, { capture: true } as any);
   }, [fixado, modalAberto]);
 
-  // Atalho Alt+K (ou Option+K no Mac)
+  // Atalho Alt+K (ou Option+K no Mac) e mensagens do background
   useEffect(() => {
     const aoDigitar = (e: KeyboardEvent) => {
       if (e.altKey && e.key.toLowerCase() === "k") {
@@ -40,14 +44,32 @@ function AppExtensao() {
         setVisivel((prev) => !prev);
       }
     };
-    window.addEventListener("keydown", aoDigitar);
-    return () => window.removeEventListener("keydown", aoDigitar);
+
+    const escutarMensagens = (msg: any) => {
+      if (msg && msg.action === "toggle-klaus-bar") {
+        setVisivel((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", aoDigitar, { capture: true });
+    if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
+      chrome.runtime.onMessage.addListener(escutarMensagens);
+    }
+
+    return () => {
+      window.removeEventListener("keydown", aoDigitar, { capture: true } as any);
+      if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
+        chrome.runtime.onMessage.removeListener(escutarMensagens);
+      }
+    };
   }, []);
 
   const alternarFixar = () => {
     const novo = !fixado;
     setFixado(novo);
-    localStorage.setItem("klaus_barra_fixada", String(novo));
+    try {
+      localStorage.setItem("klaus_barra_fixada", String(novo));
+    } catch {}
     if (novo) setVisivel(true);
   };
 
@@ -55,7 +77,7 @@ function AppExtensao() {
 
   return (
     <>
-      {/* Zona de Gatilho no Topo */}
+      {/* Zona de Gatilho no Topo (12px de altura no topo da janela) */}
       <div
         onMouseEnter={() => setVisivel(true)}
         style={{
@@ -63,13 +85,14 @@ function AppExtensao() {
           top: 0,
           left: 0,
           width: "100vw",
-          height: "8px",
+          height: "12px",
           zIndex: 2147483646,
           background: "transparent",
+          pointerEvents: "auto",
         }}
       />
 
-      {/* Barra do Header Nativo */}
+      {/* Barra do Header Oficial Nativo */}
       <div
         onMouseEnter={() => setVisivel(true)}
         style={{
@@ -80,7 +103,7 @@ function AppExtensao() {
           zIndex: 2147483647,
           transform: estaAberto ? "translateY(0)" : "translateY(-105%)",
           opacity: estaAberto ? 1 : 0,
-          transition: "transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease",
+          transition: "transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease",
           pointerEvents: estaAberto ? "auto" : "none",
         }}
       >
@@ -94,7 +117,7 @@ function AppExtensao() {
   );
 }
 
-// Inicializa no documento se ainda não existir
+// Inicializa no documento
 (function iniciarExtensao() {
   if (document.getElementById("klaus-hud-extension-root")) return;
 
@@ -104,7 +127,6 @@ function AppExtensao() {
 
   const shadow = host.attachShadow({ mode: "open" });
 
-  // Injeta o CSS compilado do Tailwind/Klaus dentro do Shadow DOM
   const linkCss = document.createElement("link");
   linkCss.rel = "stylesheet";
   linkCss.href = chrome.runtime.getURL("content-bundle.css");
