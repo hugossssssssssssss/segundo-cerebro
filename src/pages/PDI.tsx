@@ -18,6 +18,7 @@ import {
   MessageSquareQuote,
   Users,
   User,
+  Award,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -142,6 +143,8 @@ export default function PDI() {
 
   // ── Estado da UI ──────────────────────────────────────────────────────────
   const [modalDossieAberto, setModalDossieAberto] = useState(false);
+  const [metaHoverId, setMetaHoverId] = useState<string | null>(null);
+  const [esconderTarefasGerais, setEsconderTarefasGerais] = useState(() => localStorage.getItem("klaus-pdi-esconder-tarefas") !== "false");
   const [editandoMeta, setEditandoMeta] = useState<Meta | null>(null);
   const [editandoEntrega, setEditandoEntrega] = useState<Entrega | null>(null);
   const [modoVisaoMeta, setModoVisaoMeta] = useState<ModoVisaoNotion>("popup");
@@ -257,6 +260,12 @@ export default function PDI() {
     const novo = !esconderEntregas;
     setEsconderEntregas(novo);
     localStorage.setItem("klaus-pdi-esconder-entregas", String(novo));
+  };
+
+  const alternarEsconderTarefasGerais = () => {
+    const novo = !esconderTarefasGerais;
+    setEsconderTarefasGerais(novo);
+    localStorage.setItem("klaus-pdi-esconder-tarefas", String(novo));
   };
 
   // ── Abre item pela URL ─────────────────────────────────────────────────────
@@ -508,19 +517,28 @@ export default function PDI() {
     }
   }
 
-  async function salvarEntrega() {
-    const titulo = editandoEntrega?.titulo?.trim() || "Sem título";
-    const entregaComTitulo = editandoEntrega ? { ...editandoEntrega, titulo } : editandoEntrega;
-    if (!entregaComTitulo) return;
+  async function salvarEntrega(alvo?: Entrega) {
+    const e = alvo || editandoEntrega;
+    if (!e) return;
+    const tituloValido = e.titulo.trim() || "Sem título";
+    const entregaParaSalvar = { ...e, titulo: tituloValido, iaSugeriu: false };
     setErroLocal("");
     try {
-      const limpa = { ...entregaComTitulo, iaSugeriu: false };
-      const { dados, corpo } = entregaParaArquivo(limpa);
+      const { dados, corpo } = entregaParaArquivo(entregaParaSalvar);
       const texto = escreverMarkdown({ dados, corpo });
-      const caminho = limpa.caminho ||
-        nomeLivre(PASTA_ENTREGAS, limpa.titulo, entregas.map((x) => x.caminho));
-      await salvarTexto(caminho, texto, limpa.sha || undefined);
-      fecharEntrega();
+      const caminho = entregaParaSalvar.caminho ||
+        nomeLivre(PASTA_ENTREGAS, entregaParaSalvar.titulo, entregas.map((x) => x.caminho));
+      const novaSha = await salvarTexto(caminho, texto, entregaParaSalvar.sha || undefined);
+      const salvaEntrega: Entrega = { ...entregaParaSalvar, caminho, sha: novaSha };
+
+      setEditandoEntrega((atual) => {
+        if (atual && (atual.caminho === salvaEntrega.caminho || !atual.caminho)) return salvaEntrega;
+        return atual;
+      });
+      setOrigEntrega((orig) => {
+        if (orig && (orig.caminho === salvaEntrega.caminho || !orig.caminho)) return salvaEntrega;
+        return orig;
+      });
       recarregar();
     } catch (err) {
       throw err;
@@ -662,6 +680,40 @@ export default function PDI() {
     setOrigEntrega(vazia);
   };
 
+  const novaEntregaComImpacto = (meta: Meta) => {
+    const vazia: Entrega = {
+      bruto: {},
+      caminho: "",
+      id: "",
+      sha: "",
+      titulo: `Impacto: ${meta.titulo}`,
+      data: hojeISO(),
+      metas: [meta.id],
+      iaSugeriu: false,
+      impacto: "",
+      corpo: "",
+    };
+    setEditandoEntrega(vazia);
+    setOrigEntrega(vazia);
+  };
+
+  const novaEntregaComElogio = (meta: Meta) => {
+    const vazia: Entrega = {
+      bruto: {},
+      caminho: "",
+      id: "",
+      sha: "",
+      titulo: `Elogio: ${meta.titulo}`,
+      data: hojeISO(),
+      metas: [meta.id],
+      iaSugeriu: false,
+      elogio: "",
+      corpo: "",
+    };
+    setEditandoEntrega(vazia);
+    setOrigEntrega(vazia);
+  };
+
   if (!pronto) {
     return (
       <Vazio
@@ -685,8 +737,8 @@ export default function PDI() {
         corIcone="bg-teal-500/10 text-teal-600 dark:text-teal-400"
         acoes={
           <>
-            <Botao onClick={() => setModalDossieAberto(true)} variante="primario">
-              <Sparkles size={15} />
+            <Botao onClick={() => setModalDossieAberto(true)} variante="primario" className="gap-2">
+              <Award size={15} />
               Dossiê de Carreira
             </Botao>
             <Botao onClick={novaMeta} variante="neutro">
@@ -779,8 +831,7 @@ export default function PDI() {
                   <Package size={17} className="mt-0.5 shrink-0 text-muted-foreground" />
                   <p className="text-sm">
                     <strong>{soltas.length}</strong> entrega
-                    {soltas.length > 1 ? "s" : ""} sem meta atribuída. Abra e
-                    escolha a meta, ou peça para a IA sugerir no Chat.
+                    {soltas.length > 1 ? "s" : ""} sem meta atribuída. Arraste e solte sobre uma meta acima para vincular.
                   </p>
                 </Cartao>
               )}
@@ -825,10 +876,66 @@ export default function PDI() {
                 {resumosFiltrados.map(({ meta: m, entregas: ligadas }) => (
                   <Cartao
                     key={m.id}
-                    className="p-4 cursor-grab active:cursor-grabbing hover:border-muted-foreground/30 transition-all flex flex-col justify-between"
-                    draggable
-                    onDragStart={(ev) => {
-                      ev.dataTransfer.setData("text/plain", m.id);
+                    className={cn(
+                      "p-4 transition-all flex flex-col justify-between border",
+                      metaHoverId === m.id
+                        ? "bg-teal-500/10 border-teal-500 ring-2 ring-teal-500/30 scale-[1.008] shadow-md"
+                        : "hover:border-muted-foreground/30 border-border/70"
+                    )}
+                    onDragOver={(ev) => {
+                      ev.preventDefault();
+                      ev.dataTransfer.dropEffect = "copy";
+                    }}
+                    onDragEnter={() => setMetaHoverId(m.id)}
+                    onDragLeave={() => setMetaHoverId(null)}
+                    onDrop={async (ev) => {
+                      ev.preventDefault();
+                      setMetaHoverId(null);
+                      const rawData = ev.dataTransfer.getData("text/plain");
+                      if (!rawData) return;
+
+                      // 1. Soltou uma entrega na meta
+                      if (rawData.startsWith("entrega:")) {
+                        const entregaId = rawData.replace("entrega:", "");
+                        const entregaAlvo = entregas.find((e) => e.id === entregaId || e.caminho.includes(entregaId));
+                        if (entregaAlvo && !entregaAlvo.metas.includes(m.id)) {
+                          const atualizada = { ...entregaAlvo, metas: [...entregaAlvo.metas, m.id] };
+                          const { dados, corpo } = entregaParaArquivo(atualizada);
+                          const md = escreverMarkdown({ dados, corpo });
+                          await salvarTexto(entregaAlvo.caminho, md, entregaAlvo.sha);
+                          invalidarCache();
+                          recarregarEntregas();
+                          toast(`Entrega "${entregaAlvo.titulo}" vinculada à meta "${m.titulo}"!`);
+                        }
+                        return;
+                      }
+
+                      // 2. Soltou uma tarefa na meta
+                      if (rawData.startsWith("tarefa:")) {
+                        const caminhoTarefa = rawData.replace("tarefa:", "");
+                        const tarefaAlvo = todasTarefas.find((t) => t.caminho === caminhoTarefa || t.id === caminhoTarefa);
+                        if (tarefaAlvo) {
+                          const metasAtuais = ((tarefaAlvo.bruto?.metas as string[]) || []);
+                          const relsAtuais = tarefaAlvo.relacionamentos || [];
+                          const novaMetaRel = `@${m.titulo}`;
+
+                          const atualizada: Tarefa = {
+                            ...tarefaAlvo,
+                            bruto: {
+                              ...tarefaAlvo.bruto,
+                              metas: Array.from(new Set([...metasAtuais, m.id])),
+                            },
+                            relacionamentos: Array.from(new Set([...relsAtuais, novaMetaRel])),
+                          };
+                          const { dados, corpo } = tarefaParaArquivo(atualizada);
+                          const md = escreverMarkdown({ dados, corpo });
+                          await salvarTexto(tarefaAlvo.caminho, md, tarefaAlvo.sha);
+                          invalidarCache();
+                          recarregarTarefas();
+                          toast(`Tarefa "${tarefaAlvo.titulo}" vinculada à meta "${m.titulo}"!`);
+                        }
+                        return;
+                      }
                     }}
                   >
                     <button
@@ -841,7 +948,7 @@ export default function PDI() {
                         setOrigMeta(m);
                         navegar(`?abrir=${encodeURIComponent(m.caminho)}`, { replace: true });
                       }}
-                      className="w-full text-left group"
+                      className="w-full text-left group cursor-pointer"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <p
@@ -919,7 +1026,7 @@ export default function PDI() {
                       </div>
                     </button>
 
-                    {/* Barra de Resumo e Divulgação Progressiva */}
+                    {/* Barra de Ações Rápidas & Divulgação Progressiva */}
                     {(() => {
                       const tarefasMeta = tarefasDaMeta(m);
                       const tarefasAtivas = tarefasMeta.filter((t: any) => t.status !== "feito");
@@ -927,7 +1034,7 @@ export default function PDI() {
 
                       return (
                         <div className="mt-3 pt-2.5 border-t border-border/50 space-y-2.5">
-                          <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
                             <button
                               type="button"
                               onClick={(ev) => {
@@ -944,8 +1051,9 @@ export default function PDI() {
                               </span>
                             </button>
 
-                            <div className="flex items-center gap-1">
-                              <Tooltip conteudo="Adicionar tarefa a esta meta" posicao="top">
+                            {/* Botões Rápidos e Discretos para Preenchimento Direto */}
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <Tooltip conteudo="Criar tarefa rápida para esta meta" posicao="top">
                                 <button
                                   type="button"
                                   onClick={(ev) => {
@@ -954,24 +1062,52 @@ export default function PDI() {
                                     setNovaTarefaMetaId(novaTarefaMetaId === m.id ? null : m.id);
                                     setNovoTextoTarefa("");
                                   }}
-                                  className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
-                                  aria-label="Nova Tarefa"
+                                  className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer flex items-center gap-1"
                                 >
-                                  <Plus size={13} />
+                                  <Plus size={12} />
+                                  <span className="text-[11px] font-medium">Tarefa</span>
                                 </button>
                               </Tooltip>
 
-                              <Tooltip conteudo="Vincular entrega a esta meta" posicao="top">
+                              <Tooltip conteudo="Registrar conquista ou entrega nesta meta" posicao="top">
                                 <button
                                   type="button"
                                   onClick={(ev) => {
                                     ev.stopPropagation();
                                     novaEntregaParaMeta(m);
                                   }}
-                                  className="p-1.5 rounded-lg text-muted-foreground hover:text-purple-500 hover:bg-purple-500/10 transition-colors cursor-pointer"
-                                  aria-label="Nova Entrega"
+                                  className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer flex items-center gap-1"
                                 >
-                                  <Sparkles size={13} />
+                                  <Package size={12} />
+                                  <span className="text-[11px] font-medium">Conquista</span>
+                                </button>
+                              </Tooltip>
+
+                              <Tooltip conteudo="Registrar resultado/impacto nesta meta" posicao="top">
+                                <button
+                                  type="button"
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    novaEntregaComImpacto(m);
+                                  }}
+                                  className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-teal-600 hover:bg-teal-500/10 transition-colors cursor-pointer flex items-center gap-1"
+                                >
+                                  <TrendingUp size={12} />
+                                  <span className="text-[11px] font-medium">Impacto</span>
+                                </button>
+                              </Tooltip>
+
+                              <Tooltip conteudo="Registrar elogio/feedback recebido para esta meta" posicao="top">
+                                <button
+                                  type="button"
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    novaEntregaComElogio(m);
+                                  }}
+                                  className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-purple-500 hover:bg-purple-500/10 transition-colors cursor-pointer flex items-center gap-1"
+                                >
+                                  <MessageSquareQuote size={12} />
+                                  <span className="text-[11px] font-medium">Elogio</span>
                                 </button>
                               </Tooltip>
                             </div>
@@ -1063,7 +1199,7 @@ export default function PDI() {
                               {/* Entregas */}
                               <div className="space-y-1.5 pt-1.5 border-t border-border/40">
                                 <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                                  <Sparkles size={12} className="text-purple-500" /> Entregas Realizadas ({ligadas.length})
+                                  <Package size={12} className="text-emerald-500" /> Entregas Realizadas ({ligadas.length})
                                 </span>
                                 {ligadas.length > 0 ? (
                                   <ul className="space-y-1">
@@ -1171,6 +1307,10 @@ export default function PDI() {
                             ? "bg-indigo-500/10 border-indigo-500/40 scale-[1.01] shadow-xs"
                             : "hover:bg-accent border-transparent"
                         )}
+                        draggable
+                        onDragStart={(ev) => {
+                          ev.dataTransfer.setData("text/plain", `entrega:${e.id}`);
+                        }}
                         onClick={() => {
                           setEditandoEntrega(e);
                           setOrigEntrega(e);
@@ -1251,6 +1391,74 @@ export default function PDI() {
                     ))}
                 </div>
               )
+            )}
+          </section>
+
+          {/* -------------------------------------------------- banco / histórico de tarefas */}
+          <section className="space-y-3">
+            <CabecalhoSecao
+              titulo="Histórico & Banco de Tarefas"
+              contador={todasTarefas.length}
+              acoes={
+                todasTarefas.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={alternarEsconderTarefasGerais}
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent/60 transition-colors cursor-pointer"
+                  >
+                    {esconderTarefasGerais ? (
+                      <>
+                        <ChevronDown size={14} /> Mostrar ({todasTarefas.length})
+                      </>
+                    ) : (
+                      <>
+                        <ChevronUp size={14} /> Ocultar
+                      </>
+                    )}
+                  </button>
+                ) : undefined
+              }
+            />
+
+            {!esconderTarefasGerais && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  💡 Dica: Você pode <strong>arrastar qualquer tarefa</strong> desta lista e soltar em cima de uma <strong>Meta</strong> acima para vinculá-la instantaneamente.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {todasTarefas.slice(0, 18).map((t) => {
+                    const feita = t.status === "feito";
+                    return (
+                      <Cartao
+                        key={t.caminho}
+                        draggable
+                        onDragStart={(ev) => {
+                          ev.dataTransfer.setData("text/plain", `tarefa:${t.caminho}`);
+                        }}
+                        className="p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 transition-all border border-border/70 flex flex-col justify-between gap-2"
+                        onClick={() => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
+                      >
+                        <div className="flex items-start gap-2">
+                          <Tooltip conteudo={feita ? "Tarefa concluída" : "Tarefa a fazer"}>
+                            <div className="mt-0.5 shrink-0 text-muted-foreground">
+                              {feita ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Circle size={14} />}
+                            </div>
+                          </Tooltip>
+                          <p className={cn("text-xs font-medium truncate flex-1", feita && "line-through text-muted-foreground")}>
+                            {t.titulo}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+                          <span>{t.prazo ? dataCurta(t.prazo) : "Sem prazo"}</span>
+                          <span className="text-[10px] bg-secondary/80 px-1.5 py-0.5 rounded">
+                            {t.status === "feito" ? "Feito" : "A fazer"}
+                          </span>
+                        </div>
+                      </Cartao>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </section>
         </>

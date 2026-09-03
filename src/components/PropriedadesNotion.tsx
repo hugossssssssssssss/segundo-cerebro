@@ -350,7 +350,7 @@ export function PropriedadesNotion({
   function nomeExibido(chave: string): string {
     if (chave === "Pomodoro" || chave === "pomodoro" || chave === "estimativa" || chave === "c") return "Pomodoro";
     if (chave === "indicador") return "Indicador";
-    if (chave === "metas") return "Metas";
+    if (chave === "metas") return "Metas Vinculadas";
     if (chave === "data") return "Data";
     if (chave === "horario" || chave === "hora") return "Horário";
     if (chave === "aviso_inbox" || chave === "notificacao_inbox") return "Avisar na Caixa de Entrada";
@@ -366,7 +366,15 @@ export function PropriedadesNotion({
     if (chave === "status") return "Status";
     if (chave === "prazo") return rotuloTipo?.toLowerCase().includes("lembrete") ? "Data do Lembrete" : "Prazo";
     if (chave === "tags") return "Tags";
-    return chave;
+    if (chave === "impacto") return "Impacto / Resultado";
+    if (chave === "elogio") return "Elogio / Feedback";
+    if (chave === "autor_elogio" || chave === "autorElogio") return "Autor do Elogio";
+    if (chave === "colaboracao" || chave === "equipe") return "Colaboração & Equipe";
+    
+    // Fallback limpo: transforma snake_case em Title Case
+    const formatado = chave.replace(/[_-]+/g, " ").trim();
+    if (!formatado) return chave;
+    return formatado.charAt(0).toUpperCase() + formatado.slice(1);
   }
 
   function atualizar(chave: string, valor: any) {

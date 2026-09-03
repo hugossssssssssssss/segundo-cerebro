@@ -4,7 +4,7 @@ import {
   Printer,
   Copy,
   Check,
-  Sparkles,
+  Award,
   TrendingUp,
   MessageSquareQuote,
   Users,
@@ -111,26 +111,26 @@ export function ModalDossieCarreira({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
       <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-background rounded-2xl border border-border shadow-2xl overflow-hidden">
         {/* Cabeçalho do Modal (Oculto na impressão) */}
-        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-border bg-card/60 shrink-0 print:hidden">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
-              <Sparkles size={18} />
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border bg-card/60 shrink-0 print:hidden flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
+              <Award size={20} />
             </div>
             <div>
               <h2 className="text-base font-semibold leading-tight">Dossiê de Carreira & Conquistas</h2>
               <p className="text-xs text-muted-foreground">
-                Documento de impacto profissional (Brag Document) para 1:1s e avaliações.
+                Relatório de impacto profissional (Brag Document) para 1:1s e avaliações.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 flex-wrap">
             {/* Seletor de Período */}
             <select
               value={filtroPeriodo}
               onChange={(e) => setFiltroPeriodo(e.target.value)}
               aria-label="Selecionar período do dossiê"
-              className="text-xs font-medium rounded-lg border border-border bg-background px-2.5 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer"
+              className="text-xs font-medium rounded-lg border border-border bg-background px-3 py-2 focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer h-9"
             >
               <option value="ano-atual">Ano Atual ({anoAtual})</option>
               <option value="ultimos-6-meses">Últimos 6 meses</option>
@@ -141,11 +141,10 @@ export function ModalDossieCarreira({
             <Tooltip conteudo="Copiar relatório em Markdown para colar no Notion, Slack ou 1:1" posicao="bottom">
               <Botao
                 variante="neutro"
-                tamanho="pequeno"
                 onClick={copiarMarkdown}
-                className="gap-1.5 text-xs h-8"
+                className="gap-2 text-xs h-9 px-3.5 py-2 font-medium"
               >
-                {copiado ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                {copiado ? <Check size={15} className="text-emerald-500" /> : <Copy size={15} />}
                 <span>{copiado ? "Copiado!" : "Copiar Markdown"}</span>
               </Botao>
             </Tooltip>
@@ -153,11 +152,10 @@ export function ModalDossieCarreira({
             <Tooltip conteudo="Imprimir ou gerar PDF limpo" posicao="bottom">
               <Botao
                 variante="primario"
-                tamanho="pequeno"
                 onClick={imprimirDossie}
-                className="gap-1.5 text-xs h-8"
+                className="gap-2 text-xs h-9 px-3.5 py-2 font-medium"
               >
-                <Printer size={14} />
+                <Printer size={15} />
                 <span>Imprimir / PDF</span>
               </Botao>
             </Tooltip>
@@ -165,7 +163,7 @@ export function ModalDossieCarreira({
             <button
               type="button"
               onClick={aoFechar}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
               aria-label="Fechar modal"
             >
               <X size={18} />
