@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { useState, useEffect, useRef } from "react";
 import { MemoryRouter } from "react-router-dom";
-import cssGlobal from "@/index.css?inline";
+import { cssKlaus } from "./cssInjetado";
 import { HeaderNativoKlaus } from "./HeaderNativoKlaus";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ShadowRootContext } from "@/lib/shadowContext";
@@ -196,7 +196,7 @@ function AppExtensao() {
       color-scheme: dark !important;
       display: block !important;
     }
-    ${cssGlobal}
+    ${cssKlaus}
   `;
   shadow.appendChild(styleEl);
 
