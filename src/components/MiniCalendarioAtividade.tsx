@@ -94,35 +94,22 @@ export function MiniCalendarioAtividade({
 
   return (
     <>
-      {/* Grade de Calendário sem margens próprias para caber perfeitamente no card */}
-      <div className={cn("w-full space-y-1.5 select-none", className)}>
-        {/* Setas minimalistas de navegação */}
-        <div className="flex items-center justify-between text-muted-foreground px-1">
+      {/* Grade de Calendário sem margens próprias e ultra compacta */}
+      <div className={cn("w-full flex items-center justify-center gap-1 select-none py-1", className)}>
+        {/* Seta minimalista Mês Anterior colada à grade */}
+        <Tooltip conteudo="Mês anterior" posicao="top">
           <button
             type="button"
             onClick={() => setMesReferencia((m) => subMonths(m, 1))}
-            className="p-1 rounded-md hover:text-foreground hover:bg-accent/60 transition-colors cursor-pointer"
+            className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 transition-colors cursor-pointer shrink-0"
             aria-label="Mês anterior"
           >
             <ChevronLeft size={13} />
           </button>
-
-          <span className="text-[11px] font-semibold text-foreground/80 capitalize">
-            {format(mesReferencia, "MMMM", { locale: ptBR })}
-          </span>
-
-          <button
-            type="button"
-            onClick={() => setMesReferencia((m) => addMonths(m, 1))}
-            className="p-1 rounded-md hover:text-foreground hover:bg-accent/60 transition-colors cursor-pointer"
-            aria-label="Próximo mês"
-          >
-            <ChevronRight size={13} />
-          </button>
-        </div>
+        </Tooltip>
 
         {/* Grade de Mini Quadradinhos Compactos estilo GitHub */}
-        <div className="grid grid-cols-7 gap-[3px] max-w-[170px] mx-auto pt-0.5">
+        <div className="grid grid-cols-7 gap-[2px]">
           {diasDoGrid.map((dia) => {
             const diaIso = format(dia, "yyyy-MM-dd");
             const pertenceAoMes = isSameMonth(dia, mesReferencia);
@@ -152,10 +139,10 @@ export function MiniCalendarioAtividade({
                   type="button"
                   onClick={() => setDiaModalAberto(diaIso)}
                   className={cn(
-                    "w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-[2px] border transition-all cursor-pointer relative",
+                    "w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[2px] border transition-all cursor-pointer relative",
                     CORES_NIVEL[nivel],
                     !pertenceAoMes && "opacity-15",
-                    ehHoje && "ring-1 ring-primary ring-offset-1 ring-offset-card"
+                    ehHoje && "ring-1 ring-primary ring-offset-0.5 ring-offset-card"
                   )}
                   aria-label={resumoTooltip}
                 />
@@ -163,6 +150,18 @@ export function MiniCalendarioAtividade({
             );
           })}
         </div>
+
+        {/* Seta minimalista Próximo Mês colada à grade */}
+        <Tooltip conteudo="Próximo mês" posicao="top">
+          <button
+            type="button"
+            onClick={() => setMesReferencia((m) => addMonths(m, 1))}
+            className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 transition-colors cursor-pointer shrink-0"
+            aria-label="Próximo mês"
+          >
+            <ChevronRight size={13} />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Modal de Histórico do Dia Clicado */}
