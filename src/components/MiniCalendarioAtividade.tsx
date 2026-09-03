@@ -19,7 +19,6 @@ import {
 import type { ItemRepo } from "@/lib/repo";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   format,
@@ -42,11 +41,11 @@ interface MiniCalendarioAtividadeProps {
 }
 
 const CORES_NIVEL = {
-  0: "bg-muted/30 border-border/40 text-muted-foreground/60 hover:border-border hover:bg-muted/60",
-  1: "bg-purple-400/20 dark:bg-purple-500/20 border-purple-400/40 text-purple-700 dark:text-purple-300 hover:bg-purple-400/30",
-  2: "bg-purple-500/45 dark:bg-purple-500/40 border-purple-500/60 text-purple-900 dark:text-purple-100 font-semibold hover:bg-purple-500/60",
-  3: "bg-purple-600/80 dark:bg-purple-600/80 border-purple-400 text-white font-bold hover:bg-purple-600 shadow-2xs",
-  4: "bg-purple-700 dark:bg-purple-500 border-purple-300 text-white font-extrabold shadow-sm shadow-purple-500/30 hover:scale-105",
+  0: "bg-muted/40 border-border/30 hover:border-border/80 hover:bg-muted/70",
+  1: "bg-purple-400/25 dark:bg-purple-500/25 border-purple-400/30 hover:bg-purple-400/40",
+  2: "bg-purple-500/50 dark:bg-purple-500/45 border-purple-500/50 hover:bg-purple-500/65",
+  3: "bg-purple-600/80 dark:bg-purple-600/80 border-purple-400 hover:bg-purple-600",
+  4: "bg-purple-700 dark:bg-purple-500 border-purple-300 hover:scale-110 shadow-xs shadow-purple-500/30",
 };
 
 const ICONES_TIPO = {
@@ -65,7 +64,7 @@ export function MiniCalendarioAtividade({
 }: MiniCalendarioAtividadeProps) {
   const hoje = useMemo(() => new Date(), []);
   const [mesReferencia, setMesReferencia] = useState<Date>(hoje);
-  const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null);
+  const [diaModalAberto, setDiaModalAberto] = useState<string | null>(null);
 
   // Compila o histórico completo de todas as atividades por dia
   const mapaAtividades = useMemo(() => compilarHistoricoAtividades(acervo), [acervo]);
@@ -92,253 +91,230 @@ export function MiniCalendarioAtividade({
     return total;
   }, [mapaAtividades, mesReferencia]);
 
-  // Itens do dia selecionado
-  const itensDoDiaSelecionado = useMemo(() => {
-    if (!diaSelecionado) return [];
-    return mapaAtividades[diaSelecionado] || [];
-  }, [mapaAtividades, diaSelecionado]);
+  // Itens do dia aberto no modal
+  const itensDoDia = useMemo(() => {
+    if (!diaModalAberto) return [];
+    return mapaAtividades[diaModalAberto] || [];
+  }, [mapaAtividades, diaModalAberto]);
 
-  // Data formatada para o cabeçalho de detalhes
-  const dataSelecionadaFormatada = useMemo(() => {
-    if (!diaSelecionado) return "";
-    const [y, m, d] = diaSelecionado.split("-").map(Number);
+  // Data formatada para o cabeçalho do modal
+  const dataModalFormatada = useMemo(() => {
+    if (!diaModalAberto) return "";
+    const [y, m, d] = diaModalAberto.split("-").map(Number);
     const dataObj = new Date(y, m - 1, d);
     return format(dataObj, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
-  }, [diaSelecionado]);
+  }, [diaModalAberto]);
 
   return (
-    <div className={cn("rounded-2xl sm:rounded-3xl border border-border/80 bg-card/90 shadow-sm backdrop-blur-md p-3.5 sm:p-5 space-y-4", className)}>
-      {/* Topo do Mini Calendário: Título, Navegação e Estatística */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border/50 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-            <Flame size={18} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-foreground">Histórico de Atividades</h3>
-              <Badge variant="secondary" className="text-[10px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 px-1.5 py-0">
-                {totalAtividadesMes} {totalAtividadesMes === 1 ? "ação" : "ações"} em {format(mesReferencia, "MMMM", { locale: ptBR })}
-              </Badge>
+    <>
+      {/* Mini Bloco Compacto que se integra ao Resumo da Semana */}
+      <div className={cn("p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-border/70 bg-card/80 shadow-2xs backdrop-blur-xs flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 select-none", className)}>
+        {/* Lado Esquerdo: Título & Navegação Mensal Minimalista */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+          <div className="flex items-center gap-1.5">
+            <div className="h-6 w-6 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+              <Flame size={13} />
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Seu ritmo criativo e produção diária em tarefas, notas, metas e referências.
-            </p>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-xs text-foreground">Histórico</span>
+              <span className="text-[10px] text-muted-foreground font-mono">
+                ({totalAtividadesMes})
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* Controles de Navegação Mensal */}
-        <div className="flex items-center gap-1.5 bg-secondary/50 p-1 rounded-xl border border-border/60 self-end sm:self-auto">
-          <Tooltip conteudo="Mês anterior">
+          {/* Setas Minimalistas */}
+          <div className="flex items-center gap-0.5 text-muted-foreground">
             <button
               type="button"
               onClick={() => setMesReferencia((m) => subMonths(m, 1))}
-              className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+              className="p-1 rounded-md hover:text-foreground hover:bg-accent/70 transition-colors cursor-pointer"
               aria-label="Mês anterior"
             >
-              <ChevronLeft size={14} />
+              <ChevronLeft size={13} />
             </button>
-          </Tooltip>
 
-          <span className="text-xs font-semibold text-foreground px-2 capitalize min-w-[110px] text-center select-none">
-            {format(mesReferencia, "MMMM yyyy", { locale: ptBR })}
-          </span>
+            <span className="text-[11px] font-semibold text-foreground px-1.5 capitalize text-center">
+              {format(mesReferencia, "MMM yyyy", { locale: ptBR })}
+            </span>
 
-          <Tooltip conteudo="Próximo mês">
             <button
               type="button"
               onClick={() => setMesReferencia((m) => addMonths(m, 1))}
-              className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+              className="p-1 rounded-md hover:text-foreground hover:bg-accent/70 transition-colors cursor-pointer"
               aria-label="Próximo mês"
             >
-              <ChevronRight size={14} />
+              <ChevronRight size={13} />
             </button>
-          </Tooltip>
 
-          {!isSameMonth(mesReferencia, hoje) && (
-            <Tooltip conteudo="Ir para o mês atual">
+            {!isSameMonth(mesReferencia, hoje) && (
               <button
                 type="button"
                 onClick={() => setMesReferencia(new Date())}
-                className="text-[10px] font-bold text-primary hover:bg-primary/10 px-2 py-0.5 rounded-md transition-colors cursor-pointer border-l border-border/60 ml-1"
+                className="text-[9px] font-bold text-primary hover:bg-primary/10 px-1.5 py-0.5 rounded transition-colors cursor-pointer ml-1"
               >
                 Hoje
               </button>
-            </Tooltip>
-          )}
-        </div>
-      </div>
-
-      {/* Grade de Dias do Mês (Estilo GitHub Heatmap) */}
-      <div className="space-y-1.5">
-        {/* Cabeçalho com os dias da semana */}
-        <div className="grid grid-cols-7 gap-1.5 sm:gap-2 text-center text-[10px] font-semibold text-muted-foreground select-none pb-0.5">
-          <span>Seg</span>
-          <span>Ter</span>
-          <span>Qua</span>
-          <span>Qui</span>
-          <span>Sex</span>
-          <span>Sáb</span>
-          <span>Dom</span>
+            )}
+          </div>
         </div>
 
-        {/* Quadradinhos dos Dias */}
-        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-          {diasDoGrid.map((dia) => {
-            const diaIso = format(dia, "yyyy-MM-dd");
-            const diaNum = format(dia, "d");
-            const pertenceAoMes = isSameMonth(dia, mesReferencia);
-            const ehHoje = isSameDay(dia, hoje);
-            const atividades = mapaAtividades[diaIso] || [];
-            const qtd = atividades.length;
-            const nivel = calcularNivelIntensidade(qtd);
-            const selecionado = diaSelecionado === diaIso;
+        {/* Centro / Lado Direito: Grade com Mini Quadradinhos (Heatmap GitHub) */}
+        <div className="flex items-center gap-3">
+          {/* Matriz de Mini Quadradinhos */}
+          <div className="grid grid-flow-col grid-rows-7 gap-[2.5px] sm:gap-[3px]">
+            {diasDoGrid.map((dia) => {
+              const diaIso = format(dia, "yyyy-MM-dd");
+              const pertenceAoMes = isSameMonth(dia, mesReferencia);
+              const ehHoje = isSameDay(dia, hoje);
+              const atividades = mapaAtividades[diaIso] || [];
+              const qtd = atividades.length;
+              const nivel = calcularNivelIntensidade(qtd);
 
-            // Resumo para o Tooltip
-            const resumoTooltip = (() => {
-              if (qtd === 0) return `${format(dia, "dd/MM/yyyy")}: Nenhuma atividade registrada`;
-              const contagemTipos: Record<string, number> = {};
-              for (const a of atividades) {
-                contagemTipos[a.tipo] = (contagemTipos[a.tipo] || 0) + 1;
-              }
-              const partes = Object.entries(contagemTipos).map(([tp, count]) => {
-                const rot = ICONES_TIPO[tp as keyof typeof ICONES_TIPO]?.rotulo || tp;
-                return `${count} ${rot.toLowerCase()}${count > 1 ? "s" : ""}`;
-              });
-              return `${format(dia, "dd/MM/yyyy")}: ${qtd} ${qtd === 1 ? "atividade" : "atividades"} (${partes.join(", ")})`;
-            })();
+              // Resumo para o Tooltip
+              const resumoTooltip = (() => {
+                const dataFmt = format(dia, "dd/MM");
+                if (qtd === 0) return `${dataFmt}: Sem atividades`;
+                const contagemTipos: Record<string, number> = {};
+                for (const a of atividades) {
+                  contagemTipos[a.tipo] = (contagemTipos[a.tipo] || 0) + 1;
+                }
+                const partes = Object.entries(contagemTipos).map(([tp, count]) => {
+                  const rot = ICONES_TIPO[tp as keyof typeof ICONES_TIPO]?.rotulo || tp;
+                  return `${count} ${rot.toLowerCase()}${count > 1 ? "s" : ""}`;
+                });
+                return `${dataFmt}: ${qtd} ${qtd === 1 ? "ação" : "ações"} (${partes.join(", ")})`;
+              })();
 
-            return (
-              <Tooltip key={diaIso} conteudo={resumoTooltip}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDiaSelecionado(selecionado ? null : diaIso);
-                  }}
-                  className={cn(
-                    "aspect-square rounded-lg sm:rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-center p-1 select-none relative group",
-                    CORES_NIVEL[nivel],
-                    !pertenceAoMes && "opacity-25 hover:opacity-50",
-                    ehHoje && "ring-2 ring-primary ring-offset-1 ring-offset-card font-bold",
-                    selecionado && "ring-2 ring-purple-400 dark:ring-purple-300 scale-105 shadow-md z-10 font-bold",
-                    qtd > 0 && "hover:scale-105"
-                  )}
-                >
-                  <span className={cn("text-[10px] sm:text-xs leading-none", qtd >= 3 && "text-white")}>
-                    {diaNum}
-                  </span>
-                  {qtd > 0 && (
-                    <span className="text-[8px] opacity-75 font-mono leading-none mt-0.5 hidden sm:inline">
-                      {qtd}
-                    </span>
-                  )}
-                </button>
-              </Tooltip>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Legenda de Intensidade do Heatmap */}
-      <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 select-none">
-        <span className="text-[10px]">Clique em qualquer quadradinho para ver o que você fez naquele dia</span>
-
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] mr-1">Menos</span>
-          <span className="w-2.5 h-2.5 rounded-[3px] bg-muted/40 border border-border/40 inline-block" />
-          <span className="w-2.5 h-2.5 rounded-[3px] bg-purple-400/25 border border-purple-400/40 inline-block" />
-          <span className="w-2.5 h-2.5 rounded-[3px] bg-purple-500/50 border border-purple-500/60 inline-block" />
-          <span className="w-2.5 h-2.5 rounded-[3px] bg-purple-600/80 border border-purple-400 inline-block" />
-          <span className="w-2.5 h-2.5 rounded-[3px] bg-purple-700 border border-purple-300 inline-block" />
-          <span className="text-[10px] ml-1">Mais</span>
-        </div>
-      </div>
-
-      {/* Painel Expansível de Detalhes do Dia Selecionado */}
-      {diaSelecionado && (
-        <div className="mt-4 pt-4 border-t border-border/60 space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-purple-500 inline-block" />
-              <h4 className="font-bold text-xs sm:text-sm text-foreground capitalize">
-                {dataSelecionadaFormatada}
-              </h4>
-              <Badge variant="outline" className="text-[10px] font-semibold">
-                {itensDoDiaSelecionado.length} {itensDoDiaSelecionado.length === 1 ? "registro" : "registros"}
-              </Badge>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setDiaSelecionado(null)}
-              className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
-              aria-label="Fechar detalhes do dia"
-            >
-              <X size={14} />
-            </button>
+              return (
+                <Tooltip key={diaIso} conteudo={resumoTooltip} posicao="top">
+                  <button
+                    type="button"
+                    onClick={() => setDiaModalAberto(diaIso)}
+                    className={cn(
+                      "w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[2.5px] border transition-all cursor-pointer",
+                      CORES_NIVEL[nivel],
+                      !pertenceAoMes && "opacity-15",
+                      ehHoje && "ring-1 ring-primary ring-offset-0.5 ring-offset-card"
+                    )}
+                    aria-label={resumoTooltip}
+                  />
+                </Tooltip>
+              );
+            })}
           </div>
 
-          {itensDoDiaSelecionado.length === 0 ? (
-            <div className="p-4 rounded-xl border border-dashed border-border text-center text-xs text-muted-foreground">
-              Nenhuma atividade registrada nesta data.
+          {/* Mini Legenda Discreta */}
+          <div className="hidden md:flex items-center gap-1 text-[9px] text-muted-foreground/70 pl-1 border-l border-border/40">
+            <span>-</span>
+            <span className="w-2 h-2 rounded-[2px] bg-muted/40 border border-border/30 inline-block" />
+            <span className="w-2 h-2 rounded-[2px] bg-purple-400/25 border border-purple-400/30 inline-block" />
+            <span className="w-2 h-2 rounded-[2px] bg-purple-500/50 border border-purple-500/50 inline-block" />
+            <span className="w-2 h-2 rounded-[2px] bg-purple-600/80 border border-purple-400 inline-block" />
+            <span className="w-2 h-2 rounded-[2px] bg-purple-700 border border-purple-300 inline-block" />
+            <span>+</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal de Histórico do Dia Clicado */}
+      {diaModalAberto && (
+        <div
+          className="fixed inset-0 z-[600] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150 select-none"
+          onClick={() => setDiaModalAberto(null)}
+        >
+          <div
+            className="w-full max-w-lg max-h-[85vh] bg-background border border-border rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabeçalho do Modal */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border/60 bg-card/60">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="h-2.5 w-2.5 rounded-full bg-purple-500 shrink-0" />
+                <div className="min-w-0">
+                  <h3 className="font-bold text-sm sm:text-base text-foreground capitalize truncate">
+                    {dataModalFormatada}
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    {itensDoDia.length} {itensDoDia.length === 1 ? "atividade registrada" : "atividades registradas"}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDiaModalAberto(null)}
+                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer shrink-0"
+                aria-label="Fechar histórico"
+              >
+                <X size={16} />
+              </button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {itensDoDiaSelecionado.map((item) => {
-                const infoTipo = ICONES_TIPO[item.tipo] || ICONES_TIPO.nota;
-                const Icone = infoTipo.Icone;
 
-                return (
-                  <div
-                    key={`${item.id}-${item.acao}`}
-                    onClick={() => aoAbrirItem(item.caminho)}
-                    className="p-3 rounded-xl border border-border/70 bg-card hover:bg-accent/30 hover:border-border transition-all cursor-pointer flex flex-col justify-between gap-2 shadow-2xs group"
-                  >
-                    <div className="flex items-start gap-2.5">
-                      {item.imagem ? (
-                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-border shrink-0 bg-black/5 dark:bg-black/20">
-                          <ImagemPrivada
-                            caminho={item.imagem}
-                            alt={item.titulo}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className={cn("p-2 rounded-lg shrink-0", infoTipo.bg, infoTipo.cor)}>
-                          <Icone size={15} />
-                        </div>
-                      )}
+            {/* Conteúdo com os Itens do Dia */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5">
+              {itensDoDia.length === 0 ? (
+                <div className="py-12 text-center text-xs text-muted-foreground space-y-1">
+                  <p className="font-semibold text-foreground">Nenhuma atividade registrada nesta data</p>
+                  <p className="text-[11px]">Crie notas, conclua tarefas ou salve referências para acompanhar seu histórico.</p>
+                </div>
+              ) : (
+                itensDoDia.map((item) => {
+                  const infoTipo = ICONES_TIPO[item.tipo] || ICONES_TIPO.nota;
+                  const Icone = infoTipo.Icone;
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  return (
+                    <div
+                      key={`${item.id}-${item.acao}`}
+                      onClick={() => {
+                        setDiaModalAberto(null);
+                        aoAbrirItem(item.caminho);
+                      }}
+                      className="p-3 rounded-xl sm:rounded-2xl border border-border/70 bg-card/70 hover:bg-accent/40 hover:border-border transition-all cursor-pointer flex items-center justify-between gap-3 shadow-2xs group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {item.imagem ? (
+                          <div className="w-10 h-10 rounded-lg overflow-hidden border border-border shrink-0 bg-black/5 dark:bg-black/20">
+                            <ImagemPrivada
+                              caminho={item.imagem}
+                              alt={item.titulo}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className={cn("p-2 rounded-xl shrink-0", infoTipo.bg, infoTipo.cor)}>
+                            <Icone size={16} />
+                          </div>
+                        )}
+
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
                             {item.acao}
                           </span>
+                          <h4 className="font-semibold text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors truncate">
+                            {item.titulo}
+                          </h4>
+                          {item.tags && item.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              {item.tags.slice(0, 3).map((tg) => (
+                                <span key={tg} className="text-[9px] px-1.5 py-0.2 rounded bg-secondary text-muted-foreground font-mono">
+                                  #{tg}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        <h5 className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors truncate">
-                          {item.titulo}
-                        </h5>
                       </div>
 
-                      <ExternalLink size={13} className="text-muted-foreground/40 group-hover:text-primary shrink-0 transition-colors" />
+                      <ExternalLink size={14} className="text-muted-foreground/40 group-hover:text-primary shrink-0 transition-colors" />
                     </div>
-
-                    {item.tags && item.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1 border-t border-border/40">
-                        {item.tags.map((tg) => (
-                          <span key={tg} className="text-[9px] px-1.5 py-0.2 rounded-md bg-secondary text-muted-foreground font-mono">
-                            #{tg}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
