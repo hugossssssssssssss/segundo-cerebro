@@ -37,6 +37,7 @@ import {
   type RascunhoOffline,
 } from "@/lib/offlineQueue";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
+import { MiniCalendarioAtividade } from "@/components/MiniCalendarioAtividade";
 import { Carregando, ModalConfirmacao } from "@/components/ui";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -510,6 +511,40 @@ export default function Inbox() {
     setCorpoEditor(doc.corpo);
     setDadosPropsEditor(doc.dados || {});
     setTemMudancasItem(false);
+  };
+
+  const abrirItemDoHistorico = (caminho: string) => {
+    if (!caminho) return;
+    const item = acervo.find((a) => a.caminho === caminho);
+    if (item) {
+      const doc = item.doc || lerMarkdown(item.texto);
+      const tit = String(doc.dados.titulo || tituloProvavel(doc, item.nome));
+      const pasta = caminho.split("/")[0];
+      const tipo: "tarefa" | "nota" | "meta" | "entrega" | "lembrete" =
+        pasta === "tarefas"
+          ? "tarefa"
+          : pasta === "pdi/metas" || caminho.startsWith("pdi/metas/")
+          ? "meta"
+          : pasta === "pdi/entregas" || caminho.startsWith("pdi/entregas/")
+          ? "entrega"
+          : "nota";
+
+      setItemAberto({
+        id: `item-${item.caminho}`,
+        tipo,
+        titulo: tit,
+        dataIso: "",
+        dataBr: "",
+        caminho: item.caminho,
+        sha: item.sha,
+        corpo: doc.corpo,
+        dados: doc.dados || {},
+      });
+      setTituloEditor(tit);
+      setCorpoEditor(doc.corpo);
+      setDadosPropsEditor(doc.dados || {});
+      setTemMudancasItem(false);
+    }
   };
 
   const abrirNovoLembrete = () => {
@@ -1036,7 +1071,13 @@ export default function Inbox() {
         carregando ? (
           <Carregando texto="Carregando compromissos..." />
         ) : (
-          <div className="space-y-3.5">
+          <div className="space-y-4">
+            {/* Mini Calendário de Histórico de Atividades (GitHub Heatmap Roxo) */}
+            <MiniCalendarioAtividade
+              acervo={acervo}
+              aoAbrirItem={abrirItemDoHistorico}
+            />
+
             {/* Seletor de Dias em Pílulas / Carrossel no Mobile */}
             <div className="flex sm:hidden items-center gap-1.5 p-1 bg-card rounded-2xl border border-border/80 shadow-2xs overflow-x-auto select-none snap-x snap-mandatory">
               <button
