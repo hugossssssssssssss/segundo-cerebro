@@ -5,7 +5,8 @@
   "description": "Header e barra de favoritos oficiais do Klaus suspensa em qualquer site ao aproximar o mouse do topo.",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"
