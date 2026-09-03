@@ -1,12 +1,13 @@
 {
   "name": "segundo-cere-bro",
   "private": true,
-  "version": "2.7.2",
+  "version": "2.7.3",
   "type": "module",
   "scripts": {
-    "build": "tsc -b && npm run arquitetura && npm run schemas && vite build && npm run build:extensao",
+    "build": "tsc -b && npm run arquitetura && npm run mapa-ia && npm run schemas && vite build && npm run build:extensao",
     "build:extensao": "node scripts/gerar-css-extensao.js && vite build --config vite.extension.config.ts",
     "arquitetura": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gerar-arquitetura.ts",
+    "mapa-ia": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gerar-mapa-ia.ts",
     "schemas": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gerar-schemas-mcp.ts",
     "lint": "oxlint",
     "preview": "vite preview",

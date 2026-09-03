@@ -3,11 +3,10 @@
 App web "Klaus" (segundo cérebro) do Hugo, designer gráfico brasileiro.
 **Responda sempre em português do Brasil e explique sem jargão técnico** — ele não é desenvolvedor.
 
-> **Leia o [ARCHITECTURE.md](ARCHITECTURE.md) antes de mexer no código.** Ele é
-> gerado a cada `npm run build` a partir de `src/lib/tipos.ts` e
-> `src/lib/entidades.ts`, então o mapa das entidades, das pastas e dos campos
-> de frontmatter que está lá nunca fica velho. Este arquivo aqui explica o
-> *porquê* das decisões; o ARCHITECTURE.md explica o *o quê*, direto do código.
+> **Leia o [ARCHITECTURE.md](ARCHITECTURE.md) e o [AI_CONTEXT.md](AI_CONTEXT.md) antes de mexer no código.**
+> Ambos são gerados a cada `npm run build` a partir do código TypeScript real. O `AI_CONTEXT.md` contém
+> o mapa vivo de todos os módulos de `src/lib`, componentes, telas e as Golden Rules para IAs.
+> Este arquivo aqui explica o *porquê* das decisões; o ARCHITECTURE.md e o AI_CONTEXT.md explicam o *o quê*, direto do código.
 
 ## A ideia em uma frase
 
