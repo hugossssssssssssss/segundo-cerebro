@@ -94,22 +94,22 @@ export function MiniCalendarioAtividade({
 
   return (
     <>
-      {/* Grade de Calendário sem margens próprias e ultra compacta */}
-      <div className={cn("w-full flex items-center justify-center gap-1 select-none py-1", className)}>
+      {/* Grade de Calendário sem margens próprias e com tamanho nítido */}
+      <div className={cn("w-full flex items-center justify-center gap-1.5 select-none py-1.5", className)}>
         {/* Seta minimalista Mês Anterior colada à grade */}
         <Tooltip conteudo="Mês anterior" posicao="top">
           <button
             type="button"
             onClick={() => setMesReferencia((m) => subMonths(m, 1))}
-            className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 transition-colors cursor-pointer shrink-0"
+            className="p-1 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 transition-colors cursor-pointer shrink-0"
             aria-label="Mês anterior"
           >
-            <ChevronLeft size={13} />
+            <ChevronLeft size={15} />
           </button>
         </Tooltip>
 
-        {/* Grade de Mini Quadradinhos Compactos estilo GitHub */}
-        <div className="grid grid-cols-7 gap-[2px]">
+        {/* Grade de Quadradinhos no tamanho ideal estilo GitHub */}
+        <div className="grid grid-cols-7 gap-[2.5px]">
           {diasDoGrid.map((dia) => {
             const diaIso = format(dia, "yyyy-MM-dd");
             const pertenceAoMes = isSameMonth(dia, mesReferencia);
@@ -139,10 +139,10 @@ export function MiniCalendarioAtividade({
                   type="button"
                   onClick={() => setDiaModalAberto(diaIso)}
                   className={cn(
-                    "w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[2px] border transition-all cursor-pointer relative",
+                    "w-3.5 h-3.5 sm:w-[18px] sm:h-[18px] rounded-[3px] border transition-all cursor-pointer relative",
                     CORES_NIVEL[nivel],
                     !pertenceAoMes && "opacity-15",
-                    ehHoje && "ring-1 ring-primary ring-offset-0.5 ring-offset-card"
+                    ehHoje && "ring-1.5 ring-primary ring-offset-1 ring-offset-card font-bold"
                   )}
                   aria-label={resumoTooltip}
                 />
@@ -156,10 +156,10 @@ export function MiniCalendarioAtividade({
           <button
             type="button"
             onClick={() => setMesReferencia((m) => addMonths(m, 1))}
-            className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 transition-colors cursor-pointer shrink-0"
+            className="p-1 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 transition-colors cursor-pointer shrink-0"
             aria-label="Próximo mês"
           >
-            <ChevronRight size={13} />
+            <ChevronRight size={15} />
           </button>
         </Tooltip>
       </div>
