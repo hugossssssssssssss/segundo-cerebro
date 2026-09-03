@@ -18,7 +18,7 @@ function AppExtensao() {
     }
   });
 
-  const [fixado, setFixado] = useState(() => {
+  const [fixado] = useState(() => {
     try {
       const salvo = localStorage.getItem("klaus_barra_fixada");
       return salvo !== null ? salvo === "true" : true;
@@ -76,15 +76,6 @@ function AppExtensao() {
       }
     };
   }, []);
-
-  const alternarFixar = () => {
-    const novo = !fixado;
-    setFixado(novo);
-    setVisivel(novo || true);
-    try {
-      localStorage.setItem("klaus_barra_fixada", String(novo));
-    } catch {}
-  };
 
   const estaAberto = visivel || fixado || modalAberto;
 
@@ -154,8 +145,6 @@ function AppExtensao() {
         }}
       >
         <HeaderOficialExtensao
-          estaFixado={fixado}
-          aoAlternarFixar={alternarFixar}
           onModalStateChange={setModalAberto}
         />
       </div>
