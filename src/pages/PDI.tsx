@@ -14,18 +14,22 @@ import {
   Folder,
   Tag,
   ListTodo,
-  Printer,
+  TrendingUp,
+  MessageSquareQuote,
+  Users,
+  User,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
-import { PASTAS } from "@/lib/tipos";
-import { comoMeta, comoEntrega, comoTarefa, metaParaArquivo, entregaParaArquivo, tarefaParaArquivo } from "@/lib/entidades";
+import { PASTAS, OPCOES_COLABORACAO_PADRAO } from "@/lib/tipos";
+import { comoMeta, comoEntrega, comoTarefa, comoContato, metaParaArquivo, entregaParaArquivo, tarefaParaArquivo } from "@/lib/entidades";
 import { propagarRenomeacaoId } from "@/lib/links";
 import { carregarRepo, invalidarCache } from "@/lib/repo";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import { toast } from "@/lib/toast";
+import { ModalDossieCarreira } from "@/components/ModalDossieCarreira";
 import type { Tarefa } from "@/lib/tarefas";
 import { CheckCircle2, Circle } from "lucide-react";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
@@ -116,12 +120,19 @@ export default function PDI() {
       { recursivo: true }
     );
 
+  const { itens: contatos, recarregar: recarregarContatos } =
+    useItemRepo(cfg, PASTAS.contatos, (item) =>
+      comoContato(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome)),
+      { recursivo: true }
+    );
+
   const carregando = carregandoMetas || carregandoEntregas;
 
   function recarregar() {
     recarregarMetas();
     recarregarEntregas();
     recarregarTarefas();
+    recarregarContatos();
   }
 
   // ── Salvamento ────────────────────────────────────────────────────────────
@@ -130,6 +141,7 @@ export default function PDI() {
   const erro = erroLocal || erroMetas || erroEntregas || erroSalvar;
 
   // ── Estado da UI ──────────────────────────────────────────────────────────
+  const [modalDossieAberto, setModalDossieAberto] = useState(false);
   const [editandoMeta, setEditandoMeta] = useState<Meta | null>(null);
   const [editandoEntrega, setEditandoEntrega] = useState<Entrega | null>(null);
   const [modoVisaoMeta, setModoVisaoMeta] = useState<ModoVisaoNotion>("popup");
@@ -357,6 +369,11 @@ export default function PDI() {
         dadosProps: {
           data: entregaOriginal.data,
           metas: entregaOriginal.metas.map(id => metas.find(m => m.id === id)?.titulo || "").filter(Boolean),
+          impacto: entregaOriginal.impacto || "",
+          elogio: entregaOriginal.elogio || "",
+          autor_elogio: entregaOriginal.autorElogio || "",
+          colaboracao: entregaOriginal.colaboracao || [],
+          tags: entregaOriginal.tags || [],
         },
         camposFixosProps: {
           data: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
@@ -364,7 +381,29 @@ export default function PDI() {
             icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />,
             tipo: "multiselect",
             opcoes: metas.map((m) => m.titulo),
-          }
+          },
+          impacto: {
+            icone: <TrendingUp className="h-4 w-4 opacity-50 text-emerald-500" />,
+            tipo: "texto",
+          },
+          elogio: {
+            icone: <MessageSquareQuote className="h-4 w-4 opacity-50 text-purple-500" />,
+            tipo: "texto",
+          },
+          autor_elogio: {
+            icone: <User className="h-4 w-4 opacity-50 text-blue-500" />,
+            tipo: "select",
+            opcoes: contatos.map((c) => c.titulo),
+          },
+          colaboracao: {
+            icone: <Users className="h-4 w-4 opacity-50 text-indigo-500" />,
+            tipo: "multiselect",
+            opcoes: [...OPCOES_COLABORACAO_PADRAO],
+          },
+          tags: {
+            icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />,
+            tipo: "multiselect",
+          },
         },
         caminho: entregaOriginal.caminho,
         sha: entregaOriginal.sha,
@@ -384,6 +423,11 @@ export default function PDI() {
               ? itemFlutuanteAtual.dadosProps.metas.map(titulo => metas.find(m => m.titulo === titulo)?.id || "").filter(Boolean)
               : [],
             iaSugeriu: false,
+            impacto: (itemFlutuanteAtual.dadosProps.impacto as string) || undefined,
+            elogio: (itemFlutuanteAtual.dadosProps.elogio as string) || undefined,
+            autorElogio: (itemFlutuanteAtual.dadosProps.autor_elogio as string) || undefined,
+            colaboracao: Array.isArray(itemFlutuanteAtual.dadosProps.colaboracao) ? (itemFlutuanteAtual.dadosProps.colaboracao as string[]) : [],
+            tags: Array.isArray(itemFlutuanteAtual.dadosProps.tags) ? (itemFlutuanteAtual.dadosProps.tags as string[]) : [],
             corpo: itemFlutuanteAtual.corpo,
           };
           const { dados, corpo } = entregaParaArquivo(eSalvar);
@@ -400,7 +444,7 @@ export default function PDI() {
       setOrigEntrega(null);
       setModoVisaoEntrega("popup");
     }
-  }, [modoVisaoEntrega, editandoEntrega, metas]);
+  }, [modoVisaoEntrega, editandoEntrega, metas, contatos]);
 
   // ── Alerta ao sair com mudanças ────────────────────────────────────────────
   useEffect(() => {
@@ -641,22 +685,18 @@ export default function PDI() {
         corIcone="bg-teal-500/10 text-teal-600 dark:text-teal-400"
         acoes={
           <>
+            <Botao onClick={() => setModalDossieAberto(true)} variante="primario">
+              <Sparkles size={15} />
+              Dossiê de Carreira
+            </Botao>
             <Botao onClick={novaMeta} variante="neutro">
               <Target size={15} />
               Nova Meta
             </Botao>
-            <Tooltip conteudo="Imprimir ou exportar PDI em PDF" posicao="bottom">
-              <Botao
-                variante="neutro"
-                tamanho="icone"
-                onClick={() => {
-                  window.print();
-                }}
-                aria-label="Exportar PDF"
-              >
-                <Printer size={15} />
-              </Botao>
-            </Tooltip>
+            <Botao onClick={novaEntrega} variante="neutro">
+              <Plus size={15} />
+              Nova Conquista
+            </Botao>
           </>
         }
       />
@@ -1161,7 +1201,26 @@ export default function PDI() {
                             {dataCurta(e.data)}
                           </span>
                         </div>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+
+                        {/* Impacto da Entrega */}
+                        {e.impacto && (
+                          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 font-medium bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md w-fit">
+                            <TrendingUp size={12} className="shrink-0" />
+                            <span>{e.impacto}</span>
+                          </div>
+                        )}
+
+                        {/* Elogio / Feedback recebido */}
+                        {e.elogio && (
+                          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-purple-700 dark:text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md italic w-fit">
+                            <MessageSquareQuote size={12} className="shrink-0" />
+                            <span className="truncate max-w-md">
+                              "{e.elogio}" {e.autorElogio ? `— ${contatos.find((c) => c.id === e.autorElogio || c.titulo === e.autorElogio)?.titulo || e.autorElogio}` : ""}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
                           {e.metas.length === 0 ? (
                             <Selo tom="aviso">sem meta</Selo>
                           ) : (
@@ -1171,6 +1230,17 @@ export default function PDI() {
                               </Selo>
                             ))
                           )}
+                          {e.colaboracao && e.colaboracao.length > 0 && (
+                            <Selo tom="neutro" className="inline-flex items-center gap-1">
+                              <Users size={10} />
+                              {e.colaboracao.join(", ")}
+                            </Selo>
+                          )}
+                          {e.tags && e.tags.map((t) => (
+                            <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary/80 text-muted-foreground">
+                              #{t}
+                            </span>
+                          ))}
                           {e.iaSugeriu && (
                             <Selo tom="primario" className="inline-flex items-center gap-1">
                               <Sparkles size={10} /> conferir
@@ -1241,6 +1311,11 @@ export default function PDI() {
           dadosProps={{
             data: editandoEntrega.data,
             metas: editandoEntrega.metas.map(id => metas.find(m => m.id === id)?.titulo || "").filter(Boolean),
+            impacto: editandoEntrega.impacto || "",
+            elogio: editandoEntrega.elogio || "",
+            autor_elogio: editandoEntrega.autorElogio || "",
+            colaboracao: editandoEntrega.colaboracao || [],
+            tags: editandoEntrega.tags || [],
           }}
           onChangeProps={(novosDados) => {
             setEditandoEntrega({
@@ -1249,6 +1324,11 @@ export default function PDI() {
               metas: Array.isArray(novosDados.metas)
                 ? novosDados.metas.map(titulo => metas.find(m => m.titulo === titulo)?.id || "").filter(Boolean)
                 : [],
+              impacto: (novosDados.impacto as string) || undefined,
+              elogio: (novosDados.elogio as string) || undefined,
+              autorElogio: (novosDados.autor_elogio as string) || undefined,
+              colaboracao: Array.isArray(novosDados.colaboracao) ? (novosDados.colaboracao as string[]) : [],
+              tags: Array.isArray(novosDados.tags) ? (novosDados.tags as string[]) : [],
             });
           }}
           camposFixosProps={{
@@ -1257,7 +1337,29 @@ export default function PDI() {
               icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />,
               tipo: "multiselect",
               opcoes: metas.map((m) => m.titulo),
-            }
+            },
+            impacto: {
+              icone: <TrendingUp className="h-4 w-4 opacity-50 text-emerald-500" />,
+              tipo: "texto",
+            },
+            elogio: {
+              icone: <MessageSquareQuote className="h-4 w-4 opacity-50 text-purple-500" />,
+              tipo: "texto",
+            },
+            autor_elogio: {
+              icone: <User className="h-4 w-4 opacity-50 text-blue-500" />,
+              tipo: "select",
+              opcoes: contatos.map((c) => c.titulo),
+            },
+            colaboracao: {
+              icone: <Users className="h-4 w-4 opacity-50 text-indigo-500" />,
+              tipo: "multiselect",
+              opcoes: [...OPCOES_COLABORACAO_PADRAO],
+            },
+            tags: {
+              icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />,
+              tipo: "multiselect",
+            },
           }}
           salvando={salvando}
           temMudancas={origEntrega !== null && JSON.stringify(editandoEntrega) !== JSON.stringify(origEntrega)}
@@ -1267,6 +1369,15 @@ export default function PDI() {
           erro={erroSalvar}
         />
       )}
+
+      {/* Modal do Dossiê de Carreira / Brag Document */}
+      <ModalDossieCarreira
+        aberto={modalDossieAberto}
+        aoFechar={() => setModalDossieAberto(false)}
+        metas={metas}
+        entregas={entregas}
+        contatos={contatos}
+      />
 
       <ModalConfirmacao
         aberto={metaParaExcluir !== null}

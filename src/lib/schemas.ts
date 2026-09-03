@@ -76,6 +76,11 @@ export const EntregaSchema = z
     data: z.string().regex(RegexDataIso, "Data deve estar no formato AAAA-MM-DD").optional(),
     metas: z.union([z.array(z.string()), z.string()]).optional(),
     ia_sugeriu: z.boolean().optional(),
+    impacto: z.string().optional(),
+    elogio: z.string().optional(),
+    autor_elogio: z.string().optional(),
+    colaboracao: z.union([z.array(z.string()), z.string()]).optional(),
+    tags: z.union([z.array(z.string()), z.string()]).optional(),
     criado_em: z.string().optional(),
     atualizado_em: z.string().optional(),
   })

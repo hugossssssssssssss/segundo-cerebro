@@ -110,7 +110,7 @@ Navegador (React SPA)
 ## 🧩 Catálogo de Componentes (`src/components/`)
 
 ### Componentes Principais (src/components/)
-`AlternadorVisao`, `BarraFavoritos`, `BarraFerramentas`, `BarraFiltrosAvancados`, `Busca`, `CabecalhoPagina`, `CabecalhoSecao`, `Calendario`, `CapturaRapida`, `CardConsumoGitHub`, `CartaoAcao`, `CartaoItem`, `CartaoLousaVisual`, `CartaoNotaVisual`, `ConsoleDesenvolvedor`, `ContextoCronometro`, `ContextoFerramentasFlutuantes`, `DropdownNovoViaModelo`, `EditorNotion`, `GaleriaIconesModal`, `GavetaMais`, `HistoricoDiffModal`, `ImagemPrivada`, `ItemFlutuanteContext`, `LimiteDeErro`, `Links`, `LixeiraGitModal`, `LogoKlaus`, `MapaMentalEmbed`, `MenuAcoesTarefa`, `MenuContextoNotas`, `MiniCalendarioAtividade`, `ModalBuscaWeb`, `ModalCreditosOpenSource`, `ModalGerenciarModelos`, `ModalGuiaAtalhos`, `ModalIADocumento`, `ModalInstalarPwa`, `ModalLembrete`, `ModalPersonalizarMenu`, `ModalRefatorarLinks`, `ModalSelecionarIconeFavorito`, `ModalTourGuiado`, `ModalVincularPDI`, `NavegacaoLateral`, `NavegadorGrafo3D`, `NavegadorTagsModal`, `PainelNotificacoesHeader`, `PainelNotionBase`, `PainelPropriedadesNota`, `PainelReferenciasNota`, `PainelTarefasNota`, `Pomodoro`, `PrismasFoco`, `PropriedadesNotion`, `Quadro`, `Rodape`, `SeletorOcr`, `SeloStatus`, `Subtarefas`, `SumarioNota`, `TagChip`, `ToastsContainer`, `WebSearchBar`, `WebSearchHeader`, `WebSearchWidget`, `ui`
+`AlternadorVisao`, `BarraFavoritos`, `BarraFerramentas`, `BarraFiltrosAvancados`, `Busca`, `CabecalhoPagina`, `CabecalhoSecao`, `Calendario`, `CapturaRapida`, `CardConsumoGitHub`, `CartaoAcao`, `CartaoItem`, `CartaoLousaVisual`, `CartaoNotaVisual`, `ConsoleDesenvolvedor`, `ContextoCronometro`, `ContextoFerramentasFlutuantes`, `DropdownNovoViaModelo`, `EditorNotion`, `GaleriaIconesModal`, `GavetaMais`, `HistoricoDiffModal`, `ImagemPrivada`, `ItemFlutuanteContext`, `LimiteDeErro`, `Links`, `LixeiraGitModal`, `LogoKlaus`, `MapaMentalEmbed`, `MenuAcoesTarefa`, `MenuContextoNotas`, `MiniCalendarioAtividade`, `ModalBuscaWeb`, `ModalCreditosOpenSource`, `ModalDossieCarreira`, `ModalGerenciarModelos`, `ModalGuiaAtalhos`, `ModalIADocumento`, `ModalInstalarPwa`, `ModalLembrete`, `ModalPersonalizarMenu`, `ModalRefatorarLinks`, `ModalSelecionarIconeFavorito`, `ModalTourGuiado`, `ModalVincularPDI`, `NavegacaoLateral`, `NavegadorGrafo3D`, `NavegadorTagsModal`, `PainelNotificacoesHeader`, `PainelNotionBase`, `PainelPropriedadesNota`, `PainelReferenciasNota`, `PainelTarefasNota`, `Pomodoro`, `PrismasFoco`, `PropriedadesNotion`, `Quadro`, `Rodape`, `SeletorOcr`, `SeloStatus`, `Subtarefas`, `SumarioNota`, `TagChip`, `ToastsContainer`, `WebSearchBar`, `WebSearchHeader`, `WebSearchWidget`, `ui`
 
 ### Sub-componentes: src/components/home/
 `CabecalhoHome`, `ModalCatalogoWidgets`, `WidgetBuscaWeb`, `WidgetChatIA`, `WidgetConversorRapido`, `WidgetFocoHoje`, `WidgetHubFerramentas`, `WidgetLousasRecentes`, `WidgetMetasPDI`, `WidgetNotasRecentes`, `WidgetPDFRapido`, `WidgetReferenciasMural`, `WidgetScratchpad`, `WidgetSonsFoco`, `WidgetTranscritorVoz`, `WidgetWrapper`, `types`
@@ -326,9 +326,9 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `constante` **`ROTULO_STATUS_META`**
 - `interface` **`Meta`** — _Uma meta do PDI em `pdi/metas/`._
 - `interface` **`Entrega`** — _Uma entrega do PDI em `pdi/entregas/`._
+- `constante` **`OPCOES_COLABORACAO_PADRAO`** — _Opções padrão para o campo de colaboração / equipe._
 - `interface` **`Referencia`** — _Uma referência visual em `referencias/`._
-- `interface` **`Lousa`** — _Uma lousa Excalidraw em `lousas/`. O corpo é o JSON do Excalidraw._
-- _...e mais 8 exportações secundárias._
+- _...e mais 9 exportações secundárias._
 
 ### 3. Hooks de Estado, Leitura e Mutação
 

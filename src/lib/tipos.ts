@@ -122,7 +122,30 @@ export interface Entrega extends ItemBase {
   metas: string[];
   /** true quando a ligação foi sugerida pela IA e ainda não conferida pelo Hugo. */
   iaSugeriu: boolean;
+  /** Impacto ou resultado alcançado (mensurável ou qualitativo). */
+  impacto?: string;
+  /** Elogio ou feedback recebido relacionado a esta entrega. */
+  elogio?: string;
+  /** Autor do elogio ou contato vinculado (nome ou id do contato). */
+  autorElogio?: string;
+  /** Áreas, equipes ou colegas envolvidos na colaboração. */
+  colaboracao?: string[];
+  /** Habilidades ou aprendizados demonstrados (tags). */
+  tags?: string[];
 }
+
+/** Opções padrão para o campo de colaboração / equipe. */
+export const OPCOES_COLABORACAO_PADRAO = [
+  "Design",
+  "Produto",
+  "Engenharia",
+  "Marketing",
+  "Liderança",
+  "Mentoria",
+  "Operações",
+  "Diretoria",
+] as const;
+
 
 /** Uma referência visual em `referencias/`. */
 export interface Referencia extends ItemBase {

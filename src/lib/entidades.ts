@@ -296,6 +296,17 @@ export function comoEntrega(
   const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
   const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
 
+  const impacto = typeof d.impacto === "string" ? d.impacto.trim() : undefined;
+  const elogio = typeof d.elogio === "string" ? d.elogio.trim() : undefined;
+  const autorElogio =
+    typeof d.autor_elogio === "string"
+      ? d.autor_elogio.trim()
+      : typeof d.autorElogio === "string"
+      ? d.autorElogio.trim()
+      : typeof d.contato === "string"
+      ? d.contato.trim()
+      : undefined;
+
   return {
     bruto: doc.dados,
     caminho,
@@ -308,6 +319,11 @@ export function comoEntrega(
     data: typeof d.data === "string" ? d.data : dataDoNome(caminho),
     metas: comoLista(d.metas),
     iaSugeriu: d.ia_sugeriu === true,
+    impacto,
+    elogio,
+    autorElogio,
+    colaboracao: comoLista(d.colaboracao || d.equipe),
+    tags: comoLista(d.tags),
     criadoEm,
     atualizadoEm,
     corpo: doc.corpo,
@@ -325,11 +341,19 @@ export function entregaParaArquivo(e: Entrega): { dados: Frontmatter; corpo: str
       data:          e.data,
       metas:         e.metas.length ? e.metas : undefined,
       ia_sugeriu:    e.iaSugeriu || undefined,
+      impacto:       e.impacto || undefined,
+      elogio:        e.elogio || undefined,
+      autor_elogio:  e.autorElogio || undefined,
+      colaboracao:   e.colaboracao?.length ? e.colaboracao : undefined,
+      tags:          e.tags?.length ? e.tags : undefined,
       criado_em:     criadoEm,
       atualizado_em: agora,
       // Limpeza de campos legados
       atualizado:    undefined,
       criado:        undefined,
+      autorElogio:   undefined,
+      equipe:        undefined,
+      contato:       undefined,
     }),
     corpo: e.corpo,
   };

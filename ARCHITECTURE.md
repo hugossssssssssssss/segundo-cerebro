@@ -121,6 +121,11 @@ Uma entrega do PDI em `pdi/entregas/`.
 | `data` | `string` | sim | Data AAAA-MM-DD da entrega. |
 | `metas` | `string[]` | sim | IDs das metas que esta entrega alimenta (nome do arquivo sem .md). |
 | `iaSugeriu` | `boolean` | sim | true quando a ligação foi sugerida pela IA e ainda não conferida pelo Hugo. |
+| `impacto` | `string` | não | Impacto ou resultado alcançado (mensurável ou qualitativo). |
+| `elogio` | `string` | não | Elogio ou feedback recebido relacionado a esta entrega. |
+| `autorElogio` | `string` | não | Autor do elogio ou contato vinculado (nome ou id do contato). |
+| `colaboracao` | `string[]` | não | Áreas, equipes ou colegas envolvidos na colaboração. |
+| `tags` | `string[]` | não | Habilidades ou aprendizados demonstrados (tags). |
 
 ### Referencia
 
