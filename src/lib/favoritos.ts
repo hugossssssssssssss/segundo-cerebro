@@ -1,6 +1,8 @@
 import type { Settings } from "./settings";
 import { ler, gravar } from "./github";
 
+declare const chrome: any;
+
 export interface FavoritoItem {
   id: string;
   url: string;
@@ -48,20 +50,34 @@ export function obterFaviconGoogle(url: string): string {
 }
 
 /**
- * Lê os favoritos salvos no localStorage (rápido e offline-first).
+ * Lê os favoritos salvos no localStorage ou chrome.storage.
  */
 export function lerFavoritosLocal(): FavoritoItem[] {
   try {
     const salvo = localStorage.getItem(CHAVE_STORAGE_FAVORITOS);
-    if (!salvo) return [];
-    const parsed = JSON.parse(salvo);
-    if (Array.isArray(parsed)) {
-      return parsed.filter((it) => it && typeof it === "object" && typeof it.url === "string");
+    if (salvo) {
+      const parsed = JSON.parse(salvo);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((it) => it && typeof it === "object" && typeof it.url === "string");
+      }
     }
-    return [];
-  } catch {
-    return [];
-  }
+  } catch {}
+
+  // Se estiver em ambiente de extensão, tenta ler de chrome.storage
+  try {
+    if (typeof chrome !== "undefined" && chrome?.storage?.local) {
+      chrome.storage.local.get([CHAVE_STORAGE_FAVORITOS], (res: any) => {
+        if (res && Array.isArray(res[CHAVE_STORAGE_FAVORITOS]) && res[CHAVE_STORAGE_FAVORITOS].length > 0) {
+          try {
+            localStorage.setItem(CHAVE_STORAGE_FAVORITOS, JSON.stringify(res[CHAVE_STORAGE_FAVORITOS]));
+            window.dispatchEvent(new CustomEvent(EVENTO_FAVORITOS_ATUALIZADOS, { detail: res[CHAVE_STORAGE_FAVORITOS] }));
+          } catch {}
+        }
+      });
+    }
+  } catch {}
+
+  return [];
 }
 
 /**
@@ -71,9 +87,13 @@ export function salvarFavoritosLocal(itens: FavoritoItem[]): void {
   try {
     localStorage.setItem(CHAVE_STORAGE_FAVORITOS, JSON.stringify(itens));
     window.dispatchEvent(new CustomEvent(EVENTO_FAVORITOS_ATUALIZADOS, { detail: itens }));
-  } catch {
-    // Ignora possíveis erros de quota no localStorage
-  }
+  } catch {}
+
+  try {
+    if (typeof chrome !== "undefined" && chrome?.storage?.local) {
+      chrome.storage.local.set({ [CHAVE_STORAGE_FAVORITOS]: itens });
+    }
+  } catch {}
 }
 
 let ultimoShaFavoritos: string | undefined = undefined;

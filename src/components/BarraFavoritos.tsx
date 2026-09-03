@@ -606,7 +606,12 @@ export function BarraFavoritos({ className }: { className?: string }) {
   const navegarParaUrl = useCallback(
     (url: string) => {
       flushPersistenciaPendente(cfg);
-      window.location.href = url;
+      if (url.startsWith("/") || url.startsWith("#")) {
+        const rota = url.replace(/^\/?#?\/?/, "");
+        window.open(`https://hugossssssssssssss.github.io/segundo-cerebro/#/${rota}`, "_blank");
+      } else {
+        window.location.href = url;
+      }
     },
     [cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch],
   );
