@@ -128,7 +128,7 @@ export function HistoricoDiffModal({
   const corpoAntigo = parsedAntigo.corpo;
 
   // Filtragem e mapeamento de chaves do frontmatter para exibição limpa
-  const chavesExcluidas = ["titulo", "tipo", "atualizado", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos"];
+  const chavesExcluidas = ["titulo", "tipo", "atualizado", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "subtipo", "fixado", "demo", "ia_sugeriu"];
   const chavesExtras = Object.keys(dadosAntigos).filter(
     (k) =>
       !chavesExcluidas.includes(k) &&

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -1121,10 +1121,15 @@ export default function Notas() {
       return (item as any)[propId] || item.bruto?.[propId];
     });
 
-    // Notas fixadas sempre no topo, seguidas das mais recentes
+    // Notas fixadas sempre no topo mantendo posições estáveis, seguidas das mais recentes
     lista.sort((a, b) => {
       if (a.fixado && !b.fixado) return -1;
       if (!a.fixado && b.fixado) return 1;
+      if (a.fixado && b.fixado) {
+        const criadoA = a.criadoEm || a.bruto?.criado || a.bruto?.criado_em || a.caminho;
+        const criadoB = b.criadoEm || b.bruto?.criado || b.bruto?.criado_em || b.caminho;
+        return String(criadoA).localeCompare(String(criadoB));
+      }
       const dataA = a.atualizadoEm || a.criadoEm || a.bruto?.criado || a.caminho;
       const dataB = b.atualizadoEm || b.criadoEm || b.bruto?.criado || b.caminho;
       return String(dataB).localeCompare(String(dataA));
@@ -1132,6 +1137,28 @@ export default function Notas() {
 
     return lista;
   }, [naPasta, titulos, busca, regrasFiltro]);
+
+  const aplicarFiltroTag = useCallback((tag: string) => {
+    const nomeLimpo = tag.startsWith("#") ? tag.slice(1).trim() : tag.trim();
+    if (!nomeLimpo) return;
+    setRegrasFiltro((atuais) => {
+      const jaExiste = atuais.some(
+        (r) => r.propriedadeId === "tags" && r.operador === "contem" && r.valor === nomeLimpo
+      );
+      if (jaExiste) return atuais;
+      return [
+        ...atuais,
+        {
+          id: `tag-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          propriedadeId: "tags",
+          rotulo: "Tags",
+          tipo: "tags",
+          operador: "contem",
+          valor: nomeLimpo,
+        },
+      ];
+    });
+  }, []);
 
   // `subpastas` serve só para desenhar a pasta atual. Para mover, porém,
   // precisamos oferecer também as pastas mais profundas e as que acabaram de
@@ -1808,6 +1835,7 @@ export default function Notas() {
                     subtitulo={subtitulo}
                     selecionado={estaSelecionada}
                     visao="grade"
+                    aoFiltrarTag={aplicarFiltroTag}
                     totalTarefas={contagemTarefasPorNota.get(tituloNota.toLowerCase())}
                     totalMoodboard={contagemMoodboardPorNota.get(tituloNota.toLowerCase())}
                     draggable
@@ -1866,6 +1894,7 @@ export default function Notas() {
                     subtitulo={subtitulo}
                     selecionado={estaSelecionada}
                     visao="lista"
+                    aoFiltrarTag={aplicarFiltroTag}
                     totalTarefas={contagemTarefasPorNota.get(tituloNota.toLowerCase())}
                     totalMoodboard={contagemMoodboardPorNota.get(tituloNota.toLowerCase())}
                     draggable
@@ -1930,6 +1959,7 @@ export default function Notas() {
                     subtitulo={subtitulo}
                     selecionado={estaSelecionada}
                     visao="mural"
+                    aoFiltrarTag={aplicarFiltroTag}
                     totalTarefas={contagemTarefasPorNota.get(tituloNota.toLowerCase())}
                     totalMoodboard={contagemMoodboardPorNota.get(tituloNota.toLowerCase())}
                     draggable

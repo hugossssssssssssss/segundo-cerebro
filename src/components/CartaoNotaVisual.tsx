@@ -24,6 +24,7 @@ interface CartaoNotaVisualProps {
   selecionado?: boolean;
   visao?: "grade" | "lista" | "mural";
   onClick?: () => void;
+  aoFiltrarTag?: (tag: string) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
   onToggleFixar?: () => void;
   onDragStart?: (e: React.DragEvent) => void;
@@ -135,6 +136,7 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
       selecionado = false,
       visao = "grade",
       onClick,
+      aoFiltrarTag,
       onContextMenu,
       onToggleFixar,
       onDragStart,
@@ -267,7 +269,11 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
             {temTags && (
               <div className="hidden lg:flex items-center gap-1">
                 {nota.tags.slice(0, 2).map((t) => (
-                  <TagChip key={t} tag={t} />
+                  <TagChip
+                    key={t}
+                    tag={t}
+                    aoClicar={aoFiltrarTag ? () => aoFiltrarTag(t) : undefined}
+                  />
                 ))}
                 {nota.tags.length > 2 && (
                   <span className="text-[10px] text-muted-foreground font-semibold px-1.5 py-0.5 rounded-md bg-secondary/70">
@@ -493,7 +499,11 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
           {temTags && (
             <div className="flex items-center gap-1 flex-wrap">
               {nota.tags.slice(0, 3).map((t) => (
-                <TagChip key={t} tag={t} />
+                <TagChip
+                  key={t}
+                  tag={t}
+                  aoClicar={aoFiltrarTag ? () => aoFiltrarTag(t) : undefined}
+                />
               ))}
               {nota.tags.length > 3 && (
                 <span className="text-[9px] text-muted-foreground font-semibold px-1 py-0.5 rounded bg-secondary">

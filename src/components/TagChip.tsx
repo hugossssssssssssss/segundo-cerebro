@@ -43,7 +43,12 @@ export function TagChip({
 
   return (
     <span
-      onClick={aoClicar}
+      onClick={(e) => {
+        if (aoClicar) {
+          e.stopPropagation();
+          aoClicar();
+        }
+      }}
       className={cn(
         "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold border transition-all select-none shrink-0",
         aoClicar && "cursor-pointer",
