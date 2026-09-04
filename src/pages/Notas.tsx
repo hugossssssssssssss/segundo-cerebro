@@ -59,6 +59,7 @@ import { SeloStatus } from "@/components/SeloStatus";
 import { BarraFiltrosAvancados, filtrarItensPorRegras, type DefinicaoPropriedade, type RegraFiltro } from "@/components/BarraFiltrosAvancados";
 import { DropdownNovoViaModelo } from "@/components/DropdownNovoViaModelo";
 import { CartaoNotaVisual } from "@/components/CartaoNotaVisual";
+import { abrirItemSpa } from "@/components/PropriedadesNotion";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { MenuContextoNotas, type AcaoMenuContexto } from "@/components/MenuContextoNotas";
@@ -1717,15 +1718,19 @@ export default function Notas() {
                 return (
                   <div
                     key={t.caminho}
+                    onClick={() => abrirItemSpa(t.caminho)}
                     className={cn(
-                      "flex items-center justify-between gap-3 p-3 rounded-xl border bg-card hover:bg-accent/30 transition-colors",
+                      "flex items-center justify-between gap-3 p-3 rounded-xl border bg-card hover:bg-accent/30 transition-colors cursor-pointer group",
                       ehFeito ? "border-border/40 opacity-70" : "border-border/80"
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <button
                         type="button"
-                        onClick={() => alternarStatusTarefaProjeto(t)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          alternarStatusTarefaProjeto(t);
+                        }}
                         className="text-muted-foreground hover:text-primary transition-colors cursor-pointer shrink-0"
                       >
                         {ehFeito ? (
@@ -1734,7 +1739,7 @@ export default function Notas() {
                           <Circle size={16} />
                         )}
                       </button>
-                      <span className={cn("text-xs font-semibold truncate", ehFeito && "line-through text-muted-foreground")}>
+                      <span className={cn("text-xs font-semibold truncate group-hover:text-primary transition-colors", ehFeito && "line-through text-muted-foreground")}>
                         {t.titulo}
                       </span>
                     </div>

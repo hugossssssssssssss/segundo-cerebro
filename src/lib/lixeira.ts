@@ -23,6 +23,8 @@ export type ItemLixeira = {
   apagadoEm: string;
   sha: string;
   tipo: string;
+  corpo?: string;
+  dados?: Record<string, unknown>;
 };
 
 /**
@@ -164,6 +166,8 @@ export function listarItensLixeira(acervo: ItemRepo[]): ItemLixeira[] {
         apagadoEm,
         sha: item.sha,
         tipo,
+        corpo: doc.corpo,
+        dados: doc.dados,
       };
     })
     .sort((a, b) => (b.apagadoEm || "").localeCompare(a.apagadoEm || ""));
