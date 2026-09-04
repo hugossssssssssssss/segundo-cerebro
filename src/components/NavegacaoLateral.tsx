@@ -48,19 +48,14 @@ function BotaoItemMenu({
   colapsada,
   ariaLabel,
 }: BotaoItemMenuProps) {
-  const classeBase = cn(
-    "flex items-center rounded-xl text-sm font-medium transition-colors group cursor-pointer select-none shrink-0",
-    colapsada ? "h-10 w-10 mx-auto justify-center p-0" : "h-10 w-full px-2.5 gap-3"
-  );
-
   const conteudoInterno = (
     <>
       <Icone
-        size={20}
+        size={18}
         style={{ color: corIcone }}
-        className="shrink-0 transition-transform duration-150 group-hover:scale-110"
+        className="shrink-0 transition-transform group-hover:scale-105"
       />
-      {!colapsada && <span className="truncate flex-1 text-left">{rotulo}</span>}
+      {!colapsada && <span className="truncate flex-1">{rotulo}</span>}
     </>
   );
 
@@ -72,10 +67,11 @@ function BotaoItemMenu({
           onClick={aoClicar}
           className={({ isActive }) =>
             cn(
-              classeBase,
+              "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors relative group cursor-pointer",
               isActive
-                ? "bg-primary/15 text-primary font-semibold"
-                : "text-muted-foreground hover:bg-accent/80 hover:text-foreground"
+                ? "bg-primary/10 text-primary font-semibold"
+                : "text-muted-foreground hover:bg-accent/80 hover:text-foreground",
+              colapsada && "justify-center px-0"
             )
           }
           aria-label={ariaLabel || rotulo}
@@ -86,7 +82,10 @@ function BotaoItemMenu({
         <button
           type="button"
           onClick={aoClicar}
-          className={cn(classeBase, "text-muted-foreground hover:bg-accent/80 hover:text-foreground")}
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors group cursor-pointer",
+            colapsada && "justify-center px-0"
+          )}
           aria-label={ariaLabel || rotulo}
         >
           {conteudoInterno}
@@ -242,19 +241,19 @@ export function NavegacaoLateral({
         </div>
 
         {/* Corpo da Navegação */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex-1 overflow-y-auto py-3 px-2 space-y-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo) => {
             const itensVisiveis = (grupo.itens || []).filter((item) => item && typeof item === "object" && !item.oculto);
             if (itensVisiveis.length === 0) return null;
 
             return (
-              <div key={grupo.id || grupo.titulo} className="space-y-1.5">
+              <div key={grupo.id || grupo.titulo} className="space-y-1">
                 {!colapsada && (
-                  <h3 className="px-2.5 pb-0.5 text-[11px] font-semibold text-muted-foreground/80 tracking-wider uppercase truncate">
+                  <h3 className="px-2 text-[11px] font-semibold text-muted-foreground tracking-wider uppercase truncate">
                     {grupo.titulo}
                   </h3>
                 )}
-                <nav className="space-y-1.5">
+                <nav className="space-y-0.5">
                   {itensVisiveis.map((item) => (
                     <BotaoItemMenu
                       key={item.id || item.para}
@@ -273,7 +272,7 @@ export function NavegacaoLateral({
         </div>
 
         {/* Rodapé da Sidebar */}
-        <div className="border-t border-border/60 p-3 space-y-1.5 shrink-0">
+        <div className="border-t border-border/60 p-2 space-y-1 shrink-0">
           <BotaoItemMenu
             aoClicar={() => setModalPersonalizarAberta(true)}
             rotulo="Personalizar Menu"
@@ -291,7 +290,6 @@ export function NavegacaoLateral({
             aoClicar={toggleTema}
             rotulo={escuro ? "Modo Claro" : "Modo Escuro"}
             icone={escuro ? Sun : Moon}
-            corIcone={escuro ? "#f59e0b" : "#818cf8"}
             colapsada={colapsada}
           />
         </div>
