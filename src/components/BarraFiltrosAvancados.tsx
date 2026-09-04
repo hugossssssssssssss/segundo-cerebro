@@ -14,12 +14,12 @@ import {
   Plus,
   X,
   Search,
-  Type,
   Tags as TagsIcon,
   Calendar as CalendarIcon,
   CalendarPlus,
   Clock,
   User,
+  Users,
   ListTodo,
   Hash,
   Link as LinkIcon,
@@ -28,6 +28,14 @@ import {
   CheckSquare,
   ChevronDown,
   RotateCcw,
+  Briefcase,
+  Building2,
+  Mail,
+  Phone,
+  Palette,
+  AlertTriangle,
+  AlignLeft,
+  FileText,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -111,14 +119,23 @@ const RENDER_ICONE_PROPRIEDADE = (id: string, tipo: TipoPropriedadeFiltro, custo
   if (idNorm.includes("prazo") || idNorm === "data") return <CalendarIcon size={13} className="text-rose-500" />;
   if (idNorm.includes("criado")) return <CalendarPlus size={13} className="text-indigo-500" />;
   if (idNorm.includes("atualizado") || idNorm.includes("edicao")) return <Clock size={13} className="text-teal-500" />;
-  if (idNorm.includes("fonte") || idNorm.includes("link")) return <LinkIcon size={13} className="text-blue-500" />;
+  if (idNorm.includes("fonte") || idNorm.includes("link") || idNorm.includes("url")) return <LinkIcon size={13} className="text-blue-500" />;
   if (idNorm.includes("pasta") || idNorm.includes("caminho")) return <FolderOpen size={13} className="text-amber-600" />;
   if (idNorm.includes("pomodoro") || idNorm.includes("esforco")) return <Flame size={13} className="text-orange-500" />;
+  if (idNorm.includes("empresa") || idNorm.includes("organizacao")) return <Building2 size={13} className="text-emerald-500" />;
+  if (idNorm.includes("cargo") || idNorm.includes("funcao") || idNorm.includes("profissao")) return <Briefcase size={13} className="text-blue-500" />;
+  if (idNorm.includes("email") || idNorm.includes("e-mail")) return <Mail size={13} className="text-indigo-500" />;
+  if (idNorm.includes("telefone") || idNorm.includes("fone") || idNorm.includes("celular") || idNorm.includes("whatsapp")) return <Phone size={13} className="text-purple-500" />;
+  if (idNorm.includes("pai") || idNorm.includes("lider") || idNorm.includes("superior") || idNorm.includes("equipe")) return <Users size={13} className="text-amber-500" />;
+  if (idNorm.includes("paleta") || idNorm.includes("cor")) return <Palette size={13} className="text-pink-500" />;
+  if (idNorm.includes("prioridade")) return <AlertTriangle size={13} className="text-rose-500" />;
   if (idNorm.includes("autor") || idNorm.includes("usuario") || idNorm.includes("criado_por")) return <User size={13} className="text-purple-500" />;
+  if (idNorm.includes("titulo") || idNorm.includes("nome")) return <User size={13} className="text-sky-500" />;
+  if (idNorm.includes("descricao") || idNorm.includes("resumo") || idNorm.includes("bio")) return <AlignLeft size={13} className="text-slate-500" />;
   if (tipo === "checkbox") return <CheckSquare size={13} className="text-blue-500" />;
   if (tipo === "numero") return <Hash size={13} className="text-cyan-500" />;
 
-  return <Type size={13} className="text-sky-500" />;
+  return <FileText size={13} className="text-sky-500" />;
 };
 
 const ROTULO_TIPO_AMIGAVEL: Record<TipoPropriedadeFiltro, string> = {
@@ -355,13 +372,23 @@ export function BarraFiltrosAvancados({
                     className="bg-transparent border-none text-[11px] font-mono text-foreground outline-none px-1 py-0.5 cursor-pointer"
                   />
                 ) : (
-                  <input
-                    type="text"
-                    value={regra.valor || ""}
-                    onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
-                    placeholder="Digitar valor..."
-                    className="bg-transparent border-none text-[11px] text-foreground placeholder:text-muted-foreground outline-none px-1.5 py-0.5 w-24 sm:w-32 focus:w-40 transition-all font-medium"
-                  />
+                  <>
+                    <input
+                      type="text"
+                      list={propDef?.opcoes?.length ? `list-opts-${regra.id}` : undefined}
+                      value={regra.valor || ""}
+                      onChange={(e) => atualizarRegra(regra.id, { valor: e.target.value })}
+                      placeholder={propDef?.opcoes?.length ? "Escolher ou digitar..." : "Digitar valor..."}
+                      className="bg-transparent border-none text-[11px] text-foreground placeholder:text-muted-foreground outline-none px-1.5 py-0.5 w-28 sm:w-36 focus:w-48 transition-all font-medium"
+                    />
+                    {propDef?.opcoes && propDef.opcoes.length > 0 && (
+                      <datalist id={`list-opts-${regra.id}`}>
+                        {propDef.opcoes.map((opt) => (
+                          <option key={opt} value={opt} />
+                        ))}
+                      </datalist>
+                    )}
+                  </>
                 )}
               </div>
             )}

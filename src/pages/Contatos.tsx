@@ -7,17 +7,17 @@ import {
   Download,
   LayoutGrid,
   List,
-  ChevronRight,
-  ChevronDown,
   Mail,
   Phone,
   Briefcase,
   Building,
+  Building2,
   UserPlus,
   Edit2,
   Trash2,
   FileSpreadsheet,
   User,
+  Users,
   Tag,
   MoreVertical,
 } from "lucide-react";
@@ -92,8 +92,6 @@ export default function Contatos() {
   const [visao, setVisao] = useState<VisaoContatos>("arvore");
   const [modoVisaoPanel, setModoVisaoPanel] = useState<ModoVisaoNotion>("popup");
   const [termoBusca, setTermoBusca] = useState("");
-  const [empresaFiltro, setEmpresaFiltro] = useState("todas");
-  const [tagFiltro, setTagFiltro] = useState("todas");
   const [regrasFiltro, setRegrasFiltro] = useState<RegraFiltro[]>([]);
 
   useEffect(() => {
@@ -109,9 +107,6 @@ export default function Contatos() {
     () => (aberto?.caminho ? mencoesA(aberto.caminho, acervo, indice) : []),
     [aberto?.caminho, acervo, indice]
   );
-
-  // Controle de nós expandidos/recolhidos na árvore
-  const [recolhidos, setRecolhidos] = useState<Record<string, boolean>>({});
 
   // Modal CSV
   const [modalCSVAberta, setModalCSVAberta] = useState(false);
@@ -131,7 +126,7 @@ export default function Contatos() {
       .sort((a, b) => a.titulo.localeCompare(b.titulo));
   }, [contatosLocais, aberto?.id]);
 
-  // Listas derivadas para os filtros
+  // Listas derivadas para os filtros avançados
   const empresasDisponiveis = useMemo(() => {
     const set = new Set<string>();
     for (const c of contatosLocais) {
@@ -184,9 +179,9 @@ export default function Contatos() {
     });
   }, []);
 
-  // Contatos filtrados
+  // Contatos filtrados exclusivamente por termo de busca e regras avançadas
   const contatosFiltrados = useMemo(() => {
-    let lista = filtrarContatos(contatosLocais, termoBusca, empresaFiltro, tagFiltro);
+    let lista = filtrarContatos(contatosLocais, termoBusca, "todas", "todas");
     lista = filtrarItensPorRegras(lista, regrasFiltro, (item, propId) => {
       if (propId === "titulo" || propId === "nome") return item.titulo;
       if (propId === "tags") return item.tags || [];
@@ -198,7 +193,7 @@ export default function Contatos() {
       return (item as any)[propId] || item.bruto?.[propId];
     });
     return lista;
-  }, [contatosLocais, termoBusca, empresaFiltro, tagFiltro, regrasFiltro]);
+  }, [contatosLocais, termoBusca, regrasFiltro]);
 
   // Estrutura em Árvore Hierárquica
   const arvoreContatos = useMemo(() => {
@@ -470,11 +465,6 @@ export default function Contatos() {
     }
   };
 
-  // Alternar nó da árvore
-  const alternarRecolhido = useCallback((id: string) => {
-    setRecolhidos((prev) => ({ ...prev, [id]: !prev[id] }));
-  }, []);
-
   // CSV
   const handleAnalisarCSV = () => {
     const parsed = parsearCSVContatos(textoCSV);
@@ -653,43 +643,11 @@ export default function Contatos() {
         aoMudarBusca={setTermoBusca}
         placeholderBusca="Buscar por nome, cargo, e-mail..."
         filtros={
-          <>
-            {empresasDisponiveis.length > 0 && (
-              <select
-                value={empresaFiltro}
-                onChange={(e) => setEmpresaFiltro(e.target.value)}
-                className="w-full sm:w-auto rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary shadow-2xs cursor-pointer"
-              >
-                <option value="todas">Todas Empresas ({empresasDisponiveis.length})</option>
-                {empresasDisponiveis.map((emp) => (
-                  <option key={emp} value={emp}>
-                    {emp}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {tagsDisponiveis.length > 0 && (
-              <select
-                value={tagFiltro}
-                onChange={(e) => setTagFiltro(e.target.value)}
-                className="w-full sm:w-auto rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary shadow-2xs cursor-pointer"
-              >
-                <option value="todas">Todas Tags ({tagsDisponiveis.length})</option>
-                {tagsDisponiveis.map((t) => (
-                  <option key={t} value={t}>
-                    #{t}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            <BarraFiltrosAvancados
-              propriedadesDisponiveis={propriedadesDisponiveis}
-              regras={regrasFiltro}
-              aoMudarRegras={setRegrasFiltro}
-            />
-          </>
+          <BarraFiltrosAvancados
+            propriedadesDisponiveis={propriedadesDisponiveis}
+            regras={regrasFiltro}
+            aoMudarRegras={setRegrasFiltro}
+          />
         }
         acoes={
           <AlternadorVisao
@@ -721,8 +679,8 @@ export default function Contatos() {
         <Vazio
           titulo="Nenhum contato encontrado"
           descricao={
-            termoBusca || empresaFiltro !== "todas" || tagFiltro !== "todas"
-              ? "Tente ajustar os filtros ou o termo de busca."
+            termoBusca || regrasFiltro.length > 0
+              ? "Tente ajustar os filtros avançados ou o termo de busca."
               : "Adicione seu primeiro contato ou importe uma lista via CSV."
           }
           acao={
@@ -737,15 +695,13 @@ export default function Contatos() {
       {/* CONTEÚDO DA TELA POR VISÃO */}
       {contatosFiltrados.length > 0 && (
         <>
-          {/* 1. VISÃO EM ÁRVORE HIERÁRQUICA */}
+          {/* 1. VISÃO EM ÁRVORE HIERÁRQUICA (ORGANOGRAMA DIDÁTICO) */}
           {visao === "arvore" && (
-            <div className="space-y-4 pt-1">
+            <div className="space-y-6 pt-2 pb-8">
               {arvoreContatos.map((no) => (
                 <ItemNoArvore
                   key={no.contato.id}
                   no={no}
-                  recolhidos={recolhidos}
-                  aoAlternarRecolhido={alternarRecolhido}
                   aoEditar={(c) => abrirContato(c)}
                   aoExcluir={(c) => setContatoParaExcluir(c)}
                   aoFiltrarTag={aplicarFiltroTag}
@@ -1027,26 +983,22 @@ export default function Contatos() {
   );
 }
 
-// COMPONENTE: ITEM DA ÁRVORE HIERÁRQUICA DIDÁTICA E LIMPA (RECURSIVO)
+// COMPONENTE: ITEM DA ÁRVORE HIERÁRQUICA DIDÁTICA (ORGANOGRAMA MODERNO E ABERTO)
 function ItemNoArvore({
   no,
-  recolhidos,
-  aoAlternarRecolhido,
   aoEditar,
   aoExcluir,
   aoFiltrarTag,
 }: {
   no: NoContato;
-  recolhidos: Record<string, boolean>;
-  aoAlternarRecolhido: (id: string) => void;
   aoEditar: (c: Contato) => void;
   aoExcluir: (c: Contato) => void;
   aoFiltrarTag: (t: string) => void;
 }) {
   const c = no.contato;
-  const estaRecolhido = Boolean(recolhidos[c.id]);
   const temFilhos = no.filhos.length > 0;
   const ehLider = temFilhos;
+  const ehRaiz = no.nivel === 0;
 
   // Filtrar propriedades internas
   const propriedadesValidas = Object.entries(c.propriedades).filter(
@@ -1054,48 +1006,65 @@ function ItemNoArvore({
   );
 
   return (
-    <div className="space-y-3 select-none relative">
-      {/* Card do Contato */}
+    <div className="space-y-3.5 select-none relative">
+      {/* Card do Contato no Organograma */}
       <div
         onClick={() => aoEditar(c)}
         className={cn(
-          "group relative flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border bg-card hover:bg-accent/30 transition-all cursor-pointer shadow-xs hover:shadow-md",
-          no.nivel === 0 
-            ? "border-primary/30 bg-card" 
-            : "border-border/80 ml-6 sm:ml-10 before:absolute before:-left-6 sm:before:-left-10 before:top-1/2 before:w-6 sm:before:w-10 before:h-px before:bg-border/80"
+          "group relative flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border bg-card hover:bg-accent/40 transition-all cursor-pointer shadow-2xs hover:shadow-md",
+          ehRaiz
+            ? "border-primary/40 bg-card/95 ring-1 ring-primary/15"
+            : "border-border/90 ml-6 sm:ml-10 before:absolute before:-left-6 sm:before:-left-10 before:top-1/2 before:w-6 sm:before:w-10 before:h-0.5 before:bg-primary/30"
         )}
       >
         {/* Lado Esquerdo: Avatar + Hierarquia + Informações */}
         <div className="flex items-start gap-3.5 min-w-0 flex-1">
-          <div className="h-11 w-11 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-base shrink-0 shadow-2xs">
+          <div
+            className={cn(
+              "h-11 w-11 rounded-2xl flex items-center justify-center font-bold text-base shrink-0 shadow-2xs transition-transform group-hover:scale-105",
+              ehLider
+                ? "bg-primary text-primary-foreground font-black"
+                : "bg-primary/10 text-primary border border-primary/20"
+            )}
+          >
             {c.titulo ? c.titulo.charAt(0).toUpperCase() : "?"}
           </div>
 
           <div className="min-w-0 space-y-1.5 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-bold text-base text-foreground tracking-tight truncate">{c.titulo || "Sem nome"}</h3>
-              
-              {ehLider && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
-                  👥 Líder ({no.filhos.length} {no.filhos.length === 1 ? "liderado" : "liderados"})
+
+              {ehLider ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/15 text-primary text-xs font-bold border border-primary/30">
+                  <Users size={12} className="shrink-0" />
+                  <span>Líder de Equipe ({no.filhos.length} {no.filhos.length === 1 ? "liderado" : "liderados"})</span>
+                </span>
+              ) : ehRaiz ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
+                  <User size={12} className="shrink-0" />
+                  <span>Contato Direto</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-secondary/80 text-muted-foreground text-xs font-medium">
+                  <span>Nível {no.nivel + 1}</span>
                 </span>
               )}
 
               {c.cargo && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-muted text-xs text-muted-foreground font-medium">
-                  <Briefcase size={12} className="text-blue-500" /> {c.cargo}
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-medium border border-blue-500/20">
+                  <Briefcase size={12} /> {c.cargo}
                 </span>
               )}
 
               {c.empresa && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
-                  <Building size={12} /> {c.empresa}
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-medium border border-emerald-500/20">
+                  <Building2 size={12} /> {c.empresa}
                 </span>
               )}
             </div>
 
             {/* Informações de Contato */}
-            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground pt-0.5">
               {c.email && (
                 <a
                   href={`mailto:${c.email}`}
@@ -1145,57 +1114,42 @@ function ItemNoArvore({
           </div>
         </div>
 
-        {/* Lado Direito: Alternar Equipe + Ações */}
+        {/* Lado Direito: Ações rápidas */}
         <div
-          className="flex items-center gap-2 self-end md:self-center shrink-0 border-t md:border-t-0 pt-2.5 md:pt-0 w-full md:w-auto justify-between md:justify-end"
+          className="flex items-center gap-1 self-end md:self-center shrink-0 border-t md:border-t-0 pt-2 md:pt-0"
           onClick={(e) => e.stopPropagation()}
         >
-          {temFilhos && (
+          <Tooltip conteudo="Editar contato">
             <button
               type="button"
-              onClick={() => aoAlternarRecolhido(c.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-secondary/80 hover:bg-secondary text-foreground transition-colors cursor-pointer border border-border/60"
+              onClick={() => aoEditar(c)}
+              className="p-2 rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Editar contato"
             >
-              {estaRecolhido ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-              <span>{estaRecolhido ? `Ver liderados (${no.filhos.length})` : `Ocultar liderados`}</span>
+              <Edit2 size={15} />
             </button>
-          )}
+          </Tooltip>
 
-          <div className="flex items-center gap-1 ml-auto">
-            <Tooltip conteudo="Editar contato">
-              <button
-                type="button"
-                onClick={() => aoEditar(c)}
-                className="p-2 rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-                aria-label="Editar contato"
-              >
-                <Edit2 size={15} />
-              </button>
-            </Tooltip>
-
-            <Tooltip conteudo="Excluir contato">
-              <button
-                type="button"
-                onClick={() => aoExcluir(c)}
-                className="p-2 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
-                aria-label="Excluir contato"
-              >
-                <Trash2 size={15} />
-              </button>
-            </Tooltip>
-          </div>
+          <Tooltip conteudo="Excluir contato">
+            <button
+              type="button"
+              onClick={() => aoExcluir(c)}
+              className="p-2 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
+              aria-label="Excluir contato"
+            >
+              <Trash2 size={15} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
-      {/* Ramificação Didática de Liderados */}
-      {temFilhos && !estaRecolhido && (
-        <div className="space-y-3 relative pl-4 sm:pl-6 border-l-2 border-primary/30 ml-5 sm:ml-8 my-2">
+      {/* Ramificação de Liderados (Sempre Aberta e Conectada) */}
+      {temFilhos && (
+        <div className="space-y-3.5 relative pl-4 sm:pl-6 border-l-2 border-primary/30 ml-5 sm:ml-8 my-2 pt-1">
           {no.filhos.map((filhoNo) => (
             <ItemNoArvore
               key={filhoNo.contato.id}
               no={filhoNo}
-              recolhidos={recolhidos}
-              aoAlternarRecolhido={aoAlternarRecolhido}
               aoEditar={aoEditar}
               aoExcluir={aoExcluir}
               aoFiltrarTag={aoFiltrarTag}

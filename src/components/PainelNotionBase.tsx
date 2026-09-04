@@ -550,10 +550,11 @@ export function PainelNotionBase({
   // Registro centralizado no gerenciador de camadas do Klaus
   useEffect(() => {
     const ehFlutuante = modoVisao === "flutuante";
+    const ehLado = modoVisao === "lado";
     const limpar = gerenciadorCamadas.registrar({
       id: `painel-notion-${caminhoItem || titulo || "editor"}`,
       nivel: ehFlutuante ? NIVEIS_CAMADAS.JANELA_FLUTUANTE : NIVEIS_CAMADAS.PAINEL_NOTION_BASE,
-      temBackdrop: !ehFlutuante,
+      temBackdrop: !ehFlutuante && !ehLado,
       aoFechar: tentarFechar,
     });
     return () => limpar();
@@ -1392,28 +1393,22 @@ export function PainelNotionBase({
     );
   }
 
-  // MODO 2: DO LADO (Painel Lateral / Drawer)
+  // MODO 2: DO LADO (Painel Lateral / Lado a Lado)
   if (modoVisao === "lado") {
     const ehEsquerda = posicaoLateral === "esquerda";
     return (
       <div
         className={cn(
-          "fixed inset-0 z-50 flex bg-black/40 sm:bg-black/20 backdrop-blur-none sm:backdrop-blur-[2px] p-0 sm:p-3 animate-in fade-in duration-150",
-          ehEsquerda ? "justify-start" : "justify-end"
+          "fixed z-50 flex flex-col rounded-none sm:rounded-2xl border-0 sm:border border-border bg-card shadow-2xl overflow-hidden animate-in duration-200 pointer-events-auto",
+          "top-0 bottom-0 sm:top-2 sm:bottom-2",
+          ehEsquerda
+            ? "left-0 sm:left-2 slide-in-from-left w-full sm:w-[540px] md:w-[620px] lg:w-[calc(50vw-16px)]"
+            : "right-0 sm:right-2 slide-in-from-right w-full sm:w-[540px] md:w-[620px] lg:w-[calc(50vw-16px)]"
         )}
-        onClick={tentarFechar}
       >
-        <div
-          className={cn(
-            "flex h-full w-full sm:w-[540px] md:w-[640px] lg:w-[calc(50vw-24px)] flex-col rounded-none sm:rounded-2xl border-0 sm:border border-border bg-card shadow-2xl overflow-hidden animate-in duration-200",
-            ehEsquerda ? "slide-in-from-left" : "slide-in-from-right"
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {cabecalho}
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6">{conteudo}</div>
-          {rodape}
-        </div>
+        {cabecalho}
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6">{conteudo}</div>
+        {rodape}
         {modaisConfirmacao}
       </div>
     );
