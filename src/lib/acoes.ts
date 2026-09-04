@@ -80,7 +80,12 @@ export const FERRAMENTAS = [
               description: "Só para tarefas",
             },
             prazo: { type: "string", description: "AAAA-MM-DD" },
-            tags: { type: "array", items: { type: "string" } },
+            tags: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                "Tags limpas, sem hífens e com iniciais maiúsculas (Ex: ['Social Media', 'Design Gráfico', 'Marketing'])",
+            },
             motivo: {
               type: "string",
               description: "Uma frase dizendo por que você está propondo isto",
@@ -104,7 +109,12 @@ export const FERRAMENTAS = [
             corpo: { type: "string" },
             status: { type: "string", enum: ["a-fazer", "fazendo", "feito"] },
             prazo: { type: "string", description: "AAAA-MM-DD" },
-            tags: { type: "array", items: { type: "string" } },
+            tags: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                "Tags limpas, sem hífens e com iniciais maiúsculas (Ex: ['Social Media', 'Design Gráfico', 'Marketing'])",
+            },
             metas: {
               type: "array",
               items: { type: "string" },
@@ -135,6 +145,23 @@ export const FERRAMENTAS = [
 /** Uma chamada de função como o Gemini devolve. */
 export type ChamadaFuncao = { name: string; args: Record<string, unknown> };
 
+/**
+ * Normaliza tags geradas pela IA para o padrão sem hífens e com inicial maiúscula.
+ * Ex: "social-media" -> "Social Media", "design_grafico" -> "Design Grafico"
+ */
+export function formatarTagIA(tag: string): string {
+  let limpa = tag.trim().replace(/^#/, "");
+  if (!limpa) return "";
+  if (limpa.includes("-") || limpa.includes("_")) {
+    limpa = limpa.replace(/[-_]+/g, " ");
+  }
+  return limpa
+    .split(" ")
+    .filter(Boolean)
+    .map((palavra) => palavra.charAt(0).toUpperCase() + palavra.slice(1))
+    .join(" ");
+}
+
 /** Converte as chamadas do Gemini em ações, descartando o que for inválido. */
 export function acoesDeChamadas(chamadas: ChamadaFuncao[]): Acao[] {
   const acoes: Acao[] = [];
@@ -152,9 +179,9 @@ export function acoesDeChamadas(chamadas: ChamadaFuncao[]): Acao[] {
       campos.prazo = a.prazo;
     }
     if (Array.isArray(a.tags)) {
-      campos.tags = a.tags.map(String);
+      campos.tags = a.tags.map(String).map(formatarTagIA).filter(Boolean);
     } else if (typeof a.tags === "string" && a.tags.trim()) {
-      campos.tags = [a.tags.trim()];
+      campos.tags = [formatarTagIA(a.tags.trim())].filter(Boolean);
     }
     if (Array.isArray(a.metas)) {
       campos.metas = a.metas.map(String);
@@ -223,6 +250,7 @@ function rotuloPasta(pasta: string): string {
     reunioes: "a reunião",
     "pdi/metas": "a meta",
     "pdi/entregas": "a entrega",
+    contatos: "o contato",
   };
   return rotulos[pasta] ?? "o item";
 }

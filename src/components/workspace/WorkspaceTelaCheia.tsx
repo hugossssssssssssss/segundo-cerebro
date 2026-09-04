@@ -327,6 +327,7 @@ export function WorkspaceTelaCheia() {
                       caminhoItem={abaAtiva.caminho}
                       rotuloTipo={abaAtiva.rotuloTipo}
                       aoMoverPasta={moverParaPasta}
+                      aoRemover={abaAtiva.aoRemover}
                     />
                   </div>
 

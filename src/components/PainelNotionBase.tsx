@@ -1187,6 +1187,7 @@ export function PainelNotionBase({
               rotuloTipo={rotuloTipo}
               focoPropriedadeInicial={campoFocoInicial}
               aoMoverPasta={moverParaPasta}
+              aoRemover={aoRemover ? () => setConfirmandoApagar(true) : undefined}
             />
           </div>
 

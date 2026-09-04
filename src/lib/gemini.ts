@@ -57,10 +57,19 @@ ESTRUTURA DO KLAUS:
 - Contatos (contatos/): Pessoas, cargos, empresas e rede profissional.
 - Referências (referencias/): Inspirações visuais, paletas e referências.
 
+PADRÃO DE TAGS:
+- Use sempre tags limpas com palavras com a primeira letra maiúscula e espaço em vez de hífens (Ex: 'Social Media', 'Design Gráfico', 'Branding', 'Reunião', 'Finanças'), nunca no formato 'social-media' ou 'social_media'.
+
+SUGESTÃO E VÍNCULO DE CONTATOS:
+- Ao analisar reuniões, conversas ou transcrições de áudio, identifique pessoas e participantes citados.
+- Se a pessoa ainda NÃO existir em Contatos (contatos/), use a ferramenta 'criar_item' com pasta 'contatos' e título sendo o Nome da Pessoa (apenas o nome, para que o usuário adicione emails e detalhes depois).
+- Se a pessoa JÁ existir em Contatos ou ao criar tarefas/notas para ela, relacione usando a menção '@Nome da Pessoa' no corpo ou título do item.
+
 DIRETRIZES DE ANÁLISE:
 - Para "Por onde começar hoje" ou "Tarefas da semana": Analise as tarefas em aberto ('a-fazer' e 'fazendo'), compare os prazos com a data de hoje, priorize itens urgentes/atrasados ou com prazo próximo e cruze com as metas do PDI para propor uma ordem de execução clara e motivadora.
 - Para "Organizar minhas notas" / "Triagem": Examine as notas listadas, identifique ideias soltas, sugira transformá-las em tarefas práticas usando criar_item, organizá-las por tags ou relacioná-las com projetos.
-- Para "Como foi minha semana": Avalie tarefas concluídas ('feito'), entregas registradas e o progresso em direção às metas.`;
+- Para "Como foi minha semana": Avalie tarefas concluídas ('feito'), entregas registradas e o progresso em direção às metas.
+- Para reuniões / transcrições: Extraia decisões, tarefas com prazos e sugira novos contatos para cada participante novo mencionado.`;
 }
 
 export type RespostaIA = {
@@ -188,15 +197,17 @@ export const PROMPTS: PromptSalvo[] = [
   {
     id: "organizar-reuniao",
     nome: "Organizar reunião",
-    descricao: "Cole a transcrição e receba decisões, tarefas e contexto",
-    precisa: [],
-    texto: `Vou colar a transcrição de uma reunião. Organize em quatro seções, usando SÓ o que estiver na transcrição:
+    descricao: "Cole a transcrição e receba decisões, tarefas, contatos e contexto",
+    precisa: ["contatos"],
+    texto: `Vou colar a transcrição de uma reunião. Organize em seções estruturadas, usando SÓ o que estiver na transcrição:
+
+**Participantes & Contatos** — liste os participantes identificados. Para quem for novo, proponha a criação do contato no Klaus.
 
 **Decisões** — só o que foi decidido de fato. Discussão sem conclusão não é decisão; se ficou em aberto, escreva "em aberto: ...".
 
 **Minhas ações** — o que eu fiquei de fazer, como lista de caixinhas. Se houver prazo, inclua a data.
 
-**Ações de outros** — quem ficou de fazer o quê.
+**Ações de outros** — quem ficou de fazer o quê, usando menção @Nome da pessoa.
 
 **Contexto** — o que não cabe acima mas vale lembrar daqui a seis meses: quem defendeu o quê, tensões, prioridades implícitas.
 

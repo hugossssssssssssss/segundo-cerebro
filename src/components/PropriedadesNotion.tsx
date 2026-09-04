@@ -465,6 +465,7 @@ type PropriedadesNotionProps = {
   rotuloTipo?: string;
   focoPropriedadeInicial?: string;
   aoMoverPasta?: (novaPasta: string) => Promise<any> | void;
+  aoRemover?: () => Promise<void> | void;
 };
 
 export function PropriedadesNotion({ 
@@ -477,6 +478,7 @@ export function PropriedadesNotion({
   rotuloTipo,
   focoPropriedadeInicial,
   aoMoverPasta,
+  aoRemover,
 }: PropriedadesNotionProps) {
   const { abrirFlutuante } = useItemFlutuante();
 
@@ -2441,18 +2443,29 @@ export function PropriedadesNotion({
             <Sparkles size={14} className="shrink-0 text-purple-600 dark:text-purple-400" />
             <span className="truncate">Sugerido por IA. Confira as informações deste item.</span>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              const novos = { ...dados };
-              delete novos.ia_sugeriu;
-              onChange(novos);
-              toast("Sugestão da IA aprovada!");
-            }}
-            className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium text-[11px] shrink-0 cursor-pointer shadow-sm transition-colors"
-          >
-            Aprovar sugestão
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {aoRemover && (
+              <button
+                type="button"
+                onClick={aoRemover}
+                className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-medium text-[11px] shrink-0 cursor-pointer transition-colors"
+              >
+                Reprovar e excluir
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                const novos = { ...dados };
+                delete novos.ia_sugeriu;
+                onChange(novos);
+                toast("Sugestão da IA aprovada!");
+              }}
+              className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium text-[11px] shrink-0 cursor-pointer shadow-sm transition-colors"
+            >
+              Aprovar sugestão
+            </button>
+          </div>
         </div>
       )}
 

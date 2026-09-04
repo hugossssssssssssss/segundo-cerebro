@@ -424,6 +424,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `constante` **`PASTAS_VALIDAS`**
 - `constante` **`FERRAMENTAS`** — _Declaração das ferramentas para o Gemini. Usar chamada de função nativa, e não pedir um bloco JSON n..._
 - `tipo` **`ChamadaFuncao`** — _Uma chamada de função como o Gemini devolve._
+- `funcao` **`formatarTagIA`** — _Normaliza tags geradas pela IA para o padrão sem hífens e com inicial maiúscula. Ex: "social-media" ..._
 - `funcao` **`acoesDeChamadas`** — _Converte as chamadas do Gemini em ações, descartando o que for inválido._
 - `funcao` **`descrever`** — _Frase curta descrevendo a ação, para o cartão de confirmação._
 - `funcao` **`limparReservas`** — _Usado nos testes; no app o conjunto só cresce durante a sessão._

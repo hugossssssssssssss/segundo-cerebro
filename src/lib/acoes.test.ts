@@ -38,8 +38,24 @@ describe("acoesDeChamadas", () => {
     expect(acoes[0].campos).toEqual({
       status: "a-fazer",
       prazo: "2026-08-22",
-      tags: ["cliente"],
+      tags: ["Cliente"],
     });
+  });
+
+  it("normaliza tags com hífens e formata com inicial maiúscula", () => {
+    const acoes = acoesDeChamadas([
+      chamada("criar_item", {
+        pasta: "tarefas",
+        titulo: "Postar novidades",
+        tags: ["social-media", "design_grafico", "marketing digital", "#branding"],
+      }),
+    ]);
+    expect(acoes[0].campos?.tags).toEqual([
+      "Social Media",
+      "Design Grafico",
+      "Marketing Digital",
+      "Branding",
+    ]);
   });
 
   it("converte várias chamadas de uma vez", () => {
