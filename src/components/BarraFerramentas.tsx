@@ -32,7 +32,7 @@ export function BarraFerramentas({
     >
       <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2.5 min-w-0">
         {aoMudarBusca !== undefined && (
-          <div className="relative w-full sm:w-72 shrink-0">
+          <div className="relative w-full sm:w-80 md:w-96 min-w-0 sm:min-w-[340px] shrink-0">
             <Search
               size={16}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"

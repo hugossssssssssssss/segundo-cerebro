@@ -47,6 +47,7 @@ import {
   type Status,
 } from "@/lib/tarefas";
 import { Cartao, Selo, Tooltip } from "@/components/ui";
+import { TagChip } from "@/components/TagChip";
 import { cn } from "@/lib/utils";
 import { PrismasFoco } from "@/components/PrismasFoco";
 import { MenuAcoesTarefa } from "@/components/MenuAcoesTarefa";
@@ -145,7 +146,7 @@ function ConteudoDoCartao({ t }: { t: Tarefa }) {
             </Selo>
           )}
           {t.tags.map((tag) => (
-            <Selo key={tag}>#{tag}</Selo>
+            <TagChip key={tag} tag={tag} className="py-0 px-1.5 text-[10px] rounded-md h-auto font-medium" />
           ))}
         </div>
       )}

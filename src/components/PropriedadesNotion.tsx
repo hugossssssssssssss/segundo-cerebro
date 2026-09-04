@@ -60,22 +60,23 @@ import { toast } from "@/lib/toast";
 
 export function obterOpcoesDaPropriedade(
   chave: string,
-  dadosValorAtual: string[] | string | undefined,
-  fixoOpcoes?: string[],
-  coresTagsGlobais: Record<string, string> = {}
+  dadosValorAtual: any,
+  fixas?: string[],
+  _coresTagsGlobais: Record<string, string> = {},
+  prefixoCaminho?: string
 ): string[] {
   const setOpcoes = new Set<string>();
 
-  // 1. Opções fixas passadas na configuração da propriedade
-  if (Array.isArray(fixoOpcoes)) {
-    fixoOpcoes.forEach(o => { if (typeof o === "string" && o.trim()) setOpcoes.add(o.trim()); });
+  // 1. Opções fixas (se houver)
+  if (fixas && Array.isArray(fixas)) {
+    fixas.forEach(o => { if (typeof o === "string" && o.trim()) setOpcoes.add(o.trim()); });
   }
 
-  // 2. Opções salvas localmente específicas para esta chave
+  // 2. Opções salvas localmente
   try {
-    const rawLocal = localStorage.getItem(`klaus_opcoes_prop_${chave}`);
-    if (rawLocal) {
-      const arr = JSON.parse(rawLocal);
+    const raw = localStorage.getItem(`klaus_opcoes_prop_${chave}`);
+    if (raw) {
+      const arr = JSON.parse(raw);
       if (Array.isArray(arr)) {
         arr.forEach(o => { if (typeof o === "string" && o.trim()) setOpcoes.add(o.trim()); });
       }
@@ -89,22 +90,19 @@ export function obterOpcoesDaPropriedade(
     setOpcoes.add(dadosValorAtual.trim());
   }
 
-  // 4. Valores em uso no repositório para ESTA chave específica
+  // 4. Valores em uso no repositório para ESTA chave específica, respeitando a pasta se informada
   if (cache && cache.itens) {
-    cache.itens.forEach(item => {
+    const itensFiltrados = prefixoCaminho
+      ? cache.itens.filter(i => i.caminho.startsWith(prefixoCaminho))
+      : cache.itens;
+
+    itensFiltrados.forEach(item => {
       const val = item.doc?.dados?.[chave];
       if (Array.isArray(val)) {
         val.forEach(t => { if (typeof t === "string" && t.trim()) setOpcoes.add(t.trim()); });
       } else if (typeof val === "string" && val.trim()) {
         setOpcoes.add(val.trim());
       }
-    });
-  }
-
-  // 5. Se for a chave "tags", incluir as tags do mapa global de cores
-  if (chave === "tags") {
-    Object.keys(coresTagsGlobais).forEach(t => {
-      if (typeof t === "string" && t.trim()) setOpcoes.add(t.trim());
     });
   }
 

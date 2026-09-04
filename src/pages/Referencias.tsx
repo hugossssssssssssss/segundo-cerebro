@@ -49,7 +49,7 @@ import {
   ModalEntradaTexto,
 } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { TagChip } from "@/components/TagChip";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
@@ -801,9 +801,7 @@ export default function Referencias() {
                     {r.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 pt-0.5 sm:pt-1">
                         {r.tags.slice(0, 3).map((t) => (
-                          <Badge key={t} variant="secondary" className="text-[9px] sm:text-[10px] py-0 px-1.5 sm:px-2">
-                            #{t}
-                          </Badge>
+                          <TagChip key={t} tag={t} className="py-0 px-1.5 text-[9px] sm:text-[10px] rounded-md h-auto font-medium" />
                         ))}
                       </div>
                     )}
@@ -882,7 +880,7 @@ export default function Referencias() {
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {r.tags.map((t) => (
-                      <Badge key={t} variant="secondary" className="text-[10px]">#{t}</Badge>
+                      <TagChip key={t} tag={t} className="py-0 px-1.5 text-[10px] rounded-md h-auto font-medium" />
                     ))}
                   </div>
                 </div>
@@ -1094,9 +1092,7 @@ export default function Referencias() {
             {lightboxRef.tags.length > 0 && (
               <div className="flex items-center gap-1 shrink-0">
                 {lightboxRef.tags.map((t) => (
-                  <span key={t} className="px-2 py-0.5 rounded bg-white/15 text-[10px] font-medium">
-                    #{t}
-                  </span>
+                  <TagChip key={t} tag={t} className="py-0.5 px-2 text-[10px] rounded-md h-auto" />
                 ))}
               </div>
             )}

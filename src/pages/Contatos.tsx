@@ -44,7 +44,8 @@ import {
   type NoContato,
   type ContatoImportadoCSV,
 } from "@/lib/contatos";
-import { Botao, Cartao, Selo, Modal, Carregando, ModalConfirmacao, Vazio } from "@/components/ui";
+import { Botao, Cartao, Modal, Carregando, ModalConfirmacao, Vazio } from "@/components/ui";
+import { TagChip } from "@/components/TagChip";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { propagarRenomeacaoId, montarIndice, mencoesA } from "@/lib/links";
 import { carregarRepo } from "@/lib/repo";
@@ -1056,9 +1057,7 @@ function ItemNoArvore({
                 </a>
               )}
               {c.tags.map((t) => (
-                <span key={t} className="text-[10px] text-muted-foreground/80 font-mono">
-                  #{t}
-                </span>
+                <TagChip key={t} tag={t} className="py-0 px-1.5 text-[10px] rounded-md h-auto font-medium" />
               ))}
             </div>
 
@@ -1248,9 +1247,7 @@ function CartaoContato({
       <div className="flex items-center justify-between pt-2 border-t border-border/60">
         <div className="flex flex-wrap gap-1">
           {c.tags.map((t) => (
-            <Selo key={t} tom="neutro" className="text-[9px] px-1.5 py-0">
-              #{t}
-            </Selo>
+            <TagChip key={t} tag={t} className="py-0 px-1.5 text-[9px] rounded-md h-auto font-medium" />
           ))}
         </div>
 

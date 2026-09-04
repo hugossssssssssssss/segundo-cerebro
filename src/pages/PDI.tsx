@@ -40,6 +40,7 @@ import { carregarRepo, invalidarCache } from "@/lib/repo";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import { toast } from "@/lib/toast";
 import { ModalDossieCarreira } from "@/components/ModalDossieCarreira";
+import { TagChip } from "@/components/TagChip";
 import type { Tarefa } from "@/lib/tarefas";
 import { CheckCircle2, Circle } from "lucide-react";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
@@ -1712,9 +1713,7 @@ export default function PDI() {
                                   </Selo>
                                 )}
                                 {e.tags && e.tags.map((t) => (
-                                  <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary/80 text-muted-foreground">
-                                    #{t}
-                                  </span>
+                                  <TagChip key={t} tag={t} className="py-0 px-1.5 text-[9px] sm:text-[10px] rounded-md h-auto font-medium" />
                                 ))}
                                 {e.iaSugeriu && (
                                   <Selo tom="primario" className="inline-flex items-center gap-1 text-[10px]">

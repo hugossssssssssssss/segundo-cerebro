@@ -69,6 +69,22 @@ export function extrairSnippetMarkdown(corpo: string, tamanhoMax = 160): string 
 }
 
 /**
+ * Extrai a primeira URL de imagem do markdown ou tag HTML para exibir como banner no Mural.
+ */
+export function extrairPrimeiraImagem(corpo: string): string | null {
+  if (!corpo) return null;
+  // Markdown: ![alt](url)
+  const mdMatch = corpo.match(/!\[.*?\]\((https?:\/\/[^\s\)]+|data:image\/[^\s\)]+|\/[^\s\)]+)\)/i);
+  if (mdMatch && mdMatch[1]) return mdMatch[1];
+
+  // HTML: <img src="url" ...>
+  const htmlMatch = corpo.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (htmlMatch && htmlMatch[1]) return htmlMatch[1];
+
+  return null;
+}
+
+/**
  * Estima o tempo de leitura e quantidade de palavras.
  */
 export function estimarTempoLeitura(corpo: string): { palavras: number; minutos: number } {
@@ -161,6 +177,11 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
     const temTags = nota.tags && nota.tags.length > 0;
     const ehNotaIA = Boolean(nota.bruto?.ia_sugeriu);
 
+    const capaImagem = useMemo(() => {
+      if (visao !== "mural") return null;
+      return extrairPrimeiraImagem(nota.corpo);
+    }, [nota.corpo, visao]);
+
     // ── VISÃO LISTA ────────────────────────────────────────────────────────────
     if (visao === "lista") {
       return (
@@ -198,7 +219,7 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
 
             <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center sm:gap-3">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
+                <span className="font-semibold text-xs sm:text-sm text-foreground break-words">
                   {tituloNota}
                 </span>
 
@@ -338,6 +359,21 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
           className
         )}
       >
+        {/* Banner de Imagem (Capa no Mural) */}
+        {capaImagem && (
+          <div className="-mx-4 -mt-4 mb-3.5 h-36 sm:h-44 overflow-hidden bg-muted/40 border-b border-border/60 relative">
+            <img
+              src={capaImagem}
+              alt=""
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              loading="lazy"
+              onError={(e) => {
+                (e.currentTarget.parentElement as HTMLElement)?.classList.add("hidden");
+              }}
+            />
+          </div>
+        )}
+
         {/* Topo do Cartão */}
         <div>
           <div className="flex items-start justify-between gap-2">
@@ -358,7 +394,7 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
               </div>
 
               <div className="min-w-0 flex-1">
-                <h3 className="font-bold text-sm text-foreground leading-snug truncate">
+                <h3 className="font-bold text-sm text-foreground leading-snug break-words">
                   {tituloNota}
                 </h3>
                 {subtitulo && (
@@ -439,7 +475,7 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
             <p
               className={cn(
                 "mt-3 text-xs text-muted-foreground/90 leading-relaxed font-normal",
-                visao === "mural" ? "line-clamp-6" : "line-clamp-3"
+                visao === "mural" ? "line-clamp-8" : "line-clamp-3"
               )}
             >
               {snippet}
