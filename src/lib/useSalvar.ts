@@ -11,8 +11,8 @@
  */
 
 import { useState, useEffect } from "react";
-import { atualizarCacheLocal, removerDoCacheLocal } from "./repo";
-import { lerMarkdown } from "./markdown";
+import { atualizarCacheLocal, removerDoCacheLocal, obterCacheExistente } from "./repo";
+import { lerMarkdown, escreverMarkdown, mesclarFrontmatter } from "./markdown";
 import { notificarOutrasAbas } from "./syncChannel";
 import { toast } from "./toast";
 import { formatarNomeAmigavel } from "./utils";
@@ -166,17 +166,45 @@ export function useSalvar(cfgProp?: Settings): EstadoSalvar {
   async function moverParaLixeiraItem(caminho: string, sha: string, silencioso = false): Promise<void> {
     setErro("");
     try {
+      // 1. Optimistic UI: Imediatamente calcula texto e adiciona na lixeira local em memória
       const cfg = obterConfigAtual();
+      const cacheExistente = obterCacheExistente(cfg);
+      const itemEmCache = cacheExistente?.itens.find((i) => i.caminho === caminho);
+      const texto = itemEmCache?.texto || "";
+
+      if (texto) {
+        try {
+          const doc = lerMarkdown(texto);
+          const caminhoLixeira = `${PASTA_LIXEIRA}/${caminho}`;
+          const dadosLixeira = mesclarFrontmatter(doc.dados, {
+            apagado_em: new Date().toISOString(),
+            caminho_origem: caminho,
+          });
+          const textoLixeira = escreverMarkdown({ dados: dadosLixeira, corpo: doc.corpo });
+          atualizarCacheLocal(caminhoLixeira, textoLixeira, lerMarkdown(textoLixeira), `temp_${Math.random().toString(36).substring(7)}`);
+        } catch {}
+      }
+
+      // 2. Remove imediatamente do cache local ativo original
+      removerDoCacheLocal(caminho);
+
+      // 3. Registra na fila de sincronização como exclusão
+      salvarRascunhoLocal(caminho, "", sha, undefined, false, "apagar");
+
+      if (!silencioso) {
+        dispararAtualizacaoAcervo(caminho);
+        notificarOutrasAbas(caminho);
+        const nomeItem = formatarNomeAmigavel(caminho);
+        toast(`"${nomeItem}" movido para a Lixeira`, { tipo: "info" });
+      }
+
+      // 4. Executa a sincronização segura com GitHub em segundo plano (não-bloqueante)
       if (configCompleta(cfg) && navigator.onLine) {
-        await moverParaLixeira(cfg, caminho, sha);
-        removerDoCacheLocal(caminho);
-        if (!silencioso) {
-          const nomeItem = formatarNomeAmigavel(caminho);
-          toast(`"${nomeItem}" movido para a Lixeira`, { tipo: "info" });
-        }
-      } else {
-        // Fallback offline: enfileira como exclusão direta
-        await apagarDefinitivoItem(caminho, sha, silencioso);
+        moverParaLixeira(cfg, caminho, sha)
+          .catch((err) => {
+            console.error("Erro ao mover para lixeira em segundo plano:", err);
+            sincronizarFilaOffline(cfg).catch(() => {});
+          });
       }
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : String(e);

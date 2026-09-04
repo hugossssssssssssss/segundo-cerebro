@@ -649,9 +649,14 @@ export default function PDI() {
 
   async function confirmarRemocaoMeta() {
     if (!metaParaExcluir) return;
-    await apagarItem(metaParaExcluir.caminho, metaParaExcluir.sha);
+    const alvo = metaParaExcluir;
     setMetaParaExcluir(null);
     fecharMeta();
+    try {
+      await apagarItem(alvo.caminho, alvo.sha);
+    } catch (err: any) {
+      toast(`Erro ao remover meta: ${err?.message || err}`, { tipo: "erro" });
+    }
     recarregar();
   }
 
@@ -661,9 +666,14 @@ export default function PDI() {
 
   async function confirmarRemocaoEntrega() {
     if (!entregaParaExcluir) return;
-    await apagarItem(entregaParaExcluir.caminho, entregaParaExcluir.sha);
+    const alvo = entregaParaExcluir;
     setEntregaParaExcluir(null);
     fecharEntrega();
+    try {
+      await apagarItem(alvo.caminho, alvo.sha);
+    } catch (err: any) {
+      toast(`Erro ao remover entrega: ${err?.message || err}`, { tipo: "erro" });
+    }
     recarregar();
   }
 

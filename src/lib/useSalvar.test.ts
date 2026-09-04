@@ -14,6 +14,7 @@ import type { Settings } from "./settings";
 vi.mock("./repo", () => ({
   atualizarCacheLocal: vi.fn(),
   removerDoCacheLocal: vi.fn(),
+  obterCacheExistente: vi.fn().mockReturnValue(null),
 }));
 
 vi.mock("./offlineQueue", () => ({

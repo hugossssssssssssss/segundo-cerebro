@@ -33,16 +33,33 @@ export async function moverParaLixeira(
   caminho: string,
   sha: string,
 ): Promise<void> {
-  let texto: string;
+  let texto: string = "";
+  let shaReal = sha;
+
   const itemEmCache = obterCacheExistente(cfg)?.itens.find((i) => i.caminho === caminho);
   if (itemEmCache && itemEmCache.texto) {
     texto = itemEmCache.texto;
-  } else {
-    const lido = await ler(cfg, caminho);
-    texto = lido.texto;
+    if (itemEmCache.sha && !itemEmCache.sha.startsWith("temp_")) {
+      shaReal = itemEmCache.sha;
+    }
   }
-  const doc = lerMarkdown(texto);
 
+  // Se não temos o texto ou o SHA é temporário/vazio, busca do GitHub
+  if (!texto || !shaReal || shaReal.startsWith("temp_")) {
+    try {
+      const lido = await ler(cfg, caminho);
+      texto = lido.texto;
+      shaReal = lido.sha;
+    } catch (e: any) {
+      if (e?.status === 404 || e?.message?.includes("404")) {
+        // Se já não existe no GitHub, conclui
+        return;
+      }
+      throw e;
+    }
+  }
+
+  const doc = lerMarkdown(texto);
   const caminhoLixeira = `${PASTA_LIXEIRA}/${caminho}`;
   const agora = new Date().toISOString();
 
@@ -53,11 +70,34 @@ export async function moverParaLixeira(
 
   const textoLixeira = escreverMarkdown({ dados: dadosLixeira, corpo: doc.corpo });
 
-  // 1. Grava na pasta da lixeira
-  await gravar(cfg, caminhoLixeira, textoLixeira, undefined, `lixeira: mover ${caminho}`);
+  // 1. Grava na pasta da lixeira (se já existir na lixeira, sobrescreve)
+  try {
+    await gravar(cfg, caminhoLixeira, textoLixeira, undefined, `lixeira: mover ${caminho}`);
+  } catch (errGravar: any) {
+    if (errGravar?.status === 409 || errGravar?.message?.includes("409") || errGravar?.message?.includes("does not match")) {
+      try {
+        const itemLixeiraExistente = await ler(cfg, caminhoLixeira);
+        await gravar(cfg, caminhoLixeira, textoLixeira, itemLixeiraExistente.sha, `lixeira: mover ${caminho}`);
+      } catch {}
+    }
+  }
 
-  // 2. Remove o arquivo da árvore ativa original
-  await apagar(cfg, caminho, sha);
+  // 2. Remove o arquivo da árvore ativa original de forma resiliente
+  try {
+    await apagar(cfg, caminho, shaReal);
+  } catch (errApagar: any) {
+    if (errApagar?.status === 404 || errApagar?.message?.includes("404")) {
+      // Já foi apagado, sucesso
+    } else if (errApagar?.status === 409 || errApagar?.message?.includes("409") || errApagar?.message?.includes("does not match")) {
+      // Conflito de SHA: busca o SHA atual e apaga
+      const remoto = await ler(cfg, caminho);
+      if (remoto && remoto.sha) {
+        await apagar(cfg, caminho, remoto.sha);
+      }
+    } else {
+      throw errApagar;
+    }
+  }
 
   invalidarCache();
   dispararAtualizacaoAcervo();
