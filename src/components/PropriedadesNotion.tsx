@@ -801,6 +801,7 @@ export function PropriedadesNotion({
     if (chave === "status") return "Status";
     if (chave === "prazo") return rotuloTipo?.toLowerCase().includes("lembrete") ? "Data do Lembrete" : "Prazo";
     if (chave === "tags") return "Tags";
+    if (chave === "paleta" || chave === "palette" || chave === "cores") return "Paleta de Cores";
     if (chave === "cargo") return "Cargo";
     if (chave === "empresa") return "Empresa";
     if (chave === "email") return "E-mail";
@@ -1982,6 +1983,7 @@ export function PropriedadesNotion({
       chave === "aviso_inbox" || chave === "aviso_telegram" || chave === "aviso_email" ? "checkbox" :
       chave === "data" || chave === "prazo" ? "data" :
       chave === "tags" || chave === "tag" ? "multi_select" :
+      chave === "paleta" || chave === "palette" || chave === "cores" ? "multi_select" :
       chave === "relacionamentos" || chave === "relacao" ? "relacionamento" :
       chave === "pai_id" || chave === "paiId" || chave === "pai" || chave === "contato_pai" ? "select" :
       fixo?.tipo || esquema[chave] || "texto";
@@ -1997,6 +1999,7 @@ export function PropriedadesNotion({
       chave === "telefone" || chave === "tel" ? Phone :
       chave === "pai_id" || chave === "paiId" || chave === "pai" || chave === "contato_pai" ? Users :
       chave === "tags" || chave === "tag" ? Tags :
+      chave === "paleta" || chave === "palette" || chave === "cores" ? Palette :
       chave === "horario" || chave === "hora" ? Clock :
       chave === "data" || chave === "prazo" ? CalendarIcon :
       chave === "relacionamentos" || chave === "relacao" ? Users :

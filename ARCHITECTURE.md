@@ -148,6 +148,7 @@ Uma referência visual em `referencias/`.
 | `fonte` | `string` | não | URL de origem, se veio da web. |
 | `tags` | `string[]` | sim | — |
 | `porque` | `string` | sim | Por que você salvou isto — o campo mais importante. |
+| `paleta` | `string[]` | não | Cores dominantes da paleta em formato HEX. |
 
 ### Lousa
 

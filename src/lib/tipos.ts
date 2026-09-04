@@ -159,6 +159,8 @@ export interface Referencia extends ItemBase {
   tags: string[];
   /** Por que você salvou isto — o campo mais importante. */
   porque: string;
+  /** Cores dominantes da paleta em formato HEX. */
+  paleta?: string[];
 }
 
 /** Uma lousa Excalidraw em `lousas/`. O corpo é o JSON do Excalidraw. */

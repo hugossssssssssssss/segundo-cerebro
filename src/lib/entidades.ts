@@ -379,6 +379,11 @@ export function comoReferencia(
   const d = doc.dados;
   const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
   const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
+  const paleta = Array.isArray(d.paleta)
+    ? d.paleta.map(String)
+    : Array.isArray(d.cores)
+    ? d.cores.map(String)
+    : undefined;
 
   return {
     bruto: doc.dados,
@@ -393,6 +398,7 @@ export function comoReferencia(
     fonte: typeof d.fonte === "string" ? d.fonte : undefined,
     tags: comoLista(d.tags),
     porque: typeof d.porque === "string" ? d.porque : "",
+    paleta,
     criadoEm,
     atualizadoEm,
     corpo: doc.corpo,
@@ -411,6 +417,7 @@ export function referenciaParaArquivo(r: Referencia): { dados: Frontmatter; corp
       fonte:         r.fonte,
       porque:        r.porque || undefined,
       tags:          r.tags.length ? r.tags : undefined,
+      paleta:        r.paleta && r.paleta.length ? r.paleta : undefined,
       criado_em:     criadoEm,
       atualizado_em: agora,
       // Limpeza de campos legados

@@ -108,6 +108,7 @@ export const ReferenciaSchema = z
     imagem: z.string().optional(),
     fonte: z.string().url("Fonte deve ser uma URL válida").or(z.string()).optional(),
     tags: z.union([z.array(z.string()), z.string()]).optional(),
+    paleta: z.union([z.array(z.string()), z.string()]).optional(),
     porque: z.string().optional(),
     criado_em: z.string().optional(),
   })

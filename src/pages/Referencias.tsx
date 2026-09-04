@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Masonry } from "react-plock";
 import {
@@ -18,6 +18,7 @@ import {
   Copy,
   X,
   Trash2,
+  Palette,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { BarraAcoesLote, BotaoAcaoLote } from "@/components/BarraAcoesLote";
@@ -93,6 +94,28 @@ export default function Referencias() {
   useEffect(() => {
     setRegrasFiltro([]);
   }, [location.pathname]);
+
+  const aplicarFiltroTag = useCallback((tag: string) => {
+    const nomeLimpo = tag.startsWith("#") ? tag.slice(1).trim() : tag.trim();
+    if (!nomeLimpo) return;
+    setRegrasFiltro((atuais) => {
+      const jaExiste = atuais.some(
+        (r) => r.propriedadeId === "tags" && r.operador === "contem" && r.valor === nomeLimpo
+      );
+      if (jaExiste) return atuais;
+      return [
+        ...atuais,
+        {
+          id: `tag-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          propriedadeId: "tags",
+          rotulo: "Tags",
+          tipo: "tags",
+          operador: "contem",
+          valor: nomeLimpo,
+        },
+      ];
+    });
+  }, []);
 
   const [editando, setEditando] = useState<Referencia | null>(null);
   const [origRef, setOrigRef] = useState<Referencia | null>(null);
@@ -481,6 +504,7 @@ export default function Referencias() {
     return [
       { id: "titulo", rotulo: "Título / Nome", tipo: "texto" },
       { id: "tags", rotulo: "Tags", tipo: "tags", opcoes: todasTags },
+      { id: "paleta", rotulo: "Paleta de Cores", tipo: "texto" },
       { id: "fonte", rotulo: "Fonte / Link", tipo: "texto" },
       { id: "criado_em", rotulo: "Criado em", tipo: "data" },
       { id: "atualizado_em", rotulo: "Última edição em", tipo: "data" },
@@ -506,11 +530,17 @@ export default function Referencias() {
         const prefixo = `${PASTA_REFS}/${pastaAtual}/`;
         if (!r.caminho.startsWith(prefixo)) return false;
       }
-      if (busca && !correspondeBusca(r.titulo, busca) && !correspondeBusca(r.porque, busca) && !correspondeBusca(r.corpo, busca)) {
+      if (
+        busca && 
+        !correspondeBusca(r.titulo, busca) && 
+        !correspondeBusca(r.porque, busca) && 
+        !correspondeBusca(r.corpo, busca) &&
+        !(r.paleta && r.paleta.some((p) => p.toLowerCase().includes(busca.toLowerCase())))
+      ) {
         return false;
       }
       if (filtroRapido === "com_imagem") {
-        const temImg = Boolean(r.imagem || (r.corpo && /\.(png|jpe?g|webp|gif|svg)/i.test(r.corpo)));
+        const temImg = Boolean(r.imagem || (r.paleta && r.paleta.length > 0) || (r.corpo && /\.(png|jpe?g|webp|gif|svg)/i.test(r.corpo)));
         if (!temImg) return false;
       } else if (filtroRapido === "links") {
         if (!r.fonte) return false;
@@ -523,6 +553,7 @@ export default function Referencias() {
     lista = filtrarItensPorRegras(lista, regrasFiltro, (item, propId) => {
       if (propId === "titulo" || propId === "nome") return item.titulo;
       if (propId === "tags") return item.tags || [];
+      if (propId === "paleta") return item.paleta || [];
       if (propId === "fonte") return item.fonte;
       if (propId === "criado_em") return item.bruto?.criado || item.bruto?.criado_em;
       if (propId === "atualizado_em") return item.bruto?.atualizado || item.bruto?.atualizado_em;
@@ -781,6 +812,26 @@ export default function Referencias() {
                         </button>
                       </Tooltip>
                     </div>
+                  ) : r.paleta && r.paleta.length > 0 ? (
+                    <div className="relative h-36 w-full flex overflow-hidden border-b border-border/40 bg-muted/20">
+                      {r.paleta.map((hex, i) => (
+                        <div
+                          key={i}
+                          className="flex-1 h-full flex flex-col justify-end p-2 transition-all hover:flex-[1.6] group/cor cursor-pointer relative"
+                          style={{ backgroundColor: hex }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(hex);
+                            toast(`Cor ${hex} copiada!`, { tipo: "sucesso" });
+                          }}
+                          title={`Clique para copiar ${hex}`}
+                        >
+                          <span className="text-[10px] font-mono font-bold opacity-0 group-hover/cor:opacity-100 transition-opacity bg-black/60 text-white px-1 py-0.5 rounded backdrop-blur-xs text-center truncate">
+                            {hex}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <div className="p-6 bg-secondary/30 flex items-center justify-center text-muted-foreground/50">
                       <ImageIcon size={32} />
@@ -798,10 +849,36 @@ export default function Referencias() {
                       </p>
                     )}
 
+                    {/* Paleta de Cores no Card */}
+                    {r.paleta && r.paleta.length > 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                        {r.paleta.map((hex, idx) => (
+                          <Tooltip key={idx} conteudo={`Copiar ${hex}`}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(hex);
+                                toast(`Cor ${hex} copiada!`, { tipo: "sucesso" });
+                              }}
+                              className="h-4 w-4 rounded-full border border-black/15 dark:border-white/15 shadow-2xs hover:scale-125 transition-transform cursor-pointer"
+                              style={{ backgroundColor: hex }}
+                              aria-label={`Cor ${hex}`}
+                            />
+                          </Tooltip>
+                        ))}
+                      </div>
+                    )}
+
                     {r.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 pt-0.5 sm:pt-1">
-                        {r.tags.slice(0, 3).map((t) => (
-                          <TagChip key={t} tag={t} className="py-0 px-1.5 text-[9px] sm:text-[10px] rounded-md h-auto font-medium" />
+                        {r.tags.map((t) => (
+                          <TagChip
+                            key={t}
+                            tag={t}
+                            aoClicar={() => aplicarFiltroTag(t)}
+                            className="py-0 px-1.5 text-[9px] sm:text-[10px] rounded-md h-auto font-medium"
+                          />
                         ))}
                       </div>
                     )}
@@ -839,14 +916,36 @@ export default function Referencias() {
                           </button>
                         </Tooltip>
                       </>
+                    ) : r.paleta && r.paleta.length > 0 ? (
+                      <div className="w-full h-full flex overflow-hidden">
+                        {r.paleta.map((hex, i) => (
+                          <div
+                            key={i}
+                            className="flex-1 h-full transition-all hover:flex-[1.4]"
+                            style={{ backgroundColor: hex }}
+                            title={hex}
+                          />
+                        ))}
+                      </div>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground/40">
                         <ImageIcon size={24} />
                       </div>
                     )}
                   </div>
-                  <div className="p-2 sm:p-3">
+                  <div className="p-2 sm:p-3 space-y-1">
                     <p className="font-bold text-xs truncate text-foreground">{r.titulo}</p>
+                    {r.paleta && r.paleta.length > 0 && (
+                      <div className="flex items-center gap-1 overflow-hidden">
+                        {r.paleta.slice(0, 5).map((hex, idx) => (
+                          <span
+                            key={idx}
+                            className="h-2.5 w-2.5 rounded-full border border-black/10 shrink-0"
+                            style={{ backgroundColor: hex }}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -864,9 +963,15 @@ export default function Referencias() {
                   className="p-3.5 rounded-2xl border border-border/80 bg-card hover:bg-accent/40 hover:border-border transition-colors cursor-pointer flex items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-10 w-10 rounded-xl overflow-hidden bg-secondary/50 shrink-0">
+                    <div className="h-10 w-10 rounded-xl overflow-hidden bg-secondary/50 shrink-0 border border-border/50">
                       {r.imagem ? (
                         <ImagemPrivada caminho={r.imagem} alt="" className="w-full h-full object-cover" />
+                      ) : r.paleta && r.paleta.length > 0 ? (
+                        <div className="w-full h-full flex overflow-hidden">
+                          {r.paleta.map((hex, i) => (
+                            <div key={i} className="flex-1 h-full" style={{ backgroundColor: hex }} />
+                          ))}
+                        </div>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-muted-foreground/40">
                           <ImageIcon size={16} />
@@ -878,9 +983,26 @@ export default function Referencias() {
                       {r.porque && <p className="text-[11px] text-muted-foreground truncate">{r.porque}</p>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
+                    {r.paleta && r.paleta.length > 0 && (
+                      <div className="flex items-center gap-1 mr-1">
+                        {r.paleta.map((hex, idx) => (
+                          <span
+                            key={idx}
+                            className="h-3 w-3 rounded-full border border-black/10 shrink-0"
+                            style={{ backgroundColor: hex }}
+                            title={hex}
+                          />
+                        ))}
+                      </div>
+                    )}
                     {r.tags.map((t) => (
-                      <TagChip key={t} tag={t} className="py-0 px-1.5 text-[10px] rounded-md h-auto font-medium" />
+                      <TagChip
+                        key={t}
+                        tag={t}
+                        aoClicar={() => aplicarFiltroTag(t)}
+                        className="py-0 px-1.5 text-[10px] rounded-md h-auto font-medium"
+                      />
                     ))}
                   </div>
                 </div>
@@ -905,6 +1027,7 @@ export default function Referencias() {
             porque: editando.porque,
             fonte: editando.fonte,
             tags: editando.tags,
+            paleta: editando.paleta || (Array.isArray(editando.bruto?.paleta) ? editando.bruto.paleta : undefined),
           }}
           onChangeProps={(novosDados) => {
             setEditando({
@@ -912,12 +1035,18 @@ export default function Referencias() {
               porque: (novosDados.porque as string) || editando.porque,
               fonte: (novosDados.fonte as string) || editando.fonte,
               tags: (novosDados.tags as string[]) || editando.tags,
+              paleta: Array.isArray(novosDados.paleta)
+                ? novosDados.paleta
+                : novosDados.paleta
+                ? [String(novosDados.paleta)]
+                : editando.paleta,
             });
           }}
           camposFixosProps={{
             porque: { icone: <Sparkles className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" },
             fonte: { icone: <LinkIcon className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "link" },
             tags: { icone: <Tag className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" },
+            paleta: { icone: <Palette className="h-4 w-4 opacity-50 text-pink-500" />, tipo: "multiselect" },
           }}
           elementoAcimaCorpo={
             <div className="space-y-3">
@@ -1092,7 +1221,15 @@ export default function Referencias() {
             {lightboxRef.tags.length > 0 && (
               <div className="flex items-center gap-1 shrink-0">
                 {lightboxRef.tags.map((t) => (
-                  <TagChip key={t} tag={t} className="py-0.5 px-2 text-[10px] rounded-md h-auto" />
+                  <TagChip
+                    key={t}
+                    tag={t}
+                    aoClicar={() => {
+                      setLightboxRef(null);
+                      aplicarFiltroTag(t);
+                    }}
+                    className="py-0.5 px-2 text-[10px] rounded-md h-auto cursor-pointer"
+                  />
                 ))}
               </div>
             )}
