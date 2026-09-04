@@ -8,7 +8,6 @@ import {
   FolderPlus,
   ChevronRight,
   Trash2,
-  X,
   LayoutGrid,
   List,
   Columns,
@@ -22,6 +21,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
+import { BarraAcoesLote, BotaoAcaoLote } from "@/components/BarraAcoesLote";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Masonry } from "react-plock";
 import {
@@ -1502,115 +1502,89 @@ export default function Notas() {
         </div>
       )}
 
-      {selecionadas.size > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-2.5 animate-in fade-in duration-150 backdrop-blur-md">
-          <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-              {selecionadas.size}
-            </span>
-            nota(s) selecionada(s)
-          </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Mover para pasta com Popover e Ícone */}
-            <Popover>
-              <Tooltip conteudo="Mover notas selecionadas para pasta..." posicao="top">
-                <PopoverTrigger asChild>
-                  <Botao
-                    variante="fantasma"
-                    tamanho="icone"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
-                    aria-label="Mover para pasta"
-                  >
-                    <FolderInput size={14} />
-                  </Botao>
-                </PopoverTrigger>
-              </Tooltip>
-              <PopoverContent className="w-56 p-2 text-xs shadow-xl border-border" align="end">
-                <p className="font-semibold text-muted-foreground text-[10px] uppercase tracking-wider mb-1.5 px-1">
-                  Mover selecionadas para:
-                </p>
-                <div className="max-h-48 overflow-y-auto space-y-0.5">
-                  {pastasExistentes.map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => processarAcaoMenu({ tipo: "mover_para", pasta: p })}
-                      className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-accent hover:text-foreground text-xs truncate transition-colors cursor-pointer"
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+      <BarraAcoesLote
+        totalSelecionados={selecionadas.size}
+        rotuloItem="nota"
+        aoLimparSelecao={limparSelecao}
+      >
+        {/* Mover para pasta com Popover */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <div>
+              <BotaoAcaoLote
+                tooltip="Mover notas selecionadas para pasta..."
+                variante="neutro"
+                icone={<FolderInput size={14} />}
+                aria-label="Mover para pasta"
+              />
+            </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2 text-xs shadow-xl border-border bg-card/95 backdrop-blur-md" align="center">
+            <p className="font-semibold text-muted-foreground text-[10px] uppercase tracking-wider mb-1.5 px-1">
+              Mover selecionadas para:
+            </p>
+            <div className="max-h-48 overflow-y-auto space-y-0.5 no-scrollbar">
+              {pastasExistentes.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => processarAcaoMenu({ tipo: "mover_para", pasta: p })}
+                  className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-accent hover:text-foreground text-xs truncate transition-colors cursor-pointer"
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
-            {/* Adicionar tags com Popover e Ícone */}
-            <Popover>
-              <Tooltip conteudo="Adicionar tags às notas selecionadas" posicao="top">
-                <PopoverTrigger asChild>
-                  <Botao
-                    variante="fantasma"
-                    tamanho="icone"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
-                    aria-label="Adicionar tags"
-                  >
-                    <Tags size={14} />
-                  </Botao>
-                </PopoverTrigger>
-              </Tooltip>
-              <PopoverContent className="w-60 p-2.5 text-xs shadow-xl border-border" align="end">
-                <p className="font-semibold text-muted-foreground text-[10px] uppercase tracking-wider mb-1.5">
-                  Adicionar tags (separadas por vírgula):
-                </p>
-                <input
-                  type="text"
-                  placeholder="design, projeto, ideias..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const tags = (e.target as HTMLInputElement).value
-                        .split(",")
-                        .map((t) => t.trim().replace(/^#/, ""))
-                        .filter(Boolean);
-                      if (tags.length > 0) {
-                        processarAcaoMenu({ tipo: "adicionar_tags", tags });
-                        (e.target as HTMLInputElement).value = "";
-                      }
-                    }
-                  }}
-                  className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  autoFocus
-                />
-              </PopoverContent>
-            </Popover>
+        {/* Adicionar tags com Popover */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <div>
+              <BotaoAcaoLote
+                tooltip="Adicionar tags às notas selecionadas"
+                variante="neutro"
+                icone={<Tags size={14} />}
+                aria-label="Adicionar tags"
+              />
+            </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-60 p-2.5 text-xs shadow-xl border-border bg-card/95 backdrop-blur-md" align="center">
+            <p className="font-semibold text-muted-foreground text-[10px] uppercase tracking-wider mb-1.5">
+              Adicionar tags (separadas por vírgula):
+            </p>
+            <input
+              type="text"
+              placeholder="design, projeto, ideias..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const tags = (e.target as HTMLInputElement).value
+                    .split(",")
+                    .map((t) => t.trim().replace(/^#/, ""))
+                    .filter(Boolean);
+                  if (tags.length > 0) {
+                    processarAcaoMenu({ tipo: "adicionar_tags", tags });
+                    (e.target as HTMLInputElement).value = "";
+                  }
+                }
+              }}
+              className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
+              autoFocus
+            />
+          </PopoverContent>
+        </Popover>
 
-            <Tooltip conteudo="Excluir notas selecionadas" posicao="top">
-              <Botao
-                variante="fantasma"
-                tamanho="icone"
-                onClick={() => {
-                  processarAcaoMenu({ tipo: "excluir" });
-                }}
-                className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                aria-label="Excluir notas selecionadas"
-              >
-                <Trash2 size={14} />
-              </Botao>
-            </Tooltip>
-
-            <Tooltip conteudo="Desmarcar seleção" posicao="top">
-              <Botao
-                variante="fantasma"
-                tamanho="icone"
-                onClick={limparSelecao}
-                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
-                aria-label="Desmarcar seleção"
-              >
-                <X size={13} />
-              </Botao>
-            </Tooltip>
-          </div>
-        </div>
-      )}
+        <BotaoAcaoLote
+          tooltip="Excluir notas selecionadas"
+          variante="perigo"
+          icone={<Trash2 size={14} />}
+          onClick={() => {
+            processarAcaoMenu({ tipo: "excluir" });
+          }}
+          aria-label="Excluir notas selecionadas"
+        />
+      </BarraAcoesLote>
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 

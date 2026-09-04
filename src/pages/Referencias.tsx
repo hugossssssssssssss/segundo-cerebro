@@ -17,8 +17,10 @@ import {
   Maximize2,
   Copy,
   X,
+  Trash2,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
+import { BarraAcoesLote, BotaoAcaoLote } from "@/components/BarraAcoesLote";
 import { lerConfig } from "@/lib/settings";
 import { correspondeBusca, lerParametroAbrir } from "@/lib/utils";
 import { gravarBinario } from "@/lib/github";
@@ -1103,29 +1105,26 @@ export default function Referencias() {
       )}
 
       {/* Barra Flutuante de Ações em Lote para Referências */}
-      {selecionadas.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-2xl border border-border bg-card/95 backdrop-blur-md px-4 py-2.5 shadow-2xl animate-in slide-in-from-bottom duration-200">
-          <span className="text-xs font-bold text-foreground">
-            {selecionadas.size} selecionada{selecionadas.size > 1 ? "s" : ""}
-          </span>
-          <div className="h-4 w-px bg-border mx-1" />
-          <Button size="sm" variant="outline" onClick={() => setModalTagAberto(true)}>
-            + Adicionar Tag
-          </Button>
-          <Button size="sm" variant="destructive" onClick={pedirExcluirSelecionadas}>
-            Excluir
-          </Button>
-          <Tooltip conteudo="Desmarcar seleção" posicao="top">
-            <button
-              onClick={limparSelecao}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-semibold ml-1 cursor-pointer"
-              aria-label="Desmarcar seleção"
-            >
-              <X size={14} />
-            </button>
-          </Tooltip>
-        </div>
-      )}
+      <BarraAcoesLote
+        totalSelecionados={selecionadas.size}
+        rotuloItem="referência"
+        aoLimparSelecao={limparSelecao}
+      >
+        <BotaoAcaoLote
+          tooltip="Adicionar tag às selecionadas"
+          rotulo="Adicionar Tag"
+          variante="neutro"
+          icone={<Tag size={13} />}
+          onClick={() => setModalTagAberto(true)}
+        />
+        <BotaoAcaoLote
+          tooltip="Excluir referências selecionadas"
+          rotulo="Excluir"
+          variante="perigo"
+          icone={<Trash2 size={13} />}
+          onClick={pedirExcluirSelecionadas}
+        />
+      </BarraAcoesLote>
 
       {/* Modal Nativo de Confirmação para Exclusão em Lote */}
       {confirmarExclusaoLote && (

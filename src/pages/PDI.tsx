@@ -23,8 +23,12 @@ import {
   List,
   Table,
   Columns3,
+  Trash2,
+  Link2,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
+import { BarraAcoesLote, BotaoAcaoLote } from "@/components/BarraAcoesLote";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
@@ -68,6 +72,7 @@ import {
   Vazio,
   Carregando,
   ModalConfirmacao,
+  ModalEntradaTexto,
 } from "@/components/ui";
 import { hojeISO, dataCurta, lerParametroAbrir, lerParametroCriar, correspondeBusca } from "@/lib/utils";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
@@ -191,6 +196,101 @@ export default function PDI() {
   const [novaTarefaMetaId, setNovaTarefaMetaId] = useState<string | null>(null);
   const [novoTextoTarefa, setNovoTextoTarefa] = useState("");
   const [salvandoTarefaMeta, setSalvandoTarefaMeta] = useState(false);
+
+  // ── Seleção e Ações em Lote para Entregas / Brag Document ─────────────────
+  const [entregasSelecionadas, setEntregasSelecionadas] = useState<Set<string>>(new Set());
+  const [modalTagLoteAberto, setModalTagLoteAberto] = useState(false);
+  const [confirmarExclusaoEntregasLote, setConfirmarExclusaoEntregasLote] = useState(false);
+
+  const alternarSelecaoEntrega = (caminho: string) => {
+    setEntregasSelecionadas((prev) => {
+      const proximo = new Set(prev);
+      if (proximo.has(caminho)) proximo.delete(caminho);
+      else proximo.add(caminho);
+      return proximo;
+    });
+  };
+
+  const limparSelecaoEntregas = () => setEntregasSelecionadas(new Set());
+
+  // Vincular todas as entregas selecionadas a uma meta
+  const vincularEntregasSelecionadas = async (metaId: string) => {
+    const alvos = entregas.filter((e) => entregasSelecionadas.has(e.caminho));
+    if (alvos.length === 0) return;
+    limparSelecaoEntregas();
+    try {
+      for (const e of alvos) {
+        if (!e.metas.includes(metaId)) {
+          const atualizada: Entrega = {
+            ...e,
+            metas: [...e.metas, metaId],
+          };
+          const { dados, corpo } = entregaParaArquivo(atualizada);
+          const md = escreverMarkdown({ dados, corpo });
+          await salvarTexto(e.caminho, md, e.sha, `vincular meta lote ${metaId}`);
+        }
+      }
+      invalidarCache();
+      dispararAtualizacaoAcervo();
+      recarregarEntregas();
+      toast(`${alvos.length} entrega(s) vinculada(s) à meta com sucesso!`);
+    } catch (err: any) {
+      toast(`Erro ao vincular entregas: ${err?.message || err}`, { tipo: "erro" });
+    }
+  };
+
+  // Adicionar tag em lote às entregas selecionadas
+  const adicionarTagEntregasSelecionadas = async (tag: string) => {
+    const tagLimpa = tag.trim().replace(/^#/, "");
+    if (!tagLimpa) return;
+    const alvos = entregas.filter((e) => entregasSelecionadas.has(e.caminho));
+    if (alvos.length === 0) return;
+    limparSelecaoEntregas();
+    try {
+      for (const e of alvos) {
+        const tagsAtuais = e.tags || [];
+        if (!tagsAtuais.includes(tagLimpa)) {
+          const atualizada: Entrega = {
+            ...e,
+            tags: [...tagsAtuais, tagLimpa],
+          };
+          const { dados, corpo } = entregaParaArquivo(atualizada);
+          const md = escreverMarkdown({ dados, corpo });
+          await salvarTexto(e.caminho, md, e.sha, `tag lote ${tagLimpa}`);
+        }
+      }
+      invalidarCache();
+      dispararAtualizacaoAcervo();
+      recarregarEntregas();
+      toast(`Tag #${tagLimpa} adicionada a ${alvos.length} entrega(s)!`);
+    } catch (err: any) {
+      toast(`Erro ao adicionar tag: ${err?.message || err}`, { tipo: "erro" });
+    }
+  };
+
+  // Excluir entregas selecionadas em lote
+  const pedirExcluirEntregasSelecionadas = () => {
+    if (entregasSelecionadas.size === 0) return;
+    setConfirmarExclusaoEntregasLote(true);
+  };
+
+  const confirmarExcluirEntregasSelecionadas = async () => {
+    const alvos = entregas.filter((e) => entregasSelecionadas.has(e.caminho));
+    setConfirmarExclusaoEntregasLote(false);
+    if (alvos.length === 0) return;
+    limparSelecaoEntregas();
+    try {
+      for (const e of alvos) {
+        await apagarItem(e.caminho, e.sha);
+      }
+      invalidarCache();
+      dispararAtualizacaoAcervo();
+      recarregarEntregas();
+      toast(`${alvos.length} entrega(s) movida(s) para a lixeira!`);
+    } catch (err: any) {
+      toast(`Erro ao excluir entregas: ${err?.message || err}`, { tipo: "erro" });
+    }
+  };
 
   // Busca tarefas vinculadas a uma meta específica
   const tarefasDaMeta = useCallback(
@@ -1473,14 +1573,14 @@ export default function PDI() {
                 <AlternadorVisao
                   valorAtivo={visaoEntregas}
                   aoAlternar={mudarVisaoEntregas}
-                  opcoes={[
+                                  opcoes={[
                     { id: "grade", rotulo: "Grade", icone: <LayoutGrid size={13} /> },
                     { id: "lista", rotulo: "Lista", icone: <List size={13} /> },
                     { id: "tabela", rotulo: "Tabela", icone: <Table size={13} /> },
                   ]}
-                />
-              )}
-            </div>
+                  />
+                )}
+              </div>
 
             {entregas.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 p-6 text-center bg-card/30 flex flex-col items-center justify-center gap-2">
@@ -1505,107 +1605,126 @@ export default function PDI() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {[...entregas]
                         .sort((a, b) => b.data.localeCompare(a.data))
-                        .map((e) => (
-                          <Cartao
-                            key={e.id}
-                            className={cn(
-                              "cursor-pointer p-3.5 transition-all border group relative flex flex-col justify-between gap-2.5",
-                              dropHoverId === e.id
-                                ? "bg-indigo-500/10 border-indigo-500/40 scale-[1.01] shadow-xs"
-                                : "hover:bg-accent hover:border-primary/30 border-border/70"
-                            )}
-                            draggable
-                            onDragStart={(ev) => {
-                              ev.dataTransfer.setData("text/plain", `entrega:${e.id}`);
-                            }}
-                            onClick={() => {
-                              setEditandoEntrega(e);
-                              setOrigEntrega(e);
-                              navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
-                            }}
-                            onDragOver={(ev) => ev.preventDefault()}
-                            onDragEnter={() => setDropHoverId(e.id)}
-                            onDragLeave={() => setDropHoverId(null)}
-                            onDrop={async (ev) => {
-                              ev.preventDefault();
-                              setDropHoverId(null);
-                              const metaId = ev.dataTransfer.getData("text/plain");
-                              if (metaId && !e.metas.includes(metaId)) {
-                                const entregaAtualizada = {
-                                  ...e,
-                                  metas: [...e.metas, metaId],
-                                };
-                                const { dados, corpo } = entregaParaArquivo(entregaAtualizada);
-                                const texto = escreverMarkdown({ dados, corpo });
-                                await salvarTexto(e.caminho, texto, e.sha);
-                                recarregarEntregas();
-                              }
-                            }}
-                          >
-                            <div>
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                  <Tooltip conteudo="Arrastar entrega para vincular à meta">
-                                    <GripVertical size={14} className="text-muted-foreground/60 group-hover:text-foreground cursor-grab active:cursor-grabbing shrink-0" />
-                                  </Tooltip>
-                                  <p className="font-medium text-xs sm:text-sm truncate group-hover:text-primary transition-colors">
-                                    {e.titulo || "Sem título"}
-                                  </p>
-                                </div>
-                                <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
-                                  {dataCurta(e.data)}
-                                </span>
-                              </div>
-
-                              {/* Impacto da Entrega */}
-                              {e.impacto && (
-                                <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 font-medium bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
-                                  <TrendingUp size={12} className="shrink-0" />
-                                  <span className="truncate">{e.impacto}</span>
-                                </div>
+                        .map((e) => {
+                          const selecionado = entregasSelecionadas.has(e.caminho);
+                          return (
+                            <Cartao
+                              key={e.id}
+                              className={cn(
+                                "cursor-pointer p-3.5 transition-all border group relative flex flex-col justify-between gap-2.5",
+                                dropHoverId === e.id
+                                  ? "bg-indigo-500/10 border-indigo-500/40 scale-[1.01] shadow-xs"
+                                  : selecionado
+                                  ? "bg-primary/5 border-primary ring-1 ring-primary/40"
+                                  : "hover:bg-accent hover:border-primary/30 border-border/70"
                               )}
-
-                              {/* Elogio / Feedback recebido */}
-                              {e.elogio && (
-                                <div className="mt-1.5 flex items-center gap-1.5 text-xs text-purple-700 dark:text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md italic">
-                                  <MessageSquareQuote size={12} className="shrink-0" />
-                                  <span className="truncate">
-                                    "{e.elogio}" {e.autorElogio ? `— ${contatos.find((c) => c.id === e.autorElogio || c.titulo === e.autorElogio)?.titulo || e.autorElogio}` : ""}
+                              draggable
+                              onDragStart={(ev) => {
+                                ev.dataTransfer.setData("text/plain", `entrega:${e.id}`);
+                              }}
+                              onClick={() => {
+                                setEditandoEntrega(e);
+                                setOrigEntrega(e);
+                                navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
+                              }}
+                              onDragOver={(ev) => ev.preventDefault()}
+                              onDragEnter={() => setDropHoverId(e.id)}
+                              onDragLeave={() => setDropHoverId(null)}
+                              onDrop={async (ev) => {
+                                ev.preventDefault();
+                                setDropHoverId(null);
+                                const metaId = ev.dataTransfer.getData("text/plain");
+                                if (metaId && !e.metas.includes(metaId)) {
+                                  const entregaAtualizada = {
+                                    ...e,
+                                    metas: [...e.metas, metaId],
+                                  };
+                                  const { dados, corpo } = entregaParaArquivo(entregaAtualizada);
+                                  const texto = escreverMarkdown({ dados, corpo });
+                                  await salvarTexto(e.caminho, texto, e.sha);
+                                  recarregarEntregas();
+                                }
+                              }}
+                            >
+                              <div>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={selecionado}
+                                      onChange={(ev) => {
+                                        ev.stopPropagation();
+                                        alternarSelecaoEntrega(e.caminho);
+                                      }}
+                                      onClick={(ev) => ev.stopPropagation()}
+                                      className={cn(
+                                        "h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/40 cursor-pointer shrink-0 transition-opacity",
+                                        entregasSelecionadas.size > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                      )}
+                                      aria-label={`Selecionar ${e.titulo}`}
+                                    />
+                                    <Tooltip conteudo="Arrastar entrega para vincular à meta">
+                                      <GripVertical size={14} className="text-muted-foreground/60 group-hover:text-foreground cursor-grab active:cursor-grabbing shrink-0" />
+                                    </Tooltip>
+                                    <p className="font-medium text-xs sm:text-sm truncate group-hover:text-primary transition-colors">
+                                      {e.titulo || "Sem título"}
+                                    </p>
+                                  </div>
+                                  <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                                    {dataCurta(e.data)}
                                   </span>
                                 </div>
-                              )}
-                            </div>
 
-                            <div className="mt-1 pt-2 border-t border-border/40 flex flex-wrap items-center gap-1.5">
-                              {e.metas.length === 0 ? (
-                                <Selo tom="aviso">sem meta</Selo>
-                              ) : (
-                                e.metas.map((id) => (
-                                  <Selo key={id} tom="sucesso" className="text-[10px]">
-                                    <Target size={10} className="mr-0.5" />
-                                    {metas.find((m) => m.id === id)?.titulo ?? id}
+                                {/* Impacto da Entrega */}
+                                {e.impacto && (
+                                  <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 font-medium bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                                    <TrendingUp size={12} className="shrink-0" />
+                                    <span className="truncate">{e.impacto}</span>
+                                  </div>
+                                )}
+
+                                {/* Elogio / Feedback recebido */}
+                                {e.elogio && (
+                                  <div className="mt-1.5 flex items-center gap-1.5 text-xs text-purple-700 dark:text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md italic">
+                                    <MessageSquareQuote size={12} className="shrink-0" />
+                                    <span className="truncate">
+                                      "{e.elogio}" {e.autorElogio ? `— ${contatos.find((c) => c.id === e.autorElogio || c.titulo === e.autorElogio)?.titulo || e.autorElogio}` : ""}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="mt-1 pt-2 border-t border-border/40 flex flex-wrap items-center gap-1.5">
+                                {e.metas.length === 0 ? (
+                                  <Selo tom="aviso">sem meta</Selo>
+                                ) : (
+                                  e.metas.map((id) => (
+                                    <Selo key={id} tom="sucesso" className="text-[10px]">
+                                      <Target size={10} className="mr-0.5" />
+                                      {metas.find((m) => m.id === id)?.titulo ?? id}
+                                    </Selo>
+                                  ))
+                                )}
+                                {e.colaboracao && e.colaboracao.length > 0 && (
+                                  <Selo tom="neutro" className="inline-flex items-center gap-1 text-[10px]">
+                                    <Users size={9} />
+                                    {e.colaboracao.join(", ")}
                                   </Selo>
-                                ))
-                              )}
-                              {e.colaboracao && e.colaboracao.length > 0 && (
-                                <Selo tom="neutro" className="inline-flex items-center gap-1 text-[10px]">
-                                  <Users size={9} />
-                                  {e.colaboracao.join(", ")}
-                                </Selo>
-                              )}
-                              {e.tags && e.tags.map((t) => (
-                                <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary/80 text-muted-foreground">
-                                  #{t}
-                                </span>
-                              ))}
-                              {e.iaSugeriu && (
-                                <Selo tom="primario" className="inline-flex items-center gap-1 text-[10px]">
-                                  <Sparkles size={9} /> conferir
-                                </Selo>
-                              )}
-                            </div>
-                          </Cartao>
-                        ))}
+                                )}
+                                {e.tags && e.tags.map((t) => (
+                                  <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md bg-secondary/80 text-muted-foreground">
+                                    #{t}
+                                  </span>
+                                ))}
+                                {e.iaSugeriu && (
+                                  <Selo tom="primario" className="inline-flex items-center gap-1 text-[10px]">
+                                    <Sparkles size={9} /> conferir
+                                  </Selo>
+                                )}
+                              </div>
+                            </Cartao>
+                          );
+                        })}
                     </div>
                   )}
 
@@ -1614,53 +1733,73 @@ export default function PDI() {
                     <div className="divide-y divide-border rounded-xl border border-border bg-card overflow-hidden shadow-2xs">
                       {[...entregas]
                         .sort((a, b) => b.data.localeCompare(a.data))
-                        .map((e) => (
-                          <div
-                            key={e.id}
-                            draggable
-                            onDragStart={(ev) => {
-                              ev.dataTransfer.setData("text/plain", `entrega:${e.id}`);
-                            }}
-                            onClick={() => {
-                              setEditandoEntrega(e);
-                              setOrigEntrega(e);
-                              navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
-                            }}
-                            className="flex items-center justify-between gap-3 p-3 hover:bg-accent/50 transition-colors cursor-pointer group"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                              <Tooltip conteudo="Arrastar entrega para vincular à meta">
-                                <GripVertical size={14} className="text-muted-foreground/60 group-hover:text-foreground cursor-grab active:cursor-grabbing shrink-0" />
-                              </Tooltip>
-                              <Package size={15} className="text-purple-500 shrink-0" />
-                              <span className="font-medium text-xs sm:text-sm text-foreground truncate group-hover:text-primary">
-                                {e.titulo || "Sem título"}
-                              </span>
-                              {e.impacto && (
-                                <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md truncate max-w-xs">
-                                  <TrendingUp size={11} className="shrink-0" /> {e.impacto}
-                                </span>
+                        .map((e) => {
+                          const selecionado = entregasSelecionadas.has(e.caminho);
+                          return (
+                            <div
+                              key={e.id}
+                              draggable
+                              onDragStart={(ev) => {
+                                ev.dataTransfer.setData("text/plain", `entrega:${e.id}`);
+                              }}
+                              onClick={() => {
+                                setEditandoEntrega(e);
+                                setOrigEntrega(e);
+                                navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
+                              }}
+                              className={cn(
+                                "flex items-center justify-between gap-3 p-3 transition-colors cursor-pointer group",
+                                selecionado ? "bg-primary/5 ring-1 ring-inset ring-primary/40" : "hover:bg-accent/50"
                               )}
-                              {e.elogio && (
-                                <span className="hidden lg:inline-flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md italic truncate max-w-xs">
-                                  <MessageSquareQuote size={11} className="shrink-0" /> "{e.elogio}"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={selecionado}
+                                  onChange={(ev) => {
+                                    ev.stopPropagation();
+                                    alternarSelecaoEntrega(e.caminho);
+                                  }}
+                                  onClick={(ev) => ev.stopPropagation()}
+                                  className={cn(
+                                    "h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/40 cursor-pointer shrink-0 transition-opacity",
+                                    entregasSelecionadas.size > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                  )}
+                                  aria-label={`Selecionar ${e.titulo}`}
+                                />
+                                <Tooltip conteudo="Arrastar entrega para vincular à meta">
+                                  <GripVertical size={14} className="text-muted-foreground/60 group-hover:text-foreground cursor-grab active:cursor-grabbing shrink-0" />
+                                </Tooltip>
+                                <Package size={15} className="text-purple-500 shrink-0" />
+                                <span className="font-medium text-xs sm:text-sm text-foreground truncate group-hover:text-primary">
+                                  {e.titulo || "Sem título"}
                                 </span>
-                              )}
-                            </div>
+                                {e.impacto && (
+                                  <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md truncate max-w-xs">
+                                    <TrendingUp size={11} className="shrink-0" /> {e.impacto}
+                                  </span>
+                                )}
+                                {e.elogio && (
+                                  <span className="hidden lg:inline-flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md italic truncate max-w-xs">
+                                    <MessageSquareQuote size={11} className="shrink-0" /> "{e.elogio}"
+                                  </span>
+                                )}
+                              </div>
 
-                            <div className="flex items-center gap-2 shrink-0">
-                              {e.metas.length > 0 ? (
-                                <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                                  {metas.find((m) => m.id === e.metas[0])?.titulo || e.metas[0]}
-                                  {e.metas.length > 1 && ` +${e.metas.length - 1}`}
-                                </span>
-                              ) : (
-                                <span className="text-[11px] text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-md">Sem meta</span>
-                              )}
-                              <span className="text-xs text-muted-foreground tabular-nums">{dataCurta(e.data)}</span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {e.metas.length > 0 ? (
+                                  <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                                    {metas.find((m) => m.id === e.metas[0])?.titulo || e.metas[0]}
+                                    {e.metas.length > 1 && ` +${e.metas.length - 1}`}
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-md">Sem meta</span>
+                                )}
+                                <span className="text-xs text-muted-foreground tabular-nums">{dataCurta(e.data)}</span>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   )}
 
@@ -1670,6 +1809,21 @@ export default function PDI() {
                       <table className="w-full text-left text-xs">
                         <thead className="bg-muted/50 border-b border-border font-semibold text-muted-foreground">
                           <tr>
+                            <th className="px-3.5 py-2.5 w-10">
+                              <input
+                                type="checkbox"
+                                checked={entregas.length > 0 && entregasSelecionadas.size === entregas.length}
+                                onChange={() => {
+                                  if (entregasSelecionadas.size === entregas.length) {
+                                    limparSelecaoEntregas();
+                                  } else {
+                                    setEntregasSelecionadas(new Set(entregas.map((e) => e.caminho)));
+                                  }
+                                }}
+                                className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/40 cursor-pointer"
+                                aria-label="Selecionar todas as entregas"
+                              />
+                            </th>
                             <th className="px-3.5 py-2.5">Conquista / Entrega</th>
                             <th className="px-3.5 py-2.5">Data</th>
                             <th className="px-3.5 py-2.5">Meta Vinculada</th>
@@ -1681,71 +1835,89 @@ export default function PDI() {
                         <tbody className="divide-y divide-border">
                           {[...entregas]
                             .sort((a, b) => b.data.localeCompare(a.data))
-                            .map((e) => (
-                              <tr
-                                key={e.id}
-                                draggable
-                                onDragStart={(ev) => {
-                                  ev.dataTransfer.setData("text/plain", `entrega:${e.id}`);
-                                }}
-                                onClick={() => {
-                                  setEditandoEntrega(e);
-                                  setOrigEntrega(e);
-                                  navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
-                                }}
-                                className="hover:bg-accent/40 transition-colors cursor-pointer group"
-                              >
-                                <td className="px-3.5 py-2.5 font-medium text-foreground">
-                                  <div className="flex items-center gap-2">
-                                    <GripVertical size={14} className="text-muted-foreground/50 group-hover:text-foreground cursor-grab shrink-0" />
-                                    <Package size={14} className="text-purple-500 shrink-0" />
-                                    <span className="truncate group-hover:text-primary">{e.titulo || "Sem título"}</span>
-                                  </div>
-                                </td>
-                                <td className="px-3.5 py-2.5 text-muted-foreground tabular-nums whitespace-nowrap">
-                                  {dataCurta(e.data)}
-                                </td>
-                                <td className="px-3.5 py-2.5">
-                                  {e.metas.length > 0 ? (
-                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                                      <Target size={10} />
-                                      {metas.find((m) => m.id === e.metas[0])?.titulo || e.metas[0]}
-                                      {e.metas.length > 1 && ` +${e.metas.length - 1}`}
-                                    </span>
-                                  ) : (
-                                    <span className="text-muted-foreground/60">—</span>
+                            .map((e) => {
+                              const selecionado = entregasSelecionadas.has(e.caminho);
+                              return (
+                                <tr
+                                  key={e.id}
+                                  draggable
+                                  onDragStart={(ev) => {
+                                    ev.dataTransfer.setData("text/plain", `entrega:${e.id}`);
+                                  }}
+                                  onClick={() => {
+                                    setEditandoEntrega(e);
+                                    setOrigEntrega(e);
+                                    navegar(`?abrir=${encodeURIComponent(e.caminho)}`, { replace: true });
+                                  }}
+                                  className={cn(
+                                    "transition-colors cursor-pointer group",
+                                    selecionado ? "bg-primary/5" : "hover:bg-accent/40"
                                   )}
-                                </td>
-                                <td className="px-3.5 py-2.5 text-muted-foreground max-w-xs truncate">
-                                  {e.impacto ? (
-                                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                                      {e.impacto}
-                                    </span>
-                                  ) : (
-                                    <span className="text-muted-foreground/60">—</span>
-                                  )}
-                                </td>
-                                <td className="px-3.5 py-2.5 text-muted-foreground max-w-xs truncate">
-                                  {e.elogio ? (
-                                    <span className="italic text-purple-600 dark:text-purple-400">
-                                      "{e.elogio}" {e.autorElogio ? `— ${e.autorElogio}` : ""}
-                                    </span>
-                                  ) : (
-                                    <span className="text-muted-foreground/60">—</span>
-                                  )}
-                                </td>
-                                <td className="px-3.5 py-2.5 text-muted-foreground">
-                                  {e.colaboracao && e.colaboracao.length > 0 ? (
-                                    <span className="inline-flex items-center gap-1 text-[11px]">
-                                      <Users size={10} />
-                                      {e.colaboracao.join(", ")}
-                                    </span>
-                                  ) : (
-                                    <span className="text-muted-foreground/60">—</span>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
+                                >
+                                  <td className="px-3.5 py-2.5" onClick={(ev) => ev.stopPropagation()}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selecionado}
+                                      onChange={(ev) => {
+                                        ev.stopPropagation();
+                                        alternarSelecaoEntrega(e.caminho);
+                                      }}
+                                      className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/40 cursor-pointer"
+                                      aria-label={`Selecionar ${e.titulo}`}
+                                    />
+                                  </td>
+                                  <td className="px-3.5 py-2.5 font-medium text-foreground">
+                                    <div className="flex items-center gap-2">
+                                      <GripVertical size={14} className="text-muted-foreground/50 group-hover:text-foreground cursor-grab shrink-0" />
+                                      <Package size={14} className="text-purple-500 shrink-0" />
+                                      <span className="truncate group-hover:text-primary">{e.titulo || "Sem título"}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-3.5 py-2.5 text-muted-foreground tabular-nums whitespace-nowrap">
+                                    {dataCurta(e.data)}
+                                  </td>
+                                  <td className="px-3.5 py-2.5">
+                                    {e.metas.length > 0 ? (
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                                        <Target size={10} />
+                                        {metas.find((m) => m.id === e.metas[0])?.titulo || e.metas[0]}
+                                        {e.metas.length > 1 && ` +${e.metas.length - 1}`}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground/60">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-3.5 py-2.5 text-muted-foreground max-w-xs truncate">
+                                    {e.impacto ? (
+                                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                        {e.impacto}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground/60">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-3.5 py-2.5 text-muted-foreground max-w-xs truncate">
+                                    {e.elogio ? (
+                                      <span className="italic text-purple-600 dark:text-purple-400">
+                                        "{e.elogio}" {e.autorElogio ? `— ${e.autorElogio}` : ""}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground/60">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-3.5 py-2.5 text-muted-foreground">
+                                    {e.colaboracao && e.colaboracao.length > 0 ? (
+                                      <span className="inline-flex items-center gap-1 text-[11px]">
+                                        <Users size={10} />
+                                        {e.colaboracao.join(", ")}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground/60">—</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
                         </tbody>
                       </table>
                     </div>
@@ -2132,6 +2304,96 @@ export default function PDI() {
             recarregarTarefas();
           } : undefined}
           erro={erroSalvar}
+        />
+      )}
+
+      {/* Barra Flutuante de Ações em Lote para Entregas do PDI */}
+      <BarraAcoesLote
+        totalSelecionados={entregasSelecionadas.size}
+        rotuloItem="entrega"
+        aoLimparSelecao={limparSelecaoEntregas}
+      >
+        {/* Vincular a uma Meta com Popover */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <div>
+              <BotaoAcaoLote
+                tooltip="Vincular entregas selecionadas a uma meta"
+                rotulo="Vincular Meta"
+                variante="neutro"
+                icone={<Link2 size={13} className="text-emerald-500" />}
+              />
+            </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-2 text-xs shadow-xl border-border bg-card/95 backdrop-blur-md" align="center">
+            <p className="font-semibold text-muted-foreground text-[10px] uppercase tracking-wider mb-1.5 px-1">
+              Vincular à meta:
+            </p>
+            {metas.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic px-1 py-1">Nenhuma meta criada ainda.</p>
+            ) : (
+              <div className="max-h-48 overflow-y-auto space-y-0.5 no-scrollbar">
+                {metas.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => vincularEntregasSelecionadas(m.id)}
+                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 text-xs font-medium truncate transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Target size={12} className="text-emerald-500 shrink-0" />
+                    <span className="truncate">{m.titulo}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+
+        {/* Adicionar Tag em Lote */}
+        <BotaoAcaoLote
+          tooltip="Adicionar tag às entregas selecionadas"
+          rotulo="Adicionar Tag"
+          variante="neutro"
+          icone={<Tag size={13} className="text-amber-500" />}
+          onClick={() => setModalTagLoteAberto(true)}
+        />
+
+        {/* Excluir Entregas Selecionadas */}
+        <BotaoAcaoLote
+          tooltip="Mover entregas selecionadas para a lixeira"
+          rotulo="Excluir"
+          variante="perigo"
+          icone={<Trash2 size={13} />}
+          onClick={pedirExcluirEntregasSelecionadas}
+        />
+      </BarraAcoesLote>
+
+      {/* Modal para adicionar Tag em Lote */}
+      {modalTagLoteAberto && (
+        <ModalEntradaTexto
+          aberto={true}
+          titulo="Adicionar tag às entregas"
+          descricao={`Digite o nome da tag a ser adicionada em ${entregasSelecionadas.size} entrega(s) selecionada(s).`}
+          placeholder="Ex: design-system, lideranca, mentoria"
+          textoConfirmar="Adicionar Tag"
+          aoConfirmar={(tag) => {
+            setModalTagLoteAberto(false);
+            adicionarTagEntregasSelecionadas(tag);
+          }}
+          aoCancelar={() => setModalTagLoteAberto(false)}
+        />
+      )}
+
+      {/* Modal para exclusão em lote de entregas */}
+      {confirmarExclusaoEntregasLote && (
+        <ModalConfirmacao
+          aberto={true}
+          titulo="Excluir entregas selecionadas"
+          descricao={`Tem certeza que deseja mover as ${entregasSelecionadas.size} entregas selecionadas para a lixeira?`}
+          textoConfirmar="Sim, mover para lixeira"
+          varianteConfirmar="perigo"
+          aoConfirmar={confirmarExcluirEntregasSelecionadas}
+          aoCancelar={() => setConfirmarExclusaoEntregasLote(false)}
         />
       )}
 

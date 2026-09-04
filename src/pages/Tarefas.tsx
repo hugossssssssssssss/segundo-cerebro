@@ -9,13 +9,12 @@ import {
   CalendarPlus,
   CheckCircle2,
   Trash2,
-  X,
   Flame,
   AlertTriangle,
   Tag,
   Folder,
 } from "lucide-react";
-import { Tooltip } from "@/components/ui/tooltip";
+import { BarraAcoesLote, BotaoAcaoLote } from "@/components/BarraAcoesLote";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useItemRepo } from "@/lib/useItemRepo";
@@ -722,48 +721,43 @@ export default function Tarefas() {
       )}
 
       {/* Barra Flutuante de Ações em Lote Minimalista */}
-      {selecionadas.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 rounded-2xl border border-border/80 bg-card/95 backdrop-blur-xl px-3.5 py-2 shadow-2xl animate-in slide-in-from-bottom duration-200">
-          <span className="text-xs font-bold text-foreground px-1">
-            {selecionadas.size} selecionada{selecionadas.size > 1 ? "s" : ""}
-          </span>
-          <div className="h-4 w-px bg-border/60 mx-1" />
+      <BarraAcoesLote
+        totalSelecionados={selecionadas.size}
+        rotuloItem="tarefa"
+        aoLimparSelecao={limparSelecao}
+      >
+        <BotaoAcaoLote
+          tooltip="Reagendar para Hoje"
+          variante="neutro"
+          icone={<Calendar size={14} />}
+          onClick={() => adiarSelecionadas(0)}
+          aria-label="Reagendar para Hoje"
+        />
 
-          <Tooltip conteudo="Reagendar para Hoje" posicao="top">
-            <Botao tamanho="icone" variante="neutro" onClick={() => adiarSelecionadas(0)} className="h-8 w-8" aria-label="Reagendar para Hoje">
-              <Calendar size={14} />
-            </Botao>
-          </Tooltip>
+        <BotaoAcaoLote
+          tooltip="Reagendar para Amanhã"
+          variante="neutro"
+          icone={<CalendarPlus size={14} />}
+          onClick={() => adiarSelecionadas(1)}
+          aria-label="Reagendar para Amanhã"
+        />
 
-          <Tooltip conteudo="Reagendar para Amanhã" posicao="top">
-            <Botao tamanho="icone" variante="neutro" onClick={() => adiarSelecionadas(1)} className="h-8 w-8" aria-label="Reagendar para Amanhã">
-              <CalendarPlus size={14} />
-            </Botao>
-          </Tooltip>
+        <BotaoAcaoLote
+          tooltip="Concluir tarefas selecionadas"
+          variante="primario"
+          icone={<CheckCircle2 size={14} />}
+          onClick={concluirSelecionadas}
+          aria-label="Concluir tarefas selecionadas"
+        />
 
-          <Tooltip conteudo="Concluir tarefas selecionadas" posicao="top">
-            <Botao tamanho="icone" onClick={concluirSelecionadas} className="h-8 w-8" aria-label="Concluir tarefas selecionadas">
-              <CheckCircle2 size={14} />
-            </Botao>
-          </Tooltip>
-
-          <Tooltip conteudo="Excluir tarefas selecionadas" posicao="top">
-            <Botao tamanho="icone" variante="perigo" onClick={pedirExcluirSelecionadas} className="h-8 w-8" aria-label="Excluir tarefas selecionadas">
-              <Trash2 size={14} />
-            </Botao>
-          </Tooltip>
-
-          <Tooltip conteudo="Desmarcar seleção" posicao="top">
-            <button
-              onClick={limparSelecao}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors ml-1 cursor-pointer"
-              aria-label="Desmarcar seleção"
-            >
-              <X size={14} />
-            </button>
-          </Tooltip>
-        </div>
-      )}
+        <BotaoAcaoLote
+          tooltip="Excluir tarefas selecionadas"
+          variante="perigo"
+          icone={<Trash2 size={14} />}
+          onClick={pedirExcluirSelecionadas}
+          aria-label="Excluir tarefas selecionadas"
+        />
+      </BarraAcoesLote>
 
       {/* painel de edição */}
       {editando !== null && (

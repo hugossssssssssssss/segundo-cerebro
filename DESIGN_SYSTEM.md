@@ -186,6 +186,10 @@ Cada área do Klaus possui um tom temático específico para o seu ícone de cab
 ### 9. `Rodape` (`src/components/Rodape.tsx`)
 - **Quando usar**: Posicionado no final do layout principal (`<main>`) para fornecer links rápidos, atalhos de teclado, status do sistema em tempo real e botão de voltar ao topo.
 
+### 10. `BarraAcoesLote` e `BotaoAcaoLote` (`src/components/BarraAcoesLote.tsx`)
+- **Quando usar**: Barra flutuante universal no rodapé da página disparada automaticamente quando 1 ou mais itens são selecionados (em Tarefas, Notas, PDI/Entregas, Referências, Contatos, etc.).
+- **Recursos**: Visual moderno em *glassmorphism*, contador pluralizado de itens selecionados, suporte a fechar via tecla `Esc` ou botão `X`, botões de ação modulares com tooltip integrado (`<BotaoAcaoLote />`).
+
 
 ---
 
