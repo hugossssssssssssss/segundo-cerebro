@@ -99,17 +99,12 @@ export function NavegacaoLateral({
       <aside
         className={cn(
           "flex flex-col border-r border-border bg-card transition-all duration-200 ease-in-out select-none shrink-0 overflow-hidden",
-          colapsada ? "w-[68px]" : "w-60",
+          colapsada ? "w-16" : "w-60",
           className
         )}
       >
         {/* Topo da Sidebar: Marca e Toggle */}
-        <div
-          className={cn(
-            "flex h-14 items-center border-b border-border/60 transition-all shrink-0",
-            colapsada ? "justify-center px-2" : "justify-between px-3"
-          )}
-        >
+        <div className="flex h-14 items-center justify-between px-3 border-b border-border/60 transition-all shrink-0">
           {!colapsada ? (
             <>
               <NavLink
@@ -127,7 +122,7 @@ export function NavegacaoLateral({
                 <button
                   type="button"
                   onClick={() => setColapsada(true)}
-                  className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+                  className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer shrink-0"
                   aria-label="Recolher menu lateral"
                 >
                   <ChevronLeft size={18} />
@@ -153,7 +148,7 @@ export function NavegacaoLateral({
                   }}
                   onMouseLeave={() => setAvisoVisivel(false)}
                   className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer",
+                    "flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer shrink-0",
                     workspaceAberto && "hover:text-primary"
                   )}
                   aria-label="Expandir menu lateral"
@@ -183,24 +178,19 @@ export function NavegacaoLateral({
         </div>
 
         {/* Corpo da Navegação */}
-        <div
-          className={cn(
-            "flex-1 overflow-y-auto overflow-x-hidden py-3 space-y-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-            colapsada ? "px-2" : "px-3"
-          )}
-        >
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo) => {
             const itensVisiveis = (grupo.itens || []).filter((item) => item && typeof item === "object" && !item.oculto);
             if (itensVisiveis.length === 0) return null;
 
             return (
-              <div key={grupo.id || grupo.titulo} className="space-y-1">
+              <div key={grupo.id || grupo.titulo} className="space-y-1.5">
                 {!colapsada && (
-                  <h3 className="px-2 pb-1 text-[11px] font-semibold text-muted-foreground/80 tracking-wider uppercase truncate">
+                  <h3 className="px-2.5 pb-0.5 text-[11px] font-semibold text-muted-foreground/80 tracking-wider uppercase truncate">
                     {grupo.titulo}
                   </h3>
                 )}
-                <nav className="space-y-1">
+                <nav className="space-y-1.5">
                   {itensVisiveis.map((item) => {
                     const Icone = obterIconePorNome(item.iconeNome || "HelpCircle");
                     return (
@@ -215,10 +205,7 @@ export function NavegacaoLateral({
                           onClick={lidarCliqueItem}
                           className={({ isActive }) =>
                             cn(
-                              "flex items-center h-10 rounded-xl text-sm font-medium transition-colors relative group cursor-pointer select-none",
-                              colapsada
-                                ? "w-11 justify-center mx-auto p-0"
-                                : "w-full gap-3 px-2.5",
+                              "flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium transition-colors relative group cursor-pointer select-none shrink-0",
                               isActive
                                 ? "bg-primary/15 text-primary font-semibold shadow-2xs"
                                 : "text-muted-foreground hover:bg-accent/80 hover:text-foreground"
@@ -253,21 +240,13 @@ export function NavegacaoLateral({
         </div>
 
         {/* Rodapé da Sidebar */}
-        <div
-          className={cn(
-            "border-t border-border/60 space-y-1 shrink-0",
-            colapsada ? "p-2 flex flex-col items-center" : "p-3"
-          )}
-        >
+        <div className="border-t border-border/60 p-3 space-y-1.5 shrink-0">
           {/* Botão para Personalizar Menu */}
           <Tooltip conteudo="Personalizar Menu" posicao="right" desabilitado={!colapsada}>
             <button
               type="button"
               onClick={() => setModalPersonalizarAberta(true)}
-              className={cn(
-                "flex items-center h-10 rounded-xl text-sm font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors group cursor-pointer select-none",
-                colapsada ? "w-11 justify-center mx-auto p-0" : "w-full gap-3 px-2.5"
-              )}
+              className="flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors group cursor-pointer select-none shrink-0"
               aria-label="Personalizar Menu"
             >
               <Palette size={20} className="shrink-0 group-hover:rotate-12 transition-transform duration-150" />
@@ -282,8 +261,7 @@ export function NavegacaoLateral({
               onClick={aoNavegar}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center h-10 rounded-xl text-sm font-medium transition-colors cursor-pointer select-none",
-                  colapsada ? "w-11 justify-center mx-auto p-0" : "w-full gap-3 px-2.5",
+                  "flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium transition-colors cursor-pointer select-none shrink-0",
                   isActive
                     ? "bg-primary/15 text-primary font-semibold shadow-2xs"
                     : "text-muted-foreground hover:bg-accent/80 hover:text-foreground"
@@ -305,10 +283,7 @@ export function NavegacaoLateral({
             <button
               type="button"
               onClick={toggleTema}
-              className={cn(
-                "flex items-center h-10 rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors cursor-pointer select-none",
-                colapsada ? "w-11 justify-center mx-auto p-0" : "w-full gap-3 px-2.5"
-              )}
+              className="flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors cursor-pointer select-none shrink-0"
               aria-label={escuro ? "Modo claro" : "Modo escuro"}
             >
               {escuro ? (
