@@ -466,6 +466,16 @@ export function comoContato(
     "atualizado",
     "atualizado_em",
     "icone",
+    "demo",
+    "subtipo",
+    "fixado",
+    "ia_sugeriu",
+    "esquema",
+    "relacionamentos",
+    "relacao",
+    "_visibilidade",
+    "_coresTags",
+    "_rotulos",
   ]);
   for (const [k, v] of Object.entries(d)) {
     if (!reserved.has(k) && !k.startsWith("_") && v !== undefined && v !== null && v !== "") {

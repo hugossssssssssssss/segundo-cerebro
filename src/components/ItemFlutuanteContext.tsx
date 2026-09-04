@@ -86,6 +86,7 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
           rotuloTipo={itemFlutuante.rotuloTipo}
           modoVisao={modoVisao}
           setModoVisao={setModoVisao}
+          posicaoLateral="esquerda"
           titulo={itemFlutuante.titulo}
           setTitulo={(t) => {
             itemFlutuante.setTitulo?.(t);

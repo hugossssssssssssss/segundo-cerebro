@@ -80,6 +80,7 @@ export interface PainelNotionBaseProps {
   opcoesRelacionamento?: { titulo: string; caminho: string }[];
   elementoAcimaCorpo?: React.ReactNode;
   campoFocoInicial?: string;
+  posicaoLateral?: "esquerda" | "direita";
 }
 
 export function PainelNotionBase({
@@ -104,6 +105,7 @@ export function PainelNotionBase({
   opcoesRelacionamento = [],
   elementoAcimaCorpo,
   campoFocoInicial,
+  posicaoLateral = "direita",
 }: PainelNotionBaseProps) {
   const [confirmandoApagar, setConfirmandoApagar] = useState(false);
   const [minimizadoFlutuante, setMinimizadoFlutuante] = useState(false);
@@ -1390,13 +1392,20 @@ export function PainelNotionBase({
 
   // MODO 2: DO LADO (Painel Lateral / Drawer)
   if (modoVisao === "lado") {
+    const ehEsquerda = posicaoLateral === "esquerda";
     return (
       <div
-        className="fixed inset-0 z-50 flex justify-end bg-black/40 sm:bg-black/20 backdrop-blur-none sm:backdrop-blur-[2px] p-0 sm:p-3 animate-in fade-in duration-150"
+        className={cn(
+          "fixed inset-0 z-50 flex bg-black/40 sm:bg-black/20 backdrop-blur-none sm:backdrop-blur-[2px] p-0 sm:p-3 animate-in fade-in duration-150 pointer-events-none",
+          ehEsquerda ? "justify-start" : "justify-end"
+        )}
         onClick={tentarFechar}
       >
         <div
-          className="flex h-full w-full sm:w-[560px] md:w-[680px] lg:w-[760px] flex-col rounded-none sm:rounded-2xl border-0 sm:border border-border bg-card shadow-2xl overflow-hidden animate-in slide-in-from-right duration-200"
+          className={cn(
+            "pointer-events-auto flex h-full w-full sm:w-[540px] md:w-[640px] lg:w-[calc(50vw-24px)] flex-col rounded-none sm:rounded-2xl border-0 sm:border border-border bg-card shadow-2xl overflow-hidden animate-in duration-200",
+            ehEsquerda ? "slide-in-from-left" : "slide-in-from-right"
+          )}
           onClick={(e) => e.stopPropagation()}
         >
           {cabecalho}

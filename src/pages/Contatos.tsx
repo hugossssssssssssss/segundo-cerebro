@@ -144,6 +144,12 @@ export default function Contatos() {
     return Array.from(set).sort();
   }, [contatosLocais]);
 
+  const aplicarFiltroTag = useCallback((tag: string) => {
+    const nomeLimpo = tag.startsWith("#") ? tag.slice(1).trim() : tag.trim();
+    if (!nomeLimpo) return;
+    setTagFiltro(nomeLimpo);
+  }, []);
+
   // Contatos filtrados
   const contatosFiltrados = useMemo(() => {
     return filtrarContatos(contatosLocais, termoBusca, empresaFiltro, tagFiltro);
@@ -682,7 +688,7 @@ export default function Contatos() {
         <>
           {/* 1. VISÃO EM ÁRVORE HIERÁRQUICA */}
           {visao === "arvore" && (
-            <div className="space-y-4">
+            <div className="space-y-4 pt-1">
               {arvoreContatos.map((no) => (
                 <ItemNoArvore
                   key={no.contato.id}
@@ -692,6 +698,7 @@ export default function Contatos() {
                   aoNovoFilho={(paiId) => novoContato(paiId)}
                   aoEditar={(c) => abrirContato(c)}
                   aoExcluir={(c) => setContatoParaExcluir(c)}
+                  aoFiltrarTag={aplicarFiltroTag}
                 />
               ))}
             </div>
@@ -708,6 +715,7 @@ export default function Contatos() {
                   aoNovoFilho={(paiId) => novoContato(paiId)}
                   aoEditar={(c) => abrirContato(c)}
                   aoExcluir={(c) => setContatoParaExcluir(c)}
+                  aoFiltrarTag={aplicarFiltroTag}
                 />
               ))}
             </div>
@@ -722,8 +730,8 @@ export default function Contatos() {
                     <th className="px-4 py-3">Nome</th>
                     <th className="px-4 py-3">Cargo</th>
                     <th className="px-4 py-3">Empresa</th>
-                    <th className="px-4 py-3">Contato Directo</th>
-                    <th className="px-4 py-3">Vínculo (Pai)</th>
+                    <th className="px-4 py-3">Contato Direto</th>
+                    <th className="px-4 py-3">Responde a (Líder)</th>
                     <th className="px-4 py-3 text-right">Ações</th>
                   </tr>
                 </thead>
@@ -978,6 +986,7 @@ function ItemNoArvore({
   aoNovoFilho,
   aoEditar,
   aoExcluir,
+  aoFiltrarTag,
 }: {
   no: NoContato;
   recolhidos: Record<string, boolean>;
@@ -985,53 +994,71 @@ function ItemNoArvore({
   aoNovoFilho: (paiId: string) => void;
   aoEditar: (c: Contato) => void;
   aoExcluir: (c: Contato) => void;
+  aoFiltrarTag: (t: string) => void;
 }) {
   const c = no.contato;
   const estaRecolhido = Boolean(recolhidos[c.id]);
   const temFilhos = no.filhos.length > 0;
 
+  // Filtrar propriedades internas
+  const propriedadesValidas = Object.entries(c.propriedades).filter(
+    ([k]) => !["demo", "subtipo", "fixado", "ia_sugeriu", "tipo", "id", "pai_id", "pai"].includes(k) && !k.startsWith("_")
+  );
+
   return (
-    <div className="space-y-2 select-none">
+    <div className="space-y-2 select-none relative">
       {/* Nó do Contato */}
       <div
         onClick={() => aoEditar(c)}
         className={cn(
-          "group relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border bg-card hover:bg-accent/40 transition-colors cursor-pointer",
-          no.nivel > 0 && "ml-4 sm:ml-8 border-l-4 border-l-primary/30",
+          "group relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl border bg-card hover:bg-accent/40 transition-all cursor-pointer shadow-2xs hover:shadow-xs",
+          no.nivel === 0 
+            ? "border-border/90 bg-card/90" 
+            : "border-border/70 ml-5 sm:ml-8 before:absolute before:-left-4 sm:before:-left-6 before:top-1/2 before:w-4 sm:before:w-6 before:h-px before:bg-border"
         )}
       >
         {/* Lado Esquerdo: Expansor + Avatar + Informações principais */}
-        <div className="flex items-start gap-3 min-w-0">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
           {temFilhos ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                aoAlternarRecolhido(c.id);
-              }}
-              className="mt-0.5 p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0"
-              aria-label={estaRecolhido ? "Expandir" : "Recolher"}
-            >
-              {estaRecolhido ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-            </button>
+            <Tooltip conteudo={estaRecolhido ? `Expandir ${no.filhos.length} liderado(s)` : "Recolher liderados"}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  aoAlternarRecolhido(c.id);
+                }}
+                className="mt-0.5 p-1.5 rounded-lg bg-accent/60 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors shrink-0 cursor-pointer"
+                aria-label={estaRecolhido ? "Expandir liderados" : "Recolher liderados"}
+              >
+                {estaRecolhido ? <ChevronRight size={15} /> : <ChevronDown size={15} />}
+              </button>
+            </Tooltip>
           ) : (
-            <div className="w-6 shrink-0" />
+            <div className="w-7 shrink-0 flex items-center justify-center">
+              <div className="h-2 w-2 rounded-full bg-border" />
+            </div>
           )}
 
-          <div className="h-9 w-9 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-sm shrink-0">
+          <div className="h-10 w-10 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
             {c.titulo ? c.titulo.charAt(0).toUpperCase() : "?"}
           </div>
 
-          <div className="min-w-0 space-y-0.5">
+          <div className="min-w-0 space-y-1 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-bold text-sm text-foreground truncate">{c.titulo || "Sem nome"}</h3>
               {c.cargo && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-[11px] text-muted-foreground font-medium">
-                  <Briefcase size={10} /> {c.cargo}
+                  <Briefcase size={11} className="text-blue-500" /> {c.cargo}
                 </span>
               )}
               {c.empresa && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-medium">
-                  <Building size={10} /> {c.empresa}
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium">
+                  <Building size={11} /> {c.empresa}
+                </span>
+              )}
+              {temFilhos && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold">
+                  👥 {no.filhos.length} {no.filhos.length === 1 ? "liderado" : "liderados"}
                 </span>
               )}
             </div>
@@ -1042,34 +1069,39 @@ function ItemNoArvore({
                 <a
                   href={`mailto:${c.email}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 hover:text-primary transition-colors"
+                  className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors truncate"
                 >
-                  <Mail size={12} /> {c.email}
+                  <Mail size={12} className="text-indigo-500 shrink-0" /> {c.email}
                 </a>
               )}
               {c.telefone && (
                 <a
                   href={`tel:${c.telefone}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                  className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors truncate"
                 >
-                  <Phone size={12} /> {c.telefone}
+                  <Phone size={12} className="text-purple-500 shrink-0" /> {c.telefone}
                 </a>
               )}
               {c.tags.map((t) => (
-                <TagChip key={t} tag={t} className="py-0 px-1.5 text-[10px] rounded-md h-auto font-medium" />
+                <TagChip
+                  key={t}
+                  tag={t}
+                  aoClicar={() => aoFiltrarTag(t)}
+                  className="py-0 px-1.5 text-[10px] rounded-md h-auto font-medium"
+                />
               ))}
             </div>
 
-            {/* Propriedades Personalizadas */}
-            {Object.keys(c.propriedades).length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-1">
-                {Object.entries(c.propriedades).map(([k, v]) => (
+            {/* Propriedades Extras (Sem demo nem campos internos) */}
+            {propriedadesValidas.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {propriedadesValidas.map(([k, v]) => (
                   <span
                     key={k}
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/60 text-[10px] text-accent-foreground font-medium"
                   >
-                    <span className="font-semibold">{k}:</span> {v}
+                    <span className="font-semibold text-muted-foreground">{k}:</span> {v}
                   </span>
                 ))}
               </div>
@@ -1077,24 +1109,26 @@ function ItemNoArvore({
           </div>
         </div>
 
-        {/* Lado Direito: Ações Rápida */}
+        {/* Lado Direito: Ações Rápidas */}
         <div
           className="flex items-center gap-1 self-end sm:self-center shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto justify-end"
           onClick={(e) => e.stopPropagation()}
         >
-          <Tooltip conteudo="Adicionar contato subordinado / vinculado a este">
+          <Tooltip conteudo="Adicionar liderado / pessoa que responde a este contato">
             <button
+              type="button"
               onClick={() => aoNovoFilho(c.id)}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
-              aria-label="Adicionar subordinado"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold text-primary bg-primary/10 hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer shadow-2xs"
+              aria-label="Adicionar liderado"
             >
-              <UserPlus size={14} />
-              <span className="hidden sm:inline">Add Subordinado</span>
+              <UserPlus size={13} />
+              <span>+ Liderado</span>
             </button>
           </Tooltip>
 
           <Tooltip conteudo="Editar contato">
             <button
+              type="button"
               onClick={() => aoEditar(c)}
               className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
               aria-label="Editar contato"
@@ -1105,6 +1139,7 @@ function ItemNoArvore({
 
           <Tooltip conteudo="Excluir contato">
             <button
+              type="button"
               onClick={() => aoExcluir(c)}
               className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
               aria-label="Excluir contato"
@@ -1115,9 +1150,9 @@ function ItemNoArvore({
         </div>
       </div>
 
-      {/* Renderização Recursiva de Filhos */}
+      {/* Renderização Recursiva de Filhos com Linhas Hierárquicas Claras */}
       {temFilhos && !estaRecolhido && (
-        <div className="space-y-2 relative pl-2 sm:pl-4 border-l border-border/50 ml-4 sm:ml-6">
+        <div className="space-y-2 relative pl-3 sm:pl-5 border-l-2 border-border/60 ml-4 sm:ml-7 my-1">
           {no.filhos.map((filhoNo) => (
             <ItemNoArvore
               key={filhoNo.contato.id}
@@ -1127,6 +1162,7 @@ function ItemNoArvore({
               aoNovoFilho={aoNovoFilho}
               aoEditar={aoEditar}
               aoExcluir={aoExcluir}
+              aoFiltrarTag={aoFiltrarTag}
             />
           ))}
         </div>
@@ -1142,38 +1178,46 @@ function CartaoContato({
   aoNovoFilho,
   aoEditar,
   aoExcluir,
+  aoFiltrarTag,
 }: {
   contato: Contato;
   todosContatos: Contato[];
   aoNovoFilho: (paiId: string) => void;
   aoEditar: (c: Contato) => void;
   aoExcluir: (c: Contato) => void;
+  aoFiltrarTag: (t: string) => void;
 }) {
   const paiObj = todosContatos.find((p) => p.id === c.paiId);
+
+  // Filtrar propriedades internas
+  const propriedadesValidas = Object.entries(c.propriedades).filter(
+    ([k]) => !["demo", "subtipo", "fixado", "ia_sugeriu", "tipo", "id", "pai_id", "pai"].includes(k) && !k.startsWith("_")
+  );
 
   return (
     <Cartao
       onClick={() => aoEditar(c)}
-      className="flex flex-col justify-between p-4 space-y-3 relative group hover:bg-accent/30 transition-colors cursor-pointer"
+      className="flex flex-col justify-between p-4 space-y-3 relative group hover:bg-accent/30 transition-colors cursor-pointer rounded-2xl"
     >
       <div className="space-y-2.5">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="h-10 w-10 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-sm shrink-0">
               {c.titulo ? c.titulo.charAt(0).toUpperCase() : "?"}
             </div>
-            <div>
-              <h3 className="font-bold text-sm text-foreground line-clamp-1">{c.titulo || "Sem nome"}</h3>
-              {c.cargo && <p className="text-xs text-muted-foreground line-clamp-1">{c.cargo}</p>}
+            <div className="min-w-0">
+              <h3 className="font-bold text-sm text-foreground truncate">{c.titulo || "Sem nome"}</h3>
+              {c.cargo && <p className="text-xs text-muted-foreground truncate">{c.cargo}</p>}
             </div>
           </div>
 
           <div
-            className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity"
+            className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
             <Tooltip conteudo="Editar">
               <button
+                type="button"
                 onClick={() => aoEditar(c)}
                 className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
                 aria-label="Editar"
@@ -1183,6 +1227,7 @@ function CartaoContato({
             </Tooltip>
             <Tooltip conteudo="Excluir">
               <button
+                type="button"
                 onClick={() => aoExcluir(c)}
                 className="p-1 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer"
                 aria-label="Excluir"
@@ -1195,15 +1240,15 @@ function CartaoContato({
 
         {c.empresa && (
           <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-[11px] text-muted-foreground font-medium">
-            <Building size={11} /> {c.empresa}
+            <Building size={11} className="text-emerald-500" /> {c.empresa}
           </div>
         )}
 
         {paiObj && (
           <div className="text-[11px] text-muted-foreground flex items-center gap-1">
-            <User size={11} className="text-primary" />
-            <span>Responde a: </span>
-            <span className="font-medium text-foreground">{paiObj.titulo}</span>
+            <User size={11} className="text-primary shrink-0" />
+            <span>Responde a (Líder): </span>
+            <span className="font-semibold text-foreground truncate">{paiObj.titulo}</span>
           </div>
         )}
 
@@ -1214,7 +1259,7 @@ function CartaoContato({
               onClick={(e) => e.stopPropagation()}
               className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors truncate"
             >
-              <Mail size={13} className="shrink-0" />
+              <Mail size={13} className="text-indigo-500 shrink-0" />
               <span className="truncate">{c.email}</span>
             </a>
           )}
@@ -1222,17 +1267,17 @@ function CartaoContato({
             <a
               href={`tel:${c.telefone}`}
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors truncate"
             >
-              <Phone size={13} className="shrink-0" />
-              <span>{c.telefone}</span>
+              <Phone size={13} className="text-purple-500 shrink-0" />
+              <span className="truncate">{c.telefone}</span>
             </a>
           )}
         </div>
 
-        {Object.keys(c.propriedades).length > 0 && (
+        {propriedadesValidas.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
-            {Object.entries(c.propriedades).map(([k, v]) => (
+            {propriedadesValidas.map(([k, v]) => (
               <span
                 key={k}
                 className="px-1.5 py-0.5 rounded bg-accent/70 text-[10px] text-foreground font-medium"
@@ -1244,24 +1289,30 @@ function CartaoContato({
         )}
       </div>
 
-      <div className="flex items-center justify-between pt-2 border-t border-border/60">
-        <div className="flex flex-wrap gap-1">
+      <div className="flex items-center justify-between pt-2 border-t border-border/60 gap-2">
+        <div className="flex flex-wrap gap-1 min-w-0">
           {c.tags.map((t) => (
-            <TagChip key={t} tag={t} className="py-0 px-1.5 text-[9px] rounded-md h-auto font-medium" />
+            <TagChip
+              key={t}
+              tag={t}
+              aoClicar={() => aoFiltrarTag(t)}
+              className="py-0 px-1.5 text-[9px] rounded-md h-auto font-medium"
+            />
           ))}
         </div>
 
-        <Tooltip conteudo="Adicionar Subordinado / Contato vinculado">
+        <Tooltip conteudo="Adicionar liderado / pessoa vinculada">
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               aoNovoFilho(c.id);
             }}
-            className="text-primary hover:underline text-[11px] font-medium flex items-center gap-1 shrink-0 ml-auto cursor-pointer"
-            aria-label="Adicionar Subordinado"
+            className="text-primary hover:underline text-[11px] font-semibold flex items-center gap-1 shrink-0 ml-auto cursor-pointer"
+            aria-label="Adicionar Liderado"
           >
             <UserPlus size={12} />
-            + Subordinado
+            + Liderado
           </button>
         </Tooltip>
       </div>

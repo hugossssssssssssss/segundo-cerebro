@@ -806,7 +806,7 @@ export function PropriedadesNotion({
     if (chave === "empresa") return "Empresa";
     if (chave === "email") return "E-mail";
     if (chave === "telefone") return "Telefone";
-    if (chave === "pai_id" || chave === "paiId" || chave === "pai" || chave === "contato_pai") return "Contato Superior / Líder";
+    if (chave === "pai_id" || chave === "paiId" || chave === "pai" || chave === "contato_pai" || chave === "responde_a" || chave === "lider") return "Responde a (Líder)";
     if (chave === "impacto") return "Impacto / Resultado";
     if (chave === "elogio") return "Elogio / Feedback";
     if (chave === "autor_elogio" || chave === "autorElogio") return "Autor do Elogio";
