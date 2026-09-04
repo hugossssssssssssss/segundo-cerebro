@@ -171,10 +171,15 @@ export default function PDI() {
 
   const [editandoMeta, setEditandoMeta] = useState<Meta | null>(null);
   const [editandoEntrega, setEditandoEntrega] = useState<Entrega | null>(null);
-  const [modoVisaoMeta, setModoVisaoMeta] = useState<ModoVisaoNotion>("popup");
-  const [modoVisaoEntrega, setModoVisaoEntrega] = useState<ModoVisaoNotion>("popup");
+  const [editandoTarefa, setEditandoTarefa] = useState<Tarefa | null>(null);
   const [origMeta, setOrigMeta] = useState<Meta | null>(null);
   const [origEntrega, setOrigEntrega] = useState<Entrega | null>(null);
+  const [origTarefa, setOrigTarefa] = useState<Tarefa | null>(null);
+  const [modoVisaoMeta, setModoVisaoMeta] = useState<ModoVisaoNotion>("popup");
+  const [modoVisaoEntrega, setModoVisaoEntrega] = useState<ModoVisaoNotion>("popup");
+  const [modoVisaoTarefa, setModoVisaoTarefa] = useState<ModoVisaoNotion>(() => {
+    return (localStorage.getItem("klaus_modo_visao_tarefa") as ModoVisaoNotion) || "popup";
+  });
   const [esconderEntregas, setEsconderEntregas] = useState(() => localStorage.getItem("klaus-pdi-esconder-entregas") === "true");
   const [dropHoverId, setDropHoverId] = useState<string | null>(null);
   const [metasExpandidas, setMetasExpandidas] = useState<Record<string, boolean>>({});
@@ -402,6 +407,7 @@ export default function PDI() {
         dadosProps: {
           data: entregaOriginal.data,
           metas: entregaOriginal.metas.map(id => metas.find(m => m.id === id)?.titulo || "").filter(Boolean),
+          conquista: entregaOriginal.conquista || "",
           impacto: entregaOriginal.impacto || "",
           elogio: entregaOriginal.elogio || "",
           autor_elogio: entregaOriginal.autorElogio || "",
@@ -414,6 +420,10 @@ export default function PDI() {
             icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />,
             tipo: "multiselect",
             opcoes: metas.map((m) => m.titulo),
+          },
+          conquista: {
+            icone: <Package className="h-4 w-4 opacity-50 text-amber-500" />,
+            tipo: "texto",
           },
           impacto: {
             icone: <TrendingUp className="h-4 w-4 opacity-50 text-emerald-500" />,
@@ -456,6 +466,7 @@ export default function PDI() {
               ? itemFlutuanteAtual.dadosProps.metas.map(titulo => metas.find(m => m.titulo === titulo)?.id || "").filter(Boolean)
               : [],
             iaSugeriu: false,
+            conquista: (itemFlutuanteAtual.dadosProps.conquista as string) || undefined,
             impacto: (itemFlutuanteAtual.dadosProps.impacto as string) || undefined,
             elogio: (itemFlutuanteAtual.dadosProps.elogio as string) || undefined,
             autorElogio: (itemFlutuanteAtual.dadosProps.autor_elogio as string) || undefined,
@@ -478,6 +489,66 @@ export default function PDI() {
       setModoVisaoEntrega("popup");
     }
   }, [modoVisaoEntrega, editandoEntrega, metas, contatos]);
+
+  // ── Modo flutuante de tarefas ──────────────────────────────────────────────
+  useEffect(() => {
+    if (modoVisaoTarefa === "flutuante" && editandoTarefa) {
+      const tarefaOriginal = { ...editandoTarefa };
+      abrirFlutuante({
+        id: tarefaOriginal.caminho,
+        rotuloTipo: tarefaOriginal.caminho ? "Tarefa" : "Nova tarefa",
+        titulo: tarefaOriginal.titulo,
+        corpo: tarefaOriginal.corpo,
+        dadosProps: {
+          status: tarefaOriginal.status,
+          prazo: tarefaOriginal.prazo,
+          tags: tarefaOriginal.tags || [],
+          relacionamentos: tarefaOriginal.relacionamentos || [],
+          ...(tarefaOriginal.bruto || {}),
+        },
+        camposFixosProps: {
+          status: { icone: <CheckCircle2 className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
+          prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
+          tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "multiselect" },
+        },
+        caminho: tarefaOriginal.caminho,
+        sha: tarefaOriginal.sha,
+        temMudancas: origTarefa !== null && JSON.stringify(editandoTarefa) !== JSON.stringify(origTarefa),
+        salvando,
+        erro,
+        aoSalvar: async (itemFlutuanteAtual) => {
+          const titulo = itemFlutuanteAtual.titulo.trim() || "Sem título";
+          const tSalvar: Tarefa = {
+            caminho: itemFlutuanteAtual.caminho,
+            sha: itemFlutuanteAtual.sha,
+            bruto: itemFlutuanteAtual.dadosProps || {},
+            titulo,
+            status: (itemFlutuanteAtual.dadosProps.status as any) || "a-fazer",
+            prazo: itemFlutuanteAtual.dadosProps.prazo as string | undefined,
+            tags: Array.isArray(itemFlutuanteAtual.dadosProps.tags) ? (itemFlutuanteAtual.dadosProps.tags as string[]) : [],
+            relacionamentos: Array.isArray(itemFlutuanteAtual.dadosProps.relacionamentos) ? (itemFlutuanteAtual.dadosProps.relacionamentos as string[]) : [],
+            corpo: itemFlutuanteAtual.corpo,
+          };
+          const { dados, corpo } = tarefaParaArquivo(tSalvar);
+          const texto = escreverMarkdown({ dados, corpo });
+          const caminho = itemFlutuanteAtual.caminho || nomeLivre(PASTAS.tarefas, titulo, todasTarefas.map((x) => x.caminho));
+          await salvarTexto(caminho, texto, itemFlutuanteAtual.sha || undefined);
+          invalidarCache();
+          dispararAtualizacaoAcervo();
+          recarregarTarefas();
+        },
+        aoRemover: tarefaOriginal.caminho ? async () => {
+          await apagarItem(tarefaOriginal.caminho, tarefaOriginal.sha);
+          invalidarCache();
+          dispararAtualizacaoAcervo();
+          recarregarTarefas();
+        } : undefined,
+      });
+      setEditandoTarefa(null);
+      setOrigTarefa(null);
+      setModoVisaoTarefa("popup");
+    }
+  }, [modoVisaoTarefa, editandoTarefa]);
 
   // ── Alerta ao sair com mudanças ────────────────────────────────────────────
   useEffect(() => {
@@ -596,7 +667,43 @@ export default function PDI() {
     recarregar();
   }
 
+  async function salvarTarefa(alvo?: Tarefa) {
+    const t = alvo || editandoTarefa;
+    if (!t) return;
+    const tituloValido = t.titulo.trim() || "Sem título";
+    const tarefaParaSalvar: Tarefa = { ...t, titulo: tituloValido };
+    setErroLocal("");
+    try {
+      const { dados, corpo } = tarefaParaArquivo(tarefaParaSalvar);
+      const texto = escreverMarkdown({ dados, corpo });
+      const caminho =
+        tarefaParaSalvar.caminho ||
+        nomeLivre(PASTAS.tarefas, tarefaParaSalvar.titulo, todasTarefas.map((x) => x.caminho));
+      const novaSha = await salvarTexto(caminho, texto, tarefaParaSalvar.sha || undefined);
+      const salvaTarefa: Tarefa = { ...tarefaParaSalvar, caminho, sha: novaSha };
 
+      setEditandoTarefa((atual) => {
+        if (atual && (atual.caminho === salvaTarefa.caminho || !atual.caminho)) return salvaTarefa;
+        return atual;
+      });
+      setOrigTarefa((orig) => {
+        if (orig && (orig.caminho === salvaTarefa.caminho || !orig.caminho)) return salvaTarefa;
+        return orig;
+      });
+      invalidarCache();
+      dispararAtualizacaoAcervo();
+      recarregarTarefas();
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  function fecharTarefa() {
+    setEditandoTarefa(null);
+    setOrigTarefa(null);
+    limparErro();
+    setErroLocal("");
+  }
 
   const metasExibidas = useMemo(() => {
     if (!pastaMetaSelecionada) return metas;
@@ -702,6 +809,24 @@ export default function PDI() {
       corpo: "",
     };
     setCampoFocoEntrega(undefined);
+    setEditandoEntrega(vazia);
+    setOrigEntrega(vazia);
+  };
+
+  const novaEntregaComConquista = (meta: Meta) => {
+    const vazia: Entrega = {
+      bruto: {},
+      caminho: "",
+      id: "",
+      sha: "",
+      titulo: "",
+      data: hojeISO(),
+      metas: [meta.id],
+      iaSugeriu: false,
+      conquista: "",
+      corpo: "",
+    };
+    setCampoFocoEntrega("conquista");
     setEditandoEntrega(vazia);
     setOrigEntrega(vazia);
   };
@@ -1055,25 +1180,8 @@ export default function PDI() {
                       return (
                         <div className="mt-3 pt-2.5 border-t border-border/50 space-y-2.5">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
-                            {/* Detalhamento de tarefas e entregas estritamente na ESQUERDA */}
-                            <button
-                              type="button"
-                              onClick={(ev) => {
-                                ev.stopPropagation();
-                                alternarExpansaoMeta(m.id);
-                              }}
-                              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium cursor-pointer transition-colors py-1 px-1.5 -ml-1 rounded-md hover:bg-accent/60 shrink-0"
-                            >
-                              {estaExpandido ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                              <span>
-                                {estaExpandido
-                                  ? "Recolher detalhes"
-                                  : `${tarefasAtivas.length} tarefa(s) • ${ligadas.length} entrega(s)`}
-                              </span>
-                            </button>
-
-                            {/* Botões Rápidos estritamente na DIREITA */}
-                            <div className="flex items-center gap-1 ml-auto shrink-0">
+                            {/* Botões Rápidos estritamente na ESQUERDA */}
+                            <div className="flex items-center gap-1 shrink-0 -ml-1">
                               <Tooltip conteudo="Criar tarefa rápida para esta meta" posicao="top">
                                 <button
                                   type="button"
@@ -1090,12 +1198,12 @@ export default function PDI() {
                                 </button>
                               </Tooltip>
 
-                              <Tooltip conteudo="Registrar conquista ou entrega nesta meta" posicao="top">
+                              <Tooltip conteudo="Registrar conquista nesta meta" posicao="top">
                                 <button
                                   type="button"
                                   onClick={(ev) => {
                                     ev.stopPropagation();
-                                    novaEntregaParaMeta(m);
+                                    novaEntregaComConquista(m);
                                   }}
                                   className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer flex items-center gap-1"
                                 >
@@ -1132,6 +1240,23 @@ export default function PDI() {
                                 </button>
                               </Tooltip>
                             </div>
+
+                            {/* Detalhamento de tarefas e entregas estritamente na DIREITA */}
+                            <button
+                              type="button"
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                alternarExpansaoMeta(m.id);
+                              }}
+                              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium cursor-pointer transition-colors py-1 px-1.5 -mr-1 rounded-md hover:bg-accent/60 shrink-0 ml-auto"
+                            >
+                              {estaExpandido ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                              <span>
+                                {estaExpandido
+                                  ? "Recolher detalhes"
+                                  : `${tarefasAtivas.length} tarefa(s) • ${ligadas.length} entrega(s)`}
+                              </span>
+                            </button>
                           </div>
 
                           {/* Seção expandida de Tarefas e Entregas */}
@@ -1222,7 +1347,8 @@ export default function PDI() {
                                             <span
                                               onClick={(ev) => {
                                                 ev.stopPropagation();
-                                                navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`);
+                                                setEditandoTarefa(t);
+                                                setOrigTarefa(t);
                                               }}
                                               className={cn(
                                                 "truncate hover:text-primary cursor-pointer",
@@ -1677,7 +1803,10 @@ export default function PDI() {
                           onDragStart={(ev) => {
                             ev.dataTransfer.setData("text/plain", `tarefa:${t.caminho}`);
                           }}
-                          onClick={() => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
+                          onClick={() => {
+                            setEditandoTarefa(t);
+                            setOrigTarefa(t);
+                          }}
                           className="flex items-center justify-between gap-3 p-2.5 hover:bg-accent/50 transition-colors cursor-pointer group"
                         >
                           <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -1729,7 +1858,10 @@ export default function PDI() {
                             ev.dataTransfer.setData("text/plain", `tarefa:${t.caminho}`);
                           }}
                           className="p-3 cursor-grab active:cursor-grabbing hover:border-primary/40 transition-all border border-border/70 flex flex-col justify-between gap-2 group"
-                          onClick={() => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
+                          onClick={() => {
+                            setEditandoTarefa(t);
+                            setOrigTarefa(t);
+                          }}
                         >
                           <div className="flex items-start gap-2">
                             <Tooltip conteudo="Arrastar tarefa">
@@ -1786,7 +1918,10 @@ export default function PDI() {
                               onDragStart={(ev) => {
                                 ev.dataTransfer.setData("text/plain", `tarefa:${t.caminho}`);
                               }}
-                              onClick={() => navegar(`/tarefas?abrir=${encodeURIComponent(t.caminho)}`)}
+                              onClick={() => {
+                                setEditandoTarefa(t);
+                                setOrigTarefa(t);
+                              }}
                               className="p-2 bg-card border border-border/70 rounded-lg hover:border-primary/40 transition-all cursor-grab active:cursor-grabbing text-xs shadow-2xs group flex items-start gap-1.5"
                             >
                               <GripVertical size={13} className="text-muted-foreground/50 group-hover:text-foreground shrink-0 mt-0.5" />
@@ -1874,6 +2009,7 @@ export default function PDI() {
           dadosProps={{
             data: editandoEntrega.data,
             metas: editandoEntrega.metas.map(id => metas.find(m => m.id === id)?.titulo || "").filter(Boolean),
+            conquista: editandoEntrega.conquista || "",
             impacto: editandoEntrega.impacto || "",
             elogio: editandoEntrega.elogio || "",
             autor_elogio: editandoEntrega.autorElogio || "",
@@ -1887,6 +2023,7 @@ export default function PDI() {
               metas: Array.isArray(novosDados.metas)
                 ? novosDados.metas.map(titulo => metas.find(m => m.titulo === titulo)?.id || "").filter(Boolean)
                 : [],
+              conquista: (novosDados.conquista as string) || undefined,
               impacto: (novosDados.impacto as string) || undefined,
               elogio: (novosDados.elogio as string) || undefined,
               autorElogio: (novosDados.autor_elogio as string) || undefined,
@@ -1900,6 +2037,10 @@ export default function PDI() {
               icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />,
               tipo: "multiselect",
               opcoes: metas.map((m) => m.titulo),
+            },
+            conquista: {
+              icone: <Package className="h-4 w-4 opacity-50 text-amber-500" />,
+              tipo: "texto",
             },
             impacto: {
               icone: <TrendingUp className="h-4 w-4 opacity-50 text-emerald-500" />,
@@ -1917,7 +2058,6 @@ export default function PDI() {
             colaboracao: {
               icone: <Users className="h-4 w-4 opacity-50 text-indigo-500" />,
               tipo: "multiselect",
-              opcoes: Array.from(new Set([...entregas.flatMap(e => e.colaboracao || []), "Design", "Engenharia", "Produto", "Marketing"])).filter(Boolean),
             },
             tags: {
               icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />,
@@ -1929,6 +2069,58 @@ export default function PDI() {
           aoFechar={fecharEntrega}
           aoSalvar={async () => { if (editandoEntrega) await salvarEntrega(); }}
           aoRemover={editandoEntrega.caminho ? async () => { await removerEntrega(editandoEntrega); } : undefined}
+          erro={erroSalvar}
+        />
+      )}
+
+      {/* ---------------------------------------------- modal da tarefa */}
+      {editandoTarefa !== null && (
+        <PainelNotionBase
+          rotuloTipo={editandoTarefa.caminho ? "Tarefa" : "Nova tarefa"}
+          modoVisao={modoVisaoTarefa}
+          setModoVisao={setModoVisaoTarefa}
+          titulo={editandoTarefa.titulo}
+          setTitulo={(t) => setEditandoTarefa({ ...editandoTarefa, titulo: t })}
+          corpo={editandoTarefa.corpo}
+          setCorpo={(c) => setEditandoTarefa({ ...editandoTarefa, corpo: c })}
+          caminhoItem={editandoTarefa.caminho}
+          dadosProps={{
+            status: editandoTarefa.status,
+            prazo: editandoTarefa.prazo,
+            tags: editandoTarefa.tags || [],
+            relacionamentos: editandoTarefa.relacionamentos || [],
+            ...(editandoTarefa.bruto || {}),
+          }}
+          onChangeProps={(novosDados) => {
+            setEditandoTarefa({
+              ...editandoTarefa,
+              status: (novosDados.status as any) || editandoTarefa.status,
+              prazo: novosDados.prazo as string | undefined,
+              tags: Array.isArray(novosDados.tags) ? (novosDados.tags as string[]) : [],
+              relacionamentos: Array.isArray(novosDados.relacionamentos) ? (novosDados.relacionamentos as string[]) : [],
+              bruto: {
+                ...(editandoTarefa.bruto || {}),
+                ...novosDados,
+              },
+            });
+          }}
+          camposFixosProps={{
+            status: { icone: <CheckCircle2 className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
+            prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
+            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "multiselect" },
+            relacionamentos: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" },
+          }}
+          salvando={salvando}
+          temMudancas={origTarefa !== null && JSON.stringify(editandoTarefa) !== JSON.stringify(origTarefa)}
+          aoFechar={fecharTarefa}
+          aoSalvar={async () => { if (editandoTarefa) await salvarTarefa(); }}
+          aoRemover={editandoTarefa.caminho ? async () => {
+            await apagarItem(editandoTarefa.caminho, editandoTarefa.sha);
+            fecharTarefa();
+            invalidarCache();
+            dispararAtualizacaoAcervo();
+            recarregarTarefas();
+          } : undefined}
           erro={erroSalvar}
         />
       )}

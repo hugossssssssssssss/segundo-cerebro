@@ -47,34 +47,67 @@ import { lerConfig, nomeExibido as nomeDoUsuario } from "@/lib/settings";
 import { cache } from "@/lib/repo";
 import { toast } from "@/lib/toast";
 
-export function obterTagsDisponiveis(dadosTagsAtuais: string[], coresTagsGlobais: Record<string, string>): string[] {
-  const tagsSet = new Set<string>();
+export function obterOpcoesDaPropriedade(
+  chave: string,
+  dadosValorAtual: string[] | string | undefined,
+  fixoOpcoes?: string[],
+  coresTagsGlobais: Record<string, string> = {}
+): string[] {
+  const setOpcoes = new Set<string>();
 
-  // 1. Tags do item atual
-  dadosTagsAtuais.forEach(t => {
-    if (typeof t === "string" && t.trim()) tagsSet.add(t.trim());
-  });
+  // 1. Opções fixas passadas na configuração da propriedade
+  if (Array.isArray(fixoOpcoes)) {
+    fixoOpcoes.forEach(o => { if (typeof o === "string" && o.trim()) setOpcoes.add(o.trim()); });
+  }
 
-  // 2. Tags configuradas no localStorage
-  Object.keys(coresTagsGlobais).forEach(t => {
-    if (typeof t === "string" && t.trim()) tagsSet.add(t.trim());
-  });
+  // 2. Opções salvas localmente específicas para esta chave
+  try {
+    const rawLocal = localStorage.getItem(`klaus_opcoes_prop_${chave}`);
+    if (rawLocal) {
+      const arr = JSON.parse(rawLocal);
+      if (Array.isArray(arr)) {
+        arr.forEach(o => { if (typeof o === "string" && o.trim()) setOpcoes.add(o.trim()); });
+      }
+    }
+  } catch {}
 
-  // 3. Tags em uso no acervo
+  // 3. Valor atual deste item
+  if (Array.isArray(dadosValorAtual)) {
+    dadosValorAtual.forEach(t => { if (typeof t === "string" && t.trim()) setOpcoes.add(t.trim()); });
+  } else if (typeof dadosValorAtual === "string" && dadosValorAtual.trim()) {
+    setOpcoes.add(dadosValorAtual.trim());
+  }
+
+  // 4. Valores em uso no repositório para ESTA chave específica
   if (cache && cache.itens) {
     cache.itens.forEach(item => {
-      const tags = item.doc?.dados?.tags;
-      if (Array.isArray(tags)) {
-        tags.forEach(t => {
-          if (typeof t === "string" && t.trim()) {
-            tagsSet.add(t.trim());
-          }
-        });
+      const val = item.doc?.dados?.[chave];
+      if (Array.isArray(val)) {
+        val.forEach(t => { if (typeof t === "string" && t.trim()) setOpcoes.add(t.trim()); });
+      } else if (typeof val === "string" && val.trim()) {
+        setOpcoes.add(val.trim());
       }
     });
   }
 
-  return Array.from(tagsSet).sort();
+  // 5. Se for a chave "tags", incluir as tags do mapa global de cores
+  if (chave === "tags") {
+    Object.keys(coresTagsGlobais).forEach(t => {
+      if (typeof t === "string" && t.trim()) setOpcoes.add(t.trim());
+    });
+  }
+
+  return Array.from(setOpcoes).sort((a, b) => a.localeCompare(b));
+}
+
+export function salvarOpcoesPropriedadeLocal(chave: string, opcoes: string[]) {
+  try {
+    localStorage.setItem(`klaus_opcoes_prop_${chave}`, JSON.stringify(Array.from(new Set(opcoes))));
+  } catch {}
+}
+
+export function obterTagsDisponiveis(dadosTagsAtuais: string[], coresTagsGlobais: Record<string, string>): string[] {
+  return obterOpcoesDaPropriedade("tags", dadosTagsAtuais, undefined, coresTagsGlobais);
 }
 
 export function abrirItemSpa(caminho: string) {
@@ -910,7 +943,7 @@ export function PropriedadesNotion({
         );
       }
 
-      const tagsDisponiveis = Array.from(new Set([...(fixo?.opcoes || []), ...obterTagsDisponiveis(tags, coresMap)]));
+      const tagsDisponiveis = obterOpcoesDaPropriedade(chave, tags, fixo?.opcoes, coresMap);
       const tagsFiltradas = tagsDisponiveis.filter(t => t.toLowerCase().includes(buscaTag.toLowerCase()));
       const existeExata = tagsDisponiveis.some(t => t.toLowerCase() === buscaTag.toLowerCase().trim());
 
@@ -919,7 +952,12 @@ export function PropriedadesNotion({
         if (!nomeLimpo) return;
         const novasTags = Array.from(new Set([...tags, nomeLimpo]));
         atualizar(chave, novasTags);
-        if (!coresMap[nomeLimpo]) {
+        
+        // Salva na lista de opções específicas desta chave
+        const todasOpcoesChave = Array.from(new Set([...tagsDisponiveis, nomeLimpo]));
+        salvarOpcoesPropriedadeLocal(chave, todasOpcoesChave);
+
+        if (chave === "tags" && !coresMap[nomeLimpo]) {
           atualizarCorTag(nomeLimpo, "azul");
         }
         setBuscaTag("");
@@ -1355,10 +1393,16 @@ export function PropriedadesNotion({
     const rotuloAtual = nomeExibido(chave);
     const idMenu = `prop-${chave}`;
 
-    const opcoesCadastradas = Array.from(new Set([
-      ...(fixo?.opcoes || []),
-      ...obterTagsDisponiveis(Array.isArray(dados[chave]) ? dados[chave] : dados[chave] ? [dados[chave]] : [], coresMap)
-    ]));
+    const opcoesCadastradas = obterOpcoesDaPropriedade(
+      chave,
+      Array.isArray(dados[chave]) ? dados[chave] : dados[chave] ? [dados[chave]] : [],
+      fixo?.opcoes,
+      coresMap
+    );
+
+    const salvarListaOpcoes = (novas: string[]) => {
+      salvarOpcoesPropriedadeLocal(chave, novas);
+    };
 
     return (
       <Popover open={menuAberto === idMenu} onOpenChange={(open) => {
@@ -1445,11 +1489,15 @@ export function PropriedadesNotion({
                                 if (e.key === "Enter") {
                                   const nomeLimpo = novoNomeTag.trim();
                                   if (nomeLimpo && nomeLimpo !== op) {
-                                    const novasCores = { ...globalConfig.coresTags };
-                                    delete novasCores[op];
-                                    novasCores[nomeLimpo] = corAtual;
-                                    salvarConfigPropriedadesGlobais(undefined, novasCores);
-                                    setGlobalConfig(lerConfigPropriedadesGlobais());
+                                    const novas = opcoesCadastradas.map(x => x === op ? nomeLimpo : x);
+                                    salvarListaOpcoes(novas);
+                                    if (chave === "tags") {
+                                      const novasCores = { ...globalConfig.coresTags };
+                                      delete novasCores[op];
+                                      novasCores[nomeLimpo] = corAtual;
+                                      salvarConfigPropriedadesGlobais(undefined, novasCores);
+                                      setGlobalConfig(lerConfigPropriedadesGlobais());
+                                    }
                                   }
                                   setEditandoTag(null);
                                 }
@@ -1462,11 +1510,15 @@ export function PropriedadesNotion({
                               onClick={() => {
                                 const nomeLimpo = novoNomeTag.trim();
                                 if (nomeLimpo && nomeLimpo !== op) {
-                                  const novasCores = { ...globalConfig.coresTags };
-                                  delete novasCores[op];
-                                  novasCores[nomeLimpo] = corAtual;
-                                  salvarConfigPropriedadesGlobais(undefined, novasCores);
-                                  setGlobalConfig(lerConfigPropriedadesGlobais());
+                                  const novas = opcoesCadastradas.map(x => x === op ? nomeLimpo : x);
+                                  salvarListaOpcoes(novas);
+                                  if (chave === "tags") {
+                                    const novasCores = { ...globalConfig.coresTags };
+                                    delete novasCores[op];
+                                    novasCores[nomeLimpo] = corAtual;
+                                    salvarConfigPropriedadesGlobais(undefined, novasCores);
+                                    setGlobalConfig(lerConfigPropriedadesGlobais());
+                                  }
                                 }
                                 setEditandoTag(null);
                               }}
@@ -1530,10 +1582,14 @@ export function PropriedadesNotion({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const novasCores = { ...globalConfig.coresTags };
-                                  delete novasCores[op];
-                                  salvarConfigPropriedadesGlobais(undefined, novasCores);
-                                  setGlobalConfig(lerConfigPropriedadesGlobais());
+                                  const novas = opcoesCadastradas.filter(x => x !== op);
+                                  salvarListaOpcoes(novas);
+                                  if (chave === "tags") {
+                                    const novasCores = { ...globalConfig.coresTags };
+                                    delete novasCores[op];
+                                    salvarConfigPropriedadesGlobais(undefined, novasCores);
+                                    setGlobalConfig(lerConfigPropriedadesGlobais());
+                                  }
                                   toast(`Opção "${op}" removida das pré-cadastradas.`);
                                 }}
                                 title="Excluir opção"
@@ -1557,9 +1613,14 @@ export function PropriedadesNotion({
                     onChange={(e) => setBuscaTag(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && buscaTag.trim()) {
-                        atualizarCorTag(buscaTag.trim(), "azul");
+                        const nova = buscaTag.trim();
+                        const novas = Array.from(new Set([...opcoesCadastradas, nova]));
+                        salvarListaOpcoes(novas);
+                        if (chave === "tags") {
+                          atualizarCorTag(nova, "azul");
+                        }
                         setBuscaTag("");
-                        toast(`Opção "${buscaTag.trim()}" cadastrada.`);
+                        toast(`Opção "${nova}" cadastrada.`);
                       }
                     }}
                     className="flex-1 bg-card border border-border text-[11px] px-2 py-1 rounded outline-none"
@@ -1570,9 +1631,14 @@ export function PropriedadesNotion({
                     disabled={!buscaTag.trim()}
                     onClick={() => {
                       if (buscaTag.trim()) {
-                        atualizarCorTag(buscaTag.trim(), "azul");
+                        const nova = buscaTag.trim();
+                        const novas = Array.from(new Set([...opcoesCadastradas, nova]));
+                        salvarListaOpcoes(novas);
+                        if (chave === "tags") {
+                          atualizarCorTag(nova, "azul");
+                        }
                         setBuscaTag("");
-                        toast(`Opção "${buscaTag.trim()}" cadastrada.`);
+                        toast(`Opção "${nova}" cadastrada.`);
                       }
                     }}
                     className="h-6 text-[10px] px-2"

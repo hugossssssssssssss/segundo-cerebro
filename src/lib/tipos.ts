@@ -122,6 +122,8 @@ export interface Entrega extends ItemBase {
   metas: string[];
   /** true quando a ligação foi sugerida pela IA e ainda não conferida pelo Hugo. */
   iaSugeriu: boolean;
+  /** Descrição da conquista ou resultado principal. */
+  conquista?: string;
   /** Impacto ou resultado alcançado (mensurável ou qualitativo). */
   impacto?: string;
   /** Elogio ou feedback recebido relacionado a esta entrega. */

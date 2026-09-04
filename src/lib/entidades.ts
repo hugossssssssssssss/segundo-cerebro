@@ -296,6 +296,7 @@ export function comoEntrega(
   const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
   const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
 
+  const conquista = typeof d.conquista === "string" ? d.conquista.trim() : undefined;
   const impacto = typeof d.impacto === "string" ? d.impacto.trim() : undefined;
   const elogio = typeof d.elogio === "string" ? d.elogio.trim() : undefined;
   const autorElogio =
@@ -319,6 +320,7 @@ export function comoEntrega(
     data: typeof d.data === "string" ? d.data : dataDoNome(caminho),
     metas: comoLista(d.metas),
     iaSugeriu: d.ia_sugeriu === true,
+    conquista,
     impacto,
     elogio,
     autorElogio,
@@ -341,6 +343,7 @@ export function entregaParaArquivo(e: Entrega): { dados: Frontmatter; corpo: str
       data:          e.data,
       metas:         e.metas.length ? e.metas : undefined,
       ia_sugeriu:    e.iaSugeriu || undefined,
+      conquista:     e.conquista || undefined,
       impacto:       e.impacto || undefined,
       elogio:        e.elogio || undefined,
       autor_elogio:  e.autorElogio || undefined,
