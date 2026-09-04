@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp, Settings as SettingsIcon, Terminal, RefreshCw, Layers, Trash2 } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp, Settings as SettingsIcon, Terminal, RefreshCw, Layers, Trash2, FlaskConical } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
-import { Botao, Campo, Cartao, Rotulo, Aviso } from "@/components/ui";
+import { Botao, Campo, Cartao, Rotulo, Aviso, ModalConfirmacao } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { ModalPersonalizarMenu } from "@/components/ModalPersonalizarMenu";
 import { ModalTourGuiado } from "@/components/ModalTourGuiado";
@@ -13,6 +13,7 @@ import { nomeLivre } from "@/lib/markdown";
 import { PASTAS } from "@/lib/tipos";
 import { analisarAcervoParaMigracao, executarMigracaoEmLote, type RelatorioAnaliseAcervo } from "@/lib/migracaoLote";
 import { identificarArquivosProcessos, apagarArquivosProcessosEmLote } from "@/lib/limpezaProcessos";
+import { popularKlausComDadosDemo, apagarTodosDadosDemo } from "@/lib/dadosDemo";
 import { CardConsumoGitHub } from "@/components/CardConsumoGitHub";
 import { instalarWorkflowLembretes } from "@/lib/instaladorWorkflow";
 import { hojeISO } from "@/lib/utils";
@@ -44,6 +45,13 @@ export default function Configuracoes() {
     return obterRascunhosLocais().filter((r) => r.status === "erro" || r.status === "conflito").length;
   });
 
+  // Estados dos Dados de Demonstração / Teste
+  const [populandoDemo, setPopulandoDemo] = useState(false);
+  const [apagandoDemo, setApagandoDemo] = useState(false);
+  const [progressoDemo, setProgressoDemo] = useState<{ atual: number; total: number; caminho: string } | null>(null);
+  const [msgDemo, setMsgDemo] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
+  const [modalConfirmarLimpezaDemo, setModalConfirmarLimpezaDemo] = useState(false);
+
   // Estados da Padronização Global do Acervo
   const [analisandoAcervo, setAnalisandoAcervo] = useState(false);
   const [migrandoAcervo, setMigrandoAcervo] = useState(false);
@@ -71,6 +79,67 @@ export default function Configuracoes() {
       setMsgWorkflow({ tom: "erro", texto: e.message || String(e) });
     } finally {
       setInstalandoWorkflow(false);
+    }
+  };
+
+  const handlePopularDemo = async () => {
+    setPopulandoDemo(true);
+    setMsgDemo(null);
+    try {
+      const res = await popularKlausComDadosDemo(cfg, (atual, total, caminho) => {
+        setProgressoDemo({ atual, total, caminho });
+      });
+
+      if (res.falhas.length === 0) {
+        setMsgDemo({
+          tom: "sucesso",
+          texto: `Sucesso! Foram criados ${res.sucessos} itens de demonstração (notas, tarefas, metas, entregas, referências e contatos) com sucesso no GitHub!`,
+        });
+      } else {
+        setMsgDemo({
+          tom: "erro",
+          texto: `${res.sucessos} itens criados, mas ${res.falhas.length} falharam.`,
+        });
+      }
+    } catch (e: any) {
+      setMsgDemo({ tom: "erro", texto: `Erro ao popular Klaus: ${e?.message || e}` });
+    } finally {
+      setPopulandoDemo(false);
+      setProgressoDemo(null);
+    }
+  };
+
+  const handleApagarDemo = async () => {
+    setModalConfirmarLimpezaDemo(false);
+    setApagandoDemo(true);
+    setMsgDemo(null);
+    try {
+      const todos = await carregarRepo(cfg);
+      const res = await apagarTodosDadosDemo(cfg, todos, (atual, total, caminho) => {
+        setProgressoDemo({ atual, total, caminho });
+      });
+
+      if (res.apagados === 0 && res.falhas.length === 0) {
+        setMsgDemo({
+          tom: "sucesso",
+          texto: "Nenhum arquivo de demonstração foi encontrado para apagar.",
+        });
+      } else if (res.falhas.length === 0) {
+        setMsgDemo({
+          tom: "sucesso",
+          texto: `Limpeza concluída! ${res.apagados} item(ns) de demonstração foram excluídos com sucesso do repositório.`,
+        });
+      } else {
+        setMsgDemo({
+          tom: "erro",
+          texto: `${res.apagados} itens excluídos, mas ${res.falhas.length} falharam ao excluir.`,
+        });
+      }
+    } catch (e: any) {
+      setMsgDemo({ tom: "erro", texto: `Erro ao excluir dados de demonstração: ${e?.message || e}` });
+    } finally {
+      setApagandoDemo(false);
+      setProgressoDemo(null);
     }
   };
 
@@ -1015,6 +1084,61 @@ export default function Configuracoes() {
         </div>
       </Cartao>
 
+      {/* Seção de Dados de Demonstração / Testes */}
+      <Cartao className="p-5 space-y-4 border-dashed border-primary/40 bg-primary/5">
+        <div>
+          <h2 className="font-medium text-foreground flex items-center gap-2">
+            <FlaskConical size={18} className="text-primary" />
+            Ambiente de Demonstração & Testes (Demo Pack)
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+            Popule instantaneamente o Klaus com um conjunto rico de notas, tarefas, metas de PDI, entregas, referências visuais e contatos fictícios para testar a experiência completa do app. Todos os arquivos são marcados com a tag <code>#demo</code> para que você possa apagá-los em lote a qualquer momento.
+          </p>
+        </div>
+
+        {msgDemo && (
+          <Aviso tom={msgDemo.tom === "sucesso" ? "sucesso" : "erro"}>
+            {msgDemo.texto}
+          </Aviso>
+        )}
+
+        {progressoDemo && (
+          <div className="space-y-1.5 p-3 rounded-xl bg-card border border-border text-xs">
+            <div className="flex justify-between font-semibold text-foreground">
+              <span>{populandoDemo ? "Gravando arquivos de teste..." : "Excluindo arquivos de teste..."}</span>
+              <span>{progressoDemo.atual} / {progressoDemo.total}</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-primary h-full transition-all duration-150"
+                style={{ width: `${(progressoDemo.atual / progressoDemo.total) * 100}%` }}
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground truncate">{progressoDemo.caminho}</p>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <Botao
+            variante="primario"
+            onClick={handlePopularDemo}
+            disabled={populandoDemo || apagandoDemo}
+          >
+            <Sparkles size={16} className={populandoDemo ? "animate-spin" : ""} />
+            {populandoDemo ? "Criando dados de teste..." : "Popular Klaus com Dados de Teste"}
+          </Botao>
+
+          <Botao
+            variante="perigo"
+            onClick={() => setModalConfirmarLimpezaDemo(true)}
+            disabled={populandoDemo || apagandoDemo}
+          >
+            <Trash2 size={16} className={apagandoDemo ? "animate-spin" : ""} />
+            {apagandoDemo ? "Excluindo..." : "Remover Todos os Dados de Teste"}
+          </Botao>
+        </div>
+      </Cartao>
+
       {/* Seção do Modo Desenvolvedor */}
       <Cartao className="p-5 space-y-4">
         <div>
@@ -1068,6 +1192,16 @@ export default function Configuracoes() {
       <ModalTourGuiado
         aberta={modalTourAberta}
         aoFechar={() => setModalTourAberta(false)}
+      />
+
+      <ModalConfirmacao
+        aberto={modalConfirmarLimpezaDemo}
+        titulo="Apagar todos os dados de demonstração?"
+        descricao="Esta ação irá localizar e excluir permanentemente do repositório todos os arquivos gerados pelo pacote de testes (com a tag #demo). Suas notas e tarefas pessoais não serão afetadas."
+        textoConfirmar="Excluir Dados de Teste"
+        varianteConfirmar="perigo"
+        aoConfirmar={handleApagarDemo}
+        aoCancelar={() => setModalConfirmarLimpezaDemo(false)}
       />
     </div>
   );
