@@ -239,7 +239,7 @@ export function NavegacaoLateral({
             <button
               type="button"
               onClick={() => setModalPersonalizarAberta(true)}
-              className="flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors group cursor-pointer select-none shrink-0"
+              className="flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors group cursor-pointer select-none shrink-0"
               aria-label="Personalizar Menu"
             >
               <Palette size={20} className="shrink-0 group-hover:rotate-12 transition-transform duration-150" />
@@ -247,23 +247,23 @@ export function NavegacaoLateral({
             </button>
           </Tooltip>
 
-          {/* Ajustes */}
-          <Tooltip conteudo="Ajustes e Conexões" posicao="right" desabilitado={!colapsada}>
+          {/* Configurações */}
+          <Tooltip conteudo="Configurações" posicao="right" desabilitado={!colapsada}>
             <NavLink
               to="/config"
-              onClick={aoNavegar}
+              onClick={lidarCliqueItem}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium transition-colors cursor-pointer select-none shrink-0",
+                  "flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium transition-colors relative group cursor-pointer select-none shrink-0",
                   isActive
                     ? "bg-primary/15 text-primary font-semibold shadow-2xs"
                     : "text-muted-foreground hover:bg-accent/80 hover:text-foreground"
                 )
               }
-              aria-label="Ajustes"
+              aria-label="Configurações"
             >
-              <Settings size={20} className="shrink-0 transition-transform duration-150 hover:rotate-45" />
-              {!colapsada && <span className="truncate text-left flex-1">Ajustes</span>}
+              <Settings size={20} className="shrink-0 transition-transform duration-150 group-hover:rotate-45" />
+              {!colapsada && <span className="truncate text-left flex-1">Configurações</span>}
             </NavLink>
           </Tooltip>
 
@@ -276,13 +276,13 @@ export function NavegacaoLateral({
             <button
               type="button"
               onClick={toggleTema}
-              className="flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors cursor-pointer select-none shrink-0"
+              className="flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors group cursor-pointer select-none shrink-0"
               aria-label={escuro ? "Modo claro" : "Modo escuro"}
             >
               {escuro ? (
-                <Sun size={20} className="shrink-0 text-amber-400" />
+                <Sun size={20} className="shrink-0 text-amber-400 group-hover:rotate-45 transition-transform duration-150" />
               ) : (
-                <Moon size={20} className="shrink-0 text-indigo-400" />
+                <Moon size={20} className="shrink-0 text-indigo-400 group-hover:-rotate-12 transition-transform duration-150" />
               )}
               {!colapsada && <span className="truncate text-left flex-1">{escuro ? "Modo Claro" : "Modo Escuro"}</span>}
             </button>
