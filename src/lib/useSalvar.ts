@@ -21,6 +21,7 @@ import {
   obterRascunhosLocais,
   sincronizarFilaOffline,
   limparRascunhosComErro,
+  estaSincronizandoFila,
 } from "./offlineQueue";
 import { lerConfig, configCompleta, type Settings } from "./settings";
 import { dispararAtualizacaoAcervo, EVENTO_ACERVO_ATUALIZADO } from "./eventos";
@@ -73,8 +74,8 @@ export function useSalvar(cfgProp?: Settings): EstadoSalvar {
   useEffect(() => {
     const checarStatusFila = () => {
       const rascunhos = obterRascunhosLocais();
-      // Se houver algum rascunho com status "sincronizando" ou "pendente", consideramos que está salvando
-      const ativo = rascunhos.some((r) => r.status === "sincronizando" || r.status === "pendente");
+      // O app está salvando apenas se houver sincronização ativa no momento
+      const ativo = estaSincronizandoFila() || rascunhos.some((r) => r.status === "sincronizando");
       setSalvando(ativo);
 
       // Agrega erros na fila para exibição reativa

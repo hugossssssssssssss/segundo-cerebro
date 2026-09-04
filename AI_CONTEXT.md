@@ -175,6 +175,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`limparTodosRascunhosLocais`**
 - `funcao` **`redefinirRascunhosComErroParaPendente`** — _Redefine rascunhos que falharam para "pendente", permitindo nova tentativa com credenciais atualizad..._
 - `funcao` **`limparRascunhosComErro`** — _Remove todos os rascunhos com erro da fila offline_
+- `funcao` **`estaSincronizandoFila`**
 - `funcao` **`sincronizarFilaOffline`** — _Tenta descarregar a fila de rascunhos offline para o GitHub_
 - `funcao` **`forcarResolverConflitoRascunho`** — _Força a gravação de um rascunho com conflito (409) ou erro no GitHub, buscando a SHA mais recente do..._
 
@@ -889,7 +890,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`formatarNomeAmigavel`** — _Converte um caminho de arquivo técnico (ex: "tarefas/2026-08-13-fazer-a-capa.md") em um título legív..._
 - `funcao` **`formatarCaminhoAmigavel`** — _Converte um caminho técnico (ex: "pdi/metas/2026-08-13-meta.md" ou "notas/projetos/klaus.md") em uma..._
 - `funcao` **`formatarTituloAmigavel`** — _Garante um título limpo e legível para documentos, removendo extensões .md/.json, carimbos de data n..._
-- _...e mais 2 exportações secundárias._
+- _...e mais 3 exportações secundárias._
 
 #### 📄 `src/lib/versao.ts`
 > Versão atual da aplicação Klaus. REGRA MANDATÓRIA PARA AGENTES DE IA: Sempre que implementar uma nova funcionalidade, correção ou alteração no código, você DEVE incrementar esta versão (ex: 1.1.0 -> 1.1.1 ou 1.2.0) e atualizar também o campo "version" no package.json.

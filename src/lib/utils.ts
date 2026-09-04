@@ -247,3 +247,22 @@ export function formatarAtalho(atalho?: string): string {
   return atalho.replace(/⌘/g, "Ctrl+").replace(/Cmd\+/gi, "Ctrl+");
 }
 
+/**
+ * Serializador seguro contra estruturas circulares ou objetos não serializáveis (Excalidraw, Canvas, etc.)
+ */
+export function safeStringify(obj: unknown, indent = 2): string {
+  const seen = new WeakSet();
+  return JSON.stringify(
+    obj,
+    (_key, value) => {
+      if (typeof value === "object" && value !== null) {
+        if (seen.has(value)) return undefined;
+        seen.add(value);
+      }
+      if (typeof value === "function" || typeof value === "symbol") return undefined;
+      return value;
+    },
+    indent
+  );
+}
+

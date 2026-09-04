@@ -23,6 +23,7 @@ vi.mock("./offlineQueue", () => ({
   limparRascunhosComErro: vi.fn(),
   redefinirRascunhosComErroParaPendente: vi.fn(),
   sincronizarFilaOffline: vi.fn().mockResolvedValue({ concluidos: 0, falhas: 0 }),
+  estaSincronizandoFila: vi.fn().mockReturnValue(false),
 }));
 
 vi.mock("./lixeira", () => ({

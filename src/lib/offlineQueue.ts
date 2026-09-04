@@ -220,6 +220,10 @@ export function limparRascunhosComErro(): void {
 
 let sincronizandoFila = false;
 
+export function estaSincronizandoFila(): boolean {
+  return sincronizandoFila;
+}
+
 /** Tenta descarregar a fila de rascunhos offline para o GitHub */
 export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluidos: number; falhas: number }> {
   if (!navigator.onLine) return { concluidos: 0, falhas: 0 };

@@ -28,7 +28,7 @@ import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
 import { tituloProvavel, nomeLivre, escreverMarkdown, lerMarkdown } from "@/lib/markdown";
 import { propagarRenomeacao } from "@/lib/links";
-import { correspondeBusca, lerParametroAbrir } from "@/lib/utils";
+import { correspondeBusca, lerParametroAbrir, safeStringify } from "@/lib/utils";
 import { Botao, Campo, Aviso, Vazio, Carregando, ModalConfirmacao } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
@@ -67,7 +67,9 @@ export default function Lousas() {
     useItemRepo(cfg, PASTA, (item) => item);
 
   // ── Salvamento ────────────────────────────────────────────────────────────
-  const { salvarTexto, apagarItem, salvando, erro: erroSalvar } = useSalvar(cfg);
+  const { salvarTexto, apagarItem, erro: erroSalvar } = useSalvar(cfg);
+  const [salvandoLocal, setSalvandoLocal] = useState(false);
+  const salvando = salvandoLocal;
 
   // ── Estado da UI ──────────────────────────────────────────────────────────
   const [erroLocal, setErroLocal] = useState("");
@@ -193,9 +195,12 @@ export default function Lousas() {
     if (!aberta) return;
     setErroLocal("");
     setErroRenomeacao("");
+    setSalvandoLocal(true);
 
     try {
-      const apiElements = excalidrawAPI ? excalidrawAPI.getSceneElements() : null;
+      const apiElements = excalidrawAPI && typeof excalidrawAPI.getSceneElements === "function"
+        ? excalidrawAPI.getSceneElements()
+        : null;
       let elementsToSave = (apiElements && apiElements.length > 0) ? apiElements : [];
       if (elementsToSave.length === 0 && elementsRef.current && elementsRef.current.length > 0) {
         elementsToSave = elementsRef.current;
@@ -204,10 +209,10 @@ export default function Lousas() {
         elementsToSave = aberta.dados.elements;
       }
 
-      const currentAppState: Record<string, unknown> = excalidrawAPI
+      const currentAppState: Record<string, unknown> = excalidrawAPI && typeof excalidrawAPI.getAppState === "function"
         ? (excalidrawAPI.getAppState() || {})
         : (appStateRef.current || {});
-      const files = excalidrawAPI
+      const files = excalidrawAPI && typeof excalidrawAPI.getFiles === "function"
         ? (excalidrawAPI.getFiles() || {})
         : (filesRef.current || {});
 
@@ -218,7 +223,7 @@ export default function Lousas() {
       }
 
       const elementosValidos = Array.isArray(elementsToSave)
-        ? elementsToSave.filter((el: any) => !el.isDeleted)
+        ? elementsToSave.filter((el: any) => !el?.isDeleted)
         : [];
 
       const tituloLimpo = aberta.titulo.trim() || "Lousa Sem Título";
@@ -230,10 +235,10 @@ export default function Lousas() {
           viewBackgroundColor: currentAppState.viewBackgroundColor || "#ffffff",
           gridSize: currentAppState.gridSize || null,
         },
-        files,
+        files: files && typeof files === "object" ? files : {},
       };
 
-      const textoCena = JSON.stringify(dadosParaSalvar, null, 2);
+      const textoCena = safeStringify(dadosParaSalvar, 2);
       const textoParaGravar = escreverMarkdown({
         dados: {
           titulo: tituloLimpo,
@@ -294,8 +299,12 @@ export default function Lousas() {
       }
 
       recarregar();
-    } catch {
-      // erro já está em erroSalvar
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setErroLocal(msg);
+      toast(`Erro ao salvar mapa mental: ${msg}`, { tipo: "erro" });
+    } finally {
+      setSalvandoLocal(false);
     }
   }
 
