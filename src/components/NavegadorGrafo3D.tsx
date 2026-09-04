@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   Play,
   Pause,
@@ -7,6 +7,8 @@ import {
   ZoomOut,
   Crosshair,
   RotateCcw,
+  X,
+  ExternalLink,
 } from "lucide-react";
 import {
   construirGrafo3D as construirGrafo,
@@ -24,7 +26,6 @@ import { cn } from "@/lib/utils";
 interface NavegadorGrafoProps {
   acervo: ItemRepo[];
   aoSelecionarItem: (caminho: string) => void;
-  aoSelecionarTag?: (tag: string) => void;
   className?: string;
 }
 
@@ -36,7 +37,6 @@ interface NavegadorGrafoProps {
 export function NavegadorGrafo3D({
   acervo,
   aoSelecionarItem,
-  aoSelecionarTag,
   className,
 }: NavegadorGrafoProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -46,11 +46,17 @@ export function NavegadorGrafo3D({
   const [filtroTipo, setFiltroTipo] = useState<TipoNoGrafo | "todos">("todos");
   const [simulando, setSimulando] = useState(true);
   const [noHover, setNoHover] = useState<NoGrafo | null>(null);
+  const [noSelecionado, setNoSelecionado] = useState<NoGrafo | null>(null);
 
   const noHoverRef = useRef<NoGrafo | null>(noHover);
   useEffect(() => {
     noHoverRef.current = noHover;
   }, [noHover]);
+
+  const noSelecionadoRef = useRef<NoGrafo | null>(noSelecionado);
+  useEffect(() => {
+    noSelecionadoRef.current = noSelecionado;
+  }, [noSelecionado]);
 
   // Posição de Pan e Zoom 2D da Câmera
   const cameraRef = useRef({
@@ -148,20 +154,22 @@ export function NavegadorGrafo3D({
 
       const { nos, arestas } = grafoRef.current;
       const hoverItem = noHoverRef.current;
+      const selecionadoItem = noSelecionadoRef.current;
+      const focoAtivo = hoverItem || selecionadoItem;
 
-      // Mapeamento de nós conectados ao nó sob hover
-      const conexoesHover = new Set<string>();
-      if (hoverItem) {
-        conexoesHover.add(hoverItem.id);
+      // Mapeamento de nós conectados ao nó sob foco (hover ou seleção fixa)
+      const conexoesFoco = new Set<string>();
+      if (focoAtivo) {
+        conexoesFoco.add(focoAtivo.id);
         for (const a of arestas) {
-          if (a.origem === hoverItem.id) conexoesHover.add(a.destino);
-          if (a.destino === hoverItem.id) conexoesHover.add(a.origem);
+          if (a.origem === focoAtivo.id) conexoesFoco.add(a.destino);
+          if (a.destino === focoAtivo.id) conexoesFoco.add(a.origem);
         }
       }
 
       const mapaNos = new Map(nos.map((n) => [n.id, n]));
 
-      // 1. Desenha as Arestas de Conexão (Linhas Nítidas, Contrastadas e Conectadas)
+      // 1. Desenha as Arestas de Conexão (Linhas Nítidas e Conectadas)
       for (const a of arestas) {
         const n1 = mapaNos.get(a.origem);
         const n2 = mapaNos.get(a.destino);
@@ -177,28 +185,28 @@ export function NavegadorGrafo3D({
         const x2 = centroX + n2.x * zoom;
         const y2 = centroY + n2.y * zoom;
 
-        const estaConectadoAoHover =
-          hoverItem && (a.origem === hoverItem.id || a.destino === hoverItem.id);
+        const estaConectadoAoFoco =
+          focoAtivo && (a.origem === focoAtivo.id || a.destino === focoAtivo.id);
 
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
 
-        if (estaConectadoAoHover) {
+        if (estaConectadoAoFoco) {
           ctx.strokeStyle = escuro ? "#818cf8" : "#4f46e5";
           ctx.lineWidth = Math.max(2.4, 2.4 * zoom);
           ctx.globalAlpha = 1.0;
         } else {
-          // Linhas estruturais sempre nítidas e visíveis
+          // Linhas estruturais
           ctx.strokeStyle = escuro ? "rgba(165, 180, 252, 0.4)" : "rgba(99, 102, 241, 0.35)";
           ctx.lineWidth = Math.max(1.4, 1.4 * zoom);
-          ctx.globalAlpha = hoverItem ? 0.25 : 0.85;
+          ctx.globalAlpha = focoAtivo ? 0.12 : 0.85;
         }
         ctx.stroke();
         ctx.globalAlpha = 1.0;
       }
 
-      // 2. Desenha os Nós como Círculos Limpos
+      // 2. Desenha os Nós com Nitidez e Destaque
       for (const no of nos) {
         if (filtroTipo !== "todos" && no.tipo !== filtroTipo) continue;
 
@@ -209,39 +217,44 @@ export function NavegadorGrafo3D({
           ? no.titulo.toLowerCase().includes(pesquisa.toLowerCase())
           : true;
 
-        const ehHover = hoverItem?.id === no.id;
-        const ehConectadoAoHover = conexoesHover.has(no.id);
+        const ehFocoPrincipal = focoAtivo?.id === no.id;
+        const ehConectadoAoFoco = conexoesFoco.has(no.id);
 
         let alpha = 1.0;
         if (pesquisa && !coincidePesquisa) alpha = 0.15;
-        else if (hoverItem && !ehConectadoAoHover) alpha = 0.2;
+        else if (focoAtivo && !ehConectadoAoFoco) alpha = 0.15;
 
         const raioBase = Math.max(5, Math.min(no.raio * 0.75, 18));
-        const raioFinal = (ehHover ? raioBase * 1.3 : raioBase) * zoom;
+        const raioFinal = (ehFocoPrincipal ? raioBase * 1.35 : ehConectadoAoFoco && focoAtivo ? raioBase * 1.15 : raioBase) * zoom;
 
         ctx.save();
         ctx.globalAlpha = alpha;
 
         const ehTag = no.tipo === "tag";
 
-        // Anel Externo ao Passar o Mouse
-        if (ehHover) {
+        // Anel Externo de Destaque
+        if (ehFocoPrincipal) {
           ctx.beginPath();
           ctx.arc(x, y, raioFinal + 5, 0, Math.PI * 2);
           ctx.strokeStyle = no.cor;
-          ctx.lineWidth = 2.5;
+          ctx.lineWidth = 2.8;
+          ctx.stroke();
+        } else if (ehConectadoAoFoco && focoAtivo) {
+          ctx.beginPath();
+          ctx.arc(x, y, raioFinal + 3, 0, Math.PI * 2);
+          ctx.strokeStyle = escuro ? "rgba(255, 255, 255, 0.55)" : "rgba(15, 23, 42, 0.45)";
+          ctx.lineWidth = 1.6;
           ctx.stroke();
         }
 
         if (ehTag) {
           // --- NÓ DO TIPO TAG: DESENHO DE HASHTAG (#) ---
-          // Fundo suave da tag
           ctx.beginPath();
           ctx.arc(x, y, raioFinal, 0, Math.PI * 2);
-          ctx.fillStyle = escuro ? "rgba(205, 214, 244, 0.16)" : "rgba(100, 116, 139, 0.14)";
+          ctx.fillStyle = escuro ? "rgba(205, 214, 244, 0.22)" : "rgba(100, 116, 139, 0.18)";
           ctx.fill();
           ctx.strokeStyle = no.cor;
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = ehFocoPrincipal ? 2.2 : 1.5;
           ctx.stroke();
 
           // Desenho do símbolo '#' no centro do nó
@@ -265,29 +278,31 @@ export function NavegadorGrafo3D({
           ctx.lineTo(x + tam * 0.28, y + tam * 0.75);
           ctx.stroke();
         } else {
-          // --- NÓ DE DOCUMENTO (NOTA, TAREFA, META, ETC.): CÍRCULO SÓLIDO ---
+          // --- NÓ DE DOCUMENTO: CÍRCULO SÓLIDO ---
           ctx.beginPath();
           ctx.arc(x, y, raioFinal, 0, Math.PI * 2);
           ctx.fillStyle = no.cor;
           ctx.fill();
 
           // Borda sutil
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
           ctx.lineWidth = 1.5;
           ctx.stroke();
         }
 
-        // Rótulo do Título (aparece no hover, no zoom próximo ou na busca)
+        // Rótulo do Título (aparece no foco, nós conectados ao foco, no zoom próximo ou na busca)
         const deveMostrarRotulo =
-          ehHover ||
-          (hoverItem && ehConectadoAoHover) ||
+          ehFocoPrincipal ||
+          (focoAtivo && ehConectadoAoFoco) ||
           zoom > 1.1 ||
           (pesquisa && coincidePesquisa);
 
         if (deveMostrarRotulo) {
-          ctx.font = `${ehHover ? "600 12px" : "11px"} sans-serif`;
-          ctx.fillStyle = ehHover
+          ctx.font = `${ehFocoPrincipal ? "bold 12px" : ehConectadoAoFoco && focoAtivo ? "600 11px" : "11px"} sans-serif`;
+          ctx.fillStyle = ehFocoPrincipal
             ? (escuro ? "#ffffff" : "#0f172a")
+            : ehConectadoAoFoco && focoAtivo
+            ? (escuro ? "#f1f5f9" : "#0f172a")
             : (escuro ? "rgba(226, 232, 240, 0.95)" : "rgba(15, 23, 42, 0.95)");
           ctx.textAlign = "center";
           const prefixo = ehTag && !no.titulo.startsWith("#") ? "#" : "";
@@ -377,17 +392,35 @@ export function NavegadorGrafo3D({
     return () => canvas.removeEventListener("wheel", aoRolarWheel);
   }, [aoRolarWheel]);
 
-  // Clique para abrir o documento ou visualizar documentos vinculados a uma hashtag
+  // Mapeamento de nós conectados ao nó selecionado para listagem inferior
+  const nosConectados = useMemo(() => {
+    if (!noSelecionado) return [];
+    const mapaNos = new Map(grafoRef.current.nos.map((n) => [n.id, n]));
+    const ids = new Set<string>();
+    for (const a of grafoRef.current.arestas) {
+      if (a.origem === noSelecionado.id && a.destino !== noSelecionado.id) ids.add(a.destino);
+      if (a.destino === noSelecionado.id && a.origem !== noSelecionado.id) ids.add(a.origem);
+    }
+    return Array.from(ids)
+      .map((id) => mapaNos.get(id))
+      .filter((n): n is NoGrafo => Boolean(n));
+  }, [noSelecionado]);
+
+  // Clique para fixar seleção mantendo destaque nítido, ou abrir documento no editor
   const aoClicarCanvas = () => {
-    if (!noHover) return;
+    if (!noHover) {
+      setNoSelecionado(null);
+      return;
+    }
 
     if (noHover.tipo === "tag" || noHover.caminho.startsWith("tag_")) {
-      const tagNome = noHover.tags?.[0] || noHover.titulo.replace(/^#+/, "");
-      if (aoSelecionarTag) {
-        aoSelecionarTag(tagNome);
-      }
+      setNoSelecionado((prev) => (prev?.id === noHover.id ? null : noHover));
     } else {
-      aoSelecionarItem(noHover.caminho);
+      if (noSelecionado?.id === noHover.id) {
+        aoSelecionarItem(noHover.caminho);
+      } else {
+        setNoSelecionado(noHover);
+      }
     }
   };
 
@@ -478,7 +511,75 @@ export function NavegadorGrafo3D({
             </div>
           )}
           <div className="mt-2 pt-1.5 border-t border-border/50 text-[10px] text-primary/90 font-medium">
-            {noHover.tipo === "tag" ? "Clique para ver todos os documentos vinculados" : "Clique para abrir no editor"}
+            {noHover.tipo === "tag" ? "Clique para fixar seleção e destacar conexões" : "Clique para fixar conexões (2 cliques para abrir)"}
+          </div>
+        </div>
+      )}
+
+      {/* Barra Minimalista de Nó Selecionado x Conexões */}
+      {noSelecionado && (
+        <div className="absolute bottom-14 left-3 right-3 bg-card/95 backdrop-blur-md border border-border/90 rounded-xl p-2.5 shadow-2xl animate-in slide-in-from-bottom-2 duration-200 pointer-events-auto z-10">
+          <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border/50 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: noSelecionado.cor }}
+              />
+              <span className="font-bold text-foreground truncate">{noSelecionado.titulo}</span>
+              <span className="text-[11px] text-muted-foreground font-medium">
+                • {nosConectados.length} {nosConectados.length === 1 ? "conexão" : "conexões"}
+              </span>
+              {noSelecionado.tipo !== "tag" && (
+                <button
+                  onClick={() => aoSelecionarItem(noSelecionado.caminho)}
+                  className="text-[11px] text-primary hover:underline font-medium ml-1 cursor-pointer inline-flex items-center gap-1"
+                >
+                  Abrir <ExternalLink size={10} />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setNoSelecionado(null)}
+              className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-accent cursor-pointer transition-colors"
+              title="Fechar seleção"
+            >
+              <X size={13} />
+            </button>
+          </div>
+          <div className="flex items-center gap-2 overflow-x-auto pt-2 pb-0.5 scrollbar-none">
+            {nosConectados.length === 0 ? (
+              <span className="text-xs text-muted-foreground italic py-1">
+                Nenhum documento conectado a este nó.
+              </span>
+            ) : (
+              nosConectados.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    if (item.tipo !== "tag") {
+                      aoSelecionarItem(item.caminho);
+                    } else {
+                      setNoSelecionado(item);
+                    }
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-secondary/60 hover:bg-primary/10 hover:border-primary/40 border border-border/60 transition-all text-xs font-medium text-foreground cursor-pointer shrink-0 max-w-xs group text-left"
+                >
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0 group-hover:scale-110 transition-transform"
+                    style={{ backgroundColor: item.cor }}
+                  />
+                  <span className="truncate group-hover:text-primary transition-colors">
+                    {item.titulo}
+                  </span>
+                  {item.tipo !== "tag" && (
+                    <ExternalLink
+                      size={11}
+                      className="opacity-0 group-hover:opacity-70 shrink-0 text-primary"
+                    />
+                  )}
+                </button>
+              ))
+            )}
           </div>
         </div>
       )}
