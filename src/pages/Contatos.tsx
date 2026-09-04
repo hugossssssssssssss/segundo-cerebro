@@ -46,7 +46,7 @@ import {
 } from "@/lib/contatos";
 import { Botao, Cartao, Selo, Modal, Carregando, ModalConfirmacao, Vazio } from "@/components/ui";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
-import { propagarRenomeacaoId } from "@/lib/links";
+import { propagarRenomeacaoId, montarIndice, mencoesA } from "@/lib/links";
 import { carregarRepo } from "@/lib/repo";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
@@ -95,6 +95,13 @@ export default function Contatos() {
 
   // Item aberto para edição no Painel Notion
   const [aberto, setAberta] = useState<ContatoAberto | null>(null);
+  const [contatoParaExcluir, setContatoParaExcluir] = useState<Contato | null>(null);
+
+  const indice = useMemo(() => montarIndice(acervo), [acervo]);
+  const mencoesDoContato = useMemo(
+    () => (aberto?.caminho ? mencoesA(aberto.caminho, acervo, indice) : []),
+    [aberto?.caminho, acervo, indice]
+  );
 
   // Controle de nós expandidos/recolhidos na árvore
   const [recolhidos, setRecolhidos] = useState<Record<string, boolean>>({});
@@ -384,6 +391,27 @@ export default function Contatos() {
       setContatosLocais((prev) => prev.filter((c) => c.caminho !== caminhoAlvo));
       fecharContato();
       recarregar();
+      toast(`Contato movido para a lixeira!`);
+    } catch (err: any) {
+      setContatosLocais(contatosAnteriores);
+      toast(`Erro ao excluir contato no GitHub: ${err?.message || "Falha na exclusão"}`, { tipo: "erro" });
+    }
+  };
+
+  const confirmarExcluirContato = async () => {
+    if (!contatoParaExcluir) return;
+    const alvo = contatoParaExcluir;
+    setContatoParaExcluir(null);
+
+    const contatosAnteriores = contatosLocais;
+    try {
+      await apagarItem(alvo.caminho, alvo.sha);
+      setContatosLocais((prev) => prev.filter((c) => c.caminho !== alvo.caminho));
+      if (aberto?.caminho === alvo.caminho) {
+        fecharContato();
+      }
+      recarregar();
+      toast(`Contato "${alvo.titulo}" movido para a lixeira!`);
     } catch (err: any) {
       setContatosLocais(contatosAnteriores);
       toast(`Erro ao excluir contato no GitHub: ${err?.message || "Falha na exclusão"}`, { tipo: "erro" });
@@ -662,10 +690,7 @@ export default function Contatos() {
                   aoAlternarRecolhido={alternarRecolhido}
                   aoNovoFilho={(paiId) => novoContato(paiId)}
                   aoEditar={(c) => abrirContato(c)}
-                  aoExcluir={(c) => {
-                    setAberta({ ...c, original: { titulo: c.titulo, corpo: c.corpo, bruto: c.bruto } });
-                    removerContato();
-                  }}
+                  aoExcluir={(c) => setContatoParaExcluir(c)}
                 />
               ))}
             </div>
@@ -681,10 +706,7 @@ export default function Contatos() {
                   todosContatos={contatosLocais}
                   aoNovoFilho={(paiId) => novoContato(paiId)}
                   aoEditar={(c) => abrirContato(c)}
-                  aoExcluir={(c) => {
-                    setAberta({ ...c, original: { titulo: c.titulo, corpo: c.corpo, bruto: c.bruto } });
-                    removerContato();
-                  }}
+                  aoExcluir={(c) => setContatoParaExcluir(c)}
                 />
               ))}
             </div>
@@ -773,10 +795,7 @@ export default function Contatos() {
                             </Tooltip>
                             <Tooltip conteudo="Excluir Contato">
                               <button
-                                onClick={() => {
-                                  setAberta({ ...c, original: { titulo: c.titulo, corpo: c.corpo, bruto: c.bruto } });
-                                  removerContato();
-                                }}
+                                onClick={() => setContatoParaExcluir(c)}
                                 className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
                                 aria-label="Excluir Contato"
                               >
@@ -815,6 +834,8 @@ export default function Contatos() {
             pai_id: { icone: <User className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "relation" },
             tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
           }}
+          caminhoItem={aberto.caminho}
+          mencoes={mencoesDoContato}
           salvando={salvando}
           temMudancas={mudou}
           aoFechar={fecharContato}
@@ -826,6 +847,17 @@ export default function Contatos() {
           opcoesRelacionamento={opcoesRelacionamentoContatos}
         />
       )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE CONTATO */}
+      <ModalConfirmacao
+        aberto={contatoParaExcluir !== null}
+        titulo="Excluir Contato?"
+        descricao={`Tem certeza que deseja excluir "${contatoParaExcluir?.titulo || "este contato"}"? Ele será movido para a lixeira.`}
+        textoConfirmar="Excluir Contato"
+        varianteConfirmar="perigo"
+        aoConfirmar={confirmarExcluirContato}
+        aoCancelar={() => setContatoParaExcluir(null)}
+      />
 
       {/* MODAL DE CONFIRMAÇÃO DE DESCARTE */}
       <ModalConfirmacao

@@ -220,6 +220,8 @@ export function NavegadorGrafo3D({
         ctx.save();
         ctx.globalAlpha = alpha;
 
+        const ehTag = no.tipo === "tag";
+
         // Anel Externo ao Passar o Mouse
         if (ehHover) {
           ctx.beginPath();
@@ -229,16 +231,49 @@ export function NavegadorGrafo3D({
           ctx.stroke();
         }
 
-        // Círculo do Nó
-        ctx.beginPath();
-        ctx.arc(x, y, raioFinal, 0, Math.PI * 2);
-        ctx.fillStyle = no.cor;
-        ctx.fill();
+        if (ehTag) {
+          // --- NÓ DO TIPO TAG: DESENHO DE HASHTAG (#) ---
+          // Fundo suave da tag
+          ctx.beginPath();
+          ctx.arc(x, y, raioFinal, 0, Math.PI * 2);
+          ctx.fillStyle = escuro ? "rgba(205, 214, 244, 0.16)" : "rgba(100, 116, 139, 0.14)";
+          ctx.fill();
+          ctx.strokeStyle = no.cor;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
 
-        // Borda sutil
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+          // Desenho do símbolo '#' no centro do nó
+          const tam = Math.max(5, raioFinal * 0.58);
+          ctx.beginPath();
+          ctx.strokeStyle = no.cor;
+          ctx.lineWidth = Math.max(1.6, 2.2 * Math.min(zoom, 1.8));
+          ctx.lineCap = "round";
+
+          // Barra horizontal superior
+          ctx.moveTo(x - tam * 0.75, y - tam * 0.32);
+          ctx.lineTo(x + tam * 0.75, y - tam * 0.32);
+          // Barra horizontal inferior
+          ctx.moveTo(x - tam * 0.75, y + tam * 0.32);
+          ctx.lineTo(x + tam * 0.75, y + tam * 0.32);
+          // Barra vertical esquerda
+          ctx.moveTo(x - tam * 0.28, y - tam * 0.75);
+          ctx.lineTo(x - tam * 0.38, y + tam * 0.75);
+          // Barra vertical direita
+          ctx.moveTo(x + tam * 0.38, y - tam * 0.75);
+          ctx.lineTo(x + tam * 0.28, y + tam * 0.75);
+          ctx.stroke();
+        } else {
+          // --- NÓ DE DOCUMENTO (NOTA, TAREFA, META, ETC.): CÍRCULO SÓLIDO ---
+          ctx.beginPath();
+          ctx.arc(x, y, raioFinal, 0, Math.PI * 2);
+          ctx.fillStyle = no.cor;
+          ctx.fill();
+
+          // Borda sutil
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
 
         // Rótulo do Título (aparece no hover, no zoom próximo ou na busca)
         const deveMostrarRotulo =
@@ -253,7 +288,8 @@ export function NavegadorGrafo3D({
             ? (escuro ? "#ffffff" : "#0f172a")
             : (escuro ? "rgba(226, 232, 240, 0.95)" : "rgba(15, 23, 42, 0.95)");
           ctx.textAlign = "center";
-          ctx.fillText(no.titulo, x, y + raioFinal + 13);
+          const prefixo = ehTag && !no.titulo.startsWith("#") ? "#" : "";
+          ctx.fillText(`${prefixo}${no.titulo}`, x, y + raioFinal + 13);
         }
 
         ctx.restore();
@@ -376,7 +412,7 @@ export function NavegadorGrafo3D({
 
         {/* Chips de Categoria Minimalistas */}
         <div className="flex items-center gap-1 bg-card/90 backdrop-blur-md p-1 rounded-xl border border-border/80 shadow-md pointer-events-auto overflow-x-auto">
-          {(["todos", "nota", "tarefa", "meta", "referencia", "lousa", "contato"] as const).map((t) => (
+          {(["todos", "nota", "tarefa", "meta", "referencia", "lousa", "contato", "tag"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setFiltroTipo(t)}

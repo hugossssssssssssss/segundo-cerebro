@@ -1,6 +1,24 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Network, Sparkles, Link as LinkIcon, Tag } from "lucide-react";
+import {
+  Network,
+  Sparkles,
+  Link as LinkIcon,
+  Tag,
+  CheckCircle2,
+  Calendar,
+  Timer,
+  Target,
+  TrendingUp,
+  Package,
+  MessageSquareQuote,
+  User,
+  Users,
+  Briefcase,
+  Building,
+  Mail,
+  Phone,
+} from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { useSalvar } from "@/lib/useSalvar";
 import { useAcervoRepo } from "@/lib/useItemRepo";
@@ -43,15 +61,18 @@ export default function GrafoNeural() {
     if (!item) return;
 
     const titulo = String(item.doc.dados.titulo || tituloProvavel(item.doc, item.nome));
-    const pasta = caminho.split("/")[0];
     const tipoRotulo =
-      pasta === "tarefas"
+      caminho.startsWith("tarefas/")
         ? "Tarefa"
-        : pasta === "referencias"
+        : caminho.startsWith("referencias/")
         ? "Referência"
-        : pasta === "pdi"
+        : caminho.startsWith("pdi/entregas")
+        ? "PDI Entrega"
+        : caminho.startsWith("pdi/metas") || caminho.startsWith("pdi/")
         ? "PDI Meta"
-        : pasta === "lousas"
+        : caminho.startsWith("contatos/")
+        ? "Contato"
+        : caminho.startsWith("lousas/")
         ? "Lousa Visual"
         : "Nota";
 
@@ -93,6 +114,59 @@ export default function GrafoNeural() {
     setAberto(null);
     invalidarCache();
     dispararAtualizacaoAcervo();
+  };
+
+  const obterCamposFixos = (caminho: string, tipoRotulo: string) => {
+    if (caminho.startsWith("tarefas/") || tipoRotulo === "Tarefa") {
+      return {
+        status: { icone: <CheckCircle2 className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" as const },
+        prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" as const },
+        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "multiselect" as const },
+        Pomodoro: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" as const },
+        relacionamentos: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" as const },
+      };
+    }
+    if (caminho.startsWith("pdi/entregas") || tipoRotulo === "PDI Entrega") {
+      return {
+        data: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" as const },
+        metas: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" as const },
+        conquista: { icone: <Package className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "texto" as const },
+        impacto: { icone: <TrendingUp className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "texto" as const },
+        elogio: { icone: <MessageSquareQuote className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" as const },
+        autor_elogio: { icone: <User className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "texto" as const },
+        colaboracao: { icone: <Users className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "multiselect" as const },
+        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" as const },
+      };
+    }
+    if (caminho.startsWith("pdi/metas") || tipoRotulo === "PDI Meta") {
+      return {
+        status: { icone: <CheckCircle2 className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" as const },
+        prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" as const },
+        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" as const },
+        relacionamentos: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" as const },
+      };
+    }
+    if (caminho.startsWith("contatos/") || tipoRotulo === "Contato") {
+      return {
+        cargo: { icone: <Briefcase className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "texto" as const },
+        empresa: { icone: <Building className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "texto" as const },
+        email: { icone: <Mail className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "texto" as const },
+        telefone: { icone: <Phone className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" as const },
+        pai_id: { icone: <User className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "relation" as const },
+        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" as const },
+      };
+    }
+    if (caminho.startsWith("referencias/") || tipoRotulo === "Referência") {
+      return {
+        porque: { icone: <Sparkles className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" as const },
+        fonte: { icone: <LinkIcon className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "link" as const },
+        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" as const },
+      };
+    }
+    return {
+      tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "multiselect" as const },
+      relacionamentos: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" as const },
+    };
   };
 
   if (!pronto) {
@@ -144,15 +218,7 @@ export default function GrafoNeural() {
           onChangeProps={(novosDados) =>
             setAberto((prev) => (prev ? { ...prev, bruto: novosDados } : null))
           }
-          camposFixosProps={
-            aberto.caminho.startsWith("referencias/") || aberto.tipoRotulo === "Referência"
-              ? {
-                  porque: { icone: <Sparkles className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" as const },
-                  fonte: { icone: <LinkIcon className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "link" as const },
-                  tags: { icone: <Tag className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" as const },
-                }
-              : undefined
-          }
+          camposFixosProps={obterCamposFixos(aberto.caminho, aberto.tipoRotulo)}
           caminhoItem={aberto.caminho}
           salvando={salvando}
           temMudancas={
