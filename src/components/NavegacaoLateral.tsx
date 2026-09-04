@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { LogoKlaus } from "./LogoKlaus";
 import {
   carregarMenuPersonalizado,
@@ -19,7 +18,6 @@ import {
 import { obterIconePorNome } from "@/lib/icones";
 import { ModalPersonalizarMenu } from "./ModalPersonalizarMenu";
 import { useWorkspace } from "@/components/workspace/WorkspaceContext";
-import { Tooltip } from "@/components/ui/tooltip";
 
 import { alternarTema, lerTemaSalvo, type Tema } from "@/lib/tema";
 
@@ -45,14 +43,8 @@ export function NavegacaoLateral({
 
   const workspaceAberto = !!workspace?.workspaceAberto;
 
-  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
-  const [avisoVisivel, setAvisoVisivel] = useState(false);
-
-  const lidarToggleColapsada = (e: React.MouseEvent) => {
+  const lidarToggleColapsada = () => {
     if (colapsada && workspaceAberto) {
-      setMousePos({ x: e.clientX, y: e.clientY });
-      setAvisoVisivel(true);
-      setTimeout(() => setAvisoVisivel(false), 2500);
       return;
     }
     setColapsada((v) => !v);
@@ -114,66 +106,29 @@ export function NavegacaoLateral({
                 <LogoKlaus tamanho={28} />
                 <span className="truncate text-base font-bold tracking-tight">Klaus</span>
               </NavLink>
-              <Tooltip conteudo="Recolher barra lateral" atalho="⌘B" posicao="bottom">
-                <button
-                  onClick={() => setColapsada(true)}
-                  className="hidden sm:flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-                  title="Recolher barra lateral (⌘B)"
-                  aria-label="Recolher barra lateral"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-              </Tooltip>
+              <button
+                onClick={() => setColapsada(true)}
+                className="hidden sm:flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+                title="Recolher barra lateral (⌘B)"
+                aria-label="Recolher barra lateral"
+              >
+                <ChevronLeft size={18} />
+              </button>
             </>
           ) : (
-            <div className="w-full flex items-center justify-center">
-              <Tooltip conteudo="Expandir barra lateral" atalho="⌘B" posicao="right" desabilitado={workspaceAberto}>
-                <button
-                  onClick={lidarToggleColapsada}
-                  onMouseEnter={(e) => {
-                    if (workspaceAberto) {
-                      setMousePos({ x: e.clientX, y: e.clientY });
-                      setAvisoVisivel(true);
-                    }
-                  }}
-                  onMouseMove={(e) => {
-                    if (workspaceAberto && avisoVisivel) {
-                      setMousePos({ x: e.clientX, y: e.clientY });
-                    }
-                  }}
-                  onMouseLeave={() => setAvisoVisivel(false)}
-                  className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer",
-                    workspaceAberto && "hover:text-primary"
-                  )}
-                  aria-label="Expandir barra lateral"
-                >
-                  <LogoKlaus tamanho={24} />
-                </button>
-              </Tooltip>
-
-              {/* Aviso flutuante que acompanha o mouse e NUNCA fica por baixo de nada */}
-              {workspaceAberto && avisoVisivel && mousePos && typeof document !== "undefined" && createPortal(
-                <div
-                  style={{
-                    position: "fixed",
-                    left: `${mousePos.x + 14}px`,
-                    top: `${mousePos.y - 12}px`,
-                    zIndex: 9999999,
-                  }}
-                  className="pointer-events-none flex items-center gap-1.5 rounded-lg border border-border bg-popover/98 px-3 py-1.5 text-xs font-semibold text-popover-foreground shadow-[0_10px_38px_rgba(0,0,0,0.5)] backdrop-blur-md animate-in fade-in duration-100 whitespace-nowrap"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />
-                  <span>Para expandir a barra, saia do modo tela cheia</span>
-                </div>,
-                document.body
-              )}
-            </div>
+            <button
+              onClick={lidarToggleColapsada}
+              className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              title="Expandir barra lateral"
+              aria-label="Expandir barra lateral"
+            >
+              <LogoKlaus tamanho={24} />
+            </button>
           )}
         </div>
 
         {/* Corpo da Navegação */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar py-3 px-2 space-y-4">
+        <div className="flex-1 overflow-y-auto no-scrollbar py-3 px-2 space-y-4">
           {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo) => {
             const itensVisiveis = (grupo.itens || []).filter((item) => item && typeof item === "object" && !item.oculto);
             if (itensVisiveis.length === 0) return null;
@@ -189,41 +144,36 @@ export function NavegacaoLateral({
                   {itensVisiveis.map((item) => {
                     const Icone = obterIconePorNome(item.iconeNome || "HelpCircle");
                     return (
-                      <Tooltip
+                      <NavLink
                         key={item.id || item.para}
-                        conteudo={item.rotulo || "Item"}
-                        posicao="right"
-                        desabilitado={!colapsada}
+                        to={item.para || "/home"}
+                        onClick={lidarCliqueItem}
+                        className={({ isActive }) =>
+                          cn(
+                            "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors relative group cursor-pointer",
+                            isActive
+                              ? "bg-primary/10 text-primary font-semibold"
+                              : "text-muted-foreground hover:bg-accent/80 hover:text-foreground",
+                            colapsada && "justify-center px-0"
+                          )
+                        }
+                        title={colapsada ? item.rotulo : undefined}
                       >
-                        <NavLink
-                          to={item.para || "/home"}
-                          onClick={lidarCliqueItem}
-                          className={({ isActive }) =>
-                            cn(
-                              "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors relative group cursor-pointer",
-                              isActive
-                                ? "bg-primary/10 text-primary font-semibold"
-                                : "text-muted-foreground hover:bg-accent/80 hover:text-foreground",
-                              colapsada && "justify-center px-0"
-                            )
-                          }
-                        >
-                          <Icone
-                            size={18}
-                            style={{ color: item.cor }}
-                            className="shrink-0 transition-transform group-hover:scale-105"
-                          />
-                          {!colapsada && (
-                            <span className="truncate flex-1">{item.rotulo || "Item"}</span>
-                          )}
-                          {!colapsada && item.destaque && (
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold">
-                              <Sparkles size={10} />
-                              IA
-                            </span>
-                          )}
-                        </NavLink>
-                      </Tooltip>
+                        <Icone
+                          size={18}
+                          style={{ color: item.cor }}
+                          className="shrink-0 transition-transform group-hover:scale-105"
+                        />
+                        {!colapsada && (
+                          <span className="truncate flex-1">{item.rotulo || "Item"}</span>
+                        )}
+                        {!colapsada && item.destaque && (
+                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold">
+                            <Sparkles size={10} />
+                            IA
+                          </span>
+                        )}
+                      </NavLink>
                     );
                   })}
                 </nav>
@@ -235,57 +185,47 @@ export function NavegacaoLateral({
         {/* Rodapé da Sidebar */}
         <div className="border-t border-border/60 p-2 space-y-1">
           {/* Botão para Personalizar Menu */}
-          <Tooltip conteudo="Personalizar Menu" posicao="right" desabilitado={!colapsada}>
-            <button
-              onClick={() => setModalPersonalizarAberta(true)}
-              className={cn(
-                "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors group cursor-pointer",
-                colapsada && "justify-center px-0"
-              )}
-              aria-label="Personalizar Menu"
-            >
-              <Palette size={18} className="shrink-0 group-hover:rotate-12 transition-transform" />
-              {!colapsada && <span className="truncate">Personalizar Menu</span>}
-            </button>
-          </Tooltip>
-
-          <Tooltip conteudo="Configurações" posicao="right" desabilitado={!colapsada}>
-            <NavLink
-              to="/config"
-              onClick={lidarCliqueItem}
-              className={({ isActive }) =>
-                cn(
-                  "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors cursor-pointer",
-                  isActive
-                    ? "bg-primary/10 text-primary font-semibold"
-                    : "text-muted-foreground hover:bg-accent/80 hover:text-foreground",
-                  colapsada && "justify-center px-0"
-                )
-              }
-              aria-label="Configurações"
-            >
-              <Settings size={18} className="shrink-0" />
-              {!colapsada && <span>Configurações</span>}
-            </NavLink>
-          </Tooltip>
-
-          <Tooltip
-            conteudo={escuro ? "Alternar para Tema Claro" : "Alternar para Tema Escuro"}
-            posicao="right"
-            desabilitado={!colapsada}
+          <button
+            onClick={() => setModalPersonalizarAberta(true)}
+            className={cn(
+              "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors group cursor-pointer",
+              colapsada && "justify-center px-0"
+            )}
+            title={colapsada ? "Personalizar Menu" : undefined}
           >
-            <button
-              onClick={toggleTema}
-              className={cn(
-                "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors cursor-pointer",
+            <Palette size={18} className="shrink-0 group-hover:rotate-12 transition-transform" />
+            {!colapsada && <span className="truncate">Personalizar Menu</span>}
+          </button>
+
+          <NavLink
+            to="/config"
+            onClick={lidarCliqueItem}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors cursor-pointer",
+                isActive
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-muted-foreground hover:bg-accent/80 hover:text-foreground",
                 colapsada && "justify-center px-0"
-              )}
-              aria-label={escuro ? "Modo claro" : "Modo escuro"}
-            >
-              {escuro ? <Sun size={18} className="shrink-0" /> : <Moon size={18} className="shrink-0" />}
-              {!colapsada && <span>{escuro ? "Modo Claro" : "Modo Escuro"}</span>}
-            </button>
-          </Tooltip>
+              )
+            }
+            title={colapsada ? "Configurações" : undefined}
+          >
+            <Settings size={18} className="shrink-0" />
+            {!colapsada && <span>Configurações</span>}
+          </NavLink>
+
+          <button
+            onClick={toggleTema}
+            className={cn(
+              "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors cursor-pointer",
+              colapsada && "justify-center px-0"
+            )}
+            title={colapsada ? (escuro ? "Modo claro" : "Modo escuro") : undefined}
+          >
+            {escuro ? <Sun size={18} className="shrink-0" /> : <Moon size={18} className="shrink-0" />}
+            {!colapsada && <span>{escuro ? "Modo Claro" : "Modo Escuro"}</span>}
+          </button>
         </div>
       </aside>
 
