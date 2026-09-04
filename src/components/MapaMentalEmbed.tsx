@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import {
   ExternalLink,
   ZoomIn,
@@ -14,9 +14,10 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { lerMarkdown } from "@/lib/markdown";
 import { lerConfig } from "@/lib/settings";
 import { lerOuVazio } from "@/lib/github";
+import { obterCacheExistente, cache, type ItemRepo } from "@/lib/repo";
+import { obterRascunhosLocais } from "@/lib/offlineQueue";
+import { EVENTO_ACERVO_ATUALIZADO } from "@/lib/eventos";
 import { Carregando, Botao } from "@/components/ui";
-import type { ItemRepo } from "@/lib/repo";
-
 import { sanitizarHTML } from "@/lib/sanitizer";
 
 type Props = {
@@ -62,20 +63,55 @@ export function MapaMentalEmbed({
     };
   }, []);
 
-  useEffect(() => {
-    if (!conteudoTexto && item.caminho) {
-      const cfg = lerConfig();
-      lerOuVazio(cfg, item.caminho, item.sha)
-        .then((txt) => {
-          if (txt) setConteudoTexto(txt);
-        })
-        .catch(() => {});
+  // Carregamento de dados com prioridade para cache em memória local instantâneo
+  const carregarDadosLousa = useCallback(() => {
+    if (!item.caminho) return;
+
+    // 1. Verifica no cache em memória
+    const cfg = lerConfig();
+    const cacheLocal = cache || obterCacheExistente(cfg);
+    const itemEmCache = cacheLocal?.itens.find(
+      (i) => i.caminho.toLowerCase() === item.caminho.toLowerCase()
+    );
+
+    if (itemEmCache && itemEmCache.texto && itemEmCache.texto.trim()) {
+      setConteudoTexto(itemEmCache.texto);
+      return;
     }
-  }, [item.caminho, item.sha, conteudoTexto]);
+
+    // 2. Verifica nos rascunhos offline em memória/local
+    const rascunhos = obterRascunhosLocais();
+    const rascunho = rascunhos.find(
+      (r) => r.caminho.toLowerCase() === item.caminho.toLowerCase()
+    );
+    if (rascunho && rascunho.texto && rascunho.texto.trim()) {
+      setConteudoTexto(rascunho.texto);
+      return;
+    }
+
+    // 3. Fallback: busca via GitHub ou rede
+    lerOuVazio(cfg, item.caminho, item.sha)
+      .then((txt) => {
+        if (txt && txt.trim()) setConteudoTexto(txt);
+      })
+      .catch(() => {});
+  }, [item.caminho, item.sha]);
+
+  useEffect(() => {
+    carregarDadosLousa();
+    window.addEventListener(EVENTO_ACERVO_ATUALIZADO, carregarDadosLousa);
+    return () => window.removeEventListener(EVENTO_ACERVO_ATUALIZADO, carregarDadosLousa);
+  }, [carregarDadosLousa]);
 
   const docParsed = useMemo(() => {
-    return item.doc && item.doc.corpo ? item.doc : lerMarkdown(conteudoTexto || "");
-  }, [item, conteudoTexto]);
+    if (conteudoTexto && conteudoTexto.trim()) {
+      return lerMarkdown(conteudoTexto);
+    }
+    if (item.doc && item.doc.corpo && item.doc.corpo.trim()) {
+      return item.doc;
+    }
+    return lerMarkdown("");
+  }, [item.doc, conteudoTexto]);
 
   const titulo = (docParsed.dados?.titulo as string) || item.nome.replace(/\.md$/, "");
   const ehModoEscuro = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
@@ -94,33 +130,53 @@ export function MapaMentalEmbed({
       }
 
       try {
-        const corpoLimpo = docParsed.corpo ? docParsed.corpo.trim() : (conteudoTexto.trim().startsWith("{") ? conteudoTexto.trim() : "");
+        let textoParaParse = docParsed.corpo?.trim() || conteudoTexto.trim();
         let elements: any[] = [];
         let appState: any = {};
         let files: any = {};
 
-        if (corpoLimpo.startsWith("{")) {
-          const parsed = JSON.parse(corpoLimpo);
-          if (Array.isArray(parsed)) {
-            elements = parsed;
-          } else if (parsed && typeof parsed === "object") {
-            elements = parsed.elements || [];
-            appState = parsed.appState || {};
-            files = parsed.files || {};
+        // Extrai bloco JSON mesmo que esteja envolvido em markdown ou código
+        if (!textoParaParse.startsWith("{") && !textoParaParse.startsWith("[")) {
+          const matchCode = textoParaParse.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (matchCode) {
+            textoParaParse = matchCode[1].trim();
+          } else {
+            const p1 = textoParaParse.indexOf("{");
+            const p2 = textoParaParse.lastIndexOf("}");
+            if (p1 !== -1 && p2 > p1) {
+              textoParaParse = textoParaParse.slice(p1, p2 + 1);
+            }
           }
         }
 
-        if (elements.length > 0) {
+        if (textoParaParse.startsWith("{") || textoParaParse.startsWith("[")) {
+          try {
+            const parsed = JSON.parse(textoParaParse);
+            if (Array.isArray(parsed)) {
+              elements = parsed;
+            } else if (parsed && typeof parsed === "object") {
+              elements = parsed.elements || [];
+              appState = parsed.appState || {};
+              files = parsed.files || {};
+            }
+          } catch {}
+        }
+
+        const elementosValidos = Array.isArray(elements)
+          ? elements.filter((el) => el && !el.isDeleted)
+          : [];
+
+        if (elementosValidos.length > 0) {
           const { exportToSvg } = await import("@excalidraw/excalidraw");
           const svgEl = await exportToSvg({
-            elements: elements.filter((el) => !el.isDeleted),
+            elements: elementosValidos,
             appState: {
               ...appState,
               exportWithDarkMode: ehModoEscuro,
               exportBackground: true,
               viewBackgroundColor: appState?.viewBackgroundColor || (ehModoEscuro ? "#121212" : "#ffffff"),
             },
-            files,
+            files: files || {},
           });
           if (!cancelado && svgEl) {
             svgEl.setAttribute("width", "100%");
@@ -129,9 +185,11 @@ export function MapaMentalEmbed({
             svgEl.style.maxHeight = "100%";
             setSvgHtml(svgEl.outerHTML);
           }
+        } else {
+          if (!cancelado) setSvgHtml("");
         }
       } catch {
-        // ignora falha
+        if (!cancelado) setSvgHtml("");
       } finally {
         if (!cancelado) setCarregandoSvg(false);
       }
