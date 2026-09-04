@@ -298,7 +298,7 @@ export function Modal({
 }: {
   aberto: boolean;
   aoFechar: () => void;
-  titulo: string;
+  titulo: ReactNode;
   children: ReactNode;
   rodape?: ReactNode;
   /** Quando true, fechar sem salvar pede confirmação */
@@ -348,7 +348,7 @@ export function Modal({
       onClick={tentarFechar}
       role="dialog"
       aria-modal="true"
-      aria-label={titulo}
+      aria-label={typeof titulo === "string" ? titulo : undefined}
     >
       <div
         className={cn(

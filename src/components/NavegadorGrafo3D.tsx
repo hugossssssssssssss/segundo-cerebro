@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 interface NavegadorGrafoProps {
   acervo: ItemRepo[];
   aoSelecionarItem: (caminho: string) => void;
+  aoSelecionarTag?: (tag: string) => void;
   className?: string;
 }
 
@@ -35,6 +36,7 @@ interface NavegadorGrafoProps {
 export function NavegadorGrafo3D({
   acervo,
   aoSelecionarItem,
+  aoSelecionarTag,
   className,
 }: NavegadorGrafoProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -375,9 +377,16 @@ export function NavegadorGrafo3D({
     return () => canvas.removeEventListener("wheel", aoRolarWheel);
   }, [aoRolarWheel]);
 
-  // Clique para abrir o documento no Notion Modal
+  // Clique para abrir o documento ou visualizar documentos vinculados a uma hashtag
   const aoClicarCanvas = () => {
-    if (noHover && !noHover.caminho.startsWith("tag_")) {
+    if (!noHover) return;
+
+    if (noHover.tipo === "tag" || noHover.caminho.startsWith("tag_")) {
+      const tagNome = noHover.tags?.[0] || noHover.titulo.replace(/^#+/, "");
+      if (aoSelecionarTag) {
+        aoSelecionarTag(tagNome);
+      }
+    } else {
       aoSelecionarItem(noHover.caminho);
     }
   };
@@ -468,6 +477,9 @@ export function NavegadorGrafo3D({
               ))}
             </div>
           )}
+          <div className="mt-2 pt-1.5 border-t border-border/50 text-[10px] text-primary/90 font-medium">
+            {noHover.tipo === "tag" ? "Clique para ver todos os documentos vinculados" : "Clique para abrir no editor"}
+          </div>
         </div>
       )}
 

@@ -30,6 +30,7 @@ import { Botao, Vazio, Carregando, Aviso } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { NavegadorGrafo3D } from "@/components/NavegadorGrafo3D";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
+import { ModalItensHashtag } from "@/components/ModalItensHashtag";
 
 type ItemAberto = {
   caminho: string;
@@ -48,6 +49,7 @@ export default function GrafoNeural() {
   const { acervo, carregando, erro } = useAcervoRepo(cfg);
 
   const [aberto, setAberto] = useState<ItemAberto | null>(null);
+  const [tagSelecionada, setTagSelecionada] = useState<string | null>(null);
   const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>("lado");
 
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
@@ -202,6 +204,16 @@ export default function GrafoNeural() {
       <NavegadorGrafo3D
         acervo={acervo}
         aoSelecionarItem={abrirItemDoGrafo}
+        aoSelecionarTag={(tag) => setTagSelecionada(tag)}
+      />
+
+      {/* Modal de Documentos Vinculados à Hashtag Clicada */}
+      <ModalItensHashtag
+        tag={tagSelecionada}
+        aberto={Boolean(tagSelecionada)}
+        acervo={acervo}
+        aoFechar={() => setTagSelecionada(null)}
+        aoAbrirItem={abrirItemDoGrafo}
       />
 
       {/* Painel Notion Base para Visualização e Edição do Item Clicado */}
