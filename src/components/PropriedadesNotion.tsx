@@ -35,6 +35,8 @@ import {
   UserPlus,
   Flag,
   Timer,
+  Phone,
+  MessageSquareQuote,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -47,9 +49,9 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link as LinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { extrairMencoesTexto } from "@/lib/links";
+import { extrairMencoesTexto, montarIndice, chave as chaveNormalizada } from "@/lib/links";
 import { lerConfig, nomeExibido as nomeDoUsuario } from "@/lib/settings";
-import { cache, invalidarCache } from "@/lib/repo";
+import { cache, invalidarCache, carregarRepo } from "@/lib/repo";
 import { gravar } from "@/lib/github";
 import { PASTAS, type Contato } from "@/lib/tipos";
 import { comoContato, contatoParaArquivo } from "@/lib/entidades";
@@ -481,19 +483,44 @@ export function PropriedadesNotion({
   // Controle estrito de um ÚNICO menu aberto por vez
   const [menuAberto, setMenuAberto] = useState<string | null>(null);
 
-  const aoClicarItemRel = (itemAlvo?: { titulo: string; caminho: string }, nomePuro?: string) => {
+  const aoClicarItemRel = async (itemAlvo?: { titulo: string; caminho: string }, nomePuro?: string) => {
     if (!itemAlvo && !nomePuro) return;
 
-    const nomeBusca = (nomePuro || itemAlvo?.titulo || "").trim().toLowerCase();
-    const caminhoBusca = itemAlvo?.caminho?.toLowerCase();
+    const nomeBusca = (nomePuro || itemAlvo?.titulo || "").trim();
+    const caminhoBusca = (itemAlvo?.caminho || "").trim();
 
-    // 1. Procurar no cache de itens do repositório
-    const itemRepo = cache?.itens?.find((i) => {
-      if (caminhoBusca && i.caminho.toLowerCase() === caminhoBusca) return true;
+    // 1. Obter itens do cache ou carregar do repositório
+    let itens = cache?.itens;
+    if (!itens || itens.length === 0) {
+      try {
+        const cfg = lerConfig();
+        const todos = await carregarRepo(cfg);
+        itens = todos;
+      } catch {}
+    }
+
+    if (!itens || itens.length === 0) {
+      if (caminhoBusca) abrirItemSpa(caminhoBusca);
+      return;
+    }
+
+    // 2. Montar índice de links para resolução inteligente
+    const indice = montarIndice(itens);
+    const chaveAlvo = chaveNormalizada(caminhoBusca || nomeBusca);
+    const resolvido = indice.get(chaveAlvo) || 
+                      indice.get(chaveNormalizada(nomeBusca)) || 
+                      indice.get(chaveNormalizada(caminhoBusca));
+
+    const caminhoFinal = resolvido?.caminho || caminhoBusca;
+
+    // 3. Localizar o item no repositório
+    const itemRepo = itens.find((i) => {
+      if (caminhoFinal && i.caminho.toLowerCase() === caminhoFinal.toLowerCase()) return true;
+      if (caminhoBusca && i.caminho.toLowerCase() === caminhoBusca.toLowerCase()) return true;
       const t = tituloProvavel(i.doc, i.nome).toLowerCase().trim();
-      if (t === nomeBusca) return true;
-      const nomeSemExt = i.nome.replace(/\.md$/i, "").toLowerCase().trim();
-      return nomeSemExt === nomeBusca;
+      if (t === nomeBusca.toLowerCase()) return true;
+      const nomeSemExt = i.nome.replace(/\.(md|json|excalidraw)$/i, "").toLowerCase().trim();
+      return nomeSemExt === nomeBusca.toLowerCase();
     });
 
     if (itemRepo) {
@@ -504,12 +531,46 @@ export function PropriedadesNotion({
       const dadosProps = itemRepo.doc.dados || {};
 
       let rotulo = "Documento";
-      if (pasta === "tarefas") rotulo = "Tarefa";
-      else if (pasta === "notas") rotulo = "Nota";
-      else if (pasta === "contatos") rotulo = "Contato";
-      else if (pasta === "referencias") rotulo = "Referência";
-      else if (pasta === "pdi" || pasta === "metas") rotulo = "PDI";
-      else if (pasta === "lousas") rotulo = "Lousa";
+      let camposFixosProps: any = undefined;
+
+      if (pasta === "tarefas") {
+        rotulo = "Tarefa";
+        camposFixosProps = {
+          status: { icone: <ListTodo className="h-4 w-4 opacity-70 text-blue-500" />, tipo: "status" },
+          prioridade: { icone: <Flag className="h-4 w-4 opacity-70 text-amber-500" />, tipo: "select", opcoes: ["Urgente", "Alta", "Média", "Baixa"] },
+          prazo: { icone: <CalendarIcon className="h-4 w-4 opacity-70 text-rose-500" />, tipo: "data" },
+          tags: { icone: <Tags className="h-4 w-4 opacity-70 text-emerald-500" />, tipo: "multiselect" },
+        };
+      } else if (pasta === "notas") {
+        rotulo = "Nota";
+      } else if (pasta === "contatos") {
+        rotulo = "Contato";
+        camposFixosProps = {
+          cargo: { icone: <Briefcase className="h-4 w-4 opacity-70 text-blue-500" />, tipo: "texto" },
+          empresa: { icone: <Building className="h-4 w-4 opacity-70 text-emerald-500" />, tipo: "texto" },
+          email: { icone: <MailIcon className="h-4 w-4 opacity-70 text-indigo-500" />, tipo: "texto" },
+          telefone: { icone: <Phone className="h-4 w-4 opacity-70 text-purple-500" />, tipo: "texto" },
+          pai_id: { icone: <Users className="h-4 w-4 opacity-70 text-amber-500" />, tipo: "relation" },
+          tags: { icone: <Tags className="h-4 w-4 opacity-70 text-amber-500" />, tipo: "multiselect" },
+        };
+      } else if (pasta === "referencias") {
+        rotulo = "Referência";
+        camposFixosProps = {
+          tags: { icone: <Tags className="h-4 w-4 opacity-70 text-rose-500" />, tipo: "multiselect" },
+          fonte: { icone: <LinkIcon className="h-4 w-4 opacity-70 text-blue-500" />, tipo: "texto" },
+        };
+      } else if (pasta === "pdi" || pasta === "metas") {
+        rotulo = caminho.includes("entregas") ? "Entrega PDI" : "Meta PDI";
+        camposFixosProps = {
+          impacto: { icone: <Sparkles className="h-4 w-4 opacity-70 text-amber-500" />, tipo: "texto" },
+          elogio: { icone: <MessageSquareQuote className="h-4 w-4 opacity-70 text-indigo-500" />, tipo: "texto" },
+          autor_elogio: { icone: <User className="h-4 w-4 opacity-70 text-blue-500" />, tipo: "texto" },
+          colaboracao: { icone: <Users className="h-4 w-4 opacity-70 text-teal-500" />, tipo: "multiselect" },
+          tags: { icone: <Tags className="h-4 w-4 opacity-70 text-emerald-500" />, tipo: "multiselect" },
+        };
+      } else if (pasta === "lousas") {
+        rotulo = "Lousa";
+      }
 
       abrirFlutuante({
         id: caminho,
@@ -519,6 +580,7 @@ export function PropriedadesNotion({
         titulo: tit,
         corpo,
         dadosProps,
+        camposFixosProps,
         aoSalvar: async (itemEditado) => {
           const cfg = lerConfig();
           const mdPronto = escreverMarkdown({
@@ -533,9 +595,9 @@ export function PropriedadesNotion({
       return;
     }
 
-    // 2. Fallback via SPA se não encontrar no cache
-    if (itemAlvo?.caminho) {
-      abrirItemSpa(itemAlvo.caminho);
+    // 4. Fallback via SPA se não encontrar no cache
+    if (caminhoFinal) {
+      abrirItemSpa(caminhoFinal);
     }
   };
 
@@ -739,6 +801,11 @@ export function PropriedadesNotion({
     if (chave === "status") return "Status";
     if (chave === "prazo") return rotuloTipo?.toLowerCase().includes("lembrete") ? "Data do Lembrete" : "Prazo";
     if (chave === "tags") return "Tags";
+    if (chave === "cargo") return "Cargo";
+    if (chave === "empresa") return "Empresa";
+    if (chave === "email") return "E-mail";
+    if (chave === "telefone") return "Telefone";
+    if (chave === "pai_id" || chave === "paiId" || chave === "pai" || chave === "contato_pai") return "Contato Superior / Líder";
     if (chave === "impacto") return "Impacto / Resultado";
     if (chave === "elogio") return "Elogio / Feedback";
     if (chave === "autor_elogio" || chave === "autorElogio") return "Autor do Elogio";
@@ -1914,6 +1981,9 @@ export function PropriedadesNotion({
       chave === "ultima_edicao" || chave === "atualizado" || chave === "atualizado_em" ? "ultima_edicao" :
       chave === "aviso_inbox" || chave === "aviso_telegram" || chave === "aviso_email" ? "checkbox" :
       chave === "data" || chave === "prazo" ? "data" :
+      chave === "tags" || chave === "tag" ? "multi_select" :
+      chave === "relacionamentos" || chave === "relacao" ? "relacionamento" :
+      chave === "pai_id" || chave === "paiId" || chave === "pai" || chave === "contato_pai" ? "select" :
       fixo?.tipo || esquema[chave] || "texto";
 
     const IconeAtual = 
@@ -1921,9 +1991,15 @@ export function PropriedadesNotion({
       chave === "caminho" ? Folder :
       chave === "aviso_inbox" ? InboxIcon :
       chave === "aviso_telegram" ? SendIcon :
-      chave === "aviso_email" ? MailIcon :
+      chave === "aviso_email" || chave === "email" ? MailIcon :
+      chave === "cargo" ? Briefcase :
+      chave === "empresa" ? Building :
+      chave === "telefone" || chave === "tel" ? Phone :
+      chave === "pai_id" || chave === "paiId" || chave === "pai" || chave === "contato_pai" ? Users :
+      chave === "tags" || chave === "tag" ? Tags :
       chave === "horario" || chave === "hora" ? Clock :
       chave === "data" || chave === "prazo" ? CalendarIcon :
+      chave === "relacionamentos" || chave === "relacao" ? Users :
       fixo?.icone ? () => <>{fixo.icone}</> : 
       ICONES_TIPO[tipoAtual as TipoPropriedade] || Type;
     const visDefault = ["criado_por", "criado_em", "criado", "ultima_edicao", "atualizado", "atualizado_em", "caminho"].includes(chave) ? "esconder" : "sempre";
