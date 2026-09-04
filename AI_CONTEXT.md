@@ -486,12 +486,12 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`extrairTextoDaArea`** — _Extrai texto apenas de uma área selecionada da imagem. Faz crop via Canvas antes de passar ao Tesser..._
 
 #### 📄 `src/lib/ragLocal.ts`
-> RAG Local Híbrido com MiniSearch para injeção contextual seletiva no Gemini. Em vez de concatenar o repositório inteiro cegamente (o que estourava os 120.000 chars e gerava sobrecarga e alucinações), esta camada: 1. Identifica a intenção temática ou estrutural da pergunta (ex: "quais são minhas metas?"). 2. Utiliza o motor MiniSearch em memória para selecionar os 6 a 10 documentos mais relevantes. 3. Monta um contexto conciso e rico em metadados dentro de um orçamento estrito de caracteres.
+> RAG Local Híbrido com MiniSearch para injeção contextual seletiva no Gemini. Esta camada: 1. Constrói um panorama estruturado do repositório (todas as tarefas, notas, metas e contatos). 2. Identifica a intenção temática e contextual da pergunta (tarefas, notas, metas, contatos, semana, etc.). 3. Seleciona e formata os documentos em texto integral para que o Gemini consiga analisar prioridades, fazer balanços semanais, triagem de notas e responder com precisão cirúrgica sem inventar fatos.
 
 **Exportações principais:**
 - `tipo` **`IntencaoConsulta`**
 - `funcao` **`classificarIntencaoConsulta`** — _Classifica a intenção da consulta para selecionar entidades estruturais prioritárias._
-- `funcao` **`montarContextoSemantico`** — _Monta um contexto de alta relevância com orçamento de caracteres._
+- `funcao` **`montarContextoSemantico`** — _Monta um contexto rico com panorama estruturado e documentos detalhados._
 
 #### 📄 `src/lib/whisperLocal.ts`
 **Exportações principais:**

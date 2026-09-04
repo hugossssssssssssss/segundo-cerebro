@@ -1,18 +1,18 @@
 /**
  * RAG Local Híbrido com MiniSearch para injeção contextual seletiva no Gemini.
  *
- * Em vez de concatenar o repositório inteiro cegamente (o que estourava os 120.000 chars
- * e gerava sobrecarga e alucinações), esta camada:
- * 1. Identifica a intenção temática ou estrutural da pergunta (ex: "quais são minhas metas?").
- * 2. Utiliza o motor MiniSearch em memória para selecionar os 6 a 10 documentos mais relevantes.
- * 3. Monta um contexto conciso e rico em metadados dentro de um orçamento estrito de caracteres.
+ * Esta camada:
+ * 1. Constrói um panorama estruturado do repositório (todas as tarefas, notas, metas e contatos).
+ * 2. Identifica a intenção temática e contextual da pergunta (tarefas, notas, metas, contatos, semana, etc.).
+ * 3. Seleciona e formata os documentos em texto integral para que o Gemini consiga analisar prioridades,
+ *    fazer balanços semanais, triagem de notas e responder com precisão cirúrgica sem inventar fatos.
  */
 
 import type { ItemRepo } from "./repo";
 import { buscar } from "./busca";
 import { tituloProvavel } from "./markdown";
 
-export type IntencaoConsulta = "metas" | "tarefas" | "contatos" | "geral";
+export type IntencaoConsulta = "metas" | "tarefas" | "notas" | "contatos" | "geral";
 
 /**
  * Classifica a intenção da consulta para selecionar entidades estruturais prioritárias.
@@ -20,28 +20,29 @@ export type IntencaoConsulta = "metas" | "tarefas" | "contatos" | "geral";
 export function classificarIntencaoConsulta(consulta: string): IntencaoConsulta {
   const c = (consulta || "").toLowerCase();
 
-  if (/\b(meta|metas|pdi|objetivo|objetivos|indicador|indicadores)\b/i.test(c)) {
-    return "metas";
-  }
-  if (/\b(tarefa|tarefas|fazer|pendente|pendentes|prioridade|prazo|hoje|semana)\b/i.test(c)) {
-    return "tarefas";
-  }
-  if (/\b(contato|contatos|pessoa|pessoas|email|telefone|empresa|cargo)\b/i.test(c)) {
-    return "contatos";
-  }
+  const temMetas = /\b(meta|metas|pdi|objetivo|objetivos|indicador|indicadores)\b/i.test(c);
+  const temTarefas = /\b(tarefa|tarefas|fazer|pendente|pendentes|prioridade|prazo|hoje|semana|começar|comeco|priorizar)\b/i.test(c);
+  const temNotas = /\b(nota|notas|anotação|anotacao|anotações|anotacoes|ideia|ideias|rascunho|rascunhos|triagem|organizar)\b/i.test(c);
+  const temContatos = /\b(contato|contatos|pessoa|pessoas|email|telefone|empresa|cargo|equipe|lider|liderado)\b/i.test(c);
+
+  if (temTarefas) return "tarefas";
+  if (temMetas) return "metas";
+  if (temNotas) return "notas";
+  if (temContatos) return "contatos";
   return "geral";
 }
 
 /**
- * Monta um contexto de alta relevância com orçamento de caracteres.
+ * Monta um contexto rico com panorama estruturado e documentos detalhados.
  */
 export function montarContextoSemantico(
   acervo: ItemRepo[],
   consulta?: string,
-  tetoCaracteres = 28_000,
+  tetoCaracteres = 60_000,
 ): string {
   if (!acervo || acervo.length === 0) return "";
 
+  const c = (consulta || "").toLowerCase();
   const intencao = consulta ? classificarIntencaoConsulta(consulta) : "geral";
   const selecionados: ItemRepo[] = [];
   const caminhosVistos = new Set<string>();
@@ -53,39 +54,97 @@ export function montarContextoSemantico(
     }
   };
 
-  // 1. Se a intenção for direcionada a uma categoria, traz itens dessa categoria primeiro
-  if (intencao === "metas") {
-    const itensPdi = acervo.filter((i) => i.caminho.startsWith("pdi/"));
-    itensPdi.forEach(adicionar);
-  } else if (intencao === "tarefas") {
-    const tarefas = acervo.filter((i) => i.caminho.startsWith("tarefas/"));
-    tarefas.forEach(adicionar);
-  } else if (intencao === "contatos") {
-    const contatos = acervo.filter((i) => i.caminho.startsWith("contatos/"));
-    contatos.forEach(adicionar);
+  // Separa as entidades por pasta
+  const todasTarefas = acervo.filter((i) => i.caminho.startsWith("tarefas/"));
+  const todasMetas = acervo.filter((i) => i.caminho.startsWith("pdi/metas/"));
+  const todasEntregas = acervo.filter((i) => i.caminho.startsWith("pdi/entregas/"));
+  const todasNotas = acervo.filter((i) => i.caminho.startsWith("notas/"));
+  const todosContatos = acervo.filter((i) => i.caminho.startsWith("contatos/"));
+
+  // 1. Se a pergunta envolver planejamento, tarefas, semana, início do dia ou metas:
+  const pedePlanejamentoOuSemana =
+    intencao === "tarefas" ||
+    intencao === "metas" ||
+    /\b(semana|hoje|começar|comeco|priorizar|balanço|balanco|revisão|revisao)\b/i.test(c);
+
+  if (pedePlanejamentoOuSemana) {
+    todasTarefas.forEach(adicionar);
+    todasMetas.forEach(adicionar);
+    todasEntregas.forEach(adicionar);
   }
 
-  // 2. Busca semântica e por relevância com MiniSearch
+  // 2. Se a pergunta for sobre notas / triagem de notas:
+  if (intencao === "notas" || /\b(nota|notas|triagem)\b/i.test(c)) {
+    todasNotas.forEach(adicionar);
+    todasTarefas.forEach(adicionar);
+  }
+
+  // 3. Se a pergunta for sobre contatos:
+  if (intencao === "contatos") {
+    todosContatos.forEach(adicionar);
+  }
+
+  // 4. Busca textual e semântica com MiniSearch para trazer itens específicos
   if (consulta && consulta.trim().length >= 2) {
     const resultados = buscar(acervo, consulta);
     for (const r of resultados) {
       const item = acervo.find((i) => i.caminho === r.caminho);
       if (item) adicionar(item);
-      if (selecionados.length >= 12) break;
+      if (selecionados.length >= 25) break;
     }
   }
 
-  // 3. Fallback: se nenhum item casou ou consulta muito curta, preenche com itens mais recentes
-  if (selecionados.length === 0) {
-    const maisRecentes = [...acervo]
-      .filter((i) => !i.caminho.startsWith(".klaus/") && !i.caminho.startsWith("caixa-entrada/"))
-      .slice(0, 8);
-    maisRecentes.forEach(adicionar);
+  // 5. Fallback: se poucos itens foram selecionados, inclui os itens do acervo até preencher
+  if (selecionados.length < 15) {
+    for (const item of acervo) {
+      if (!item.caminho.startsWith(".klaus/") && !item.caminho.startsWith("caixa-entrada/")) {
+        adicionar(item);
+      }
+      if (selecionados.length >= 30) break;
+    }
   }
 
-  // 4. Constrói o texto do contexto respeitando o teto de caracteres
-  let total = 0;
-  const partes: string[] = [];
+  // 6. Constrói o Panorama Geral do Acervo para o Gemini ter visão panorâmica completa
+  const linhasPanorama: string[] = ["## 📊 PANORAMA GERAL DO ACERVO DO KLAUS:"];
+
+  if (todasTarefas.length > 0) {
+    linhasPanorama.push(`\n### TAREFAS (${todasTarefas.length} encontradas):`);
+    for (const t of todasTarefas) {
+      const tit = tituloProvavel(t.doc, t.nome);
+      const status = t.doc?.dados?.status || "a-fazer";
+      const prazo = t.doc?.dados?.prazo ? ` | Prazo: ${t.doc.dados.prazo}` : "";
+      const prioridade = t.doc?.dados?.prioridade ? ` | Prioridade: ${t.doc.dados.prioridade}` : "";
+      const tags = t.doc?.dados?.tags ? ` | Tags: ${JSON.stringify(t.doc.dados.tags)}` : "";
+      linhasPanorama.push(`- [${status}] "${tit}" (${t.caminho})${prazo}${prioridade}${tags}`);
+    }
+  }
+
+  if (todasMetas.length > 0 || todasEntregas.length > 0) {
+    linhasPanorama.push(`\n### METAS E ENTREGAS DO PDI:`);
+    for (const m of todasMetas) {
+      const tit = tituloProvavel(m.doc, m.nome);
+      linhasPanorama.push(`- [Meta PDI] "${tit}" (${m.caminho})`);
+    }
+    for (const e of todasEntregas) {
+      const tit = tituloProvavel(e.doc, e.nome);
+      const metas = e.doc?.dados?.metas ? ` -> alimenta: ${JSON.stringify(e.doc.dados.metas)}` : " (sem meta atribuída)";
+      linhasPanorama.push(`- [Entrega PDI] "${tit}" (${e.caminho})${metas}`);
+    }
+  }
+
+  if (todasNotas.length > 0) {
+    linhasPanorama.push(`\n### NOTAS (${todasNotas.length} encontradas):`);
+    for (const n of todasNotas) {
+      const tit = tituloProvavel(n.doc, n.nome);
+      const tags = n.doc?.dados?.tags ? ` | Tags: ${JSON.stringify(n.doc.dados.tags)}` : "";
+      linhasPanorama.push(`- "${tit}" (${n.caminho})${tags}`);
+    }
+  }
+
+  linhasPanorama.push("\n---\n## 📄 CONTEÚDO DETALHADO DOS DOCUMENTOS SELECIONADOS:");
+
+  let total = linhasPanorama.join("\n").length;
+  const blocosDocumentos: string[] = [];
 
   for (const item of selecionados) {
     const titulo = tituloProvavel(item.doc, item.nome);
@@ -93,15 +152,15 @@ export function montarContextoSemantico(
     const bloco = `\n### [${tipo}] ${titulo} (${item.caminho})\n${item.texto}\n---`;
 
     if (total + bloco.length > tetoCaracteres) {
-      partes.push(
+      blocosDocumentos.push(
         `\n... (contexto otimizado pelo RAG: limitado em ${tetoCaracteres} caracteres para máxima precisão)`,
       );
       break;
     }
 
-    partes.push(bloco);
+    blocosDocumentos.push(bloco);
     total += bloco.length;
   }
 
-  return partes.join("\n");
+  return `${linhasPanorama.join("\n")}\n${blocosDocumentos.join("\n")}`;
 }
