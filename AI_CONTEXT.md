@@ -565,7 +565,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 **Exportações principais:**
 - `interface` **`AtividadeDia`**
 - `tipo` **`MapaAtividadesPorDia`**
-- `funcao` **`normalizarDataParaIso`** — _Normaliza qualquer formato de data/timestamp para YYYY-MM-DD_
+- `funcao` **`normalizarDataParaIso`** — _Normaliza qualquer formato de data/timestamp para YYYY-MM-DD respeitando o fuso local_
 - `funcao` **`compilarHistoricoAtividades`** — _Compila todo o histórico de atividades a partir do acervo do repositório_
 - `funcao` **`calcularNivelIntensidade`** — _Calcula o nível de intensidade de 0 a 4 (estilo GitHub) baseado na contagem_
 

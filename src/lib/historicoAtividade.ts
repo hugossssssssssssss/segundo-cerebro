@@ -25,15 +25,21 @@ export interface AtividadeDia {
 export type MapaAtividadesPorDia = Record<string, AtividadeDia[]>;
 
 /**
- * Normaliza qualquer formato de data/timestamp para YYYY-MM-DD
+ * Normaliza qualquer formato de data/timestamp para YYYY-MM-DD respeitando o fuso local
  */
 export function normalizarDataParaIso(valor: any): string | null {
   if (!valor) return null;
   if (typeof valor === "string") {
     const limpo = valor.trim();
-    const match = limpo.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (match) return match[1];
+    if (!limpo) return null;
 
+    // Se for estritamente uma data pura YYYY-MM-DD (sem horário/sem T), mantém como está
+    if (/^\d{4}-\d{2}-\d{2}$/.test(limpo)) {
+      return limpo;
+    }
+
+    // Se for um timestamp ISO ou contiver horário (ex: "2026-09-04T01:07:00.000Z"),
+    // converte para o Date e extrai o dia no fuso horário local do usuário
     const parsed = new Date(limpo);
     if (!isNaN(parsed.getTime())) {
       const y = parsed.getFullYear();
@@ -41,6 +47,9 @@ export function normalizarDataParaIso(valor: any): string | null {
       const d = String(parsed.getDate()).padStart(2, "0");
       return `${y}-${m}-${d}`;
     }
+
+    const match = limpo.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) return match[1];
   }
   if (valor instanceof Date && !isNaN(valor.getTime())) {
     const y = valor.getFullYear();
