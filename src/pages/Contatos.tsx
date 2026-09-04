@@ -695,19 +695,15 @@ export default function Contatos() {
       {/* CONTEÚDO DA TELA POR VISÃO */}
       {contatosFiltrados.length > 0 && (
         <>
-          {/* 1. VISÃO EM ÁRVORE HIERÁRQUICA (ORGANOGRAMA DIDÁTICO) */}
+          {/* 1. VISÃO EM ÁRVORE HIERÁRQUICA (ORGANOGRAMA TOP-DOWN VISUAL) */}
           {visao === "arvore" && (
-            <div className="space-y-6 pt-2 pb-8">
-              {arvoreContatos.map((no) => (
-                <ItemNoArvore
-                  key={no.contato.id}
-                  no={no}
-                  aoEditar={(c) => abrirContato(c)}
-                  aoExcluir={(c) => setContatoParaExcluir(c)}
-                  aoFiltrarTag={aplicarFiltroTag}
-                />
-              ))}
-            </div>
+            <VisaoOrganogramaGeral
+              arvore={arvoreContatos}
+              todosContatos={contatosLocais}
+              aoEditar={(c) => abrirContato(c)}
+              aoExcluir={(c) => setContatoParaExcluir(c)}
+              aoFiltrarTag={aplicarFiltroTag}
+            />
           )}
 
           {/* 2. VISÃO EM CARTÕES (GRID) */}
@@ -983,176 +979,359 @@ export default function Contatos() {
   );
 }
 
-// COMPONENTE: ITEM DA ÁRVORE HIERÁRQUICA DIDÁTICA (ORGANOGRAMA MODERNO E ABERTO)
-function ItemNoArvore({
+// ── NOVO ORGANOGRAMA VISUAL (RECONSTRUÍDO DO ZERO) ──────────────────────────
+
+interface VisaoOrganogramaGeralProps {
+  arvore: NoContato[];
+  todosContatos: Contato[];
+  aoEditar: (c: Contato) => void;
+  aoExcluir: (c: Contato) => void;
+  aoFiltrarTag: (t: string) => void;
+}
+
+function contarMembrosNo(no: NoContato): number {
+  let total = 1;
+  for (const f of no.filhos) {
+    total += contarMembrosNo(f);
+  }
+  return total;
+}
+
+function VisaoOrganogramaGeral({
+  arvore,
+  aoEditar,
+  aoExcluir,
+  aoFiltrarTag,
+}: VisaoOrganogramaGeralProps) {
+  // Separa líderes (que têm equipe) de contatos individuais/diretos
+  const equipes = useMemo(() => arvore.filter((n) => n.filhos.length > 0), [arvore]);
+  const contatosAvulsos = useMemo(() => arvore.filter((n) => n.filhos.length === 0), [arvore]);
+
+  return (
+    <div className="space-y-10 pt-2 pb-12">
+      {/* 1. SEÇÕES DE ORGANOGRAMA POR EQUIPE / LIDERANÇA */}
+      {equipes.length > 0 && (
+        <div className="space-y-8">
+          {equipes.map((noRaiz) => {
+            const totalMembros = contarMembrosNo(noRaiz);
+            return (
+              <div
+                key={noRaiz.contato.id}
+                className="rounded-3xl border border-border/80 bg-card/60 backdrop-blur-xs p-5 sm:p-7 shadow-xs hover:border-primary/30 transition-all space-y-6"
+              >
+                {/* Cabeçalho do Organograma da Equipe */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-border/60">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                      <Users size={16} />
+                    </div>
+                    <div>
+                      <h2 className="font-bold text-sm text-foreground">
+                        Equipe de {noRaiz.contato.titulo}
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {totalMembros} {totalMembros === 1 ? "membro" : "membros no total"} na estrutura
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
+                    <Briefcase size={12} />
+                    <span>{noRaiz.contato.cargo || "Liderança"}</span>
+                    {noRaiz.contato.empresa && <span>• {noRaiz.contato.empresa}</span>}
+                  </span>
+                </div>
+
+                {/* Nó Raiz e sua árvore de liderados */}
+                <NoOrganogramaVisual
+                  no={noRaiz}
+                  aoEditar={aoEditar}
+                  aoExcluir={aoExcluir}
+                  aoFiltrarTag={aoFiltrarTag}
+                  ehTopo
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 2. SEÇÃO DE CONTATOS INDIVIDUAIS / SEM HIERARQUIA VINCULADA */}
+      {contatosAvulsos.length > 0 && (
+        <div className="rounded-3xl border border-border/70 bg-card/40 p-5 sm:p-7 space-y-5">
+          <div className="flex items-center justify-between gap-2 pb-3 border-b border-border/60">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-secondary text-muted-foreground flex items-center justify-center font-bold">
+                <User size={15} />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-foreground">
+                  Contatos Diretos & Especialistas
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {contatosAvulsos.length} {contatosAvulsos.length === 1 ? "contato sem liderados associados" : "contatos sem liderados associados"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {contatosAvulsos.map((n) => (
+              <CardPessoaOrganograma
+                key={n.contato.id}
+                contato={n.contato}
+                aoEditar={aoEditar}
+                aoExcluir={aoExcluir}
+                aoFiltrarTag={aoFiltrarTag}
+                papel="Contato Direto"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// COMPONENTE: NÓ DE ORGANOGRAMA VISUAL COM LINHAS CONECTORAS
+function NoOrganogramaVisual({
   no,
   aoEditar,
   aoExcluir,
   aoFiltrarTag,
+  ehTopo = false,
 }: {
   no: NoContato;
   aoEditar: (c: Contato) => void;
   aoExcluir: (c: Contato) => void;
   aoFiltrarTag: (t: string) => void;
+  ehTopo?: boolean;
 }) {
-  const c = no.contato;
   const temFilhos = no.filhos.length > 0;
-  const ehLider = temFilhos;
-  const ehRaiz = no.nivel === 0;
 
+  return (
+    <div className="flex flex-col items-center w-full">
+      {/* Cartão do Líder / Pessoa Atual */}
+      <div className={cn("w-full", ehTopo ? "max-w-md" : "max-w-sm")}>
+        <CardPessoaOrganograma
+          contato={no.contato}
+          aoEditar={aoEditar}
+          aoExcluir={aoExcluir}
+          aoFiltrarTag={aoFiltrarTag}
+          papel={
+            ehTopo
+              ? `👑 Líder (${no.filhos.length} ${no.filhos.length === 1 ? "liderado direto" : "liderados diretos"})`
+              : temFilhos
+              ? `👥 Gestor (${no.filhos.length} ${no.filhos.length === 1 ? "liderado" : "liderados"})`
+              : `👤 Liderado direto`
+          }
+          variante={ehTopo ? "lider" : temFilhos ? "gestor" : "membro"}
+        />
+      </div>
+
+      {/* Ramificação para Liderados Diretos */}
+      {temFilhos && (
+        <div className="w-full flex flex-col items-center mt-3">
+          {/* Conector Vertical do Líder */}
+          <div className="w-0.5 h-6 bg-primary/40 rounded-full" />
+
+          {/* Container de Filhos em Grid Conectado */}
+          <div className="w-full relative pt-4">
+            {/* Linha Horizontal Superior de Distribuição (se houver mais de 1 filho) */}
+            {no.filhos.length > 1 && (
+              <div className="hidden sm:block absolute top-0 left-12 right-12 h-0.5 bg-primary/30 rounded-full" />
+            )}
+
+            <div
+              className={cn(
+                "grid gap-5 w-full",
+                no.filhos.length === 1
+                  ? "grid-cols-1 max-w-sm mx-auto justify-items-center"
+                  : no.filhos.length === 2
+                  ? "grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto"
+                  : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"
+              )}
+            >
+              {no.filhos.map((filhoNo) => (
+                <div key={filhoNo.contato.id} className="relative flex flex-col items-center w-full">
+                  {/* Conector Vertical Superior para cada Filho */}
+                  <div className="hidden sm:block w-0.5 h-4 bg-primary/30 -mt-4 mb-2 rounded-full" />
+
+                  <NoOrganogramaVisual
+                    no={filhoNo}
+                    aoEditar={aoEditar}
+                    aoExcluir={aoExcluir}
+                    aoFiltrarTag={aoFiltrarTag}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// COMPONENTE: CARTÃO DE PESSOA NO ORGANOGRAMA (DESIGN RICO PARA DESIGNERS)
+function CardPessoaOrganograma({
+  contato: c,
+  aoEditar,
+  aoExcluir,
+  aoFiltrarTag,
+  papel,
+  variante = "membro",
+}: {
+  contato: Contato;
+  aoEditar: (c: Contato) => void;
+  aoExcluir: (c: Contato) => void;
+  aoFiltrarTag: (t: string) => void;
+  papel?: string;
+  variante?: "lider" | "gestor" | "membro";
+}) {
   // Filtrar propriedades internas
   const propriedadesValidas = Object.entries(c.propriedades).filter(
     ([k]) => !["demo", "subtipo", "fixado", "ia_sugeriu", "tipo", "id", "pai_id", "pai"].includes(k) && !k.startsWith("_")
   );
 
   return (
-    <div className="space-y-3.5 select-none relative">
-      {/* Card do Contato no Organograma */}
-      <div
-        onClick={() => aoEditar(c)}
-        className={cn(
-          "group relative flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border bg-card hover:bg-accent/40 transition-all cursor-pointer shadow-2xs hover:shadow-md",
-          ehRaiz
-            ? "border-primary/40 bg-card/95 ring-1 ring-primary/15"
-            : "border-border/90 ml-6 sm:ml-10 before:absolute before:-left-6 sm:before:-left-10 before:top-1/2 before:w-6 sm:before:w-10 before:h-0.5 before:bg-primary/30"
-        )}
-      >
-        {/* Lado Esquerdo: Avatar + Hierarquia + Informações */}
-        <div className="flex items-start gap-3.5 min-w-0 flex-1">
+    <div
+      onClick={() => aoEditar(c)}
+      className={cn(
+        "group relative w-full flex flex-col justify-between p-4 sm:p-5 rounded-2xl border bg-card transition-all cursor-pointer shadow-2xs hover:shadow-lg hover:-translate-y-0.5",
+        variante === "lider"
+          ? "border-primary/50 bg-gradient-to-b from-primary/5 via-card to-card ring-2 ring-primary/20"
+          : variante === "gestor"
+          ? "border-primary/30 bg-card hover:border-primary/50"
+          : "border-border/80 bg-card hover:border-primary/40"
+      )}
+    >
+      <div className="space-y-3">
+        {/* Cabeçalho do Card: Avatar, Nome e Botões */}
+        <div className="flex items-start justify-between gap-2.5">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className={cn(
+                "h-12 w-12 rounded-2xl flex items-center justify-center font-bold text-base shrink-0 shadow-2xs transition-transform group-hover:scale-105",
+                variante === "lider"
+                  ? "bg-primary text-primary-foreground font-black text-lg"
+                  : "bg-primary/10 text-primary border border-primary/20"
+              )}
+            >
+              {c.titulo ? c.titulo.charAt(0).toUpperCase() : "?"}
+            </div>
+
+            <div className="min-w-0">
+              <h4 className="font-bold text-sm sm:text-base text-foreground truncate tracking-tight">
+                {c.titulo || "Sem nome"}
+              </h4>
+              {papel && (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 text-[11px] font-semibold mt-0.5 px-2 py-0.5 rounded-md",
+                    variante === "lider"
+                      ? "bg-primary/15 text-primary"
+                      : "bg-secondary text-muted-foreground"
+                  )}
+                >
+                  {papel}
+                </span>
+              )}
+            </div>
+          </div>
+
           <div
-            className={cn(
-              "h-11 w-11 rounded-2xl flex items-center justify-center font-bold text-base shrink-0 shadow-2xs transition-transform group-hover:scale-105",
-              ehLider
-                ? "bg-primary text-primary-foreground font-black"
-                : "bg-primary/10 text-primary border border-primary/20"
-            )}
+            className="flex items-center gap-0.5 opacity-80 group-hover:opacity-100 transition-opacity shrink-0"
+            onClick={(e) => e.stopPropagation()}
           >
-            {c.titulo ? c.titulo.charAt(0).toUpperCase() : "?"}
-          </div>
-
-          <div className="min-w-0 space-y-1.5 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-bold text-base text-foreground tracking-tight truncate">{c.titulo || "Sem nome"}</h3>
-
-              {ehLider ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/15 text-primary text-xs font-bold border border-primary/30">
-                  <Users size={12} className="shrink-0" />
-                  <span>Líder de Equipe ({no.filhos.length} {no.filhos.length === 1 ? "liderado" : "liderados"})</span>
-                </span>
-              ) : ehRaiz ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-secondary text-muted-foreground text-xs font-medium">
-                  <User size={12} className="shrink-0" />
-                  <span>Contato Direto</span>
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-secondary/80 text-muted-foreground text-xs font-medium">
-                  <span>Nível {no.nivel + 1}</span>
-                </span>
-              )}
-
-              {c.cargo && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-medium border border-blue-500/20">
-                  <Briefcase size={12} /> {c.cargo}
-                </span>
-              )}
-
-              {c.empresa && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-medium border border-emerald-500/20">
-                  <Building2 size={12} /> {c.empresa}
-                </span>
-              )}
-            </div>
-
-            {/* Informações de Contato */}
-            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground pt-0.5">
-              {c.email && (
-                <a
-                  href={`mailto:${c.email}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors truncate font-medium"
-                >
-                  <Mail size={13} className="text-indigo-500 shrink-0" /> {c.email}
-                </a>
-              )}
-              {c.telefone && (
-                <a
-                  href={`tel:${c.telefone}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors truncate font-medium"
-                >
-                  <Phone size={13} className="text-purple-500 shrink-0" /> {c.telefone}
-                </a>
-              )}
-            </div>
-
-            {/* Tags em tamanho padrão */}
-            {c.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {c.tags.map((t) => (
-                  <TagChip
-                    key={t}
-                    tag={t}
-                    aoClicar={() => aoFiltrarTag(t)}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Propriedades Extras (Sem campos internos) */}
-            {propriedadesValidas.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {propriedadesValidas.map(([k, v]) => (
-                  <span
-                    key={k}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/60 text-xs text-accent-foreground font-medium"
-                  >
-                    <span className="font-semibold text-muted-foreground">{k}:</span> {v}
-                  </span>
-                ))}
-              </div>
-            )}
+            <Tooltip conteudo="Editar contato">
+              <button
+                type="button"
+                onClick={() => aoEditar(c)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+                aria-label="Editar contato"
+              >
+                <Edit2 size={14} />
+              </button>
+            </Tooltip>
+            <Tooltip conteudo="Excluir contato">
+              <button
+                type="button"
+                onClick={() => aoExcluir(c)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
+                aria-label="Excluir contato"
+              >
+                <Trash2 size={14} />
+              </button>
+            </Tooltip>
           </div>
         </div>
 
-        {/* Lado Direito: Ações rápidas */}
-        <div
-          className="flex items-center gap-1 self-end md:self-center shrink-0 border-t md:border-t-0 pt-2 md:pt-0"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Tooltip conteudo="Editar contato">
-            <button
-              type="button"
-              onClick={() => aoEditar(c)}
-              className="p-2 rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-              aria-label="Editar contato"
-            >
-              <Edit2 size={15} />
-            </button>
-          </Tooltip>
-
-          <Tooltip conteudo="Excluir contato">
-            <button
-              type="button"
-              onClick={() => aoExcluir(c)}
-              className="p-2 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
-              aria-label="Excluir contato"
-            >
-              <Trash2 size={15} />
-            </button>
-          </Tooltip>
+        {/* Cargo e Empresa em Badges Coloridas */}
+        <div className="flex flex-wrap gap-1.5">
+          {c.cargo && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-medium border border-blue-500/20">
+              <Briefcase size={12} className="shrink-0" />
+              <span className="truncate">{c.cargo}</span>
+            </span>
+          )}
+          {c.empresa && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-medium border border-emerald-500/20">
+              <Building2 size={12} className="shrink-0" />
+              <span className="truncate">{c.empresa}</span>
+            </span>
+          )}
         </div>
+
+        {/* Contato Direto (E-mail e Telefone) */}
+        {(c.email || c.telefone) && (
+          <div className="space-y-1.5 pt-2 border-t border-border/50 text-xs">
+            {c.email && (
+              <a
+                href={`mailto:${c.email}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors truncate font-medium"
+              >
+                <Mail size={13} className="text-indigo-500 shrink-0" />
+                <span className="truncate">{c.email}</span>
+              </a>
+            )}
+            {c.telefone && (
+              <a
+                href={`tel:${c.telefone}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors truncate font-medium"
+              >
+                <Phone size={13} className="text-purple-500 shrink-0" />
+                <span className="truncate">{c.telefone}</span>
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* Propriedades Extras */}
+        {propriedadesValidas.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {propriedadesValidas.map(([k, v]) => (
+              <span
+                key={k}
+                className="px-2 py-0.5 rounded-md bg-secondary/80 text-[11px] text-foreground font-medium"
+              >
+                {k}: {v}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Ramificação de Liderados (Sempre Aberta e Conectada) */}
-      {temFilhos && (
-        <div className="space-y-3.5 relative pl-4 sm:pl-6 border-l-2 border-primary/30 ml-5 sm:ml-8 my-2 pt-1">
-          {no.filhos.map((filhoNo) => (
-            <ItemNoArvore
-              key={filhoNo.contato.id}
-              no={filhoNo}
-              aoEditar={aoEditar}
-              aoExcluir={aoExcluir}
-              aoFiltrarTag={aoFiltrarTag}
+      {/* Tags do Contato */}
+      {c.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-3 mt-2 border-t border-border/60">
+          {c.tags.map((t) => (
+            <TagChip
+              key={t}
+              tag={t}
+              aoClicar={() => aoFiltrarTag(t)}
             />
           ))}
         </div>
