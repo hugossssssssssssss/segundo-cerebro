@@ -29,6 +29,73 @@ interface NavegacaoLateralProps {
   className?: string;
 }
 
+interface BotaoItemMenuProps {
+  para?: string;
+  aoClicar?: () => void;
+  rotulo: string;
+  icone: any;
+  corIcone?: string;
+  colapsada: boolean;
+  ariaLabel?: string;
+}
+
+function BotaoItemMenu({
+  para,
+  aoClicar,
+  rotulo,
+  icone: Icone,
+  corIcone,
+  colapsada,
+  ariaLabel,
+}: BotaoItemMenuProps) {
+  const classeBase = cn(
+    "flex items-center rounded-xl text-sm font-medium transition-colors group cursor-pointer select-none shrink-0",
+    colapsada ? "h-10 w-10 mx-auto justify-center p-0" : "h-10 w-full px-2.5 gap-3"
+  );
+
+  const conteudoInterno = (
+    <>
+      <Icone
+        size={20}
+        style={{ color: corIcone }}
+        className="shrink-0 transition-transform duration-150 group-hover:scale-110"
+      />
+      {!colapsada && <span className="truncate flex-1 text-left">{rotulo}</span>}
+    </>
+  );
+
+  return (
+    <Tooltip conteudo={rotulo} posicao="right" desabilitado={!colapsada}>
+      {para ? (
+        <NavLink
+          to={para}
+          onClick={aoClicar}
+          className={({ isActive }) =>
+            cn(
+              classeBase,
+              isActive
+                ? "bg-primary/15 text-primary font-semibold"
+                : "text-muted-foreground hover:bg-accent/80 hover:text-foreground"
+            )
+          }
+          aria-label={ariaLabel || rotulo}
+        >
+          {conteudoInterno}
+        </NavLink>
+      ) : (
+        <button
+          type="button"
+          onClick={aoClicar}
+          className={cn(classeBase, "text-muted-foreground hover:bg-accent/80 hover:text-foreground")}
+          aria-label={ariaLabel || rotulo}
+        >
+          {conteudoInterno}
+        </button>
+      )}
+    </Tooltip>
+  );
+}
+
 export function NavegacaoLateral({
   colapsada,
   setColapsada,
@@ -193,42 +260,17 @@ export function NavegacaoLateral({
                   </h3>
                 )}
                 <nav className="space-y-1.5">
-                  {itensVisiveis.map((item) => {
-                    const Icone = obterIconePorNome(item.iconeNome || "HelpCircle");
-                    return (
-                      <Tooltip
-                        key={item.id || item.para}
-                        conteudo={item.rotulo || "Item"}
-                        posicao="right"
-                        desabilitado={!colapsada}
-                      >
-                        <NavLink
-                          to={item.para || "/home"}
-                          onClick={lidarCliqueItem}
-                          className={({ isActive }) =>
-                            cn(
-                              "flex items-center rounded-xl text-sm font-medium transition-colors relative group cursor-pointer select-none shrink-0",
-                              colapsada
-                                ? "h-10 w-10 mx-auto justify-center p-0"
-                                : "h-10 w-full px-2.5 gap-3",
-                              isActive
-                                ? "bg-primary/15 text-primary font-semibold shadow-2xs"
-                                : "text-muted-foreground hover:bg-accent/80 hover:text-foreground"
-                            )
-                          }
-                        >
-                          <Icone
-                            size={20}
-                            style={{ color: item.cor }}
-                            className="shrink-0 transition-transform duration-150 group-hover:scale-110"
-                          />
-                          {!colapsada && (
-                            <span className="truncate flex-1 text-left">{item.rotulo || "Item"}</span>
-                          )}
-                        </NavLink>
-                      </Tooltip>
-                    );
-                  })}
+                  {itensVisiveis.map((item) => (
+                    <BotaoItemMenu
+                      key={item.id || item.para}
+                      para={item.para || "/home"}
+                      aoClicar={lidarCliqueItem}
+                      rotulo={item.rotulo || "Item"}
+                      icone={obterIconePorNome(item.iconeNome || "HelpCircle")}
+                      corIcone={item.cor}
+                      colapsada={colapsada}
+                    />
+                  ))}
                 </nav>
               </div>
             );
@@ -237,72 +279,26 @@ export function NavegacaoLateral({
 
         {/* Rodapé da Sidebar */}
         <div className="border-t border-border/60 p-3 space-y-1.5 shrink-0">
-          {/* Botão para Personalizar Menu */}
-          <Tooltip conteudo="Personalizar Menu" posicao="right" desabilitado={!colapsada}>
-            <button
-              type="button"
-              onClick={() => setModalPersonalizarAberta(true)}
-              className={cn(
-                "flex items-center rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors group cursor-pointer select-none shrink-0",
-                colapsada
-                  ? "h-10 w-10 mx-auto justify-center p-0"
-                  : "h-10 w-full px-2.5 gap-3"
-              )}
-              aria-label="Personalizar Menu"
-            >
-              <Palette size={20} className="shrink-0 group-hover:rotate-12 transition-transform duration-150" />
-              {!colapsada && <span className="truncate text-left flex-1">Personalizar Menu</span>}
-            </button>
-          </Tooltip>
-
-          {/* Configurações */}
-          <Tooltip conteudo="Configurações" posicao="right" desabilitado={!colapsada}>
-            <NavLink
-              to="/config"
-              onClick={lidarCliqueItem}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center rounded-xl text-sm font-medium transition-colors relative group cursor-pointer select-none shrink-0",
-                  colapsada
-                    ? "h-10 w-10 mx-auto justify-center p-0"
-                    : "h-10 w-full px-2.5 gap-3",
-                  isActive
-                    ? "bg-primary/15 text-primary font-semibold shadow-2xs"
-                    : "text-muted-foreground hover:bg-accent/80 hover:text-foreground"
-                )
-              }
-              aria-label="Configurações"
-            >
-              <Settings size={20} className="shrink-0 transition-transform duration-150 group-hover:rotate-45" />
-              {!colapsada && <span className="truncate text-left flex-1">Configurações</span>}
-            </NavLink>
-          </Tooltip>
-
-          {/* Tema Claro / Escuro */}
-          <Tooltip
-            conteudo={escuro ? "Alternar para Tema Claro" : "Alternar para Tema Escuro"}
-            posicao="right"
-            desabilitado={!colapsada}
-          >
-            <button
-              type="button"
-              onClick={toggleTema}
-              className={cn(
-                "flex items-center rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors group cursor-pointer select-none shrink-0",
-                colapsada
-                  ? "h-10 w-10 mx-auto justify-center p-0"
-                  : "h-10 w-full px-2.5 gap-3"
-              )}
-              aria-label={escuro ? "Modo claro" : "Modo escuro"}
-            >
-              {escuro ? (
-                <Sun size={20} className="shrink-0 text-amber-400 group-hover:rotate-45 transition-transform duration-150" />
-              ) : (
-                <Moon size={20} className="shrink-0 text-indigo-400 group-hover:-rotate-12 transition-transform duration-150" />
-              )}
-              {!colapsada && <span className="truncate text-left flex-1">{escuro ? "Modo Claro" : "Modo Escuro"}</span>}
-            </button>
-          </Tooltip>
+          <BotaoItemMenu
+            aoClicar={() => setModalPersonalizarAberta(true)}
+            rotulo="Personalizar Menu"
+            icone={Palette}
+            colapsada={colapsada}
+          />
+          <BotaoItemMenu
+            para="/config"
+            aoClicar={lidarCliqueItem}
+            rotulo="Configurações"
+            icone={Settings}
+            colapsada={colapsada}
+          />
+          <BotaoItemMenu
+            aoClicar={toggleTema}
+            rotulo={escuro ? "Modo Claro" : "Modo Escuro"}
+            icone={escuro ? Sun : Moon}
+            corIcone={escuro ? "#f59e0b" : "#818cf8"}
+            colapsada={colapsada}
+          />
         </div>
       </aside>
 
