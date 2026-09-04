@@ -60,11 +60,12 @@ declare const chrome: any;
 
 inicializarLogger();
 
+import Home from "@/pages/Home";
+
 /**
  * HashRouter (URLs com #) em vez de BrowserRouter: o GitHub Pages não sabe
  * reescrever rotas para o index.html, então sem hash um F5 em /notas dá 404.
  */
-const Home = lazy(() => import("@/pages/Home"));
 const Inbox = lazy(() => import("@/pages/Inbox"));
 const Tarefas = lazy(() => import("@/pages/Tarefas"));
 const Notas = lazy(() => import("@/pages/Notas"));

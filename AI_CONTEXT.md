@@ -187,7 +187,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `constante` **`cache`**
 - `funcao` **`arquivosIlegiveis`**
 - `funcao` **`invalidarCache`** — _Chamar depois de gravar ou apagar, para a próxima leitura buscar de novo._
-- `funcao` **`esquecerTudo`** — _Esquece também o texto guardado por sha. Só faz sentido ao trocar de conta/repositório e nos testes ..._
+- `funcao` **`esquecerTudo`** — _Esquece também o texto guardado por sha e limpa o snapshot local. Só faz sentido ao trocar de conta/..._
 - `funcao` **`ehArquivoInternoOuSistema`** — _Arquivos internos do repositório/sistema que NÃO devem ser tratados como documentos do usuário. Ex: ..._
 - `funcao` **`resetarCacheArvore`**
 - `funcao` **`carregarRepo`** — _Devolve todos os `.md` do repositório, com conteúdo já lido e analisado. Usa o cache quando a árvore..._
@@ -195,7 +195,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`daPastaRecursiva`** — _Todos os arquivos de uma pasta e suas subpastas recursivamente._
 - `funcao` **`atualizarCacheLocal`** — _Atualiza instantaneamente (0ms) um item no cache de memória local. Garante que se o usuário reabrir ..._
 - `funcao` **`removerDoCacheLocal`** — _Remove instantaneamente um item do cache de memória local ao deletar._
-- `funcao` **`obterCacheExistente`** — _Retorna o cache em memória atual, se existir e for do mesmo repositório._
+- `funcao` **`obterCacheExistente`** — _Retorna o cache em memória atual, ou hidrata síncronamente do armazenamento se existir._
 
 #### 📄 `src/lib/settings.ts`
 > Configuração do app — fica no localStorage do navegador. Nada disto vai para o código nem para o repositório público. O token e a chave existem só no navegador de quem está usando o app.

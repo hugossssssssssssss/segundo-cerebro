@@ -46,10 +46,56 @@ export function useItemRepo<T>(
   converter: (item: ItemRepo) => T,
   opcoes?: { recursivo?: boolean },
 ): EstadoRepo<T> {
-  const [itens, setItens] = useState<T[]>([]);
-  const [acervo, setAcervo] = useState<ItemRepo[]>([]);
-  const [titulos, setTitulos] = useState<Record<string, string>>({});
-  const [carregando, setCarregando] = useState(true);
+  const cacheInicial = useRef<{ acervo: ItemRepo[]; itens: T[]; titulos: Record<string, string> } | null>(null);
+
+  if (cacheInicial.current === null && cfg.githubToken && cfg.repoOwner && cfg.repoName) {
+    const cacheValido = obterCacheExistente(cfg);
+    if (cacheValido && Array.isArray(cacheValido.itens)) {
+      const rascunhos = obterRascunhosLocais();
+      let todos = [...cacheValido.itens];
+      if (rascunhos.length > 0) {
+        const mapaRascunhos = new Map(rascunhos.map((r) => [r.caminho, r]));
+        todos = todos
+          .map((item) => {
+            const rascunho = mapaRascunhos.get(item.caminho);
+            if (rascunho) {
+              mapaRascunhos.delete(item.caminho);
+              if (rascunho.acao === "apagar") return null;
+              const docRascunho = lerMarkdown(rascunho.texto);
+              return { ...item, texto: rascunho.texto, doc: docRascunho };
+            }
+            return item;
+          })
+          .filter((i): i is NonNullable<typeof i> => i !== null);
+
+        for (const rascunho of mapaRascunhos.values()) {
+          if (rascunho.acao === "apagar") continue;
+          const docRascunho = lerMarkdown(rascunho.texto);
+          const nome = rascunho.caminho.split("/").pop() || "rascunho.md";
+          todos.push({
+            caminho: rascunho.caminho,
+            nome,
+            sha: rascunho.sha || "",
+            tamanho: rascunho.texto.length,
+            texto: rascunho.texto,
+            doc: docRascunho,
+          });
+        }
+      }
+
+      const lista = daPasta(todos, pasta, Boolean(opcoes?.recursivo));
+      cacheInicial.current = {
+        acervo: todos,
+        itens: lista.map(converter),
+        titulos: Object.fromEntries(todos.map((i) => [i.caminho, tituloProvavel(i.doc, i.nome)])),
+      };
+    }
+  }
+
+  const [itens, setItens] = useState<T[]>(() => cacheInicial.current?.itens || []);
+  const [acervo, setAcervo] = useState<ItemRepo[]>(() => cacheInicial.current?.acervo || []);
+  const [titulos, setTitulos] = useState<Record<string, string>>(() => cacheInicial.current?.titulos || {});
+  const [carregando, setCarregando] = useState(() => !cacheInicial.current);
   const [erro, setErro] = useState("");
   const [ilegiveis, setIlegiveis] = useState<string[]>([]);
 
@@ -58,7 +104,7 @@ export function useItemRepo<T>(
    * dependências do callback, cada item criado recriaria o callback e
    * dispararia um carregamento extra do repositório.
    */
-  const jaCarregouRef = useRef(false);
+  const jaCarregouRef = useRef(Boolean(cacheInicial.current));
   const converterRef = useRef(converter);
   converterRef.current = converter;
 

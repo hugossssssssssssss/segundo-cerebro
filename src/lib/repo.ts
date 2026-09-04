@@ -44,6 +44,35 @@ export type Cache = {
 
 export let cache: Cache | null = null;
 
+const CHAVE_CACHE_ACERVO = "klaus_cache_acervo_snapshot_v1";
+const CHAVE_CACHE_ETAG = "klaus_cache_etag_snapshot_v1";
+
+function carregarCacheDoArmazenamento(chave: string): Cache | null {
+  try {
+    const salvo = typeof localStorage !== "undefined" ? localStorage.getItem(CHAVE_CACHE_ACERVO) : null;
+    if (salvo) {
+      const parsed = JSON.parse(salvo) as Cache;
+      if (parsed && parsed.chave === chave && Array.isArray(parsed.itens)) {
+        for (const item of parsed.itens) {
+          if (item.sha && item.texto) {
+            textoPorSha.set(item.sha, item.texto);
+          }
+        }
+        return parsed;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+function salvarCacheNoArmazenamento(novoCache: Cache) {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(CHAVE_CACHE_ACERVO, JSON.stringify(novoCache));
+    }
+  } catch {}
+}
+
 type AlteracaoRecente = {
   caminho: string;
   sha: string;
@@ -117,7 +146,7 @@ export function invalidarCache(): void {
 }
 
 /**
- * Esquece também o texto guardado por sha.
+ * Esquece também o texto guardado por sha e limpa o snapshot local.
  *
  * Só faz sentido ao trocar de conta/repositório e nos testes — no uso normal
  * o mapa por sha DEVE sobreviver, é ele que evita re-baixar tudo a cada save.
@@ -128,6 +157,12 @@ export function esquecerTudo(): void {
   textoPorSha.clear();
   resetarCacheArvore();
   limparCacheSha().catch(() => {});
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(CHAVE_CACHE_ACERVO);
+      localStorage.removeItem(CHAVE_CACHE_ETAG);
+    }
+  } catch {}
 }
 
 function cabecalhos(cfg: Settings): HeadersInit {
@@ -240,9 +275,37 @@ export function resetarCacheArvore(): void {
   cacheArvoreEmMemoria = null;
 }
 
+function carregarEtagDoArmazenamento(chave: string): CacheArvore | null {
+  try {
+    const salvo = typeof localStorage !== "undefined" ? localStorage.getItem(CHAVE_CACHE_ETAG) : null;
+    if (salvo) {
+      const parsed = JSON.parse(salvo);
+      if (parsed && parsed.chave === chave && parsed.dados) {
+        return parsed.dados;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+function salvarEtagNoArmazenamento(chave: string, dados: CacheArvore) {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(CHAVE_CACHE_ETAG, JSON.stringify({ chave, dados }));
+    }
+  } catch {}
+}
+
 async function arvore(cfg: Settings): Promise<Folha[]> {
   const chave = chaveDe(cfg);
   const url = `${BASE}/repos/${cfg.repoOwner}/${cfg.repoName}/git/trees/${encodeURIComponent(cfg.branch)}?recursive=1`;
+
+  if (!cacheArvoreEmMemoria) {
+    const doStorage = carregarEtagDoArmazenamento(chave);
+    if (doStorage) {
+      cacheArvoreEmMemoria = { chave, dados: doStorage };
+    }
+  }
 
   const etagAtual = cacheArvoreEmMemoria?.chave === chave ? cacheArvoreEmMemoria.dados.etag : null;
 
@@ -282,14 +345,16 @@ async function arvore(cfg: Settings): Promise<Folha[]> {
 
   const novoEtag = resposta.headers.get("etag");
   if (novoEtag) {
+    const novosDados: CacheArvore = {
+      etag: novoEtag,
+      folhas: novasFolhas,
+      quando: Date.now(),
+    };
     cacheArvoreEmMemoria = {
       chave,
-      dados: {
-        etag: novoEtag,
-        folhas: novasFolhas,
-        quando: Date.now(),
-      },
+      dados: novosDados,
     };
+    salvarEtagNoArmazenamento(chave, novosDados);
   }
 
   return novasFolhas;
@@ -509,6 +574,7 @@ async function carregarDeVerdade(
     });
 
   cache = { chave, itens, quando: Date.now() };
+  salvarCacheNoArmazenamento(cache);
   return itens;
 }
 
@@ -604,6 +670,7 @@ export function atualizarCacheLocal(
       cache.itens.unshift(novoItem);
     }
     cache.quando = Date.now();
+    salvarCacheNoArmazenamento(cache);
   }
 }
 
@@ -623,15 +690,21 @@ export function removerDoCacheLocal(caminho: string) {
   if (cache) {
     cache.itens = cache.itens.filter((i) => i.caminho !== caminho);
     cache.quando = Date.now();
+    salvarCacheNoArmazenamento(cache);
   }
 }
 
 /**
- * Retorna o cache em memória atual, se existir e for do mesmo repositório.
+ * Retorna o cache em memória atual, ou hidrata síncronamente do armazenamento se existir.
  */
 export function obterCacheExistente(cfg: Settings): Cache | null {
   const chave = chaveDe(cfg);
   if (cache && cache.chave === chave) {
+    return cache;
+  }
+  const doArmazenamento = carregarCacheDoArmazenamento(chave);
+  if (doArmazenamento) {
+    cache = doArmazenamento;
     return cache;
   }
   return null;
