@@ -126,7 +126,7 @@ export function NavegacaoLateral({
               </Tooltip>
             </>
           ) : (
-            <div className="relative mx-auto flex items-center justify-center">
+            <div className="w-full flex items-center justify-center">
               <Tooltip conteudo="Expandir barra lateral" atalho="⌘B" posicao="right" desabilitado={workspaceAberto}>
                 <button
                   onClick={lidarToggleColapsada}
@@ -173,7 +173,7 @@ export function NavegacaoLateral({
         </div>
 
         {/* Corpo da Navegação */}
-        <div className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar py-3 px-2 space-y-4">
           {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo) => {
             const itensVisiveis = (grupo.itens || []).filter((item) => item && typeof item === "object" && !item.oculto);
             if (itensVisiveis.length === 0) return null;
@@ -200,7 +200,7 @@ export function NavegacaoLateral({
                           onClick={lidarCliqueItem}
                           className={({ isActive }) =>
                             cn(
-                              "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors relative group cursor-pointer",
+                              "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors relative group cursor-pointer",
                               isActive
                                 ? "bg-primary/10 text-primary font-semibold"
                                 : "text-muted-foreground hover:bg-accent/80 hover:text-foreground",
@@ -255,7 +255,7 @@ export function NavegacaoLateral({
               onClick={lidarCliqueItem}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors cursor-pointer",
+                  "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors cursor-pointer",
                   isActive
                     ? "bg-primary/10 text-primary font-semibold"
                     : "text-muted-foreground hover:bg-accent/80 hover:text-foreground",
