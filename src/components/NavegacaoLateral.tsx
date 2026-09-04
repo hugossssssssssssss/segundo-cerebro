@@ -178,20 +178,24 @@ export function NavegacaoLateral({
         <div
           className={cn(
             "flex-1 overflow-y-auto overflow-x-hidden p-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-            colapsada ? "space-y-1.5" : "space-y-4"
+            colapsada ? "space-y-3" : "space-y-4"
           )}
         >
-          {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo) => {
+          {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo, idx) => {
             const itensVisiveis = (grupo.itens || []).filter((item) => item && typeof item === "object" && !item.oculto);
             if (itensVisiveis.length === 0) return null;
 
             return (
               <div key={grupo.id || grupo.titulo} className="space-y-1.5">
-                {!colapsada && (
+                {!colapsada ? (
                   <h3 className="px-2.5 pb-0.5 text-[11px] font-semibold text-muted-foreground/80 tracking-wider uppercase truncate">
                     {grupo.titulo}
                   </h3>
-                )}
+                ) : idx > 0 ? (
+                  <div className="flex justify-center py-1">
+                    <div className="w-6 border-t border-border/60" />
+                  </div>
+                ) : null}
                 <nav className="space-y-1.5">
                   {itensVisiveis.map((item) => {
                     const Icone = obterIconePorNome(item.iconeNome || "HelpCircle");
