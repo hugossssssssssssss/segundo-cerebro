@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { LogoKlaus } from "./LogoKlaus";
-import { versao } from "@/lib/versao";
 import {
   carregarMenuPersonalizado,
   EVENTO_MENU_ATUALIZADO,
@@ -103,30 +102,29 @@ export function NavegacaoLateral({
         )}
       >
         {/* Topo da Sidebar: Marca e Toggle */}
-        <div className="flex h-14 items-center justify-between px-3 border-b border-border/60 transition-all shrink-0">
+        <div className="relative flex h-14 items-center justify-center px-3 border-b border-border/60 transition-all shrink-0">
           {!colapsada ? (
             <>
               <NavLink
                 to="/home"
                 onClick={lidarCliqueItem}
-                className="flex items-center gap-2.5 font-semibold tracking-tight text-foreground truncate min-w-0 hover:opacity-90 transition-opacity"
+                className="flex items-center justify-center gap-2.5 font-semibold tracking-tight text-foreground truncate hover:opacity-90 transition-opacity"
               >
                 <LogoKlaus tamanho={28} />
                 <span className="truncate text-base font-bold tracking-tight">Klaus</span>
-                <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-primary border border-primary/20">
-                  v{versao}
-                </span>
               </NavLink>
-              <Tooltip conteudo="Recolher menu lateral" atalho="⌘B" posicao="bottom">
-                <button
-                  type="button"
-                  onClick={() => setColapsada(true)}
-                  className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer shrink-0"
-                  aria-label="Recolher menu lateral"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-              </Tooltip>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                <Tooltip conteudo="Recolher menu lateral" atalho="⌘B" posicao="bottom">
+                  <button
+                    type="button"
+                    onClick={() => setColapsada(true)}
+                    className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer shrink-0"
+                    aria-label="Recolher menu lateral"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                </Tooltip>
+              </div>
             </>
           ) : (
             <div className="flex items-center justify-center w-full">
