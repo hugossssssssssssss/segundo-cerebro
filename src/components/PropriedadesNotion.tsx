@@ -57,6 +57,7 @@ import { nomeLivre, escreverMarkdown, tituloProvavel, nomeDeArquivo } from "@/li
 import { idDoCaminho } from "@/lib/pdi";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import { toast } from "@/lib/toast";
+import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 
 export function obterOpcoesDaPropriedade(
   chave: string,
@@ -475,8 +476,68 @@ export function PropriedadesNotion({
   focoPropriedadeInicial,
   aoMoverPasta,
 }: PropriedadesNotionProps) {
+  const { abrirFlutuante } = useItemFlutuante();
+
   // Controle estrito de um ÚNICO menu aberto por vez
   const [menuAberto, setMenuAberto] = useState<string | null>(null);
+
+  const aoClicarItemRel = (itemAlvo?: { titulo: string; caminho: string }, nomePuro?: string) => {
+    if (!itemAlvo && !nomePuro) return;
+
+    const nomeBusca = (nomePuro || itemAlvo?.titulo || "").trim().toLowerCase();
+    const caminhoBusca = itemAlvo?.caminho?.toLowerCase();
+
+    // 1. Procurar no cache de itens do repositório
+    const itemRepo = cache?.itens?.find((i) => {
+      if (caminhoBusca && i.caminho.toLowerCase() === caminhoBusca) return true;
+      const t = tituloProvavel(i.doc, i.nome).toLowerCase().trim();
+      if (t === nomeBusca) return true;
+      const nomeSemExt = i.nome.replace(/\.md$/i, "").toLowerCase().trim();
+      return nomeSemExt === nomeBusca;
+    });
+
+    if (itemRepo) {
+      const caminho = itemRepo.caminho;
+      const pasta = caminho.split("/")[0]?.toLowerCase() || "";
+      const tit = tituloProvavel(itemRepo.doc, itemRepo.nome);
+      const corpo = itemRepo.doc.corpo || "";
+      const dadosProps = itemRepo.doc.dados || {};
+
+      let rotulo = "Documento";
+      if (pasta === "tarefas") rotulo = "Tarefa";
+      else if (pasta === "notas") rotulo = "Nota";
+      else if (pasta === "contatos") rotulo = "Contato";
+      else if (pasta === "referencias") rotulo = "Referência";
+      else if (pasta === "pdi" || pasta === "metas") rotulo = "PDI";
+      else if (pasta === "lousas") rotulo = "Lousa";
+
+      abrirFlutuante({
+        id: caminho,
+        caminho,
+        sha: itemRepo.sha,
+        rotuloTipo: rotulo,
+        titulo: tit,
+        corpo,
+        dadosProps,
+        aoSalvar: async (itemEditado) => {
+          const cfg = lerConfig();
+          const mdPronto = escreverMarkdown({
+            dados: itemEditado.dadosProps,
+            corpo: itemEditado.corpo,
+          });
+          await gravar(cfg, caminho, mdPronto, `Atualiza ${tit} via pop-up de relacionamento`, itemRepo.sha);
+          invalidarCache();
+          dispararAtualizacaoAcervo();
+        },
+      });
+      return;
+    }
+
+    // 2. Fallback via SPA se não encontrar no cache
+    if (itemAlvo?.caminho) {
+      abrirItemSpa(itemAlvo.caminho);
+    }
+  };
 
   const [nomeNovoCampo, setNomeNovoCampo] = useState("");
   const [tipoNovoCampo, setTipoNovoCampo] = useState<TipoPropriedade>("texto");
@@ -1686,83 +1747,90 @@ export function PropriedadesNotion({
       };
 
       return (
-        <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
-          <PopoverTrigger asChild>
-            <div className="flex items-center gap-1.5 flex-wrap py-1 min-h-7 cursor-pointer">
-              {todasRelacoes.length === 0 ? (
-                <span className="text-muted-foreground text-xs px-1">Vazio</span>
-              ) : (
-                todasRelacoes.map((rel: string) => {
-                  const est = obterEstiloRel(rel);
-                  return (
-                    <span
-                      key={rel}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border transition-colors",
-                        est.classeBadge
-                      )}
-                    >
-                      {est.icone}
-                      <span>{est.nomePuro}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          atualizar(chave, relacoes.filter((r: string) => r !== rel));
-                        }}
-                        className="opacity-50 hover:opacity-100 hover:text-destructive cursor-pointer ml-0.5"
-                      >
-                        <X size={10} />
-                      </button>
-                    </span>
-                  );
-                })
-              )}
+        <div className="flex items-center gap-1.5 flex-wrap py-1 min-h-7">
+          {todasRelacoes.length === 0 ? (
+            <span className="text-muted-foreground text-xs px-1">Vazio</span>
+          ) : (
+            todasRelacoes.map((rel: string) => {
+              const est = obterEstiloRel(rel);
+              return (
+                <span
+                  key={rel}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    aoClicarItemRel(est.itemAlvo, est.nomePuro);
+                  }}
+                  title={`Abrir "${est.nomePuro}" em pop-up`}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border transition-all cursor-pointer hover:shadow-2xs hover:opacity-90 select-none",
+                    est.classeBadge
+                  )}
+                >
+                  {est.icone}
+                  <span>{est.nomePuro}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      atualizar(chave, relacoes.filter((r: string) => r !== rel));
+                    }}
+                    className="opacity-50 hover:opacity-100 hover:text-destructive cursor-pointer ml-0.5"
+                    title="Desvincular"
+                  >
+                    <X size={10} />
+                  </button>
+                </span>
+              );
+            })
+          )}
+
+          <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
+            <PopoverTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-1.5 text-[11px] font-normal text-muted-foreground hover:text-foreground flex items-center gap-1 border border-dashed border-border/80 rounded"
+                className="h-6 px-1.5 text-[11px] font-normal text-muted-foreground hover:text-foreground flex items-center gap-1 border border-dashed border-border/80 rounded cursor-pointer"
               >
                 <Plus size={11} />
                 <span>Vincular</span>
               </Button>
-            </div>
-          </PopoverTrigger>
-          <PopoverContent className="w-64 p-0 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
-            <Command>
-              <CommandInput placeholder="Buscar documento..." />
-              <CommandList className="max-h-60">
-                <CommandEmpty>Nenhum documento encontrado.</CommandEmpty>
-                <CommandGroup heading="Documentos no Segundo Cérebro">
-                  {opcoesRelacionamento.map((opcao) => {
-                    const est = obterEstiloRel(opcao.titulo);
-                    const jaRelacionado = relacoes.includes(`@${opcao.titulo}`) || relacoes.includes(opcao.titulo);
-                    return (
-                      <CommandItem
-                        key={opcao.caminho}
-                        onSelect={() => {
-                          const tagFormatada = `@${opcao.titulo}`;
-                          if (jaRelacionado) {
-                            atualizar(chave, relacoes.filter((r: string) => r !== tagFormatada && r !== opcao.titulo));
-                          } else {
-                            atualizar(chave, [...relacoes, tagFormatada]);
-                          }
-                        }}
-                        className="flex items-center justify-between gap-2 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          {est.icone}
-                          <span className="truncate text-xs">{opcao.titulo}</span>
-                        </div>
-                        {jaRelacionado && <Check size={12} className="text-primary shrink-0" />}
-                      </CommandItem>
-                    );
-                  })}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-0 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
+              <Command>
+                <CommandInput placeholder="Buscar documento..." />
+                <CommandList className="max-h-60">
+                  <CommandEmpty>Nenhum documento encontrado.</CommandEmpty>
+                  <CommandGroup heading="Documentos no Segundo Cérebro">
+                    {opcoesRelacionamento.map((opcao) => {
+                      const est = obterEstiloRel(opcao.titulo);
+                      const jaRelacionado = relacoes.includes(`@${opcao.titulo}`) || relacoes.includes(opcao.titulo);
+                      return (
+                        <CommandItem
+                          key={opcao.caminho}
+                          onSelect={() => {
+                            const tagFormatada = `@${opcao.titulo}`;
+                            if (jaRelacionado) {
+                              atualizar(chave, relacoes.filter((r: string) => r !== tagFormatada && r !== opcao.titulo));
+                            } else {
+                              atualizar(chave, [...relacoes, tagFormatada]);
+                            }
+                          }}
+                          className="flex items-center justify-between gap-2 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {est.icone}
+                            <span className="truncate text-xs">{opcao.titulo}</span>
+                          </div>
+                          {jaRelacionado && <Check size={12} className="text-primary shrink-0" />}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
       );
     }
 
