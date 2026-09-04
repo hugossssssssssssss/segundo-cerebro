@@ -1762,74 +1762,16 @@ export function PropriedadesNotion({
                   }}
                   title={`Abrir "${est.nomePuro}" em pop-up`}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border transition-all cursor-pointer hover:shadow-2xs hover:opacity-90 select-none",
+                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer hover:shadow-xs hover:opacity-90 active:scale-95 select-none",
                     est.classeBadge
                   )}
                 >
                   {est.icone}
                   <span>{est.nomePuro}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      atualizar(chave, relacoes.filter((r: string) => r !== rel));
-                    }}
-                    className="opacity-50 hover:opacity-100 hover:text-destructive cursor-pointer ml-0.5"
-                    title="Desvincular"
-                  >
-                    <X size={10} />
-                  </button>
                 </span>
               );
             })
           )}
-
-          <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-1.5 text-[11px] font-normal text-muted-foreground hover:text-foreground flex items-center gap-1 border border-dashed border-border/80 rounded cursor-pointer"
-              >
-                <Plus size={11} />
-                <span>Vincular</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-0 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
-              <Command>
-                <CommandInput placeholder="Buscar documento..." />
-                <CommandList className="max-h-60">
-                  <CommandEmpty>Nenhum documento encontrado.</CommandEmpty>
-                  <CommandGroup heading="Documentos no Segundo Cérebro">
-                    {opcoesRelacionamento.map((opcao) => {
-                      const est = obterEstiloRel(opcao.titulo);
-                      const jaRelacionado = relacoes.includes(`@${opcao.titulo}`) || relacoes.includes(opcao.titulo);
-                      return (
-                        <CommandItem
-                          key={opcao.caminho}
-                          onSelect={() => {
-                            const tagFormatada = `@${opcao.titulo}`;
-                            if (jaRelacionado) {
-                              atualizar(chave, relacoes.filter((r: string) => r !== tagFormatada && r !== opcao.titulo));
-                            } else {
-                              atualizar(chave, [...relacoes, tagFormatada]);
-                            }
-                          }}
-                          className="flex items-center justify-between gap-2 cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            {est.icone}
-                            <span className="truncate text-xs">{opcao.titulo}</span>
-                          </div>
-                          {jaRelacionado && <Check size={12} className="text-primary shrink-0" />}
-                        </CommandItem>
-                      );
-                    })}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
         </div>
       );
     }
