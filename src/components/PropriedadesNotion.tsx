@@ -24,10 +24,11 @@ import {
   Check,
   Layout,
   Target,
-  Award,
   Bookmark,
   Users,
   FileText,
+  Palette,
+  Pencil,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -252,6 +253,20 @@ export function PropriedadesNotion({
   useEffect(() => {
     setGlobalConfig(lerConfigPropriedadesGlobais());
   }, []);
+
+  useEffect(() => {
+    if (focoPropriedadeInicial) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`prop-input-${focoPropriedadeInicial}`) ||
+                   document.getElementById(`prop-btn-${focoPropriedadeInicial}`);
+        if (el) {
+          el.focus();
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 70);
+      return () => clearTimeout(timer);
+    }
+  }, [focoPropriedadeInicial]);
 
   const { pastaRaiz, subpastaAtualTexto, nomeAmigavelRaiz, trilhaAmigavel } = useMemo(() => {
     let raiz = "notas";
@@ -910,37 +925,6 @@ export function PropriedadesNotion({
         setBuscaTag("");
       };
 
-      const processarRenomearTag = (velhaTag: string, novaTag: string) => {
-        const nomeLimpo = novaTag.trim();
-        if (!nomeLimpo || velhaTag === nomeLimpo) {
-          setEditandoTag(null);
-          return;
-        }
-
-        const novasTags = tags.map(t => t === velhaTag ? nomeLimpo : t);
-        atualizar(chave, novasTags);
-
-        const corVelha = coresMap[velhaTag] || "azul";
-        const novasCores = { ...globalConfig.coresTags };
-        delete novasCores[velhaTag];
-        novasCores[nomeLimpo] = corVelha;
-        salvarConfigPropriedadesGlobais(undefined, novasCores);
-        setGlobalConfig(lerConfigPropriedadesGlobais());
-
-        setEditandoTag(null);
-      };
-
-      const processarExcluirTag = (tagParaExcluir: string) => {
-        const novasTags = tags.filter((t: string) => t !== tagParaExcluir);
-        atualizar(chave, novasTags);
-
-        const novasCores = { ...globalConfig.coresTags };
-        delete novasCores[tagParaExcluir];
-        salvarConfigPropriedadesGlobais(undefined, novasCores);
-        setGlobalConfig(lerConfigPropriedadesGlobais());
-        toast(`Opção/Tag "${tagParaExcluir}" removida.`);
-      };
-
       return (
         <div className="flex items-center gap-1.5 flex-wrap py-1 min-h-7">
           {tags.map((t: string) => (
@@ -962,163 +946,113 @@ export function PropriedadesNotion({
             setMenuAberto(open ? idPopover : null);
             if (!open) {
               setBuscaTag("");
-              setEditandoTag(null);
             }
           }}>
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
+                id={`prop-btn-${chave}`}
                 className="h-6 px-1.5 text-[11px] font-normal text-muted-foreground hover:text-foreground flex items-center gap-1 border border-dashed border-border/80 rounded"
               >
                 <Plus size={11} />
                 <span>{nomeExibido(chave)}</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[260px] p-2 flex flex-col gap-2 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
-              {editandoTag ? (
-                <div className="space-y-2 p-1">
-                  <p className="text-[11px] font-semibold text-muted-foreground">Renomear "{editandoTag}"</p>
-                  <input
-                    type="text"
-                    value={novoNomeTag}
-                    onChange={(e) => setNovoNomeTag(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") processarRenomearTag(editandoTag, novoNomeTag);
-                      if (e.key === "Escape") setEditandoTag(null);
-                    }}
-                    autoFocus
-                    className="w-full bg-accent/40 border border-border text-xs px-2 py-1 rounded outline-none"
-                  />
-                  <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => setEditandoTag(null)}>Cancelar</Button>
-                    <Button variant="default" size="sm" className="h-7 text-[10px]" onClick={() => processarRenomearTag(editandoTag, novoNomeTag)}>Salvar</Button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    placeholder="Buscar ou criar opção..."
-                    value={buscaTag}
-                    onChange={(e) => setBuscaTag(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && buscaTag.trim() && !existeExata) {
-                        processarCriarTag(buscaTag);
-                      }
-                    }}
-                    autoFocus
-                    className="w-full bg-accent/40 border border-border text-xs px-2.5 py-1.5 rounded-md outline-none"
-                  />
+            <PopoverContent className="w-[240px] p-2 flex flex-col gap-2 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
+              <input
+                type="text"
+                placeholder="Buscar ou selecionar..."
+                value={buscaTag}
+                onChange={(e) => setBuscaTag(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && buscaTag.trim() && !existeExata) {
+                    processarCriarTag(buscaTag);
+                  }
+                }}
+                autoFocus
+                className="w-full bg-accent/40 border border-border text-xs px-2.5 py-1.5 rounded-md outline-none"
+              />
 
-                  <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
-                    {tagsFiltradas.map((tag) => {
-                      const selecionada = tags.includes(tag);
-                      return (
-                        <div
-                          key={tag}
-                          className="w-full flex items-center justify-between rounded-md hover:bg-accent px-1.5 py-1 transition-colors group/item"
-                        >
-                          <button
-                            onClick={() => {
-                              if (selecionada) {
-                                atualizar(chave, tags.filter((t: string) => t !== tag));
-                              } else {
-                                atualizar(chave, [...tags, tag]);
-                              }
-                            }}
-                            className="flex-1 flex items-center gap-2 text-left min-w-0 cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selecionada}
-                              readOnly
-                              className="w-3.5 h-3.5 rounded border-border text-primary focus:ring-0 cursor-pointer shrink-0"
-                            />
-                            <div className="truncate flex-1">
-                              {renderizarBadgeTag(tag)}
-                            </div>
-                          </button>
-
-                          <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0">
-                            <Tooltip conteudo="Renomear">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditandoTag(tag);
-                                  setNovoNomeTag(tag);
-                                }}
-                                className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent-foreground/10 rounded transition-all cursor-pointer"
-                                aria-label="Renomear opção"
-                              >
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-                                </svg>
-                              </button>
-                            </Tooltip>
-
-                            <Tooltip conteudo="Excluir opção">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  processarExcluirTag(tag);
-                                }}
-                                className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-all cursor-pointer"
-                                aria-label="Excluir opção"
-                              >
-                                <Trash2 size={11} />
-                              </button>
-                            </Tooltip>
-                          </div>
+              <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
+                {tagsFiltradas.map((tag) => {
+                  const selecionada = tags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => {
+                        if (selecionada) {
+                          atualizar(chave, tags.filter((t: string) => t !== tag));
+                        } else {
+                          atualizar(chave, [...tags, tag]);
+                        }
+                      }}
+                      className="w-full flex items-center justify-between rounded-md hover:bg-accent px-2 py-1.5 transition-colors cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <input
+                          type="checkbox"
+                          checked={selecionada}
+                          readOnly
+                          className="w-3.5 h-3.5 rounded border-border text-primary focus:ring-0 cursor-pointer shrink-0"
+                        />
+                        <div className="truncate flex-1">
+                          {renderizarBadgeTag(tag)}
                         </div>
-                      );
-                    })}
+                      </div>
+                    </button>
+                  );
+                })}
 
-                    {buscaTag.trim() && !existeExata && (
-                      <button
-                        onClick={() => processarCriarTag(buscaTag)}
-                        className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-md flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Plus size={12} />
-                        <span>Criar "{buscaTag.trim()}"</span>
-                      </button>
-                    )}
+                {buscaTag.trim() && !existeExata && (
+                  <button
+                    onClick={() => processarCriarTag(buscaTag)}
+                    className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-md flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus size={12} />
+                    <span>Adicionar "{buscaTag.trim()}"</span>
+                  </button>
+                )}
 
-                    {tagsFiltradas.length === 0 && !buscaTag.trim() && (
-                      <span className="text-[11px] text-muted-foreground p-2 text-center">
-                        Nenhuma opção cadastrada
-                      </span>
-                    )}
-                  </div>
-                </>
-              )}
+                {tagsFiltradas.length === 0 && !buscaTag.trim() && (
+                  <span className="text-[11px] text-muted-foreground p-2 text-center">
+                    Nenhuma opção cadastrada
+                  </span>
+                )}
+              </div>
             </PopoverContent>
           </Popover>
         </div>
       );
     }
 
-    if (tipo === "relation") {
-      const relacoes = Array.isArray(valor) ? valor : valor ? [valor] : [];
-      
+    if (tipo === "relation" || chave === "relacionamentos" || chave === "relacao") {
+      const relacoes = Array.isArray(valor) ? valor : typeof valor === "string" && valor ? [valor] : [];
       const textoMencoes = extrairMencoesTexto(corpoTexto || "", opcoesRelacionamento.map(o => o.titulo));
-      const unicosMencoes = Array.from(new Set([...relacoes, ...textoMencoes.map(m => m.trim())]));
+      const todasRelacoes = Array.from(new Set([...relacoes, ...textoMencoes.map(m => `@${m.replace(/^@+/, "").trim()}`)]));
+      
+      const obterEstiloRel = (rel: string) => {
+        const nomePuro = rel.replace(/^@/, "").trim();
+        const rLower = nomePuro.toLowerCase();
 
-      const obterEstiloRel = (r: string) => {
-        const nomePuro = r.replace(/^[@[]+/, "").replace(/\]\]$/, "").trim();
-        const normNome = nomePuro.toLowerCase();
         const itemAlvo = opcoesRelacionamento.find((o) => {
-          const normTitulo = o.titulo.toLowerCase().trim();
-          const normCaminho = o.caminho.toLowerCase().trim();
-          const normBase = o.caminho.split("/").pop()?.replace(/\.(md|json|excalidraw)$/i, "").toLowerCase().trim() || "";
-          return normTitulo === normNome || normCaminho === normNome || normBase === normNome || normTitulo.includes(normNome) || normNome.includes(normTitulo);
+          const t = o.titulo.toLowerCase().trim();
+          return t === rLower || o.caminho.toLowerCase().includes(rLower);
         });
 
-        const c = itemAlvo?.caminho.toLowerCase() || "";
-        const rLower = r.toLowerCase();
+        const c = itemAlvo?.caminho?.toLowerCase() || "";
 
-        // 1. Metas do PDI (Verde / Emerald)
-        if (c.startsWith("pdi/metas/") || c.startsWith("metas/") || rLower.includes("meta")) {
+        if (
+          c.startsWith("pdi/metas/") ||
+          c.startsWith("metas/") ||
+          c.startsWith("pdi/entregas/") ||
+          c.startsWith("entregas/") ||
+          rLower.includes("meta") ||
+          rLower.includes("entrega") ||
+          rLower.includes("conquista") ||
+          rLower.includes("brag") ||
+          rLower.includes("pdi")
+        ) {
           return {
             tipo: "meta",
             icone: <Target size={11} className="text-emerald-500 shrink-0" />,
@@ -1128,7 +1062,6 @@ export function PropriedadesNotion({
           };
         }
 
-        // 2. Tarefas (Azul)
         if (c.startsWith("tarefas/") || rLower.includes("tarefa")) {
           return {
             tipo: "tarefa",
@@ -1139,7 +1072,6 @@ export function PropriedadesNotion({
           };
         }
 
-        // 3. Notas (Âmbar / Amarelo)
         if (c.startsWith("notas/") || rLower.includes("nota")) {
           return {
             tipo: "nota",
@@ -1150,18 +1082,6 @@ export function PropriedadesNotion({
           };
         }
 
-        // 4. Entregas / Conquistas (Roxo)
-        if (c.startsWith("pdi/entregas/") || rLower.includes("entrega") || rLower.includes("conquista")) {
-          return {
-            tipo: "entrega",
-            icone: <Award size={11} className="text-purple-500 shrink-0" />,
-            classeBadge: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/25 hover:bg-purple-500/20",
-            itemAlvo,
-            nomePuro,
-          };
-        }
-
-        // 5. Contatos / Pessoas (Teal)
         if (c.startsWith("contatos/") || rLower.includes("contato") || rLower.includes("pessoa")) {
           return {
             tipo: "contato",
@@ -1172,7 +1092,6 @@ export function PropriedadesNotion({
           };
         }
 
-        // 6. Referências Visuais (Rosa / Rose)
         if (c.startsWith("referencias/") || rLower.includes("referencia")) {
           return {
             tipo: "referencia",
@@ -1183,7 +1102,6 @@ export function PropriedadesNotion({
           };
         }
 
-        // 7. Lousas / Mapa Mental (Índigo)
         if (c.startsWith("lousas/") || rLower.includes("lousa") || rLower.includes("mapa")) {
           return {
             tipo: "lousa",
@@ -1194,7 +1112,6 @@ export function PropriedadesNotion({
           };
         }
 
-        // Padrão
         return {
           tipo: "outro",
           icone: <LinkIcon size={10} className="text-blue-500 shrink-0" />,
@@ -1207,65 +1124,73 @@ export function PropriedadesNotion({
       return (
         <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-auto min-h-7 px-2 py-1 text-left justify-start font-normal flex-wrap gap-1 hover:bg-transparent">
-              {unicosMencoes.length > 0 ? (
-                unicosMencoes.map((r: string) => {
-                  const estilo = obterEstiloRel(r);
+            <div className="flex items-center gap-1.5 flex-wrap py-1 min-h-7 cursor-pointer">
+              {todasRelacoes.length === 0 ? (
+                <span className="text-muted-foreground text-xs px-1">Vazio</span>
+              ) : (
+                todasRelacoes.map((rel: string) => {
+                  const est = obterEstiloRel(rel);
                   return (
-                    <Tooltip key={r} conteudo={estilo.itemAlvo ? `Abrir "${estilo.itemAlvo.titulo}"` : `Abrir "${estilo.nomePuro}"`}>
-                      <Badge 
-                        variant="secondary" 
+                    <span
+                      key={rel}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border transition-colors",
+                        est.classeBadge
+                      )}
+                    >
+                      {est.icone}
+                      <span>{est.nomePuro}</span>
+                      <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (estilo.itemAlvo) {
-                            abrirItemSpa(estilo.itemAlvo.caminho);
-                          } else if (r.includes("/")) {
-                            abrirItemSpa(r);
-                          }
+                          atualizar(chave, relacoes.filter((r: string) => r !== rel));
                         }}
-                        className={cn(
-                          "font-medium text-[11px] px-2 py-0.5 flex items-center gap-1.5 hover:underline cursor-pointer border transition-all shadow-xs",
-                          estilo.classeBadge
-                        )}
+                        className="opacity-50 hover:opacity-100 hover:text-destructive cursor-pointer ml-0.5"
                       >
-                        {estilo.icone}
-                        <span>@{estilo.nomePuro}</span>
-                      </Badge>
-                    </Tooltip>
+                        <X size={10} />
+                      </button>
+                    </span>
                   );
                 })
-              ) : (
-                <span className="text-muted-foreground text-xs hover:bg-accent px-1.5 py-0.5 rounded transition-colors">Vazio</span>
               )}
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-1.5 text-[11px] font-normal text-muted-foreground hover:text-foreground flex items-center gap-1 border border-dashed border-border/80 rounded"
+              >
+                <Plus size={11} />
+                <span>Vincular</span>
+              </Button>
+            </div>
           </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0" align="start" onInteractOutside={() => setMenuAberto(null)}>
+          <PopoverContent className="w-64 p-0 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
             <Command>
-              <CommandInput placeholder="Buscar página para ligar..." />
-              <CommandList>
-                <CommandEmpty>Página não encontrada.</CommandEmpty>
-                <CommandGroup heading="Páginas (clique para ligar/desligar)">
+              <CommandInput placeholder="Buscar documento..." />
+              <CommandList className="max-h-60">
+                <CommandEmpty>Nenhum documento encontrado.</CommandEmpty>
+                <CommandGroup heading="Documentos no Segundo Cérebro">
                   {opcoesRelacionamento.map((opcao) => {
-                    const tagFormatada = `@${opcao.titulo}`;
-                    const selecionado = unicosMencoes.includes(tagFormatada) || unicosMencoes.includes(`[[${opcao.titulo}]]`);
-                    const estiloOpcao = obterEstiloRel(tagFormatada);
+                    const est = obterEstiloRel(opcao.titulo);
+                    const jaRelacionado = relacoes.includes(`@${opcao.titulo}`) || relacoes.includes(opcao.titulo);
                     return (
-                      <CommandItem 
-                        key={opcao.caminho} 
+                      <CommandItem
+                        key={opcao.caminho}
                         onSelect={() => {
-                          if (selecionado) {
-                            atualizar(chave, relacoes.filter((x: string) => x !== tagFormatada && x !== `[[${opcao.titulo}]]`));
+                          const tagFormatada = `@${opcao.titulo}`;
+                          if (jaRelacionado) {
+                            atualizar(chave, relacoes.filter((r: string) => r !== tagFormatada && r !== opcao.titulo));
                           } else {
                             atualizar(chave, [...relacoes, tagFormatada]);
                           }
-                          setMenuAberto(null);
                         }}
+                        className="flex items-center justify-between gap-2 cursor-pointer"
                       >
-                        <div className="flex items-center gap-2 w-full">
-                          <CheckSquare className={`h-4 w-4 shrink-0 ${selecionado ? "opacity-100 text-primary" : "opacity-0"}`} />
-                          <span className="shrink-0">{estiloOpcao.icone}</span>
-                          <span className="truncate font-medium flex-1">@{opcao.titulo}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          {est.icone}
+                          <span className="truncate text-xs">{opcao.titulo}</span>
                         </div>
+                        {jaRelacionado && <Check size={12} className="text-primary shrink-0" />}
                       </CommandItem>
                     );
                   })}
@@ -1278,24 +1203,22 @@ export function PropriedadesNotion({
     }
 
     if (chave === "caminho") {
-      const idPopover = `caminho-${chave}`;
       return (
         <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
-          <Tooltip conteudo="Clique para escolher ou mover de pasta">
-            <PopoverTrigger asChild>
-              <button
-                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-foreground bg-accent/30 hover:bg-accent hover:text-foreground transition-colors cursor-pointer border border-border/40"
-                aria-label="Escolher ou mover de pasta"
-              >
-                <Folder className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span>{trilhaAmigavel}</span>
-                <ChevronDown className="h-3 w-3 opacity-60 ml-0.5" />
-              </button>
-            </PopoverTrigger>
-          </Tooltip>
-          <PopoverContent className="w-72 p-2 shadow-2xl border-border space-y-2" align="start" onInteractOutside={() => setMenuAberto(null)}>
-            <div className="px-1.5 pt-1 pb-1 border-b border-border/60">
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-left justify-start font-normal text-foreground/80 hover:text-foreground group/pasta"
+            >
+              <Folder className="h-3.5 w-3.5 text-muted-foreground mr-1.5 shrink-0 group-hover/pasta:text-primary transition-colors" />
+              <span className="text-xs truncate">{trilhaAmigavel}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-3 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
+            <div className="mb-2 pb-1.5 border-b border-border">
+              <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Folder className="h-3.5 w-3.5 text-primary" />
                 {caminhoItem ? "Mover para outra pasta" : "Pasta de destino"}
               </span>
               <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -1390,7 +1313,6 @@ export function PropriedadesNotion({
       );
     }
 
-    // Texto livre
     const ehFocoInicial = chave === focoPropriedadeInicial;
     return (
       <input
@@ -1433,6 +1355,11 @@ export function PropriedadesNotion({
     const rotuloAtual = nomeExibido(chave);
     const idMenu = `prop-${chave}`;
 
+    const opcoesCadastradas = Array.from(new Set([
+      ...(fixo?.opcoes || []),
+      ...obterTagsDisponiveis(Array.isArray(dados[chave]) ? dados[chave] : dados[chave] ? [dados[chave]] : [], coresMap)
+    ]));
+
     return (
       <Popover open={menuAberto === idMenu} onOpenChange={(open) => {
         if (open) {
@@ -1440,6 +1367,7 @@ export function PropriedadesNotion({
           setRenomearPara(rotuloAtual);
         } else {
           setMenuAberto(null);
+          setEditandoTag(null);
         }
       }}>
         <PopoverTrigger asChild>
@@ -1448,7 +1376,7 @@ export function PropriedadesNotion({
             <span className="truncate flex-1 font-medium text-xs">{rotuloAtual}</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[260px] p-3 flex flex-col gap-2 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
+        <PopoverContent className="w-[280px] p-3 flex flex-col gap-2 shadow-xl border-border max-h-[85vh] overflow-y-auto" align="start" onInteractOutside={() => setMenuAberto(null)}>
           <div>
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Nome da Propriedade</span>
             <input 
@@ -1462,7 +1390,6 @@ export function PropriedadesNotion({
             />
           </div>
 
-          {/* Visibilidade da propriedade */}
           <div className="border-t border-border pt-2 mt-1">
             <span className="text-[11px] font-semibold text-muted-foreground px-1 uppercase tracking-wider block mb-1">Visibilidade</span>
             <div className="flex flex-col gap-0.5">
@@ -1489,37 +1416,169 @@ export function PropriedadesNotion({
             </div>
           </div>
 
-          {/* Configurações avançadas específicas da propriedade */}
           <div className="border-t border-border pt-2 mt-1">
             <span className="text-[11px] font-semibold text-muted-foreground px-1 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
               <SlidersHorizontal size={12} className="text-primary" />
               <span>Configurações da Propriedade</span>
             </span>
 
-            {(tipoAtual === "multiselect" || chave === "tags") && (
+            {(tipoAtual === "multiselect" || tipoAtual === "select" || chave === "tags" || chave === "colaboracao" || fixo?.opcoes) && (
               <div className="space-y-2 p-2 bg-secondary/30 rounded-lg border border-border/40 text-xs">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">Ordenar tags A-Z:</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const tagsAtuais = Array.isArray(dados[chave]) ? [...dados[chave]] : [];
-                      tagsAtuais.sort((a, b) => a.localeCompare(b));
-                      atualizar(chave, tagsAtuais);
-                      toast("Tags ordenadas alfabeticamente.");
+                  <span className="text-muted-foreground font-medium">Opções Pré-cadastradas:</span>
+                  <span className="text-[10px] text-muted-foreground">{opcoesCadastradas.length} cadastradas</span>
+                </div>
+
+                <div className="max-h-40 overflow-y-auto flex flex-col gap-1.5 pt-1">
+                  {opcoesCadastradas.map((op) => {
+                    const estaEditando = editandoTag === op;
+                    const corAtual = coresMap[op] || "azul";
+                    return (
+                      <div key={op} className="flex items-center justify-between gap-1.5 p-1 rounded bg-card border border-border/60 text-xs">
+                        {estaEditando ? (
+                          <div className="flex items-center gap-1 flex-1">
+                            <input
+                              type="text"
+                              value={novoNomeTag}
+                              onChange={(e) => setNovoNomeTag(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  const nomeLimpo = novoNomeTag.trim();
+                                  if (nomeLimpo && nomeLimpo !== op) {
+                                    const novasCores = { ...globalConfig.coresTags };
+                                    delete novasCores[op];
+                                    novasCores[nomeLimpo] = corAtual;
+                                    salvarConfigPropriedadesGlobais(undefined, novasCores);
+                                    setGlobalConfig(lerConfigPropriedadesGlobais());
+                                  }
+                                  setEditandoTag(null);
+                                }
+                                if (e.key === "Escape") setEditandoTag(null);
+                              }}
+                              autoFocus
+                              className="flex-1 bg-accent/40 border border-border text-[11px] px-1.5 py-0.5 rounded outline-none"
+                            />
+                            <button
+                              onClick={() => {
+                                const nomeLimpo = novoNomeTag.trim();
+                                if (nomeLimpo && nomeLimpo !== op) {
+                                  const novasCores = { ...globalConfig.coresTags };
+                                  delete novasCores[op];
+                                  novasCores[nomeLimpo] = corAtual;
+                                  salvarConfigPropriedadesGlobais(undefined, novasCores);
+                                  setGlobalConfig(lerConfigPropriedadesGlobais());
+                                }
+                                setEditandoTag(null);
+                              }}
+                              className="text-[10px] text-primary font-semibold px-1"
+                            >
+                              OK
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                              {renderizarBadgeTag(op)}
+                            </div>
+
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    title="Alterar cor da opção"
+                                    className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent cursor-pointer"
+                                  >
+                                    <Palette size={11} />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-2" align="end">
+                                  <span className="text-[10px] font-semibold text-muted-foreground block mb-1">Escolher Cor</span>
+                                  <div className="grid grid-cols-3 gap-1">
+                                    {Object.entries(CORES_NOTION).map(([nomeCor, est]) => (
+                                      <button
+                                        key={nomeCor}
+                                        type="button"
+                                        onClick={() => atualizarCorTag(op, nomeCor)}
+                                        className={cn(
+                                          "px-1.5 py-1 rounded text-[10px] font-medium border text-center transition-colors cursor-pointer",
+                                          est.bg,
+                                          est.text,
+                                          est.border,
+                                          corAtual === nomeCor && "ring-1 ring-primary font-bold"
+                                        )}
+                                      >
+                                        {est.nome}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditandoTag(op);
+                                  setNovoNomeTag(op);
+                                }}
+                                title="Renomear opção"
+                                className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent cursor-pointer"
+                              >
+                                <Pencil size={11} />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const novasCores = { ...globalConfig.coresTags };
+                                  delete novasCores[op];
+                                  salvarConfigPropriedadesGlobais(undefined, novasCores);
+                                  setGlobalConfig(lerConfigPropriedadesGlobais());
+                                  toast(`Opção "${op}" removida das pré-cadastradas.`);
+                                }}
+                                title="Excluir opção"
+                                className="p-1 text-muted-foreground hover:text-destructive rounded hover:bg-destructive/10 cursor-pointer"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-2 border-t border-border/40 flex items-center gap-1">
+                  <input
+                    type="text"
+                    placeholder="Nova opção pré-cadastrada..."
+                    value={buscaTag}
+                    onChange={(e) => setBuscaTag(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && buscaTag.trim()) {
+                        atualizarCorTag(buscaTag.trim(), "azul");
+                        setBuscaTag("");
+                        toast(`Opção "${buscaTag.trim()}" cadastrada.`);
+                      }
                     }}
-                    className="px-2 py-0.5 text-[10px] rounded bg-card border border-border hover:bg-accent font-medium cursor-pointer"
+                    className="flex-1 bg-card border border-border text-[11px] px-2 py-1 rounded outline-none"
+                  />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={!buscaTag.trim()}
+                    onClick={() => {
+                      if (buscaTag.trim()) {
+                        atualizarCorTag(buscaTag.trim(), "azul");
+                        setBuscaTag("");
+                        toast(`Opção "${buscaTag.trim()}" cadastrada.`);
+                      }
+                    }}
+                    className="h-6 text-[10px] px-2"
                   >
-                    Ordenar
-                  </button>
-                </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">Estilo visual:</span>
-                  <span className="text-[10px] font-semibold text-primary">Pílulas Coloridas</span>
-                </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">Criação livre:</span>
-                  <span className="text-[10px] font-semibold text-emerald-500">Ativada</span>
+                    Adicionar
+                  </Button>
                 </div>
               </div>
             )}

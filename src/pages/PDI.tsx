@@ -13,7 +13,6 @@ import {
   Plus,
   Folder,
   Tag,
-  ListTodo,
   TrendingUp,
   MessageSquareQuote,
   Users,
@@ -1012,22 +1011,11 @@ export default function PDI() {
                         </p>
                       )}
 
-                      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                        <Selo tom={ligadas.length ? "sucesso" : "neutro"}>
-                          {ligadas.length} entrega{ligadas.length === 1 ? "" : "s"}
-                        </Selo>
-                        {(() => {
-                          const tarefasAtivas = tarefasDaMeta(m).filter((t: any) => t.status !== "feito");
-                          if (tarefasAtivas.length === 0) return null;
-                          return (
-                            <Selo tom="primario">
-                              <ListTodo size={11} className="mr-0.5" />
-                              {tarefasAtivas.length} tarefa{tarefasAtivas.length === 1 ? "" : "s"} ativa{tarefasAtivas.length === 1 ? "" : "s"}
-                            </Selo>
-                          );
-                        })()}
-                        {textoPrazoMeta(m) && <Selo>{textoPrazoMeta(m)}</Selo>}
-                      </div>
+                      {textoPrazoMeta(m) && (
+                        <div className="mt-2.5 flex items-center gap-1.5">
+                          <Selo>{textoPrazoMeta(m)}</Selo>
+                        </div>
+                      )}
 
                       {/* Barra de Progresso da Meta */}
                       <div className="mt-3 space-y-1">
@@ -1043,10 +1031,8 @@ export default function PDI() {
                           <div
                             className={cn(
                               "h-full rounded-full transition-all duration-300",
-                              m.status === "concluida"
-                                ? "bg-emerald-500 w-full"
-                                : ligadas.length > 0
-                                ? "bg-primary"
+                              m.status === "concluida" || ligadas.length > 0
+                                ? "bg-emerald-500"
                                 : "bg-muted-foreground/30"
                             )}
                             style={{
@@ -1069,7 +1055,7 @@ export default function PDI() {
                       return (
                         <div className="mt-3 pt-2.5 border-t border-border/50 space-y-2.5">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
-                            {/* Detalhamento de tarefas e entregas na ESQUERDA */}
+                            {/* Detalhamento de tarefas e entregas estritamente na ESQUERDA */}
                             <button
                               type="button"
                               onClick={(ev) => {
@@ -1086,7 +1072,7 @@ export default function PDI() {
                               </span>
                             </button>
 
-                            {/* Botões Rápidos e Discretos na DIREITA */}
+                            {/* Botões Rápidos estritamente na DIREITA */}
                             <div className="flex items-center gap-1 ml-auto shrink-0">
                               <Tooltip conteudo="Criar tarefa rápida para esta meta" posicao="top">
                                 <button
@@ -1097,7 +1083,7 @@ export default function PDI() {
                                     setNovaTarefaMetaId(novaTarefaMetaId === m.id ? null : m.id);
                                     setNovoTextoTarefa("");
                                   }}
-                                  className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer flex items-center gap-1"
+                                  className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer flex items-center gap-1"
                                 >
                                   <Plus size={12} />
                                   <span className="text-[11px] font-medium">Tarefa</span>
@@ -1111,7 +1097,7 @@ export default function PDI() {
                                     ev.stopPropagation();
                                     novaEntregaParaMeta(m);
                                   }}
-                                  className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer flex items-center gap-1"
+                                  className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer flex items-center gap-1"
                                 >
                                   <Package size={12} />
                                   <span className="text-[11px] font-medium">Conquista</span>
@@ -1125,7 +1111,7 @@ export default function PDI() {
                                     ev.stopPropagation();
                                     novaEntregaComImpacto(m);
                                   }}
-                                  className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-teal-600 hover:bg-teal-500/10 transition-colors cursor-pointer flex items-center gap-1"
+                                  className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer flex items-center gap-1"
                                 >
                                   <TrendingUp size={12} />
                                   <span className="text-[11px] font-medium">Impacto</span>
@@ -1139,7 +1125,7 @@ export default function PDI() {
                                     ev.stopPropagation();
                                     novaEntregaComElogio(m);
                                   }}
-                                  className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-purple-500 hover:bg-purple-500/10 transition-colors cursor-pointer flex items-center gap-1"
+                                  className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer flex items-center gap-1"
                                 >
                                   <MessageSquareQuote size={12} />
                                   <span className="text-[11px] font-medium">Elogio</span>

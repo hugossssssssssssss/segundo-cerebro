@@ -1,6 +1,6 @@
 # Contexto de IA & Mapa de Navegação do Klaus
 
-> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-09-03.**
+> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-09-04.**
 > Não edite as tabelas de módulos à mão — execute `npm run mapa-ia` ou `npm run build` para sincronizar com o código.
 
 Este arquivo foi desenhado sob medida para **Agentes de IA e LLMs** que operam no repositório Klaus.
