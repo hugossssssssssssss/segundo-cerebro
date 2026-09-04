@@ -44,7 +44,7 @@ import {
   nomeLivre,
   type Frontmatter,
 } from "@/lib/markdown";
-import { lerParametroAbrir, lerParametroCriar, correspondeBusca, formatarNomeAmigavel, cn } from "@/lib/utils";
+import { lerParametroAbrir, lerParametroCriar, correspondeBusca, formatarNomeAmigavel, formatarDataPtBR, cn } from "@/lib/utils";
 import {
   Botao,
   Aviso,
@@ -1740,7 +1740,7 @@ export default function Notas() {
                     </div>
                     {t.prazo && (
                       <span className="text-[10px] text-muted-foreground font-mono shrink-0">
-                        {t.prazo}
+                        {formatarDataPtBR(t.prazo)}
                       </span>
                     )}
                   </div>

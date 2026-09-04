@@ -9,7 +9,7 @@
  * Este arquivo re-exporta tudo com os nomes legados para não quebrar imports.
  */
 
-import { diasAte, dataISO } from "./utils";
+import { diasAte, dataISO, formatarDataPtBR } from "./utils";
 import type { Tarefa } from "./tipos";
 
 // Re-exporta os contratos centrais com os nomes que o restante do app usa
@@ -89,7 +89,7 @@ export function textoPrazo(t: Tarefa): string {
   if (d === 0) return "vence hoje";
   if (d === 1) return "amanhã";
   if (d <= 7) return `em ${d} dias`;
-  return t.prazo ?? "";
+  return formatarDataPtBR(t.prazo) || (t.prazo ?? "");
 }
 
 export interface IntervaloTarefa {
@@ -170,7 +170,9 @@ export function extrairIntervaloTarefa(t: Tarefa): IntervaloTarefa | null {
     inicio: dataInicio,
     fim: dataFim,
     ehIntervalo,
-    textoFormatado: ehIntervalo ? `${isoInicio} → ${isoFimValido}` : isoInicio,
+    textoFormatado: ehIntervalo
+      ? `${formatarDataPtBR(isoInicio)} → ${formatarDataPtBR(isoFimValido)}`
+      : formatarDataPtBR(isoInicio),
   };
 }
 

@@ -144,23 +144,23 @@ describe("a data do pomodoro", () => {
 });
 
 describe("extrairIntervaloTarefa", () => {
-  it("extrai data única normalmente", () => {
+  it("extrai data única formatada como pt-BR", () => {
     const t = base({ prazo: "2026-08-20" });
     const res = extrairIntervaloTarefa(t);
     expect(res).not.toBeNull();
     expect(res?.ehIntervalo).toBe(false);
-    expect(res?.textoFormatado).toBe("2026-08-20");
+    expect(res?.textoFormatado).toBe("20/08/26");
   });
 
-  it("extrai intervalos com seta →", () => {
+  it("extrai intervalos com seta → formatados como pt-BR", () => {
     const t = base({ prazo: "2026-08-20 → 2026-08-25" });
     const res = extrairIntervaloTarefa(t);
     expect(res).not.toBeNull();
     expect(res?.ehIntervalo).toBe(true);
-    expect(res?.textoFormatado).toBe("2026-08-20 → 2026-08-25");
+    expect(res?.textoFormatado).toBe("20/08/26 → 25/08/26");
   });
 
-  it("extrai intervalos com campos separados no frontmatter", () => {
+  it("extrai intervalos com campos separados no frontmatter formatados como pt-BR", () => {
     const t = base({
       prazo: "2026-08-28",
       bruto: { data_inicio: "2026-08-22" },
@@ -168,7 +168,7 @@ describe("extrairIntervaloTarefa", () => {
     const res = extrairIntervaloTarefa(t);
     expect(res).not.toBeNull();
     expect(res?.ehIntervalo).toBe(true);
-    expect(res?.textoFormatado).toBe("2026-08-22 → 2026-08-28");
+    expect(res?.textoFormatado).toBe("22/08/26 → 28/08/26");
   });
 });
 

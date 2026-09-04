@@ -15,7 +15,7 @@
 
 import type { Documento, Frontmatter } from "./markdown";
 import { comoLista, mesclarFrontmatter } from "./markdown";
-import { diasAte } from "./utils";
+import { diasAte, formatarDataPtBR } from "./utils";
 import {
   PASTAS,
   STATUS_TAREFA,
@@ -571,7 +571,7 @@ export function textoPrazoTarefa(t: Tarefa): string {
   if (d === 0) return "vence hoje";
   if (d === 1) return "amanhã";
   if (d <= 7) return `em ${d} dias`;
-  return t.prazo ?? "";
+  return formatarDataPtBR(t.prazo) || (t.prazo ?? "");
 }
 
 export function textoPrazoMeta(m: Meta): string {

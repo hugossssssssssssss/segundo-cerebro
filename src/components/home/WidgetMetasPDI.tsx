@@ -1,4 +1,5 @@
 import { type ResumoMeta } from "@/lib/pdi";
+import { formatarDataPtBR } from "@/lib/utils";
 
 interface WidgetMetasPDIProps {
   resumos: ResumoMeta[];
@@ -42,7 +43,7 @@ export function WidgetMetasPDI({
 
                 <div className="shrink-0 text-[10px] text-muted-foreground text-right">
                   <span>{totalEntregas} entrega{totalEntregas === 1 ? "" : "s"}</span>
-                  {r.meta.prazo && <p className="opacity-70">{r.meta.prazo}</p>}
+                  {r.meta.prazo && <p className="opacity-70">{formatarDataPtBR(r.meta.prazo)}</p>}
                 </div>
               </div>
             );

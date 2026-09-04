@@ -220,7 +220,7 @@ prazo: 2026-08-20 → 2026-08-25
     const caixa = compilarItensInbox(itensRepo, {}, agora);
 
     expect(caixa).toHaveLength(1);
-    expect(caixa[0].dataVencimento).toBe("2026-08-20 → 2026-08-25");
+    expect(caixa[0].dataVencimento).toBe("20/08/26 → 25/08/26");
     expect(caixa[0].descricao).toContain("Em andamento hoje");
   });
 

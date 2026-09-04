@@ -383,6 +383,10 @@ describe("textoPrazoTarefa", () => {
   it("atrasada vários dias usa o plural", () => {
     expect(textoPrazoTarefa(tarefaCom(emDias(-3)))).toBe("atrasada 3 dias");
   });
+
+  it("data além de 7 dias formata como dd/mm/yy", () => {
+    expect(textoPrazoTarefa(tarefaCom("2026-09-15"))).toBe("15/09/26");
+  });
 });
 
 describe("textoPrazoMeta", () => {

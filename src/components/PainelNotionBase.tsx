@@ -25,8 +25,6 @@ import {
   Eye,
   EyeOff,
   Sparkles,
-  Play,
-  Pause,
 } from "lucide-react";
 import { Aviso, ModalConfirmacao, Tooltip } from "@/components/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -38,8 +36,6 @@ import { PainelTarefasNota } from "@/components/PainelTarefasNota";
 import { PainelReferenciasNota } from "@/components/PainelReferenciasNota";
 import { SumarioNota } from "@/components/SumarioNota";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
-import { PrismasFoco } from "@/components/PrismasFoco";
-import { useCronometro } from "@/components/ContextoCronometro";
 import { useWorkspace } from "@/components/workspace/WorkspaceContext";
 import { obterTarefasVinculadas, obterReferenciasVinculadas } from "@/lib/vinculosNota";
 import { sincronizarRelacionamentos } from "@/lib/links";
@@ -133,12 +129,6 @@ export function PainelNotionBase({
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     workspace = useWorkspace();
-  } catch {}
-
-  let cronometro: any = null;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    cronometro = useCronometro();
   } catch {}
 
   const [modoFoco, setModoFoco] = useState(false);
@@ -728,66 +718,13 @@ export function PainelNotionBase({
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
-        {/* Controle Rápido de Foco / Pomodoro no Documento */}
-        {cronometro && (eTarefa || Boolean(dadosProps.Pomodoro || dadosProps.pomodoro)) && (
-          <div className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-xl border border-border/50">
-            <PrismasFoco
-              estimativa={Number(dadosProps.Pomodoro || dadosProps.pomodoro || dadosProps.pomodoros_estimados || 0)}
-              concluido={Math.floor((Number(dadosProps.pomodoros_realizados || 0) * 25) / 25)}
-              rodando={cronometro.rodando && cronometro.tarefa?.caminho === caminhoItem}
-              tamanho={13}
-            />
-            <Tooltip conteudo={cronometro.rodando && cronometro.tarefa?.caminho === caminhoItem ? "Pausar foco" : "Iniciar foco nesta tarefa"}>
-              <button
-                type="button"
-                onClick={() => {
-                  const tarefaObj = {
-                    caminho: caminhoItem || "",
-                    titulo,
-                    corpo,
-                    status: dadosProps.status || "a-fazer",
-                    bruto: dadosProps,
-                    sha: (dadosProps as any)?.sha || "",
-                    tags: dadosProps.tags || [],
-                    Pomodoro: Number(dadosProps.Pomodoro || dadosProps.pomodoro || 0),
-                  };
-                  if (cronometro.tarefa?.caminho === caminhoItem) {
-                    if (cronometro.rodando) cronometro.pausar();
-                    else cronometro.retomar();
-                  } else {
-                    cronometro.iniciar(tarefaObj);
-                  }
-                }}
-                className={cn(
-                  "flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-xs font-semibold cursor-pointer transition-all",
-                  cronometro.rodando && cronometro.tarefa?.caminho === caminhoItem
-                    ? "bg-indigo-500 text-white animate-pulse"
-                    : "text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10"
-                )}
-              >
-                {cronometro.rodando && cronometro.tarefa?.caminho === caminhoItem ? (
-                  <>
-                    <Pause size={12} />
-                    <span>{Math.floor(cronometro.restante / 60)}:{(cronometro.restante % 60).toString().padStart(2, "0")}</span>
-                  </>
-                ) : (
-                  <>
-                    <Play size={12} />
-                    <span>Foco</span>
-                  </>
-                )}
-              </button>
-            </Tooltip>
-          </div>
-        )}
-
         {/* Botão de Modo Foco / Zen */}
         <Tooltip conteudo={modoFoco ? "Sair do Modo Foco" : "Modo Foco (Escrita limpa sem distrações)"}>
           <button
             type="button"
             onClick={() => setModoFoco(!modoFoco)}
             className={cn(
-              "p-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-xs font-medium",
+              "p-1.5 rounded-lg transition-colors cursor-pointer flex items-center justify-center text-xs font-medium",
               modoFoco
                 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/30 shadow-2xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
@@ -795,7 +732,6 @@ export function PainelNotionBase({
             aria-label="Alternar modo foco"
           >
             {modoFoco ? <EyeOff size={14} className="text-amber-500" /> : <Eye size={14} />}
-            <span className="hidden md:inline">{modoFoco ? "Foco Ativo" : "Foco"}</span>
           </button>
         </Tooltip>
 
