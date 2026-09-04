@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Send, Sparkles, Trash2, Copy, Check, RefreshCw, MessageSquare, Sun, Target, Lightbulb, Zap } from "lucide-react";
-import { lerConfig, configCompleta } from "@/lib/settings";
+import { Send, Sparkles, Trash2, Copy, Check, RefreshCw, MessageSquare, Sun, Target, Lightbulb, Zap, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { lerConfig, salvarConfig, configCompleta, type Settings } from "@/lib/settings";
 import { useAcervoRepo } from "@/lib/useItemRepo";
 import { conversar, PROMPTS, type Mensagem, type PromptSalvo } from "@/lib/gemini";
 import { acoesDeChamadas, executar, type Acao } from "@/lib/acoes";
 import { CartaoAcao } from "@/components/CartaoAcao";
-import { Botao, Cartao, AreaTexto, Aviso, Vazio, Selo } from "@/components/ui";
+import { Botao, Cartao, Campo, Rotulo, AreaTexto, Aviso, Vazio, Selo } from "@/components/ui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,7 @@ import { montarContextoSemantico } from "@/lib/ragLocal";
 type Fala = Mensagem & { acoes?: Acao[] };
 
 export default function Chat() {
-  const cfg = lerConfig();
+  const [cfg, setCfg] = useState<Settings>(() => lerConfig());
   const pronto = configCompleta(cfg);
   const { acervo, carregando: carregandoAcervo, recarregar } = useAcervoRepo(cfg);
 
@@ -26,6 +26,45 @@ export default function Chat() {
   const [erro, setErro] = useState("");
   const [copiado, setCopiado] = useState<number | null>(null);
   const [descartadas, setDescartadas] = useState<Set<string>>(new Set());
+
+  // Estado para configuração rápida da chave do Gemini se ainda não estiver configurada
+  const [chaveInput, setChaveInput] = useState("");
+  const [modeloEscolhido, setModeloEscolhido] = useState(cfg.geminiModel || "gemini-2.5-flash");
+  const [salvandoChave, setSalvandoChave] = useState(false);
+  const [erroChave, setErroChave] = useState("");
+  const [verChaveChat, setVerChaveChat] = useState(false);
+
+  const salvarEConectarChave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const chaveLimpa = chaveInput.trim();
+    if (!chaveLimpa) {
+      setErroChave("Por favor, cole sua chave do Gemini.");
+      return;
+    }
+    setSalvandoChave(true);
+    setErroChave("");
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modeloEscolhido)}:generateContent?key=${encodeURIComponent(chaveLimpa)}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: "Diga apenas: OK" }] }] }),
+      });
+      if (!res.ok) {
+        throw new Error(`Código ${res.status}: Verifique se a chave é válida e possui permissão no Google AI Studio.`);
+      }
+      const novaCfg = salvarConfig({
+        ...cfg,
+        geminiKey: chaveLimpa,
+        geminiModel: modeloEscolhido,
+      });
+      setCfg(novaCfg);
+    } catch (err: any) {
+      setErroChave(err?.message || "Erro ao validar a chave do Gemini.");
+    } finally {
+      setSalvandoChave(false);
+    }
+  };
 
   const fim = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -111,15 +150,95 @@ export default function Chat() {
 
   if (!cfg.geminiKey) {
     return (
-      <Vazio
-        titulo="Falta a chave do Gemini"
-        descricao="O chat lê suas notas, tarefas e metas e responde sobre elas. Para isso precisa de uma chave do Google AI Studio, que tem plano gratuito."
-        acao={
-          <Link to="/config">
-            <Botao>Configurar a chave</Botao>
-          </Link>
-        }
-      />
+      <div className="max-w-xl mx-auto py-6 sm:py-12 animate-in fade-in duration-300">
+        <Cartao className="p-6 sm:p-8 space-y-6 border-border/80 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+              <Sparkles size={24} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Conectar Assistente IA</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                O Klaus usa a inteligência do Gemini para ler suas notas, tarefas e metas e te ajudar a organizar seu dia a dia.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={salvarEConectarChave} className="space-y-4">
+            <div>
+              <Rotulo dica="Obtida gratuitamente no Google AI Studio.">
+                Chave da API do Gemini
+              </Rotulo>
+              <div className="relative flex items-center">
+                <Campo
+                  type={verChaveChat ? "text" : "password"}
+                  value={chaveInput}
+                  onChange={(e) => setChaveInput(e.target.value)}
+                  placeholder="AIzaSy..."
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="pr-12 font-mono text-sm"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setVerChaveChat(!verChaveChat)}
+                  className="absolute right-0 h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  aria-label={verChaveChat ? "Ocultar chave" : "Exibir chave"}
+                >
+                  {verChaveChat ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <a
+                href="https://aistudio.google.com/apikey"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-medium"
+              >
+                Criar minha chave grátis no Google AI Studio <ExternalLink size={12} />
+              </a>
+            </div>
+
+            <div>
+              <Rotulo dica="O Gemini 2.5 Flash é ultra rápido e tem cota gratuita generosa.">
+                Modelo
+              </Rotulo>
+              <select
+                value={modeloEscolhido}
+                onChange={(e) => setModeloEscolhido(e.target.value)}
+                className="flex h-11 w-full rounded-lg border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+              >
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recomendado)</option>
+                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              </select>
+            </div>
+
+            {erroChave && (
+              <Aviso tom="erro">
+                {erroChave}
+              </Aviso>
+            )}
+
+            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <Botao
+                type="submit"
+                variante="primario"
+                disabled={salvandoChave || !chaveInput.trim()}
+                className="w-full sm:w-auto"
+              >
+                <Sparkles size={15} />
+                <span>{salvandoChave ? "Validando e Conectando..." : "Salvar e Começar a Conversar"}</span>
+              </Botao>
+
+              <Link to="/config" className="text-center sm:text-right text-xs text-muted-foreground hover:text-foreground">
+                Ir para os Ajustes completos
+              </Link>
+            </div>
+          </form>
+        </Cartao>
+      </div>
     );
   }
 

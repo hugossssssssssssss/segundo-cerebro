@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp, Settings as SettingsIcon, Terminal, RefreshCw, Layers, Trash2, FlaskConical } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Palette, Sparkles, Download, Upload, FileUp, Settings as SettingsIcon, Terminal, RefreshCw, Layers, Trash2, FlaskConical, Eye, EyeOff, Save } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
 import { Botao, Campo, Cartao, Rotulo, Aviso, ModalConfirmacao } from "@/components/ui";
+import { toast } from "@/lib/toast";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { ModalPersonalizarMenu } from "@/components/ModalPersonalizarMenu";
 import { ModalTourGuiado } from "@/components/ModalTourGuiado";
@@ -41,6 +42,7 @@ export default function Configuracoes() {
   const [msgBackup, setMsgBackup] = useState("");
   const [testandoGemini, setTestandoGemini] = useState(false);
   const [resultadoGemini, setResultadoGemini] = useState<{ ok: boolean; texto: string } | null>(null);
+  const [verChaveGemini, setVerChaveGemini] = useState(false);
   const [rascunhosComErro, setRascunhosComErro] = useState<number>(() => {
     return obterRascunhosLocais().filter((r) => r.status === "erro" || r.status === "conflito").length;
   });
@@ -323,6 +325,13 @@ export default function Configuracoes() {
     setResultado(null);
   };
 
+  const salvarChaveGemini = () => {
+    const limpa = salvarConfig(cfg);
+    setCfg(limpa);
+    toast("Configurações de IA salvas com sucesso!");
+    setResultadoGemini({ ok: true, texto: "Chave do Gemini salva!" });
+  };
+
   const testarChaveGemini = async () => {
     if (!cfg.geminiKey.trim()) {
       setResultadoGemini({ ok: false, texto: "Preencha a chave do Gemini antes de testar." });
@@ -340,7 +349,10 @@ export default function Configuracoes() {
       if (!res.ok) {
         throw new Error(`Código ${res.status}: verifique se a chave é válida e tem permissão.`);
       }
-      setResultadoGemini({ ok: true, texto: "Chave do Gemini válida e conectada com sucesso!" });
+      const limpa = salvarConfig(cfg);
+      setCfg(limpa);
+      setResultadoGemini({ ok: true, texto: "Chave do Gemini válida e salva com sucesso!" });
+      toast("Chave do Gemini salva e conectada com sucesso!");
     } catch (e: any) {
       setResultadoGemini({ ok: false, texto: e?.message || "Erro ao conectar ao Gemini." });
     } finally {
@@ -549,22 +561,36 @@ export default function Configuracoes() {
           <Rotulo dica="Chave do Google AI Studio. Tem plano gratuito.">
             Chave do Gemini
           </Rotulo>
-          <Campo
-            type="password"
-            value={cfg.geminiKey}
-            onChange={(e) => atualizar("geminiKey", e.target.value)}
-            placeholder="AIza..."
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-          />
+          <div className="relative flex items-center">
+            <Campo
+              type={verChaveGemini ? "text" : "password"}
+              value={cfg.geminiKey}
+              onChange={(e) => atualizar("geminiKey", e.target.value)}
+              onBlur={() => {
+                if (cfg.geminiKey) salvarConfig(cfg);
+              }}
+              placeholder="AIzaSy..."
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className="pr-12 font-mono text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => setVerChaveGemini(!verChaveGemini)}
+              className="absolute right-0 h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              aria-label={verChaveGemini ? "Ocultar chave" : "Exibir chave"}
+            >
+              {verChaveGemini ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
           <a
             href="https://aistudio.google.com/apikey"
             target="_blank"
             rel="noreferrer"
             className="mt-2 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
           >
-            Pegar minha chave <ExternalLink size={12} />
+            Pegar minha chave gratuitamente no Google AI Studio <ExternalLink size={12} />
           </a>
         </div>
 
@@ -574,10 +600,14 @@ export default function Configuracoes() {
           </Rotulo>
           <select
             value={cfg.geminiModel}
-            onChange={(e) => atualizar("geminiModel", e.target.value)}
-            className="flex h-11 w-full rounded-lg border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onChange={(e) => {
+              const novo = e.target.value;
+              atualizar("geminiModel", novo);
+              salvarConfig({ ...cfg, geminiModel: novo });
+            }}
+            className="flex h-11 w-full rounded-lg border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
           >
-            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recomendado)</option>
             <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
             <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
           </select>
@@ -585,12 +615,21 @@ export default function Configuracoes() {
 
         <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <Botao
-            variante="neutro"
+            variante="primario"
             onClick={testarChaveGemini}
             disabled={testandoGemini || !cfg.geminiKey}
           >
-            <Sparkles size={14} className="text-primary" />
-            <span>{testandoGemini ? "Testando chave..." : "Testar Chave do Gemini"}</span>
+            <Sparkles size={14} />
+            <span>{testandoGemini ? "Testando e salvando..." : "Testar e Salvar Chave"}</span>
+          </Botao>
+
+          <Botao
+            variante="neutro"
+            onClick={salvarChaveGemini}
+            disabled={!cfg.geminiKey}
+          >
+            <Save size={14} />
+            <span>Salvar</span>
           </Botao>
 
           {resultadoGemini && (
