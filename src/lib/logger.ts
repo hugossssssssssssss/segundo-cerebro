@@ -142,8 +142,8 @@ let fetchInterceptado = false;
 /**
  * Inicializa a captura global de logs (fetch, erros globais da window).
  */
-export function inicializarLogger() {
-  if (fetchInterceptado) return;
+export function inicializarLogger(forcar = false) {
+  if (fetchInterceptado && !forcar) return;
   fetchInterceptado = true;
 
   const originalFetch = window.fetch;
@@ -227,9 +227,12 @@ export function inicializarLogger() {
         responseBody = "[Falha ao ler corpo]";
       }
 
-      const statusTexto = `${resposta.status} ${resposta.statusText}`;
+      const ehSucessoOuCache = resposta.ok || resposta.status === 304;
+      const statusTexto = resposta.status === 304
+        ? "304 Not Modified (Cache)"
+        : `${resposta.status} ${resposta.statusText}`.trim();
 
-      if (resposta.ok) {
+      if (ehSucessoOuCache) {
         logger.request(`← ${metodo} ${url} [${statusTexto}] (${duration}ms)`, {
           id: idRequisicao,
           headers: Object.fromEntries(resposta.headers.entries()),

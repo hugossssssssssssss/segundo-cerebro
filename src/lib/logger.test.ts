@@ -103,7 +103,7 @@ describe("Logger e Higienizador de Dados Sensíveis", () => {
       const originalFetch = vi.fn().mockResolvedValue(mockResponse);
       vi.stubGlobal("fetch", originalFetch);
 
-      inicializarLogger();
+      inicializarLogger(true);
 
       await window.fetch("https://api.github.com/repos/owner/repo/contents/teste.md", {
         method: "PUT",
@@ -122,6 +122,43 @@ describe("Logger e Higienizador de Dados Sensíveis", () => {
       const logEnvio = logs.find(l => l.mensagem.includes("→ PUT"));
       expect(logEnvio).toBeDefined();
       expect(logEnvio?.detalhes).toContain("[TOKEN_OCULTO]");
+    });
+
+    it("deve tratar resposta 304 Not Modified como requisição bem sucedida de cache e não como erro", async () => {
+      const mockResponse304 = {
+        ok: false, // Pelo padrão da Fetch API, 304 tem .ok = false
+        status: 304,
+        statusText: "",
+        headers: new Headers({ "etag": "\"abc123etag\"" }),
+        clone() {
+          return {
+            headers: new Headers({ "etag": "\"abc123etag\"" }),
+            text: async () => "",
+          };
+        },
+      };
+
+      const originalFetch = vi.fn().mockResolvedValue(mockResponse304);
+      vi.stubGlobal("fetch", originalFetch);
+
+      inicializarLogger(true);
+      limparLogs();
+
+      await window.fetch("https://api.github.com/repos/owner/repo/git/trees/main?recursive=1", {
+        method: "GET",
+        headers: {
+          "If-None-Match": "\"abc123etag\"",
+        },
+      });
+
+      const logs = obterLogs();
+      const logResposta = logs.find(l => l.mensagem.includes("← GET"));
+      expect(logResposta).toBeDefined();
+      expect(logResposta?.tipo).toBe("request"); // Deve ser 'request', NÃO 'error'
+      expect(logResposta?.mensagem).toContain("304 Not Modified (Cache)");
+      
+      const erros = logs.filter(l => l.tipo === "error");
+      expect(erros).toHaveLength(0);
     });
   });
 });
