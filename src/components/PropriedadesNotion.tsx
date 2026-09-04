@@ -29,6 +29,10 @@ import {
   FileText,
   Palette,
   Pencil,
+  Search,
+  Building,
+  Briefcase,
+  UserPlus,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -36,15 +40,20 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
+import { Modal, Botao } from "@/components/ui";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link as LinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extrairMencoesTexto } from "@/lib/links";
-// Apelidado: este arquivo já tem um `nomeExibido` local, que traduz chave de
-// frontmatter em rótulo — coisa sem relação nenhuma com o nome do usuário.
 import { lerConfig, nomeExibido as nomeDoUsuario } from "@/lib/settings";
-import { cache } from "@/lib/repo";
+import { cache, invalidarCache } from "@/lib/repo";
+import { gravar } from "@/lib/github";
+import { PASTAS, type Contato } from "@/lib/tipos";
+import { comoContato, contatoParaArquivo } from "@/lib/entidades";
+import { nomeLivre, escreverMarkdown, tituloProvavel, nomeDeArquivo } from "@/lib/markdown";
+import { idDoCaminho } from "@/lib/pdi";
+import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import { toast } from "@/lib/toast";
 
 export function obterOpcoesDaPropriedade(
@@ -238,6 +247,198 @@ export function normalizarStatus(val: string): string {
   return val || "a-fazer";
 }
 
+export function obterIniciais(nome: string) {
+  const partes = (nome || "").trim().split(/\s+/);
+  if (partes.length === 0 || !partes[0]) return "?";
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
+
+const CORES_AVATAR = [
+  "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
+  "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+  "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30",
+  "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+  "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
+  "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30",
+  "bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30",
+];
+
+export function corDoAvatar(nome: string): string {
+  let hash = 0;
+  for (let i = 0; i < (nome || "").length; i++) {
+    hash = (hash << 5) - hash + nome.charCodeAt(i);
+    hash |= 0;
+  }
+  return CORES_AVATAR[Math.abs(hash) % CORES_AVATAR.length];
+}
+
+interface ModalEditarContatoRapidoProps {
+  aberto: boolean;
+  aoFechar: () => void;
+  contatoInicial?: { caminho?: string; sha?: string; titulo: string; cargo?: string; empresa?: string; email?: string } | null;
+  aoSalvarSucesso: (contatoSalvo: Contato) => void;
+}
+
+export function ModalEditarContatoRapido({
+  aberto,
+  aoFechar,
+  contatoInicial,
+  aoSalvarSucesso,
+}: ModalEditarContatoRapidoProps) {
+  const [nome, setNome] = useState("");
+  const [cargo, setCargo] = useState("");
+  const [empresa, setEmpresa] = useState("");
+  const [email, setEmail] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  useEffect(() => {
+    if (aberto) {
+      setNome(contatoInicial?.titulo || "");
+      setCargo(contatoInicial?.cargo || "");
+      setEmpresa(contatoInicial?.empresa || "");
+      setEmail(contatoInicial?.email || "");
+      setErro("");
+      setSalvando(false);
+    }
+  }, [aberto, contatoInicial]);
+
+  const aoSalvar = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const nomeLimpo = nome.trim();
+    if (!nomeLimpo) {
+      setErro("O nome do contato é obrigatório.");
+      return;
+    }
+
+    setSalvando(true);
+    setErro("");
+    try {
+      const cfg = lerConfig();
+      const todosContatos = cache?.itens ? cache.itens.map((i) => i.caminho) : [];
+      const caminho = contatoInicial?.caminho || nomeLivre(PASTAS.contatos, nomeLimpo, todosContatos);
+
+      const objetoContato: Contato = {
+        caminho,
+        id: idDoCaminho(caminho),
+        sha: contatoInicial?.sha || "",
+        titulo: nomeLimpo,
+        cargo: cargo.trim() || undefined,
+        empresa: empresa.trim() || undefined,
+        email: email.trim() || undefined,
+        tags: ["contato"],
+        propriedades: {},
+        corpo: "",
+        bruto: {},
+      };
+
+      const { dados: fm, corpo } = contatoParaArquivo(objetoContato);
+      const texto = escreverMarkdown({ dados: fm, corpo });
+      const novaSha = await gravar(cfg, caminho, texto, contatoInicial?.sha || undefined, `salvar contato: ${nomeLimpo}`);
+
+      invalidarCache();
+      dispararAtualizacaoAcervo();
+      toast(contatoInicial?.sha ? `Contato "${nomeLimpo}" atualizado!` : `Contato "${nomeLimpo}" criado com sucesso!`);
+
+      aoSalvarSucesso({ ...objetoContato, sha: novaSha });
+      aoFechar();
+    } catch (err: any) {
+      setErro(err?.message || "Erro ao salvar contato.");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  if (!aberto) return null;
+
+  return (
+    <Modal
+      aberto={aberto}
+      aoFechar={aoFechar}
+      titulo={contatoInicial?.sha ? "Editar Contato" : "Novo Contato"}
+      tamanho="padrao"
+      rodape={
+        <div className="flex items-center justify-end gap-2 w-full">
+          <Botao type="button" variante="neutro" onClick={aoFechar} disabled={salvando} tamanho="pequeno">
+            Cancelar
+          </Botao>
+          <Botao type="button" variante="primario" onClick={aoSalvar} disabled={salvando || !nome.trim()} tamanho="pequeno">
+            {salvando ? "Salvando..." : contatoInicial?.sha ? "Salvar Alterações" : "Criar Contato"}
+          </Botao>
+        </div>
+      }
+    >
+      <form onSubmit={aoSalvar} className="space-y-3.5 py-1">
+        {erro && (
+          <div className="p-2.5 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20 font-medium">
+            {erro}
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+            <User size={13} className="text-primary" />
+            Nome Completo <span className="text-destructive">*</span>
+          </label>
+          <input
+            type="text"
+            placeholder="Ex: Mariana Souza"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            autoFocus
+            className="w-full bg-accent/30 border border-border text-xs px-3 py-2 rounded-lg outline-none focus:ring-1 focus:ring-primary text-foreground"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <Briefcase size={13} className="text-blue-500" />
+              Cargo / Função
+            </label>
+            <input
+              type="text"
+              placeholder="Ex: Design Lead, Tech Lead..."
+              value={cargo}
+              onChange={(e) => setCargo(e.target.value)}
+              className="w-full bg-accent/30 border border-border text-xs px-3 py-2 rounded-lg outline-none focus:ring-1 focus:ring-primary text-foreground"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <Building size={13} className="text-emerald-500" />
+              Empresa / Time
+            </label>
+            <input
+              type="text"
+              placeholder="Ex: Nubank, Design Ops..."
+              value={empresa}
+              onChange={(e) => setEmpresa(e.target.value)}
+              className="w-full bg-accent/30 border border-border text-xs px-3 py-2 rounded-lg outline-none focus:ring-1 focus:ring-primary text-foreground"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+            <MailIcon size={13} className="text-indigo-500" />
+            E-mail (opcional)
+          </label>
+          <input
+            type="email"
+            placeholder="Ex: mariana@empresa.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full bg-accent/30 border border-border text-xs px-3 py-2 rounded-lg outline-none focus:ring-1 focus:ring-primary text-foreground"
+          />
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 type PropriedadesNotionProps = {
   dados: Record<string, any>;
   onChange: (novosDados: Record<string, any>) => void;
@@ -281,7 +482,52 @@ export function PropriedadesNotion({
   const [editandoTag, setEditandoTag] = useState<string | null>(null);
   const [novoNomeTag, setNovoNomeTag] = useState("");
 
+  const [buscaContato, setBuscaContato] = useState("");
+  const [modalContatoAberto, setModalContatoAberto] = useState(false);
+  const [contatoParaEditar, setContatoParaEditar] = useState<{ caminho?: string; sha?: string; titulo: string; cargo?: string; empresa?: string; email?: string } | null>(null);
+  const [chaveAtivaContato, setChaveAtivaContato] = useState<string>("autor_elogio");
+
   const [globalConfig, setGlobalConfig] = useState(lerConfigPropriedadesGlobais());
+
+  const contatosDisponiveis = useMemo(() => {
+    const lista: Contato[] = [];
+    const titulosVistos = new Set<string>();
+
+    if (cache?.itens) {
+      for (const item of cache.itens) {
+        if (item.caminho.startsWith("contatos/") && item.caminho.endsWith(".md")) {
+          try {
+            const c = comoContato(item.doc, item.caminho, item.sha, tituloProvavel(item.doc, item.nome));
+            if (!titulosVistos.has(c.titulo.toLowerCase().trim())) {
+              lista.push(c);
+              titulosVistos.add(c.titulo.toLowerCase().trim());
+            }
+          } catch {}
+        }
+      }
+    }
+
+    const opcoesFixas = camposFixos.autor_elogio?.opcoes || camposFixos.autorElogio?.opcoes;
+    if (Array.isArray(opcoesFixas)) {
+      for (const nome of opcoesFixas) {
+        if (typeof nome === "string" && nome.trim() && !titulosVistos.has(nome.toLowerCase().trim())) {
+          lista.push({
+            caminho: `contatos/${nomeDeArquivo(nome)}.md`,
+            id: idDoCaminho(`contatos/${nomeDeArquivo(nome)}.md`),
+            sha: "",
+            titulo: nome.trim(),
+            tags: [],
+            propriedades: {},
+            corpo: "",
+            bruto: {},
+          });
+          titulosVistos.add(nome.toLowerCase().trim());
+        }
+      }
+    }
+
+    return lista.sort((a, b) => a.titulo.localeCompare(b.titulo));
+  }, [camposFixos]);
 
   useEffect(() => {
     setGlobalConfig(lerConfigPropriedadesGlobais());
@@ -770,6 +1016,215 @@ export function PropriedadesNotion({
       );
     }
 
+    if (chave === "autor_elogio" || chave === "autorElogio" || (tipo as string) === "contato") {
+      const contatoAtual = contatosDisponiveis.find(
+        (c) => c.titulo.toLowerCase().trim() === (valor || "").toLowerCase().trim()
+      );
+      const contatosFiltrados = contatosDisponiveis.filter((c) =>
+        c.titulo.toLowerCase().includes(buscaContato.toLowerCase()) ||
+        (c.cargo && c.cargo.toLowerCase().includes(buscaContato.toLowerCase())) ||
+        (c.empresa && c.empresa.toLowerCase().includes(buscaContato.toLowerCase()))
+      );
+      const existeContatoExato = contatosDisponiveis.some(
+        (c) => c.titulo.toLowerCase().trim() === buscaContato.toLowerCase().trim()
+      );
+
+      return (
+        <div className="flex items-center gap-1.5 flex-wrap py-1 min-h-7">
+          {valor ? (
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-card border border-border/80 shadow-2xs hover:border-primary/40 transition-colors group">
+              <div
+                className={cn(
+                  "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border shrink-0",
+                  corDoAvatar(valor)
+                )}
+              >
+                {obterIniciais(valor)}
+              </div>
+              <div
+                className="flex flex-col min-w-0 cursor-pointer"
+                onClick={() => setMenuAberto(idPopover)}
+              >
+                <span className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                  {valor}
+                </span>
+                {(contatoAtual?.cargo || contatoAtual?.empresa) && (
+                  <span className="text-[10px] text-muted-foreground truncate leading-tight">
+                    {[contatoAtual.cargo, contatoAtual.empresa].filter(Boolean).join(" • ")}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-0.5 ml-1">
+                <Tooltip conteudo="Editar dados deste contato">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setContatoParaEditar(contatoAtual || { titulo: valor, caminho: "", sha: "" });
+                      setChaveAtivaContato(chave);
+                      setModalContatoAberto(true);
+                    }}
+                    className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent transition-colors cursor-pointer"
+                  >
+                    <Pencil size={11} />
+                  </button>
+                </Tooltip>
+                <Tooltip conteudo="Remover autor">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      atualizar(chave, "");
+                    }}
+                    className="p-1 text-muted-foreground hover:text-destructive rounded hover:bg-accent transition-colors cursor-pointer"
+                  >
+                    <X size={11} />
+                  </button>
+                </Tooltip>
+              </div>
+            </div>
+          ) : null}
+
+          <Popover
+            open={menuAberto === idPopover}
+            onOpenChange={(open) => {
+              setMenuAberto(open ? idPopover : null);
+              if (!open) setBuscaContato("");
+            }}
+          >
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                id={`prop-btn-${chave}`}
+                className={cn(
+                  "h-7 px-2 text-xs font-normal text-muted-foreground hover:text-foreground flex items-center gap-1.5 border border-dashed border-border/80 rounded-lg",
+                  valor && "h-6 px-1.5 text-[11px] border-none hover:bg-accent"
+                )}
+              >
+                {!valor && <User size={13} className="text-blue-500" />}
+                <span>{valor ? "Trocar autor" : "+ Selecionar ou criar autor"}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-[300px] sm:w-[340px] p-2.5 shadow-2xl border-border flex flex-col gap-2 rounded-xl"
+              align="start"
+              onInteractOutside={() => setMenuAberto(null)}
+            >
+              {/* Barra de busca de contato */}
+              <div className="relative">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70" />
+                <input
+                  type="text"
+                  placeholder="Buscar contato..."
+                  value={buscaContato}
+                  onChange={(e) => setBuscaContato(e.target.value)}
+                  autoFocus
+                  className="w-full bg-accent/40 border border-border text-xs pl-8 pr-2.5 py-1.5 rounded-lg outline-none focus:ring-1 focus:ring-primary/50 text-foreground"
+                />
+              </div>
+
+              {/* Lista de contatos existentes */}
+              <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+                {contatosFiltrados.map((c) => {
+                  const selecionado = (valor || "").toLowerCase().trim() === c.titulo.toLowerCase().trim();
+                  return (
+                    <div
+                      key={c.caminho || c.id || c.titulo}
+                      onClick={() => {
+                        atualizar(chave, c.titulo);
+                        setMenuAberto(null);
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between gap-2 p-1.5 rounded-lg text-left transition-colors cursor-pointer group",
+                        selecionado ? "bg-primary/10 text-primary font-medium" : "hover:bg-accent text-foreground"
+                      )}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div
+                          className={cn(
+                            "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border shrink-0",
+                            corDoAvatar(c.titulo)
+                          )}
+                        >
+                          {obterIniciais(c.titulo)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate">{c.titulo}</p>
+                          {(c.cargo || c.empresa) && (
+                            <p className="text-[10px] text-muted-foreground truncate leading-tight">
+                              {[c.cargo, c.empresa].filter(Boolean).join(" • ")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {selecionado && <Check size={13} className="text-primary" />}
+                        <Tooltip conteudo="Editar dados deste contato">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuAberto(null);
+                              setContatoParaEditar(c);
+                              setChaveAtivaContato(chave);
+                              setModalContatoAberto(true);
+                            }}
+                            className="p-1 text-muted-foreground opacity-40 group-hover:opacity-100 hover:text-foreground rounded hover:bg-muted transition-all cursor-pointer"
+                          >
+                            <Pencil size={11} />
+                          </button>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {contatosFiltrados.length === 0 && !buscaContato.trim() && (
+                  <div className="py-4 text-center text-xs text-muted-foreground">
+                    Nenhum contato cadastrado ainda.
+                  </div>
+                )}
+              </div>
+
+              {/* Ações de criação rápida */}
+              <div className="pt-1.5 border-t border-border/50 flex flex-col gap-1">
+                {buscaContato.trim() && !existeContatoExato && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuAberto(null);
+                      setContatoParaEditar({ titulo: buscaContato.trim() });
+                      setChaveAtivaContato(chave);
+                      setModalContatoAberto(true);
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 text-xs text-primary hover:bg-primary/10 rounded-lg flex items-center gap-2 font-medium cursor-pointer transition-colors"
+                  >
+                    <Plus size={13} />
+                    <span className="truncate">Criar contato "{buscaContato.trim()}"</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuAberto(null);
+                    setContatoParaEditar(null);
+                    setChaveAtivaContato(chave);
+                    setModalContatoAberto(true);
+                  }}
+                  className="w-full text-left px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg flex items-center gap-2 cursor-pointer transition-colors font-medium"
+                >
+                  <UserPlus size={13} className="text-primary" />
+                  <span>+ Criar novo contato completo</span>
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      );
+    }
+
     if (tipo === "select") {
       const opcoes = fixo?.opcoes || (valor ? [valor] : []);
       return (
@@ -779,7 +1234,7 @@ export function PropriedadesNotion({
               {valor ? renderizarBadgeTag(valor) : <span className="text-muted-foreground text-xs">Vazio</span>}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[220px] p-0" align="start" onInteractOutside={() => setMenuAberto(null)}>
+          <PopoverContent className="w-[240px] p-2 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
             <Command>
               <CommandInput placeholder="Buscar ou criar opção..." onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === "Enter") {
@@ -787,7 +1242,7 @@ export function PropriedadesNotion({
                   setMenuAberto(null);
                 }
               }} />
-              <CommandList>
+              <CommandList className="max-h-52">
                 <CommandEmpty>Digite e aperte Enter para selecionar.</CommandEmpty>
                 <CommandGroup>
                   {opcoes.map((opcao: string) => (
@@ -1892,6 +2347,19 @@ export function PropriedadesNotion({
           )}
         </div>
       )}
+
+      {/* Modal de Criação / Edição Rápida de Contato */}
+      <ModalEditarContatoRapido
+        aberto={modalContatoAberto}
+        aoFechar={() => {
+          setModalContatoAberto(false);
+          setContatoParaEditar(null);
+        }}
+        contatoInicial={contatoParaEditar}
+        aoSalvarSucesso={(contatoSalvo) => {
+          atualizar(chaveAtivaContato, contatoSalvo.titulo);
+        }}
+      />
     </div>
   );
 }
