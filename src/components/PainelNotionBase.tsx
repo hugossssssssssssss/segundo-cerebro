@@ -17,7 +17,6 @@ import {
   ArrowRightLeft,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   Layout,
   FileText,
   ListTodo,
@@ -678,74 +677,77 @@ export function PainelNotionBase({
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
-        {/* Seletor compacto de modo de visualização */}
-        <Popover>
-          <Tooltip conteudo="Modo de visualização (Pop-up, Lateral, Tela Cheia, Flutuante)" posicao="bottom">
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="hidden sm:flex items-center gap-1 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer border border-border/60"
-                aria-label="Modo de visualização"
-              >
-                {modoVisao === "popup" && <Square size={14} />}
-                {modoVisao === "lado" && <PanelRight size={14} />}
-                {modoVisao === "telacheia" && <Maximize2 size={14} />}
-                {modoVisao === "flutuante" && <PictureInPicture2 size={14} className="text-amber-500" />}
-                <ChevronDown size={11} className="opacity-60" />
-              </button>
-            </PopoverTrigger>
-          </Tooltip>
-          <PopoverContent align="end" className="w-48 p-1.5 space-y-0.5 text-xs shadow-xl border-border bg-popover/95 backdrop-blur-md">
+        {/* Alternador direto e instantâneo de modos de visualização */}
+        <div className="flex items-center bg-secondary/60 rounded-xl p-0.5 border border-border/60 shrink-0">
+          <Tooltip conteudo="Pop-up Central">
             <button
               type="button"
               onClick={() => { setModoVisao("popup"); setMinimizadoFlutuante(false); }}
               className={cn(
-                "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left transition-colors cursor-pointer",
-                modoVisao === "popup" ? "bg-accent text-foreground font-semibold" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                "p-1.5 rounded-lg transition-colors cursor-pointer",
+                modoVisao === "popup" 
+                  ? "bg-primary text-primary-foreground shadow-2xs font-semibold" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
               )}
+              aria-label="Modo Pop-up Central"
             >
-              <Square size={14} className="opacity-70 shrink-0" />
-              <span>Pop-up Central</span>
+              <Square size={13} />
             </button>
+          </Tooltip>
+
+          <Tooltip conteudo="Painel Lateral">
             <button
               type="button"
               onClick={() => { setModoVisao("lado"); setMinimizadoFlutuante(false); }}
               className={cn(
-                "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left transition-colors cursor-pointer",
-                modoVisao === "lado" ? "bg-accent text-foreground font-semibold" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                "p-1.5 rounded-lg transition-colors cursor-pointer",
+                modoVisao === "lado" 
+                  ? "bg-primary text-primary-foreground shadow-2xs font-semibold" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
               )}
+              aria-label="Modo Painel Lateral"
             >
-              <PanelRight size={14} className="opacity-70 shrink-0" />
-              <span>Painel Lateral</span>
+              <PanelRight size={13} />
             </button>
+          </Tooltip>
+
+          <Tooltip conteudo="Tela Cheia">
             <button
               type="button"
               onClick={() => { setModoVisao("telacheia"); setMinimizadoFlutuante(false); }}
               className={cn(
-                "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left transition-colors cursor-pointer",
-                modoVisao === "telacheia" ? "bg-accent text-foreground font-semibold" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                "p-1.5 rounded-lg transition-colors cursor-pointer",
+                modoVisao === "telacheia" 
+                  ? "bg-primary text-primary-foreground shadow-2xs font-semibold" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
               )}
+              aria-label="Modo Tela Cheia"
             >
-              <Maximize2 size={14} className="opacity-70 shrink-0" />
-              <span>Tela Cheia</span>
+              <Maximize2 size={13} />
             </button>
+          </Tooltip>
+
+          <Tooltip conteudo="Janela Flutuante Livre">
             <button
               type="button"
               onClick={() => { setModoVisao("flutuante"); setMinimizadoFlutuante(false); }}
               className={cn(
-                "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left transition-colors cursor-pointer",
-                modoVisao === "flutuante" ? "bg-accent text-foreground font-semibold" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                "p-1.5 rounded-lg transition-colors cursor-pointer",
+                modoVisao === "flutuante" 
+                  ? "bg-primary text-primary-foreground shadow-2xs font-semibold" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
               )}
+              aria-label="Modo Janela Flutuante"
             >
-              <PictureInPicture2 size={14} className="text-amber-500 shrink-0" />
-              <span>Janela Flutuante Livre</span>
+              <PictureInPicture2 size={13} />
             </button>
-          </PopoverContent>
-        </Popover>
+          </Tooltip>
+        </div>
 
         {modoVisao === "flutuante" && (
           <Tooltip conteudo={minimizadoFlutuante ? "Expandir janela" : "Minimizar janela"} posicao="bottom">
             <button
+              type="button"
               onClick={() => setMinimizadoFlutuante(!minimizadoFlutuante)}
               className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
               aria-label={minimizadoFlutuante ? "Expandir janela" : "Minimizar janela"}
@@ -1396,14 +1398,14 @@ export function PainelNotionBase({
     return (
       <div
         className={cn(
-          "fixed inset-0 z-50 flex bg-black/40 sm:bg-black/20 backdrop-blur-none sm:backdrop-blur-[2px] p-0 sm:p-3 animate-in fade-in duration-150 pointer-events-none",
+          "fixed inset-0 z-50 flex bg-black/40 sm:bg-black/20 backdrop-blur-none sm:backdrop-blur-[2px] p-0 sm:p-3 animate-in fade-in duration-150",
           ehEsquerda ? "justify-start" : "justify-end"
         )}
         onClick={tentarFechar}
       >
         <div
           className={cn(
-            "pointer-events-auto flex h-full w-full sm:w-[540px] md:w-[640px] lg:w-[calc(50vw-24px)] flex-col rounded-none sm:rounded-2xl border-0 sm:border border-border bg-card shadow-2xl overflow-hidden animate-in duration-200",
+            "flex h-full w-full sm:w-[540px] md:w-[640px] lg:w-[calc(50vw-24px)] flex-col rounded-none sm:rounded-2xl border-0 sm:border border-border bg-card shadow-2xl overflow-hidden animate-in duration-200",
             ehEsquerda ? "slide-in-from-left" : "slide-in-from-right"
           )}
           onClick={(e) => e.stopPropagation()}

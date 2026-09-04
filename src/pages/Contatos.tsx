@@ -47,6 +47,7 @@ import {
 import { Botao, Cartao, Modal, Carregando, ModalConfirmacao, Vazio } from "@/components/ui";
 import { TagChip } from "@/components/TagChip";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
+import { BarraFiltrosAvancados, filtrarItensPorRegras, type DefinicaoPropriedade, type RegraFiltro } from "@/components/BarraFiltrosAvancados";
 import { propagarRenomeacaoId, montarIndice, mencoesA } from "@/lib/links";
 import { carregarRepo } from "@/lib/repo";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
@@ -93,6 +94,11 @@ export default function Contatos() {
   const [termoBusca, setTermoBusca] = useState("");
   const [empresaFiltro, setEmpresaFiltro] = useState("todas");
   const [tagFiltro, setTagFiltro] = useState("todas");
+  const [regrasFiltro, setRegrasFiltro] = useState<RegraFiltro[]>([]);
+
+  useEffect(() => {
+    setRegrasFiltro([]);
+  }, [location.pathname]);
 
   // Item aberto para edição no Painel Notion
   const [aberto, setAberta] = useState<ContatoAberto | null>(null);
@@ -144,16 +150,55 @@ export default function Contatos() {
     return Array.from(set).sort();
   }, [contatosLocais]);
 
+  const propriedadesDisponiveis = useMemo<DefinicaoPropriedade[]>(() => {
+    return [
+      { id: "titulo", rotulo: "Nome", tipo: "texto" },
+      { id: "cargo", rotulo: "Cargo", tipo: "texto" },
+      { id: "empresa", rotulo: "Empresa", tipo: "texto", opcoes: empresasDisponiveis },
+      { id: "email", rotulo: "E-mail", tipo: "texto" },
+      { id: "telefone", rotulo: "Telefone", tipo: "texto" },
+      { id: "tags", rotulo: "Tags", tipo: "tags", opcoes: tagsDisponiveis },
+      { id: "pai_id", rotulo: "Responde a (Líder)", tipo: "texto" },
+    ];
+  }, [empresasDisponiveis, tagsDisponiveis]);
+
   const aplicarFiltroTag = useCallback((tag: string) => {
     const nomeLimpo = tag.startsWith("#") ? tag.slice(1).trim() : tag.trim();
     if (!nomeLimpo) return;
-    setTagFiltro(nomeLimpo);
+    setRegrasFiltro((atuais) => {
+      const jaExiste = atuais.some(
+        (r) => r.propriedadeId === "tags" && r.operador === "contem" && r.valor === nomeLimpo
+      );
+      if (jaExiste) return atuais;
+      return [
+        ...atuais,
+        {
+          id: `tag-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          propriedadeId: "tags",
+          rotulo: "Tags",
+          tipo: "tags",
+          operador: "contem",
+          valor: nomeLimpo,
+        },
+      ];
+    });
   }, []);
 
   // Contatos filtrados
   const contatosFiltrados = useMemo(() => {
-    return filtrarContatos(contatosLocais, termoBusca, empresaFiltro, tagFiltro);
-  }, [contatosLocais, termoBusca, empresaFiltro, tagFiltro]);
+    let lista = filtrarContatos(contatosLocais, termoBusca, empresaFiltro, tagFiltro);
+    lista = filtrarItensPorRegras(lista, regrasFiltro, (item, propId) => {
+      if (propId === "titulo" || propId === "nome") return item.titulo;
+      if (propId === "tags") return item.tags || [];
+      if (propId === "cargo") return item.cargo;
+      if (propId === "empresa") return item.empresa;
+      if (propId === "email") return item.email;
+      if (propId === "telefone") return item.telefone;
+      if (propId === "pai_id" || propId === "pai") return item.paiId;
+      return (item as any)[propId] || item.bruto?.[propId];
+    });
+    return lista;
+  }, [contatosLocais, termoBusca, empresaFiltro, tagFiltro, regrasFiltro]);
 
   // Estrutura em Árvore Hierárquica
   const arvoreContatos = useMemo(() => {
@@ -638,6 +683,12 @@ export default function Contatos() {
                 ))}
               </select>
             )}
+
+            <BarraFiltrosAvancados
+              propriedadesDisponiveis={propriedadesDisponiveis}
+              regras={regrasFiltro}
+              aoMudarRegras={setRegrasFiltro}
+            />
           </>
         }
         acoes={
@@ -695,7 +746,6 @@ export default function Contatos() {
                   no={no}
                   recolhidos={recolhidos}
                   aoAlternarRecolhido={alternarRecolhido}
-                  aoNovoFilho={(paiId) => novoContato(paiId)}
                   aoEditar={(c) => abrirContato(c)}
                   aoExcluir={(c) => setContatoParaExcluir(c)}
                   aoFiltrarTag={aplicarFiltroTag}
@@ -712,7 +762,6 @@ export default function Contatos() {
                   key={c.id}
                   contato={c}
                   todosContatos={contatosLocais}
-                  aoNovoFilho={(paiId) => novoContato(paiId)}
                   aoEditar={(c) => abrirContato(c)}
                   aoExcluir={(c) => setContatoParaExcluir(c)}
                   aoFiltrarTag={aplicarFiltroTag}
@@ -978,12 +1027,11 @@ export default function Contatos() {
   );
 }
 
-// COMPONENTE: ITEM DA ÁRVORE HIERÁRQUICA (RECURSIVO)
+// COMPONENTE: ITEM DA ÁRVORE HIERÁRQUICA DIDÁTICA E LIMPA (RECURSIVO)
 function ItemNoArvore({
   no,
   recolhidos,
   aoAlternarRecolhido,
-  aoNovoFilho,
   aoEditar,
   aoExcluir,
   aoFiltrarTag,
@@ -991,7 +1039,6 @@ function ItemNoArvore({
   no: NoContato;
   recolhidos: Record<string, boolean>;
   aoAlternarRecolhido: (id: string) => void;
-  aoNovoFilho: (paiId: string) => void;
   aoEditar: (c: Contato) => void;
   aoExcluir: (c: Contato) => void;
   aoFiltrarTag: (t: string) => void;
@@ -999,6 +1046,7 @@ function ItemNoArvore({
   const c = no.contato;
   const estaRecolhido = Boolean(recolhidos[c.id]);
   const temFilhos = no.filhos.length > 0;
+  const ehLider = temFilhos;
 
   // Filtrar propriedades internas
   const propriedadesValidas = Object.entries(c.propriedades).filter(
@@ -1006,100 +1054,88 @@ function ItemNoArvore({
   );
 
   return (
-    <div className="space-y-2 select-none relative">
-      {/* Nó do Contato */}
+    <div className="space-y-3 select-none relative">
+      {/* Card do Contato */}
       <div
         onClick={() => aoEditar(c)}
         className={cn(
-          "group relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl border bg-card hover:bg-accent/40 transition-all cursor-pointer shadow-2xs hover:shadow-xs",
+          "group relative flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border bg-card hover:bg-accent/30 transition-all cursor-pointer shadow-xs hover:shadow-md",
           no.nivel === 0 
-            ? "border-border/90 bg-card/90" 
-            : "border-border/70 ml-5 sm:ml-8 before:absolute before:-left-4 sm:before:-left-6 before:top-1/2 before:w-4 sm:before:w-6 before:h-px before:bg-border"
+            ? "border-primary/30 bg-card" 
+            : "border-border/80 ml-6 sm:ml-10 before:absolute before:-left-6 sm:before:-left-10 before:top-1/2 before:w-6 sm:before:w-10 before:h-px before:bg-border/80"
         )}
       >
-        {/* Lado Esquerdo: Expansor + Avatar + Informações principais */}
-        <div className="flex items-start gap-3 min-w-0 flex-1">
-          {temFilhos ? (
-            <Tooltip conteudo={estaRecolhido ? `Expandir ${no.filhos.length} liderado(s)` : "Recolher liderados"}>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  aoAlternarRecolhido(c.id);
-                }}
-                className="mt-0.5 p-1.5 rounded-lg bg-accent/60 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors shrink-0 cursor-pointer"
-                aria-label={estaRecolhido ? "Expandir liderados" : "Recolher liderados"}
-              >
-                {estaRecolhido ? <ChevronRight size={15} /> : <ChevronDown size={15} />}
-              </button>
-            </Tooltip>
-          ) : (
-            <div className="w-7 shrink-0 flex items-center justify-center">
-              <div className="h-2 w-2 rounded-full bg-border" />
-            </div>
-          )}
-
-          <div className="h-10 w-10 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
+        {/* Lado Esquerdo: Avatar + Hierarquia + Informações */}
+        <div className="flex items-start gap-3.5 min-w-0 flex-1">
+          <div className="h-11 w-11 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-base shrink-0 shadow-2xs">
             {c.titulo ? c.titulo.charAt(0).toUpperCase() : "?"}
           </div>
 
-          <div className="min-w-0 space-y-1 flex-1">
+          <div className="min-w-0 space-y-1.5 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-bold text-sm text-foreground truncate">{c.titulo || "Sem nome"}</h3>
+              <h3 className="font-bold text-base text-foreground tracking-tight truncate">{c.titulo || "Sem nome"}</h3>
+              
+              {ehLider && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                  👥 Líder ({no.filhos.length} {no.filhos.length === 1 ? "liderado" : "liderados"})
+                </span>
+              )}
+
               {c.cargo && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-[11px] text-muted-foreground font-medium">
-                  <Briefcase size={11} className="text-blue-500" /> {c.cargo}
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-muted text-xs text-muted-foreground font-medium">
+                  <Briefcase size={12} className="text-blue-500" /> {c.cargo}
                 </span>
               )}
+
               {c.empresa && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium">
-                  <Building size={11} /> {c.empresa}
-                </span>
-              )}
-              {temFilhos && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold">
-                  👥 {no.filhos.length} {no.filhos.length === 1 ? "liderado" : "liderados"}
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+                  <Building size={12} /> {c.empresa}
                 </span>
               )}
             </div>
 
-            {/* Informações de Contato / Tags */}
-            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground pt-0.5">
+            {/* Informações de Contato */}
+            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
               {c.email && (
                 <a
                   href={`mailto:${c.email}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors truncate"
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors truncate font-medium"
                 >
-                  <Mail size={12} className="text-indigo-500 shrink-0" /> {c.email}
+                  <Mail size={13} className="text-indigo-500 shrink-0" /> {c.email}
                 </a>
               )}
               {c.telefone && (
                 <a
                   href={`tel:${c.telefone}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors truncate"
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors truncate font-medium"
                 >
-                  <Phone size={12} className="text-purple-500 shrink-0" /> {c.telefone}
+                  <Phone size={13} className="text-purple-500 shrink-0" /> {c.telefone}
                 </a>
               )}
-              {c.tags.map((t) => (
-                <TagChip
-                  key={t}
-                  tag={t}
-                  aoClicar={() => aoFiltrarTag(t)}
-                  className="py-0 px-1.5 text-[10px] rounded-md h-auto font-medium"
-                />
-              ))}
             </div>
 
-            {/* Propriedades Extras (Sem demo nem campos internos) */}
+            {/* Tags em tamanho padrão */}
+            {c.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {c.tags.map((t) => (
+                  <TagChip
+                    key={t}
+                    tag={t}
+                    aoClicar={() => aoFiltrarTag(t)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Propriedades Extras (Sem campos internos) */}
             {propriedadesValidas.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {propriedadesValidas.map(([k, v]) => (
                   <span
                     key={k}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/60 text-[10px] text-accent-foreground font-medium"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/60 text-xs text-accent-foreground font-medium"
                   >
                     <span className="font-semibold text-muted-foreground">{k}:</span> {v}
                   </span>
@@ -1109,57 +1145,57 @@ function ItemNoArvore({
           </div>
         </div>
 
-        {/* Lado Direito: Ações Rápidas */}
+        {/* Lado Direito: Alternar Equipe + Ações */}
         <div
-          className="flex items-center gap-1 self-end sm:self-center shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto justify-end"
+          className="flex items-center gap-2 self-end md:self-center shrink-0 border-t md:border-t-0 pt-2.5 md:pt-0 w-full md:w-auto justify-between md:justify-end"
           onClick={(e) => e.stopPropagation()}
         >
-          <Tooltip conteudo="Adicionar liderado / pessoa que responde a este contato">
+          {temFilhos && (
             <button
               type="button"
-              onClick={() => aoNovoFilho(c.id)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold text-primary bg-primary/10 hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer shadow-2xs"
-              aria-label="Adicionar liderado"
+              onClick={() => aoAlternarRecolhido(c.id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-secondary/80 hover:bg-secondary text-foreground transition-colors cursor-pointer border border-border/60"
             >
-              <UserPlus size={13} />
-              <span>+ Liderado</span>
+              {estaRecolhido ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+              <span>{estaRecolhido ? `Ver liderados (${no.filhos.length})` : `Ocultar liderados`}</span>
             </button>
-          </Tooltip>
+          )}
 
-          <Tooltip conteudo="Editar contato">
-            <button
-              type="button"
-              onClick={() => aoEditar(c)}
-              className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-              aria-label="Editar contato"
-            >
-              <Edit2 size={14} />
-            </button>
-          </Tooltip>
+          <div className="flex items-center gap-1 ml-auto">
+            <Tooltip conteudo="Editar contato">
+              <button
+                type="button"
+                onClick={() => aoEditar(c)}
+                className="p-2 rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+                aria-label="Editar contato"
+              >
+                <Edit2 size={15} />
+              </button>
+            </Tooltip>
 
-          <Tooltip conteudo="Excluir contato">
-            <button
-              type="button"
-              onClick={() => aoExcluir(c)}
-              className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
-              aria-label="Excluir contato"
-            >
-              <Trash2 size={14} />
-            </button>
-          </Tooltip>
+            <Tooltip conteudo="Excluir contato">
+              <button
+                type="button"
+                onClick={() => aoExcluir(c)}
+                className="p-2 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
+                aria-label="Excluir contato"
+              >
+                <Trash2 size={15} />
+              </button>
+            </Tooltip>
+          </div>
         </div>
       </div>
 
-      {/* Renderização Recursiva de Filhos com Linhas Hierárquicas Claras */}
+      {/* Ramificação Didática de Liderados */}
       {temFilhos && !estaRecolhido && (
-        <div className="space-y-2 relative pl-3 sm:pl-5 border-l-2 border-border/60 ml-4 sm:ml-7 my-1">
+        <div className="space-y-3 relative pl-4 sm:pl-6 border-l-2 border-primary/30 ml-5 sm:ml-8 my-2">
           {no.filhos.map((filhoNo) => (
             <ItemNoArvore
               key={filhoNo.contato.id}
               no={filhoNo}
               recolhidos={recolhidos}
               aoAlternarRecolhido={aoAlternarRecolhido}
-              aoNovoFilho={aoNovoFilho}
               aoEditar={aoEditar}
               aoExcluir={aoExcluir}
               aoFiltrarTag={aoFiltrarTag}
@@ -1175,14 +1211,12 @@ function ItemNoArvore({
 function CartaoContato({
   contato: c,
   todosContatos,
-  aoNovoFilho,
   aoEditar,
   aoExcluir,
   aoFiltrarTag,
 }: {
   contato: Contato;
   todosContatos: Contato[];
-  aoNovoFilho: (paiId: string) => void;
   aoEditar: (c: Contato) => void;
   aoExcluir: (c: Contato) => void;
   aoFiltrarTag: (t: string) => void;
@@ -1197,12 +1231,12 @@ function CartaoContato({
   return (
     <Cartao
       onClick={() => aoEditar(c)}
-      className="flex flex-col justify-between p-4 space-y-3 relative group hover:bg-accent/30 transition-colors cursor-pointer rounded-2xl"
+      className="flex flex-col justify-between p-5 space-y-3.5 relative group hover:bg-accent/30 transition-all cursor-pointer rounded-2xl shadow-2xs hover:shadow-xs"
     >
-      <div className="space-y-2.5">
+      <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-10 w-10 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-sm shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-11 w-11 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-base shrink-0 shadow-2xs">
               {c.titulo ? c.titulo.charAt(0).toUpperCase() : "?"}
             </div>
             <div className="min-w-0">
@@ -1219,45 +1253,45 @@ function CartaoContato({
               <button
                 type="button"
                 onClick={() => aoEditar(c)}
-                className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+                className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
                 aria-label="Editar"
               >
-                <Edit2 size={13} />
+                <Edit2 size={14} />
               </button>
             </Tooltip>
             <Tooltip conteudo="Excluir">
               <button
                 type="button"
                 onClick={() => aoExcluir(c)}
-                className="p-1 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer"
                 aria-label="Excluir"
               >
-                <Trash2 size={13} />
+                <Trash2 size={14} />
               </button>
             </Tooltip>
           </div>
         </div>
 
         {c.empresa && (
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-[11px] text-muted-foreground font-medium">
-            <Building size={11} className="text-emerald-500" /> {c.empresa}
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-muted text-xs text-muted-foreground font-medium">
+            <Building size={12} className="text-emerald-500" /> {c.empresa}
           </div>
         )}
 
         {paiObj && (
-          <div className="text-[11px] text-muted-foreground flex items-center gap-1">
-            <User size={11} className="text-primary shrink-0" />
+          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <User size={12} className="text-primary shrink-0" />
             <span>Responde a (Líder): </span>
             <span className="font-semibold text-foreground truncate">{paiObj.titulo}</span>
           </div>
         )}
 
-        <div className="space-y-1 text-xs pt-1 border-t border-border/50">
+        <div className="space-y-1.5 text-xs pt-1.5 border-t border-border/50">
           {c.email && (
             <a
               href={`mailto:${c.email}`}
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors truncate"
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors truncate font-medium"
             >
               <Mail size={13} className="text-indigo-500 shrink-0" />
               <span className="truncate">{c.email}</span>
@@ -1267,7 +1301,7 @@ function CartaoContato({
             <a
               href={`tel:${c.telefone}`}
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors truncate"
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors truncate font-medium"
             >
               <Phone size={13} className="text-purple-500 shrink-0" />
               <span className="truncate">{c.telefone}</span>
@@ -1280,7 +1314,7 @@ function CartaoContato({
             {propriedadesValidas.map(([k, v]) => (
               <span
                 key={k}
-                className="px-1.5 py-0.5 rounded bg-accent/70 text-[10px] text-foreground font-medium"
+                className="px-2 py-0.5 rounded bg-accent/70 text-[11px] text-foreground font-medium"
               >
                 {k}: {v}
               </span>
@@ -1289,33 +1323,17 @@ function CartaoContato({
         )}
       </div>
 
-      <div className="flex items-center justify-between pt-2 border-t border-border/60 gap-2">
-        <div className="flex flex-wrap gap-1 min-w-0">
+      {c.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/60">
           {c.tags.map((t) => (
             <TagChip
               key={t}
               tag={t}
               aoClicar={() => aoFiltrarTag(t)}
-              className="py-0 px-1.5 text-[9px] rounded-md h-auto font-medium"
             />
           ))}
         </div>
-
-        <Tooltip conteudo="Adicionar liderado / pessoa vinculada">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              aoNovoFilho(c.id);
-            }}
-            className="text-primary hover:underline text-[11px] font-semibold flex items-center gap-1 shrink-0 ml-auto cursor-pointer"
-            aria-label="Adicionar Liderado"
-          >
-            <UserPlus size={12} />
-            + Liderado
-          </button>
-        </Tooltip>
-      </div>
+      )}
     </Cartao>
   );
 }
