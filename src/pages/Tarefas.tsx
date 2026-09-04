@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -139,6 +139,28 @@ export default function Tarefas() {
     }
     return Array.from(conjunto).sort();
   }, [tarefas]);
+
+  const aplicarFiltroTag = useCallback((tag: string) => {
+    const nomeLimpo = tag.startsWith("#") ? tag.slice(1).trim() : tag.trim();
+    if (!nomeLimpo) return;
+    setRegrasFiltro((atuais) => {
+      const jaExiste = atuais.some(
+        (r) => r.propriedadeId === "tags" && r.operador === "contem" && r.valor === nomeLimpo
+      );
+      if (jaExiste) return atuais;
+      return [
+        ...atuais,
+        {
+          id: `tag-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          propriedadeId: "tags",
+          rotulo: "Tags",
+          tipo: "tags",
+          operador: "contem",
+          valor: nomeLimpo,
+        },
+      ];
+    });
+  }, []);
 
   // ── Relacionamentos ────────────────────────────────────────────────────────
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
@@ -714,6 +736,7 @@ export default function Tarefas() {
           aoAdiarPrazo={adiarPrazo}
           aoDuplicar={duplicarTarefa}
           aoExcluir={(t) => setTarefaParaExcluir(t)}
+          aoFiltrarTag={aplicarFiltroTag}
         />
       ) : (
         <Quadro
@@ -726,6 +749,7 @@ export default function Tarefas() {
           aoDuplicar={duplicarTarefa}
           aoExcluir={(t) => setTarefaParaExcluir(t)}
           aoRegistrarEntregaPDI={(t) => setTarefaParaPDI(t)}
+          aoFiltrarTag={aplicarFiltroTag}
           gravandoCaminho={gravandoCaminho}
           selecionadas={selecionadas}
           aoToggleSelecionar={alternarSelecao}

@@ -22,6 +22,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { SeloStatus } from "@/components/SeloStatus";
+import { TagChip } from "@/components/TagChip";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { urgencia, extrairIntervaloTarefa, type Tarefa } from "@/lib/tarefas";
@@ -98,6 +99,7 @@ export function Calendario({
   aoAdiarPrazo,
   aoDuplicar,
   aoExcluir,
+  aoFiltrarTag,
 }: {
   tarefas: Tarefa[];
   aoAbrir: (t: Tarefa) => void;
@@ -105,6 +107,7 @@ export function Calendario({
   aoAdiarPrazo?: (t: Tarefa, dias: number) => void;
   aoDuplicar?: (t: Tarefa) => void;
   aoExcluir?: (t: Tarefa) => void;
+  aoFiltrarTag?: (tag: string) => void;
 }) {
   const [mesAtual, setMesAtual] = useState(new Date());
   const [selecionado, setSelecionado] = useState<Date>(new Date());
@@ -450,7 +453,6 @@ export function Calendario({
                   const ehFazendo = t.status === "fazendo";
                   const urg = urgencia(t);
                   const intervalo = extrairIntervaloTarefa(t);
-                  const estiloTag = obterEstiloTagCalendario(t);
 
                   return (
                     <div
@@ -517,15 +519,11 @@ export function Calendario({
                           <SeloStatus rotulo="Atrasada" tom="perigo" />
                         )}
                         {t.tags?.map((tag) => (
-                          <span
+                          <TagChip
                             key={tag}
-                            className={cn(
-                              "px-2 py-0.5 rounded-md font-mono border text-[10px] font-medium max-w-full truncate",
-                              cn(estiloTag.bg, estiloTag.text, estiloTag.border),
-                            )}
-                          >
-                            #{tag}
-                          </span>
+                            tag={tag}
+                            aoClicar={aoFiltrarTag ? () => aoFiltrarTag(tag) : undefined}
+                          />
                         ))}
                       </div>
                     </div>

@@ -86,7 +86,7 @@ const COR_COLUNA: Record<Status, string> = {
 
 const LIMITE_PADRAO_COLUNA = 8;
 
-function ConteudoDoCartao({ t }: { t: Tarefa }) {
+function ConteudoDoCartao({ t, aoFiltrarTag }: { t: Tarefa; aoFiltrarTag?: (tag: string) => void }) {
   const u = urgencia(t);
   const min = minutosRegistrados(t.corpo);
   const passos = progressoSubtarefas(t.corpo);
@@ -146,7 +146,11 @@ function ConteudoDoCartao({ t }: { t: Tarefa }) {
             </Selo>
           )}
           {t.tags.map((tag) => (
-            <TagChip key={tag} tag={tag} className="py-0 px-1.5 text-[10px] rounded-md h-auto font-medium" />
+            <TagChip
+              key={tag}
+              tag={tag}
+              aoClicar={aoFiltrarTag ? () => aoFiltrarTag(tag) : undefined}
+            />
           ))}
         </div>
       )}
@@ -165,6 +169,7 @@ function CartaoArrastavel({
   aoDuplicar,
   aoRegistrarEntregaPDI,
   aoExcluir,
+  aoFiltrarTag,
   gravando,
   selecionadas,
   aoToggleSelecionar,
@@ -177,6 +182,7 @@ function CartaoArrastavel({
   aoDuplicar?: (t: Tarefa) => void;
   aoRegistrarEntregaPDI?: (t: Tarefa) => void;
   aoExcluir?: (t: Tarefa) => void;
+  aoFiltrarTag?: (tag: string) => void;
   gravando: boolean;
   selecionadas?: Set<string>;
   aoToggleSelecionar?: (caminho: string) => void;
@@ -253,7 +259,7 @@ function CartaoArrastavel({
         )}
 
         <div className="flex-1 min-w-0">
-          <ConteudoDoCartao t={t} />
+          <ConteudoDoCartao t={t} aoFiltrarTag={aoFiltrarTag} />
         </div>
 
         <div className="flex items-center gap-0.5 shrink-0">
@@ -356,6 +362,7 @@ function Coluna({
   aoRegistrarEntregaPDI,
   aoExcluir,
   aoCriarRapido,
+  aoFiltrarTag,
   gravandoCaminho,
   colapsada,
   aoAlternarColapso,
@@ -372,6 +379,7 @@ function Coluna({
   aoRegistrarEntregaPDI?: (t: Tarefa) => void;
   aoExcluir?: (t: Tarefa) => void;
   aoCriarRapido?: (status: Status, titulo: string) => Promise<void> | void;
+  aoFiltrarTag?: (tag: string) => void;
   gravandoCaminho: string | null;
   colapsada: boolean;
   aoAlternarColapso: () => void;
@@ -469,6 +477,7 @@ function Coluna({
               aoDuplicar={aoDuplicar}
               aoRegistrarEntregaPDI={aoRegistrarEntregaPDI}
               aoExcluir={aoExcluir}
+              aoFiltrarTag={aoFiltrarTag}
               gravando={gravandoCaminho === t.caminho}
               selecionadas={selecionadas}
               aoToggleSelecionar={aoToggleSelecionar}
@@ -571,6 +580,7 @@ export function Quadro({
   aoRegistrarEntregaPDI,
   aoExcluir,
   aoCriarRapido,
+  aoFiltrarTag,
   gravandoCaminho,
   selecionadas,
   aoToggleSelecionar,
@@ -585,6 +595,7 @@ export function Quadro({
   aoRegistrarEntregaPDI?: (t: Tarefa) => void;
   aoExcluir?: (t: Tarefa) => void;
   aoCriarRapido?: (status: Status, titulo: string) => Promise<void> | void;
+  aoFiltrarTag?: (tag: string) => void;
   gravandoCaminho: string | null;
   selecionadas?: Set<string>;
   aoToggleSelecionar?: (caminho: string) => void;
@@ -742,6 +753,7 @@ export function Quadro({
             aoRegistrarEntregaPDI={aoRegistrarEntregaPDI}
             aoExcluir={aoExcluir}
             aoCriarRapido={aoCriarRapido}
+            aoFiltrarTag={aoFiltrarTag}
             gravandoCaminho={gravandoCaminho}
             colapsada={Boolean(colapsadas[s])}
             aoAlternarColapso={() => alternarColapso(s)}
@@ -754,7 +766,7 @@ export function Quadro({
       <DragOverlay>
         {arrastando && (
           <Cartao className="cursor-grabbing p-3 shadow-xl ring-2 ring-primary/20 max-w-xs">
-            <ConteudoDoCartao t={arrastando} />
+            <ConteudoDoCartao t={arrastando} aoFiltrarTag={aoFiltrarTag} />
           </Cartao>
         )}
       </DragOverlay>
