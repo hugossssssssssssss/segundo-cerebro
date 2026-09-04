@@ -20,6 +20,10 @@ import {
   Users,
   Tag,
   MoreVertical,
+  ChevronDown,
+  ChevronRight,
+  Check,
+  X,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -703,6 +707,8 @@ export default function Contatos() {
               aoEditar={(c) => abrirContato(c)}
               aoExcluir={(c) => setContatoParaExcluir(c)}
               aoFiltrarTag={aplicarFiltroTag}
+              aoNovoFilho={(paiId) => novoContato(paiId)}
+              aoNovoContato={() => novoContato()}
             />
           )}
 
@@ -979,7 +985,7 @@ export default function Contatos() {
   );
 }
 
-// ── NOVO ORGANOGRAMA VISUAL (RECONSTRUÍDO DO ZERO) ──────────────────────────
+// ── NOVO ORGANOGRAMA VISUAL (EQUIPES, CUSTOMIZAÇÃO & EXPANSÃO) ────────────────
 
 interface VisaoOrganogramaGeralProps {
   arvore: NoContato[];
@@ -987,6 +993,8 @@ interface VisaoOrganogramaGeralProps {
   aoEditar: (c: Contato) => void;
   aoExcluir: (c: Contato) => void;
   aoFiltrarTag: (t: string) => void;
+  aoNovoFilho: (paiId: string) => void;
+  aoNovoContato: () => void;
 }
 
 function contarMembrosNo(no: NoContato): number {
@@ -1002,54 +1010,247 @@ function VisaoOrganogramaGeral({
   aoEditar,
   aoExcluir,
   aoFiltrarTag,
+  aoNovoFilho,
+  aoNovoContato,
 }: VisaoOrganogramaGeralProps) {
   // Separa líderes (que têm equipe) de contatos individuais/diretos
   const equipes = useMemo(() => arvore.filter((n) => n.filhos.length > 0), [arvore]);
   const contatosAvulsos = useMemo(() => arvore.filter((n) => n.filhos.length === 0), [arvore]);
 
+  // Nomes personalizados das equipes
+  const [nomesEquipes, setNomesEquipes] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("klaus_nomes_equipes") || "{}");
+    } catch {
+      return {};
+    }
+  });
+
+  const [editandoEquipeId, setEditandoEquipeId] = useState<string | null>(null);
+  const [textoNomeEquipe, setTextoNomeEquipe] = useState("");
+
+  const salvarNomeEquipe = (liderId: string) => {
+    const nomeFinal = textoNomeEquipe.trim();
+    setNomesEquipes((prev) => {
+      const novo = { ...prev };
+      if (nomeFinal) {
+        novo[liderId] = nomeFinal;
+      } else {
+        delete novo[liderId];
+      }
+      try {
+        localStorage.setItem("klaus_nomes_equipes", JSON.stringify(novo));
+      } catch {}
+      return novo;
+    });
+    setEditandoEquipeId(null);
+  };
+
+  // Estado de equipes recolhidas
+  const [equipesRecolhidas, setEquipesRecolhidas] = useState<Record<string, boolean>>({});
+  const alternarRecolhido = (id: string) => {
+    setEquipesRecolhidas((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Estado de "Ver mais" por equipe (mostra 4 por padrão)
+  const [expandidosVerMais, setExpandidosVerMais] = useState<Record<string, boolean>>({});
+  const alternarVerMais = (id: string) => {
+    setExpandidosVerMais((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   return (
-    <div className="space-y-10 pt-2 pb-12">
+    <div className="space-y-8 pt-1 pb-12">
       {/* 1. SEÇÕES DE ORGANOGRAMA POR EQUIPE / LIDERANÇA */}
       {equipes.length > 0 && (
         <div className="space-y-8">
           {equipes.map((noRaiz) => {
+            const liderId = noRaiz.contato.id;
             const totalMembros = contarMembrosNo(noRaiz);
+            const recolhida = Boolean(equipesRecolhidas[liderId]);
+            const nomePersonalizado = nomesEquipes[liderId];
+            const nomeExibicao = nomePersonalizado || `Equipe de ${noRaiz.contato.titulo || "Liderança"}`;
+            const estaEditando = editandoEquipeId === liderId;
+            const verMaisAtivo = Boolean(expandidosVerMais[liderId]);
+
+            // Liderados diretos (máximo 4 se não expandido)
+            const todosFilhos = noRaiz.filhos;
+            const temMuitosFilhos = todosFilhos.length > 4;
+            const filhosExibidos = !temMuitosFilhos || verMaisAtivo ? todosFilhos : todosFilhos.slice(0, 4);
+            const filhosOcultosCount = todosFilhos.length - 4;
+
             return (
               <div
-                key={noRaiz.contato.id}
-                className="rounded-3xl border border-border/80 bg-card/60 backdrop-blur-xs p-5 sm:p-7 shadow-xs hover:border-primary/30 transition-all space-y-6"
+                key={liderId}
+                className="rounded-3xl border border-border/80 bg-card/60 backdrop-blur-xs p-5 sm:p-7 shadow-xs hover:border-primary/40 transition-all space-y-6"
               >
                 {/* Cabeçalho do Organograma da Equipe */}
                 <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-border/60">
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                      <Users size={16} />
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => alternarRecolhido(liderId)}
+                      className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer shrink-0"
+                      aria-label={recolhida ? "Expandir equipe" : "Recolher equipe"}
+                    >
+                      {recolhida ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
+                    </button>
+
+                    <div className="h-9 w-9 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                      <Users size={17} />
                     </div>
-                    <div>
-                      <h2 className="font-bold text-sm text-foreground">
-                        Equipe de {noRaiz.contato.titulo}
-                      </h2>
+
+                    <div className="min-w-0 flex-1">
+                      {estaEditando ? (
+                        <div className="flex items-center gap-1.5 max-w-md">
+                          <input
+                            type="text"
+                            value={textoNomeEquipe}
+                            onChange={(e) => setTextoNomeEquipe(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") salvarNomeEquipe(liderId);
+                              if (e.key === "Escape") setEditandoEquipeId(null);
+                            }}
+                            autoFocus
+                            placeholder="Nome da equipe..."
+                            className="w-full bg-background border border-primary/50 rounded-xl px-2.5 py-1 text-sm font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => salvarNomeEquipe(liderId)}
+                            className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity cursor-pointer"
+                            aria-label="Salvar nome"
+                          >
+                            <Check size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditandoEquipeId(null)}
+                            className="p-1.5 rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                            aria-label="Cancelar edição"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 group/nome">
+                          <h2
+                            onClick={() => {
+                              setTextoNomeEquipe(nomePersonalizado || `Equipe de ${noRaiz.contato.titulo || "Liderança"}`);
+                              setEditandoEquipeId(liderId);
+                            }}
+                            className="font-bold text-base text-foreground truncate cursor-pointer hover:text-primary transition-colors"
+                            title="Clique para renomear a equipe"
+                          >
+                            {nomeExibicao}
+                          </h2>
+                          <Tooltip conteudo="Renomear equipe">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTextoNomeEquipe(nomePersonalizado || `Equipe de ${noRaiz.contato.titulo || "Liderança"}`);
+                                setEditandoEquipeId(liderId);
+                              }}
+                              className="opacity-0 group-hover/nome:opacity-100 p-1 text-muted-foreground hover:text-primary transition-opacity cursor-pointer rounded"
+                              aria-label="Renomear equipe"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                          </Tooltip>
+                        </div>
+                      )}
+
                       <p className="text-xs text-muted-foreground">
                         {totalMembros} {totalMembros === 1 ? "membro" : "membros no total"} na estrutura
                       </p>
                     </div>
                   </div>
 
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
-                    <Briefcase size={12} />
-                    <span>{noRaiz.contato.cargo || "Liderança"}</span>
-                    {noRaiz.contato.empresa && <span>• {noRaiz.contato.empresa}</span>}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
+                      <Briefcase size={12} />
+                      <span>{noRaiz.contato.cargo || "Liderança"}</span>
+                      {noRaiz.contato.empresa && <span>• {noRaiz.contato.empresa}</span>}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => alternarRecolhido(liderId)}
+                      className="text-xs font-semibold text-muted-foreground hover:text-foreground px-2.5 py-1 rounded-xl bg-secondary/60 hover:bg-secondary transition-colors cursor-pointer"
+                    >
+                      {recolhida ? "Expandir" : "Recolher"}
+                    </button>
+                  </div>
                 </div>
 
-                {/* Nó Raiz e sua árvore de liderados */}
-                <NoOrganogramaVisual
-                  no={noRaiz}
-                  aoEditar={aoEditar}
-                  aoExcluir={aoExcluir}
-                  aoFiltrarTag={aoFiltrarTag}
-                  ehTopo
-                />
+                {/* Corpo do Organograma da Equipe */}
+                {!recolhida && (
+                  <div className="space-y-6">
+                    {/* Card Central do Líder */}
+                    <div className="flex flex-col items-center w-full">
+                      <div className="w-full max-w-md">
+                        <CardPessoaOrganograma
+                          contato={noRaiz.contato}
+                          aoEditar={aoEditar}
+                          aoExcluir={aoExcluir}
+                          aoFiltrarTag={aoFiltrarTag}
+                          variante="lider"
+                        />
+                      </div>
+
+                      {/* Conector Vertical para os Liderados */}
+                      <div className="w-0.5 h-6 bg-primary/40 rounded-full mt-2" />
+                    </div>
+
+                    {/* Linha Horizontal de Liderados Diretos (Grid Padronizado de 4 colunas) */}
+                    <div className="space-y-4 pt-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full items-stretch">
+                        {filhosExibidos.map((filhoNo) => (
+                          <div key={filhoNo.contato.id} className="flex flex-col w-full h-full">
+                            <CardPessoaOrganograma
+                              contato={filhoNo.contato}
+                              aoEditar={aoEditar}
+                              aoExcluir={aoExcluir}
+                              aoFiltrarTag={aoFiltrarTag}
+                              variante="membro"
+                            />
+                          </div>
+                        ))}
+
+                        {/* Card na mesma altura para Adicionar Liderado */}
+                        <div className="flex flex-col w-full h-full">
+                          <CardAdicionarLiderado
+                            aoClicar={() => aoNovoFilho(liderId)}
+                            texto="Adicionar liderado"
+                            subtexto={`Novo membro em ${nomeExibicao}`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Botão de Ver Mais / Ver Menos */}
+                      {temMuitosFilhos && (
+                        <div className="flex justify-center pt-2">
+                          <button
+                            type="button"
+                            onClick={() => alternarVerMais(liderId)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl border border-border bg-card/80 hover:bg-accent text-xs font-semibold text-foreground shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                          >
+                            {verMaisAtivo ? (
+                              <>
+                                <ChevronDown size={14} className="rotate-180 transition-transform" />
+                                <span>Ver menos</span>
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown size={14} />
+                                <span>Ver mais (+{filhosOcultosCount} {filhosOcultosCount === 1 ? "liderado" : "liderados"})</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1060,22 +1261,22 @@ function VisaoOrganogramaGeral({
       {contatosAvulsos.length > 0 && (
         <div className="rounded-3xl border border-border/70 bg-card/40 p-5 sm:p-7 space-y-5">
           <div className="flex items-center justify-between gap-2 pb-3 border-b border-border/60">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-secondary text-muted-foreground flex items-center justify-center font-bold">
-                <User size={15} />
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-xl bg-secondary text-muted-foreground flex items-center justify-center font-bold">
+                <User size={16} />
               </div>
               <div>
                 <h3 className="font-bold text-sm text-foreground">
                   Contatos Diretos & Especialistas
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  {contatosAvulsos.length} {contatosAvulsos.length === 1 ? "contato sem liderados associados" : "contatos sem liderados associados"}
+                  {contatosAvulsos.length} {contatosAvulsos.length === 1 ? "contato individual" : "contatos individuais"}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-stretch">
             {contatosAvulsos.map((n) => (
               <CardPessoaOrganograma
                 key={n.contato.id}
@@ -1083,9 +1284,15 @@ function VisaoOrganogramaGeral({
                 aoEditar={aoEditar}
                 aoExcluir={aoExcluir}
                 aoFiltrarTag={aoFiltrarTag}
-                papel="Contato Direto"
               />
             ))}
+
+            {/* Card para Adicionar Contato Direto */}
+            <CardAdicionarLiderado
+              aoClicar={aoNovoContato}
+              texto="Adicionar contato"
+              subtexto="Novo contato direto"
+            />
           </div>
         </div>
       )}
@@ -1093,100 +1300,49 @@ function VisaoOrganogramaGeral({
   );
 }
 
-// COMPONENTE: NÓ DE ORGANOGRAMA VISUAL COM LINHAS CONECTORAS
-function NoOrganogramaVisual({
-  no,
-  aoEditar,
-  aoExcluir,
-  aoFiltrarTag,
-  ehTopo = false,
+// COMPONENTE: CARD ESTILIZADO DE ADICIONAR LIDERADO / CONTATO
+function CardAdicionarLiderado({
+  aoClicar,
+  texto,
+  subtexto,
 }: {
-  no: NoContato;
-  aoEditar: (c: Contato) => void;
-  aoExcluir: (c: Contato) => void;
-  aoFiltrarTag: (t: string) => void;
-  ehTopo?: boolean;
+  aoClicar: () => void;
+  texto: string;
+  subtexto?: string;
 }) {
-  const temFilhos = no.filhos.length > 0;
-
   return (
-    <div className="flex flex-col items-center w-full">
-      {/* Cartão do Líder / Pessoa Atual */}
-      <div className={cn("w-full", ehTopo ? "max-w-md" : "max-w-sm")}>
-        <CardPessoaOrganograma
-          contato={no.contato}
-          aoEditar={aoEditar}
-          aoExcluir={aoExcluir}
-          aoFiltrarTag={aoFiltrarTag}
-          papel={
-            ehTopo
-              ? `👑 Líder (${no.filhos.length} ${no.filhos.length === 1 ? "liderado direto" : "liderados diretos"})`
-              : temFilhos
-              ? `👥 Gestor (${no.filhos.length} ${no.filhos.length === 1 ? "liderado" : "liderados"})`
-              : `👤 Liderado direto`
-          }
-          variante={ehTopo ? "lider" : temFilhos ? "gestor" : "membro"}
-        />
+    <button
+      type="button"
+      onClick={aoClicar}
+      className="w-full h-full min-h-[160px] flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border-2 border-dashed border-border/90 hover:border-primary/60 bg-muted/15 hover:bg-primary/5 text-muted-foreground hover:text-primary transition-all cursor-pointer group shadow-2xs"
+    >
+      <div className="h-11 w-11 rounded-2xl bg-background border border-border/80 group-hover:border-primary/40 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors shadow-2xs group-hover:scale-105">
+        <UserPlus size={18} />
       </div>
-
-      {/* Ramificação para Liderados Diretos */}
-      {temFilhos && (
-        <div className="w-full flex flex-col items-center mt-3">
-          {/* Conector Vertical do Líder */}
-          <div className="w-0.5 h-6 bg-primary/40 rounded-full" />
-
-          {/* Container de Filhos em Grid Conectado */}
-          <div className="w-full relative pt-4">
-            {/* Linha Horizontal Superior de Distribuição (se houver mais de 1 filho) */}
-            {no.filhos.length > 1 && (
-              <div className="hidden sm:block absolute top-0 left-12 right-12 h-0.5 bg-primary/30 rounded-full" />
-            )}
-
-            <div
-              className={cn(
-                "grid gap-5 w-full",
-                no.filhos.length === 1
-                  ? "grid-cols-1 max-w-sm mx-auto justify-items-center"
-                  : no.filhos.length === 2
-                  ? "grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto"
-                  : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"
-              )}
-            >
-              {no.filhos.map((filhoNo) => (
-                <div key={filhoNo.contato.id} className="relative flex flex-col items-center w-full">
-                  {/* Conector Vertical Superior para cada Filho */}
-                  <div className="hidden sm:block w-0.5 h-4 bg-primary/30 -mt-4 mb-2 rounded-full" />
-
-                  <NoOrganogramaVisual
-                    no={filhoNo}
-                    aoEditar={aoEditar}
-                    aoExcluir={aoExcluir}
-                    aoFiltrarTag={aoFiltrarTag}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+      <span className="font-bold text-xs text-foreground group-hover:text-primary transition-colors">
+        {texto}
+      </span>
+      {subtexto && (
+        <span className="text-[11px] text-muted-foreground truncate max-w-[200px]">
+          {subtexto}
+        </span>
       )}
-    </div>
+    </button>
   );
 }
 
-// COMPONENTE: CARTÃO DE PESSOA NO ORGANOGRAMA (DESIGN RICO PARA DESIGNERS)
+// COMPONENTE: CARTÃO DE PESSOA NO ORGANOGRAMA (DESIGN LIMPO E FOCO VISUAL)
 function CardPessoaOrganograma({
   contato: c,
   aoEditar,
   aoExcluir,
   aoFiltrarTag,
-  papel,
   variante = "membro",
 }: {
   contato: Contato;
   aoEditar: (c: Contato) => void;
   aoExcluir: (c: Contato) => void;
   aoFiltrarTag: (t: string) => void;
-  papel?: string;
   variante?: "lider" | "gestor" | "membro";
 }) {
   // Filtrar propriedades internas
@@ -1198,11 +1354,9 @@ function CardPessoaOrganograma({
     <div
       onClick={() => aoEditar(c)}
       className={cn(
-        "group relative w-full flex flex-col justify-between p-4 sm:p-5 rounded-2xl border bg-card transition-all cursor-pointer shadow-2xs hover:shadow-lg hover:-translate-y-0.5",
+        "group relative w-full h-full flex flex-col justify-between p-4 sm:p-5 rounded-2xl border bg-card transition-all cursor-pointer shadow-2xs hover:shadow-lg hover:-translate-y-0.5",
         variante === "lider"
           ? "border-primary/50 bg-gradient-to-b from-primary/5 via-card to-card ring-2 ring-primary/20"
-          : variante === "gestor"
-          ? "border-primary/30 bg-card hover:border-primary/50"
           : "border-border/80 bg-card hover:border-primary/40"
       )}
     >
@@ -1212,7 +1366,7 @@ function CardPessoaOrganograma({
           <div className="flex items-center gap-3 min-w-0">
             <div
               className={cn(
-                "h-12 w-12 rounded-2xl flex items-center justify-center font-bold text-base shrink-0 shadow-2xs transition-transform group-hover:scale-105",
+                "h-11 w-11 rounded-2xl flex items-center justify-center font-bold text-base shrink-0 shadow-2xs transition-transform group-hover:scale-105",
                 variante === "lider"
                   ? "bg-primary text-primary-foreground font-black text-lg"
                   : "bg-primary/10 text-primary border border-primary/20"
@@ -1225,18 +1379,6 @@ function CardPessoaOrganograma({
               <h4 className="font-bold text-sm sm:text-base text-foreground truncate tracking-tight">
                 {c.titulo || "Sem nome"}
               </h4>
-              {papel && (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 text-[11px] font-semibold mt-0.5 px-2 py-0.5 rounded-md",
-                    variante === "lider"
-                      ? "bg-primary/15 text-primary"
-                      : "bg-secondary text-muted-foreground"
-                  )}
-                >
-                  {papel}
-                </span>
-              )}
             </div>
           </div>
 
