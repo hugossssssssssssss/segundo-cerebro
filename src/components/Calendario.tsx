@@ -268,9 +268,9 @@ export function Calendario({
       </div>
 
       {/* ── Grade Principal e Painel Lateral ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 w-full min-w-0 max-w-full">
         {/* Grade do Calendário */}
-        <div className="bg-card rounded-2xl border border-border/80 shadow-xs p-4 sm:p-5 space-y-3">
+        <div className="bg-card rounded-2xl border border-border/80 shadow-xs p-4 sm:p-5 space-y-3 min-w-0 max-w-full overflow-hidden">
           {/* Cabeçalho dos dias da semana */}
           <div className="grid grid-cols-7 gap-1 text-center border-b border-border/50 pb-2">
             {DIAS_SEMANA.map((dia) => (
@@ -298,7 +298,7 @@ export function Calendario({
                     if (!ehMesAtual) setMesAtual(d);
                   }}
                   className={cn(
-                    "min-h-[72px] sm:min-h-[95px] p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group relative",
+                    "min-h-[85px] sm:min-h-[110px] p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden",
                     !ehMesAtual && "opacity-35 bg-secondary/10 border-transparent",
                     ehMesAtual && !ehSelecionado && "bg-card border-border/60 hover:border-primary/50 hover:bg-accent/40",
                     ehHoje && !ehSelecionado && "border-primary/70 bg-primary/5 font-bold",
@@ -326,9 +326,9 @@ export function Calendario({
 
                   {/* Indicadores Visuais de Tarefas no Dia com suporte a Intervalo Contínuo e Cores de Tags */}
                   <div className="space-y-1 mt-1">
-                    {/* Exibe barra unificada contínua em telas médias/grandes */}
+                    {/* Exibe barra unificada contínua em telas médias/grandes com quebra de linha natural */}
                     <div className="hidden sm:block space-y-1">
-                      {tarefasDia.slice(0, 2).map((t) => {
+                      {tarefasDia.slice(0, 3).map((t) => {
                         const intervalo = extrairIntervaloTarefa(t);
                         const estiloTag = obterEstiloTagCalendario(t);
                         const ehFeito = t.status === "feito";
@@ -370,7 +370,7 @@ export function Calendario({
                                 setSelecionado(d);
                               }}
                               className={cn(
-                                "h-5 flex items-center text-[10px] font-medium border leading-tight transition-all cursor-pointer",
+                                "min-h-[20px] h-auto py-0.5 flex items-start text-[10px] font-medium border leading-snug transition-all cursor-pointer break-words",
                                 formaIntervalo,
                                 ehFeito
                                   ? "bg-secondary/40 text-muted-foreground border-transparent line-through opacity-65"
@@ -381,7 +381,7 @@ export function Calendario({
                               aria-label={textoTooltip}
                             >
                               {deveExibirTitulo ? (
-                                <span className="truncate">{t.titulo}</span>
+                                <span className="break-words line-clamp-3 leading-snug w-full">{t.titulo}</span>
                               ) : (
                                 <span className="invisible select-none">&nbsp;</span>
                               )}
@@ -389,9 +389,9 @@ export function Calendario({
                           </Tooltip>
                         );
                       })}
-                      {tarefasDia.length > 2 && (
+                      {tarefasDia.length > 3 && (
                         <p className="text-[9px] font-bold text-muted-foreground px-1">
-                          +{tarefasDia.length - 2} mais
+                          +{tarefasDia.length - 3} mais
                         </p>
                       )}
                     </div>
@@ -427,24 +427,24 @@ export function Calendario({
         </div>
 
         {/* ── Painel de Detalhes do Dia Selecionado ─────────────────────────────── */}
-        <div className="space-y-4">
-          <div className="bg-card rounded-2xl border border-border/80 p-4 sm:p-5 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div>
+        <div className="space-y-4 min-w-0 max-w-full">
+          <div className="bg-card rounded-2xl border border-border/80 p-4 sm:p-5 shadow-xs space-y-4 min-w-0 max-w-full overflow-hidden">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3 gap-2">
+              <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Data selecionada
                 </p>
-                <h3 className="text-base font-bold text-foreground capitalize">
+                <h3 className="text-base font-bold text-foreground capitalize truncate">
                   {format(selecionado, "EEEE, d 'de' MMMM", { locale: ptBR })}
                 </h3>
               </div>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/20">
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/20 shrink-0">
                 {tarefasDoDia.length} {tarefasDoDia.length === 1 ? "tarefa" : "tarefas"}
               </span>
             </div>
 
             {tarefasDoDia.length > 0 ? (
-              <div className="grid gap-2.5">
+              <div className="grid gap-2.5 min-w-0">
                 {tarefasDoDia.map((t) => {
                   const ehFeito = t.status === "feito";
                   const ehFazendo = t.status === "fazendo";
@@ -457,11 +457,11 @@ export function Calendario({
                       key={t.caminho}
                       onClick={() => aoAbrir(t)}
                       className={cn(
-                        "p-3.5 rounded-xl border bg-card hover:bg-accent/40 hover:border-border transition-colors cursor-pointer space-y-2.5 group",
+                        "p-3.5 rounded-xl border bg-card hover:bg-accent/40 hover:border-border transition-colors cursor-pointer space-y-2.5 group min-w-0 max-w-full overflow-hidden",
                         ehFeito ? "border-border/40 opacity-70" : "border-border/80",
                       )}
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start justify-between gap-2 min-w-0">
                         <div className="flex items-start gap-2 flex-1 min-w-0">
                           <Tooltip conteudo={ehFeito ? "Reabrir tarefa" : "Concluir tarefa"}>
                             <button
@@ -482,7 +482,7 @@ export function Calendario({
                           </Tooltip>
                           <p
                             className={cn(
-                              "text-xs font-bold group-hover:text-primary transition-colors leading-snug truncate flex-1",
+                              "text-xs font-bold group-hover:text-primary transition-colors leading-snug break-words flex-1 min-w-0",
                               ehFeito && "line-through text-muted-foreground font-normal",
                             )}
                           >
@@ -502,13 +502,13 @@ export function Calendario({
 
                       {/* Intervalo de Datas se houver */}
                       {intervalo?.ehIntervalo && (
-                        <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md">
-                          <CalendarIcon size={12} className="text-primary" />
-                          <span>Período: <strong className="text-foreground">{intervalo.textoFormatado}</strong></span>
+                        <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md min-w-0 max-w-full overflow-hidden">
+                          <CalendarIcon size={12} className="text-primary shrink-0" />
+                          <span className="truncate">Período: <strong className="text-foreground">{intervalo.textoFormatado}</strong></span>
                         </div>
                       )}
 
-                      <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                      <div className="flex items-center gap-1.5 flex-wrap text-[10px] min-w-0">
                         <SeloStatus
                           rotulo={ehFeito ? "Concluída" : ehFazendo ? "Fazendo" : "A fazer"}
                           tom={ehFeito ? "sucesso" : ehFazendo ? "primario" : "neutro"}
@@ -520,7 +520,7 @@ export function Calendario({
                           <span
                             key={tag}
                             className={cn(
-                              "px-2 py-0.5 rounded-md font-mono border text-[10px] font-medium",
+                              "px-2 py-0.5 rounded-md font-mono border text-[10px] font-medium max-w-full truncate",
                               cn(estiloTag.bg, estiloTag.text, estiloTag.border),
                             )}
                           >
@@ -543,16 +543,16 @@ export function Calendario({
 
           {/* Tarefas Sem Data Marcada */}
           {semData.length > 0 && (
-            <div className="bg-card rounded-2xl border border-border/80 p-4 shadow-xs space-y-3">
+            <div className="bg-card rounded-2xl border border-border/80 p-4 shadow-xs space-y-3 min-w-0 max-w-full overflow-hidden">
               <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
                 <Clock size={14} /> Sem prazo definido ({semData.length})
               </h4>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5 min-w-0">
                 {semData.slice(0, 8).map((t) => (
                   <button
                     key={t.caminho}
                     onClick={() => aoAbrir(t)}
-                    className="px-2.5 py-1 rounded-lg border border-border/70 bg-secondary/40 hover:bg-accent text-xs font-medium text-foreground transition-all cursor-pointer text-left truncate max-w-[200px]"
+                    className="px-2.5 py-1 rounded-lg border border-border/70 bg-secondary/40 hover:bg-accent text-xs font-medium text-foreground transition-all cursor-pointer text-left truncate max-w-full"
                   >
                     {t.titulo}
                   </button>

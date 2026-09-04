@@ -1,4 +1,6 @@
 import { FileText, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { obterEstiloTagChip } from "@/components/TagChip";
 
 export interface NotaItemHome {
   caminho: string;
@@ -59,14 +61,23 @@ export function WidgetNotasRecentes({
                 <div className="flex items-center justify-between pt-2 border-t border-border/30">
                   <div className="flex items-center gap-1 flex-wrap">
                     {n.tags && n.tags.length > 0 ? (
-                      n.tags.slice(0, 2).map((t) => (
-                        <span
-                          key={t}
-                          className="text-[9px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-md"
-                        >
-                          #{t}
-                        </span>
-                      ))
+                      n.tags.slice(0, 2).map((t) => {
+                        const estilo = obterEstiloTagChip(t);
+                        const nomeLimpo = t.startsWith("#") ? t.slice(1) : t;
+                        return (
+                          <span
+                            key={t}
+                            className={cn(
+                              "text-[9px] font-semibold px-1.5 py-0.5 rounded-md border",
+                              estilo
+                                ? cn(estilo.bg, estilo.text, estilo.border)
+                                : "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20"
+                            )}
+                          >
+                            #{nomeLimpo}
+                          </span>
+                        );
+                      })
                     ) : (
                       <span className="text-[10px] text-muted-foreground/60">Nota</span>
                     )}

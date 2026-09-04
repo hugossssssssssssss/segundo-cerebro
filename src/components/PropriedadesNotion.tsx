@@ -33,6 +33,8 @@ import {
   Building,
   Briefcase,
   UserPlus,
+  Flag,
+  Timer,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -207,6 +209,13 @@ export const STATUS_NOTION: Record<string, { label: string; cor: string }> = {
   "a-fazer": { label: "A fazer", cor: "cinza" },
   "fazendo": { label: "Fazendo", cor: "azul" },
   "feito": { label: "Feito", cor: "verde" },
+};
+
+export const PRIORIDADES_NOTION: Record<string, { label: string; cor: string }> = {
+  baixa: { label: "Baixa", cor: "azul" },
+  media: { label: "Média", cor: "amarelo" },
+  alta: { label: "Alta", cor: "laranja" },
+  urgente: { label: "Urgente", cor: "vermelho" },
 };
 
 const CONFIG_KEY = "segundo-cerebro-propriedades-config";
@@ -627,11 +636,13 @@ export function PropriedadesNotion({
 
   const ehLembrete = rotuloTipo?.toLowerCase().includes("lembrete") || dados.tipo === "lembrete";
   const chavesLembrete = ["horario", "hora", "aviso_inbox", "notificacao_inbox", "aviso_telegram", "notificacao_telegram", "aviso_email", "notificacao_email"];
-  const chavesExclusivasTarefa = ["caminho", "pasta", "status", "pomodoro", "pomodoros", "estimativa", "c", "indicador", "metas"];
+  const chavesExclusivasTarefa = ["caminho", "pasta", "status", "prioridade", "pomodoro", "pomodoros", "pomodoros_estimados", "pomodoro_estimado", "pomodoros_realizados", "pomodoro_realizado", "pomodoro_fraturado", "PomodoroFraturado", "fraturados", "estimativa", "c", "indicador", "metas"];
 
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
     .filter(k => {
-      if (["titulo", "tipo", "atualizado", "atualizado_em", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "c", "pomodoro", "pomodoros", "estimativa", "porque", "anotacoes"].includes(k)) return false;
+      if ([
+        "titulo", "tipo", "atualizado", "atualizado_em", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "c", "pomodoro", "pomodoros", "pomodoros_estimados", "pomodoro_estimado", "pomodoros_realizados", "pomodoro_realizado", "pomodoro_fraturado", "PomodoroFraturado", "fraturados", "estimativa", "porque", "anotacoes"
+      ].includes(k)) return false;
       if (ehLembrete && chavesExclusivasTarefa.includes(k)) return false;
       if (!ehLembrete && chavesLembrete.includes(k)) return false;
       return true;
@@ -650,6 +661,7 @@ export function PropriedadesNotion({
 
   function nomeExibido(chave: string): string {
     if (chave === "Pomodoro" || chave === "pomodoro" || chave === "estimativa" || chave === "c") return "Pomodoro";
+    if (chave === "prioridade") return "Prioridade";
     if (chave === "indicador") return "Indicador";
     if (chave === "metas") return "Metas Vinculadas";
     if (chave === "data") return "Data";
@@ -873,11 +885,67 @@ export function PropriedadesNotion({
     );
   }
 
+  function renderizarBadgePrioridade(rawVal?: string) {
+    const val = (rawVal || "media").toLowerCase().trim();
+    const info = PRIORIDADES_NOTION[val] || { label: rawVal ? rawVal.charAt(0).toUpperCase() + rawVal.slice(1) : "Média", cor: "amarelo" };
+    const estiloCor = CORES_NOTION[info.cor] || CORES_NOTION.cinza;
+
+    return (
+      <Popover open={menuAberto === "prioridade-pop"} onOpenChange={(open) => setMenuAberto(open ? "prioridade-pop" : null)}>
+        <PopoverTrigger asChild>
+          <Badge 
+            variant="secondary" 
+            className={cn(
+              "font-semibold text-xs px-2.5 py-1 border cursor-pointer transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 shadow-xs",
+              estiloCor.bg,
+              estiloCor.text,
+              estiloCor.border
+            )}
+          >
+            <Flag size={11} className="shrink-0 opacity-80" />
+            <span>{info.label}</span>
+          </Badge>
+        </PopoverTrigger>
+        <PopoverContent className="w-[180px] p-1.5" align="start" onInteractOutside={() => setMenuAberto(null)}>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">Definir Prioridade</p>
+          <div className="flex flex-col gap-1 mt-1">
+            {Object.entries(PRIORIDADES_NOTION).map(([prioKey, prioInfo]) => {
+              const est = CORES_NOTION[prioInfo.cor] || CORES_NOTION.cinza;
+              return (
+                <button
+                  key={prioKey}
+                  onClick={() => {
+                    atualizar("prioridade", prioKey);
+                    setMenuAberto(null);
+                  }}
+                  className={cn(
+                    "w-full px-2.5 py-1.5 rounded-md text-xs font-semibold text-left transition-colors border flex items-center justify-between",
+                    est.bg,
+                    est.text,
+                    est.border,
+                    val === prioKey && "ring-2 ring-primary font-bold"
+                  )}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Flag size={12} className="shrink-0" />
+                    <span>{prioInfo.label}</span>
+                  </div>
+                  {val === prioKey && <Check size={12} className="shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
   function renderizarValor(chave: string) {
     const fixo = camposFixos[chave];
     const valor = dados[chave];
     const tipo = 
       chave === "status" ? "status" :
+      chave === "prioridade" ? "select" :
       chave === "relacionamentos" || chave === "relacao" ? "relation" :
       chave === "criado_por" ? "criado_por" :
       chave === "criado_em" || chave === "criado" ? "criado_em" :
@@ -889,6 +957,10 @@ export function PropriedadesNotion({
 
     if (tipo === "status" || chave === "status") {
       return renderizarBadgeStatus(valor || "a-fazer");
+    }
+
+    if (chave === "prioridade") {
+      return renderizarBadgePrioridade(valor);
     }
 
     if (tipo === "criado_por" || chave === "criado_por") {
@@ -1826,6 +1898,7 @@ export function PropriedadesNotion({
   function renderizarMenuPropriedade(chave: string, fixo?: any) {
     const tipoAtual = 
       chave === "status" ? "status" :
+      chave === "prioridade" ? "select" :
       chave === "caminho" ? "texto" :
       chave === "criado_por" ? "criado_por" :
       chave === "criado_em" || chave === "criado" ? "criado_em" :
@@ -1835,6 +1908,7 @@ export function PropriedadesNotion({
       fixo?.tipo || esquema[chave] || "texto";
 
     const IconeAtual = 
+      chave === "prioridade" ? Flag :
       chave === "caminho" ? Folder :
       chave === "aviso_inbox" ? InboxIcon :
       chave === "aviso_telegram" ? SendIcon :
@@ -2104,7 +2178,58 @@ export function PropriedadesNotion({
               </div>
             )}
 
-            {tipoAtual === "numero" && (
+            {(chave === "Pomodoro" || chave === "pomodoro" || chave === "estimativa") && (
+              <div className="p-2.5 bg-secondary/30 rounded-lg border border-border/40 space-y-2.5 text-xs">
+                <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                  <Timer size={13} className="text-indigo-500 shrink-0" />
+                  <span>Configurações de Pomodoro</span>
+                </div>
+                
+                <div className="space-y-2 pt-1 border-t border-border/40">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-muted-foreground font-medium">Pomodoros Estimados:</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        max="99"
+                        value={dados.pomodoros_estimados ?? dados.Pomodoro ?? dados.pomodoro ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? undefined : Number(e.target.value);
+                          const novos = { ...dados, pomodoros_estimados: val, Pomodoro: val, pomodoro: val };
+                          onChange(novos);
+                        }}
+                        placeholder="0"
+                        className="w-16 bg-card border border-border text-xs px-2 py-1 rounded text-center outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <span className="text-[10px] text-muted-foreground">pomos</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-muted-foreground font-medium">Pomodoros Realizados:</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        max="99"
+                        value={dados.pomodoros_realizados ?? dados.fraturados ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? undefined : Number(e.target.value);
+                          const novos = { ...dados, pomodoros_realizados: val, fraturados: val };
+                          onChange(novos);
+                        }}
+                        placeholder="0"
+                        className="w-16 bg-card border border-border text-xs px-2 py-1 rounded text-center outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <span className="text-[10px] text-muted-foreground">pomos</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {tipoAtual === "numero" && chave !== "Pomodoro" && chave !== "pomodoro" && chave !== "estimativa" && (
               <div className="p-2 bg-secondary/30 rounded-lg border border-border/40 space-y-1.5 text-xs">
                 <span className="text-[11px] text-muted-foreground block font-medium">Formato do Número:</span>
                 <div className="grid grid-cols-2 gap-1">

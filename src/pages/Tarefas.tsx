@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   Tag,
   Folder,
+  Flag,
 } from "lucide-react";
 import { BarraAcoesLote, BotaoAcaoLote } from "@/components/BarraAcoesLote";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
@@ -197,9 +198,12 @@ export default function Tarefas() {
       const tarefaOriginal = { ...editando };
       const dados = {
         status: tarefaOriginal.status,
+        prioridade: tarefaOriginal.prioridade || "media",
         prazo: tarefaOriginal.prazo,
         tags: tarefaOriginal.tags,
-        Pomodoro: tarefaOriginal.Pomodoro,
+        Pomodoro: tarefaOriginal.Pomodoro ?? tarefaOriginal.pomodorosEstimados,
+        pomodoros_estimados: tarefaOriginal.pomodorosEstimados ?? tarefaOriginal.Pomodoro,
+        pomodoros_realizados: tarefaOriginal.pomodorosRealizados,
         ...tarefaOriginal.bruto
       };
       abrirFlutuante({
@@ -210,6 +214,7 @@ export default function Tarefas() {
         dadosProps: dados,
         camposFixosProps: {
           status: { icone: <ListTodo className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "status" },
+          prioridade: { icone: <Flag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "select", opcoes: ["baixa", "media", "alta", "urgente"] },
           prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
           tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
           Pomodoro: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
@@ -229,11 +234,18 @@ export default function Tarefas() {
             bruto: itemFlutuanteAtual.dadosProps || {},
             titulo,
             status: (itemFlutuanteAtual.dadosProps.status as Status) || "a-fazer",
+            prioridade: itemFlutuanteAtual.dadosProps.prioridade as Tarefa["prioridade"],
             prazo: itemFlutuanteAtual.dadosProps.prazo,
             tags: itemFlutuanteAtual.dadosProps.tags || [],
             Pomodoro: typeof itemFlutuanteAtual.dadosProps.Pomodoro === "number"
               ? itemFlutuanteAtual.dadosProps.Pomodoro
               : (itemFlutuanteAtual.dadosProps.Pomodoro ? Number(itemFlutuanteAtual.dadosProps.Pomodoro) : undefined),
+            pomodorosEstimados: typeof itemFlutuanteAtual.dadosProps.pomodoros_estimados === "number"
+              ? itemFlutuanteAtual.dadosProps.pomodoros_estimados
+              : (typeof itemFlutuanteAtual.dadosProps.Pomodoro === "number" ? itemFlutuanteAtual.dadosProps.Pomodoro : undefined),
+            pomodorosRealizados: typeof itemFlutuanteAtual.dadosProps.pomodoros_realizados === "number"
+              ? itemFlutuanteAtual.dadosProps.pomodoros_realizados
+              : (itemFlutuanteAtual.dadosProps.pomodoros_realizados ? Number(itemFlutuanteAtual.dadosProps.pomodoros_realizados) : undefined),
             corpo: itemFlutuanteAtual.corpo,
           };
           await gravarTarefa(tarefaAtualizada);
@@ -773,24 +785,35 @@ export default function Tarefas() {
           dadosProps={{
             ...editando.bruto,
             status: editando.status,
+            prioridade: editando.prioridade || "media",
             prazo: editando.prazo,
             tags: editando.tags,
-            Pomodoro: editando.Pomodoro,
+            Pomodoro: editando.Pomodoro ?? editando.pomodorosEstimados,
+            pomodoros_estimados: editando.pomodorosEstimados ?? editando.Pomodoro,
+            pomodoros_realizados: editando.pomodorosRealizados,
           }}
           onChangeProps={(nProps) => {
             setEditando({
               ...editando,
               bruto: nProps,
               status: (nProps.status as Status) || editando.status,
+              prioridade: nProps.prioridade as Tarefa["prioridade"],
               prazo: nProps.prazo as string | undefined,
               tags: Array.isArray(nProps.tags) ? nProps.tags as string[] : editando.tags,
               Pomodoro: typeof nProps.Pomodoro === "number"
                 ? nProps.Pomodoro
                 : (nProps.Pomodoro ? Number(nProps.Pomodoro) : undefined),
+              pomodorosEstimados: typeof nProps.pomodoros_estimados === "number"
+                ? nProps.pomodoros_estimados
+                : (typeof nProps.Pomodoro === "number" ? nProps.Pomodoro : undefined),
+              pomodorosRealizados: typeof nProps.pomodoros_realizados === "number"
+                ? nProps.pomodoros_realizados
+                : (nProps.pomodoros_realizados ? Number(nProps.pomodoros_realizados) : undefined),
             });
           }}
           camposFixosProps={{
             status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
+            prioridade: { icone: <Flag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "select", opcoes: ["baixa", "media", "alta", "urgente"] },
             prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
             tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" },
             Pomodoro: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
