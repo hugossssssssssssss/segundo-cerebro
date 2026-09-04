@@ -56,7 +56,7 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
     id: "criacao-ferramentas",
     titulo: "Criação & Ferramentas",
     itens: [
-      { id: "grafo", para: "/grafo", rotulo: "Grafo de Links", iconeNome: "Network", destaque: true },
+      { id: "grafo", para: "/grafo", rotulo: "Grafo de Links", iconeNome: "Network" },
       { id: "lousas", para: "/lousas", rotulo: "Lousas Visuais", iconeNome: "Layout" },
       { id: "referencias", para: "/referencias", rotulo: "Referências Visuais", iconeNome: "Image" },
       { id: "sons", para: "/sons", rotulo: "Sons de Foco", iconeNome: "Headphones" },
@@ -73,7 +73,7 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
     itens: [
       { id: "pdi", para: "/pdi", rotulo: "Carreira (PDI)", iconeNome: "Target" },
       { id: "transcritor", para: "/transcritor", rotulo: "Transcrição de Áudio", iconeNome: "Mic" },
-      { id: "chat", para: "/chat", rotulo: "Conversar", iconeNome: "MessageCircle", destaque: true },
+      { id: "chat", para: "/chat", rotulo: "Conversar", iconeNome: "MessageCircle" },
     ],
   },
 ];

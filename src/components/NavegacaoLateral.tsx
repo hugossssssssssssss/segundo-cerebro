@@ -3,7 +3,6 @@ import {
   ChevronLeft,
   Sun,
   Moon,
-  Sparkles,
   Settings,
   Palette,
 } from "lucide-react";
@@ -178,7 +177,12 @@ export function NavegacaoLateral({
         </div>
 
         {/* Corpo da Navegação */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <div
+          className={cn(
+            "flex-1 overflow-y-auto overflow-x-hidden p-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+            colapsada ? "space-y-1.5" : "space-y-4"
+          )}
+        >
           {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo) => {
             const itensVisiveis = (grupo.itens || []).filter((item) => item && typeof item === "object" && !item.oculto);
             if (itensVisiveis.length === 0) return null;
@@ -205,7 +209,8 @@ export function NavegacaoLateral({
                           onClick={lidarCliqueItem}
                           className={({ isActive }) =>
                             cn(
-                              "flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium transition-colors relative group cursor-pointer select-none shrink-0",
+                              "flex items-center h-10 w-full rounded-xl text-sm font-medium transition-colors relative group cursor-pointer select-none shrink-0",
+                              colapsada ? "justify-center px-0" : "px-2.5 gap-3",
                               isActive
                                 ? "bg-primary/15 text-primary font-semibold shadow-2xs"
                                 : "text-muted-foreground hover:bg-accent/80 hover:text-foreground"
@@ -215,19 +220,10 @@ export function NavegacaoLateral({
                           <Icone
                             size={20}
                             style={{ color: item.cor }}
-                            className="shrink-0 transition-transform duration-150 group-hover:scale-110"
+                            className="shrink-0 min-w-5 min-h-5 transition-transform duration-150 group-hover:scale-110"
                           />
                           {!colapsada && (
                             <span className="truncate flex-1 text-left">{item.rotulo || "Item"}</span>
-                          )}
-                          {!colapsada && item.destaque && (
-                            <span className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold">
-                              <Sparkles size={10} />
-                              IA
-                            </span>
-                          )}
-                          {colapsada && item.destaque && (
-                            <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                           )}
                         </NavLink>
                       </Tooltip>
@@ -246,10 +242,13 @@ export function NavegacaoLateral({
             <button
               type="button"
               onClick={() => setModalPersonalizarAberta(true)}
-              className="flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors group cursor-pointer select-none shrink-0"
+              className={cn(
+                "flex items-center h-10 w-full rounded-xl text-sm font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors group cursor-pointer select-none shrink-0",
+                colapsada ? "justify-center px-0" : "px-2.5 gap-3"
+              )}
               aria-label="Personalizar Menu"
             >
-              <Palette size={20} className="shrink-0 group-hover:rotate-12 transition-transform duration-150" />
+              <Palette size={20} className="shrink-0 min-w-5 min-h-5 group-hover:rotate-12 transition-transform duration-150" />
               {!colapsada && <span className="truncate text-left flex-1">Personalizar Menu</span>}
             </button>
           </Tooltip>
@@ -261,7 +260,8 @@ export function NavegacaoLateral({
               onClick={aoNavegar}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium transition-colors cursor-pointer select-none shrink-0",
+                  "flex items-center h-10 w-full rounded-xl text-sm font-medium transition-colors cursor-pointer select-none shrink-0",
+                  colapsada ? "justify-center px-0" : "px-2.5 gap-3",
                   isActive
                     ? "bg-primary/15 text-primary font-semibold shadow-2xs"
                     : "text-muted-foreground hover:bg-accent/80 hover:text-foreground"
@@ -269,7 +269,7 @@ export function NavegacaoLateral({
               }
               aria-label="Ajustes"
             >
-              <Settings size={20} className="shrink-0 transition-transform duration-150 hover:rotate-45" />
+              <Settings size={20} className="shrink-0 min-w-5 min-h-5 transition-transform duration-150 hover:rotate-45" />
               {!colapsada && <span className="truncate text-left flex-1">Ajustes</span>}
             </NavLink>
           </Tooltip>
@@ -283,13 +283,16 @@ export function NavegacaoLateral({
             <button
               type="button"
               onClick={toggleTema}
-              className="flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors cursor-pointer select-none shrink-0"
+              className={cn(
+                "flex items-center h-10 w-full rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors cursor-pointer select-none shrink-0",
+                colapsada ? "justify-center px-0" : "px-2.5 gap-3"
+              )}
               aria-label={escuro ? "Modo claro" : "Modo escuro"}
             >
               {escuro ? (
-                <Sun size={20} className="shrink-0 text-amber-400" />
+                <Sun size={20} className="shrink-0 min-w-5 min-h-5 text-amber-400" />
               ) : (
-                <Moon size={20} className="shrink-0 text-indigo-400" />
+                <Moon size={20} className="shrink-0 min-w-5 min-h-5 text-indigo-400" />
               )}
               {!colapsada && <span className="truncate text-left flex-1">{escuro ? "Modo Claro" : "Modo Escuro"}</span>}
             </button>
