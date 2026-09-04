@@ -113,13 +113,14 @@ export function comoNota(
 export function notaParaArquivo(n: Nota): { dados: Frontmatter; corpo: string } {
   const agora = new Date().toISOString();
   const criadoEm = n.criadoEm || n.bruto.criado_em || n.bruto.criado || agora;
+  const tagsParaSalvar = n.bruto?.tags !== undefined ? comoLista(n.bruto.tags) : (n.tags || []);
   return {
     dados: mesclarFrontmatter(n.bruto, {
       id:            n.id || idDoCaminho(n.caminho),
       titulo:        n.titulo,
-      tipo:          n.tipo || "nota",
-      subtipo:       n.subtipo || undefined,
-      tags:          n.tags.length ? n.tags : undefined,
+      tipo:          n.tipo || (n.bruto?.tipo as any) || "nota",
+      subtipo:       n.subtipo || (n.bruto?.subtipo as any) || undefined,
+      tags:          tagsParaSalvar && tagsParaSalvar.length ? tagsParaSalvar : undefined,
       fixado:        n.fixado ? true : undefined,
       criado_em:     criadoEm,
       atualizado_em: agora,
@@ -195,6 +196,7 @@ export function tarefaParaArquivo(t: Tarefa): { dados: Frontmatter; corpo: strin
   const criadoEm = t.criadoEm || t.bruto.criado_em || t.bruto.criado || agora.slice(0, 10);
   const estimativa = t.pomodorosEstimados ?? t.pomodoro ?? t.Pomodoro;
   const realizados = t.pomodorosRealizados ?? t.fraturados;
+  const tagsParaSalvar = t.bruto?.tags !== undefined ? comoLista(t.bruto.tags) : (t.tags || []);
 
   return {
     dados: mesclarFrontmatter(t.bruto, {
@@ -204,7 +206,7 @@ export function tarefaParaArquivo(t: Tarefa): { dados: Frontmatter; corpo: strin
       status:               t.status,
       prazo:                t.prazo,
       prioridade:           t.prioridade,
-      tags:                 t.tags.length ? t.tags : undefined,
+      tags:                 tagsParaSalvar && tagsParaSalvar.length ? tagsParaSalvar : undefined,
       pomodoros_estimados:  estimativa,
       pomodoros_realizados: realizados,
       criado_em:            criadoEm,
@@ -263,6 +265,7 @@ export function metaParaArquivo(m: Meta): { dados: Frontmatter; corpo: string } 
   const idFinal =
     (typeof m.bruto.id === "string" && m.bruto.id.trim()) ||
     (typeof m.id === "string" && m.id.trim() ? m.id.trim() : idDoCaminho(m.caminho));
+  const tagsParaSalvar = m.bruto?.tags !== undefined ? comoLista(m.bruto.tags) : (m.tags || []);
 
   return {
     dados: mesclarFrontmatter(m.bruto, {
@@ -272,7 +275,7 @@ export function metaParaArquivo(m: Meta): { dados: Frontmatter; corpo: string } 
       status:        m.status,
       prazo:         m.prazo,
       indicador:     m.indicador || undefined,
-      tags:          m.tags?.length ? m.tags : undefined,
+      tags:          tagsParaSalvar && tagsParaSalvar.length ? tagsParaSalvar : undefined,
       criado_em:     criadoEm,
       atualizado_em: agora,
       // Limpeza de campos legados
@@ -335,6 +338,7 @@ export function comoEntrega(
 export function entregaParaArquivo(e: Entrega): { dados: Frontmatter; corpo: string } {
   const agora = new Date().toISOString();
   const criadoEm = e.criadoEm || e.bruto.criado_em || e.bruto.criado || agora;
+  const tagsParaSalvar = e.bruto?.tags !== undefined ? comoLista(e.bruto.tags) : (e.tags || []);
   return {
     dados: mesclarFrontmatter(e.bruto, {
       id:            e.id || idDoCaminho(e.caminho),
@@ -348,7 +352,7 @@ export function entregaParaArquivo(e: Entrega): { dados: Frontmatter; corpo: str
       elogio:        e.elogio || undefined,
       autor_elogio:  e.autorElogio || undefined,
       colaboracao:   e.colaboracao?.length ? e.colaboracao : undefined,
-      tags:          e.tags?.length ? e.tags : undefined,
+      tags:          tagsParaSalvar && tagsParaSalvar.length ? tagsParaSalvar : undefined,
       criado_em:     criadoEm,
       atualizado_em: agora,
       // Limpeza de campos legados
@@ -408,6 +412,7 @@ export function comoReferencia(
 export function referenciaParaArquivo(r: Referencia): { dados: Frontmatter; corpo: string } {
   const agora = new Date().toISOString();
   const criadoEm = r.criadoEm || r.bruto.criado_em || r.bruto.criado || agora;
+  const tagsParaSalvar = r.bruto?.tags !== undefined ? comoLista(r.bruto.tags) : (r.tags || []);
   return {
     dados: mesclarFrontmatter(r.bruto, {
       id:            r.id || idDoCaminho(r.caminho),
@@ -416,7 +421,7 @@ export function referenciaParaArquivo(r: Referencia): { dados: Frontmatter; corp
       imagem:        r.imagem,
       fonte:         r.fonte,
       porque:        r.porque || undefined,
-      tags:          r.tags.length ? r.tags : undefined,
+      tags:          tagsParaSalvar && tagsParaSalvar.length ? tagsParaSalvar : undefined,
       paleta:        r.paleta && r.paleta.length ? r.paleta : undefined,
       criado_em:     criadoEm,
       atualizado_em: agora,

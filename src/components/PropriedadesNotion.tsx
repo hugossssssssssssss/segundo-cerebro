@@ -61,6 +61,35 @@ import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import { toast } from "@/lib/toast";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 
+export function obterOpcoesExcluidas(chave: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(`klaus_opcoes_excluidas_${chave}`);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        return new Set(arr.map(x => String(x).trim().toLowerCase()));
+      }
+    }
+  } catch {}
+  return new Set<string>();
+}
+
+export function registrarOpcaoExcluida(chave: string, opcao: string) {
+  try {
+    const setExcluidas = obterOpcoesExcluidas(chave);
+    setExcluidas.add(opcao.trim().toLowerCase());
+    localStorage.setItem(`klaus_opcoes_excluidas_${chave}`, JSON.stringify(Array.from(setExcluidas)));
+  } catch {}
+}
+
+export function removerOpcaoExcluida(chave: string, opcao: string) {
+  try {
+    const setExcluidas = obterOpcoesExcluidas(chave);
+    setExcluidas.delete(opcao.trim().toLowerCase());
+    localStorage.setItem(`klaus_opcoes_excluidas_${chave}`, JSON.stringify(Array.from(setExcluidas)));
+  } catch {}
+}
+
 export function obterOpcoesDaPropriedade(
   chave: string,
   dadosValorAtual: any,
@@ -69,10 +98,15 @@ export function obterOpcoesDaPropriedade(
   prefixoCaminho?: string
 ): string[] {
   const setOpcoes = new Set<string>();
+  const excluidas = obterOpcoesExcluidas(chave);
 
   // 1. Opções fixas (se houver)
   if (fixas && Array.isArray(fixas)) {
-    fixas.forEach(o => { if (typeof o === "string" && o.trim()) setOpcoes.add(o.trim()); });
+    fixas.forEach(o => {
+      if (typeof o === "string" && o.trim() && !excluidas.has(o.trim().toLowerCase())) {
+        setOpcoes.add(o.trim());
+      }
+    });
   }
 
   // 2. Opções salvas localmente
@@ -81,15 +115,23 @@ export function obterOpcoesDaPropriedade(
     if (raw) {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr)) {
-        arr.forEach(o => { if (typeof o === "string" && o.trim()) setOpcoes.add(o.trim()); });
+        arr.forEach(o => {
+          if (typeof o === "string" && o.trim() && !excluidas.has(o.trim().toLowerCase())) {
+            setOpcoes.add(o.trim());
+          }
+        });
       }
     }
   } catch {}
 
   // 3. Valor atual deste item
   if (Array.isArray(dadosValorAtual)) {
-    dadosValorAtual.forEach(t => { if (typeof t === "string" && t.trim()) setOpcoes.add(t.trim()); });
-  } else if (typeof dadosValorAtual === "string" && dadosValorAtual.trim()) {
+    dadosValorAtual.forEach(t => {
+      if (typeof t === "string" && t.trim() && !excluidas.has(t.trim().toLowerCase())) {
+        setOpcoes.add(t.trim());
+      }
+    });
+  } else if (typeof dadosValorAtual === "string" && dadosValorAtual.trim() && !excluidas.has(dadosValorAtual.trim().toLowerCase())) {
     setOpcoes.add(dadosValorAtual.trim());
   }
 
@@ -102,8 +144,12 @@ export function obterOpcoesDaPropriedade(
     itensFiltrados.forEach(item => {
       const val = item.doc?.dados?.[chave];
       if (Array.isArray(val)) {
-        val.forEach(t => { if (typeof t === "string" && t.trim()) setOpcoes.add(t.trim()); });
-      } else if (typeof val === "string" && val.trim()) {
+        val.forEach(t => {
+          if (typeof t === "string" && t.trim() && !excluidas.has(t.trim().toLowerCase())) {
+            setOpcoes.add(t.trim());
+          }
+        });
+      } else if (typeof val === "string" && val.trim() && !excluidas.has(val.trim().toLowerCase())) {
         setOpcoes.add(val.trim());
       }
     });
@@ -1607,6 +1653,7 @@ export function PropriedadesNotion({
       const processarCriarTag = (nomeNovaTag: string) => {
         const nomeLimpo = nomeNovaTag.trim().replace(/^@+/, "");
         if (!nomeLimpo) return;
+        removerOpcaoExcluida(chave, nomeLimpo);
         const novasTags = Array.from(new Set([...tags, nomeLimpo]));
         atualizar(chave, novasTags);
         
@@ -2201,6 +2248,7 @@ export function PropriedadesNotion({
                               <button
                                 type="button"
                                 onClick={() => {
+                                  registrarOpcaoExcluida(chave, op);
                                   const novas = opcoesCadastradas.filter(x => x !== op);
                                   salvarListaOpcoes(novas);
                                   if (chave === "tags") {
@@ -2209,7 +2257,14 @@ export function PropriedadesNotion({
                                     salvarConfigPropriedadesGlobais(undefined, novasCores);
                                     setGlobalConfig(lerConfigPropriedadesGlobais());
                                   }
-                                  toast(`Opção "${op}" removida das pré-cadastradas.`);
+                                  // Se o item atual possui a tag/opção selecionada, remove do item
+                                  const valItem = dados[chave];
+                                  if (Array.isArray(valItem) && valItem.includes(op)) {
+                                    atualizar(chave, valItem.filter(x => x !== op));
+                                  } else if (valItem === op) {
+                                    atualizar(chave, undefined);
+                                  }
+                                  toast(`Opção "${op}" excluída com sucesso.`);
                                 }}
                                 title="Excluir opção"
                                 className="p-1 text-muted-foreground hover:text-destructive rounded hover:bg-destructive/10 cursor-pointer"
@@ -2233,6 +2288,7 @@ export function PropriedadesNotion({
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && buscaTag.trim()) {
                         const nova = buscaTag.trim();
+                        removerOpcaoExcluida(chave, nova);
                         const novas = Array.from(new Set([...opcoesCadastradas, nova]));
                         salvarListaOpcoes(novas);
                         if (chave === "tags") {
@@ -2251,6 +2307,7 @@ export function PropriedadesNotion({
                     onClick={() => {
                       if (buscaTag.trim()) {
                         const nova = buscaTag.trim();
+                        removerOpcaoExcluida(chave, nova);
                         const novas = Array.from(new Set([...opcoesCadastradas, nova]));
                         salvarListaOpcoes(novas);
                         if (chave === "tags") {

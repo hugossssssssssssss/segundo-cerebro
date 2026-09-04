@@ -23,8 +23,8 @@ dados e um par de funções de conversão em `src/lib/entidades.ts`.
 
 | Entidade | Tipo TS | Pasta no repo | `tipo:` no frontmatter | Ler do arquivo | Gravar no arquivo |
 |---|---|---|---|---|---|
-| Nota | `Nota` | `PASTAS.notas` → `notas/` | `nota` | `comoNota()` | `notaParaArquivo()` |
-| Tarefa | `Tarefa` | `PASTAS.tarefas` → `tarefas/` | `tarefa` | `comoTarefa()` | `tarefaParaArquivo()` |
+| Nota | `Nota` | `PASTAS.notas` → `notas/` | — | `comoNota()` | `notaParaArquivo()` |
+| Tarefa | `Tarefa` | `PASTAS.tarefas` → `tarefas/` | — | `comoTarefa()` | `tarefaParaArquivo()` |
 | Meta | `Meta` | `PASTAS.metas` → `pdi/metas/` | `meta` | `comoMeta()` | `metaParaArquivo()` |
 | Entrega | `Entrega` | `PASTAS.entregas` → `pdi/entregas/` | `entrega` | `comoEntrega()` | `entregaParaArquivo()` |
 | Referencia | `Referencia` | `PASTAS.referencias` → `referencias/` | `referencia` | `comoReferencia()` | `referenciaParaArquivo()` |

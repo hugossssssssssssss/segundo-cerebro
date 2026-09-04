@@ -42,6 +42,7 @@ import {
   escreverMarkdown,
   tituloProvavel,
   nomeLivre,
+  comoLista,
   type Frontmatter,
 } from "@/lib/markdown";
 import { lerParametroAbrir, lerParametroCriar, correspondeBusca, formatarNomeAmigavel, formatarDataPtBR, cn } from "@/lib/utils";
@@ -2042,7 +2043,14 @@ export default function Notas() {
           setCorpo={(c) => setAberta({ ...aberta, corpo: c })}
           caminhoItem={aberta.caminho}
           dadosProps={aberta.bruto}
-          onChangeProps={(novosDados) => setAberta({ ...aberta, bruto: novosDados })}
+          onChangeProps={(novosDados) =>
+            setAberta({
+              ...aberta,
+              bruto: novosDados,
+              tags: comoLista(novosDados.tags),
+              tipo: (novosDados.tipo as any) || aberta.tipo,
+            })
+          }
           camposFixosProps={{
             tipo: { icone: <FileText className="h-4 w-4 opacity-50 text-orange-500" />, tipo: "select", opcoes: ["nota", "referencia", "rascunho"] },
             tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
