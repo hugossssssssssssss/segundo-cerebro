@@ -178,7 +178,7 @@ export function NavegacaoLateral({
         <div
           className={cn(
             "flex-1 overflow-y-auto overflow-x-hidden p-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-            colapsada ? "space-y-3" : "space-y-4"
+            colapsada ? "space-y-2" : "space-y-4"
           )}
         >
           {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo) => {
@@ -207,7 +207,10 @@ export function NavegacaoLateral({
                           onClick={lidarCliqueItem}
                           className={({ isActive }) =>
                             cn(
-                              "flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium transition-colors relative group cursor-pointer select-none shrink-0",
+                              "flex items-center rounded-xl text-sm font-medium transition-colors relative group cursor-pointer select-none shrink-0",
+                              colapsada
+                                ? "h-10 w-10 mx-auto justify-center p-0"
+                                : "h-10 w-full px-2.5 gap-3",
                               isActive
                                 ? "bg-primary/15 text-primary font-semibold shadow-2xs"
                                 : "text-muted-foreground hover:bg-accent/80 hover:text-foreground"
@@ -239,7 +242,12 @@ export function NavegacaoLateral({
             <button
               type="button"
               onClick={() => setModalPersonalizarAberta(true)}
-              className="flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors group cursor-pointer select-none shrink-0"
+              className={cn(
+                "flex items-center rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors group cursor-pointer select-none shrink-0",
+                colapsada
+                  ? "h-10 w-10 mx-auto justify-center p-0"
+                  : "h-10 w-full px-2.5 gap-3"
+              )}
               aria-label="Personalizar Menu"
             >
               <Palette size={20} className="shrink-0 group-hover:rotate-12 transition-transform duration-150" />
@@ -254,7 +262,10 @@ export function NavegacaoLateral({
               onClick={lidarCliqueItem}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium transition-colors relative group cursor-pointer select-none shrink-0",
+                  "flex items-center rounded-xl text-sm font-medium transition-colors relative group cursor-pointer select-none shrink-0",
+                  colapsada
+                    ? "h-10 w-10 mx-auto justify-center p-0"
+                    : "h-10 w-full px-2.5 gap-3",
                   isActive
                     ? "bg-primary/15 text-primary font-semibold shadow-2xs"
                     : "text-muted-foreground hover:bg-accent/80 hover:text-foreground"
@@ -276,7 +287,12 @@ export function NavegacaoLateral({
             <button
               type="button"
               onClick={toggleTema}
-              className="flex items-center h-10 w-full rounded-xl px-2.5 gap-3 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors group cursor-pointer select-none shrink-0"
+              className={cn(
+                "flex items-center rounded-xl text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors group cursor-pointer select-none shrink-0",
+                colapsada
+                  ? "h-10 w-10 mx-auto justify-center p-0"
+                  : "h-10 w-full px-2.5 gap-3"
+              )}
               aria-label={escuro ? "Modo claro" : "Modo escuro"}
             >
               {escuro ? (
