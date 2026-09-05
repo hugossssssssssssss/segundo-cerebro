@@ -1,7 +1,6 @@
 /**
- * Módulo de Baixador de Mídia para o Klaus.
- * Combina múltiplos motores open source (Piped Streams para YouTube, Cobalt API para instâncias personalizadas
- * e geradores de ponte rápida para redes com bloqueio de robô como Twitter/X e Instagram).
+ * Módulo de Baixador de Mídia 100% nativo para o Klaus.
+ * Utiliza o motor Piped Streams para YouTube e Cobalt API para instâncias personalizadas.
  */
 
 export type PlataformaMidia =
@@ -58,19 +57,12 @@ export interface RespostaDownloadSucesso {
   servicoUtilizado?: string;
 }
 
-export interface AtalhoDownloadExterno {
-  nome: string;
-  url: string;
-  descricao: string;
-}
-
 export interface RespostaDownloadErro {
   sucesso: false;
   erro: string;
   detalhe?: string;
   plataforma: PlataformaMidia;
   urlOriginal: string;
-  atalhosRecomendados?: AtalhoDownloadExterno[];
 }
 
 export type RespostaDownload = RespostaDownloadSucesso | RespostaDownloadErro;
@@ -89,14 +81,10 @@ export interface ItemHistoricoDownload {
 
 export const INSTANCIAS_PIPED_YOUTUBE = [
   "https://api.piped.private.coffee/streams/",
-  "https://pipedapi.tokhmi.xyz/streams/",
-  "https://piped-api.lunar.icu/streams/",
 ];
 
 export const INSTANCIAS_COBALT_PADRAO = [
   "https://api.cobalt.tools",
-  "https://cobalt-api.kwiatekm.pl",
-  "https://api.wuk.sh",
 ];
 
 export const CHAVE_STORAGE_HISTORICO_DOWNLOADS = "klaus_historico_downloads";
@@ -119,125 +107,24 @@ export function detectarPlataforma(url: string): PlataformaMidia {
 }
 
 /**
- * Extrai o ID do vídeo do YouTube.
+ * Extrai o ID do vídeo do YouTube de qualquer formato de link.
  */
 export function extrairIdYouTube(url: string): string | null {
-  const limpa = (url || "").trim();
-  if (limpa.includes("youtu.be/")) {
-    return limpa.split("youtu.be/")[1].split("?")[0].split("&")[0];
-  }
-  if (limpa.includes("watch?v=")) {
-    return limpa.split("watch?v=")[1].split("&")[0];
-  }
-  if (limpa.includes("shorts/")) {
-    return limpa.split("shorts/")[1].split("?")[0].split("&")[0];
-  }
-  if (limpa.includes("embed/")) {
-    return limpa.split("embed/")[1].split("?")[0].split("&")[0];
+  try {
+    const limpa = (url || "").trim();
+    if (/^[a-zA-Z0-9_-]{11}$/.test(limpa)) return limpa;
+    const match = limpa.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/|live\/))([\w-]{11})/);
+    if (match && match[1]) return match[1];
+
+    if (limpa.includes("v=")) {
+      const parsed = new URL(limpa);
+      const v = parsed.searchParams.get("v");
+      if (v && v.length === 11) return v;
+    }
+  } catch {
+    // silencioso
   }
   return null;
-}
-
-/**
- * Gera links de atalho para downloaders web dedicados quando a rede bloquear chamadas de robô.
- */
-export function gerarAtalhosExternos(url: string, plataforma: PlataformaMidia): AtalhoDownloadExterno[] {
-  const enc = encodeURIComponent(url);
-  switch (plataforma) {
-    case "twitter":
-      return [
-        {
-          nome: "Cobalt Web Oficial",
-          url: `https://cobalt.tools/#${enc}`,
-          descricao: "Downloader open source sem anúncios",
-        },
-        {
-          nome: "TwitSave",
-          url: `https://twitsave.com/info?url=${enc}`,
-          descricao: "Download direto de vídeos e GIFs do X/Twitter",
-        },
-        {
-          nome: "SSSTwitter",
-          url: `https://ssstwitter.com/pt`,
-          descricao: "Opção rápida para vídeos do Twitter",
-        },
-      ];
-    case "instagram":
-      return [
-        {
-          nome: "Cobalt Web Oficial",
-          url: `https://cobalt.tools/#${enc}`,
-          descricao: "Baixar Reels e fotos sem marca",
-        },
-        {
-          nome: "SnapInsta",
-          url: `https://snapinsta.app/pt`,
-          descricao: "Download de Reels, posts e carrosséis",
-        },
-        {
-          nome: "FastDl",
-          url: `https://fastdl.app/pt`,
-          descricao: "Download de mídias do Instagram",
-        },
-      ];
-    case "tiktok":
-      return [
-        {
-          nome: "Cobalt Web Oficial",
-          url: `https://cobalt.tools/#${enc}`,
-          descricao: "TikTok em alta resolução sem marca d'água",
-        },
-        {
-          nome: "SnapTik",
-          url: `https://snaptik.app/pt`,
-          descricao: "Baixar vídeo do TikTok sem marca",
-        },
-        {
-          nome: "SSSTik",
-          url: `https://ssstik.io/pt`,
-          descricao: "Download de vídeos e MP3 do TikTok",
-        },
-      ];
-    case "facebook":
-      return [
-        {
-          nome: "Cobalt Web Oficial",
-          url: `https://cobalt.tools/#${enc}`,
-          descricao: "Download limpo sem anúncios",
-        },
-        {
-          nome: "FDown",
-          url: `https://fdown.net/`,
-          descricao: "Download de vídeos públicos e Reels do Facebook",
-        },
-      ];
-    case "pinterest":
-      return [
-        {
-          nome: "Cobalt Web Oficial",
-          url: `https://cobalt.tools/#${enc}`,
-          descricao: "Vídeos e fotos do Pinterest",
-        },
-        {
-          nome: "PinterestDownloader",
-          url: `https://pinterestdownloader.com/`,
-          descricao: "Download de vídeos de referências",
-        },
-      ];
-    default:
-      return [
-        {
-          nome: "Cobalt Web Oficial",
-          url: `https://cobalt.tools/#${enc}`,
-          descricao: "Downloader open source universal",
-        },
-        {
-          nome: "SaveFrom",
-          url: `https://pt.savefrom.net/`,
-          descricao: "Downloader web para diversas redes",
-        },
-      ];
-  }
 }
 
 /**
@@ -281,19 +168,19 @@ async function processarYouTubePiped(
   for (const baseUrl of INSTANCIAS_PIPED_YOUTUBE) {
     try {
       const res = await fetch(`${baseUrl}${videoId}`, {
-        signal: AbortSignal.timeout(6000),
+        signal: AbortSignal.timeout(8000),
       });
       if (!res.ok) continue;
 
       const data = await res.json();
       const titulo = data.title || "Video_YouTube";
-      const thumbnail = data.thumbnailUrl || "";
+      const thumbnail = data.thumbnailUrl || (data.previewFrames?.[0]?.urls?.[0]) || "";
 
       const videoStreams: StreamDisponivel[] = (data.videoStreams || [])
         .filter((s: any) => s && s.url)
         .map((s: any) => ({
           url: s.url,
-          formato: s.format || "MP4",
+          formato: (s.format || "MP4").toUpperCase(),
           qualidade: s.quality || "HD",
           ehVideo: true,
           mimeType: s.mimeType || "video/mp4",
@@ -303,7 +190,7 @@ async function processarYouTubePiped(
         .filter((s: any) => s && s.url)
         .map((s: any) => ({
           url: s.url,
-          formato: s.format || "M4A",
+          formato: (s.format || "M4A").toUpperCase(),
           qualidade: s.quality || "Áudio",
           ehVideo: false,
           mimeType: s.mimeType || "audio/mp4",
@@ -323,7 +210,7 @@ async function processarYouTubePiped(
           streamsDisponiveis: streams,
           plataforma: "youtube",
           urlOriginal,
-          servicoUtilizado: "Piped Open Source Engine",
+          servicoUtilizado: "Piped Streams",
         };
       }
     } catch {
@@ -334,7 +221,7 @@ async function processarYouTubePiped(
 }
 
 /**
- * Processa uma requisição de download via Cobalt API ou motores diretos.
+ * Processa uma requisição de download de mídia.
  */
 export async function processarDownloadMidia(opcoes: OpcoesDownload): Promise<RespostaDownload> {
   const {
@@ -368,7 +255,7 @@ export async function processarDownloadMidia(opcoes: OpcoesDownload): Promise<Re
     }
   }
 
-  // 2. Cobalt API (com suporte a instâncias personalizadas e padrão)
+  // 2. Cobalt API (para instâncias personalizadas e auto-hospedadas)
   const instancias = instanciaPersonalizada
     ? [instanciaPersonalizada.replace(/\/+$/, "")]
     : [obterInstanciaCobalt(), ...INSTANCIAS_COBALT_PADRAO.filter((i) => i !== obterInstanciaCobalt())];
@@ -382,7 +269,7 @@ export async function processarDownloadMidia(opcoes: OpcoesDownload): Promise<Re
     tiktokFullAudio: tiktokAudioCompleto,
   };
 
-  let ultimoErro = "Não foi possível conectar ao serviço de download direto.";
+  let ultimoErro = "Não foi possível conectar ao servidor de download.";
 
   for (const baseUrl of instancias) {
     try {
@@ -401,7 +288,7 @@ export async function processarDownloadMidia(opcoes: OpcoesDownload): Promise<Re
         try {
           const jsonErro = JSON.parse(txtErro);
           if (jsonErro?.error?.code) {
-            ultimoErro = `Cobalt (${jsonErro.error.code}): ${jsonErro.error.context?.service || "Exige autorização ou servidor protegido"}`;
+            ultimoErro = `Cobalt (${jsonErro.error.code}): Servidor protegido ou requer chave de acesso`;
           } else if (jsonErro?.text) {
             ultimoErro = jsonErro.text;
           }
@@ -450,16 +337,23 @@ export async function processarDownloadMidia(opcoes: OpcoesDownload): Promise<Re
     }
   }
 
-  // 3. Fallback informativo com Atalhos Rápidos de 1 Clique
-  const atalhosRecomendados = gerarAtalhosExternos(urlLimpa, plataforma);
+  // 3. Resposta de erro clara e transparente
+  if (plataforma === "twitter") {
+    return {
+      sucesso: false,
+      erro: "O Twitter/X bloqueou o acesso direto no navegador.",
+      detalhe: "O X exige login obrigatório e bloqueia consultas diretas sem servidor intermediário. Você pode configurar um servidor Cobalt próprio no botão 'Configurar Servidor' ou salvar este link no Klaus.",
+      plataforma,
+      urlOriginal: urlLimpa,
+    };
+  }
 
   return {
     sucesso: false,
-    erro: `A rede ${plataforma.toUpperCase()} bloqueou o download direto por robô no navegador.`,
-    detalhe: `${ultimoErro} - Use um dos atalhos rápidos abaixo para baixar com 1 clique.`,
+    erro: `Não foi possível extrair a mídia do ${plataforma.toUpperCase()} diretamente.`,
+    detalhe: `${ultimoErro}. Você pode configurar uma instância própria do Cobalt no painel acima.`,
     plataforma,
     urlOriginal: urlLimpa,
-    atalhosRecomendados,
   };
 }
 

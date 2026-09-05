@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   detectarPlataforma,
   extrairIdYouTube,
-  gerarAtalhosExternos,
   obterInstanciaCobalt,
   salvarInstanciaCobalt,
   listarHistoricoDownloads,
@@ -64,17 +63,7 @@ describe("Módulo Baixador de Mídia", () => {
       expect(extrairIdYouTube("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).toBe("dQw4w9WgXcQ");
       expect(extrairIdYouTube("https://youtu.be/dQw4w9WgXcQ?t=10")).toBe("dQw4w9WgXcQ");
       expect(extrairIdYouTube("https://youtube.com/shorts/dQw4w9WgXcQ")).toBe("dQw4w9WgXcQ");
-    });
-  });
-
-  describe("gerarAtalhosExternos", () => {
-    it("gera atalhos específicos por rede", () => {
-      const atalhosTwitter = gerarAtalhosExternos("https://x.com/post/123", "twitter");
-      expect(atalhosTwitter.length).toBeGreaterThan(0);
-      expect(atalhosTwitter.some((a) => a.nome.includes("TwitSave"))).toBe(true);
-
-      const atalhosInsta = gerarAtalhosExternos("https://instagram.com/reel/123", "instagram");
-      expect(atalhosInsta.some((a) => a.nome.includes("SnapInsta"))).toBe(true);
+      expect(extrairIdYouTube("https://m.youtube.com/watch?v=dQw4w9WgXcQ&feature=share")).toBe("dQw4w9WgXcQ");
     });
   });
 
