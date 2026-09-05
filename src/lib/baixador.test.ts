@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   detectarPlataforma,
   extrairIdYouTube,
+  extrairIdTwitter,
   obterInstanciaCobalt,
   salvarInstanciaCobalt,
   listarHistoricoDownloads,
@@ -64,6 +65,15 @@ describe("Módulo Baixador de Mídia", () => {
       expect(extrairIdYouTube("https://youtu.be/dQw4w9WgXcQ?t=10")).toBe("dQw4w9WgXcQ");
       expect(extrairIdYouTube("https://youtube.com/shorts/dQw4w9WgXcQ")).toBe("dQw4w9WgXcQ");
       expect(extrairIdYouTube("https://m.youtube.com/watch?v=dQw4w9WgXcQ&feature=share")).toBe("dQw4w9WgXcQ");
+    });
+  });
+
+  describe("extrairIdTwitter", () => {
+    it("extrai ID de links do Twitter / X", () => {
+      expect(extrairIdTwitter("https://twitter.com/user/status/1697304622749086011")).toBe("1697304622749086011");
+      expect(extrairIdTwitter("https://x.com/user/status/1697304622749086011?s=20")).toBe("1697304622749086011");
+      expect(extrairIdTwitter("https://x.com/i/status/1697304622749086011")).toBe("1697304622749086011");
+      expect(extrairIdTwitter("1697304622749086011")).toBe("1697304622749086011");
     });
   });
 

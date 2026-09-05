@@ -81,6 +81,14 @@ export interface ItemHistoricoDownload {
 
 export const INSTANCIAS_PIPED_YOUTUBE = [
   "https://api.piped.private.coffee/streams/",
+  "https://pipedapi.kavin.rocks/streams/",
+  "https://api.piped.yt/streams/",
+];
+
+export const INSTANCIAS_TWITTER = [
+  "https://api.fxtwitter.com/x/status/",
+  "https://api.fixupx.com/x/status/",
+  "https://api.twittpr.com/x/status/",
 ];
 
 export const INSTANCIAS_COBALT_PADRAO = [
@@ -128,6 +136,23 @@ export function extrairIdYouTube(url: string): string | null {
 }
 
 /**
+ * Extrai o ID do Tweet / Post do X de links variados.
+ */
+export function extrairIdTwitter(url: string): string | null {
+  try {
+    const limpa = (url || "").trim();
+    if (/^\d{15,22}$/.test(limpa)) return limpa;
+    const match = limpa.match(/(?:twitter\.com|x\.com)\/(?:#!\/)?(?:i|[a-zA-Z0-9_]+)\/status(?:es)?\/(\d+)/i);
+    if (match && match[1]) return match[1];
+    const matchGeneric = limpa.match(/\/status\/(\d+)/i);
+    if (matchGeneric && matchGeneric[1]) return matchGeneric[1];
+  } catch {
+    // silencioso
+  }
+  return null;
+}
+
+/**
  * Obtém a instância configurada do Cobalt ou a padrão.
  */
 export function obterInstanciaCobalt(): string {
@@ -158,7 +183,7 @@ export function salvarInstanciaCobalt(url: string): void {
 }
 
 /**
- * Tenta baixar do YouTube diretamente usando o motor Piped.
+ * Processa download do YouTube usando instâncias abertas do Piped Streams.
  */
 async function processarYouTubePiped(
   videoId: string,
@@ -176,8 +201,9 @@ async function processarYouTubePiped(
       const titulo = data.title || "Video_YouTube";
       const thumbnail = data.thumbnailUrl || (data.previewFrames?.[0]?.urls?.[0]) || "";
 
+      // Filtra streams válidas e remove espelhos como odycdn que exigem autenticação
       const videoStreams: StreamDisponivel[] = (data.videoStreams || [])
-        .filter((s: any) => s && s.url)
+        .filter((s: any) => s && s.url && !s.url.includes("odycdn.com") && !s.quality?.toUpperCase().includes("LBRY"))
         .map((s: any) => ({
           url: s.url,
           formato: (s.format || "MP4").toUpperCase(),
@@ -187,17 +213,20 @@ async function processarYouTubePiped(
         }));
 
       const audioStreams: StreamDisponivel[] = (data.audioStreams || [])
-        .filter((s: any) => s && s.url)
+        .filter((s: any) => s && s.url && !s.url.includes("odycdn.com"))
         .map((s: any) => ({
           url: s.url,
           formato: (s.format || "M4A").toUpperCase(),
-          qualidade: s.quality || "Áudio",
+          qualidade: `${s.quality || "Áudio"} (${s.bitrate ? Math.round(s.bitrate / 1000) + "kbps" : "HQ"})`,
           ehVideo: false,
           mimeType: s.mimeType || "audio/mp4",
         }));
 
       const streams = modo === "audio" ? audioStreams : [...videoStreams, ...audioStreams];
-      const streamPrincipal = streams[0] || videoStreams[0] || audioStreams[0];
+      // Escolhe stream prioritária
+      const streamPrincipal = modo === "audio" 
+        ? audioStreams[0] || streams[0] 
+        : videoStreams[0] || streams[0];
 
       if (streamPrincipal) {
         return {
@@ -211,6 +240,118 @@ async function processarYouTubePiped(
           plataforma: "youtube",
           urlOriginal,
           servicoUtilizado: "Piped Streams",
+        };
+      }
+    } catch {
+      // tenta próxima instância
+    }
+  }
+  return null;
+}
+
+/**
+ * Processa download do Twitter / X usando a API aberta FixTweet.
+ */
+async function processarTwitter(
+  tweetId: string,
+  urlOriginal: string,
+  modo: ModoDownload
+): Promise<RespostaDownloadSucesso | null> {
+  for (const baseUrl of INSTANCIAS_TWITTER) {
+    try {
+      const res = await fetch(`${baseUrl}${tweetId}`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      if (!data || data.code !== 200 || !data.tweet) continue;
+
+      const tweet = data.tweet;
+      const autor = tweet.author?.name ? `${tweet.author.name} (@${tweet.author.screen_name || "x"})` : "X / Twitter";
+      const textoLimpo = (tweet.text || "").replace(/https?:\/\/\S+/g, "").trim();
+      const titulo = textoLimpo ? `${textoLimpo.slice(0, 60)}` : `Post de ${autor}`;
+      const nomeBase = (textoLimpo || `twitter_${tweetId}`).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 50);
+
+      const media = tweet.media;
+      if (!media) continue;
+
+      // 1. Vídeos ou GIFs
+      const videos = media.videos || media.all?.filter((m: any) => m.type === "video" || m.type === "gif") || [];
+      if (videos.length > 0) {
+        const videoPrincipal = videos[0];
+        const thumbnail = videoPrincipal.thumbnail_url || "";
+        
+        // Extrai todas as variantes MP4 disponíveis
+        const variantes = (videoPrincipal.variants || videoPrincipal.formats || [])
+          .filter((v: any) => v && v.url && (v.content_type === "video/mp4" || v.url.includes(".mp4") || v.container === "mp4"))
+          .sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0));
+
+        const streams: StreamDisponivel[] = variantes.map((v: any, idx: number) => {
+          let label = "MP4";
+          if (v.bitrate) {
+            const kbps = Math.round(v.bitrate / 1000);
+            label = kbps > 1000 ? `Full HD / 720p (${kbps} kbps)` : `${kbps} kbps`;
+          } else if (idx === 0) {
+            label = "Qualidade Máxima";
+          }
+          return {
+            url: v.url,
+            formato: "MP4",
+            qualidade: label,
+            ehVideo: true,
+            mimeType: "video/mp4",
+          };
+        });
+
+        // Se não houver variantes listadas, usa a url direta do vídeo
+        if (streams.length === 0 && videoPrincipal.url) {
+          streams.push({
+            url: videoPrincipal.url,
+            formato: "MP4",
+            qualidade: "Qualidade Padrão",
+            ehVideo: true,
+            mimeType: "video/mp4",
+          });
+        }
+
+        const streamPrincipal = streams[0];
+
+        if (streamPrincipal) {
+          return {
+            sucesso: true,
+            tipo: "stream",
+            urlDownload: streamPrincipal.url,
+            nomeArquivo: `${nomeBase}.${modo === "audio" ? "mp3" : "mp4"}`,
+            titulo: `${titulo} - ${autor}`,
+            thumbnail,
+            streamsDisponiveis: streams,
+            plataforma: "twitter",
+            urlOriginal,
+            servicoUtilizado: "FixTweet Native",
+          };
+        }
+      }
+
+      // 2. Fotos / Galeria de Imagens do Post
+      const fotos = media.photos || media.all?.filter((m: any) => m.type === "photo") || [];
+      if (fotos.length > 0) {
+        const itens: ItemPicker[] = fotos.map((f: any) => ({
+          tipo: "photo",
+          url: f.url,
+          thumb: f.url,
+        }));
+
+        return {
+          sucesso: true,
+          tipo: "picker",
+          itensPicker: itens,
+          titulo: `${titulo} - ${autor}`,
+          thumbnail: fotos[0]?.url,
+          plataforma: "twitter",
+          urlOriginal,
+          nomeArquivo: `${nomeBase}_fotos`,
+          servicoUtilizado: "FixTweet Native",
         };
       }
     } catch {
@@ -255,7 +396,16 @@ export async function processarDownloadMidia(opcoes: OpcoesDownload): Promise<Re
     }
   }
 
-  // 2. Cobalt API (para instâncias personalizadas e auto-hospedadas)
+  // 2. Twitter / X via FixTweet Engine Direto
+  if (plataforma === "twitter") {
+    const tweetId = extrairIdTwitter(urlLimpa);
+    if (tweetId) {
+      const resTwitter = await processarTwitter(tweetId, urlLimpa, modo);
+      if (resTwitter) return resTwitter;
+    }
+  }
+
+  // 3. Cobalt API (para instâncias personalizadas e auto-hospedadas)
   const instancias = instanciaPersonalizada
     ? [instanciaPersonalizada.replace(/\/+$/, "")]
     : [obterInstanciaCobalt(), ...INSTANCIAS_COBALT_PADRAO.filter((i) => i !== obterInstanciaCobalt())];
@@ -337,21 +487,11 @@ export async function processarDownloadMidia(opcoes: OpcoesDownload): Promise<Re
     }
   }
 
-  // 3. Resposta de erro clara e transparente
-  if (plataforma === "twitter") {
-    return {
-      sucesso: false,
-      erro: "O Twitter/X bloqueou o acesso direto no navegador.",
-      detalhe: "O X exige login obrigatório e bloqueia consultas diretas sem servidor intermediário. Você pode configurar um servidor Cobalt próprio no botão 'Configurar Servidor' ou salvar este link no Klaus.",
-      plataforma,
-      urlOriginal: urlLimpa,
-    };
-  }
-
+  // 4. Resposta de erro clara e transparente
   return {
     sucesso: false,
-    erro: `Não foi possível extrair a mídia do ${plataforma.toUpperCase()} diretamente.`,
-    detalhe: `${ultimoErro}. Você pode configurar uma instância própria do Cobalt no painel acima.`,
+    erro: `Não foi possível extrair a mídia de ${plataforma.toUpperCase()} no momento.`,
+    detalhe: `${ultimoErro}. Verifique se a postagem/vídeo é pública ou configure uma instância do Cobalt no botão acima.`,
     plataforma,
     urlOriginal: urlLimpa,
   };
