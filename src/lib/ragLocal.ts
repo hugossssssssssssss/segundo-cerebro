@@ -38,7 +38,7 @@ export function classificarIntencaoConsulta(consulta: string): IntencaoConsulta 
 export function montarContextoSemantico(
   acervo: ItemRepo[],
   consulta?: string,
-  tetoCaracteres = 250_000,
+  tetoCaracteres = 40_000,
 ): string {
   if (!acervo || acervo.length === 0) return "";
 
@@ -61,96 +61,58 @@ export function montarContextoSemantico(
   const todasNotas = acervo.filter((i) => i.caminho.startsWith("notas/"));
   const todosContatos = acervo.filter((i) => i.caminho.startsWith("contatos/"));
 
-  // 1. Se a pergunta envolver planejamento, tarefas, semana, início do dia ou metas:
+  // 1. Busca semântica e textual com MiniSearch para encontrar os itens mais relevantes para o assunto
+  if (consulta && consulta.trim().length >= 2) {
+    const resultados = buscar(acervo, consulta);
+    for (const r of resultados) {
+      const item = acervo.find((i) => i.caminho === r.caminho);
+      if (item) adicionar(item);
+      if (selecionados.length >= 15) break;
+    }
+  }
+
+  // 2. Se a pergunta for sobre planejamento, tarefas ou semana:
   const pedePlanejamentoOuSemana =
     intencao === "tarefas" ||
     intencao === "metas" ||
     /\b(semana|hoje|começar|comeco|priorizar|balanço|balanco|revisão|revisao)\b/i.test(c);
 
   if (pedePlanejamentoOuSemana) {
-    todasTarefas.forEach(adicionar);
-    todasMetas.forEach(adicionar);
-    todasEntregas.forEach(adicionar);
-    todasNotas.forEach(adicionar);
+    // Tarefas pendentes têm prioridade máxima
+    const tarefasPendentes = todasTarefas.filter(
+      (t) => t.doc?.dados?.status !== "feito",
+    );
+    tarefasPendentes.slice(0, 20).forEach(adicionar);
+    todasMetas.slice(0, 10).forEach(adicionar);
+    todasEntregas.slice(0, 10).forEach(adicionar);
   }
 
-  // 2. Se a pergunta for sobre notas / anotações / ideias ou triagem:
-  if (intencao === "notas" || /\b(nota|notas|anotação|anotacao|anotações|anotacoes|ideia|ideias|triagem|conteúdo|conteudo)\b/i.test(c)) {
-    todasNotas.forEach(adicionar);
-    todasTarefas.forEach(adicionar);
-    todasMetas.forEach(adicionar);
+  // 3. Se a pergunta for sobre notas / ideias:
+  if (intencao === "notas" || /\b(nota|notas|anotação|anotacao|anotações|anotacoes|ideia|ideias|triagem)\b/i.test(c)) {
+    // Traz as notas mais recentes / prioritárias
+    todasNotas.slice(0, 20).forEach(adicionar);
   }
 
-  // 3. Se a pergunta for sobre contatos:
+  // 4. Se a pergunta for sobre contatos:
   if (intencao === "contatos") {
-    todosContatos.forEach(adicionar);
+    todosContatos.slice(0, 20).forEach(adicionar);
   }
 
-  // 4. Busca textual e semântica com MiniSearch para trazer itens relevantes ao tema
-  if (consulta && consulta.trim().length >= 2) {
-    const resultados = buscar(acervo, consulta);
-    for (const r of resultados) {
-      const item = acervo.find((i) => i.caminho === r.caminho);
-      if (item) adicionar(item);
-      if (selecionados.length >= 50) break;
+  // 5. Se ainda temos poucos itens selecionados e a pergunta é geral, inclui os mais recentes
+  if (selecionados.length < 8) {
+    for (const item of acervo) {
+      if (!item.caminho.startsWith(".klaus/") && !item.caminho.startsWith("caixa-entrada/")) {
+        adicionar(item);
+      }
+      if (selecionados.length >= 12) break;
     }
   }
 
-  // 5. Inclusão abrangente de notas e acervo (para garantir que nada fique sem texto integral)
-  todasNotas.forEach(adicionar);
-  todasTarefas.forEach(adicionar);
-  todasMetas.forEach(adicionar);
-  todasEntregas.forEach(adicionar);
-  todosContatos.forEach(adicionar);
-
-  // Fallback: inclui quaisquer outros itens úteis do acervo até o limite
-  for (const item of acervo) {
-    if (!item.caminho.startsWith(".klaus/") && !item.caminho.startsWith("caixa-entrada/")) {
-      adicionar(item);
-    }
-  }
-
-  // 6. Constrói o Panorama Geral do Acervo para o Gemini ter visão do índice
+  // 6. Constrói um Panorama conciso e os blocos de documentos relevantes
   const linhasPanorama: string[] = [
-    "## 📊 PANORAMA RESUMIDO DO ACERVO DO KLAUS:",
-    "Abaixo você tem o índice rápido e, em seguida, o CONTEÚDO INTEGRAL E COMPLETO dos arquivos para leitura direta.",
+    "## 📊 RESUMO DO ACERVO RELEVANTE:",
+    "Abaixo estão os documentos selecionados sob medida para responder à sua solicitação:",
   ];
-
-  if (todasTarefas.length > 0) {
-    linhasPanorama.push(`\n### TAREFAS (${todasTarefas.length} cadastradas):`);
-    for (const t of todasTarefas) {
-      const tit = tituloProvavel(t.doc, t.nome);
-      const status = t.doc?.dados?.status || "a-fazer";
-      const prazo = t.doc?.dados?.prazo ? ` | Prazo: ${t.doc.dados.prazo}` : "";
-      const prioridade = t.doc?.dados?.prioridade ? ` | Prioridade: ${t.doc.dados.prioridade}` : "";
-      const tags = t.doc?.dados?.tags ? ` | Tags: ${JSON.stringify(t.doc.dados.tags)}` : "";
-      linhasPanorama.push(`- [${status}] "${tit}" (${t.caminho})${prazo}${prioridade}${tags}`);
-    }
-  }
-
-  if (todasMetas.length > 0 || todasEntregas.length > 0) {
-    linhasPanorama.push(`\n### METAS E ENTREGAS DO PDI:`);
-    for (const m of todasMetas) {
-      const tit = tituloProvavel(m.doc, m.nome);
-      linhasPanorama.push(`- [Meta PDI] "${tit}" (${m.caminho})`);
-    }
-    for (const e of todasEntregas) {
-      const tit = tituloProvavel(e.doc, e.nome);
-      const metas = e.doc?.dados?.metas ? ` -> alimenta: ${JSON.stringify(e.doc.dados.metas)}` : " (sem meta atribuída)";
-      linhasPanorama.push(`- [Entrega PDI] "${tit}" (${e.caminho})${metas}`);
-    }
-  }
-
-  if (todasNotas.length > 0) {
-    linhasPanorama.push(`\n### NOTAS (${todasNotas.length} cadastradas):`);
-    for (const n of todasNotas) {
-      const tit = tituloProvavel(n.doc, n.nome);
-      const tags = n.doc?.dados?.tags ? ` | Tags: ${JSON.stringify(n.doc.dados.tags)}` : "";
-      linhasPanorama.push(`- "${tit}" (${n.caminho})${tags}`);
-    }
-  }
-
-  linhasPanorama.push("\n---\n## 📄 CONTEÚDO INTEGRAL E DETALHADO DOS DOCUMENTOS (LEIA O TEXTO ABAIXO):");
 
   let total = linhasPanorama.join("\n").length;
   const blocosDocumentos: string[] = [];
@@ -162,7 +124,7 @@ export function montarContextoSemantico(
 
     if (total + bloco.length > tetoCaracteres) {
       blocosDocumentos.push(
-        `\n... (contexto otimizado pelo RAG: limitado em ${tetoCaracteres} caracteres para máxima precisão)`,
+        `\n... (contexto filtrado e otimizado para economia de tokens: limitado em ${tetoCaracteres} caracteres)`,
       );
       break;
     }

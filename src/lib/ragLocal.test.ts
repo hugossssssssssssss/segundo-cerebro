@@ -63,6 +63,6 @@ describe("ragLocal - injeção contextual seletiva", () => {
     const contexto = montarContextoSemantico([notaItem], "o que tenho nas minhas notas?");
     expect(contexto).toContain("Briefing da Marca");
     expect(contexto).toContain("Detalhes cruciais da identidade visual e tipografia.");
-    expect(contexto).toContain("CONTEÚDO INTEGRAL E DETALHADO DOS DOCUMENTOS");
+    expect(contexto).toContain("RESUMO DO ACERVO RELEVANTE");
   });
 });
