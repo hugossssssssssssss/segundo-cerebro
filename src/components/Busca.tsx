@@ -124,7 +124,8 @@ export function Busca({
   } catch {}
 
   const aoSelecionarFerramenta = (f: FerramentaApp) => {
-    if (termo.trim()) salvarBuscaRecente(termo);
+    const termoDigitado = termo.trim();
+    if (termoDigitado) salvarBuscaRecente(termoDigitado);
     aoFechar();
     if (f.rota === "acao:alternar_tema") {
       alternarTema();
@@ -134,6 +135,11 @@ export function Busca({
     if (f.rota === "acao:iniciar_pomodoro") {
       navegar("/tarefas?pomodoro=true");
       toast("Redirecionando para o painel de Pomodoro em Tarefas.", { tipo: "info" });
+      return;
+    }
+
+    if (f.id === "chat_ia") {
+      abrirFerramentaFlutuante("chat_ia", termoDigitado ? { mensagemInicial: termoDigitado } : undefined);
       return;
     }
 
@@ -666,11 +672,49 @@ export function Busca({
               </div>
             </div>
           ) : totalResultados === 0 ? (
-            <p className="p-6 text-sm text-muted-foreground">
-              Nada encontrado para “{termo}”.
-            </p>
+            <div className="p-6 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Nenhum documento encontrado para “{termo}”.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (termo.trim()) salvarBuscaRecente(termo.trim());
+                  aoFechar();
+                  abrirFerramentaFlutuante("chat_ia", { mensagemInicial: termo.trim() });
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 font-medium text-xs border border-primary/20 transition-all cursor-pointer shadow-xs"
+              >
+                <Sparkles size={15} />
+                <span>Perguntar para a IA: &quot;{termo}&quot;</span>
+              </button>
+            </div>
           ) : (
             <div className="divide-y divide-border">
+              {/* ATALHO RÁPIDO PARA IA */}
+              {termo.trim().length >= 2 && (
+                <div
+                  onClick={() => {
+                    salvarBuscaRecente(termo.trim());
+                    aoFechar();
+                    abrirFerramentaFlutuante("chat_ia", { mensagemInicial: termo.trim() });
+                  }}
+                  className="flex items-center justify-between px-4 py-2.5 bg-primary/5 hover:bg-primary/10 border-b border-border/80 cursor-pointer transition-colors group"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15 text-primary shrink-0">
+                      <Sparkles size={14} />
+                    </div>
+                    <p className="text-xs font-medium text-foreground truncate">
+                      Perguntar à IA: <span className="font-bold text-primary">&quot;{termo}&quot;</span>
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-semibold text-primary uppercase tracking-wide bg-primary/10 px-2 py-0.5 rounded-md shrink-0">
+                    Enter IA ↵
+                  </span>
+                </div>
+              )}
+
               {/* FERRAMENTAS ENCONTRADAS */}
               {ferramentasResultado.length > 0 && (
                 <div>

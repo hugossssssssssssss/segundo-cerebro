@@ -119,12 +119,18 @@ const ABAS_PLATAFORMAS: AbaFerramenta[] = [
   },
 ];
 
-export default function BaixadorMidia() {
+export interface BaixadorMidiaProps {
+  modoFocado?: boolean;
+  abaInicial?: PlataformaMidia;
+}
+
+export default function BaixadorMidia({ modoFocado, abaInicial }: BaixadorMidiaProps = {}) {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlParam = searchParams.get("url") || "";
-  const ferramentaParam = (searchParams.get("ferramenta") || "universal") as PlataformaMidia;
+  const ferramentaParam = abaInicial || (searchParams.get("ferramenta") as PlataformaMidia) || "universal";
 
   const [abaAtiva, setAbaAtiva] = useState<PlataformaMidia>(() => {
+    if (abaInicial && ABAS_PLATAFORMAS.some((a) => a.id === abaInicial)) return abaInicial;
     return ABAS_PLATAFORMAS.some((a) => a.id === ferramentaParam) ? ferramentaParam : "universal";
   });
 
@@ -318,50 +324,54 @@ export default function BaixadorMidia() {
   const abaConfig = ABAS_PLATAFORMAS.find((a) => a.id === abaAtiva) || ABAS_PLATAFORMAS[0];
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 pb-16">
-      {/* Cabeçalho da Página */}
-      <CabecalhoPagina
-        titulo="Baixador de Mídia"
-        descricao="Baixe vídeos, reels, shorts, fotos e áudios MP3 de qualquer rede social sem anúncios e 100% nativo no Klaus."
-      />
+    <div className={cn("mx-auto max-w-5xl space-y-6 pb-16", modoFocado && "space-y-4 pb-2 max-w-full")}>
+      {!modoFocado && (
+        <>
+          {/* Cabeçalho da Página */}
+          <CabecalhoPagina
+            titulo="Baixador de Mídia"
+            descricao="Baixe vídeos, reels, shorts, fotos e áudios MP3 de qualquer rede social sem anúncios e 100% nativo no Klaus."
+          />
 
-      {/* Grade de Ferramentas / Plataformas */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        {ABAS_PLATAFORMAS.map((aba) => {
-          const Icone = aba.icone;
-          const ativa = abaAtiva === aba.id;
-          return (
-            <button
-              key={aba.id}
-              type="button"
-              onClick={() => {
-                setAbaAtiva(aba.id);
-                setSearchParams({ ferramenta: aba.id });
-                setErro(null);
-                setResultado(null);
-                setStreamSelecionada(null);
-              }}
-              className={cn(
-                "flex flex-col items-start text-left p-3.5 rounded-xl border transition-all cursor-pointer relative",
-                ativa
-                  ? "border-primary bg-primary/5 shadow-xs ring-1 ring-primary/30"
-                  : "border-border bg-card hover:bg-secondary/40 hover:border-border/80"
-              )}
-            >
-              <div className="flex items-center justify-between w-full mb-2">
-                <div className={cn("p-2 rounded-lg border", aba.corBadge)}>
-                  <Icone size={18} />
-                </div>
-                {ativa && (
-                  <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
-                )}
-              </div>
-              <h3 className="font-semibold text-xs sm:text-sm text-foreground">{aba.titulo}</h3>
-              <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{aba.subtitulo}</p>
-            </button>
-          );
-        })}
-      </div>
+          {/* Grade de Ferramentas / Plataformas */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {ABAS_PLATAFORMAS.map((aba) => {
+              const Icone = aba.icone;
+              const ativa = abaAtiva === aba.id;
+              return (
+                <button
+                  key={aba.id}
+                  type="button"
+                  onClick={() => {
+                    setAbaAtiva(aba.id);
+                    setSearchParams({ ferramenta: aba.id });
+                    setErro(null);
+                    setResultado(null);
+                    setStreamSelecionada(null);
+                  }}
+                  className={cn(
+                    "flex flex-col items-start text-left p-3.5 rounded-xl border transition-all cursor-pointer relative",
+                    ativa
+                      ? "border-primary bg-primary/5 shadow-xs ring-1 ring-primary/30"
+                      : "border-border bg-card hover:bg-secondary/40 hover:border-border/80"
+                  )}
+                >
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <div className={cn("p-2 rounded-lg border", aba.corBadge)}>
+                      <Icone size={18} />
+                    </div>
+                    {ativa && (
+                      <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+                    )}
+                  </div>
+                  <h3 className="font-semibold text-xs sm:text-sm text-foreground">{aba.titulo}</h3>
+                  <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{aba.subtitulo}</p>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Área Central de Entrada e Download */}
       <Cartao className="p-4 sm:p-6 border-border/80 bg-card space-y-5 shadow-sm">

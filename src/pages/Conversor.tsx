@@ -145,7 +145,12 @@ const FERRAMENTAS_CONVERSOR: ItemFerramentaUI[] = [
   },
 ];
 
-export default function Conversor() {
+export interface ConversorProps {
+  modoFocado?: boolean;
+  ferramentaInicial?: TipoFerramentaConversor;
+}
+
+export default function Conversor({ modoFocado, ferramentaInicial }: ConversorProps = {}) {
   const cfg = lerConfig();
   const { salvarTexto } = useSalvar(cfg);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -154,7 +159,9 @@ export default function Conversor() {
   const { ferramentaAtiva: ferramentaContexto } = useFerramentasFlutuantes();
 
   const [ferramentaAtiva, setFerramentaAtiva] = useState<TipoFerramentaConversor>(
-    ferramentaContexto && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaContexto)
+    ferramentaInicial && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaInicial)
+      ? ferramentaInicial
+      : ferramentaContexto && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaContexto)
       ? (ferramentaContexto as TipoFerramentaConversor)
       : ferramentaParam && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaParam)
       ? ferramentaParam
@@ -163,12 +170,14 @@ export default function Conversor() {
 
   // Sincroniza estado se o parâmetro de URL ou o contexto flutuante mudar
   useEffect(() => {
-    if (ferramentaContexto && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaContexto)) {
+    if (ferramentaInicial && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaInicial)) {
+      setFerramentaAtiva(ferramentaInicial);
+    } else if (ferramentaContexto && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaContexto)) {
       setFerramentaAtiva(ferramentaContexto as TipoFerramentaConversor);
     } else if (ferramentaParam && FERRAMENTAS_CONVERSOR.some((f) => f.id === ferramentaParam)) {
       setFerramentaAtiva(ferramentaParam);
     }
-  }, [ferramentaParam, ferramentaContexto]);
+  }, [ferramentaInicial, ferramentaParam, ferramentaContexto]);
 
   const selecionarFerramenta = (id: TipoFerramentaConversor) => {
     setFerramentaAtiva(id);
@@ -939,46 +948,50 @@ export default function Conversor() {
   const ferramentaAtualInfo = FERRAMENTAS_CONVERSOR.find((f) => f.id === ferramentaAtiva)!;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200">
-      <CabecalhoPagina
-        titulo="Conversor de Arquivos"
-        descricao="Ferramentas rápidas de conversão presencial no seu navegador, sem enviar dados para servidores externos."
-        icone={<RefreshCw size={20} />}
-        corIcone="bg-blue-500/10 text-blue-600 dark:text-blue-400"
-      />
+    <div className={cn("space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200", modoFocado && "space-y-4 max-w-full")}>
+      {!modoFocado && (
+        <>
+          <CabecalhoPagina
+            titulo="Conversor de Arquivos"
+            descricao="Ferramentas rápidas de conversão presencial no seu navegador, sem enviar dados para servidores externos."
+            icone={<RefreshCw size={20} />}
+            corIcone="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+          />
 
-      {/* Grid de Ferramentas Estilo iLovePDF */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-        {FERRAMENTAS_CONVERSOR.map((f) => {
-          const IconeComp = f.icone;
-          const ativa = ferramentaAtiva === f.id;
-          return (
-            <button
-              key={f.id}
-              onClick={() => selecionarFerramenta(f.id)}
-              className={cn(
-                "flex flex-col text-left p-3.5 rounded-2xl border transition-all relative overflow-hidden group",
-                ativa
-                  ? "bg-card border-primary shadow-md ring-2 ring-primary/20"
-                  : "bg-card/60 border-border/80 hover:border-border hover:bg-card"
-              )}
-            >
-              <div className="flex items-center justify-between w-full mb-2">
-                <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl", f.cor)}>
-                  <IconeComp size={18} />
-                </div>
-                {ativa && (
-                  <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
-                )}
-              </div>
-              <h3 className="font-bold text-sm text-foreground tracking-tight">{f.titulo}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
-                {f.descricao}
-              </p>
-            </button>
-          );
-        })}
-      </div>
+          {/* Grid de Ferramentas Estilo iLovePDF */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            {FERRAMENTAS_CONVERSOR.map((f) => {
+              const IconeComp = f.icone;
+              const ativa = ferramentaAtiva === f.id;
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => selecionarFerramenta(f.id)}
+                  className={cn(
+                    "flex flex-col text-left p-3.5 rounded-2xl border transition-all relative overflow-hidden group",
+                    ativa
+                      ? "bg-card border-primary shadow-md ring-2 ring-primary/20"
+                      : "bg-card/60 border-border/80 hover:border-border hover:bg-card"
+                  )}
+                >
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl", f.cor)}>
+                      <IconeComp size={18} />
+                    </div>
+                    {ativa && (
+                      <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+                    )}
+                  </div>
+                  <h3 className="font-bold text-sm text-foreground tracking-tight">{f.titulo}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                    {f.descricao}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Avisos */}
       {erro && <Aviso tom="erro">{erro}</Aviso>}

@@ -151,19 +151,26 @@ export const LISTA_IT_TOOLS: InfoFerramentaIT[] = [
   },
 ];
 
-export default function ITTools() {
+export interface ITToolsProps {
+  modoFocado?: boolean;
+  ferramentaInicial?: string;
+}
+
+export default function ITTools({ modoFocado, ferramentaInicial }: ITToolsProps = {}) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const paramFerramenta = searchParams.get("ferramenta") || searchParams.get("aba");
+  const paramFerramenta = ferramentaInicial || searchParams.get("ferramenta") || searchParams.get("aba");
 
   const [ferramentaAtivaId, setFerramentaAtivaId] = useState<string | null>(paramFerramenta);
   const [categoriaAtiva, setCategoriaAtiva] = useState<CategoriaITTools>("todas");
   const [busca, setBusca] = useState("");
 
   useEffect(() => {
-    if (paramFerramenta) {
+    if (ferramentaInicial) {
+      setFerramentaAtivaId(ferramentaInicial);
+    } else if (paramFerramenta) {
       setFerramentaAtivaId(paramFerramenta);
     }
-  }, [paramFerramenta]);
+  }, [ferramentaInicial, paramFerramenta]);
 
   const selecionarFerramenta = (id: string | null) => {
     setFerramentaAtivaId(id);
@@ -191,13 +198,15 @@ export default function ITTools() {
   const ferramentaAtiva = LISTA_IT_TOOLS.find((f) => f.id === ferramentaAtivaId);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-background p-4 sm:p-6 md:p-8 space-y-6">
+    <div className={cn("flex-1 overflow-y-auto bg-background space-y-6", modoFocado ? "p-0 space-y-4" : "p-4 sm:p-6 md:p-8")}>
       {/* Cabeçalho da Página */}
-      <CabecalhoPagina
-        titulo="IT-Tools"
-        descricao="Canivete suíço de utilitários rápidos para design, texto, medidas e código."
-        icone={<Wrench size={24} className="text-primary" />}
-      />
+      {!modoFocado && (
+        <CabecalhoPagina
+          titulo="IT-Tools"
+          descricao="Canivete suíço de utilitários rápidos para design, texto, medidas e código."
+          icone={<Wrench size={24} className="text-primary" />}
+        />
+      )}
 
       {/* Se nenhuma ferramenta estiver aberta: Mostra catálogo com filtros */}
       {!ferramentaAtiva ? (
@@ -287,24 +296,26 @@ export default function ITTools() {
         </div>
       ) : (
         /* Se uma ferramenta estiver selecionada: Exibe o painel interativo da ferramenta */
-        <div className="space-y-6 animate-in fade-in duration-150">
+        <div className={cn("space-y-6 animate-in fade-in duration-150", modoFocado && "space-y-4")}>
           {/* Topo da Ferramenta com Voltar */}
-          <div className="flex items-center justify-between gap-4 pb-4 border-b border-border/60">
-            <button
-              onClick={() => selecionarFerramenta(null)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-accent text-xs font-medium text-foreground transition-colors cursor-pointer"
-            >
-              <ArrowLeft size={14} />
-              <span>Voltar para todas as ferramentas</span>
-            </button>
+          {!modoFocado && (
+            <div className="flex items-center justify-between gap-4 pb-4 border-b border-border/60">
+              <button
+                onClick={() => selecionarFerramenta(null)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-accent text-xs font-medium text-foreground transition-colors cursor-pointer"
+              >
+                <ArrowLeft size={14} />
+                <span>Voltar para todas as ferramentas</span>
+              </button>
 
-            <div className="flex items-center gap-2">
-              <div className={cn("p-1.5 rounded-lg", ferramentaAtiva.corIcone)}>
-                <ferramentaAtiva.icone size={16} />
+              <div className="flex items-center gap-2">
+                <div className={cn("p-1.5 rounded-lg", ferramentaAtiva.corIcone)}>
+                  <ferramentaAtiva.icone size={16} />
+                </div>
+                <span className="text-sm font-bold text-foreground">{ferramentaAtiva.titulo}</span>
               </div>
-              <span className="text-sm font-bold text-foreground">{ferramentaAtiva.titulo}</span>
             </div>
-          </div>
+          )}
 
           {/* Renderizador do Componente da Ferramenta Ativa */}
           <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-xs">

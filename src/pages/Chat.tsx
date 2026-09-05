@@ -15,7 +15,13 @@ import { montarContextoSemantico } from "@/lib/ragLocal";
 /** Uma fala da conversa, com as ações que a IA propôs junto dela. */
 type Fala = Mensagem & { acoes?: Acao[] };
 
-export default function Chat() {
+export interface ChatProps {
+  modoFlutuante?: boolean;
+  mensagemInicial?: string;
+  aoFechar?: () => void;
+}
+
+export default function Chat({ modoFlutuante, mensagemInicial, aoFechar: _aoFechar }: ChatProps = {}) {
   const [cfg, setCfg] = useState<Settings>(() => lerConfig());
   const pronto = configCompleta(cfg);
   const { acervo, carregando: carregandoAcervo, recarregar } = useAcervoRepo(cfg);
@@ -114,6 +120,15 @@ export default function Chat() {
       setPensando(false);
     }
   }
+
+  // Disparo automático instantâneo ao abrir o Chat com mensagem inicial (ex: vindo da Home)
+  const jaEnviouInicial = useRef(false);
+  useEffect(() => {
+    if (mensagemInicial && mensagemInicial.trim() && !jaEnviouInicial.current && cfg.geminiKey) {
+      jaEnviouInicial.current = true;
+      enviar(mensagemInicial.trim());
+    }
+  }, [mensagemInicial, cfg.geminiKey]);
 
   function usarPrompt(p: PromptSalvo) {
     // prompt que espera você colar algo apenas preenche a caixa
@@ -243,29 +258,31 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-      <CabecalhoPagina
-        titulo="Conversar com a IA"
-        descricao="A IA lê seus documentos e pode criar ou editar registros com sua aprovação."
-        icone={<MessageSquare size={20} />}
-        corIcone="bg-purple-500/10 text-purple-600 dark:text-purple-400"
-        acoes={
-          falas.length > 0 ? (
-            <Botao
-              variante="fantasma"
-              tamanho="pequeno"
-              onClick={() => {
-                setFalas([]);
-                setErro("");
-                setDescartadas(new Set());
-              }}
-            >
-              <Trash2 size={15} />
-              Limpar Conversa
-            </Botao>
-          ) : undefined
-        }
-      />
+    <div className={cn("flex flex-col gap-5 animate-in fade-in duration-200", modoFlutuante && "gap-3 pb-2")}>
+      {!modoFlutuante && (
+        <CabecalhoPagina
+          titulo="Conversar com a IA"
+          descricao="A IA lê seus documentos e pode criar ou editar registros com sua aprovação."
+          icone={<MessageSquare size={20} />}
+          corIcone="bg-purple-500/10 text-purple-600 dark:text-purple-400"
+          acoes={
+            falas.length > 0 ? (
+              <Botao
+                variante="fantasma"
+                tamanho="pequeno"
+                onClick={() => {
+                  setFalas([]);
+                  setErro("");
+                  setDescartadas(new Set());
+                }}
+              >
+                <Trash2 size={15} />
+                Limpar Conversa
+              </Botao>
+            ) : undefined
+          }
+        />
+      )}
 
       {falas.length === 0 && (
         <>

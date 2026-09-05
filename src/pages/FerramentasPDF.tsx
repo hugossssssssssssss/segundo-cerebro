@@ -19,18 +19,26 @@ import { Botao, Cartao, Aviso } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
 
-type AbaILovePDF = "juntar" | "dividir" | "comprimir" | "recortar" | "desbloquear" | "organizar";
+export type AbaILovePDF = "juntar" | "dividir" | "comprimir" | "recortar" | "desbloquear" | "organizar";
 
 interface InfoPagina {
   index: number;
   numPagina: number;
 }
 
-export default function FerramentasPDF() {
+export interface FerramentasPDFProps {
+  modoFocado?: boolean;
+  abaInicial?: AbaILovePDF;
+}
+
+export default function FerramentasPDF({ modoFocado, abaInicial }: FerramentasPDFProps = {}) {
   const [searchParams] = useSearchParams();
   const abaParam = searchParams.get("aba") as AbaILovePDF | null;
 
   const [abaAtiva, setAbaAtiva] = useState<AbaILovePDF>(() => {
+    if (abaInicial && ["juntar", "dividir", "comprimir", "recortar", "desbloquear", "organizar"].includes(abaInicial)) {
+      return abaInicial;
+    }
     if (abaParam && ["juntar", "dividir", "comprimir", "recortar", "desbloquear", "organizar"].includes(abaParam)) {
       return abaParam;
     }
@@ -38,10 +46,12 @@ export default function FerramentasPDF() {
   });
 
   useEffect(() => {
-    if (abaParam && ["juntar", "dividir", "comprimir", "recortar", "desbloquear", "organizar"].includes(abaParam)) {
+    if (abaInicial && ["juntar", "dividir", "comprimir", "recortar", "desbloquear", "organizar"].includes(abaInicial)) {
+      setAbaAtiva(abaInicial);
+    } else if (abaParam && ["juntar", "dividir", "comprimir", "recortar", "desbloquear", "organizar"].includes(abaParam)) {
       setAbaAtiva(abaParam);
     }
-  }, [abaParam]);
+  }, [abaInicial, abaParam]);
 
   // Estados
   const [arquivos, setArquivos] = useState<File[]>([]);
@@ -365,53 +375,57 @@ export default function FerramentasPDF() {
   const abaInfo = abasFerramentas.find((a) => a.id === abaAtiva)!;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200">
-      <CabecalhoPagina
-        titulo="Ferramentas PDF"
-        descricao="Manipule, mescle, divida e otimize documentos PDF diretamente no seu navegador."
-        icone={<FileText size={20} />}
-        corIcone="bg-red-500/10 text-red-600 dark:text-red-400"
-      />
+    <div className={cn("space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200", modoFocado && "space-y-4 max-w-full")}>
+      {!modoFocado && (
+        <>
+          <CabecalhoPagina
+            titulo="Ferramentas PDF"
+            descricao="Manipule, mescle, divida e otimize documentos PDF diretamente no seu navegador."
+            icone={<FileText size={20} />}
+            corIcone="bg-red-500/10 text-red-600 dark:text-red-400"
+          />
 
-      {/* Grade de Ferramentas com Visual Unificado do Conversor */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-        {abasFerramentas.map((f) => {
-          const ativa = abaAtiva === f.id;
-          const IconeComp = f.Icone;
+          {/* Grade de Ferramentas com Visual Unificado do Conversor */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {abasFerramentas.map((f) => {
+              const ativa = abaAtiva === f.id;
+              const IconeComp = f.Icone;
 
-          return (
-            <div
-              key={f.id}
-              onClick={() => {
-                setAbaAtiva(f.id);
-                setArquivos([]);
-                setErro("");
-                setMensagemSucesso("");
-              }}
-              className={cn(
-                "group relative flex flex-col justify-between p-4 rounded-2xl border transition-all cursor-pointer shadow-xs",
-                ativa
-                  ? "border-primary bg-primary/5 ring-2 ring-primary/30"
-                  : "border-border/80 bg-card hover:bg-accent/50 hover:border-primary/40"
-              )}
-            >
-              <div className="space-y-2.5">
-                <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl transition-transform group-hover:scale-105", f.cor)}>
-                  <IconeComp size={18} />
+              return (
+                <div
+                  key={f.id}
+                  onClick={() => {
+                    setAbaAtiva(f.id);
+                    setArquivos([]);
+                    setErro("");
+                    setMensagemSucesso("");
+                  }}
+                  className={cn(
+                    "group relative flex flex-col justify-between p-4 rounded-2xl border transition-all cursor-pointer shadow-xs",
+                    ativa
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                      : "border-border/80 bg-card hover:bg-accent/50 hover:border-primary/40"
+                  )}
+                >
+                  <div className="space-y-2.5">
+                    <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl transition-transform group-hover:scale-105", f.cor)}>
+                      <IconeComp size={18} />
+                    </div>
+                    <div className="space-y-0.5">
+                      <h3 className="font-bold text-xs text-foreground group-hover:text-primary transition-colors">
+                        {f.label}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                        {f.descricao}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-0.5">
-                  <h3 className="font-bold text-xs text-foreground group-hover:text-primary transition-colors">
-                    {f.label}
-                  </h3>
-                  <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
-                    {f.descricao}
-                  </p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Avisos */}
       {erro && <Aviso tom="erro">{erro}</Aviso>}

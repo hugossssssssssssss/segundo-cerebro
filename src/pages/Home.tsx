@@ -664,11 +664,11 @@ export default function Home() {
                 )}
 
                 {widget.id === "conversor_arquivos" && (
-                  <WidgetConversorRapido aoAbrirPopup={() => abrirFerramentaFlutuante("conversor")} />
+                  <WidgetConversorRapido aoAbrirPopup={(ferramentaId) => abrirFerramentaFlutuante(ferramentaId || "conversor")} />
                 )}
 
                 {widget.id === "ferramentas_pdf" && (
-                  <WidgetPDFRapido aoAbrirPopup={() => abrirFerramentaFlutuante("ferramentas_pdf")} />
+                  <WidgetPDFRapido aoAbrirPopup={(ferramentaId) => abrirFerramentaFlutuante(ferramentaId || "ferramentas_pdf")} />
                 )}
 
                 {widget.id === "it_tools" && (
@@ -684,7 +684,7 @@ export default function Home() {
                 )}
 
                 {widget.id === "chat_ia" && (
-                  <WidgetChatIA aoAbrirPopup={() => abrirFerramentaFlutuante("chat_ia")} />
+                  <WidgetChatIA aoAbrirPopup={(mensagem) => abrirFerramentaFlutuante("chat_ia", mensagem ? { mensagemInicial: mensagem } : undefined)} />
                 )}
               </WidgetWrapper>
             );
