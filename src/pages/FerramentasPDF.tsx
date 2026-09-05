@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PDFDocument } from "pdf-lib";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import {
   FileText,
   FilePlus,
@@ -14,10 +16,16 @@ import {
   Loader2,
   FileArchive,
   Minimize2,
+  Check,
+  Sparkles,
+  Download,
 } from "lucide-react";
 import { Botao, Cartao, Aviso } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
+
+// Configura o worker do PDF.js via Vite bundle local
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 export type AbaILovePDF = "juntar" | "dividir" | "comprimir" | "recortar" | "desbloquear" | "organizar";
 
@@ -60,9 +68,18 @@ export default function FerramentasPDF({ modoFocado, abaInicial }: FerramentasPD
   const [erro, setErro] = useState("");
 
   // Configurações das ferramentas
-  const [intervaloPaginas, setIntervaloPaginas] = useState("");
   const [porcentagemMargem, setPorcentagemMargem] = useState(10);
   const [paginasOrganizar, setPaginasOrganizar] = useState<InfoPagina[]>([]);
+
+  // Estados específicos para Dividir / Extrair com Miniaturas Visuais
+  interface MiniaturaPaginaDividir {
+    numPagina: number;
+    dataUrl: string;
+  }
+  const [miniaturasDividir, setMiniaturasDividir] = useState<MiniaturaPaginaDividir[]>([]);
+  const [carregandoMiniaturas, setCarregandoMiniaturas] = useState(false);
+  const [paginasSelecionadasDividir, setPaginasSelecionadasDividir] = useState<Set<number>>(new Set());
+  const [modoExtrairUnicoPdf, setModoExtrairUnicoPdf] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,6 +94,95 @@ export default function FerramentasPDF({ modoFocado, abaInicial }: FerramentasPD
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
+
+  // Gera pré-visualização de todas as páginas do PDF para seleção visual
+  async function carregarMiniaturasDividir(arquivo: File) {
+    setCarregandoMiniaturas(true);
+    setMiniaturasDividir([]);
+    setPaginasSelecionadasDividir(new Set());
+    setErro("");
+    try {
+      const buffer = await arquivo.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({
+        data: new Uint8Array(buffer),
+        cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+        cMapPacked: true,
+      });
+      const pdf = await loadingTask.promise;
+      const totalPaginas = pdf.numPages;
+
+      const resultados: MiniaturaPaginaDividir[] = [];
+      const selecionadasIniciais = new Set<number>();
+
+      for (let i = 1; i <= totalPaginas; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 0.35 });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        const ctx = canvas.getContext("2d");
+
+        if (ctx) {
+          await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          resultados.push({
+            numPagina: i,
+            dataUrl,
+          });
+        }
+        selecionadasIniciais.add(i);
+      }
+
+      setMiniaturasDividir(resultados);
+      setPaginasSelecionadasDividir(selecionadasIniciais);
+    } catch (err: any) {
+      setErro(`Não foi possível gerar a pré-visualização das páginas: ${err?.message || err}`);
+    } finally {
+      setCarregandoMiniaturas(false);
+    }
+  }
+
+  useEffect(() => {
+    if (abaAtiva === "dividir" && arquivos.length > 0) {
+      carregarMiniaturasDividir(arquivos[0]);
+    } else if (abaAtiva !== "dividir") {
+      setMiniaturasDividir([]);
+      setPaginasSelecionadasDividir(new Set());
+    }
+  }, [abaAtiva, arquivos]);
+
+  const alternarSelecaoPagina = (num: number) => {
+    setPaginasSelecionadasDividir((prev) => {
+      const novo = new Set(prev);
+      if (novo.has(num)) {
+        novo.delete(num);
+      } else {
+        novo.add(num);
+      }
+      return novo;
+    });
+  };
+
+  const selecionarTodasPaginas = () => {
+    const todas = new Set(miniaturasDividir.map((m) => m.numPagina));
+    setPaginasSelecionadasDividir(todas);
+  };
+
+  const desmarcarTodasPaginas = () => {
+    setPaginasSelecionadasDividir(new Set());
+  };
+
+  const inverterSelecaoPaginas = () => {
+    setPaginasSelecionadasDividir((prev) => {
+      const invertido = new Set<number>();
+      miniaturasDividir.forEach((m) => {
+        if (!prev.has(m.numPagina)) {
+          invertido.add(m.numPagina);
+        }
+      });
+      return invertido;
+    });
+  };
 
   // 1. JUNTAR PDF
   async function executarJuntar() {
@@ -106,10 +212,14 @@ export default function FerramentasPDF({ modoFocado, abaInicial }: FerramentasPD
     }
   }
 
-  // 2. DIVIDIR PDF
+  // 2. DIVIDIR PDF / EXTRAIR PÁGINAS COM SELEÇÃO VISUAL
   async function executarDividir() {
     if (arquivos.length === 0) {
       setErro("Selecione um arquivo PDF para dividir.");
+      return;
+    }
+    if (paginasSelecionadasDividir.size === 0) {
+      setErro("Selecione pelo menos 1 página para extrair.");
       return;
     }
     setProcessando(true);
@@ -119,49 +229,29 @@ export default function FerramentasPDF({ modoFocado, abaInicial }: FerramentasPD
     try {
       const bytes = await arquivos[0].arrayBuffer();
       const pdfOriginal = await PDFDocument.load(bytes);
-      const total = pdfOriginal.getPageCount();
+      const paginasOrdenadas = Array.from(paginasSelecionadasDividir).sort((a, b) => a - b);
+      const indicesZeroBased = paginasOrdenadas.map((num) => num - 1);
+      const nomeBase = arquivos[0].name.replace(/\.pdf$/i, "");
 
-      if (intervaloPaginas.trim()) {
-        const indices: number[] = [];
-        const partes = intervaloPaginas.split(",");
-        for (const p of partes) {
-          if (p.includes("-")) {
-            const [ini, fim] = p.split("-").map((x) => parseInt(x.trim(), 10));
-            if (!isNaN(ini) && !isNaN(fim)) {
-              for (let i = Math.max(1, ini); i <= Math.min(total, fim); i++) {
-                indices.push(i - 1);
-              }
-            }
-          } else {
-            const n = parseInt(p.trim(), 10);
-            if (!isNaN(n) && n >= 1 && n <= total) indices.push(n - 1);
-          }
-        }
-
-        if (indices.length === 0) {
-          setErro("Nenhuma página válida encontrada no intervalo.");
-          setProcessando(false);
-          return;
-        }
-
+      if (modoExtrairUnicoPdf) {
         const pdfNovo = await PDFDocument.create();
-        const paginas = await pdfNovo.copyPages(pdfOriginal, indices);
+        const paginas = await pdfNovo.copyPages(pdfOriginal, indicesZeroBased);
         paginas.forEach((pg) => pdfNovo.addPage(pg));
         const pdfBytes = await pdfNovo.save();
-        baixarBlob(pdfBytes, `PDF_Dividido_${intervaloPaginas.replace(/\s+/g, "")}.pdf`);
-        setMensagemSucesso("Páginas extraídas com sucesso!");
+        baixarBlob(pdfBytes, `${nomeBase}_Paginas_Selecionadas.pdf`);
+        setMensagemSucesso(`${paginasOrdenadas.length} página(s) selecionada(s) extraída(s) com sucesso em um único PDF!`);
       } else {
-        for (let i = 0; i < total; i++) {
+        for (const num of paginasOrdenadas) {
           const pdfNovo = await PDFDocument.create();
-          const [pagina] = await pdfNovo.copyPages(pdfOriginal, [i]);
+          const [pagina] = await pdfNovo.copyPages(pdfOriginal, [num - 1]);
           pdfNovo.addPage(pagina);
           const pdfBytes = await pdfNovo.save();
-          baixarBlob(pdfBytes, `${arquivos[0].name.replace(/\.pdf$/i, "")}_Pagina_${i + 1}.pdf`);
+          baixarBlob(pdfBytes, `${nomeBase}_Pagina_${num}.pdf`);
         }
-        setMensagemSucesso(`Todas as ${total} páginas foram divididas com sucesso!`);
+        setMensagemSucesso(`${paginasOrdenadas.length} página(s) extraída(s) e baixada(s) como arquivos individuais!`);
       }
-    } catch {
-      setErro("Erro ao dividir o PDF.");
+    } catch (err: any) {
+      setErro(`Erro ao processar e extrair as páginas: ${err?.message || err}`);
     } finally {
       setProcessando(false);
     }
@@ -533,32 +623,164 @@ export default function FerramentasPDF({ modoFocado, abaInicial }: FerramentasPD
         </div>
       )}
 
-      {/* DIVIDIR */}
-      {abaAtiva === "dividir" && (
+      {/* DIVIDIR / EXTRAIR PÁGINAS VISUALMENTE */}
+      {abaAtiva === "dividir" && arquivos.length > 0 && (
         <div className="space-y-4 pt-2">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground">
-              Intervalo de páginas para extrair (Opcional, ex: 1-3, 5):
-            </label>
-            <input
-              type="text"
-              value={intervaloPaginas}
-              onChange={(e) => setIntervaloPaginas(e.target.value)}
-              placeholder="Deixe em branco para converter cada página em arquivo separado"
-              className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground outline-none focus:border-primary"
-            />
-          </div>
-          <div className="flex justify-end">
-            <Botao
-              variante="primario"
-              disabled={arquivos.length === 0 || processando}
-              onClick={executarDividir}
-              className="w-full sm:w-auto flex items-center gap-2"
-            >
-              {processando ? <Loader2 size={16} className="animate-spin" /> : <Scissors size={16} />}
-              <span>Dividir PDF</span>
-            </Botao>
-          </div>
+          {carregandoMiniaturas ? (
+            <div className="flex flex-col items-center justify-center p-8 rounded-2xl border border-border bg-card/60 gap-3 text-muted-foreground animate-in fade-in duration-150">
+              <Loader2 size={24} className="animate-spin text-primary" />
+              <p className="text-xs font-medium text-foreground">
+                Gerando pré-visualização das páginas do PDF...
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Isso leva apenas alguns instantes.
+              </p>
+            </div>
+          ) : miniaturasDividir.length > 0 ? (
+            <div className="space-y-4">
+              {/* Barra de Ferramentas da Seleção Visual */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-border bg-card shadow-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-semibold text-foreground">
+                    Clique nas páginas que deseja extrair:
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-bold border border-primary/20">
+                    {paginasSelecionadasDividir.size} de {miniaturasDividir.length} selecionadas
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={selecionarTodasPaginas}
+                    className="px-2.5 py-1 text-xs font-medium rounded-lg border border-border bg-secondary/60 hover:bg-secondary text-foreground transition-colors cursor-pointer"
+                  >
+                    Selecionar Todas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={desmarcarTodasPaginas}
+                    className="px-2.5 py-1 text-xs font-medium rounded-lg border border-border bg-secondary/60 hover:bg-secondary text-foreground transition-colors cursor-pointer"
+                  >
+                    Desmarcar Todas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={inverterSelecaoPaginas}
+                    className="px-2.5 py-1 text-xs font-medium rounded-lg border border-border bg-secondary/60 hover:bg-secondary text-foreground transition-colors cursor-pointer"
+                  >
+                    Inverter
+                  </button>
+                </div>
+              </div>
+
+              {/* Opção de Modo de Extração */}
+              <div className="flex items-center justify-between p-3 rounded-xl border border-border/80 bg-secondary/20">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} className="text-primary" />
+                  <span className="text-xs font-medium text-foreground">Modo de Saída:</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModoExtrairUnicoPdf(true)}
+                    className={cn(
+                      "px-3 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer",
+                      modoExtrairUnicoPdf
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                        : "bg-background text-muted-foreground border-border hover:text-foreground"
+                    )}
+                  >
+                    Unir em 1 PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModoExtrairUnicoPdf(false)}
+                    className={cn(
+                      "px-3 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer",
+                      !modoExtrairUnicoPdf
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                        : "bg-background text-muted-foreground border-border hover:text-foreground"
+                    )}
+                  >
+                    Páginas Separadas (.pdf)
+                  </button>
+                </div>
+              </div>
+
+              {/* Grade Visual de Miniaturas das Páginas */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[420px] overflow-y-auto p-1 rounded-xl border border-border/60 bg-background/50">
+                {miniaturasDividir.map((miniatura) => {
+                  const selecionada = paginasSelecionadasDividir.has(miniatura.numPagina);
+                  return (
+                    <div
+                      key={miniatura.numPagina}
+                      onClick={() => alternarSelecaoPagina(miniatura.numPagina)}
+                      className={cn(
+                        "group relative flex flex-col items-center p-2 rounded-xl border transition-all cursor-pointer select-none",
+                        selecionada
+                          ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/40"
+                          : "border-border/80 bg-card hover:border-primary/40 opacity-55 hover:opacity-100"
+                      )}
+                    >
+                      {/* Topo do Card com Número e Checkbox */}
+                      <div className="flex items-center justify-between w-full mb-1.5 px-0.5">
+                        <span className={cn(
+                          "text-[11px] font-bold px-1.5 py-0.5 rounded-md",
+                          selecionada ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+                        )}>
+                          Pág {miniatura.numPagina}
+                        </span>
+
+                        <div className={cn(
+                          "flex h-5 w-5 items-center justify-center rounded-md border transition-colors",
+                          selecionada
+                            ? "bg-primary border-primary text-primary-foreground"
+                            : "border-border/80 bg-background text-transparent group-hover:border-primary/50"
+                        )}>
+                          {selecionada ? <Check size={12} strokeWidth={3} /> : <div className="h-2 w-2 rounded-xs" />}
+                        </div>
+                      </div>
+
+                      {/* Imagem da Miniatura */}
+                      <div className="w-full aspect-[1/1.414] rounded-lg overflow-hidden border border-border/50 bg-white dark:bg-zinc-900 shadow-xs flex items-center justify-center">
+                        <img
+                          src={miniatura.dataUrl}
+                          alt={`Página ${miniatura.numPagina}`}
+                          className="w-full h-full object-contain pointer-events-none"
+                          loading="lazy"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Botão de Ação */}
+              <div className="flex justify-end pt-1">
+                <Botao
+                  variante="primario"
+                  disabled={paginasSelecionadasDividir.size === 0 || processando}
+                  onClick={executarDividir}
+                  className="w-full sm:w-auto flex items-center gap-2 shadow-md"
+                >
+                  {processando ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : modoExtrairUnicoPdf ? (
+                    <Scissors size={16} />
+                  ) : (
+                    <Download size={16} />
+                  )}
+                  <span>
+                    {modoExtrairUnicoPdf
+                      ? `Extrair ${paginasSelecionadasDividir.size} Página(s) em 1 PDF`
+                      : `Baixar ${paginasSelecionadasDividir.size} Página(s) Individuais`}
+                  </span>
+                </Botao>
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
 
