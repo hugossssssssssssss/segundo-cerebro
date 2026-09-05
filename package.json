@@ -1,7 +1,7 @@
 {
   "name": "segundo-cere-bro",
   "private": true,
-  "version": "2.9.0",
+  "version": "2.9.1",
   "type": "module",
   "scripts": {
     "build": "tsc -b && npm run arquitetura && npm run mapa-ia && npm run schemas && vite build && npm run build:extensao",
@@ -46,6 +46,7 @@
     "minisearch": "^7.2.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.2.108",
+    "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.8",
@@ -67,6 +68,7 @@
     "@types/colorthief": "^2.6.1",
     "@types/dompurify": "^3.0.5",
     "@types/node": "^24.13.3",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@types/turndown": "^5.0.6",

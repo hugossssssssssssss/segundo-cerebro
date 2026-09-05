@@ -106,8 +106,8 @@ describe("itTools - Módulo de Utilitários", () => {
       expect(lorem.startsWith("Lorem ipsum")).toBe(true);
     });
 
-    it("gera SVG de QR Code com tags válidas", () => {
-      const svg = gerarSvgQrCode("https://klaus.app", "#000000", "#ffffff");
+    it("gera SVG de QR Code com tags válidas", async () => {
+      const svg = await gerarSvgQrCode("https://klaus.app", "#000000", "#ffffff");
       expect(svg.startsWith("<svg")).toBe(true);
       expect(svg.includes("</svg>")).toBe(true);
     });

@@ -32,6 +32,7 @@ import {
   limparTexto,
   gerarLoremIpsum,
   gerarSvgQrCode,
+  gerarPngDataUrlQrCode,
   gerarUUID,
   textoParaBase64,
   base64ParaTexto,
@@ -812,12 +813,24 @@ function PainelQRCode() {
   const [texto, setTexto] = useState("https://klaus.app");
   const [corFrente, setCorFrente] = useState("#000000");
   const [corFundo, setCorFundo] = useState("#ffffff");
+  const [svgStr, setSvgStr] = useState("");
+  const [pngDataUrl, setPngDataUrl] = useState("");
 
-  const svgStr = useMemo(() => {
-    return gerarSvgQrCode(texto, corFrente, corFundo, 280);
+  useEffect(() => {
+    let cancelado = false;
+    gerarSvgQrCode(texto, corFrente, corFundo, 280).then((res) => {
+      if (!cancelado) setSvgStr(res);
+    });
+    gerarPngDataUrlQrCode(texto, corFrente, corFundo, 600).then((res) => {
+      if (!cancelado) setPngDataUrl(res);
+    });
+    return () => {
+      cancelado = true;
+    };
   }, [texto, corFrente, corFundo]);
 
   const baixarSVG = () => {
+    if (!svgStr) return;
     const blob = new Blob([svgStr], { type: "image/svg+xml" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -829,31 +842,12 @@ function PainelQRCode() {
   };
 
   const baixarPNG = () => {
-    const img = new Image();
-    const svgBlob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 600;
-      canvas.height = 600;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(img, 0, 0, 600, 600);
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const pngUrl = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = pngUrl;
-            a.download = "qrcode-klaus.png";
-            a.click();
-            URL.revokeObjectURL(pngUrl);
-            toast("QR Code baixado em PNG de alta resolução!", { tipo: "sucesso" });
-          }
-        });
-      }
-      URL.revokeObjectURL(url);
-    };
-    img.src = url;
+    if (!pngDataUrl) return;
+    const a = document.createElement("a");
+    a.href = pngDataUrl;
+    a.download = "qrcode-klaus.png";
+    a.click();
+    toast("QR Code baixado em PNG de alta resolução!", { tipo: "sucesso" });
   };
 
   return (
@@ -932,7 +926,7 @@ function PainelQRCode() {
             style={{ backgroundColor: corFundo }}
             dangerouslySetInnerHTML={{ __html: svgStr }}
           />
-          <span className="text-xs text-muted-foreground mt-3 font-medium">Prévia Vetorial</span>
+          <span className="text-xs text-muted-foreground mt-3 font-medium">Prévia ISO 100% Escaneável</span>
         </div>
       </div>
     </div>

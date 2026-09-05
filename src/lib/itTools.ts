@@ -438,89 +438,63 @@ export function gerarLoremIpsum(
   return paragrafos.join("\n\n");
 }
 
-// ── 8. Geradores: QR Code SVG Puro (Zero Dependência) ───────────────────────
+// ── 8. Geradores: QR Code Oficial (Padrão ISO com Leitura por Qualquer Câmera) ──
+
+import QRCode from "qrcode";
 
 /**
- * Matriz básica para QR Code minimalista em SVG 100% puro client-side.
- * Gera dados para preview instantâneo e download em SVG/PNG.
+ * Gera SVG oficial do QR Code compatível com todos os leitores de câmera e smartphones.
  */
-export function gerarSvgQrCode(
+export async function gerarSvgQrCode(
   texto: string,
   corFrente: string = "#000000",
   corFundo: string = "#ffffff",
-  tamanhoPx: number = 260
-): string {
-  if (!texto) texto = "https://klaus.app";
-
-  // Pseudo-matriz determinística baseada no hash do texto (garante padrão visual representativo e estável)
-  const tamanhoGrade = 25;
-  const grade: boolean[][] = Array(tamanhoGrade)
-    .fill(false)
-    .map(() => Array(tamanhoGrade).fill(false));
-
-  // Função auxiliar para desenhar marcadores de canto (finders)
-  function desenharFinder(startX: number, startY: number) {
-    for (let r = 0; r < 7; r++) {
-      for (let c = 0; c < 7; c++) {
-        const ehBorda = r === 0 || r === 6 || c === 0 || c === 6;
-        const ehCentro = r >= 2 && r <= 4 && c >= 2 && c <= 4;
-        grade[startY + r][startX + c] = ehBorda || ehCentro;
-      }
-    }
+  tamanhoPx: number = 280
+): Promise<string> {
+  const conteudo = (texto && texto.trim()) ? texto.trim() : "https://klaus.app";
+  try {
+    const svg = await QRCode.toString(conteudo, {
+      type: "svg",
+      errorCorrectionLevel: "M",
+      margin: 2,
+      width: tamanhoPx,
+      color: {
+        dark: corFrente || "#000000",
+        light: corFundo || "#ffffff",
+      },
+    });
+    return svg;
+  } catch (err) {
+    console.error("Erro ao gerar QR Code SVG:", err);
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${tamanhoPx} ${tamanhoPx}" width="${tamanhoPx}" height="${tamanhoPx}"><text x="10" y="30" fill="red">Erro no QR Code</text></svg>`;
   }
+}
 
-  desenharFinder(0, 0);
-  desenharFinder(tamanhoGrade - 7, 0);
-  desenharFinder(0, tamanhoGrade - 7);
-
-  // Linhas de sincronismo
-  for (let i = 8; i < tamanhoGrade - 8; i++) {
-    grade[6][i] = i % 2 === 0;
-    grade[i][6] = i % 2 === 0;
+/**
+ * Gera DataURL PNG do QR Code em alta resolução.
+ */
+export async function gerarPngDataUrlQrCode(
+  texto: string,
+  corFrente: string = "#000000",
+  corFundo: string = "#ffffff",
+  tamanhoPx: number = 600
+): Promise<string> {
+  const conteudo = (texto && texto.trim()) ? texto.trim() : "https://klaus.app";
+  try {
+    const dataUrl = await QRCode.toDataURL(conteudo, {
+      errorCorrectionLevel: "M",
+      margin: 2,
+      width: tamanhoPx,
+      color: {
+        dark: corFrente || "#000000",
+        light: corFundo || "#ffffff",
+      },
+    });
+    return dataUrl;
+  } catch (err) {
+    console.error("Erro ao gerar QR Code PNG:", err);
+    return "";
   }
-
-  // Preenche dados baseados no valor do texto
-  let seed = 0;
-  for (let i = 0; i < texto.length; i++) {
-    seed = (seed * 31 + texto.charCodeAt(i)) & 0xffffffff;
-  }
-
-  function proximoBit(): boolean {
-    seed = (seed * 1664525 + 1013904223) & 0xffffffff;
-    return (seed >>> 16) % 2 === 0;
-  }
-
-  for (let r = 0; r < tamanhoGrade; r++) {
-    for (let c = 0; c < tamanhoGrade; c++) {
-      // Ignora áreas de finder
-      const noFinderTopLeft = r < 8 && c < 8;
-      const noFinderTopRight = r < 8 && c >= tamanhoGrade - 8;
-      const noFinderBottomLeft = r >= tamanhoGrade - 8 && c < 8;
-      const naLinhaSincronismo = r === 6 || c === 6;
-
-      if (!noFinderTopLeft && !noFinderTopRight && !noFinderBottomLeft && !naLinhaSincronismo) {
-        grade[r][c] = proximoBit();
-      }
-    }
-  }
-
-  const tamanhoModulo = tamanhoPx / tamanhoGrade;
-  let paths = "";
-
-  for (let r = 0; r < tamanhoGrade; r++) {
-    for (let c = 0; c < tamanhoGrade; c++) {
-      if (grade[r][c]) {
-        const x = c * tamanhoModulo;
-        const y = r * tamanhoModulo;
-        paths += `<rect x="${x}" y="${y}" width="${tamanhoModulo + 0.2}" height="${tamanhoModulo + 0.2}" fill="${corFrente}" />`;
-      }
-    }
-  }
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${tamanhoPx} ${tamanhoPx}" width="${tamanhoPx}" height="${tamanhoPx}">
-  <rect width="${tamanhoPx}" height="${tamanhoPx}" fill="${corFundo}" />
-  ${paths}
-</svg>`;
 }
 
 // ── 9. Geradores: UUID, Base64 e Hash ──────────────────────────────────────
