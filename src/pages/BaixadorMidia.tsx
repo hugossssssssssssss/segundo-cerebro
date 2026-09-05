@@ -18,6 +18,7 @@ import {
   Settings2,
   CheckCircle2,
   Layers,
+  ArrowRight,
 } from "lucide-react";
 import { Botao, Cartao, Aviso } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
@@ -31,6 +32,7 @@ import {
   type ModoDownload,
   type RespostaDownloadSucesso,
   type ItemHistoricoDownload,
+  type AtalhoDownloadExterno,
   detectarPlataforma,
   processarDownloadMidia,
   listarHistoricoDownloads,
@@ -146,6 +148,7 @@ export default function BaixadorMidia() {
   const [formatoAudio, setFormatoAudio] = useState<FormatoAudio>("mp3");
   const [modoDownload, setModoDownload] = useState<ModoDownload>("auto");
   const [resultado, setResultado] = useState<RespostaDownloadSucesso | null>(null);
+  const [atalhosFallback, setAtalhosFallback] = useState<AtalhoDownloadExterno[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [detalheErro, setDetalheErro] = useState<string | null>(null);
 
@@ -184,6 +187,7 @@ export default function BaixadorMidia() {
     setUrlInput(valor);
     setErro(null);
     setResultado(null);
+    setAtalhosFallback(null);
     setPlataformaDetectada(detectarPlataforma(valor));
   };
 
@@ -212,6 +216,7 @@ export default function BaixadorMidia() {
     setErro(null);
     setDetalheErro(null);
     setResultado(null);
+    setAtalhosFallback(null);
 
     const modoEfetivo: ModoDownload = abaAtiva === "audio" ? "audio" : modoDownload;
 
@@ -226,7 +231,7 @@ export default function BaixadorMidia() {
 
       if (res.sucesso) {
         setResultado(res);
-        toast("Mídia processada com sucesso!", { tipo: "sucesso" });
+        toast("Mídia localizada com sucesso!", { tipo: "sucesso" });
 
         // Salva no histórico
         if (res.urlDownload) {
@@ -236,13 +241,17 @@ export default function BaixadorMidia() {
             urlDownload: res.urlDownload,
             nomeArquivo: res.nomeArquivo || "download.mp4",
             tipo: modoEfetivo === "audio" ? "audio" : "video",
-            titulo: res.nomeArquivo,
+            titulo: res.titulo || res.nomeArquivo,
+            thumbnail: res.thumbnail,
           });
           setHistorico((prev) => [itemSalvo, ...prev.filter((i) => i.id !== itemSalvo.id)]);
         }
       } else {
         setErro(res.erro);
         setDetalheErro(res.detalhe || null);
+        if (res.atalhosRecomendados && res.atalhosRecomendados.length > 0) {
+          setAtalhosFallback(res.atalhosRecomendados);
+        }
       }
     } catch (e: any) {
       setErro("Falha inesperada ao processar o download.");
@@ -255,7 +264,7 @@ export default function BaixadorMidia() {
   const copiarLinkDownload = (url: string, id: string) => {
     navigator.clipboard.writeText(url);
     setCopiadoId(id);
-    toast("Link direto copiado para a área de transferência!", { tipo: "sucesso" });
+    toast("Link copiado para a área de transferência!", { tipo: "sucesso" });
     setTimeout(() => setCopiadoId(null), 2500);
   };
 
@@ -269,30 +278,38 @@ export default function BaixadorMidia() {
     document.body.removeChild(a);
   };
 
-  const salvarComoReferenciaKlaus = async (item: RespostaDownloadSucesso) => {
+  const salvarComoReferenciaKlaus = async (
+    tituloOriginal?: string,
+    urlOrig?: string,
+    urlMidia?: string,
+    plat?: PlataformaMidia
+  ) => {
     const cfg = lerConfig();
     if (!configCompleta(cfg)) {
       toast("Configure seu GitHub em Ajustes para salvar referências.", { tipo: "erro" });
       return;
     }
 
+    const plataformaFinal = plat || plataformaDetectada || "midia";
+    const alvoUrl = urlOrig || urlInput;
+
     setSalvandoKlaus(true);
     try {
-      const tituloReferencia = `Vídeo ${item.plataforma.toUpperCase()} - ${new Date().toLocaleDateString("pt-BR")}`;
+      const tituloReferencia = `Vídeo ${plataformaFinal.toUpperCase()} - ${tituloOriginal || new Date().toLocaleDateString("pt-BR")}`;
       const nomeBase = nomeLivre("referencias", tituloReferencia, []);
       
       const frontmatter = {
         titulo: tituloReferencia,
         data: new Date().toISOString().split("T")[0],
-        tags: ["video", item.plataforma, "baixador"],
-        url_original: item.urlOriginal,
-        url_midia: item.urlDownload || "",
+        tags: ["video", plataformaFinal, "baixador"],
+        url_original: alvoUrl,
+        url_midia: urlMidia || "",
       };
 
-      const corpo = `## Referência de Mídia Baixada\n\n- **Origem:** [Acessar Link Original](${item.urlOriginal})\n- **Rede:** ${item.plataforma.toUpperCase()}\n- **Arquivo:** \`${item.nomeArquivo}\`\n\n> Salvo pelo Baixador de Mídia do Klaus.\n`;
+      const corpo = `## Referência de Mídia\n\n- **Origem:** [Acessar Link Original](${alvoUrl})\n- **Rede:** ${plataformaFinal.toUpperCase()}\n- **Salvo em:** ${new Date().toLocaleString("pt-BR")}\n\n> Salvo pelo Baixador de Mídia do Klaus.\n`;
 
       const markdownCompleto = escreverMarkdown({ dados: frontmatter, corpo });
-      await gravar(cfg, nomeBase, markdownCompleto, `feat(referencia): video ${item.plataforma}`);
+      await gravar(cfg, nomeBase, markdownCompleto, `feat(referencia): video ${plataformaFinal}`);
       invalidarCache();
       toast("Referência criada com sucesso no Klaus!", { tipo: "sucesso" });
     } catch (e: any) {
@@ -347,6 +364,7 @@ export default function BaixadorMidia() {
                 setSearchParams({ ferramenta: aba.id });
                 setErro(null);
                 setResultado(null);
+                setAtalhosFallback(null);
               }}
               className={cn(
                 "flex flex-col items-start text-left p-3.5 rounded-xl border transition-all cursor-pointer relative",
@@ -403,18 +421,18 @@ export default function BaixadorMidia() {
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                 <Settings2 size={14} className="text-primary" />
-                Instância Cobalt (Motor de Download Open Source)
+                Configuração de Servidor Cobalt / Piped
               </span>
               <button
                 type="button"
                 onClick={restaurarInstanciaPadrao}
                 className="text-[11px] text-primary hover:underline cursor-pointer"
               >
-                Restaurar Padrão Oficial
+                Restaurar Padrão
               </button>
             </div>
             <p className="text-xs text-muted-foreground">
-              O Klaus usa a API aberta do Cobalt com redundância automática. Se você tiver uma instância própria ou preferir trocar:
+              O Klaus usa motores open source gratuitos (Piped e Cobalt). Se você hospedar uma instância própria do Cobalt no Docker/Railway:
             </p>
             <div className="flex gap-2">
               <input
@@ -429,7 +447,7 @@ export default function BaixadorMidia() {
               </Botao>
             </div>
             <div className="flex flex-wrap gap-1.5 pt-1">
-              <span className="text-[10px] text-muted-foreground self-center mr-1">Servidores recomendados:</span>
+              <span className="text-[10px] text-muted-foreground self-center mr-1">Servidores disponíveis:</span>
               {INSTANCIAS_COBALT_PADRAO.map((inst) => (
                 <button
                   key={inst}
@@ -489,6 +507,7 @@ export default function BaixadorMidia() {
                     setUrlInput("");
                     setResultado(null);
                     setErro(null);
+                    setAtalhosFallback(null);
                   }}
                   className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-secondary cursor-pointer"
                   title="Limpar campo"
@@ -521,7 +540,7 @@ export default function BaixadorMidia() {
               className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="auto">Vídeo Completo (com áudio)</option>
-              <option value="audio">Somente Áudio (MP3)</option>
+              <option value="audio">Somente Áudio (MP3 / M4A)</option>
               <option value="mute">Somente Vídeo (Mudo)</option>
             </select>
           </div>
@@ -551,7 +570,7 @@ export default function BaixadorMidia() {
               onChange={(e) => setFormatoAudio(e.target.value as FormatoAudio)}
               className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
-              <option value="mp3">MP3 (Mais compatível)</option>
+              <option value="mp3">MP3 / M4A (Universal)</option>
               <option value="ogg">OGG</option>
               <option value="wav">WAV (Sem perdas)</option>
               <option value="opus">Opus</option>
@@ -563,7 +582,7 @@ export default function BaixadorMidia() {
         <div className="pt-2 flex flex-col sm:flex-row gap-3 items-center justify-between">
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
             <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-            <span>Processamento direto pelo navegador, seguro e sem anúncios.</span>
+            <span>Processamento direto pelo navegador, sem anúncios e com redundância.</span>
           </p>
 
           <Botao
@@ -576,7 +595,7 @@ export default function BaixadorMidia() {
             {processando ? (
               <>
                 <Loader2 size={16} className="animate-spin mr-2" />
-                Processando...
+                Buscando Mídia...
               </>
             ) : (
               <>
@@ -588,7 +607,7 @@ export default function BaixadorMidia() {
         </div>
       </Cartao>
 
-      {/* Exibição de Erro */}
+      {/* Exibição de Erro / Aviso de Bloqueio */}
       {erro && (
         <Aviso tom="erro">
           <div className="space-y-1">
@@ -598,7 +617,88 @@ export default function BaixadorMidia() {
         </Aviso>
       )}
 
-      {/* Card de Resultado de Download */}
+      {/* Atalhos Rápidos de Fallback (Quando a rede bloqueia chamadas de robô) */}
+      {atalhosFallback && (
+        <Cartao className="p-5 border-primary/30 bg-primary/5 space-y-4 shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-primary/20 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-primary/20 text-primary">
+                <Sparkles size={18} />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-foreground">
+                  Atalhos Rápidos de Download para {plataformaDetectada.toUpperCase()}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Como o {plataformaDetectada.toUpperCase()} exige validação anti-robô, use um clique para baixar direto:
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {atalhosFallback.map((at, i) => (
+              <a
+                key={i}
+                href={at.url}
+                target="_blank"
+                rel="noreferrer"
+                className="p-3.5 rounded-xl border border-border bg-card hover:bg-secondary/60 hover:border-primary/50 transition-all flex flex-col justify-between gap-2 group cursor-pointer"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
+                      {at.nome}
+                    </span>
+                    <ExternalLink size={13} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{at.descricao}</p>
+                </div>
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-primary">
+                  <span>Abrir Downloader</span>
+                  <ArrowRight size={12} />
+                </div>
+              </a>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/50">
+            <p className="text-[11px] text-muted-foreground">
+              Você também pode salvar este link diretamente no seu acervo do Klaus:
+            </p>
+            <div className="flex items-center gap-2">
+              <Botao
+                tamanho="pequeno"
+                variante="neutro"
+                onClick={() => copiarLinkDownload(urlInput, "btn-copy-fallback")}
+              >
+                {copiadoId === "btn-copy-fallback" ? (
+                  <Check size={13} className="text-emerald-500 mr-1" />
+                ) : (
+                  <Copy size={13} className="mr-1" />
+                )}
+                {copiadoId === "btn-copy-fallback" ? "Copiado!" : "Copiar Link Original"}
+              </Botao>
+
+              <Botao
+                tamanho="pequeno"
+                variante="neutro"
+                disabled={salvandoKlaus}
+                onClick={() => salvarComoReferenciaKlaus(undefined, urlInput, "", plataformaDetectada)}
+              >
+                {salvandoKlaus ? (
+                  <Loader2 size={13} className="animate-spin mr-1" />
+                ) : (
+                  <Sparkles size={13} className="text-amber-500 mr-1" />
+                )}
+                Salvar no Klaus
+              </Botao>
+            </div>
+          </div>
+        </Cartao>
+      )}
+
+      {/* Card de Resultado de Download Direto */}
       {resultado && (
         <Cartao className="p-5 border-emerald-500/30 bg-emerald-500/5 space-y-4 shadow-md animate-in fade-in duration-200">
           <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
@@ -607,17 +707,73 @@ export default function BaixadorMidia() {
                 <CheckCircle2 size={20} />
               </div>
               <div>
-                <h3 className="font-bold text-sm text-foreground">Mídia Pronta para Download</h3>
+                <h3 className="font-bold text-sm text-foreground">
+                  {resultado.titulo || "Mídia Pronta para Download"}
+                </h3>
                 <p className="text-xs text-muted-foreground">
-                  Origem: {resultado.plataforma.toUpperCase()} • {resultado.nomeArquivo}
+                  Origem: {resultado.plataforma.toUpperCase()} {resultado.servicoUtilizado ? `• ${resultado.servicoUtilizado}` : ""}
                 </p>
               </div>
             </div>
 
             <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-              Sucesso
+              Disponível
             </span>
           </div>
+
+          {/* Múltiplos Formatos e Qualidades (YouTube / Streams) */}
+          {resultado.streamsDisponiveis && resultado.streamsDisponiveis.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Video size={14} className="text-primary" />
+                Opções de Qualidade Disponíveis:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {resultado.streamsDisponiveis.map((st, i) => (
+                  <div
+                    key={i}
+                    className="p-3 rounded-xl border border-border bg-card flex items-center justify-between gap-2 shadow-2xs"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-foreground flex items-center gap-1">
+                        <span>{st.qualidade}</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-secondary text-muted-foreground uppercase">
+                          {st.formato}
+                        </span>
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {st.ehVideo ? "Vídeo MP4" : "Faixa de Áudio"}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Botao
+                        tamanho="pequeno"
+                        variante="primario"
+                        onClick={() => dispararDownloadDireto(st.url, `${resultado.titulo || "video"}_${st.qualidade}.${st.ehVideo ? "mp4" : "m4a"}`)}
+                      >
+                        <Download size={13} className="mr-1" />
+                        Baixar
+                      </Botao>
+                      <Tooltip conteudo="Copiar Link Direto">
+                        <button
+                          type="button"
+                          onClick={() => copiarLinkDownload(st.url, `st-${i}`)}
+                          className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary cursor-pointer"
+                        >
+                          {copiadoId === `st-${i}` ? (
+                            <Check size={13} className="text-emerald-500" />
+                          ) : (
+                            <Copy size={13} />
+                          )}
+                        </button>
+                      </Tooltip>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Galeria Picker (Instagram Carrossel / TikTok Fotos) */}
           {resultado.tipo === "picker" && resultado.itensPicker && (
@@ -704,7 +860,7 @@ export default function BaixadorMidia() {
                   tamanho="normal"
                   variante="neutro"
                   disabled={salvandoKlaus}
-                  onClick={() => salvarComoReferenciaKlaus(resultado)}
+                  onClick={() => salvarComoReferenciaKlaus(resultado.titulo, resultado.urlOriginal, resultado.urlDownload, resultado.plataforma)}
                   title="Cria uma nova Referência no Klaus vinculada a esta mídia"
                 >
                   {salvandoKlaus ? (
@@ -712,7 +868,7 @@ export default function BaixadorMidia() {
                   ) : (
                     <Sparkles size={16} className="text-amber-500 mr-1.5" />
                   )}
-                  Salvar Referência
+                  Salvar no Klaus
                 </Botao>
               </div>
             </div>
@@ -752,7 +908,7 @@ export default function BaixadorMidia() {
             </div>
             <p className="text-xs font-medium text-foreground">Nenhum download recente</p>
             <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
-              Seus downloads ficarão salvos aqui no navegador para você acessar os links novamente quando precisar.
+              Seus downloads e links acessados ficam guardados aqui para você acessar novamente com rapidez.
             </p>
           </div>
         ) : (
@@ -798,7 +954,7 @@ export default function BaixadorMidia() {
                     <Download size={13} className="mr-1" />
                     Baixar
                   </Botao>
-                  <Tooltip conteudo="Copiar Link de Download">
+                  <Tooltip conteudo="Copiar Link">
                     <button
                       type="button"
                       onClick={() => copiarLinkDownload(item.urlDownload, item.id)}
