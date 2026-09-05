@@ -3,10 +3,16 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
 
-// O app é publicado em https://<usuario>.github.io/segundo-cerebro/,
-// então em produção os assets precisam sair com esse prefixo.
-// Em desenvolvimento a base é "/" para o localhost funcionar normalmente.
-const base = process.env.NODE_ENV === "production" ? "/segundo-cerebro/" : "/";
+// O app pode ser publicado no GitHub Pages (com prefixo /segundo-cerebro/)
+// ou na Vercel / domínio próprio (com base /).
+// Vercel define a variável de ambiente VERCEL=1 durante o build.
+const base =
+  process.env.VERCEL || process.env.BASE_PATH === "/"
+    ? "/"
+    : process.env.NODE_ENV === "production"
+      ? "/segundo-cerebro/"
+      : "/";
+
 
 export default defineConfig({
   base,
