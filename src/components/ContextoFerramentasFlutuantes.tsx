@@ -74,6 +74,7 @@ export function ProvedorFerramentasFlutuantes({ children }: { children: ReactNod
     ferramentaAtiva?.startsWith("pdf_recortar") ||
     ferramentaAtiva?.startsWith("pdf_desbloquear") ||
     ferramentaAtiva?.startsWith("pdf_organizar") ||
+    ferramentaAtiva?.startsWith("pdf_digitalizar") ||
     ferramentaAtiva === "ferramentas_pdf";
 
   const abaPDF = ehFerramentaPDF

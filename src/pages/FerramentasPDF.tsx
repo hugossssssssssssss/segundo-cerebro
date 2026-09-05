@@ -19,15 +19,17 @@ import {
   Check,
   Sparkles,
   Download,
+  Camera,
 } from "lucide-react";
 import { Botao, Cartao, Aviso } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
+import ScannerDocumento from "@/components/pdf/ScannerDocumento";
 
 // Configura o worker do PDF.js via Vite bundle local
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
-export type AbaILovePDF = "juntar" | "dividir" | "comprimir" | "recortar" | "desbloquear" | "organizar";
+export type AbaILovePDF = "juntar" | "dividir" | "comprimir" | "recortar" | "desbloquear" | "organizar" | "digitalizar";
 
 interface InfoPagina {
   index: number;
@@ -39,24 +41,26 @@ export interface FerramentasPDFProps {
   abaInicial?: AbaILovePDF;
 }
 
+const ABAS_VALIDAS: AbaILovePDF[] = ["juntar", "dividir", "comprimir", "recortar", "desbloquear", "organizar", "digitalizar"];
+
 export default function FerramentasPDF({ modoFocado, abaInicial }: FerramentasPDFProps = {}) {
   const [searchParams] = useSearchParams();
   const abaParam = searchParams.get("aba") as AbaILovePDF | null;
 
   const [abaAtiva, setAbaAtiva] = useState<AbaILovePDF>(() => {
-    if (abaInicial && ["juntar", "dividir", "comprimir", "recortar", "desbloquear", "organizar"].includes(abaInicial)) {
+    if (abaInicial && ABAS_VALIDAS.includes(abaInicial)) {
       return abaInicial;
     }
-    if (abaParam && ["juntar", "dividir", "comprimir", "recortar", "desbloquear", "organizar"].includes(abaParam)) {
+    if (abaParam && ABAS_VALIDAS.includes(abaParam)) {
       return abaParam;
     }
     return "juntar";
   });
 
   useEffect(() => {
-    if (abaInicial && ["juntar", "dividir", "comprimir", "recortar", "desbloquear", "organizar"].includes(abaInicial)) {
+    if (abaInicial && ABAS_VALIDAS.includes(abaInicial)) {
       setAbaAtiva(abaInicial);
-    } else if (abaParam && ["juntar", "dividir", "comprimir", "recortar", "desbloquear", "organizar"].includes(abaParam)) {
+    } else if (abaParam && ABAS_VALIDAS.includes(abaParam)) {
       setAbaAtiva(abaParam);
     }
   }, [abaInicial, abaParam]);
@@ -460,6 +464,13 @@ export default function FerramentasPDF({ modoFocado, abaInicial }: FerramentasPD
       Icone: FileArchive,
       cor: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
     },
+    {
+      id: "digitalizar",
+      label: "Digitalizar / Scanner",
+      descricao: "Escaneie fotos de documentos com a câmera, corrija a perspectiva dos 4 cantos e gere PDF",
+      Icone: Camera,
+      cor: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+    },
   ];
 
   const abaInfo = abasFerramentas.find((a) => a.id === abaAtiva)!;
@@ -521,37 +532,42 @@ export default function FerramentasPDF({ modoFocado, abaInicial }: FerramentasPD
       {erro && <Aviso tom="erro">{erro}</Aviso>}
       {mensagemSucesso && <Aviso tom="sucesso">{mensagemSucesso}</Aviso>}
 
-      {/* Área de Seleção (Dropzone) */}
-      <Cartao className="p-6 border-dashed border-2 border-border/80 hover:border-primary/50 transition-colors text-center cursor-pointer bg-card/40">
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple={abaAtiva === "juntar"}
-          accept=".pdf,application/pdf"
-          onChange={(e) => adicionarArquivos(e.target.files)}
-          className="hidden"
-        />
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          className="flex flex-col items-center justify-center gap-2.5 py-6"
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <FilePlus size={24} />
+      {/* Interface Dedicada: Scanner de Documentos */}
+      {abaAtiva === "digitalizar" && <ScannerDocumento />}
+
+      {/* Área de Seleção (Dropzone para ferramentas padrão de PDF) */}
+      {abaAtiva !== "digitalizar" && (
+        <Cartao className="p-6 border-dashed border-2 border-border/80 hover:border-primary/50 transition-colors text-center cursor-pointer bg-card/40">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple={abaAtiva === "juntar"}
+            accept=".pdf,application/pdf"
+            onChange={(e) => adicionarArquivos(e.target.files)}
+            className="hidden"
+          />
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="flex flex-col items-center justify-center gap-2.5 py-6"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <FilePlus size={24} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Clique ou arraste seus arquivos PDF aqui
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">{abaInfo.descricao}</p>
+            </div>
+            <Botao variante="neutro" tamanho="pequeno" className="mt-2">
+              Selecionar Arquivo PDF
+            </Botao>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground">
-              Clique ou arraste seus arquivos PDF aqui
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">{abaInfo.descricao}</p>
-          </div>
-          <Botao variante="neutro" tamanho="pequeno" className="mt-2">
-            Selecionar Arquivo PDF
-          </Botao>
-        </div>
-      </Cartao>
+        </Cartao>
+      )}
 
       {/* Lista de Arquivos Selecionados */}
-      {arquivos.length > 0 && (
+      {abaAtiva !== "digitalizar" && arquivos.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Arquivos Selecionados ({arquivos.length})

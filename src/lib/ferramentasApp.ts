@@ -44,6 +44,7 @@ import {
   Play,
   Volume2,
   Link as LinkIcon,
+  Camera,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { obterIconePorNome } from "./icones";
@@ -313,6 +314,15 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
     rota: "/pdf?aba=organizar",
     icone: Layers,
     palavrasChave: ["pdf", "organizar", "reordenar", "ordenar", "mover páginas", "ilovepdf"],
+  },
+  {
+    id: "pdf_digitalizar",
+    titulo: "Digitalizar Documentos / Scanner para PDF",
+    descricao: "Escaneie fotos com a câmera, corrija a perspectiva dos 4 cantos e crie PDFs nítidos",
+    categoria: "ferramenta",
+    rota: "/pdf?aba=digitalizar",
+    icone: Camera,
+    palavrasChave: ["digitalizar", "scanner", "escanear", "camera", "foto", "pdf", "camscanner", "documento", "ilovepdf"],
   },
   {
     id: "pdf_ocr",
