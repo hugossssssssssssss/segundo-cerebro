@@ -60,6 +60,7 @@ import { WidgetLousasRecentes, type LousaItemHome } from "@/components/home/Widg
 import { WidgetBuscaWeb } from "@/components/home/WidgetBuscaWeb";
 import { WidgetConversorRapido } from "@/components/home/WidgetConversorRapido";
 import { WidgetPDFRapido } from "@/components/home/WidgetPDFRapido";
+import { WidgetITToolsRapido } from "@/components/home/WidgetITToolsRapido";
 import { WidgetTranscritorVoz } from "@/components/home/WidgetTranscritorVoz";
 import { WidgetSonsFoco } from "@/components/home/WidgetSonsFoco";
 import { WidgetChatIA } from "@/components/home/WidgetChatIA";
@@ -661,6 +662,10 @@ export default function Home() {
 
                 {widget.id === "ferramentas_pdf" && (
                   <WidgetPDFRapido aoAbrirPopup={() => abrirFerramentaFlutuante("ferramentas_pdf")} />
+                )}
+
+                {widget.id === "it_tools" && (
+                  <WidgetITToolsRapido aoAbrirPopup={(ferramentaId) => abrirFerramentaFlutuante(ferramentaId || "it_tools")} />
                 )}
 
                 {widget.id === "transcritor_voz" && (

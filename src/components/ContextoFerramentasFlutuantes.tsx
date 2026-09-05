@@ -11,6 +11,7 @@ const TestadorHardware = lazy(() => import("@/pages/TestadorHardware"));
 const FerramentasPDF = lazy(() => import("@/pages/FerramentasPDF"));
 const PesquisaLivros = lazy(() => import("@/pages/PesquisaLivros"));
 const Sons = lazy(() => import("@/pages/Sons"));
+const ITTools = lazy(() => import("@/pages/ITTools"));
 
 interface ContextoFerramentasFlutuantesTipo {
   ferramentaAtiva: string | null;
@@ -107,6 +108,8 @@ export function ProvedorFerramentasFlutuantes({ children }: { children: ReactNod
               >
                 {ehPDF ? (
                   <FerramentasPDF />
+                ) : ferramentaAtiva?.startsWith("it_") || ferramentaAtiva === "it_tools" ? (
+                  <ITTools />
                 ) : ferramentaAtiva === "pesquisa_livros" ? (
                   <PesquisaLivros />
                 ) : ferramentaAtiva === "sons" ? (

@@ -98,6 +98,16 @@ export const CATALOGO_WIDGETS: InfoWidgetCatalogo[] = [
     ferramentaPopupId: "ferramentas_pdf",
   },
   {
+    id: "it_tools",
+    titulo: "IT-Tools",
+    resumo: "Canivete suíço de medidas, design, texto e geradores",
+    categoria: "ferramenta",
+    icone: "Wrench",
+    colunasPadrao: 6,
+    alturaPadraoPx: 220,
+    ferramentaPopupId: "it_tools",
+  },
+  {
     id: "transcritor_voz",
     titulo: "Transcritor de Voz",
     resumo: "Áudio e gravações para texto com Whisper AI",

@@ -75,6 +75,7 @@ const PDI = lazy(() => import("@/pages/PDI"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const FerramentasPDF = lazy(() => import("@/pages/FerramentasPDF"));
 const Conversor = lazy(() => import("@/pages/Conversor"));
+const ITTools = lazy(() => import("@/pages/ITTools"));
 const Transcritor = lazy(() => import("@/pages/Transcritor"));
 const GrafoNeural = lazy(() => import("@/pages/GrafoNeural"));
 const Contatos = lazy(() => import("@/pages/Contatos"));
@@ -669,6 +670,7 @@ function AppInterno() {
             <Route path="/chat" element={<Chat />} />
              <Route path="/pdf" element={<FerramentasPDF />} />
             <Route path="/conversor" element={<Conversor />} />
+            <Route path="/it-tools" element={<ITTools />} />
             <Route path="/livros" element={<PesquisaLivros />} />
             <Route path="/transcritor" element={<Transcritor />} />
             <Route path="/testador" element={<TestadorHardware />} />

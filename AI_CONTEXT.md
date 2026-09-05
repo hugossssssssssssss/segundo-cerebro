@@ -1,6 +1,6 @@
 # Contexto de IA & Mapa de Navegação do Klaus
 
-> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-09-04.**
+> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-09-05.**
 > Não edite as tabelas de módulos à mão — execute `npm run mapa-ia` ou `npm run build` para sincronizar com o código.
 
 Este arquivo foi desenhado sob medida para **Agentes de IA e LLMs** que operam no repositório Klaus.
@@ -91,6 +91,7 @@ Navegador (React SPA)
 | **GrafoNeural** | `src/pages/GrafoNeural.tsx` | Interface e fluxo da tela de GrafoNeural |
 | **HeaderHUD** | `src/pages/HeaderHUD.tsx` | Interface e fluxo da tela de HeaderHUD |
 | **Home** | `src/pages/Home.tsx` | Interface e fluxo da tela de Home |
+| **ITTools** | `src/pages/ITTools.tsx` | Interface e fluxo da tela de ITTools |
 | **Inbox** | `src/pages/Inbox.tsx` | Interface e fluxo da tela de Inbox |
 | **Jogos** | `src/pages/Jogos.tsx` | Interface e fluxo da tela de Jogos |
 | **Lixeira** | `src/pages/Lixeira.tsx` | Interface e fluxo da tela de Lixeira |
@@ -113,7 +114,7 @@ Navegador (React SPA)
 `AlternadorVisao`, `BarraAcoesLote`, `BarraFavoritos`, `BarraFerramentas`, `BarraFiltrosAvancados`, `Busca`, `CabecalhoPagina`, `CabecalhoSecao`, `Calendario`, `CapturaRapida`, `CardConsumoGitHub`, `CartaoAcao`, `CartaoItem`, `CartaoLousaVisual`, `CartaoNotaVisual`, `ConsoleDesenvolvedor`, `ContextoCronometro`, `ContextoFerramentasFlutuantes`, `DropdownNovoViaModelo`, `EditorNotion`, `GaleriaIconesModal`, `GavetaMais`, `HistoricoDiffModal`, `ImagemPrivada`, `ItemFlutuanteContext`, `LimiteDeErro`, `Links`, `LixeiraGitModal`, `LogoKlaus`, `MapaMentalEmbed`, `MenuAcoesTarefa`, `MenuContextoNotas`, `MiniCalendarioAtividade`, `ModalBuscaWeb`, `ModalCreditosOpenSource`, `ModalDossieCarreira`, `ModalGerenciarModelos`, `ModalGuiaAtalhos`, `ModalIADocumento`, `ModalInstalarPwa`, `ModalLembrete`, `ModalPersonalizarMenu`, `ModalRefatorarLinks`, `ModalSelecionarIconeFavorito`, `ModalTourGuiado`, `ModalVincularPDI`, `NavegacaoLateral`, `NavegadorGrafo3D`, `NavegadorTagsModal`, `PainelNotificacoesHeader`, `PainelNotionBase`, `PainelPropriedadesNota`, `PainelReferenciasNota`, `PainelTarefasNota`, `Pomodoro`, `PrismasFoco`, `PropriedadesNotion`, `Quadro`, `Rodape`, `SeletorOcr`, `SeloStatus`, `Subtarefas`, `SumarioNota`, `TagChip`, `ToastsContainer`, `WebSearchBar`, `WebSearchHeader`, `WebSearchWidget`, `ui`
 
 ### Sub-componentes: src/components/home/
-`CabecalhoHome`, `ModalCatalogoWidgets`, `WidgetBuscaWeb`, `WidgetChatIA`, `WidgetConversorRapido`, `WidgetFocoHoje`, `WidgetHubFerramentas`, `WidgetLousasRecentes`, `WidgetMetasPDI`, `WidgetNotasRecentes`, `WidgetPDFRapido`, `WidgetReferenciasMural`, `WidgetScratchpad`, `WidgetSonsFoco`, `WidgetTranscritorVoz`, `WidgetWrapper`, `types`
+`CabecalhoHome`, `ModalCatalogoWidgets`, `WidgetBuscaWeb`, `WidgetChatIA`, `WidgetConversorRapido`, `WidgetFocoHoje`, `WidgetHubFerramentas`, `WidgetITToolsRapido`, `WidgetLousasRecentes`, `WidgetMetasPDI`, `WidgetNotasRecentes`, `WidgetPDFRapido`, `WidgetReferenciasMural`, `WidgetScratchpad`, `WidgetSonsFoco`, `WidgetTranscritorVoz`, `WidgetWrapper`, `types`
 
 ### Sub-componentes: src/components/jogos/
 `GradeTermo`, `JogoTermo`, `ModalComoJogarTermo`, `ModalEstatisticasTermo`, `TecladoTermo`

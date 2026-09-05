@@ -63,6 +63,7 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
       { id: "jogos", para: "/jogos", rotulo: "Jogos", iconeNome: "Gamepad2" },
       { id: "pdf", para: "/pdf", rotulo: "Ferramentas PDF", iconeNome: "FileCheck" },
       { id: "conversor", para: "/conversor", rotulo: "Conversor", iconeNome: "RefreshCw" },
+      { id: "it_tools", para: "/it-tools", rotulo: "IT-Tools", iconeNome: "Wrench" },
       { id: "livros", para: "/livros", rotulo: "Pesquisar Livros", iconeNome: "BookOpen" },
       { id: "testador_hardware", para: "/testador", rotulo: "Testador de Hardware", iconeNome: "Video" },
     ],
