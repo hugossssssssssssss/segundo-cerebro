@@ -40,6 +40,10 @@ import {
   FileCode2,
   KeyRound,
   Sparkles,
+  Download,
+  Play,
+  Volume2,
+  Link as LinkIcon,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { obterIconePorNome } from "./icones";
@@ -63,6 +67,97 @@ export interface FerramentaApp {
 }
 
 export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
+  // --- MÓDULO BAIXADOR DE MÍDIA ---
+  {
+    id: "baixador_midia",
+    titulo: "Baixador de Mídia Universal",
+    descricao: "Baixe vídeos, reels, shorts e fotos de qualquer rede social sem anúncios",
+    categoria: "ferramenta",
+    rota: "/baixador",
+    icone: Download,
+    palavrasChave: [
+      "baixar",
+      "video",
+      "download",
+      "midia",
+      "mp4",
+      "mp3",
+      "youtube",
+      "instagram",
+      "tiktok",
+      "twitter",
+      "x",
+      "reels",
+      "shorts",
+      "stories",
+      "cobalt",
+      "baixador",
+    ],
+  },
+  {
+    id: "baixador_youtube",
+    titulo: "Baixar do YouTube (Vídeo & MP3)",
+    descricao: "Download de vídeos em Full HD/4K ou extração de áudio MP3 do YouTube",
+    categoria: "ferramenta",
+    rota: "/baixador?ferramenta=youtube",
+    icone: Video,
+    palavrasChave: ["youtube", "video", "mp3", "shorts", "yt", "musica", "audio", "4k", "1080p", "baixar youtube"],
+  },
+  {
+    id: "baixador_instagram",
+    titulo: "Baixar do Instagram (Reels & Fotos)",
+    descricao: "Download de Reels, posts em vídeo, fotos e carrossel do Instagram",
+    categoria: "ferramenta",
+    rota: "/baixador?ferramenta=instagram",
+    icone: ImageIcon,
+    palavrasChave: ["instagram", "reels", "insta", "fotos", "carrossel", "stories", "post", "baixar instagram"],
+  },
+  {
+    id: "baixador_tiktok",
+    titulo: "Baixar do TikTok (Sem Marca d'Água)",
+    descricao: "Download de vídeos em alta resolução sem marca d'água e áudio do TikTok",
+    categoria: "ferramenta",
+    rota: "/baixador?ferramenta=tiktok",
+    icone: Play,
+    palavrasChave: ["tiktok", "sem marca", "sem marca dagua", "tt", "video tiktok", "audio tiktok", "baixar tiktok"],
+  },
+  {
+    id: "baixador_twitter",
+    titulo: "Baixar do X / Twitter (Vídeos & GIFs)",
+    descricao: "Download de vídeos e GIFs em qualidade máxima do X (Twitter)",
+    categoria: "ferramenta",
+    rota: "/baixador?ferramenta=twitter",
+    icone: LinkIcon,
+    palavrasChave: ["twitter", "x", "x.com", "tweet", "video twitter", "gif twitter", "baixar twitter"],
+  },
+  {
+    id: "baixador_facebook",
+    titulo: "Baixar do Facebook (Reels & Vídeos)",
+    descricao: "Download de vídeos públicos e Reels do Facebook",
+    categoria: "ferramenta",
+    rota: "/baixador?ferramenta=facebook",
+    icone: Layers,
+    palavrasChave: ["facebook", "fb", "reels facebook", "video facebook", "fb watch", "baixar facebook"],
+  },
+  {
+    id: "baixador_pinterest",
+    titulo: "Baixar do Pinterest (Vídeos & Pins)",
+    descricao: "Download de vídeos de referências e inspirações do Pinterest",
+    categoria: "ferramenta",
+    rota: "/baixador?ferramenta=pinterest",
+    icone: ImageIcon,
+    palavrasChave: ["pinterest", "pin", "pins", "video pinterest", "referencia", "painel", "baixar pinterest"],
+  },
+  {
+    id: "baixador_audio",
+    titulo: "Extrair Áudio (MP3 / WAV / OGG)",
+    descricao: "Transforme qualquer link de vídeo ou música em arquivo de áudio MP3",
+    categoria: "ferramenta",
+    rota: "/baixador?ferramenta=audio",
+    icone: Volume2,
+    palavrasChave: ["mp3", "audio", "extrair audio", "musica", "som", "wav", "ogg", "converter para mp3", "baixar mp3"],
+  },
+
   // --- MÓDULO IT-TOOLS ---
   {
     id: "it_tools",

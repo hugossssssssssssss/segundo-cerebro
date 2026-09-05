@@ -27,6 +27,7 @@ const ROTAS_VALIDAS_APP = new Set([
   "/sons",
   "/home",
   "/it-tools",
+  "/baixador",
 ]);
 
 const ACOES_TRATADAS_BUSCA = new Set([

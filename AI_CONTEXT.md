@@ -82,6 +82,7 @@ Navegador (React SPA)
 
 | Tela | Arquivo | Finalidade Principal |
 |---|---|---|
+| **BaixadorMidia** | `src/pages/BaixadorMidia.tsx` | Interface e fluxo da tela de BaixadorMidia |
 | **BoasVindas** | `src/pages/BoasVindas.tsx` | Passo a passo de primeira execução (Onboarding) do Klaus. Apresenta as funcionalidades do app para profissionais criativos e guia a configuração do repositório privado do GitHub e da chave Gemini com total clareza, validações inteligentes e sem jargões técnicos. 100% otimizado para desktop e dispositivos móveis (Android e iOS). |
 | **Chat** | `src/pages/Chat.tsx` | Interface e fluxo da tela de Chat |
 | **Configuracoes** | `src/pages/Configuracoes.tsx` | Interface e fluxo da tela de Configuracoes |
@@ -114,7 +115,7 @@ Navegador (React SPA)
 `AlternadorVisao`, `BarraAcoesLote`, `BarraFavoritos`, `BarraFerramentas`, `BarraFiltrosAvancados`, `Busca`, `CabecalhoPagina`, `CabecalhoSecao`, `Calendario`, `CapturaRapida`, `CardConsumoGitHub`, `CartaoAcao`, `CartaoItem`, `CartaoLousaVisual`, `CartaoNotaVisual`, `ConsoleDesenvolvedor`, `ContextoCronometro`, `ContextoFerramentasFlutuantes`, `DropdownNovoViaModelo`, `EditorNotion`, `GaleriaIconesModal`, `GavetaMais`, `HistoricoDiffModal`, `ImagemPrivada`, `ItemFlutuanteContext`, `LimiteDeErro`, `Links`, `LixeiraGitModal`, `LogoKlaus`, `MapaMentalEmbed`, `MenuAcoesTarefa`, `MenuContextoNotas`, `MiniCalendarioAtividade`, `ModalBuscaWeb`, `ModalCreditosOpenSource`, `ModalDossieCarreira`, `ModalGerenciarModelos`, `ModalGuiaAtalhos`, `ModalIADocumento`, `ModalInstalarPwa`, `ModalLembrete`, `ModalPersonalizarMenu`, `ModalRefatorarLinks`, `ModalSelecionarIconeFavorito`, `ModalTourGuiado`, `ModalVincularPDI`, `NavegacaoLateral`, `NavegadorGrafo3D`, `NavegadorTagsModal`, `PainelNotificacoesHeader`, `PainelNotionBase`, `PainelPropriedadesNota`, `PainelReferenciasNota`, `PainelTarefasNota`, `Pomodoro`, `PrismasFoco`, `PropriedadesNotion`, `Quadro`, `Rodape`, `SeletorOcr`, `SeloStatus`, `Subtarefas`, `SumarioNota`, `TagChip`, `ToastsContainer`, `WebSearchBar`, `WebSearchHeader`, `WebSearchWidget`, `ui`
 
 ### Sub-componentes: src/components/home/
-`CabecalhoHome`, `ModalCatalogoWidgets`, `WidgetBuscaWeb`, `WidgetChatIA`, `WidgetConversorRapido`, `WidgetFocoHoje`, `WidgetHubFerramentas`, `WidgetITToolsRapido`, `WidgetLousasRecentes`, `WidgetMetasPDI`, `WidgetNotasRecentes`, `WidgetPDFRapido`, `WidgetReferenciasMural`, `WidgetScratchpad`, `WidgetSonsFoco`, `WidgetTranscritorVoz`, `WidgetWrapper`, `types`
+`CabecalhoHome`, `ModalCatalogoWidgets`, `WidgetBaixadorRapido`, `WidgetBuscaWeb`, `WidgetChatIA`, `WidgetConversorRapido`, `WidgetFocoHoje`, `WidgetHubFerramentas`, `WidgetITToolsRapido`, `WidgetLousasRecentes`, `WidgetMetasPDI`, `WidgetNotasRecentes`, `WidgetPDFRapido`, `WidgetReferenciasMural`, `WidgetScratchpad`, `WidgetSonsFoco`, `WidgetTranscritorVoz`, `WidgetWrapper`, `types`
 
 ### Sub-componentes: src/components/jogos/
 `GradeTermo`, `JogoTermo`, `ModalComoJogarTermo`, `ModalEstatisticasTermo`, `TecladoTermo`

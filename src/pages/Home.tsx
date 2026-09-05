@@ -59,6 +59,7 @@ import { WidgetHubFerramentas } from "@/components/home/WidgetHubFerramentas";
 import { WidgetLousasRecentes, type LousaItemHome } from "@/components/home/WidgetLousasRecentes";
 import { WidgetBuscaWeb } from "@/components/home/WidgetBuscaWeb";
 import { WidgetConversorRapido } from "@/components/home/WidgetConversorRapido";
+import { WidgetBaixadorRapido } from "@/components/home/WidgetBaixadorRapido";
 import { WidgetPDFRapido } from "@/components/home/WidgetPDFRapido";
 import { WidgetITToolsRapido } from "@/components/home/WidgetITToolsRapido";
 import { WidgetTranscritorVoz } from "@/components/home/WidgetTranscritorVoz";
@@ -575,6 +576,8 @@ export default function Home() {
                     ? "/pdi"
                     : widget.id === "lousas_recentes"
                     ? "/lousas"
+                    : widget.id === "baixador_midia"
+                    ? "/baixador"
                     : widget.id === "conversor_arquivos"
                     ? "/conversor"
                     : widget.id === "ferramentas_pdf"
@@ -656,6 +659,10 @@ export default function Home() {
                 )}
 
                 {/* ── Ferramentas Dedicadas com Popup ── */}
+                {widget.id === "baixador_midia" && (
+                  <WidgetBaixadorRapido aoAbrirPopup={(ferramentaId) => abrirFerramentaFlutuante(ferramentaId || "baixador_midia")} />
+                )}
+
                 {widget.id === "conversor_arquivos" && (
                   <WidgetConversorRapido aoAbrirPopup={() => abrirFerramentaFlutuante("conversor")} />
                 )}

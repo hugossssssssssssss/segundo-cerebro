@@ -78,6 +78,16 @@ export const CATALOGO_WIDGETS: InfoWidgetCatalogo[] = [
 
   // ── Ferramentas Dedicadas com Popup ──
   {
+    id: "baixador_midia",
+    titulo: "Baixador de Mídia",
+    resumo: "Baixar vídeos e áudios do YouTube, Instagram, TikTok e X",
+    categoria: "ferramenta",
+    icone: "Download",
+    colunasPadrao: 6,
+    alturaPadraoPx: 220,
+    ferramentaPopupId: "baixador_midia",
+  },
+  {
     id: "conversor_arquivos",
     titulo: "Conversor de Arquivos",
     resumo: "Converter PDF em JPEG, PNG, WebP e EPUB",
