@@ -225,7 +225,7 @@ direto · `não usa` = não toca no repositório de dados.
 
 | Tela | Carregar | Gravar |
 |---|---|---|
-| `src/pages/BaixadorMidia.tsx` | não usa | na mão |
+| `src/pages/BaixadorMidia.tsx` | não usa | não usa |
 | `src/pages/BoasVindas.tsx` | não usa | não usa |
 | `src/pages/Chat.tsx` | não usa | não usa |
 | `src/pages/Configuracoes.tsx` | na mão | hook |

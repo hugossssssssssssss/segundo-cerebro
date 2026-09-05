@@ -42,10 +42,6 @@ import {
   salvarInstanciaCobalt,
   INSTANCIAS_COBALT_PADRAO,
 } from "@/lib/baixador";
-import { lerConfig, configCompleta } from "@/lib/settings";
-import { gravar } from "@/lib/github";
-import { invalidarCache } from "@/lib/repo";
-import { nomeLivre, escreverMarkdown } from "@/lib/markdown";
 
 interface AbaFerramenta {
   id: PlataformaMidia;
@@ -153,7 +149,6 @@ export default function BaixadorMidia() {
   // Histórico
   const [historico, setHistorico] = useState<ItemHistoricoDownload[]>([]);
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
-  const [salvandoKlaus, setSalvandoKlaus] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -297,46 +292,7 @@ export default function BaixadorMidia() {
     }
   };
 
-  const salvarComoReferenciaKlaus = async (
-    tituloOriginal?: string,
-    urlOrig?: string,
-    urlMidia?: string,
-    plat?: PlataformaMidia
-  ) => {
-    const cfg = lerConfig();
-    if (!configCompleta(cfg)) {
-      toast("Configure seu GitHub em Ajustes para salvar referências.", { tipo: "erro" });
-      return;
-    }
 
-    const plataformaFinal = plat || plataformaDetectada || "midia";
-    const alvoUrl = urlOrig || urlInput;
-
-    setSalvandoKlaus(true);
-    try {
-      const tituloReferencia = `Vídeo ${plataformaFinal.toUpperCase()} - ${tituloOriginal || new Date().toLocaleDateString("pt-BR")}`;
-      const nomeBase = nomeLivre("referencias", tituloReferencia, []);
-      
-      const frontmatter = {
-        titulo: tituloReferencia,
-        data: new Date().toISOString().split("T")[0],
-        tags: ["video", plataformaFinal, "baixador"],
-        url_original: alvoUrl,
-        url_midia: urlMidia || "",
-      };
-
-      const corpo = `## Referência de Mídia\n\n- **Origem:** [Acessar Link Original](${alvoUrl})\n- **Rede:** ${plataformaFinal.toUpperCase()}\n- **Salvo em:** ${new Date().toLocaleString("pt-BR")}\n\n> Salvo pelo Baixador de Mídia do Klaus.\n`;
-
-      const markdownCompleto = escreverMarkdown({ dados: frontmatter, corpo });
-      await gravar(cfg, nomeBase, markdownCompleto, `feat(referencia): video ${plataformaFinal}`);
-      invalidarCache();
-      toast("Referência criada com sucesso no Klaus!", { tipo: "sucesso" });
-    } catch (e: any) {
-      toast(`Erro ao salvar no Klaus: ${e.message}`, { tipo: "erro" });
-    } finally {
-      setSalvandoKlaus(false);
-    }
-  };
 
   const salvarNovaInstancia = () => {
     salvarInstanciaCobalt(instanciaInput);
@@ -603,27 +559,12 @@ export default function BaixadorMidia() {
         </div>
       </Cartao>
 
-      {/* Exibição de Erro com Ação Rápida */}
+      {/* Exibição de Erro */}
       {erro && (
         <Aviso tom="erro">
-          <div className="space-y-2">
-            <div>
-              <p className="font-semibold text-sm">{erro}</p>
-              {detalheErro && <p className="text-xs opacity-90 mt-0.5">{detalheErro}</p>}
-            </div>
-            {urlInput.trim() && (
-              <div className="pt-1 flex flex-wrap items-center gap-2">
-                <Botao
-                  tamanho="pequeno"
-                  variante="neutro"
-                  disabled={salvandoKlaus}
-                  onClick={() => salvarComoReferenciaKlaus(undefined, urlInput.trim(), undefined, plataformaDetectada)}
-                >
-                  <Sparkles size={13} className="mr-1 text-primary" />
-                  Salvar Link como Referência no Klaus
-                </Botao>
-              </div>
-            )}
+          <div className="space-y-1">
+            <p className="font-semibold text-sm">{erro}</p>
+            {detalheErro && <p className="text-xs opacity-90">{detalheErro}</p>}
           </div>
         </Aviso>
       )}
@@ -818,28 +759,6 @@ export default function BaixadorMidia() {
                   <Copy size={16} className="mr-1.5" />
                 )}
                 {copiadoId === "btn-resultado" ? "Copiado!" : "Copiar Link"}
-              </Botao>
-
-              <Botao
-                tamanho="normal"
-                variante="neutro"
-                disabled={salvandoKlaus}
-                onClick={() =>
-                  salvarComoReferenciaKlaus(
-                    resultado.titulo,
-                    resultado.urlOriginal,
-                    streamSelecionada?.url || resultado.urlDownload,
-                    resultado.plataforma
-                  )
-                }
-                title="Cria uma nova Referência no Klaus vinculada a esta mídia"
-              >
-                {salvandoKlaus ? (
-                  <Loader2 size={16} className="animate-spin mr-1.5" />
-                ) : (
-                  <Sparkles size={16} className="text-amber-500 mr-1.5" />
-                )}
-                Salvar no Klaus
               </Botao>
             </div>
           </div>
