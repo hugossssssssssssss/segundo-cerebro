@@ -4,12 +4,25 @@ import {
   calcularDimensoesRetificadas,
   cantosPadrao,
   calcularMatrizProjetivaReversa,
+  calcularAreaPoligono,
+  detectarCantosAutomaticos,
+  AJUSTES_TONALIDADE_PADRAO,
 } from "./scannerUtils";
 
 describe("scannerUtils", () => {
   it("calcula a distância euclidiana corretamente", () => {
     expect(distancia({ x: 0, y: 0 }, { x: 3, y: 4 })).toBe(5);
     expect(distancia({ x: 10, y: 10 }, { x: 10, y: 10 })).toBe(0);
+  });
+
+  it("calcula a área de polígonos de 4 vértices", () => {
+    const retangulo = {
+      tl: { x: 0, y: 0 },
+      tr: { x: 100, y: 0 },
+      br: { x: 100, y: 50 },
+      bl: { x: 0, y: 50 },
+    };
+    expect(calcularAreaPoligono(retangulo)).toBe(5000);
   });
 
   it("calcula dimensões retificadas com base nos 4 cantos", () => {
@@ -46,5 +59,30 @@ describe("scannerUtils", () => {
     matriz.forEach((val) => {
       expect(Number.isFinite(val)).toBe(true);
     });
+  });
+
+  it("detectarCantosAutomaticos retorna cantos válidos mesmo com dimensões pequenas", () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 100;
+    canvas.height = 100;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#333333";
+      ctx.fillRect(0, 0, 100, 100);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(20, 20, 60, 60);
+    }
+
+    const cantos = detectarCantosAutomaticos(canvas);
+    expect(cantos.tl.x).toBeGreaterThanOrEqual(0);
+    expect(cantos.tr.x).toBeLessThanOrEqual(100);
+    expect(cantos.br.y).toBeLessThanOrEqual(100);
+    expect(cantos.bl.y).toBeLessThanOrEqual(100);
+  });
+
+  it("possui valores padrão de tonalidade neutros e equilibrados", () => {
+    expect(AJUSTES_TONALIDADE_PADRAO.brilho).toBe(0);
+    expect(AJUSTES_TONALIDADE_PADRAO.contraste).toBe(0);
+    expect(AJUSTES_TONALIDADE_PADRAO.intensidade).toBe(50);
   });
 });

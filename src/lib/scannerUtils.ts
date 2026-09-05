@@ -12,6 +12,18 @@ export interface CantosDocumento {
 
 export type TipoFiltroScanner = "original" | "realce" | "pb" | "cinza";
 
+export interface AjustesTonalidade {
+  brilho: number;      // -50 a +50 (padrão 0)
+  contraste: number;   // -50 a +50 (padrão 0)
+  intensidade: number; // 0 a 100 (padrão 50)
+}
+
+export const AJUSTES_TONALIDADE_PADRAO: AjustesTonalidade = {
+  brilho: 0,
+  contraste: 0,
+  intensidade: 50,
+};
+
 /**
  * Calcula a distância euclidiana entre dois pontos.
  */
@@ -19,6 +31,19 @@ export function distancia(p1: Ponto, p2: Ponto): number {
   const dx = p1.x - p2.x;
   const dy = p1.y - p2.y;
   return Math.sqrt(dx * dx + dy * dy);
+}
+
+/**
+ * Calcula a área de um quadrilátero definido pelos 4 cantos (fórmula de Gauss / Shoelace).
+ */
+export function calcularAreaPoligono(cantos: CantosDocumento): number {
+  const { tl, tr, br, bl } = cantos;
+  return Math.abs(
+    (tl.x * tr.y - tr.x * tl.y) +
+    (tr.x * br.y - br.x * tr.y) +
+    (br.x * bl.y - bl.x * br.y) +
+    (bl.x * tl.y - tl.x * bl.y)
+  ) / 2;
 }
 
 /**
@@ -53,6 +78,146 @@ export function cantosPadrao(largura: number, altura: number): CantosDocumento {
 }
 
 /**
+ * Detecta automaticamente as bordas e os 4 cantos do documento na foto
+ * através de processamento rápido de bordas e gradientes de luminância.
+ */
+export function detectarCantosAutomaticos(
+  imagem: HTMLImageElement | HTMLCanvasElement
+): CantosDocumento {
+  const largOriginal = imagem.width;
+  const altOriginal = imagem.height;
+
+  if (largOriginal < 20 || altOriginal < 20) {
+    return cantosPadrao(largOriginal, altOriginal);
+  }
+
+  // Reduz para ~320px para análise instantânea sem lag
+  const escala = Math.min(1, 320 / Math.max(largOriginal, altOriginal));
+  const w = Math.max(10, Math.round(largOriginal * escala));
+  const h = Math.max(10, Math.round(altOriginal * escala));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return cantosPadrao(largOriginal, altOriginal);
+
+  ctx.drawImage(imagem, 0, 0, w, h);
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const data = imgData.data;
+
+  // 1. Converte para escala de cinza
+  const cinza = new Float32Array(w * h);
+  for (let i = 0; i < data.length; i += 4) {
+    cinza[i / 4] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+  }
+
+  // 2. Operador Sobel para detecção de magnitude de bordas
+  const bordas = new Float32Array(w * h);
+  let maxMag = 0;
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const idx = y * w + x;
+      const gx =
+        -cinza[idx - w - 1] + cinza[idx - w + 1] +
+        -2 * cinza[idx - 1] + 2 * cinza[idx + 1] +
+        -cinza[idx + w - 1] + cinza[idx + w + 1];
+      const gy =
+        -cinza[idx - w - 1] - 2 * cinza[idx - w] - cinza[idx - w + 1] +
+        cinza[idx + w - 1] + 2 * cinza[idx + w] + cinza[idx + w + 1];
+
+      const mag = Math.sqrt(gx * gx + gy * gy);
+      bordas[idx] = mag;
+      if (mag > maxMag) maxMag = mag;
+    }
+  }
+
+  // 3. Identifica pontos fortes de borda (limiar de corte)
+  const limiarBorda = maxMag * 0.22;
+  const pontosBorda: Ponto[] = [];
+
+  // Exclui margens de 3% para ignorar moldura da foto
+  const margemX = Math.round(w * 0.03);
+  const margemY = Math.round(h * 0.03);
+
+  for (let y = margemY; y < h - margemY; y++) {
+    for (let x = margemX; x < w - margemX; x++) {
+      if (bordas[y * w + x] > limiarBorda) {
+        pontosBorda.push({ x, y });
+      }
+    }
+  }
+
+  // Se não encontrou bordas suficientes com contraste, usa cantos padrão
+  if (pontosBorda.length < 50) {
+    return cantosPadrao(largOriginal, altOriginal);
+  }
+
+  // 4. Encontra os 4 vértices extremos com base nas projeções ortogonais
+  let minSoma = Infinity;   // tl: min(x + y)
+  let maxDif = -Infinity;   // tr: max(x - y)
+  let maxSoma = -Infinity;  // br: max(x + y)
+  let minDif = Infinity;    // bl: min(x - y)
+
+  let tl: Ponto = { x: margemX, y: margemY };
+  let tr: Ponto = { x: w - margemX, y: margemY };
+  let br: Ponto = { x: w - margemX, y: h - margemY };
+  let bl: Ponto = { x: margemX, y: h - margemY };
+
+  for (const p of pontosBorda) {
+    const soma = p.x + p.y;
+    const dif = p.x - p.y;
+
+    if (soma < minSoma) {
+      minSoma = soma;
+      tl = p;
+    }
+    if (dif > maxDif) {
+      maxDif = dif;
+      tr = p;
+    }
+    if (soma > maxSoma) {
+      maxSoma = soma;
+      br = p;
+    }
+    if (dif < minDif) {
+      minDif = dif;
+      bl = p;
+    }
+  }
+
+  // Validação geométrica: a área do quadrilátero detectado deve ser razoável (> 15% da imagem)
+  const cantosEmEscala: CantosDocumento = { tl, tr, br, bl };
+  const areaDetectada = calcularAreaPoligono(cantosEmEscala);
+  const areaTotal = w * h;
+
+  if (areaDetectada < areaTotal * 0.15 || areaDetectada > areaTotal * 0.98) {
+    return cantosPadrao(largOriginal, altOriginal);
+  }
+
+  // 5. Converte as coordenadas de volta para a resolução original
+  const fatorInv = 1 / escala;
+  return {
+    tl: {
+      x: Math.max(0, Math.min(largOriginal, Math.round(tl.x * fatorInv))),
+      y: Math.max(0, Math.min(altOriginal, Math.round(tl.y * fatorInv))),
+    },
+    tr: {
+      x: Math.max(0, Math.min(largOriginal, Math.round(tr.x * fatorInv))),
+      y: Math.max(0, Math.min(altOriginal, Math.round(tr.y * fatorInv))),
+    },
+    br: {
+      x: Math.max(0, Math.min(largOriginal, Math.round(br.x * fatorInv))),
+      y: Math.max(0, Math.min(altOriginal, Math.round(br.y * fatorInv))),
+    },
+    bl: {
+      x: Math.max(0, Math.min(largOriginal, Math.round(bl.x * fatorInv))),
+      y: Math.max(0, Math.min(altOriginal, Math.round(bl.y * fatorInv))),
+    },
+  };
+}
+
+/**
  * Calcula a matriz de projeção 3x3 que mapeia (u, v) no retângulo de destino [0,0]->[w,h]
  * de volta para (x, y) na imagem original (Mapeamento Reverso).
  */
@@ -61,7 +226,6 @@ export function calcularMatrizProjetivaReversa(
   alturaDst: number,
   src: CantosDocumento
 ): number[] {
-  // Mapeamento de (0,0)->(1,0)->(1,1)->(0,1) normalizado para src
   const x0 = src.tl.x, y0 = src.tl.y;
   const x1 = src.tr.x, y1 = src.tr.y;
   const x2 = src.br.x, y2 = src.br.y;
@@ -91,8 +255,6 @@ export function calcularMatrizProjetivaReversa(
   const a22 = y3 - y0 + a23 * y3;
   const a32 = y0;
 
-  // Matriz de [u, v, 1] (onde u em [0,1] e v em [0,1]) -> [x, y, w]
-  // Ajustamos para aceitar coordenadas em pixels [0..larguraDst, 0..alturaDst]:
   const invW = 1 / larguraDst;
   const invH = 1 / alturaDst;
 
@@ -119,7 +281,6 @@ export function desentortarPerspectiva(
   const ctxDst = canvasDst.getContext("2d", { willReadFrequently: true });
   if (!ctxDst) return canvasDst;
 
-  // Pega os pixels da imagem original
   const canvasSrc = document.createElement("canvas");
   canvasSrc.width = imagemOriginal.width;
   canvasSrc.height = imagemOriginal.height;
@@ -150,10 +311,10 @@ export function desentortarPerspectiva(
 
       if (ix >= 0 && ix < srcW && iy >= 0 && iy < srcH) {
         const srcIdx = (iy * srcW + ix) * 4;
-        dstPixels[dstIdx] = srcPixels[srcIdx];         // R
-        dstPixels[dstIdx + 1] = srcPixels[srcIdx + 1]; // G
-        dstPixels[dstIdx + 2] = srcPixels[srcIdx + 2]; // B
-        dstPixels[dstIdx + 3] = 255;                   // A
+        dstPixels[dstIdx] = srcPixels[srcIdx];
+        dstPixels[dstIdx + 1] = srcPixels[srcIdx + 1];
+        dstPixels[dstIdx + 2] = srcPixels[srcIdx + 2];
+        dstPixels[dstIdx + 3] = 255;
       } else {
         dstPixels[dstIdx] = 255;
         dstPixels[dstIdx + 1] = 255;
@@ -168,14 +329,13 @@ export function desentortarPerspectiva(
 }
 
 /**
- * Aplica filtros de processamento de imagem voltados para documentos
+ * Aplica filtros de processamento de imagem voltados para documentos com ajustes de tonalidade.
  */
 export function aplicarFiltroDocumento(
   canvas: HTMLCanvasElement,
-  tipo: TipoFiltroScanner
+  tipo: TipoFiltroScanner,
+  ajustes: AjustesTonalidade = AJUSTES_TONALIDADE_PADRAO
 ): HTMLCanvasElement {
-  if (tipo === "original") return canvas;
-
   const resultado = document.createElement("canvas");
   resultado.width = canvas.width;
   resultado.height = canvas.height;
@@ -183,43 +343,85 @@ export function aplicarFiltroDocumento(
   if (!ctx) return canvas;
 
   ctx.drawImage(canvas, 0, 0);
+
+  if (tipo === "original" && ajustes.brilho === 0 && ajustes.contraste === 0) {
+    return resultado;
+  }
+
   const imgData = ctx.getImageData(0, 0, resultado.width, resultado.height);
   const d = imgData.data;
   const total = d.length;
 
+  // Fator de contraste: [-50..50] mapeado para fator multiplicativo [0.5..2.0]
+  const contrasteFator = (259 * (ajustes.contraste + 255)) / (255 * (259 - ajustes.contraste));
+  const brilhoOffset = (ajustes.brilho / 50) * 40; // [-40..+40]
+  const intensidadeNorm = ajustes.intensidade / 50; // [0..2.0], padrão 1.0
+
   if (tipo === "cinza") {
     for (let i = 0; i < total; i += 4) {
-      const cinza = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-      d[i] = cinza;
-      d[i + 1] = cinza;
-      d[i + 2] = cinza;
+      let cinza = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      cinza = contrasteFator * (cinza - 128) + 128 + brilhoOffset;
+      const finalVal = Math.min(255, Math.max(0, cinza));
+      d[i] = finalVal;
+      d[i + 1] = finalVal;
+      d[i + 2] = finalVal;
     }
   } else if (tipo === "realce") {
-    // Magic Color / Realce de Documento:
-    // Aumenta contraste, clareia o fundo e realça letras
+    // Magic Color: Clareamento dinâmico de fundo + realce de texto
+    const expCurva = Math.max(0.4, 0.85 / (intensidadeNorm || 0.1));
     for (let i = 0; i < total; i += 4) {
       let r = d[i];
       let g = d[i + 1];
       let b = d[i + 2];
 
-      // Curva em S para esticar brancos e acentuar escuros
-      r = Math.min(255, Math.max(0, Math.pow(r / 255, 0.85) * 255 * 1.1 - 10));
-      g = Math.min(255, Math.max(0, Math.pow(g / 255, 0.85) * 255 * 1.1 - 10));
-      b = Math.min(255, Math.max(0, Math.pow(b / 255, 0.85) * 255 * 1.1 - 10));
+      // Curva gama adaptativa com ganho de brancos
+      r = Math.pow(r / 255, expCurva) * 255 * 1.12 - 8;
+      g = Math.pow(g / 255, expCurva) * 255 * 1.12 - 8;
+      b = Math.pow(b / 255, expCurva) * 255 * 1.12 - 8;
+
+      // Aplica ajuste fino de brilho e contraste
+      r = contrasteFator * (r - 128) + 128 + brilhoOffset;
+      g = contrasteFator * (g - 128) + 128 + brilhoOffset;
+      b = contrasteFator * (b - 128) + 128 + brilhoOffset;
+
+      d[i] = Math.min(255, Math.max(0, r));
+      d[i + 1] = Math.min(255, Math.max(0, g));
+      d[i + 2] = Math.min(255, Math.max(0, b));
+    }
+  } else if (tipo === "pb") {
+    // Limiarização P&B com corte ajustável pela intensidade
+    const baseLimiar = 125 * intensidadeNorm;
+    const corteSuperior = Math.min(240, baseLimiar + 25);
+    const corteInferior = Math.max(15, baseLimiar - 35);
+
+    for (let i = 0; i < total; i += 4) {
+      let cinza = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      cinza = cinza + brilhoOffset;
+
+      const valor = cinza >= corteSuperior
+        ? 255
+        : cinza <= corteInferior
+        ? 0
+        : Math.round(((cinza - corteInferior) / (corteSuperior - corteInferior)) * 255);
+
+      const ajustado = Math.min(255, Math.max(0, contrasteFator * (valor - 128) + 128));
+      d[i] = ajustado;
+      d[i + 1] = ajustado;
+      d[i + 2] = ajustado;
+    }
+  } else if (tipo === "original" && (ajustes.brilho !== 0 || ajustes.contraste !== 0)) {
+    for (let i = 0; i < total; i += 4) {
+      let r = d[i];
+      let g = d[i + 1];
+      let b = d[i + 2];
+
+      r = Math.min(255, Math.max(0, contrasteFator * (r - 128) + 128 + brilhoOffset));
+      g = Math.min(255, Math.max(0, contrasteFator * (g - 128) + 128 + brilhoOffset));
+      b = Math.min(255, Math.max(0, contrasteFator * (b - 128) + 128 + brilhoOffset));
 
       d[i] = r;
       d[i + 1] = g;
       d[i + 2] = b;
-    }
-  } else if (tipo === "pb") {
-    // Preto e Branco / Limiarização Adaptativa Dinâmica
-    for (let i = 0; i < total; i += 4) {
-      const cinza = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-      // Limiar suave com leve contraste
-      const valor = cinza > 140 ? 255 : cinza < 90 ? 0 : Math.round(((cinza - 90) / 50) * 255);
-      d[i] = valor;
-      d[i + 1] = valor;
-      d[i + 2] = valor;
     }
   }
 
