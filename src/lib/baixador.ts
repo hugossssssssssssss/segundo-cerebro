@@ -488,6 +488,16 @@ export async function processarDownloadMidia(opcoes: OpcoesDownload): Promise<Re
   }
 
   // 4. Resposta de erro clara e transparente
+  if (plataforma === "youtube") {
+    return {
+      sucesso: false,
+      erro: "O YouTube bloqueou a extração direta deste vídeo nos servidores públicos.",
+      detalhe: "O YouTube atualiza frequentemente seus tokens de proteção contra bots e bloqueia o tráfego de servidores públicos. Você pode configurar um servidor Cobalt próprio no botão acima ou salvar o vídeo como referência com player embutido no Klaus.",
+      plataforma,
+      urlOriginal: urlLimpa,
+    };
+  }
+
   return {
     sucesso: false,
     erro: `Não foi possível extrair a mídia de ${plataforma.toUpperCase()} no momento.`,

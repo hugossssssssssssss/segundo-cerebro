@@ -267,9 +267,9 @@ export default function BaixadorMidia() {
     toast("Iniciando download nativo no seu dispositivo...", { tipo: "info" });
 
     try {
-      // Tenta baixar via fetch Blob
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Bloqueio CORS na URL direta");
+      // Tenta baixar via fetch Blob com referrerPolicy no-referrer para evitar bloqueios como no Twitter/X CDN
+      const res = await fetch(url, { referrerPolicy: "no-referrer" });
+      if (!res.ok) throw new Error("Bloqueio na URL direta");
 
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -282,10 +282,12 @@ export default function BaixadorMidia() {
       setTimeout(() => URL.revokeObjectURL(blobUrl), 20000);
       toast("Download concluído com sucesso!", { tipo: "sucesso" });
     } catch {
-      // Fallback sem _blank (não abre aba nova, dispara no próprio navegador)
+      // Fallback nativo sem _blank com referrerPolicy no-referrer
       const a = document.createElement("a");
       a.href = url;
       a.download = nomeArquivo || `klaus_download_${Date.now()}.mp4`;
+      a.rel = "noreferrer";
+      a.referrerPolicy = "no-referrer";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -601,12 +603,27 @@ export default function BaixadorMidia() {
         </div>
       </Cartao>
 
-      {/* Exibição de Erro */}
+      {/* Exibição de Erro com Ação Rápida */}
       {erro && (
         <Aviso tom="erro">
-          <div className="space-y-1">
-            <p className="font-semibold text-sm">{erro}</p>
-            {detalheErro && <p className="text-xs opacity-90">{detalheErro}</p>}
+          <div className="space-y-2">
+            <div>
+              <p className="font-semibold text-sm">{erro}</p>
+              {detalheErro && <p className="text-xs opacity-90 mt-0.5">{detalheErro}</p>}
+            </div>
+            {urlInput.trim() && (
+              <div className="pt-1 flex flex-wrap items-center gap-2">
+                <Botao
+                  tamanho="pequeno"
+                  variante="neutro"
+                  disabled={salvandoKlaus}
+                  onClick={() => salvarComoReferenciaKlaus(undefined, urlInput.trim(), undefined, plataformaDetectada)}
+                >
+                  <Sparkles size={13} className="mr-1 text-primary" />
+                  Salvar Link como Referência no Klaus
+                </Botao>
+              </div>
+            )}
           </div>
         </Aviso>
       )}
@@ -727,6 +744,7 @@ export default function BaixadorMidia() {
                       <img
                         src={item.thumb}
                         alt={`Item ${idx + 1}`}
+                        referrerPolicy="no-referrer"
                         className="w-full h-28 object-cover rounded-lg"
                       />
                     ) : (
