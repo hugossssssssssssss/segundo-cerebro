@@ -38,7 +38,7 @@ export function classificarIntencaoConsulta(consulta: string): IntencaoConsulta 
 export function montarContextoSemantico(
   acervo: ItemRepo[],
   consulta?: string,
-  tetoCaracteres = 60_000,
+  tetoCaracteres = 250_000,
 ): string {
   if (!acervo || acervo.length === 0) return "";
 
@@ -71,12 +71,14 @@ export function montarContextoSemantico(
     todasTarefas.forEach(adicionar);
     todasMetas.forEach(adicionar);
     todasEntregas.forEach(adicionar);
+    todasNotas.forEach(adicionar);
   }
 
-  // 2. Se a pergunta for sobre notas / triagem de notas:
-  if (intencao === "notas" || /\b(nota|notas|triagem)\b/i.test(c)) {
+  // 2. Se a pergunta for sobre notas / anotações / ideias ou triagem:
+  if (intencao === "notas" || /\b(nota|notas|anotação|anotacao|anotações|anotacoes|ideia|ideias|triagem|conteúdo|conteudo)\b/i.test(c)) {
     todasNotas.forEach(adicionar);
     todasTarefas.forEach(adicionar);
+    todasMetas.forEach(adicionar);
   }
 
   // 3. Se a pergunta for sobre contatos:
@@ -84,31 +86,38 @@ export function montarContextoSemantico(
     todosContatos.forEach(adicionar);
   }
 
-  // 4. Busca textual e semântica com MiniSearch para trazer itens específicos
+  // 4. Busca textual e semântica com MiniSearch para trazer itens relevantes ao tema
   if (consulta && consulta.trim().length >= 2) {
     const resultados = buscar(acervo, consulta);
     for (const r of resultados) {
       const item = acervo.find((i) => i.caminho === r.caminho);
       if (item) adicionar(item);
-      if (selecionados.length >= 25) break;
+      if (selecionados.length >= 50) break;
     }
   }
 
-  // 5. Fallback: se poucos itens foram selecionados, inclui os itens do acervo até preencher
-  if (selecionados.length < 15) {
-    for (const item of acervo) {
-      if (!item.caminho.startsWith(".klaus/") && !item.caminho.startsWith("caixa-entrada/")) {
-        adicionar(item);
-      }
-      if (selecionados.length >= 30) break;
+  // 5. Inclusão abrangente de notas e acervo (para garantir que nada fique sem texto integral)
+  todasNotas.forEach(adicionar);
+  todasTarefas.forEach(adicionar);
+  todasMetas.forEach(adicionar);
+  todasEntregas.forEach(adicionar);
+  todosContatos.forEach(adicionar);
+
+  // Fallback: inclui quaisquer outros itens úteis do acervo até o limite
+  for (const item of acervo) {
+    if (!item.caminho.startsWith(".klaus/") && !item.caminho.startsWith("caixa-entrada/")) {
+      adicionar(item);
     }
   }
 
-  // 6. Constrói o Panorama Geral do Acervo para o Gemini ter visão panorâmica completa
-  const linhasPanorama: string[] = ["## 📊 PANORAMA GERAL DO ACERVO DO KLAUS:"];
+  // 6. Constrói o Panorama Geral do Acervo para o Gemini ter visão do índice
+  const linhasPanorama: string[] = [
+    "## 📊 PANORAMA RESUMIDO DO ACERVO DO KLAUS:",
+    "Abaixo você tem o índice rápido e, em seguida, o CONTEÚDO INTEGRAL E COMPLETO dos arquivos para leitura direta.",
+  ];
 
   if (todasTarefas.length > 0) {
-    linhasPanorama.push(`\n### TAREFAS (${todasTarefas.length} encontradas):`);
+    linhasPanorama.push(`\n### TAREFAS (${todasTarefas.length} cadastradas):`);
     for (const t of todasTarefas) {
       const tit = tituloProvavel(t.doc, t.nome);
       const status = t.doc?.dados?.status || "a-fazer";
@@ -133,7 +142,7 @@ export function montarContextoSemantico(
   }
 
   if (todasNotas.length > 0) {
-    linhasPanorama.push(`\n### NOTAS (${todasNotas.length} encontradas):`);
+    linhasPanorama.push(`\n### NOTAS (${todasNotas.length} cadastradas):`);
     for (const n of todasNotas) {
       const tit = tituloProvavel(n.doc, n.nome);
       const tags = n.doc?.dados?.tags ? ` | Tags: ${JSON.stringify(n.doc.dados.tags)}` : "";
@@ -141,7 +150,7 @@ export function montarContextoSemantico(
     }
   }
 
-  linhasPanorama.push("\n---\n## 📄 CONTEÚDO DETALHADO DOS DOCUMENTOS SELECIONADOS:");
+  linhasPanorama.push("\n---\n## 📄 CONTEÚDO INTEGRAL E DETALHADO DOS DOCUMENTOS (LEIA O TEXTO ABAIXO):");
 
   let total = linhasPanorama.join("\n").length;
   const blocosDocumentos: string[] = [];

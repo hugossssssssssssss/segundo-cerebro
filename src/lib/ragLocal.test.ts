@@ -49,4 +49,20 @@ describe("ragLocal - injeção contextual seletiva", () => {
     expect(contexto.length).toBeLessThan(700);
     expect(contexto).toContain("limitado em 500 caracteres");
   });
+
+  it("inclui o conteúdo textual detalhado das notas no contexto", () => {
+    const notaItem: ItemRepo = {
+      caminho: "notas/briefing-marca.md",
+      nome: "briefing-marca.md",
+      sha: "s4",
+      tamanho: 100,
+      texto: "---\ntitulo: Briefing da Marca\ntags: ['Design', 'Branding']\n---\nDetalhes cruciais da identidade visual e tipografia.",
+      doc: lerMarkdown("---\ntitulo: Briefing da Marca\ntags: ['Design', 'Branding']\n---\nDetalhes cruciais da identidade visual e tipografia."),
+    };
+
+    const contexto = montarContextoSemantico([notaItem], "o que tenho nas minhas notas?");
+    expect(contexto).toContain("Briefing da Marca");
+    expect(contexto).toContain("Detalhes cruciais da identidade visual e tipografia.");
+    expect(contexto).toContain("CONTEÚDO INTEGRAL E DETALHADO DOS DOCUMENTOS");
+  });
 });

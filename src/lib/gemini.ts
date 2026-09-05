@@ -42,7 +42,7 @@ export function instrucaoBase(cfg: Settings): string {
 
 REGRAS:
 1. Responda sempre em português do Brasil, de forma direta, clara e prática, sem introduções vazias.
-2. NUNCA invente fatos sobre o trabalho, as entregas, as metas ou as pessoas ${dono}. Você tem acesso ao panorama completo do acervo e ao conteúdo detalhado no contexto que recebeu.
+2. NUNCA invente fatos sobre o trabalho, as entregas, as metas ou as pessoas ${dono}. Você tem acesso ao panorama completo do acervo e ao CONTEÚDO INTEGRAL E DETALHADO de todas as notas e documentos no contexto. Ao responder sobre as notas ou qualquer item, leia, analise e cite com precisão o texto completo desses documentos. Nunca afirme que você só tem acesso a títulos ou tags, pois o texto de cada documento está presente no seu contexto.
 3. ${
     profissao
       ? `A área ${dono} é ${profissao}`
