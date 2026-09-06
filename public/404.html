@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Klaus</title>
+    <script>
+      // Single Page Apps for GitHub Pages
+      // Redireciona qualquer rota de 404 para o index.html com o hash correto
+      (function () {
+        var pathSegmentsToKeep = 1; // Para /segundo-cerebro/
+        var l = window.location;
+        var pathname = l.pathname;
+        var search = l.search;
+        var hash = l.hash;
+
+        // Se houver query antes do hash (ex: /?abrir=...#/inbox) ou rota sem hash
+        var repoPrefix = "/" + pathname.split("/")[1];
+        var subpath = pathname.split("/").slice(1 + pathSegmentsToKeep).join("/");
+        
+        var targetHash = hash || ("#/" + subpath);
+        if (search) {
+          // Se tiver search params, anexa ao hash se já não tiver
+          if (targetHash.indexOf("?") === -1) {
+            targetHash += search;
+          } else {
+            targetHash += "&" + search.slice(1);
+          }
+        }
+
+        l.replace(
+          l.protocol + "//" + l.hostname + (l.port ? ":" + l.port : "") +
+          repoPrefix + "/index.html" + targetHash
+        );
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Redirecionando para o Klaus...</p>
+  </body>
+</html>

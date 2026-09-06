@@ -10,8 +10,8 @@ export type AbaJogos = "termo" | "cruzadinha";
 export default function Jogos() {
   const [abaAtiva, setAbaAtiva] = useState<AbaJogos>(() => {
     if (typeof window !== "undefined") {
-      const p = new URLSearchParams(window.location.search);
-      const abaUrl = p.get("aba") as AbaJogos | null;
+      const hashParams = new URLSearchParams(window.location.hash.split("?")[1] || "");
+      const abaUrl = hashParams.get("aba") as AbaJogos | null;
       if (abaUrl === "termo" || abaUrl === "cruzadinha") return abaUrl;
       const salva = localStorage.getItem("klaus_aba_jogos") as AbaJogos | null;
       if (salva === "termo" || salva === "cruzadinha") return salva;
@@ -23,9 +23,7 @@ export default function Jogos() {
     setAbaAtiva(aba);
     try {
       localStorage.setItem("klaus_aba_jogos", aba);
-      const url = new URL(window.location.href);
-      url.searchParams.set("aba", aba);
-      window.history.replaceState(null, "", url.toString());
+      window.location.hash = `#/jogos?aba=${aba}`;
     } catch {}
   };
 
