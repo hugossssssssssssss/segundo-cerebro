@@ -51,12 +51,22 @@ export async function inicializarArmazenamentoOffline(): Promise<void> {
     await migrarRascunhosLegadosLocalStorage();
     const carregados = await carregarTodosRascunhosArmazenamento();
     if (carregados.length > 0) {
-      memoriaRascunhos = carregados;
+      // Normaliza status "sincronizando" que possa ter ficado preso ao fechar a aba
+      memoriaRascunhos = carregados.map((r) =>
+        r.status === "sincronizando" ? { ...r, status: "pendente" } : r
+      );
     }
   } catch {
     // fallback mantém memória atual
   } finally {
     inicializado = true;
+    dispararAtualizacaoAcervo();
+
+    // Sincroniza imediatamente com o GitHub se houver rascunhos pendentes carregados
+    const cfg = lerConfig();
+    if (configCompleta(cfg) && navigator.onLine && memoriaRascunhos.length > 0) {
+      sincronizarFilaOffline(cfg).catch(() => {});
+    }
   }
 }
 
@@ -70,7 +80,12 @@ if (typeof window !== "undefined") {
   try {
     const salvo = localStorage.getItem(CHAVE_RASCUNHOS);
     if (salvo) {
-      memoriaRascunhos = JSON.parse(salvo);
+      const parsed = JSON.parse(salvo);
+      if (Array.isArray(parsed)) {
+        memoriaRascunhos = parsed.map((r: any) =>
+          r.status === "sincronizando" ? { ...r, status: "pendente" } : r
+        );
+      }
     }
   } catch {}
   inicializarArmazenamentoOffline().catch(() => {});
