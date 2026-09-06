@@ -53,6 +53,7 @@ import {
   redefinirRascunhosComErroParaPendente,
   sincronizarFilaOffline,
 } from "@/lib/offlineQueue";
+import { sincronizarTudoComGithub } from "@/lib/preferenciasApp";
 import JSZip from "jszip";
 
 type AbaConfig = "geral" | "github" | "ia" | "notificacoes" | "dados";
@@ -118,6 +119,7 @@ export default function Configuracoes() {
   const salvarPerfil = () => {
     const limpa = salvarConfig(cfg);
     setCfg(limpa);
+    sincronizarTudoComGithub(limpa).catch(() => {});
     toast("Preferências salvas com sucesso!");
   };
 
@@ -428,6 +430,7 @@ export default function Configuracoes() {
     if (r.ok) {
       redefinirRascunhosComErroParaPendente();
       sincronizarFilaOffline(limpa).catch(() => {});
+      sincronizarTudoComGithub(limpa).catch(() => {});
       setRascunhosComErro(0);
     }
     setResultado(

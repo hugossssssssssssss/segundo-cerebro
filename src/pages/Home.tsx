@@ -66,6 +66,14 @@ import { WidgetTranscritorVoz } from "@/components/home/WidgetTranscritorVoz";
 import { WidgetSonsFoco } from "@/components/home/WidgetSonsFoco";
 import { WidgetChatIA } from "@/components/home/WidgetChatIA";
 import { ModalCatalogoWidgets } from "@/components/home/ModalCatalogoWidgets";
+import {
+  carregarConfigWidgetsLocal,
+  salvarConfigWidgetsLocal,
+  agendarPersistenciaWidgetsRemoto,
+  sincronizarWidgetsComGithub,
+  EVENTO_WIDGETS_ATUALIZADOS,
+} from "@/lib/widgetsHome";
+import { agendarPersistenciaPreferenciasRemoto } from "@/lib/preferenciasApp";
 
 const CHAVE_SNAPSHOT_HOME = "klaus_home_cache_snapshot";
 
@@ -254,14 +262,7 @@ export default function Home() {
 
   // ── Configuração dos Widgets (Grade de 12 Colunas com Tamanho Livre) ──────
   const [configWidgets, setConfigWidgets] = useState<WidgetConfig[]>(() => {
-    const salvo = localStorage.getItem("klaus_home_bento_config_v3");
-    if (salvo) {
-      try {
-        const parsed = JSON.parse(salvo);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch {}
-    }
-    return CONFIG_PADRAO_WIDGETS;
+    return carregarConfigWidgetsLocal();
   });
 
   const [modoEdicao, setModoEdicao] = useState(() => {
@@ -270,16 +271,40 @@ export default function Home() {
 
   const [catalogoAberto, setCatalogoAberto] = useState(false);
 
-  // Salva configurações de widgets no localStorage
+  // Sincroniza widgets remotamente no GitHub ao montar e escuta atualizações
+  useEffect(() => {
+    const aoAtualizar = (e: any) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setConfigWidgets(e.detail);
+      }
+    };
+    window.addEventListener(EVENTO_WIDGETS_ATUALIZADOS, aoAtualizar);
+    if (pronto) {
+      sincronizarWidgetsComGithub(cfg).then((res) => {
+        if (res.sincronizado && res.config && res.config.length > 0) {
+          setConfigWidgets(res.config);
+        }
+      });
+    }
+    return () => window.removeEventListener(EVENTO_WIDGETS_ATUALIZADOS, aoAtualizar);
+  }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
+
+  // Salva configurações de widgets no localStorage e sincroniza no GitHub
   const salvarConfigWidgets = (novaConfig: WidgetConfig[]) => {
     setConfigWidgets(novaConfig);
-    localStorage.setItem("klaus_home_bento_config_v3", JSON.stringify(novaConfig));
+    salvarConfigWidgetsLocal(novaConfig);
+    if (pronto) {
+      agendarPersistenciaWidgetsRemoto(cfg, novaConfig);
+    }
   };
 
   const alternarModoEdicao = () => {
     const novoValor = !modoEdicao;
     setModoEdicao(novoValor);
     localStorage.setItem("klaus_home_modo_edicao", String(novoValor));
+    if (pronto) {
+      agendarPersistenciaPreferenciasRemoto(cfg, { modoEdicaoHome: novoValor });
+    }
   };
 
   const restaurarPadrao = () => {
