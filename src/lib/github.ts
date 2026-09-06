@@ -9,7 +9,7 @@
  * e permite desfazer qualquer coisa pelo git.
  */
 
-import type { Settings } from "./settings";
+import { type Settings, limparToken } from "./settings";
 import { lerMarkdown } from "./markdown";
 import { autoMergeDocumentoMarkdown } from "./autoMergeMarkdown";
 import { registrarRespostaGitHub } from "./telemetriaRequisicoes";
@@ -45,10 +45,9 @@ export class ErroGitHub extends Error {
 }
 
 function cabecalhos(cfg: Settings): HeadersInit {
+  const token = limparToken(cfg.githubToken);
   return {
-    // .trim() de novo por segurança: se algum dia um token entrar por outro
-    // caminho que não a tela de Ajustes, um "\n" aqui derrubaria tudo.
-    Authorization: `Bearer ${cfg.githubToken.trim()}`,
+    Authorization: `Bearer ${token}`,
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
   };
@@ -58,8 +57,7 @@ function cabecalhos(cfg: Settings): HeadersInit {
  * fetch com mensagem de erro que serve para alguma coisa.
  *
  * Quando o fetch falha na camada de rede o navegador só diz "Failed to fetch",
- * sem distinguir "você está sem internet" de "seu token tem uma quebra de
- * linha". Aqui a diferença é explicada.
+ * sem distinguir "você está sem internet" de um erro de conexão.
  */
 async function buscar(url: string, init?: RequestInit, maxRetries = 2): Promise<Response> {
   let tentativa = 0;
@@ -89,8 +87,8 @@ async function buscar(url: string, init?: RequestInit, maxRetries = 2): Promise<
       const detalhe = e instanceof Error ? e.message : String(e);
       throw new ErroGitHub(
         navigator.onLine
-          ? `Não consegui falar com o GitHub. Se você acabou de colar o token, confira se não veio com espaço ou quebra de linha junto. (${detalhe})`
-          : "Você está sem internet. O app precisa de conexão para ler e gravar seus arquivos.",
+          ? `Não consegui falar com o GitHub (${detalhe}). As alterações foram salvas localmente e sincronizarão em segundo plano.`
+          : "Você está sem internet. O Klaus salvou tudo localmente e sincronizará quando a conexão voltar.",
         0,
       );
     }
@@ -298,22 +296,40 @@ export async function gravar(
       }
 
       /**
-       * Se era uma nova criação (sha undefined) e o GitHub devolveu 422 (já existe),
-       * NUNCA buscar o sha do arquivo existente para regravar por cima (a menos que seja arquivo de sistema como caixa-entrada).
-       * Isso destruiria o arquivo antigo silenciosamente.
+       * Se o GitHub devolveu 422 (arquivo já existe mas SHA não foi passado ou estava desatualizado):
+       * Busca o arquivo remoto existente e reconcilia automaticamente via SHA / Auto-Merge.
        */
-      if (resposta.status === 422 && eraNovaCriacao && !caminho.startsWith("caixa-entrada/") && !caminho.startsWith(".klaus/")) {
+      if (resposta.status === 422) {
         try {
           const { sha: shaDestino, texto: textoDestino } = await ler(cfg, caminho);
           if (conteudosSemelhantes(textoDestino, texto)) {
-            // O conteúdo é idêntico! Podemos ignorar o erro e retornar o shaDestino (gravação redundante)
+            // O conteúdo é idêntico! Retorna o shaDestino do GitHub (gravação redundante)
             return shaDestino;
-          } else {
-            // O conteúdo é diferente. Lançamos um erro explícito para evitar destruição de dados
+          }
+
+          // Tenta Auto-Merge Semântico 3-Way entre o arquivo remoto e a nova versão
+          const merge = autoMergeDocumentoMarkdown("", texto, textoDestino);
+          if (merge.sucesso && !merge.teveConflito) {
+            const putRes = await fazerPut(shaDestino, merge.textoMesclado);
+            if (putRes.ok) {
+              const dadosMerge = await putRes.json();
+              return (dadosMerge.content?.sha || dadosMerge.commit?.sha || shaDestino) as string;
+            }
+          }
+
+          // Se for nova criação de arquivo que coincide com arquivo existente sem mesclagem limpa
+          if (eraNovaCriacao && !caminho.startsWith("caixa-entrada/") && !caminho.startsWith(".klaus/")) {
             throw new ErroGitHub(
-              `Já existe um arquivo diferente no destino "${caminho}". Escolha outro nome ou exclua-o antes de mover.`,
-              422
+              `Conflito: já existe um arquivo com conteúdo diferente em "${caminho}". Acesse Rascunhos Offline para resolver.`,
+              409,
             );
+          }
+
+          // Tenta aplicar com o shaDestino atualizado
+          const putRes = await fazerPut(shaDestino, texto);
+          if (putRes.ok) {
+            const dadosPut = await putRes.json();
+            return (dadosPut.content?.sha || dadosPut.commit?.sha || shaDestino) as string;
           }
         } catch (lerErr) {
           if (lerErr instanceof ErroGitHub) {

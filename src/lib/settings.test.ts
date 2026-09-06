@@ -41,5 +41,19 @@ describe("settings persistence", () => {
     expect(precisaOnboarding({ ...PADRAO, githubToken: "ghp_123", onboardingConcluido: false })).toBe(true);
     expect(precisaOnboarding({ ...PADRAO, onboardingConcluido: true })).toBe(false);
   });
+
+  it("limpa tokens com prefixos, aspas e quebras de linha acidentais", () => {
+    const configComSujeira = {
+      ...PADRAO,
+      githubToken: ' "Bearer ghp_tokenLimpo123" \n',
+      repoOwner: "https://github.com/hugosilva/segundo-cerebro-dados",
+      repoName: "",
+    };
+
+    const salva = salvarConfig(configComSujeira);
+    expect(salva.githubToken).toBe("ghp_tokenLimpo123");
+    expect(salva.repoOwner).toBe("hugosilva");
+    expect(salva.repoName).toBe("segundo-cerebro-dados");
+  });
 });
 

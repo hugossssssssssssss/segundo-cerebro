@@ -1,6 +1,6 @@
 # Contexto de IA & Mapa de Navegação do Klaus
 
-> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-09-05.**
+> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-09-06.**
 > Não edite as tabelas de módulos à mão — execute `npm run mapa-ia` ou `npm run build` para sincronizar com o código.
 
 Este arquivo foi desenhado sob medida para **Agentes de IA e LLMs** que operam no repositório Klaus.
@@ -210,6 +210,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `tipo` **`Settings`**
 - `funcao` **`derivarChaveWebCrypto`** — _Deriva uma chave AES-GCM usando PBKDF2 via WebCrypto nativa. ⚠️ ESCRITA E AINDA NÃO LIGADA EM LUGAR ..._
 - `constante` **`PADRAO`**
+- `funcao` **`limparToken`**
 - `funcao` **`lerConfig`**
 - `funcao` **`salvarConfig`**
 - `funcao` **`configCompleta`** — _O app só consegue ler/escrever se estes três estiverem preenchidos._

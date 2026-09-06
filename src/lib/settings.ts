@@ -219,17 +219,50 @@ export const PADRAO: Settings = {
   defaultWebSearchEngine: "google",
 };
 
+export function limparToken(token: string): string {
+  if (!token) return "";
+  let t = (token || "").trim();
+  // Remove aspas ao redor repetidamente
+  t = t.replace(/^["'`]+|["'`]+$/g, "").trim();
+  // Remove prefixo Bearer / token (com ou sem espaço)
+  t = t.replace(/^(bearer|token)[:\s]*/i, "").trim();
+  // Remove aspas internas restantes caso estivessem aninhadas
+  t = t.replace(/^["'`]+|["'`]+$/g, "").trim();
+  // Remove todos os caracteres invisíveis e espaços remanescentes
+  t = t.replace(/[\s\u200B-\u200D\uFEFF]/g, "");
+  return t;
+}
+
 /**
  * Limpa o que veio de copiar e colar.
  *
- * Colar um token costuma trazer espaço ou quebra de linha junto. Uma quebra de
- * linha dentro do cabeçalho Authorization torna a requisição inválida e o
- * navegador aborta com "Failed to fetch" — erro que não diz nada ao usuário.
+ * Colar um token costuma trazer espaço, aspas ou quebra de linha junto. Uma quebra de
+ * linha ou aspas dentro do cabeçalho Authorization torna a requisição inválida e o
+ * GitHub responde com 401 Bad credentials.
  * Por isso a limpeza acontece aqui, no ponto de entrada, e não em cada uso.
  */
 function limpar(s: Settings): Settings {
   const tirarInvisiveis = (v: string) =>
     (v || "").replace(/[\s\u200B-\u200D\uFEFF]/g, "");
+
+  // Se o usuário colou a URL completa do repositório no GitHub (ex: https://github.com/hugosilva/segundo-cerebro-dados)
+  let owner = tirarInvisiveis(s.repoOwner);
+  let repo = tirarInvisiveis(s.repoName);
+  if (owner.includes("github.com/")) {
+    const partes = owner.replace(/^https?:\/\/github\.com\//i, "").split("/").filter(Boolean);
+    if (partes.length >= 1) owner = partes[0];
+    if (partes.length >= 2 && !repo) repo = partes[1].replace(/\.git$/, "");
+  }
+  if (repo.includes("github.com/")) {
+    const partes = repo.replace(/^https?:\/\/github\.com\//i, "").split("/").filter(Boolean);
+    if (partes.length >= 2) {
+      if (!owner) owner = partes[0];
+      repo = partes[1].replace(/\.git$/, "");
+    } else if (partes.length === 1) {
+      repo = partes[0].replace(/\.git$/, "");
+    }
+  }
+
   return {
     ...s,
     // trim e não tirarInvisiveis: nome composto tem espaço no meio, e
@@ -237,13 +270,13 @@ function limpar(s: Settings): Settings {
     nomeUsuario: (s.nomeUsuario || "").trim(),
     profissaoUsuario: (s.profissaoUsuario || "").trim(),
     onboardingConcluido: Boolean(s.onboardingConcluido),
-    githubToken: tirarInvisiveis(s.githubToken),
-    geminiKey: tirarInvisiveis(s.geminiKey),
-    repoOwner: tirarInvisiveis(s.repoOwner),
-    repoName: tirarInvisiveis(s.repoName),
+    githubToken: limparToken(s.githubToken),
+    geminiKey: tirarInvisiveis(s.geminiKey).replace(/^["'`]|["'`]$/g, ""),
+    repoOwner: owner,
+    repoName: repo,
     branch: tirarInvisiveis(s.branch) || "main",
     geminiModel: (s.geminiModel || "gemini-2.5-flash").trim(),
-    telegramBotToken: tirarInvisiveis(s.telegramBotToken || ""),
+    telegramBotToken: tirarInvisiveis(s.telegramBotToken || "").replace(/^["'`]|["'`]$/g, ""),
     telegramChatId: (s.telegramChatId || "").trim(),
     inboxTelegramAtivo: Boolean(s.inboxTelegramAtivo),
     inboxTelegramModo: s.inboxTelegramModo || "ambos",
@@ -257,52 +290,73 @@ function limpar(s: Settings): Settings {
   };
 }
 
+let memoriaConfig: Settings | null = null;
+
 export function lerConfig(): Settings {
   try {
-    // 1. Tenta ler o formato ofuscado (ver o aviso em sessionKeyBuffer:
-    //    ofuscado ≠ protegido)
-    const enc = localStorage.getItem(CHAVE_OFUSCADA);
+    // 1. Tenta ler o formato ofuscado
+    const enc = typeof localStorage !== "undefined" ? localStorage.getItem(CHAVE_OFUSCADA) : null;
     if (enc) {
       try {
         const decodificado = decodificarTexto(enc);
         const parsed = JSON.parse(decodificado);
-        return limpar({ ...PADRAO, ...parsed });
+        const configLimpa = limpar({ ...PADRAO, ...parsed });
+        memoriaConfig = configLimpa;
+        return configLimpa;
       } catch {
-        // Se a chave ofuscada falhar (ex: salt resetado), tenta recuperar do formato legado
+        // Se a chave ofuscada falhar (ex: salt resetado), tenta decodificar como base64 direta
+        try {
+          const jsonPuro = atob(enc);
+          const parsed = JSON.parse(jsonPuro);
+          const configLimpa = limpar({ ...PADRAO, ...parsed });
+          memoriaConfig = configLimpa;
+          return configLimpa;
+        } catch {}
       }
     }
 
-    // 2. Fallback para formato antigo em texto puro (migração transparente)
-    const bruto = localStorage.getItem(CHAVE);
-    if (!bruto) return { ...PADRAO };
+    // 2. Fallback para formato em texto puro
+    const bruto = typeof localStorage !== "undefined" ? localStorage.getItem(CHAVE) : null;
+    if (bruto) {
+      try {
+        const parsedLegacy = JSON.parse(bruto);
+        const configLimpa = limpar({ ...PADRAO, ...parsedLegacy });
+        salvarConfig(configLimpa);
+        memoriaConfig = configLimpa;
+        return configLimpa;
+      } catch {}
+    }
 
-    const parsedLegacy = JSON.parse(bruto);
-    const configLimpa = limpar({ ...PADRAO, ...parsedLegacy });
+    // 3. Fallback para cache em memória da sessão
+    if (memoriaConfig && configCompleta(memoriaConfig)) {
+      return memoriaConfig;
+    }
 
-    // Migra automaticamente para o formato ofuscado e remove o texto puro
-    salvarConfig(configLimpa);
-    localStorage.removeItem(CHAVE);
-
-    return configLimpa;
-  } catch {
     return { ...PADRAO };
+  } catch {
+    return memoriaConfig ? { ...memoriaConfig } : { ...PADRAO };
   }
 }
 
 export function salvarConfig(s: Settings): Settings {
   const limpo = limpar(s);
+  memoriaConfig = limpo;
   const jsonStr = JSON.stringify(limpo);
   const encStr = codificarTexto(jsonStr);
 
-  localStorage.setItem(CHAVE_OFUSCADA, encStr);
-  // Remove a versão em texto puro, que era pior ainda
-  localStorage.removeItem(CHAVE);
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(CHAVE_OFUSCADA, encStr);
+      // Mantém backup de redundância caso localStorage de outra aba limpe o salt
+      localStorage.setItem(CHAVE, jsonStr);
+    }
+  } catch {}
 
   try {
     if (typeof chrome !== "undefined" && chrome?.storage?.local) {
       chrome.storage.local.set({
         klaus_settings_enc: encStr,
-        klaus_device_salt: localStorage.getItem(CHAVE_SALT) || "",
+        klaus_device_salt: typeof localStorage !== "undefined" ? localStorage.getItem(CHAVE_SALT) || "" : "",
       });
     }
   } catch {}

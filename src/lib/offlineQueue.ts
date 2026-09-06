@@ -225,9 +225,12 @@ export function estaSincronizandoFila(): boolean {
 }
 
 /** Tenta descarregar a fila de rascunhos offline para o GitHub */
-export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluidos: number; falhas: number }> {
+export async function sincronizarFilaOffline(cfgProp?: Settings): Promise<{ concluidos: number; falhas: number }> {
   if (!navigator.onLine) return { concluidos: 0, falhas: 0 };
   if (sincronizandoFila) return { concluidos: 0, falhas: 0 };
+
+  const cfg = cfgProp && configCompleta(cfgProp) ? cfgProp : lerConfig();
+  if (!configCompleta(cfg)) return { concluidos: 0, falhas: 0 };
 
   const rascunhos = obterRascunhosLocais();
   if (rascunhos.length === 0) return { concluidos: 0, falhas: 0 };
@@ -238,9 +241,7 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
 
   try {
     for (const item of rascunhos) {
-
-
-      // Coloca status como "sincronizando"
+      // Atualiza status do item atual para sincronizando
       atualizarRascunhoLocal({ ...item, status: "sincronizando" });
       const acao = item.acao || "gravar";
 
@@ -254,6 +255,12 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
         }
 
         if (acao === "apagar") {
+          if (!shaParaEnviar || shaParaEnviar.startsWith("temp_")) {
+            try {
+              const remoto = await ler(cfg, item.caminho, { silenciar404: true });
+              shaParaEnviar = remoto.sha;
+            } catch {}
+          }
           await apagar(cfg, item.caminho, shaParaEnviar || "");
           removerRascunhoLocal(item.id);
           removerDoCacheLocal(item.caminho);
@@ -279,9 +286,9 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
             status: "erro",
             ultimoErro: msg,
           });
-          toast("Sincronização offline interrompida: Token do GitHub inválido ou sem permissão", {
+          toast("Sincronização offline pausada: Token do GitHub inválido ou sem permissão", {
             tipo: "erro",
-            detalhes: `A API do GitHub retornou erro de permissão (HTTP ${status}). Acesse a aba de Ajustes para renovar seu token.`,
+            detalhes: `A API do GitHub retornou erro de permissão (HTTP ${status}). Acesse Configurações > GitHub para conferir seu token.`,
           });
           break;
         }
@@ -296,7 +303,7 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
           continue;
         }
 
-        if (status === 409 || msg.includes("409") || msg.includes("conflito") || msg.includes("does not match")) {
+        if (status === 409 || status === 422 || msg.includes("409") || msg.includes("conflito") || msg.includes("does not match")) {
           let resolvidoSemConflito = false;
           try {
             const remoto = await ler(cfg, item.caminho);
@@ -314,6 +321,18 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
                 atualizarCacheLocal(item.caminho, item.texto, doc, remoto.sha);
                 concluidos++;
                 resolvidoSemConflito = true;
+              } else {
+                // Tenta resolver divergências automaticamente via Auto-Merge 3-Way
+                const { autoMergeDocumentoMarkdown } = await import("./autoMergeMarkdown");
+                const merge = autoMergeDocumentoMarkdown("", item.texto, remoto.texto);
+                if (merge.sucesso && !merge.teveConflito) {
+                  const novoSha = await gravar(cfg, item.caminho, merge.textoMesclado, remoto.sha, "Auto-merge em segundo plano");
+                  removerRascunhoLocal(item.id);
+                  const doc = lerMarkdown(merge.textoMesclado);
+                  atualizarCacheLocal(item.caminho, merge.textoMesclado, doc, novoSha);
+                  concluidos++;
+                  resolvidoSemConflito = true;
+                }
               }
             }
           } catch {
@@ -324,7 +343,7 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
             continue;
           }
 
-          const erroTxt = "Conflito de edição no GitHub (HTTP 409). O arquivo foi modificado diretamente no repositório.";
+          const erroTxt = "Conflito de edição no GitHub (HTTP 409). O arquivo foi modificado externamente.";
           atualizarRascunhoLocal({
             ...item,
             tentativas: tent,
@@ -336,11 +355,12 @@ export async function sincronizarFilaOffline(cfg: Settings): Promise<{ concluido
             tipo: "erro",
             detalhes: `${erroTxt}\n\nAcesse a Caixa de Entrada > Rascunhos Offline para aceitar a versão local ou descartar.`,
           });
+          continue;
         } else {
           atualizarRascunhoLocal({
             ...item,
             tentativas: tent,
-            status: tent >= 3 ? "erro" : "pendente",
+            status: tent >= 5 ? "erro" : "pendente",
             ultimoErro: msg,
             acao,
           });
