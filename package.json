@@ -1,8 +1,11 @@
 {
   "name": "segundo-cere-bro",
   "private": true,
-  "version": "2.12.5",
+  "version": "2.12.6",
   "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "build": "tsc -b && npm run arquitetura && npm run mapa-ia && npm run schemas && vite build && npm run build:extensao",
     "build:extensao": "node scripts/gerar-css-extensao.js && vite build --config vite.extension.config.ts",
