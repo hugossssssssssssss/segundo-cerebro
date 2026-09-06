@@ -159,7 +159,18 @@ export function compilarNotasInativas(
 
   for (const item of itensRepo) {
     if (!item.caminho.startsWith("notas/")) continue;
+    if (
+      item.caminho.startsWith(".lixeira/") ||
+      item.caminho.startsWith("lixeira/") ||
+      item.caminho.includes("/.lixeira/") ||
+      item.caminho.includes("/lixeira/")
+    ) {
+      continue;
+    }
     const doc = lerMarkdown(item.texto);
+    if (doc.dados?.apagado_em || doc.dados?.caminho_origem) {
+      continue;
+    }
     const atualizadoEm =
       (doc.dados.atualizado_em as string) ||
       (doc.dados.atualizado as string) ||
@@ -222,7 +233,18 @@ export function compilarItensInbox(
 
   for (const item of itensRepo) {
     if (!item.texto) continue;
+    if (
+      item.caminho.startsWith(".lixeira/") ||
+      item.caminho.startsWith("lixeira/") ||
+      item.caminho.includes("/.lixeira/") ||
+      item.caminho.includes("/lixeira/")
+    ) {
+      continue;
+    }
     const doc = lerMarkdown(item.texto);
+    if (doc.dados?.apagado_em || doc.dados?.caminho_origem) {
+      continue;
+    }
     const tituloDoc = tituloProvavel(doc, item.nome);
     const tagsDoc = Array.isArray(doc.dados.tags) ? (doc.dados.tags as string[]) : [];
 

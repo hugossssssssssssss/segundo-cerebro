@@ -293,5 +293,47 @@ data: 2026-08-21
     expect(caixa[0].titulo).toBe("Reunião Agendada");
     expect(caixa.map(c => c.caminhoOrigem)).not.toContain("notas/2026-08-21-minha-nova-ideia.md");
   });
+
+  it("ignora completamente arquivos na lixeira (.lixeira/ ou lixeira/ ou apagado_em)", () => {
+    const itensRepo: ItemRepo[] = [
+      {
+        caminho: ".lixeira/tarefas/tarefa-antiga.md",
+        nome: "tarefa-antiga.md",
+        sha: "lix1",
+        tamanho: 100,
+        texto: `---
+status: a-fazer
+prazo: 2026-08-10
+apagado_em: 2026-08-15T10:00:00.000Z
+---
+# Tarefa na Lixeira`,
+        doc: {
+          dados: { status: "a-fazer", prazo: "2026-08-10", apagado_em: "2026-08-15T10:00:00.000Z" },
+          corpo: "# Tarefa na Lixeira",
+        },
+      },
+      {
+        caminho: "tarefas/tarefa-apagada-com-flag.md",
+        nome: "tarefa-apagada-com-flag.md",
+        sha: "lix2",
+        tamanho: 100,
+        texto: `---
+status: a-fazer
+prazo: 2026-08-10
+caminho_origem: tarefas/tarefa-apagada-com-flag.md
+apagado_em: 2026-08-15T10:00:00.000Z
+---
+# Tarefa com Flag Apagado`,
+        doc: {
+          dados: { status: "a-fazer", prazo: "2026-08-10", apagado_em: "2026-08-15T10:00:00.000Z" },
+          corpo: "# Tarefa com Flag Apagado",
+        },
+      },
+    ];
+
+    const agora = new Date(2026, 7, 21);
+    const caixa = compilarItensInbox(itensRepo, {}, agora);
+    expect(caixa).toHaveLength(0);
+  });
 });
 

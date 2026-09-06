@@ -56,10 +56,17 @@ jobs:
 
             for (const arq of arquivos) {
               const caminho = path.join(pasta, arq);
+              if (caminho.startsWith('.lixeira') || caminho.includes('lixeira')) continue;
               const conteudo = fs.readFileSync(caminho, 'utf8');
 
-              // Verifica se a tarefa já está feita ou vista
-              if (conteudo.includes('status: feito') || conteudo.includes('status: "feito"') || conteudo.includes('visto_em:')) {
+              // Verifica se a tarefa já está feita, vista ou apagada na lixeira
+              if (
+                conteudo.includes('status: feito') ||
+                conteudo.includes('status: "feito"') ||
+                conteudo.includes('visto_em:') ||
+                conteudo.includes('apagado_em:') ||
+                conteudo.includes('caminho_origem:')
+              ) {
                 continue;
               }
 

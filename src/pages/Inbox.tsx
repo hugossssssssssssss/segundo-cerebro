@@ -261,7 +261,18 @@ export default function Inbox() {
 
     for (const item of acervo) {
       if (!item.texto) continue;
+      if (
+        item.caminho.startsWith(".lixeira/") ||
+        item.caminho.startsWith("lixeira/") ||
+        item.caminho.includes("/.lixeira/") ||
+        item.caminho.includes("/lixeira/")
+      ) {
+        continue;
+      }
       const doc = lerMarkdown(item.texto);
+      if (doc.dados?.apagado_em || doc.dados?.caminho_origem) {
+        continue;
+      }
       const tituloDoc = tituloProvavel(doc, item.nome);
       const dados = doc.dados || {};
 
