@@ -34,6 +34,8 @@ import {
   limparTodosRascunhosLocais,
   sincronizarFilaOffline,
   forcarResolverConflitoRascunho,
+  redefinirRascunhosComErroParaPendente,
+  estaSincronizandoFila,
   type RascunhoOffline,
 } from "@/lib/offlineQueue";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
@@ -436,18 +438,28 @@ export default function Inbox() {
 
   // ── Ações de Sincronização e Rascunhos ─────────────────────────────────────
   const aoSincronizarFila = async () => {
-    if (!pronto) return;
+    const configAtual = lerConfig();
+    if (!configCompleta(configAtual)) {
+      toast("Token do GitHub não configurado ou incompleto. Acesse Configurações > GitHub.", { tipo: "erro" });
+      return;
+    }
     setSincronizandoTudo(true);
     try {
-      const res = await sincronizarFilaOffline(cfg);
+      redefinirRascunhosComErroParaPendente();
+      const res = await sincronizarFilaOffline(configAtual, true);
       atualizarRascunhos();
       if (res.concluidos > 0) {
-        toast(`${res.concluidos} arquivo(s) sincronizado(s) com o GitHub!`);
+        toast(`${res.concluidos} arquivo(s) sincronizado(s) com sucesso no GitHub!`, { tipo: "sucesso" });
         carregar();
       } else if (res.falhas > 0) {
-        toast(`${res.falhas} falha(s) na sincronização. Verifique os conflitos abaixo.`, { tipo: "erro" });
+        toast(`${res.falhas} falha(s) na sincronização. Verifique os itens pendentes abaixo.`, { tipo: "erro" });
       } else {
-        toast("Nenhum rascunho pendente na fila.");
+        const restantes = obterRascunhosLocais().length;
+        if (restantes > 0) {
+          toast(`${restantes} rascunho(s) sendo processados em segundo plano...`);
+        } else {
+          toast("Todos os rascunhos foram sincronizados com o GitHub!", { tipo: "sucesso" });
+        }
       }
     } catch (err: any) {
       toast(`Erro ao sincronizar: ${err?.message || err}`, { tipo: "erro" });
@@ -920,7 +932,7 @@ export default function Inbox() {
               onClick={() => setAbaAtiva("rascunhos")}
               className="text-xs font-medium px-2.5 py-1 rounded-lg border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-1.5 cursor-pointer"
             >
-              <RefreshCw size={12} className="animate-spin" />
+              <RefreshCw size={12} className={cn(sincronizandoTudo || estaSincronizandoFila() ? "animate-spin" : "")} />
               <span>{rascunhos.length} rascunho(s) para sincronizar</span>
             </button>
           )}

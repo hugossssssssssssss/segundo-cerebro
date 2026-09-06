@@ -234,15 +234,26 @@ export function limparRascunhosComErro(): void {
 }
 
 let sincronizandoFila = false;
+let ultimaSincronizacaoTimestamp = 0;
 
 export function estaSincronizandoFila(): boolean {
+  if (sincronizandoFila && Date.now() - ultimaSincronizacaoTimestamp > 20_000) {
+    sincronizandoFila = false;
+  }
   return sincronizandoFila;
 }
 
 /** Tenta descarregar a fila de rascunhos offline para o GitHub */
-export async function sincronizarFilaOffline(cfgProp?: Settings): Promise<{ concluidos: number; falhas: number }> {
+export async function sincronizarFilaOffline(cfgProp?: Settings, forcar = false): Promise<{ concluidos: number; falhas: number }> {
   if (!navigator.onLine) return { concluidos: 0, falhas: 0 };
-  if (sincronizandoFila) return { concluidos: 0, falhas: 0 };
+
+  if (sincronizandoFila) {
+    if (forcar || (Date.now() - ultimaSincronizacaoTimestamp > 20_000)) {
+      sincronizandoFila = false;
+    } else {
+      return { concluidos: 0, falhas: 0 };
+    }
+  }
 
   const cfg = cfgProp && configCompleta(cfgProp) ? cfgProp : lerConfig();
   if (!configCompleta(cfg)) return { concluidos: 0, falhas: 0 };
@@ -251,13 +262,15 @@ export async function sincronizarFilaOffline(cfgProp?: Settings): Promise<{ conc
   if (rascunhos.length === 0) return { concluidos: 0, falhas: 0 };
 
   sincronizandoFila = true;
+  ultimaSincronizacaoTimestamp = Date.now();
   let concluidos = 0;
   let falhas = 0;
 
   try {
     for (const item of rascunhos) {
+      ultimaSincronizacaoTimestamp = Date.now();
       // Atualiza status do item atual para sincronizando
-      atualizarRascunhoLocal({ ...item, status: "sincronizando" });
+      atualizarRascunhoLocal({ ...item, status: "sincronizando", ultimoErro: undefined });
       const acao = item.acao || "gravar";
 
       try {
@@ -427,3 +440,19 @@ export async function forcarResolverConflitoRascunho(cfg: Settings, id: string):
   invalidarCache();
   notificarOutrasAbas(alvo.caminho);
 }
+
+// Sincronizador contínuo e silencioso em segundo plano a cada 10 segundos
+if (typeof window !== "undefined") {
+  setInterval(() => {
+    try {
+      const r = obterRascunhosLocais();
+      if (r.length > 0 && navigator.onLine && !estaSincronizandoFila()) {
+        const cfg = lerConfig();
+        if (configCompleta(cfg)) {
+          sincronizarFilaOffline(cfg).catch(() => {});
+        }
+      }
+    } catch {}
+  }, 10_000);
+}
+
