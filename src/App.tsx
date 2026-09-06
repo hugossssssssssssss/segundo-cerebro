@@ -303,9 +303,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, workspaceAberto, abaAtiva?.titulo]);
 
-  /**
-   * Compartilhar de outro app do Android cai aqui.
-   */
+  // Compartilhar de outro app do Android cai aqui
   useEffect(() => {
     const params = new URLSearchParams(
       location.search.slice(1) || location.hash.split("?")[1] || "",
@@ -317,6 +315,21 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       setTextoCompartilhado(vindo);
       setCapturando(true);
       history.replaceState(null, "", location.pathname + "#/tarefas");
+    }
+  }, []);
+
+  // Higieniza parâmetros como ?abrir=... que tenham sido colocados antes do hash
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search && window.location.search.includes("abrir=")) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const abrirCaminho = searchParams.get("abrir");
+      searchParams.delete("abrir");
+      const hashBase = window.location.hash || "#/home";
+      const novoHash = abrirCaminho && !hashBase.includes("abrir=")
+        ? `${hashBase}${hashBase.includes("?") ? "&" : "?"}abrir=${encodeURIComponent(abrirCaminho)}`
+        : hashBase;
+      const novoSearch = searchParams.toString() ? `?${searchParams.toString()}` : "";
+      window.history.replaceState(null, "", `${window.location.pathname}${novoSearch}${novoHash}`);
     }
   }, []);
 

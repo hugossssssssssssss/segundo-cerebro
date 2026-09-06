@@ -422,7 +422,7 @@ export default function Notas() {
       });
     }
     setAberta({ ...nota, original: { titulo: nota.titulo, corpo: nota.corpo, bruto: nota.bruto } });
-    window.history.replaceState(null, "", `?abrir=${encodeURIComponent(nota.caminho)}`);
+    window.location.hash = `#/notas?abrir=${encodeURIComponent(nota.caminho)}`;
   }
 
   function nova(template?: TemplateItem, pastaDestino?: string) {

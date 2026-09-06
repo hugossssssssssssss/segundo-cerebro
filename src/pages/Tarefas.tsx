@@ -326,7 +326,7 @@ export default function Tarefas() {
     }
     setEditando(t);
     setOriginal(t);
-    window.history.replaceState(null, "", `?abrir=${encodeURIComponent(t.caminho)}`);
+    window.location.hash = `#/tarefas?abrir=${encodeURIComponent(t.caminho)}`;
   }
 
   function abrirNova() {
