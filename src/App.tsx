@@ -15,6 +15,7 @@ import {
   Plus,
   MoreHorizontal,
   Minimize2,
+  WifiOff,
 } from "lucide-react";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
@@ -49,6 +50,7 @@ import { Pomodoro } from "@/components/Pomodoro";
 import { obterRotuloRota, EVENTO_MENU_ATUALIZADO } from "@/lib/menuPersonalizado";
 import { sincronizarTudoComGithub } from "@/lib/preferenciasApp";
 import { alternarTema } from "@/lib/tema";
+import { useStatusRede } from "@/lib/pwa";
 
 declare const chrome: any;
 
@@ -95,6 +97,7 @@ const abasMobile = [
 function Estrutura({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const { workspaceAberto, abaAtiva, fecharWorkspace, buscaGlobalAberta, setBuscaGlobalAberta } = useWorkspace();
+  const { online } = useStatusRede();
   const [buscando, setBuscando] = useState(false);
   const [buscandoWeb, setBuscandoWeb] = useState(false);
   const [capturando, setCapturando] = useState(false);
@@ -306,7 +309,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, workspaceAberto, abaAtiva?.titulo]);
 
-  // Compartilhar de outro app do Android cai aqui
+  // Compartilhar de outro app do Android ou atalhos do launcher PWA
   useEffect(() => {
     const params = new URLSearchParams(
       location.search.slice(1) || location.hash.split("?")[1] || "",
@@ -318,6 +321,15 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       setTextoCompartilhado(vindo);
       setCapturando(true);
       history.replaceState(null, "", location.pathname + "#/tarefas");
+      return;
+    }
+
+    if (params.get("captura") === "true") {
+      setCapturando(true);
+      history.replaceState(null, "", location.pathname + (location.hash.split("?")[0] || "#/home"));
+    } else if (params.get("aba")) {
+      const aba = params.get("aba");
+      history.replaceState(null, "", location.pathname + `#/${aba}`);
     }
   }, []);
 
@@ -346,6 +358,14 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       />
 
       <div className="flex-1 flex flex-col min-w-0 h-dvh overflow-hidden">
+        {/* Banner discreto de modo offline */}
+        {!online && (
+          <div className="bg-amber-500/15 border-b border-amber-500/30 px-3 py-1 text-center text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center justify-center gap-1.5 shrink-0 z-50 animate-in fade-in">
+            <WifiOff size={13} className="shrink-0" />
+            <span>Modo offline: suas alterações serão salvas localmente</span>
+          </div>
+        )}
+
         {/* Cabeçalho Principal (Topbar Limpa / Integrada com Abas no Workspace) */}
         <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur shrink-0">
           <div

@@ -5,15 +5,47 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#ffffff",
+  "display_override": ["standalone", "minimal-ui", "window-controls-overlay"],
+  "orientation": "portrait-primary",
+  "background_color": "#0d0f17",
   "theme_color": "#6d4aff",
+  "categories": ["productivity", "utilities", "lifestyle"],
   "icons": [
     {
       "src": "./icone.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Captura Rápida",
+      "short_name": "Capturar",
+      "description": "Anotar pensamento, tarefa ou foto instantaneamente",
+      "url": "./?captura=true",
+      "icons": [{ "src": "./icone.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Tarefas",
+      "short_name": "Tarefas",
+      "description": "Ver minhas tarefas pendentes",
+      "url": "./?aba=tarefas",
+      "icons": [{ "src": "./icone.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Notas",
+      "short_name": "Notas",
+      "description": "Acessar anotações e documentos",
+      "url": "./?aba=notas",
+      "icons": [{ "src": "./icone.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Referências Visuais",
+      "short_name": "Referências",
+      "description": "Ver mural de imagens e inspirações",
+      "url": "./?aba=referencias",
+      "icons": [{ "src": "./icone.svg", "sizes": "any" }]
     }
   ],
   "share_target": {
