@@ -65,7 +65,7 @@ import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotio
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { MenuContextoNotas, type AcaoMenuContexto } from "@/components/MenuContextoNotas";
 import { toast } from "@/lib/toast";
-import { TIPO_MIME_ITEM_KLAUS, definirItemArrastadoAtual } from "@/lib/arrastoItem";
+import { TIPO_MIME_ITEM_KLAUS, calcularSlotPorCoordenadas, EVENTO_SOLTAR_ITEM } from "@/lib/arrastoItem";
 
 import type { Nota } from "@/lib/tipos";
 
@@ -1843,6 +1843,7 @@ export default function Notas() {
                     selecionado={estaSelecionada}
                     visao="grade"
                     aoFiltrarTag={aplicarFiltroTag}
+                    aoToggleSelecionar={alternarSelecao}
                     totalTarefas={contagemTarefasPorNota.get(tituloNota.toLowerCase())}
                     totalMoodboard={contagemMoodboardPorNota.get(tituloNota.toLowerCase())}
                     draggable
@@ -1850,13 +1851,19 @@ export default function Notas() {
                       e.dataTransfer.effectAllowed = "copyMove";
                       e.dataTransfer.setData("text/plain", nota.caminho);
                       e.dataTransfer.setData(TIPO_MIME_ITEM_KLAUS, JSON.stringify({ caminho: nota.caminho, titulo: tituloNota, rotuloTipo: "Nota" }));
-                      definirItemArrastadoAtual({ caminho: nota.caminho, titulo: tituloNota, rotuloTipo: "Nota" });
                       setNotaArrastada(nota.caminho);
                     }}
-                    onDragEnd={() => {
-                      definirItemArrastadoAtual(null);
+                    onDragEnd={(e) => {
                       setNotaArrastada(null);
                       setPastaAlvo(null);
+                      if (e.clientX !== 0 || e.clientY !== 0) {
+                        const slot = calcularSlotPorCoordenadas(e.clientX, window.innerWidth);
+                        window.dispatchEvent(
+                          new CustomEvent(EVENTO_SOLTAR_ITEM, {
+                            detail: { caminho: nota.caminho, slot },
+                          })
+                        );
+                      }
                     }}
                     ref={(el) => {
                       if (el) {
@@ -1905,6 +1912,7 @@ export default function Notas() {
                     selecionado={estaSelecionada}
                     visao="lista"
                     aoFiltrarTag={aplicarFiltroTag}
+                    aoToggleSelecionar={alternarSelecao}
                     totalTarefas={contagemTarefasPorNota.get(tituloNota.toLowerCase())}
                     totalMoodboard={contagemMoodboardPorNota.get(tituloNota.toLowerCase())}
                     draggable
@@ -1912,13 +1920,19 @@ export default function Notas() {
                       e.dataTransfer.effectAllowed = "copyMove";
                       e.dataTransfer.setData("text/plain", nota.caminho);
                       e.dataTransfer.setData(TIPO_MIME_ITEM_KLAUS, JSON.stringify({ caminho: nota.caminho, titulo: tituloNota, rotuloTipo: "Nota" }));
-                      definirItemArrastadoAtual({ caminho: nota.caminho, titulo: tituloNota, rotuloTipo: "Nota" });
                       setNotaArrastada(nota.caminho);
                     }}
-                    onDragEnd={() => {
-                      definirItemArrastadoAtual(null);
+                    onDragEnd={(e) => {
                       setNotaArrastada(null);
                       setPastaAlvo(null);
+                      if (e.clientX !== 0 || e.clientY !== 0) {
+                        const slot = calcularSlotPorCoordenadas(e.clientX, window.innerWidth);
+                        window.dispatchEvent(
+                          new CustomEvent(EVENTO_SOLTAR_ITEM, {
+                            detail: { caminho: nota.caminho, slot },
+                          })
+                        );
+                      }
                     }}
                     ref={(el) => {
                       if (el) {
@@ -1973,6 +1987,7 @@ export default function Notas() {
                     selecionado={estaSelecionada}
                     visao="mural"
                     aoFiltrarTag={aplicarFiltroTag}
+                    aoToggleSelecionar={alternarSelecao}
                     totalTarefas={contagemTarefasPorNota.get(tituloNota.toLowerCase())}
                     totalMoodboard={contagemMoodboardPorNota.get(tituloNota.toLowerCase())}
                     draggable
@@ -1980,13 +1995,19 @@ export default function Notas() {
                       e.dataTransfer.effectAllowed = "copyMove";
                       e.dataTransfer.setData("text/plain", nota.caminho);
                       e.dataTransfer.setData(TIPO_MIME_ITEM_KLAUS, JSON.stringify({ caminho: nota.caminho, titulo: tituloNota, rotuloTipo: "Nota" }));
-                      definirItemArrastadoAtual({ caminho: nota.caminho, titulo: tituloNota, rotuloTipo: "Nota" });
                       setNotaArrastada(nota.caminho);
                     }}
-                    onDragEnd={() => {
-                      definirItemArrastadoAtual(null);
+                    onDragEnd={(e) => {
                       setNotaArrastada(null);
                       setPastaAlvo(null);
+                      if (e.clientX !== 0 || e.clientY !== 0) {
+                        const slot = calcularSlotPorCoordenadas(e.clientX, window.innerWidth);
+                        window.dispatchEvent(
+                          new CustomEvent(EVENTO_SOLTAR_ITEM, {
+                            detail: { caminho: nota.caminho, slot },
+                          })
+                        );
+                      }
                     }}
                     ref={(el) => {
                       if (el) {

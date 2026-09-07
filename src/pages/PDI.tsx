@@ -45,7 +45,7 @@ import type { Tarefa } from "@/lib/tarefas";
 import { CheckCircle2, Circle } from "lucide-react";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
-import { TIPO_MIME_ITEM_KLAUS, definirItemArrastadoAtual, gerarPropsArrasto } from "@/lib/arrastoItem";
+import { TIPO_MIME_ITEM_KLAUS, calcularSlotPorCoordenadas, EVENTO_SOLTAR_ITEM, gerarPropsArrasto } from "@/lib/arrastoItem";
 import {
   escreverMarkdown,
   tituloProvavel,
@@ -1626,10 +1626,16 @@ export default function PDI() {
                                 ev.dataTransfer.effectAllowed = "copyMove";
                                 ev.dataTransfer.setData("text/plain", `entrega:${e.id}`);
                                 ev.dataTransfer.setData(TIPO_MIME_ITEM_KLAUS, JSON.stringify({ caminho: e.caminho, titulo: e.titulo, rotuloTipo: "Entrega" }));
-                                definirItemArrastadoAtual({ caminho: e.caminho, titulo: e.titulo, rotuloTipo: "Entrega" });
                               }}
-                              onDragEnd={() => {
-                                definirItemArrastadoAtual(null);
+                              onDragEnd={(ev) => {
+                                if (ev.clientX !== 0 || ev.clientY !== 0) {
+                                  const slot = calcularSlotPorCoordenadas(ev.clientX, window.innerWidth);
+                                  window.dispatchEvent(
+                                    new CustomEvent(EVENTO_SOLTAR_ITEM, {
+                                      detail: { caminho: e.caminho, slot },
+                                    })
+                                  );
+                                }
                               }}
                               onClick={() => {
                                 setEditandoEntrega(e);

@@ -6,6 +6,7 @@ import { lerConfig } from "@/lib/settings";
 import { useSalvar } from "@/lib/useSalvar";
 import { ler as lerArquivoGithub } from "@/lib/github";
 import { toast } from "@/lib/toast";
+import { EVENTO_SOLTAR_ITEM } from "@/lib/arrastoItem";
 
 export interface ItemFlutuanteGlobal {
   id: string;
@@ -214,6 +215,18 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
       setModoVisaoFlutuante("flutuante");
     }
   }, [cfg, salvarItemNoGithub, fecharSlot]);
+
+  // Escuta solturas de drag and drop na tela para abertura direta nos slots
+  useEffect(() => {
+    const aoSoltarItem = (e: Event) => {
+      const custom = e as CustomEvent<{ caminho: string; slot: SlotPainel }>;
+      if (custom.detail?.caminho && custom.detail?.slot) {
+        abrirItemEmSlot(custom.detail.caminho, custom.detail.slot);
+      }
+    };
+    window.addEventListener(EVENTO_SOLTAR_ITEM, aoSoltarItem);
+    return () => window.removeEventListener(EVENTO_SOLTAR_ITEM, aoSoltarItem);
+  }, [abrirItemEmSlot]);
 
   const estaAbertoFlutuante = (caminho: string): boolean => {
     return (

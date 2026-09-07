@@ -1,36 +1,22 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   gerarPropsArrasto,
-  obterItemArrastadoAtual,
-  definirItemArrastadoAtual,
+  calcularSlotPorCoordenadas,
   TIPO_MIME_ITEM_KLAUS,
-  EVENTO_DRAG_INICIADO,
-  EVENTO_DRAG_FINALIZADO,
+  EVENTO_SOLTAR_ITEM,
 } from "./arrastoItem";
 
 describe("arrastoItem", () => {
-  it("armazena e limpa item arrastado atual e emite eventos", () => {
-    const mockIniciado = vi.fn();
-    const mockFinalizado = vi.fn();
-
-    window.addEventListener(EVENTO_DRAG_INICIADO, mockIniciado);
-    window.addEventListener(EVENTO_DRAG_FINALIZADO, mockFinalizado);
-
-    const item = { caminho: "notas/teste.md", titulo: "Nota de Teste", rotuloTipo: "Nota" };
-    definirItemArrastadoAtual(item);
-
-    expect(obterItemArrastadoAtual()).toEqual(item);
-    expect(mockIniciado).toHaveBeenCalledTimes(1);
-
-    definirItemArrastadoAtual(null);
-    expect(obterItemArrastadoAtual()).toBeNull();
-    expect(mockFinalizado).toHaveBeenCalledTimes(1);
-
-    window.removeEventListener(EVENTO_DRAG_INICIADO, mockIniciado);
-    window.removeEventListener(EVENTO_DRAG_FINALIZADO, mockFinalizado);
+  it("calcularSlotPorCoordenadas calcula o slot correto baseado em X", () => {
+    const w = 1000;
+    expect(calcularSlotPorCoordenadas(100, w)).toBe("esquerda");
+    expect(calcularSlotPorCoordenadas(340, w)).toBe("esquerda");
+    expect(calcularSlotPorCoordenadas(500, w)).toBe("popup");
+    expect(calcularSlotPorCoordenadas(660, w)).toBe("direita");
+    expect(calcularSlotPorCoordenadas(900, w)).toBe("direita");
   });
 
-  it("gerarPropsArrasto cria manipuladores dragStart e dragEnd corretos", () => {
+  it("gerarPropsArrasto cria manipuladores dragStart e dragEnd com cálculo de slot", () => {
     const item = { caminho: "tarefas/fazer-algo.md", titulo: "Tarefa 1" };
     const props = gerarPropsArrasto(item);
 
@@ -39,7 +25,7 @@ describe("arrastoItem", () => {
     expect(typeof props.onDragEnd).toBe("function");
 
     const dataTransferMock: Record<string, string> = {};
-    const e = {
+    const eStart = {
       dataTransfer: {
         setData: (tipo: string, val: string) => {
           dataTransferMock[tipo] = val;
@@ -48,12 +34,21 @@ describe("arrastoItem", () => {
       },
     } as any;
 
-    props.onDragStart!(e);
+    props.onDragStart!(eStart);
     expect(dataTransferMock[TIPO_MIME_ITEM_KLAUS]).toContain("tarefas/fazer-algo.md");
     expect(dataTransferMock["text/plain"]).toBe("tarefas/fazer-algo.md");
-    expect(obterItemArrastadoAtual()).toEqual(item);
 
-    props.onDragEnd!({} as any);
-    expect(obterItemArrastadoAtual()).toBeNull();
+    const mockListener = vi.fn();
+    window.addEventListener(EVENTO_SOLTAR_ITEM, mockListener);
+
+    const eEnd = {
+      clientX: 100,
+      clientY: 300,
+    } as any;
+
+    props.onDragEnd!(eEnd);
+    expect(mockListener).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener(EVENTO_SOLTAR_ITEM, mockListener);
   });
 });

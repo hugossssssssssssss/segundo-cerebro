@@ -706,8 +706,6 @@ function AppInterno() {
 
 const HeaderHUD = lazy(() => import("@/pages/HeaderHUD"));
 
-import { ZonasArrastoGlobal } from "@/components/ZonasArrastoGlobal";
-
 export default function App() {
   return (
     <HashRouter>
@@ -720,7 +718,6 @@ export default function App() {
         <WorkspaceProvider>
           <ProvedorFlutuanteGlobal>
             <ProvedorFerramentasFlutuantes>
-              <ZonasArrastoGlobal />
               <Suspense fallback={<Carregando />}>
                 <Routes>
                   <Route path="/header-hud" element={<HeaderHUD />} />

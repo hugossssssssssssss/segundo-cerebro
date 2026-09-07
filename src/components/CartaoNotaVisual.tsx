@@ -5,6 +5,7 @@ import {
   Calendar,
   Check,
   Link as LinkIcon,
+  Copy,
   Folder,
   Sparkles,
   Pin,
@@ -24,6 +25,7 @@ interface CartaoNotaVisualProps {
   selecionado?: boolean;
   visao?: "grade" | "lista" | "mural";
   onClick?: () => void;
+  aoToggleSelecionar?: (caminho: string) => void;
   aoFiltrarTag?: (tag: string) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
   onToggleFixar?: () => void;
@@ -136,6 +138,7 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
       selecionado = false,
       visao = "grade",
       onClick,
+      aoToggleSelecionar,
       aoFiltrarTag,
       onContextMenu,
       onToggleFixar,
@@ -205,11 +208,18 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
           {/* Lado Esquerdo: Ícone + Título + Snippet */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div
+              onClick={(e) => {
+                if (aoToggleSelecionar) {
+                  e.stopPropagation();
+                  aoToggleSelecionar(nota.caminho);
+                }
+              }}
+              title={selecionado ? "Desmarcar nota" : "Selecionar nota"}
               className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors",
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all cursor-pointer hover:scale-105 active:scale-95",
                 selecionado
-                  ? "bg-primary text-primary-foreground font-bold text-xs"
-                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  ? "bg-primary text-primary-foreground font-bold text-xs shadow-xs"
+                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-primary/20 hover:text-primary"
               )}
             >
               {selecionado ? (
@@ -320,7 +330,7 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
                 {copiado ? (
                   <Check size={13} className="text-emerald-500" />
                 ) : (
-                  <LinkIcon size={13} />
+                  <Copy size={13} />
                 )}
               </button>
             </Tooltip>
@@ -385,11 +395,18 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
               <div
+                onClick={(e) => {
+                  if (aoToggleSelecionar) {
+                    e.stopPropagation();
+                    aoToggleSelecionar(nota.caminho);
+                  }
+                }}
+                title={selecionado ? "Desmarcar nota" : "Selecionar nota"}
                 className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors",
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all cursor-pointer hover:scale-105 active:scale-95",
                   selecionado
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    ? "bg-primary text-primary-foreground font-bold text-xs shadow-xs"
+                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-primary/20 hover:text-primary"
                 )}
               >
                 {selecionado ? (
