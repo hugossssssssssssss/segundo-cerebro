@@ -1,25 +1,7 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  CheckSquare,
   FileText,
-  Image as ImageIcon,
-  Target,
-  Layers,
-  GitMerge,
-  Layout,
-  Globe,
-  Edit3,
-  FileImage,
-  Scissors,
-  Mic,
-  Headphones,
-  Video,
-  BookOpen,
-  Network,
-  Newspaper,
-  Calendar,
-  MessageSquare,
   Tag,
 } from "lucide-react";
 
@@ -46,7 +28,6 @@ import {
   type ColunasWidget,
   type InfoWidgetCatalogo,
   CONFIG_PADRAO_WIDGETS,
-  CATALOGO_WIDGETS,
 } from "@/components/home/types";
 import { CabecalhoHome } from "@/components/home/CabecalhoHome";
 import { WidgetWrapper } from "@/components/home/WidgetWrapper";
@@ -71,8 +52,15 @@ import {
   salvarConfigWidgetsLocal,
   agendarPersistenciaWidgetsRemoto,
   sincronizarWidgetsComGithub,
+  obterCatalogoWidgetsPersonalizado,
   EVENTO_WIDGETS_ATUALIZADOS,
 } from "@/lib/widgetsHome";
+import {
+  carregarMenuPersonalizado,
+  EVENTO_MENU_ATUALIZADO,
+  type GrupoMenuPersonalizado,
+} from "@/lib/menuPersonalizado";
+import { obterIconePorNome } from "@/lib/icones";
 import { agendarPersistenciaPreferenciasRemoto } from "@/lib/preferenciasApp";
 
 const CHAVE_SNAPSHOT_HOME = "klaus_home_cache_snapshot";
@@ -265,11 +253,24 @@ export default function Home() {
     return carregarConfigWidgetsLocal();
   });
 
+  const [gruposMenu, setGruposMenu] = useState<GrupoMenuPersonalizado[]>(() => {
+    return carregarMenuPersonalizado();
+  });
+
   const [modoEdicao, setModoEdicao] = useState(() => {
     return localStorage.getItem("klaus_home_modo_edicao") === "true";
   });
 
   const [catalogoAberto, setCatalogoAberto] = useState(false);
+
+  // Escuta atualizações no menu personalizado para sincronizar nomes e ícones de widgets em tempo real
+  useEffect(() => {
+    const aoAtualizarMenu = () => {
+      setGruposMenu(carregarMenuPersonalizado());
+    };
+    window.addEventListener(EVENTO_MENU_ATUALIZADO, aoAtualizarMenu);
+    return () => window.removeEventListener(EVENTO_MENU_ATUALIZADO, aoAtualizarMenu);
+  }, []);
 
   // Sincroniza widgets remotamente no GitHub ao montar e escuta atualizações
   useEffect(() => {
@@ -548,48 +549,31 @@ export default function Home() {
 
       {/* 2. Malha de 12 Colunas com Total Liberdade de Largura e Altura */}
       <div className="grid grid-cols-12 gap-3.5 items-start w-full">
-        {configWidgets
-          .filter((w) => w.ativo)
-          .sort((a, b) => a.ordem - b.ordem)
-          .map((widget) => {
-            const info = CATALOGO_WIDGETS.find((c) => c.id === widget.id);
-            if (!info) return null;
+        {(() => {
+          const catalogo = obterCatalogoWidgetsPersonalizado(gruposMenu);
+          return configWidgets
+            .filter((w) => w.ativo)
+            .sort((a, b) => a.ordem - b.ordem)
+            .map((widget) => {
+              const info = catalogo.find((c) => c.id === widget.id);
+              if (!info) return null;
 
-            const Icone = {
-              CheckSquare,
-              FileText,
-              ImageIcon,
-              Target,
-              Layers,
-              GitMerge,
-              Layout,
-              Globe,
-              Edit3,
-              FileImage,
-              Scissors,
-              Mic,
-              Headphones,
-              Video,
-              BookOpen,
-              Network,
-              Newspaper,
-              Calendar,
-              MessageSquare,
-            }[info.icone as string] || Layers;
+              const Icone = obterIconePorNome(info.icone);
 
-            const abrirPopup = info.ferramentaPopupId
-              ? () => abrirFerramentaFlutuante(info.ferramentaPopupId!)
-              : undefined;
+              const abrirPopup = info.ferramentaPopupId
+                ? () => abrirFerramentaFlutuante(info.ferramentaPopupId!)
+                : undefined;
 
-            return (
-              <WidgetWrapper
-                key={widget.id}
-                id={widget.id}
-                titulo={info.titulo}
-                icone={Icone}
-                colunas={widget.colunas}
-                alturaPx={widget.alturaPx}
-                aoAbrirPopup={abrirPopup}
+              return (
+                <WidgetWrapper
+                  key={widget.id}
+                  id={widget.id}
+                  titulo={info.titulo}
+                  icone={Icone}
+                  corIcone={info.cor}
+                  colunas={widget.colunas}
+                  alturaPx={widget.alturaPx}
+                  aoAbrirPopup={abrirPopup}
                 linkVerMais={
                   widget.id === "foco_hoje"
                     ? "/tarefas"
@@ -713,7 +697,8 @@ export default function Home() {
                 )}
               </WidgetWrapper>
             );
-          })}
+          });
+        })()}
       </div>
 
       {/* Modal Didático de Catálogo de Widgets */}
@@ -721,6 +706,7 @@ export default function Home() {
         aberto={catalogoAberto}
         aoFechar={() => setCatalogoAberto(false)}
         configWidgets={configWidgets}
+        gruposMenu={gruposMenu}
         aoAlternarWidget={aoAlternarWidgetCatalogo}
       />
 

@@ -1,32 +1,11 @@
+import { X, Check, Plus } from "lucide-react";
 import {
-  X,
-  Check,
-  Plus,
-  CheckSquare,
-  FileText,
-  ImageIcon,
-  Target,
-  Layers,
-  GitMerge,
-  Layout,
-  Globe,
-  Edit3,
-  FileImage,
-  Scissors,
-  Mic,
-  Headphones,
-  Video,
-  BookOpen,
-  Network,
-  Newspaper,
-  Calendar,
-  MessageSquare,
-} from "lucide-react";
-import {
-  CATALOGO_WIDGETS,
   type WidgetConfig,
   type InfoWidgetCatalogo,
 } from "./types";
+import { obterCatalogoWidgetsPersonalizado } from "@/lib/widgetsHome";
+import { type GrupoMenuPersonalizado } from "@/lib/menuPersonalizado";
+import { obterIconePorNome } from "@/lib/icones";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -34,38 +13,20 @@ interface ModalCatalogoWidgetsProps {
   aberto: boolean;
   aoFechar: () => void;
   configWidgets: WidgetConfig[];
+  gruposMenu?: GrupoMenuPersonalizado[];
   aoAlternarWidget: (info: InfoWidgetCatalogo) => void;
 }
-
-const ICONES_MAP: Record<string, any> = {
-  CheckSquare,
-  FileText,
-  ImageIcon,
-  Target,
-  Layers,
-  GitMerge,
-  Layout,
-  Globe,
-  Edit3,
-  FileImage,
-  Scissors,
-  Mic,
-  Headphones,
-  Video,
-  BookOpen,
-  Network,
-  Newspaper,
-  Calendar,
-  MessageSquare,
-};
 
 export function ModalCatalogoWidgets({
   aberto,
   aoFechar,
   configWidgets,
+  gruposMenu,
   aoAlternarWidget,
 }: ModalCatalogoWidgetsProps) {
   if (!aberto) return null;
+
+  const catalogo = obterCatalogoWidgetsPersonalizado(gruposMenu);
 
   return (
     <div
@@ -98,8 +59,8 @@ export function ModalCatalogoWidgets({
 
         {/* Grade de Widgets */}
         <div className="p-5 max-h-[65vh] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {CATALOGO_WIDGETS.map((w) => {
-            const Icone = ICONES_MAP[w.icone] || Layers;
+          {catalogo.map((w) => {
+            const Icone = obterIconePorNome(w.icone);
             const configAtual = configWidgets.find((c) => c.id === w.id);
             const estaAtivo = Boolean(configAtual?.ativo);
 
@@ -115,7 +76,10 @@ export function ModalCatalogoWidgets({
                 )}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="p-2 rounded-lg bg-secondary text-foreground shrink-0">
+                  <div
+                    className="p-2 rounded-lg bg-secondary text-foreground shrink-0"
+                    style={w.cor ? { color: w.cor } : undefined}
+                  >
                     <Icone size={16} />
                   </div>
                   <div className="min-w-0">

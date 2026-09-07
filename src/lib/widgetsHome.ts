@@ -1,6 +1,16 @@
 import type { Settings } from "./settings";
 import { ler, gravar } from "./github";
-import { type WidgetConfig, CONFIG_PADRAO_WIDGETS } from "@/components/home/types";
+import {
+  type WidgetConfig,
+  type InfoWidgetCatalogo,
+  CONFIG_PADRAO_WIDGETS,
+  CATALOGO_WIDGETS,
+} from "@/components/home/types";
+import {
+  carregarMenuPersonalizado,
+  type GrupoMenuPersonalizado,
+  type ItemMenuPersonalizado,
+} from "./menuPersonalizado";
 
 export const CAMINHO_WIDGETS = ".klaus/widgets.json";
 export const CHAVE_STORAGE_WIDGETS = "klaus_home_bento_config_v3";
@@ -126,3 +136,74 @@ export async function sincronizarWidgetsComGithub(
 
   return { sincronizado: false, config: locais };
 }
+
+/**
+ * Mapeamento entre os IDs de cada Widget e o item/rota correspondente no Menu Lateral.
+ */
+export const MAPA_WIDGET_MENU: Record<string, { rota?: string; idMenu?: string }> = {
+  foco_hoje: { rota: "/tarefas", idMenu: "tarefas" },
+  notas_recentes: { rota: "/notas", idMenu: "notas" },
+  referencias_mural: { rota: "/referencias", idMenu: "referencias" },
+  metas_pdi: { rota: "/pdi", idMenu: "pdi" },
+  lousas_recentes: { rota: "/lousas", idMenu: "lousas" },
+  baixador_midia: { rota: "/baixador", idMenu: "baixador" },
+  conversor_arquivos: { rota: "/conversor", idMenu: "conversor" },
+  ferramentas_pdf: { rota: "/pdf", idMenu: "pdf" },
+  it_tools: { rota: "/it-tools", idMenu: "it_tools" },
+  transcritor_voz: { rota: "/transcritor", idMenu: "transcritor" },
+  sons_foco: { rota: "/sons", idMenu: "sons" },
+  hardware_test: { rota: "/testador", idMenu: "testador_hardware" },
+  pesquisa_livros: { rota: "/livros", idMenu: "livros" },
+  grafo_neural: { rota: "/grafo", idMenu: "grafo" },
+  noticias_feed: { rota: "/noticias", idMenu: "noticias" },
+  chat_ia: { rota: "/chat", idMenu: "chat" },
+  calendario_home: { rota: "/tarefas", idMenu: "tarefas" },
+};
+
+/**
+ * Retorna o catálogo de widgets aplicando os títulos, ícones e cores
+ * personalizados pelo usuário no menu lateral ("Personalizar Menu").
+ */
+export function obterCatalogoWidgetsPersonalizado(
+  gruposMenu: GrupoMenuPersonalizado[] = carregarMenuPersonalizado()
+): InfoWidgetCatalogo[] {
+  const mapaMenuPorRota = new Map<string, ItemMenuPersonalizado>();
+  const mapaMenuPorId = new Map<string, ItemMenuPersonalizado>();
+
+  for (const g of gruposMenu) {
+    for (const it of g.itens || []) {
+      if (it?.para) mapaMenuPorRota.set(it.para.toLowerCase(), it);
+      if (it?.id) mapaMenuPorId.set(it.id.toLowerCase(), it);
+    }
+  }
+
+  return CATALOGO_WIDGETS.map((w) => {
+    const rel = MAPA_WIDGET_MENU[w.id];
+    if (!rel) return w;
+
+    const custom =
+      (rel.idMenu ? mapaMenuPorId.get(rel.idMenu.toLowerCase()) : undefined) ||
+      (rel.rota ? mapaMenuPorRota.get(rel.rota.toLowerCase()) : undefined);
+
+    if (!custom) return w;
+
+    return {
+      ...w,
+      titulo: (custom.rotulo && custom.rotulo.trim()) ? custom.rotulo.trim() : w.titulo,
+      icone: (custom.iconeNome && custom.iconeNome.trim()) ? custom.iconeNome.trim() : w.icone,
+      cor: custom.cor,
+    };
+  });
+}
+
+/**
+ * Obtém a informação de um widget específico com os nomes e ícones personalizados.
+ */
+export function obterInfoWidgetPersonalizado(
+  widgetId: string,
+  gruposMenu: GrupoMenuPersonalizado[] = carregarMenuPersonalizado()
+): InfoWidgetCatalogo | undefined {
+  const catalogo = obterCatalogoWidgetsPersonalizado(gruposMenu);
+  return catalogo.find((w) => w.id === widgetId);
+}
+

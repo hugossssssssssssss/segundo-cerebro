@@ -14,6 +14,7 @@ export interface InfoWidgetCatalogo {
   resumo: string;
   categoria: "produtividade" | "conhecimento" | "ferramenta";
   icone: string;
+  cor?: string;
   colunasPadrao: ColunasWidget;
   alturaPadraoPx: number;
   ferramentaPopupId?: string;

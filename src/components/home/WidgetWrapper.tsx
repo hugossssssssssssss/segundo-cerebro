@@ -10,6 +10,7 @@ interface WidgetWrapperProps {
   titulo: string;
   subtitulo?: string;
   icone: any;
+  corIcone?: string;
   colunas: ColunasWidget; // 1 a 12
   alturaPx?: number;
   linkVerMais?: string;
@@ -26,6 +27,7 @@ export function WidgetWrapper({
   titulo,
   subtitulo,
   icone: Icone,
+  corIcone,
   colunas = 6,
   alturaPx = 320,
   linkVerMais,
@@ -153,7 +155,7 @@ export function WidgetWrapper({
       {/* Cabeçalho do Widget */}
       <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-border/40">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="text-muted-foreground">
+          <div className="text-muted-foreground shrink-0" style={corIcone ? { color: corIcone } : undefined}>
             <Icone size={15} />
           </div>
           <div className="min-w-0">
