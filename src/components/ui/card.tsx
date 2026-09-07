@@ -73,4 +73,24 @@ const CardFooter = React.forwardRef<
 ))
 CardFooter.displayName = "CardFooter"
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+function Cartao({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-border bg-card text-card-foreground shadow-xs",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
+export { Card, Cartao, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+
+

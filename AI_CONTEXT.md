@@ -127,7 +127,7 @@ Navegador (React SPA)
 `CelulaPropriedadeInline`, `ConfiguradorNumeroModal`, `FormatadorNumero`, `GerenciadorOpcoesSelect`, `GerenciadorStatusNotion`, `MenuConfiguracaoPropriedade`, `ResumoRelacaoRollup`, `SeletorDataAvancada`, `SeletorIconePropriedade`, `SeletorRelacaoNotion`
 
 ### Sub-componentes: src/components/ui/
-`badge`, `button`, `calendar`, `card`, `command`, `dialog`, `input`, `popover`, `select`, `textarea`, `tooltip`
+`badge`, `button`, `calendar`, `card`, `command`, `dialog`, `feedback`, `index`, `input`, `modal`, `popover`, `select`, `tag-input`, `textarea`, `tooltip`
 
 ### Sub-componentes: src/components/workspace/
 `WorkspaceBarraAbas`, `WorkspaceBreadcrumbs`, `WorkspaceContext`, `WorkspaceRodape`, `WorkspaceTelaCheia`, `WorkspaceVazio`
