@@ -20,6 +20,7 @@ import {
   Tag,
   Folder,
   Flag,
+  Globe,
 } from "lucide-react";
 import { BarraAcoesLote, BotaoAcaoLote } from "@/components/BarraAcoesLote";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
@@ -66,6 +67,7 @@ import {
   Vazio,
   Carregando,
   ModalConfirmacao,
+  Modal,
 } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
@@ -688,10 +690,73 @@ export default function Tarefas() {
     setEditando(nova);
   }
 
+  const [tarefaGoogleParaConcluir, setTarefaGoogleParaConcluir] = useState<{ tarefa?: Tarefa; evento?: EventoGoogle } | null>(null);
+
+  async function confirmarConcluirTarefaGoogle(removerDoGoogle: boolean) {
+    if (!tarefaGoogleParaConcluir) return;
+    const { tarefa, evento } = tarefaGoogleParaConcluir;
+    setTarefaGoogleParaConcluir(null);
+
+    try {
+      const idBruto = tarefa?.googleCalendarId || (typeof tarefa?.bruto?.google_calendar_id === "string" ? tarefa.bruto.google_calendar_id : undefined) || evento?.id;
+      const gId = typeof idBruto === "string" ? idBruto : undefined;
+      const agendaId = evento?.agendaId || "primary";
+
+      if (removerDoGoogle && gId) {
+        await excluirEventoGoogle(gId, agendaId).catch((err) => {
+          console.warn("Aviso ao remover evento do Google Calendar ao concluir:", err);
+        });
+      }
+
+      let tarefaParaAtualizar = tarefa;
+      if (!tarefaParaAtualizar && evento) {
+        const existente = tarefas.find(
+          (t) => t.googleCalendarId === evento.id || t.bruto?.google_calendar_id === evento.id
+        );
+        if (existente) {
+          tarefaParaAtualizar = existente;
+        } else {
+          tarefaParaAtualizar = prepararTarefaDeEventoGoogle(evento, "feito");
+        }
+      }
+
+      if (tarefaParaAtualizar) {
+        const atualizada: Tarefa = {
+          ...tarefaParaAtualizar,
+          status: "feito",
+          bruto: {
+            ...tarefaParaAtualizar.bruto,
+            status: "feito",
+          },
+        };
+        await gravarTarefa(atualizada, `conclui ${atualizada.titulo}`);
+        if (editando && (editando.caminho === atualizada.caminho || (!editando.caminho && editando.titulo === atualizada.titulo))) {
+          setEditando(atualizada);
+        }
+        recarregar();
+      }
+
+      carregarEventosGoogle(mesCalendarioAtual);
+      toast(
+        removerDoGoogle
+          ? "Tarefa concluída e evento removido da Google Agenda!"
+          : "Tarefa marcada como concluída no Klaus!",
+        { tipo: "sucesso" }
+      );
+    } catch (err: any) {
+      toast(`Erro ao concluir tarefa: ${err?.message || err}`, { tipo: "erro" });
+    }
+  }
+
   async function mudarStatusEventoGoogle(ev: EventoGoogle, novoStatus: Status) {
     const existente = tarefas.find(
       (t) => t.googleCalendarId === ev.id || t.bruto?.google_calendar_id === ev.id
     );
+
+    if (novoStatus === "feito") {
+      setTarefaGoogleParaConcluir({ tarefa: existente, evento: ev });
+      return;
+    }
 
     if (existente) {
       await mudarStatus(existente, novoStatus);
@@ -702,7 +767,10 @@ export default function Tarefas() {
       const nova = prepararTarefaDeEventoGoogle(ev, novoStatus);
       await gravarTarefa(nova, `cria tarefa do google: ${nova.titulo}`);
       recarregar();
-      toast(`Tarefa registrada como "${novoStatus === "feito" ? "Concluída" : novoStatus === "fazendo" ? "Em andamento" : "A fazer"}"!`, { tipo: "sucesso" });
+      toast(
+        `Tarefa registrada como "${novoStatus === "fazendo" ? "Em andamento" : "A fazer"}"!`,
+        { tipo: "sucesso" }
+      );
     } catch (e: any) {
       toast(`Erro ao registrar tarefa: ${e?.message || e}`, { tipo: "erro" });
     }
@@ -778,6 +846,13 @@ export default function Tarefas() {
    */
   async function mudarStatus(t: Tarefa, novoStatus: Status) {
     if (gravandoCaminho === t.caminho || t.status === novoStatus) return;
+
+    // Se estiver concluindo uma tarefa vinculada ao Google Calendar, pede confirmação
+    if (novoStatus === "feito" && (t.googleCalendarId || t.bruto?.google_calendar_id)) {
+      setTarefaGoogleParaConcluir({ tarefa: t });
+      return;
+    }
+
     const novo: Tarefa = { ...t, status: novoStatus };
     setGravandoCaminho(t.caminho);
     const verbo = novoStatus === "feito" ? "conclui" : novoStatus === "fazendo" ? "comeca" : "reabre";
@@ -785,22 +860,15 @@ export default function Tarefas() {
       await gravarTarefa(novo, `${verbo} ${t.titulo}`);
       recarregar();
 
-      // Se tiver vínculo com o Google Calendar, atualiza no Google Calendar
+      // Se tiver vínculo com o Google Calendar e reabrir/mudar status para fazendo/a-fazer, sincroniza
       if (novo.googleCalendarId && temTokenGoogleValido()) {
-        const prefixoConcluido = "[Concluído] ";
-        let novoTituloGoogle = novo.titulo;
-        if (novoStatus === "feito" && !novo.titulo.startsWith(prefixoConcluido)) {
-          novoTituloGoogle = `${prefixoConcluido}${novo.titulo}`;
-        } else if (novoStatus !== "feito" && novo.titulo.startsWith(prefixoConcluido)) {
-          novoTituloGoogle = novo.titulo.replace(prefixoConcluido, "");
-        }
-        if (novoTituloGoogle !== novo.titulo) {
-          atualizarEventoGoogle(novo.googleCalendarId, {
-            titulo: novoTituloGoogle,
-          })
-            .then(() => carregarEventosGoogle(mesCalendarioAtual))
-            .catch(() => {});
-        }
+        const dataEvento = novo.prazo || new Date().toISOString().slice(0, 10);
+        atualizarEventoGoogle(novo.googleCalendarId, {
+          titulo: novo.titulo,
+          dataInicio: dataEvento,
+        })
+          .then(() => carregarEventosGoogle(mesCalendarioAtual))
+          .catch(() => {});
       }
     } catch (e) {
       setErroLocal(e instanceof Error ? e.message : String(e));
@@ -1255,6 +1323,54 @@ export default function Tarefas() {
           aoConfirmar={confirmarExcluirEventoGoogle}
           aoCancelar={() => setEventoGoogleParaExcluir(null)}
         />
+      )}
+
+      {/* Modal de confirmação ao concluir tarefa vinculada ao Google Calendar */}
+      {tarefaGoogleParaConcluir && (
+        <Modal
+          aberto={true}
+          aoFechar={() => setTarefaGoogleParaConcluir(null)}
+          titulo="Concluir tarefa e remover da Google Agenda?"
+        >
+          <div className="space-y-4 py-1 text-xs text-muted-foreground">
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-900 dark:text-blue-200">
+              <Globe size={18} className="shrink-0 text-blue-500 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-semibold text-foreground text-sm">
+                  {tarefaGoogleParaConcluir.tarefa?.titulo || tarefaGoogleParaConcluir.evento?.titulo || "Evento Google"}
+                </p>
+                <p className="leading-relaxed">
+                  Na Google Agenda, os compromissos são registrados como eventos com data e horário. Ao concluir esta tarefa no Klaus, você pode optar por remover o evento do calendário para liberar o horário da sua agenda, mantendo o histórico de tarefa concluída preservado no Klaus.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-3 border-t border-border/50">
+              <Botao
+                variante="neutro"
+                tamanho="pequeno"
+                onClick={() => setTarefaGoogleParaConcluir(null)}
+              >
+                Cancelar
+              </Botao>
+              <Botao
+                variante="neutro"
+                tamanho="pequeno"
+                onClick={() => confirmarConcluirTarefaGoogle(false)}
+              >
+                Concluir só no Klaus
+              </Botao>
+              <Botao
+                variante="primario"
+                tamanho="pequeno"
+                onClick={() => confirmarConcluirTarefaGoogle(true)}
+              >
+                <CheckCircle2 size={13} className="mr-1" />
+                Concluir e remover do Google
+              </Botao>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Modal de registrar como entrega no PDI */}
