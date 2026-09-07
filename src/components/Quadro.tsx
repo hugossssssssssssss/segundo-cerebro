@@ -169,6 +169,7 @@ function CartaoArrastavel({
   aoDuplicar,
   aoRegistrarEntregaPDI,
   aoExcluir,
+  aoExcluirGoogleCalendar,
   aoSincronizarGoogleCalendar,
   aoRemoverGoogleCalendar,
   aoFiltrarTag,
@@ -184,6 +185,7 @@ function CartaoArrastavel({
   aoDuplicar?: (t: Tarefa) => void;
   aoRegistrarEntregaPDI?: (t: Tarefa) => void;
   aoExcluir?: (t: Tarefa) => void;
+  aoExcluirGoogleCalendar?: (t: Tarefa) => void;
   aoSincronizarGoogleCalendar?: (t: Tarefa) => void;
   aoRemoverGoogleCalendar?: (t: Tarefa) => void;
   aoFiltrarTag?: (tag: string) => void;
@@ -335,6 +337,7 @@ function CartaoArrastavel({
             aoDuplicar={aoDuplicar ? () => aoDuplicar(t) : undefined}
             aoRegistrarEntregaPDI={aoRegistrarEntregaPDI ? () => aoRegistrarEntregaPDI(t) : undefined}
             aoExcluir={aoExcluir ? () => aoExcluir(t) : undefined}
+            aoExcluirGoogleCalendar={aoExcluirGoogleCalendar ? () => aoExcluirGoogleCalendar(t) : undefined}
             aoSincronizarGoogleCalendar={aoSincronizarGoogleCalendar ? () => aoSincronizarGoogleCalendar(t) : undefined}
             aoRemoverGoogleCalendar={aoRemoverGoogleCalendar ? () => aoRemoverGoogleCalendar(t) : undefined}
           />
@@ -368,6 +371,7 @@ function Coluna({
   aoDuplicar,
   aoRegistrarEntregaPDI,
   aoExcluir,
+  aoExcluirGoogleCalendar,
   aoSincronizarGoogleCalendar,
   aoRemoverGoogleCalendar,
   aoCriarRapido,
@@ -387,6 +391,7 @@ function Coluna({
   aoDuplicar?: (t: Tarefa) => void;
   aoRegistrarEntregaPDI?: (t: Tarefa) => void;
   aoExcluir?: (t: Tarefa) => void;
+  aoExcluirGoogleCalendar?: (t: Tarefa) => void;
   aoSincronizarGoogleCalendar?: (t: Tarefa) => void;
   aoRemoverGoogleCalendar?: (t: Tarefa) => void;
   aoCriarRapido?: (status: Status, titulo: string) => Promise<void> | void;
@@ -488,6 +493,7 @@ function Coluna({
               aoDuplicar={aoDuplicar}
               aoRegistrarEntregaPDI={aoRegistrarEntregaPDI}
               aoExcluir={aoExcluir}
+              aoExcluirGoogleCalendar={aoExcluirGoogleCalendar}
               aoSincronizarGoogleCalendar={aoSincronizarGoogleCalendar}
               aoRemoverGoogleCalendar={aoRemoverGoogleCalendar}
               aoFiltrarTag={aoFiltrarTag}
@@ -592,6 +598,7 @@ export function Quadro({
   aoDuplicar,
   aoRegistrarEntregaPDI,
   aoExcluir,
+  aoExcluirGoogleCalendar,
   aoSincronizarGoogleCalendar,
   aoRemoverGoogleCalendar,
   aoCriarRapido,
@@ -609,6 +616,7 @@ export function Quadro({
   aoDuplicar?: (t: Tarefa) => void;
   aoRegistrarEntregaPDI?: (t: Tarefa) => void;
   aoExcluir?: (t: Tarefa) => void;
+  aoExcluirGoogleCalendar?: (t: Tarefa) => void;
   aoSincronizarGoogleCalendar?: (t: Tarefa) => void;
   aoRemoverGoogleCalendar?: (t: Tarefa) => void;
   aoCriarRapido?: (status: Status, titulo: string) => Promise<void> | void;
@@ -769,6 +777,7 @@ export function Quadro({
             aoDuplicar={aoDuplicar}
             aoRegistrarEntregaPDI={aoRegistrarEntregaPDI}
             aoExcluir={aoExcluir}
+            aoExcluirGoogleCalendar={aoExcluirGoogleCalendar}
             aoSincronizarGoogleCalendar={aoSincronizarGoogleCalendar}
             aoRemoverGoogleCalendar={aoRemoverGoogleCalendar}
             aoCriarRapido={aoCriarRapido}

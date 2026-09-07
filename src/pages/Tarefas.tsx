@@ -598,33 +598,26 @@ export default function Tarefas() {
     }
   }
 
-  async function removerDoGoogle(t: Tarefa) {
-    if (!t.googleCalendarId) return;
-    try {
-      await excluirEventoGoogle(t.googleCalendarId);
-      const atualizada: Tarefa = {
-        ...t,
-        googleCalendarId: undefined,
-        bruto: {
-          ...t.bruto,
-          google_calendar_id: undefined,
-        },
-      };
-      await gravarTarefa(atualizada, `desvincula google calendar: ${t.titulo}`);
-      recarregar();
-      toast(`Evento desvinculado do Google Calendar.`, { tipo: "sucesso" });
-      carregarEventosGoogle();
-    } catch (e: any) {
-      toast(`Erro ao desvincular do Google Calendar: ${e?.message || e}`, { tipo: "erro" });
-    }
+  async function desvincularDoGoogle(t: Tarefa) {
+    const atualizada: Tarefa = {
+      ...t,
+      googleCalendarId: undefined,
+      bruto: {
+        ...t.bruto,
+        google_calendar_id: undefined,
+      },
+    };
+    await gravarTarefa(atualizada, `desvincula google calendar: ${t.titulo}`);
+    recarregar();
+    toast(`Tarefa desvinculada do Google Calendar (mantida no Klaus e no Google).`, { tipo: "sucesso" });
   }
 
   function prepararTarefaDeEventoGoogle(ev: EventoGoogle, statusInicial: Status = "a-fazer"): Tarefa {
     const estilo = obterEstiloEventoGoogle(ev);
     const corHex = estilo.corHex;
-    const tagGoogle = "Google Drive";
+    const tagGoogle = "Google Calendar";
 
-    // Salva a cor da tag globalmente para que a tag 'Google Drive' reflita a cor do evento
+    // Salva a cor da tag globalmente para que a tag 'Google Calendar' reflita a cor do evento
     if (corHex) {
       salvarConfigPropriedadesGlobais(undefined, { [tagGoogle]: corHex });
     }
@@ -711,23 +704,38 @@ export default function Tarefas() {
     }
   }
 
-  const [eventoGoogleParaExcluir, setEventoGoogleParaExcluir] = useState<EventoGoogle | null>(null);
+  const [eventoGoogleParaExcluir, setEventoGoogleParaExcluir] = useState<EventoGoogle | Tarefa | null>(null);
 
   async function confirmarExcluirEventoGoogle() {
     if (!eventoGoogleParaExcluir) return;
     try {
-      await excluirEventoGoogle(eventoGoogleParaExcluir.id, eventoGoogleParaExcluir.agendaId);
+      const gId = "googleCalendarId" in eventoGoogleParaExcluir
+        ? eventoGoogleParaExcluir.googleCalendarId
+        : eventoGoogleParaExcluir.id;
+      const agendaId = "agendaId" in eventoGoogleParaExcluir
+        ? (eventoGoogleParaExcluir as EventoGoogle).agendaId
+        : "primary";
 
-      const vinculada = tarefas.find(
-        (t) => t.googleCalendarId === eventoGoogleParaExcluir.id || t.bruto?.google_calendar_id === eventoGoogleParaExcluir.id
-      );
-      if (vinculada) {
+      if (gId) {
+        await excluirEventoGoogle(gId, agendaId);
+      }
+
+      const vinculada = "caminho" in eventoGoogleParaExcluir && eventoGoogleParaExcluir.caminho
+        ? (eventoGoogleParaExcluir as Tarefa)
+        : tarefas.find(
+            (t) => t.googleCalendarId === gId || t.bruto?.google_calendar_id === gId
+          );
+
+      if (vinculada && vinculada.caminho) {
         await apagarItem(vinculada.caminho, vinculada.sha);
+        if (editando?.caminho === vinculada.caminho) {
+          fechar();
+        }
         recarregar();
       }
 
       setEventoGoogleParaExcluir(null);
-      toast("Evento excluído do Google Calendar!", { tipo: "sucesso" });
+      toast("Evento excluído do Google Calendar e do Klaus!", { tipo: "sucesso" });
       carregarEventosGoogle(mesCalendarioAtual);
     } catch (e: any) {
       toast(`Erro ao excluir do Google Calendar: ${e?.message || e}`, { tipo: "erro" });
@@ -743,7 +751,7 @@ export default function Tarefas() {
         fechar();
       }
       recarregar();
-      toast(`Tarefa excluída!`);
+      toast(`Tarefa excluída do Klaus!`);
     } catch (e: any) {
       toast(`Erro ao excluir tarefa: ${e?.message || e}`, { tipo: "erro" });
     }
@@ -1076,9 +1084,10 @@ export default function Tarefas() {
           aoAdiarPrazo={adiarPrazo}
           aoDuplicar={duplicarTarefa}
           aoExcluir={(t) => setTarefaParaExcluir(t)}
+          aoExcluirGoogleCalendar={(t) => setEventoGoogleParaExcluir(t)}
           aoRegistrarEntregaPDI={(t) => setTarefaParaPDI(t)}
           aoSincronizarGoogleCalendar={sincronizarComGoogle}
-          aoRemoverGoogleCalendar={removerDoGoogle}
+          aoRemoverGoogleCalendar={desvincularDoGoogle}
           aoFiltrarTag={aplicarFiltroTag}
           gravandoCaminho={gravandoCaminho}
           selecionadas={selecionadas}
@@ -1190,8 +1199,12 @@ export default function Tarefas() {
       {tarefaParaExcluir && (
         <ModalConfirmacao
           aberto={true}
-          titulo="Excluir tarefa"
-          descricao={`Tem certeza que deseja excluir a tarefa "${tarefaParaExcluir.titulo}"? Esta ação removerá o arquivo do repositório.`}
+          titulo={tarefaParaExcluir.googleCalendarId ? "Excluir somente no Klaus" : "Excluir tarefa"}
+          descricao={
+            tarefaParaExcluir.googleCalendarId
+              ? `Tem certeza que deseja excluir a tarefa "${tarefaParaExcluir.titulo}" do Klaus? O evento continuará existindo no seu Google Calendar.`
+              : `Tem certeza que deseja excluir a tarefa "${tarefaParaExcluir.titulo}"? Esta ação removerá o arquivo do repositório.`
+          }
           textoConfirmar="Sim, excluir"
           varianteConfirmar="perigo"
           aoConfirmar={confirmarRemoverTarefa}
@@ -1216,8 +1229,12 @@ export default function Tarefas() {
       {eventoGoogleParaExcluir && (
         <ModalConfirmacao
           aberto={true}
-          titulo="Excluir evento do Google Agenda"
-          descricao={`Tem certeza que deseja excluir o evento "${eventoGoogleParaExcluir.titulo}" do Google Calendar? Esta ação removerá o evento da sua agenda.`}
+          titulo="Excluir no Google Calendar"
+          descricao={
+            "caminho" in eventoGoogleParaExcluir && eventoGoogleParaExcluir.caminho
+              ? `Tem certeza que deseja excluir "${eventoGoogleParaExcluir.titulo}" do Google Calendar? Esta ação removerá o evento da sua agenda e também apagará a tarefa no Klaus.`
+              : `Tem certeza que deseja excluir o evento "${eventoGoogleParaExcluir.titulo}" do Google Calendar? Esta ação removerá o evento da sua agenda.`
+          }
           textoConfirmar="Sim, excluir do Google"
           varianteConfirmar="perigo"
           aoConfirmar={confirmarExcluirEventoGoogle}

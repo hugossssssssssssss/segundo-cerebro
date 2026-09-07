@@ -807,7 +807,7 @@ export function Calendario({
                         )}
 
                         <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                          <TagChip tag="Google Drive" cor={estiloEv.corHex} className="text-[10px] py-0.5 px-2" />
+                          <TagChip tag="Google Calendar" cor={estiloEv.corHex} className="text-[10px] py-0.5 px-2" />
                         </div>
 
                         {/* Barra de Ações com Ícones Didáticos (Status, Editar, Concluir, Excluir) */}
@@ -906,15 +906,35 @@ export function Calendario({
                               </Tooltip>
                             )}
 
+                            {tarefaVinculada && aoExcluir && (
+                              <Tooltip conteudo="Excluir somente no Klaus (mantém no Google Calendar)">
+                                <button
+                                  type="button"
+                                  onClick={() => aoExcluir(tarefaVinculada)}
+                                  className="px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30 transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-medium"
+                                  aria-label="Excluir somente no Klaus"
+                                >
+                                  <Trash2 size={12} />
+                                  <span>Klaus</span>
+                                </button>
+                              </Tooltip>
+                            )}
+
                             {aoExcluirEventoGoogle && (
-                              <Tooltip conteudo="Excluir evento do Google Calendar">
+                              <Tooltip conteudo={tarefaVinculada ? "Excluir no Google Calendar (remove do Google e do Klaus)" : "Excluir evento do Google Calendar"}>
                                 <button
                                   type="button"
                                   onClick={() => aoExcluirEventoGoogle(ev)}
-                                  className="p-1.5 rounded-lg bg-background/80 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border/60 transition-colors cursor-pointer"
-                                  aria-label="Excluir evento"
+                                  className={cn(
+                                    "rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-medium",
+                                    tarefaVinculada
+                                      ? "px-2 py-1 bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/30 font-semibold"
+                                      : "p-1.5 bg-background/80 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border/60"
+                                  )}
+                                  aria-label="Excluir do Google Calendar"
                                 >
-                                  <Trash2 size={13} />
+                                  <Trash2 size={12} />
+                                  {tarefaVinculada && <span>Google</span>}
                                 </button>
                               </Tooltip>
                             )}

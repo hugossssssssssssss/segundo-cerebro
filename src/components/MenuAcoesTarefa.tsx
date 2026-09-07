@@ -25,6 +25,7 @@ interface MenuAcoesTarefaProps {
   aoDuplicar?: () => void;
   aoRegistrarEntregaPDI?: () => void;
   aoExcluir?: () => void;
+  aoExcluirGoogleCalendar?: () => void;
   aoSincronizarGoogleCalendar?: () => void;
   aoRemoverGoogleCalendar?: () => void;
   className?: string;
@@ -39,6 +40,7 @@ export function MenuAcoesTarefa({
   aoDuplicar,
   aoRegistrarEntregaPDI,
   aoExcluir,
+  aoExcluirGoogleCalendar,
   aoSincronizarGoogleCalendar,
   aoRemoverGoogleCalendar,
   className,
@@ -72,7 +74,7 @@ export function MenuAcoesTarefa({
       <PopoverContent
         align="end"
         sideOffset={4}
-        className="w-52 p-1.5 shadow-xl border border-border bg-popover/95 backdrop-blur-md rounded-xl z-50 select-none animate-in fade-in zoom-in-95 duration-100"
+        className="w-56 p-1.5 shadow-xl border border-border bg-popover/95 backdrop-blur-md rounded-xl z-50 select-none animate-in fade-in zoom-in-95 duration-100"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col gap-0.5 text-xs">
@@ -218,14 +220,14 @@ export function MenuAcoesTarefa({
               className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-amber-600 dark:text-amber-400 hover:bg-accent hover:text-accent-foreground active:bg-accent transition-colors cursor-pointer text-left touch-manipulation min-h-[38px]"
             >
               <Globe size={14} className="shrink-0 text-amber-500" />
-              <span className="font-medium">Remover do Google Calendar</span>
+              <span className="font-medium">Desvincular do Google Calendar</span>
             </button>
           )}
 
           {/* Divisor */}
-          {aoExcluir && <div className="h-px bg-border/60 my-1" />}
+          {(aoExcluir || (aoExcluirGoogleCalendar && tarefa.googleCalendarId)) && <div className="h-px bg-border/60 my-1" />}
 
-          {/* Excluir Tarefa */}
+          {/* Excluir somente no Klaus */}
           {aoExcluir && (
             <button
               type="button"
@@ -236,7 +238,24 @@ export function MenuAcoesTarefa({
               className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-destructive hover:bg-destructive/10 active:bg-destructive/20 transition-colors cursor-pointer text-left touch-manipulation min-h-[38px]"
             >
               <Trash2 size={14} className="shrink-0" />
-              <span className="font-medium">Excluir tarefa</span>
+              <span className="font-medium">
+                {tarefa.googleCalendarId ? "Excluir somente no Klaus" : "Excluir tarefa"}
+              </span>
+            </button>
+          )}
+
+          {/* Excluir no Google Calendar */}
+          {aoExcluirGoogleCalendar && tarefa.googleCalendarId && (
+            <button
+              type="button"
+              onClick={() => {
+                setAberto(false);
+                aoExcluirGoogleCalendar();
+              }}
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-destructive font-medium hover:bg-destructive/15 active:bg-destructive/25 transition-colors cursor-pointer text-left touch-manipulation min-h-[38px]"
+            >
+              <Globe size={14} className="shrink-0 text-destructive" />
+              <span className="font-semibold">Excluir no Google Calendar</span>
             </button>
           )}
         </div>
