@@ -256,7 +256,7 @@ export async function solicitarAutorizacaoGoogle(clientId?: string, prompt?: str
     try {
       const client = window.google!.accounts.oauth2.initTokenClient({
         client_id: cId,
-        scope: "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+        scope: "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
         callback: (resposta: TokenResponseGoogle) => {
           if (resposta.error) {
             reject(new Error(resposta.error_description || resposta.error));
@@ -326,13 +326,70 @@ async function obterTokenValido(): Promise<string> {
 }
 
 /**
+ * Extrai o intervalo de início e término de um EventoGoogle, detectando se cobre múltiplos dias.
+ */
+export function extrairIntervaloEventoGoogle(ev: EventoGoogle): {
+  inicio: Date;
+  fim: Date;
+  ehIntervalo: boolean;
+  textoFormatado?: string;
+} | null {
+  if (!ev.inicio) return null;
+
+  let dataInicio: Date;
+  let dataFim: Date;
+
+  if (ev.oDiaTodo) {
+    // Formato "2026-09-08"
+    const partes = ev.inicio.slice(0, 10).split("-").map(Number);
+    dataInicio = new Date(partes[0], partes[1] - 1, partes[2], 0, 0, 0);
+
+    if (ev.fim && ev.fim !== ev.inicio) {
+      const partesFim = ev.fim.slice(0, 10).split("-").map(Number);
+      const fimBruto = new Date(partesFim[0], partesFim[1] - 1, partesFim[2], 0, 0, 0);
+      // No Google Calendar, a data 'end' de evento de dia todo é exclusiva (dia seguinte).
+      // Se fimBruto for até 1 dia depois de dataInicio, o evento durou apenas 1 dia.
+      if (fimBruto.getTime() > dataInicio.getTime() + 24 * 3600 * 1000) {
+        // Múltiplos dias: o último dia inclusivo é fimBruto - 1 dia
+        dataFim = new Date(fimBruto.getTime() - 24 * 3600 * 1000);
+      } else {
+        dataFim = dataInicio;
+      }
+    } else {
+      dataFim = dataInicio;
+    }
+  } else {
+    dataInicio = new Date(ev.inicio);
+    dataFim = ev.fim ? new Date(ev.fim) : dataInicio;
+  }
+
+  if (isNaN(dataInicio.getTime())) return null;
+  if (isNaN(dataFim.getTime()) || dataFim < dataInicio) dataFim = dataInicio;
+
+  const inicioDia = new Date(dataInicio.getFullYear(), dataInicio.getMonth(), dataInicio.getDate());
+  const fimDia = new Date(dataFim.getFullYear(), dataFim.getMonth(), dataFim.getDate());
+  const ehIntervalo = inicioDia.getTime() !== fimDia.getTime();
+
+  const textoFormatado = ehIntervalo
+    ? `${dataInicio.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} → ${dataFim.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`
+    : undefined;
+
+  return {
+    inicio: inicioDia,
+    fim: fimDia,
+    ehIntervalo,
+    textoFormatado,
+  };
+}
+
+/**
  * Lista todas as agendas que o usuário tem acesso no Google Calendar (primária, secundárias e compartilhadas).
  */
 export async function listarAgendasGoogle(tokenParam?: string): Promise<AgendaGoogle[]> {
   const token = tokenParam || (await obterTokenValido());
 
   try {
-    const url = "https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader";
+    const url = "https://www.googleapis.com/calendar/v3/users/me/calendarList";
     const resposta = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -340,9 +397,9 @@ export async function listarAgendasGoogle(tokenParam?: string): Promise<AgendaGo
       },
     });
 
-    if (resposta.status === 401) {
+    if (resposta.status === 401 || resposta.status === 403) {
       limparTokenGoogle();
-      throw new Error("Sessão do Google expirada. Por favor, conecte novamente.");
+      throw new Error("Permissão ou sessão do Google expirada. Por favor, conecte novamente em Ajustes.");
     }
 
     if (!resposta.ok) {
@@ -388,7 +445,8 @@ export async function listarAgendasGoogle(tokenParam?: string): Promise<AgendaGo
       corId: item.colorId,
       somenteLeitura: item.accessRole === "reader" || item.accessRole === "freeBusyReader",
     }));
-  } catch {
+  } catch (err) {
+    console.warn("Aviso ao carregar calendarList do Google:", err);
     return [
       {
         id: "primary",

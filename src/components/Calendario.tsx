@@ -11,7 +11,6 @@ import {
   isSameMonth,
   isSameDay,
   isToday,
-  startOfDay,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -35,6 +34,7 @@ import { MenuAcoesTarefa } from "@/components/MenuAcoesTarefa";
 import { Circle, Plus, ExternalLink } from "lucide-react";
 import {
   obterEstiloEventoGoogle,
+  extrairIntervaloEventoGoogle,
   type EventoGoogle,
   type AgendaGoogle,
 } from "@/lib/googleCalendar";
@@ -202,38 +202,13 @@ export function Calendario({
     }
     const mapa = new Map<string, EventoGoogle[]>();
     for (const ev of eventosGoogle) {
-      if (!ev.inicio) continue;
-      
-      let dataInicio: Date;
-      let dataFim: Date;
-
-      if (ev.oDiaTodo) {
-        // Formato "2026-09-08"
-        const partes = ev.inicio.slice(0, 10).split("-").map(Number);
-        dataInicio = new Date(partes[0], partes[1] - 1, partes[2], 12, 0, 0);
-        if (ev.fim && ev.fim !== ev.inicio) {
-          const partesFim = ev.fim.slice(0, 10).split("-").map(Number);
-          const fimBruto = new Date(partesFim[0], partesFim[1] - 1, partesFim[2], 12, 0, 0);
-          // O Google Calendar usa end date exclusivo no dia seguinte para eventos de 1 dia
-          if (fimBruto.getTime() > dataInicio.getTime() + 24 * 3600 * 1000) {
-            dataFim = new Date(fimBruto.getTime() - 24 * 3600 * 1000);
-          } else {
-            dataFim = dataInicio;
-          }
-        } else {
-          dataFim = dataInicio;
-        }
-      } else {
-        dataInicio = new Date(ev.inicio);
-        dataFim = ev.fim ? new Date(ev.fim) : dataInicio;
-      }
-
-      if (isNaN(dataInicio.getTime())) continue;
+      const intervalo = extrairIntervaloEventoGoogle(ev);
+      if (!intervalo) continue;
 
       try {
         const dias = eachDayOfInterval({
-          start: startOfDay(dataInicio),
-          end: startOfDay(dataFim >= dataInicio ? dataFim : dataInicio),
+          start: intervalo.inicio,
+          end: intervalo.fim,
         });
 
         for (const d of dias) {
@@ -253,6 +228,29 @@ export function Calendario({
         mapa.set(chaveFallback, lista);
       }
     }
+
+    // Ordenação consistente em todas as células para manter as barras na mesma linha horizontal
+    for (const [, lista] of mapa.entries()) {
+      lista.sort((a, b) => {
+        const intA = extrairIntervaloEventoGoogle(a);
+        const intB = extrairIntervaloEventoGoogle(b);
+        const ehIntA = intA?.ehIntervalo ? 1 : 0;
+        const ehIntB = intB?.ehIntervalo ? 1 : 0;
+
+        if (ehIntA !== ehIntB) {
+          return ehIntB - ehIntA; // Eventos de múltiplos dias ficam no topo
+        }
+        if (intA && intB && ehIntA && ehIntB) {
+          const tInicio = intA.inicio.getTime() - intB.inicio.getTime();
+          if (tInicio !== 0) return tInicio;
+          const durA = intA.fim.getTime() - intA.inicio.getTime();
+          const durB = intB.fim.getTime() - intB.inicio.getTime();
+          return durB - durA; // Intervalos mais longos primeiro
+        }
+        return a.titulo.localeCompare(b.titulo);
+      });
+    }
+
     return mapa;
   }, [eventosGoogle, mostrarEventosGoogle]);
 
@@ -498,7 +496,7 @@ export function Calendario({
                     ehSelecionado && "border-primary bg-primary/10 ring-2 ring-primary/40 shadow-sm font-bold",
                   )}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center">
                     <span
                       className={cn(
                         "text-xs font-semibold h-6 w-6 rounded-full flex items-center justify-center transition-colors",
@@ -509,33 +507,52 @@ export function Calendario({
                     >
                       {format(d, "d")}
                     </span>
-
-                    {totalItensDia > 0 && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-mono">
-                        {totalItensDia}
-                      </span>
-                    )}
                   </div>
 
                   {/* Indicadores Visuais no Dia (Tarefas e Eventos do Google) */}
                   <div className="space-y-1 mt-1">
                     {/* Exibe barra unificada contínua em telas médias/grandes */}
                     <div className="hidden sm:block space-y-1">
-                      {/* Eventos do Google Calendar com Cores Reais */}
+                      {/* Eventos do Google Calendar com Cores Reais e Conexão de Múltiplos Dias */}
                       {eventosDia.slice(0, 2).map((ev) => {
                         const estiloEv = obterEstiloEventoGoogle(ev);
+                        const intervaloEv = extrairIntervaloEventoGoogle(ev);
+                        let formaIntervalo = "rounded-md px-1.5";
+                        let deveExibirTitulo = true;
+
+                        if (intervaloEv?.ehIntervalo) {
+                          const ehInicio = isSameDay(d, intervaloEv.inicio);
+                          const ehFim = isSameDay(d, intervaloEv.fim);
+                          const ehInicioLinha = ehInicio || diaSemana === 0;
+                          const ehFimLinha = ehFim || diaSemana === 6;
+
+                          deveExibirTitulo = ehInicioLinha;
+
+                          if (ehInicioLinha && ehFimLinha) {
+                            formaIntervalo = "rounded-md px-1.5";
+                          } else if (ehInicioLinha && !ehFimLinha) {
+                            formaIntervalo = "rounded-l-md rounded-r-none border-r-0 mr-[-7px] sm:mr-[-9px] pr-2 px-1.5 z-10 relative";
+                          } else if (!ehInicioLinha && ehFimLinha) {
+                            formaIntervalo = "rounded-r-md rounded-l-none border-l-0 ml-[-7px] sm:ml-[-9px] pl-2 px-1 z-10 relative";
+                          } else {
+                            formaIntervalo = "rounded-none border-x-0 mx-[-7px] sm:mx-[-9px] px-0 z-10 relative";
+                          }
+                        }
+
+                        const tooltipTexto = `${ev.agendaNome ? `[${ev.agendaNome}] ` : ""}${ev.titulo}${
+                          intervaloEv?.ehIntervalo ? ` (${intervaloEv.textoFormatado})` : ev.local ? ` (${ev.local})` : ""
+                        }`;
+
                         return (
-                          <Tooltip
-                            key={ev.id}
-                            conteudo={`${ev.agendaNome ? `[${ev.agendaNome}] ` : ""}${ev.titulo}${ev.local ? ` (${ev.local})` : ""}`}
-                          >
+                          <Tooltip key={ev.id} conteudo={tooltipTexto}>
                             <div
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelecionado(d);
                               }}
                               className={cn(
-                                "min-h-[20px] h-auto py-0.5 px-1.5 rounded-md flex items-center gap-1 text-[10px] font-medium border leading-snug cursor-pointer break-words",
+                                "min-h-[20px] h-auto py-0.5 flex items-center gap-1 text-[10px] font-medium border leading-snug cursor-pointer break-words transition-all",
+                                formaIntervalo,
                                 estiloEv.bg,
                                 estiloEv.text,
                                 estiloEv.border
@@ -549,12 +566,18 @@ export function Calendario({
                                   : undefined
                               }
                             >
-                              <Globe
-                                size={10}
-                                className="shrink-0"
-                                style={{ color: estiloEv.corHex || "#3b82f6" }}
-                              />
-                              <span className="truncate">{ev.titulo}</span>
+                              {deveExibirTitulo ? (
+                                <>
+                                  <Globe
+                                    size={10}
+                                    className="shrink-0"
+                                    style={{ color: estiloEv.corHex || "#3b82f6" }}
+                                  />
+                                  <span className="truncate">{ev.titulo}</span>
+                                </>
+                              ) : (
+                                <span className="invisible select-none">&nbsp;</span>
+                              )}
                             </div>
                           </Tooltip>
                         );
@@ -706,6 +729,7 @@ export function Calendario({
                 <div className="grid gap-2">
                   {eventosGoogleDoDia.map((ev) => {
                     const estiloEv = obterEstiloEventoGoogle(ev);
+                    const intervaloEv = extrairIntervaloEventoGoogle(ev);
                     const horaFormatada = ev.oDiaTodo
                       ? "Dia inteiro"
                       : ev.inicio
@@ -769,6 +793,19 @@ export function Calendario({
                             </a>
                           )}
                         </div>
+
+                        {intervaloEv?.ehIntervalo && (
+                          <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md min-w-0 max-w-full overflow-hidden">
+                            <CalendarIcon
+                              size={12}
+                              className="shrink-0"
+                              style={{ color: estiloEv.corHex || "#3b82f6" }}
+                            />
+                            <span className="truncate">
+                              Período: <strong className="text-foreground">{intervaloEv.textoFormatado}</strong>
+                            </span>
+                          </div>
+                        )}
 
                         {ev.descricao && (
                           <p className="text-[11px] text-muted-foreground line-clamp-2">
