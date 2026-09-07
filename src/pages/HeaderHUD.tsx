@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Plus,
-  Search,
   Globe,
   Headphones,
   Play,
@@ -13,6 +12,7 @@ import {
 import { BarraFavoritos } from "@/components/BarraFavoritos";
 import { LogoKlaus } from "@/components/LogoKlaus";
 import { PainelNotificacoesHeader } from "@/components/PainelNotificacoesHeader";
+import { LauncherGoogleApps } from "@/components/LauncherGoogleApps";
 import { CapturaRapida } from "@/components/CapturaRapida";
 import { Busca } from "@/components/Busca";
 import { ModalBuscaWeb } from "@/components/ModalBuscaWeb";
@@ -246,16 +246,8 @@ export default function HeaderHUD() {
             </button>
           </Tooltip>
 
-          {/* Busca em tudo */}
-          <Tooltip conteudo="Buscar em tudo" atalho="⌘K">
-            <button
-              onClick={() => setBuscando(true)}
-              className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
-              aria-label="Buscar"
-            >
-              <Search size={18} />
-            </button>
-          </Tooltip>
+          {/* Google Apps e Favoritos (9 pontinhos) */}
+          <LauncherGoogleApps aoAbrirBuscaKlaus={() => setBuscando(true)} />
         </div>
       </div>
 
