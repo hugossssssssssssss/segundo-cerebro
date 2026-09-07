@@ -421,7 +421,7 @@ export function Calendario({
       </div>
 
       {/* ── Seletor de Agendas do Google ("Outras Agendas" e Compartilhadas) ─────── */}
-      {mostrarEventosGoogle && agendasGoogle.length > 1 && (
+      {mostrarEventosGoogle && agendasGoogle.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap bg-card/60 p-2.5 px-3.5 rounded-xl border border-border/60 text-xs">
           <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <Globe size={12} className="text-blue-500" /> Agendas Google:

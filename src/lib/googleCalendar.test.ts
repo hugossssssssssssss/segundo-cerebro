@@ -11,6 +11,7 @@ import {
   excluirEventoGoogle,
   mapearCorNotionParaGoogleColorId,
   obterEstiloEventoGoogle,
+  extrairIntervaloEventoGoogle,
   PALETA_CORES_GOOGLE,
 } from "./googleCalendar";
 
@@ -83,6 +84,29 @@ describe("googleCalendar", () => {
         agendaCor: "#9c27b0",
       });
       expect(estilo.corHex).toBe("#9c27b0");
+    });
+
+    it("extrairIntervaloEventoGoogle detecta eventos pontuais e de múltiplos dias", () => {
+      // Evento pontual de 1 dia
+      const pontual = extrairIntervaloEventoGoogle({
+        id: "ev1",
+        titulo: "Reunião",
+        inicio: "2026-09-10T14:00:00Z",
+        fim: "2026-09-10T15:00:00Z",
+        oDiaTodo: false,
+      });
+      expect(pontual?.ehIntervalo).toBe(false);
+
+      // Evento de múltiplos dias
+      const intervalo = extrairIntervaloEventoGoogle({
+        id: "ev2",
+        titulo: "Viagem",
+        inicio: "2026-09-10",
+        fim: "2026-09-15",
+        oDiaTodo: true,
+      });
+      expect(intervalo?.ehIntervalo).toBe(true);
+      expect(intervalo?.textoFormatado).toContain("10/09");
     });
   });
 

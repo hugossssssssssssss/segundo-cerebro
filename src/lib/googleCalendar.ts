@@ -389,21 +389,41 @@ export async function listarAgendasGoogle(tokenParam?: string): Promise<AgendaGo
   const token = tokenParam || (await obterTokenValido());
 
   try {
-    const url = "https://www.googleapis.com/calendar/v3/users/me/calendarList";
-    const resposta = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
-      },
-    });
+    let proximaPagina: string | undefined = undefined;
+    const todosItens: any[] = [];
 
-    if (resposta.status === 401 || resposta.status === 403) {
-      limparTokenGoogle();
-      throw new Error("Permissão ou sessão do Google expirada. Por favor, conecte novamente em Ajustes.");
-    }
+    do {
+      const url = new URL("https://www.googleapis.com/calendar/v3/users/me/calendarList");
+      url.searchParams.set("showHidden", "true");
+      url.searchParams.set("maxResults", "250");
+      if (proximaPagina) {
+        url.searchParams.set("pageToken", proximaPagina);
+      }
 
-    if (!resposta.ok) {
-      // Fallback para agenda primária se não conseguir ler calendarList
+      const resposta = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      });
+
+      if (resposta.status === 401 || resposta.status === 403) {
+        limparTokenGoogle();
+        throw new Error("Permissão ou sessão do Google expirada. Por favor, conecte novamente em Ajustes.");
+      }
+
+      if (!resposta.ok) {
+        break;
+      }
+
+      const dados = await resposta.json();
+      if (Array.isArray(dados.items)) {
+        todosItens.push(...dados.items);
+      }
+      proximaPagina = dados.nextPageToken;
+    } while (proximaPagina);
+
+    if (todosItens.length === 0) {
       return [
         {
           id: "primary",
@@ -417,31 +437,15 @@ export async function listarAgendasGoogle(tokenParam?: string): Promise<AgendaGo
       ];
     }
 
-    const dados = await resposta.json();
-    const itens = Array.isArray(dados.items) ? dados.items : [];
-
-    if (itens.length === 0) {
-      return [
-        {
-          id: "primary",
-          nome: "Minha Agenda",
-          principal: true,
-          selecionada: true,
-          corFundo: "#039be5",
-          corTexto: "#ffffff",
-          somenteLeitura: false,
-        },
-      ];
-    }
-
-    return itens.map((item: any): AgendaGoogle => ({
+    return todosItens.map((item: any): AgendaGoogle => ({
       id: item.id,
-      nome: item.summaryOverride || item.summary || (item.primary ? "Minha Agenda" : "Agenda Compartilhada"),
+      nome: item.summaryOverride || item.summary || (item.primary ? "Minha Agenda" : item.id),
       descricao: item.description,
       principal: Boolean(item.primary),
-      selecionada: item.selected !== false,
-      corFundo: item.backgroundColor,
-      corTexto: item.foregroundColor,
+      // No Klaus, todas as agendas encontradas ficam ativas por padrão para que o usuário veja tudo
+      selecionada: true,
+      corFundo: item.backgroundColor || (item.primary ? "#039be5" : "#7986cb"),
+      corTexto: item.foregroundColor || "#ffffff",
       corId: item.colorId,
       somenteLeitura: item.accessRole === "reader" || item.accessRole === "freeBusyReader",
     }));
