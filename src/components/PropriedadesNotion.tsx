@@ -33,7 +33,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link as LinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { montarIndice, chave as chaveNormalizada } from "@/lib/links";
+import { montarIndice, alvosUnicos, mencoesA, chave as chaveNormalizada } from "@/lib/links";
 import { lerConfig, nomeExibido as nomeDoUsuario } from "@/lib/settings";
 import { cache, invalidarCache, carregarRepo } from "@/lib/repo";
 import { gravar } from "@/lib/github";
@@ -53,6 +53,8 @@ import {
   STATUS_NOTION_PADRAO, 
   type ItemStatusNotion,
 } from "./propriedades/GerenciadorStatusNotion";
+import { SeletorRelacaoNotion, type ItemRelacionavel } from "./propriedades/SeletorRelacaoNotion";
+import { ResumoRelacaoRollup, type ItemVinculadoDetalhe, type MencaoBacklink } from "./propriedades/ResumoRelacaoRollup";
 
 export function obterOpcoesExcluidas(chave: string): Set<string> {
   try {
@@ -704,6 +706,63 @@ export function PropriedadesNotion({
 
     return lista.sort((a, b) => a.titulo.localeCompare(b.titulo));
   }, [camposFixos]);
+
+  const itensRelacionaveis = useMemo<ItemRelacionavel[]>(() => {
+    if (cache?.itens && cache.itens.length > 0) {
+      const indice = montarIndice(cache.itens);
+      const alvos = alvosUnicos(indice);
+      return alvos.map((a) => ({
+        caminho: a.caminho,
+        titulo: a.titulo,
+        tipo: a.tipo,
+      }));
+    }
+    return opcoesRelacionamento.map((op) => ({
+      caminho: op.caminho,
+      titulo: op.titulo,
+      tipo: (op.caminho.split("/")[0] || "nota") as any,
+    }));
+  }, [opcoesRelacionamento]);
+
+  const { itensVinculadosDetalhe, mencoesBacklinks } = useMemo(() => {
+    const rels = dados.relacionamentos || dados.relacao || [];
+    const relsArray = Array.isArray(rels) ? rels : [rels];
+
+    const vinculados: ItemVinculadoDetalhe[] = [];
+    if (cache?.itens) {
+      for (const r of relsArray) {
+        const tit = (typeof r === "string" ? (r.startsWith("@") ? r.slice(1) : r) : r?.titulo || "").trim().toLowerCase();
+        if (!tit) continue;
+        const itemRepo = cache.itens.find((i) => {
+          const t = tituloProvavel(i.doc, i.nome).trim().toLowerCase();
+          return t === tit || i.caminho.toLowerCase().includes(tit);
+        });
+        if (itemRepo) {
+          vinculados.push({
+            caminho: itemRepo.caminho,
+            titulo: tituloProvavel(itemRepo.doc, itemRepo.nome),
+            tipo: itemRepo.caminho.split("/")[0] || "nota",
+            status: (itemRepo.doc.dados?.status as string) || undefined,
+            concluido: itemRepo.doc.dados?.status === "feito" || itemRepo.doc.dados?.concluido === true,
+          });
+        }
+      }
+    }
+
+    let backlinks: MencaoBacklink[] = [];
+    if (caminhoItem && cache?.itens) {
+      const indice = montarIndice(cache.itens);
+      const enc = mencoesA(caminhoItem, cache.itens, indice);
+      backlinks = enc.map((m) => ({
+        caminho: m.caminho,
+        titulo: m.titulo,
+        tipo: m.tipo,
+        trecho: m.trecho,
+      }));
+    }
+
+    return { itensVinculadosDetalhe: vinculados, mencoesBacklinks: backlinks };
+  }, [dados.relacionamentos, dados.relacao, caminhoItem]);
 
   useEffect(() => {
     setGlobalConfig(lerConfigPropriedadesGlobais());
@@ -1440,58 +1499,49 @@ export function PropriedadesNotion({
     if (tipo === "relation" || chave === "relacionamentos" || chave === "relacao") {
       const rels = Array.isArray(valor) ? valor : valor ? [valor] : [];
       return (
-        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
-          {rels.map((r: any) => {
-            const tit = typeof r === "string" ? r : r?.titulo || "Item";
-            return (
-              <button
-                key={tit}
-                onClick={() => aoClicarItemRel(typeof r === "object" ? r : undefined, tit)}
-                className="px-2 py-0.5 rounded text-xs bg-accent hover:bg-accent/80 text-foreground border border-border/60 flex items-center gap-1 transition-colors cursor-pointer truncate max-w-[200px]"
-              >
-                <LinkIcon size={11} className="text-primary shrink-0" />
-                <span className="truncate">{tit}</span>
-              </button>
-            );
-          })}
-          <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
-            <PopoverTrigger asChild>
-              <button className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground rounded hover:bg-accent flex items-center gap-1 transition-colors">
-                <Plus size={11} />
-                <span>{rels.length === 0 ? "Vincular item" : ""}</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[240px] p-0" align="start" onInteractOutside={() => setMenuAberto(null)}>
-              <Command>
-                <CommandInput placeholder="Buscar item para vincular..." />
-                <CommandList>
-                  <CommandEmpty className="p-2 text-xs text-muted-foreground">Nenhum item encontrado</CommandEmpty>
-                  <CommandGroup>
-                    {opcoesRelacionamento.map((op) => {
-                      const selecionado = rels.includes(op.titulo);
-                      return (
-                        <CommandItem
-                          key={op.caminho}
-                          onSelect={() => {
-                            if (selecionado) {
-                              atualizar(chave, rels.filter((x: string) => x !== op.titulo));
-                            } else {
-                              atualizar(chave, [...rels, op.titulo]);
-                            }
-                          }}
-                          className="text-xs flex items-center justify-between cursor-pointer"
-                        >
-                          <span className="truncate">{op.titulo}</span>
-                          {selecionado && <Check size={12} className="text-primary shrink-0" />}
-                        </CommandItem>
-                      );
-                    })}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
+        <SeletorRelacaoNotion
+          relacionamentos={rels}
+          opcoesDisponiveis={itensRelacionaveis}
+          aoAlternarRelacao={(tit) => {
+            const limpo = tit.startsWith("@") ? tit.slice(1) : tit;
+            const existe = rels.some((r: any) => {
+              const str = typeof r === "string" ? r : r?.titulo || "";
+              return (str.startsWith("@") ? str.slice(1) : str) === limpo;
+            });
+            const novos = existe
+              ? rels.filter((r: any) => {
+                  const str = typeof r === "string" ? r : r?.titulo || "";
+                  return (str.startsWith("@") ? str.slice(1) : str) !== limpo;
+                })
+              : [...rels, `@${limpo}`];
+            atualizar(chave, novos);
+          }}
+          aoCriarNovoItem={async (novoTitulo, novoTipo) => {
+            const cfg = lerConfig();
+            const pasta = novoTipo === "tarefa" ? "tarefas" : "notas";
+            const caminhoNovo = `${pasta}/${nomeDeArquivo(novoTitulo)}.md`;
+            const docNovo = {
+              dados: {
+                titulo: novoTitulo,
+                data_criacao: new Date().toISOString().slice(0, 10),
+                ...(novoTipo === "tarefa" ? { status: "a-fazer" } : {}),
+              },
+              corpo: "",
+            };
+            const md = escreverMarkdown(docNovo);
+            await gravar(cfg, caminhoNovo, md, `Cria ${novoTitulo} via relação`);
+            invalidarCache();
+            dispararAtualizacaoAcervo();
+            atualizar(chave, [...rels, `@${novoTitulo}`]);
+            toast(`Criado e vinculado: "${novoTitulo}"`);
+          }}
+          aoClicarItem={(_tit, cam) => {
+            if (cam) aoClicarItemRel({ titulo: _tit, caminho: cam }, _tit);
+            else aoClicarItemRel(undefined, _tit);
+          }}
+          aberto={menuAberto === idPopover}
+          aoMudarAberto={(aberto) => setMenuAberto(aberto ? idPopover : null)}
+        />
       );
     }
 
@@ -1894,6 +1944,15 @@ export function PropriedadesNotion({
           )}
         </div>
       )}
+
+      {/* Resumo de Relações e Backlinks (Rollup) */}
+      <ResumoRelacaoRollup
+        itensVinculados={itensVinculadosDetalhe}
+        mencoesBacklinks={mencoesBacklinks}
+        aoAbrirItem={(cam, tit) => {
+          aoClicarItemRel({ titulo: tit, caminho: cam }, tit);
+        }}
+      />
 
       <ModalEditarContatoRapido
         aberto={modalContatoAberto}
