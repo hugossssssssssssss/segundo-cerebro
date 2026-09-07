@@ -124,7 +124,7 @@ Navegador (React SPA)
 `ScannerDocumento`
 
 ### Sub-componentes: src/components/propriedades/
-`GerenciadorOpcoesSelect`, `MenuConfiguracaoPropriedade`, `SeletorIconePropriedade`
+`ConfiguradorNumeroModal`, `FormatadorNumero`, `GerenciadorOpcoesSelect`, `GerenciadorStatusNotion`, `MenuConfiguracaoPropriedade`, `SeletorDataAvancada`, `SeletorIconePropriedade`
 
 ### Sub-componentes: src/components/ui/
 `badge`, `button`, `calendar`, `card`, `command`, `dialog`, `input`, `popover`, `select`, `textarea`, `tooltip`

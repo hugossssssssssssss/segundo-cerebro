@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Modal, Botao } from "@/components/ui";
@@ -47,6 +46,13 @@ import { toast } from "@/lib/toast";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { MenuConfiguracaoPropriedade } from "./propriedades/MenuConfiguracaoPropriedade";
 import { ICONES_MAPA, CORES_ICONE } from "./propriedades/SeletorIconePropriedade";
+import { FormatadorNumero, type ConfigFormatoNumero } from "./propriedades/FormatadorNumero";
+import { SeletorDataAvancada, formatarDataExibicao, type DadosDataAvancada } from "./propriedades/SeletorDataAvancada";
+import { 
+  SeletorBadgeStatus, 
+  STATUS_NOTION_PADRAO, 
+  type ItemStatusNotion,
+} from "./propriedades/GerenciadorStatusNotion";
 
 export function obterOpcoesExcluidas(chave: string): Set<string> {
   try {
@@ -87,7 +93,6 @@ export function obterOpcoesDaPropriedade(
   const setOpcoes = new Set<string>();
   const excluidas = obterOpcoesExcluidas(chave);
 
-  // 1. Opções fixas (se houver)
   if (fixas && Array.isArray(fixas)) {
     fixas.forEach(o => {
       if (typeof o === "string" && o.trim() && !excluidas.has(o.trim().toLowerCase())) {
@@ -96,7 +101,6 @@ export function obterOpcoesDaPropriedade(
     });
   }
 
-  // 2. Opções salvas localmente
   try {
     const raw = localStorage.getItem(`klaus_opcoes_prop_${chave}`);
     if (raw) {
@@ -111,7 +115,6 @@ export function obterOpcoesDaPropriedade(
     }
   } catch {}
 
-  // 3. Valor atual deste item
   if (Array.isArray(dadosValorAtual)) {
     dadosValorAtual.forEach(t => {
       if (typeof t === "string" && t.trim() && !excluidas.has(t.trim().toLowerCase())) {
@@ -122,7 +125,6 @@ export function obterOpcoesDaPropriedade(
     setOpcoes.add(dadosValorAtual.trim());
   }
 
-  // 4. Valores em uso no repositório para ESTA chave específica
   if (cache && cache.itens) {
     const itensFiltrados = prefixoCaminho
       ? cache.itens.filter(i => i.caminho.startsWith(prefixoCaminho))
@@ -239,12 +241,6 @@ export const CORES_NOTION: Record<string, { bg: string; text: string; border: st
   laranja: { bg: "bg-orange-500/15", text: "text-orange-700 dark:text-orange-300", border: "border-orange-500/20", nome: "Laranja" },
 };
 
-export const STATUS_NOTION: Record<string, { label: string; cor: string }> = {
-  "a-fazer": { label: "A fazer", cor: "cinza" },
-  "fazendo": { label: "Fazendo", cor: "azul" },
-  "feito": { label: "Feito", cor: "verde" },
-};
-
 export const PRIORIDADES_NOTION: Record<string, { label: string; cor: string }> = {
   baixa: { label: "Baixa", cor: "azul" },
   media: { label: "Média", cor: "amarelo" },
@@ -261,6 +257,8 @@ export interface ConfigPropriedadesGlobais {
   coresIcones: Record<string, string>;
   descricoes: Record<string, string>;
   ordensPorCategoria: Record<string, string[]>;
+  formatosNumero: Record<string, ConfigFormatoNumero>;
+  statusLista: ItemStatusNotion[];
 }
 
 export function lerConfigPropriedadesGlobais(): ConfigPropriedadesGlobais {
@@ -274,6 +272,8 @@ export function lerConfigPropriedadesGlobais(): ConfigPropriedadesGlobais {
         coresIcones: {},
         descricoes: {},
         ordensPorCategoria: {},
+        formatosNumero: {},
+        statusLista: STATUS_NOTION_PADRAO,
       };
     }
     const parsed = JSON.parse(raw);
@@ -284,6 +284,8 @@ export function lerConfigPropriedadesGlobais(): ConfigPropriedadesGlobais {
       coresIcones: parsed?.coresIcones || {},
       descricoes: parsed?.descricoes || {},
       ordensPorCategoria: parsed?.ordensPorCategoria || {},
+      formatosNumero: parsed?.formatosNumero || {},
+      statusLista: Array.isArray(parsed?.statusLista) && parsed.statusLista.length > 0 ? parsed.statusLista : STATUS_NOTION_PADRAO,
     };
   } catch {
     return {
@@ -293,6 +295,8 @@ export function lerConfigPropriedadesGlobais(): ConfigPropriedadesGlobais {
       coresIcones: {},
       descricoes: {},
       ordensPorCategoria: {},
+      formatosNumero: {},
+      statusLista: STATUS_NOTION_PADRAO,
     };
   }
 }
@@ -303,7 +307,9 @@ export function salvarConfigPropriedadesGlobais(
   novosIcones?: Record<string, string>,
   novasCoresIcones?: Record<string, string>,
   novasDescricoes?: Record<string, string>,
-  novasOrdens?: Record<string, string[]>
+  novasOrdens?: Record<string, string[]>,
+  novosFormatosNumero?: Record<string, ConfigFormatoNumero>,
+  novosStatusLista?: ItemStatusNotion[]
 ) {
   try {
     const atual = lerConfigPropriedadesGlobais();
@@ -314,6 +320,8 @@ export function salvarConfigPropriedadesGlobais(
       coresIcones: { ...atual.coresIcones, ...novasCoresIcones },
       descricoes: { ...atual.descricoes, ...novasDescricoes },
       ordensPorCategoria: { ...atual.ordensPorCategoria, ...novasOrdens },
+      formatosNumero: { ...atual.formatosNumero, ...novosFormatosNumero },
+      statusLista: novosStatusLista || atual.statusLista,
     };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(proximo));
   } catch {
@@ -793,6 +801,8 @@ export function PropriedadesNotion({
   const iconesMap = { ...globalConfig.icones, ...((dados._icones as Record<string, string>) || {}) };
   const coresIconesMap = { ...globalConfig.coresIcones, ...((dados._coresIcones as Record<string, string>) || {}) };
   const descricoesMap = { ...globalConfig.descricoes, ...((dados._descricoes as Record<string, string>) || {}) };
+  const formatosNumeroMap = { ...globalConfig.formatosNumero, ...((dados._formatosNumero as Record<string, ConfigFormatoNumero>) || {}) };
+  const statusListaAtual = (dados._statusConfig as ItemStatusNotion[]) || globalConfig.statusLista || STATUS_NOTION_PADRAO;
   const ordemCustomizada = (dados._ordem as string[]) || globalConfig.ordensPorCategoria?.[pastaRaiz] || [];
 
   const ehLembrete = rotuloTipo?.toLowerCase().includes("lembrete") || dados.tipo === "lembrete";
@@ -802,8 +812,8 @@ export function PropriedadesNotion({
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
     .filter(k => {
       if ([
-        "titulo", "tipo", "atualizado", "atualizado_em", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "_icones", "_coresIcones", "_descricoes", "_ordem", "c", "pomodoro", "pomodoros", "pomodoros_estimados", "pomodoro_estimado", "pomodoros_realizados", "pomodoro_realizado", "pomodoro_fraturado", "PomodoroFraturado", "fraturados", "estimativa", "porque", "anotacoes",
-        "subtipo", "fixado", "demo", "ia_sugeriu"
+        "titulo", "tipo", "atualizado", "atualizado_em", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "_icones", "_coresIcones", "_descricoes", "_formatosNumero", "_statusConfig", "_ordem", "c", "pomodoro", "pomodoros", "pomodoros_estimados", "pomodoro_estimado", "pomodoros_realizados", "pomodoro_realizado", "pomodoro_fraturado", "PomodoroFraturado", "fraturados", "estimativa", "porque", "anotacoes",
+        "subtipo", "fixado", "demo", "ia_sugeriu", "data_fim", "prazo_fim", "prazo_hora", "data_hora", "prazo_lembrete", "data_lembrete"
       ].includes(k)) return false;
       if (ehLembrete && chavesExclusivasTarefa.includes(k)) return false;
       if (!ehLembrete && chavesLembrete.includes(k)) return false;
@@ -821,7 +831,6 @@ export function PropriedadesNotion({
   if (!todasAsChaves.includes("criado_em")) todasAsChaves.push("criado_em");
   if (!todasAsChaves.includes("ultima_edicao")) todasAsChaves.push("ultima_edicao");
 
-  // Ordenação customizada persistida
   if (ordemCustomizada.length > 0) {
     todasAsChaves.sort((a, b) => {
       const idxA = ordemCustomizada.indexOf(a);
@@ -911,6 +920,19 @@ export function PropriedadesNotion({
     onChange({ ...dados, _coresIcones: novasCoresIcones });
   }
 
+  function atualizarConfigNumero(chave: string, cfg: ConfigFormatoNumero) {
+    const novosFormatos = { ...formatosNumeroMap, [chave]: cfg };
+    salvarConfigPropriedadesGlobais(undefined, undefined, undefined, undefined, undefined, undefined, { [chave]: cfg });
+    setGlobalConfig(lerConfigPropriedadesGlobais());
+    onChange({ ...dados, _formatosNumero: novosFormatos });
+  }
+
+  function atualizarStatusLista(novaLista: ItemStatusNotion[]) {
+    salvarConfigPropriedadesGlobais(undefined, undefined, undefined, undefined, undefined, undefined, undefined, novaLista);
+    setGlobalConfig(lerConfigPropriedadesGlobais());
+    onChange({ ...dados, _statusConfig: novaLista });
+  }
+
   function remover(chave: string) {
     if (camposFixos[chave]) return;
     const novos: Record<string, any> = { ...dados };
@@ -921,6 +943,7 @@ export function PropriedadesNotion({
     if (novos._icones) delete (novos._icones as any)[chave];
     if (novos._coresIcones) delete (novos._coresIcones as any)[chave];
     if (novos._descricoes) delete (novos._descricoes as any)[chave];
+    if (novos._formatosNumero) delete (novos._formatosNumero as any)[chave];
     onChange(novos);
   }
 
@@ -1079,57 +1102,6 @@ export function PropriedadesNotion({
     );
   }
 
-  function renderizarBadgeStatus(rawVal: string) {
-    const val = normalizarStatus(rawVal);
-    const info = STATUS_NOTION[val] || { label: "A fazer", cor: "cinza" };
-    const estiloCor = CORES_NOTION[info.cor] || CORES_NOTION.cinza;
-
-    return (
-      <Popover open={menuAberto === "status-pop"} onOpenChange={(open) => setMenuAberto(open ? "status-pop" : null)}>
-        <PopoverTrigger asChild>
-          <Badge 
-            variant="secondary" 
-            className={cn(
-              "font-semibold text-xs px-2.5 py-1 border cursor-pointer transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 shadow-xs",
-              estiloCor.bg,
-              estiloCor.text,
-              estiloCor.border
-            )}
-          >
-            <span>{info.label}</span>
-          </Badge>
-        </PopoverTrigger>
-        <PopoverContent className="w-[180px] p-1.5" align="start" onInteractOutside={() => setMenuAberto(null)}>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">Alterar Status</p>
-          <div className="flex flex-col gap-1 mt-1">
-            {Object.entries(STATUS_NOTION).map(([stKey, stInfo]) => {
-              const est = CORES_NOTION[stInfo.cor] || CORES_NOTION.cinza;
-              return (
-                <button
-                  key={stKey}
-                  onClick={() => {
-                    atualizar("status", stKey);
-                    setMenuAberto(null);
-                  }}
-                  className={cn(
-                    "w-full px-2.5 py-1.5 rounded-md text-xs font-semibold text-left transition-colors border flex items-center justify-between",
-                    est.bg,
-                    est.text,
-                    est.border,
-                    val === stKey && "ring-2 ring-primary font-bold"
-                  )}
-                >
-                  <span>{stInfo.label}</span>
-                  {val === stKey && <Check size={12} className="shrink-0" />}
-                </button>
-              );
-            })}
-          </div>
-        </PopoverContent>
-      </Popover>
-    );
-  }
-
   function renderizarBadgePrioridade(rawVal?: string) {
     const val = (rawVal || "media").toLowerCase().trim();
     const info = PRIORIDADES_NOTION[val] || { label: rawVal ? rawVal.charAt(0).toUpperCase() + rawVal.slice(1) : "Média", cor: "amarelo" };
@@ -1198,12 +1170,80 @@ export function PropriedadesNotion({
       chave === "ultima_edicao" || chave === "atualizado" || chave === "atualizado_em" ? "ultima_edicao" :
       chave === "aviso_inbox" || chave === "aviso_telegram" || chave === "aviso_email" ? "checkbox" :
       chave === "data" || chave === "prazo" ? "data" :
-      fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : typeof valor === "boolean" ? "checkbox" : "texto");
+      fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : typeof valor === "boolean" ? "checkbox" : typeof valor === "number" ? "numero" : "texto");
 
     const idPopover = `prop-pop-${chave}`;
 
+    // 1. Status Avançado Agrupado
     if (tipo === "status" || chave === "status") {
-      return renderizarBadgeStatus(valor || "a-fazer");
+      return (
+        <SeletorBadgeStatus
+          valorAtual={valor || "a-fazer"}
+          statusLista={statusListaAtual}
+          aoSelecionar={(stId) => atualizar("status", stId)}
+          aberto={menuAberto === "status-pop"}
+          aoMudarAberto={(aberto) => setMenuAberto(aberto ? "status-pop" : null)}
+        />
+      );
+    }
+
+    // 2. Número Formatado / Barra de Progresso / Anel
+    if (tipo === "numero") {
+      const cfgNum = formatosNumeroMap[chave] || {};
+      return (
+        <FormatadorNumero
+          valor={valor}
+          config={cfgNum}
+          aoMudar={(novoNum) => atualizar(chave, novoNum)}
+          autoFoco={chave === focoPropriedadeInicial}
+        />
+      );
+    }
+
+    // 3. Data com Intervalo, Horário e Lembretes
+    if (tipo === "data" || chave === "data" || chave === "prazo") {
+      const dadosData: DadosDataAvancada = {
+        dataInicio: typeof valor === "string" ? valor : undefined,
+        dataFim: dados[`${chave}_fim`] || dados.data_fim || dados.prazo_fim,
+        horario: dados[`${chave}_hora`] || dados.horario || dados.hora,
+        lembrete: dados[`${chave}_lembrete`] || dados.lembrete,
+      };
+      const infoData = formatarDataExibicao(dadosData.dataInicio, dadosData.dataFim, dadosData.horario);
+
+      return (
+        <SeletorDataAvancada
+          dados={dadosData}
+          aoSalvar={(novos) => {
+            const atualizados = { ...dados };
+            if (novos.dataInicio !== undefined) atualizados[chave] = novos.dataInicio;
+            else delete atualizados[chave];
+
+            if (novos.dataFim) atualizados[`${chave}_fim`] = novos.dataFim;
+            else delete atualizados[`${chave}_fim`];
+
+            if (novos.horario) atualizados[`${chave}_hora`] = novos.horario;
+            else delete atualizados[`${chave}_hora`];
+
+            if (novos.lembrete) atualizados[`${chave}_lembrete`] = novos.lembrete;
+            else delete atualizados[`${chave}_lembrete`];
+
+            onChange(atualizados);
+          }}
+          aberto={menuAberto === idPopover}
+          aoMudarAberto={(aberto) => setMenuAberto(aberto ? idPopover : null)}
+        >
+          <button
+            type="button"
+            className={cn(
+              "flex items-center gap-1.5 text-xs px-2 py-1 rounded hover:bg-accent transition-colors font-medium cursor-pointer",
+              infoData.ehVazio ? "text-muted-foreground font-normal" : "text-foreground/90"
+            )}
+          >
+            <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="truncate">{infoData.texto}</span>
+          </button>
+        </SeletorDataAvancada>
+      );
     }
 
     if (chave === "prioridade") {
@@ -1326,55 +1366,6 @@ export function PropriedadesNotion({
           onChange={(e) => atualizar(chave, e.target.checked)}
           className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer ml-2"
         />
-      );
-    }
-
-    if (tipo === "data") {
-      let dataObj: Date | undefined;
-      if (valor) {
-        const d = new Date(valor.includes("T") ? valor : `${valor}T00:00:00`);
-        if (!isNaN(d.getTime())) dataObj = d;
-      }
-
-      return (
-        <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
-          <PopoverTrigger asChild>
-            <button className="flex items-center gap-1.5 text-xs text-foreground/80 px-2 py-1 rounded hover:bg-accent transition-colors font-medium">
-              <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>{dataObj ? format(dataObj, "dd 'de' MMM, yyyy", { locale: ptBR }) : <span className="text-muted-foreground font-normal">Vazio</span>}</span>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start" onInteractOutside={() => setMenuAberto(null)}>
-            <Calendar
-              mode="single"
-              selected={dataObj}
-              onSelect={(d) => {
-                if (d) {
-                  atualizar(chave, format(d, "yyyy-MM-dd"));
-                } else {
-                  atualizar(chave, undefined);
-                }
-                setMenuAberto(null);
-              }}
-              locale={ptBR}
-            />
-            {dataObj && (
-              <div className="p-2 border-t border-border flex justify-end">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-7 text-xs text-destructive hover:bg-destructive/10"
-                  onClick={() => {
-                    atualizar(chave, undefined);
-                    setMenuAberto(null);
-                  }}
-                >
-                  Limpar data
-                </Button>
-              </div>
-            )}
-          </PopoverContent>
-        </Popover>
       );
     }
 
@@ -1680,6 +1671,10 @@ export function PropriedadesNotion({
         podeMoverBaixo={indiceVisivel < totalVisiveis - 1}
         opcoesCadastradas={opcoesCadastradas}
         coresTagsMap={coresMap}
+        configNumero={formatosNumeroMap[chave]}
+        aoAtualizarConfigNumero={(cfg) => atualizarConfigNumero(chave, cfg)}
+        statusLista={statusListaAtual}
+        aoAtualizarStatusLista={atualizarStatusLista}
         aberto={menuAberto === idMenu}
         aoMudarAberto={(aberto) => setMenuAberto(aberto ? idMenu : null)}
         aoRenomear={(novoNome) => renomear(chave, novoNome)}

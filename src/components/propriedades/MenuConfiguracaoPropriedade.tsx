@@ -22,6 +22,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { SeletorIconePropriedade, ICONES_MAPA, CORES_ICONE } from "./SeletorIconePropriedade";
 import { GerenciadorOpcoesSelect } from "./GerenciadorOpcoesSelect";
+import { ConfiguradorNumeroModal } from "./ConfiguradorNumeroModal";
+import type { ConfigFormatoNumero } from "./FormatadorNumero";
+import { EditorStatusNotion, type ItemStatusNotion } from "./GerenciadorStatusNotion";
 import type { TipoPropriedade, OpcaoVisibilidade } from "@/components/PropriedadesNotion";
 
 export const ICONES_TIPO_PADRAO: Record<TipoPropriedade, React.ElementType> = {
@@ -65,6 +68,10 @@ interface MenuConfiguracaoPropriedadeProps {
   podeMoverBaixo?: boolean;
   opcoesCadastradas: string[];
   coresTagsMap: Record<string, string>;
+  configNumero?: ConfigFormatoNumero;
+  aoAtualizarConfigNumero?: (cfg: ConfigFormatoNumero) => void;
+  statusLista?: ItemStatusNotion[];
+  aoAtualizarStatusLista?: (lista: ItemStatusNotion[]) => void;
   aberto: boolean;
   aoMudarAberto: (aberto: boolean) => void;
   aoRenomear: (novoNome: string) => void;
@@ -98,6 +105,10 @@ export function MenuConfiguracaoPropriedade({
   podeMoverBaixo = false,
   opcoesCadastradas,
   coresTagsMap,
+  configNumero = {},
+  aoAtualizarConfigNumero,
+  statusLista,
+  aoAtualizarStatusLista,
   aberto,
   aoMudarAberto,
   aoRenomear,
@@ -117,135 +128,141 @@ export function MenuConfiguracaoPropriedade({
   aoAtualizarPomodoro,
   children,
 }: MenuConfiguracaoPropriedadeProps) {
+  const [editandoNome, setEditandoNome] = useState(false);
   const [nomeTemp, setNomeTemp] = useState(nomeAtual);
+  const [editandoDesc, setEditandoDesc] = useState(false);
   const [descTemp, setDescTemp] = useState(descricaoAtual);
-  const [editandoDesc, setEditandoDesc] = useState(Boolean(descricaoAtual));
 
-  // Resolver ícone
-  const IconeResolvido =
-    (iconePersonalizado && ICONES_MAPA[iconePersonalizado]) ||
-    ICONES_TIPO_PADRAO[tipoAtual] ||
-    Type;
-
-  const corIconeObj = CORES_ICONE.find((c) => c.id === corIconePersonalizada) || CORES_ICONE[0];
+  const IconePadrao = ICONES_TIPO_PADRAO[tipoAtual] || Type;
+  const IconeComponente =
+    (iconePersonalizado && ICONES_MAPA[iconePersonalizado]) || IconePadrao;
+  const corIconeObj =
+    CORES_ICONE.find((c) => c.id === corIconePersonalizada) || CORES_ICONE[0];
 
   const handleSalvarNome = () => {
-    const limpo = nomeTemp.trim();
-    if (limpo && limpo !== nomeAtual) {
-      aoRenomear(limpo);
+    setEditandoNome(false);
+    if (nomeTemp.trim() && nomeTemp.trim() !== nomeAtual) {
+      aoRenomear(nomeTemp.trim());
+    } else {
+      setNomeTemp(nomeAtual);
     }
   };
 
   const handleSalvarDescricao = () => {
+    setEditandoDesc(false);
     aoMudarDescricao(descTemp.trim());
   };
 
   return (
-    <Popover open={aberto} onOpenChange={(open) => {
-      aoMudarAberto(open);
-      if (open) {
-        setNomeTemp(nomeAtual);
-        setDescTemp(descricaoAtual);
-      }
-    }}>
+    <Popover open={aberto} onOpenChange={aoMudarAberto}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent
-        className="w-[300px] p-3 flex flex-col gap-2.5 shadow-2xl border-border max-h-[85vh] overflow-y-auto"
+        className="w-72 p-2.5 shadow-2xl border-border space-y-3 max-h-[85vh] overflow-y-auto"
         align="start"
         onInteractOutside={() => aoMudarAberto(false)}
       >
-        {/* Cabeçalho com Ícone clicável + Nome editável */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Propriedade
-            </span>
-            <span className="text-[10px] font-mono text-muted-foreground/60">
-              #{chave}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <SeletorIconePropriedade
-              iconeAtual={iconePersonalizado || "Type"}
-              corAtual={corIconePersonalizada}
-              aoMudarIcone={aoMudarIcone}
-              aoMudarCor={aoMudarCorIcone}
+        {/* Cabeçalho da Propriedade */}
+        <div className="flex items-center gap-2 pb-2 border-b border-border/60">
+          <SeletorIconePropriedade
+            iconeAtual={iconePersonalizado || "Type"}
+            corAtual={corIconePersonalizada}
+            aoMudarIcone={aoMudarIcone}
+            aoMudarCor={aoMudarCorIcone}
+          >
+            <button
+              type="button"
+              className={cn(
+                "w-7 h-7 rounded-md border border-border/80 flex items-center justify-center transition-colors hover:bg-accent cursor-pointer shrink-0",
+                corIconeObj.classe
+              )}
+              title="Personalizar ícone e cor"
             >
-              <button
-                type="button"
-                title="Alterar ícone e cor"
-                className={cn(
-                  "h-8 w-8 rounded-lg border border-border/80 flex items-center justify-center hover:bg-accent transition-colors shrink-0 cursor-pointer shadow-2xs",
-                  corIconeObj.classe
-                )}
-              >
-                <IconeResolvido size={15} />
-              </button>
-            </SeletorIconePropriedade>
+              <IconeComponente size={14} />
+            </button>
+          </SeletorIconePropriedade>
 
-            <input
-              type="text"
-              value={nomeTemp}
-              onChange={(e) => setNomeTemp(e.target.value)}
-              onBlur={handleSalvarNome}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSalvarNome();
-              }}
-              placeholder="Nome da propriedade"
-              className="flex-1 bg-accent/40 border border-border text-xs px-2.5 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-primary font-medium text-foreground"
-            />
+          <div className="flex-1 min-w-0">
+            {editandoNome && !ehFixo ? (
+              <input
+                type="text"
+                autoFocus
+                value={nomeTemp}
+                onChange={(e) => setNomeTemp(e.target.value)}
+                onBlur={handleSalvarNome}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSalvarNome();
+                  if (e.key === "Escape") {
+                    setNomeTemp(nomeAtual);
+                    setEditandoNome(false);
+                  }
+                }}
+                className="w-full bg-accent/40 border border-border text-xs px-1.5 py-0.5 rounded outline-none font-semibold focus:ring-1 focus:ring-primary"
+              />
+            ) : (
+              <div
+                onClick={() => !ehFixo && setEditandoNome(true)}
+                className={cn(
+                  "text-xs font-semibold truncate",
+                  !ehFixo ? "hover:text-primary cursor-pointer" : "text-foreground"
+                )}
+                title={!ehFixo ? "Clique para renomear" : undefined}
+              >
+                {nomeAtual}
+              </div>
+            )}
+            <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <span>{NOMES_TIPO_PADRAO[tipoAtual] || tipoAtual}</span>
+              {ehFixo && <span className="opacity-70">(Padrão)</span>}
+            </div>
           </div>
         </div>
 
-        {/* Dica / Descrição Opcional */}
-        <div className="pt-1">
+        {/* Descrição / Ajuda */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground font-medium flex items-center gap-1">
+              <HelpCircle size={11} />
+              Descrição / Dica:
+            </span>
+            {!editandoDesc && (
+              <button
+                type="button"
+                onClick={() => setEditandoDesc(true)}
+                className="text-[10px] text-primary hover:underline cursor-pointer"
+              >
+                {descricaoAtual ? "Editar" : "+ Adicionar"}
+              </button>
+            )}
+          </div>
+
           {editandoDesc ? (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                  <HelpCircle size={11} className="text-primary" />
-                  <span>Dica de Ajuda (Tooltip)</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDescTemp("");
-                    aoMudarDescricao("");
-                    setEditandoDesc(false);
-                  }}
-                  className="text-[10px] text-muted-foreground hover:text-destructive"
-                >
-                  Remover
-                </button>
-              </div>
+            <div className="flex items-center gap-1">
               <input
                 type="text"
-                placeholder="Ex: Instrução de preenchimento..."
+                autoFocus
+                placeholder="Explique o preenchimento deste campo..."
                 value={descTemp}
                 onChange={(e) => setDescTemp(e.target.value)}
                 onBlur={handleSalvarDescricao}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSalvarDescricao();
+                  if (e.key === "Escape") setEditandoDesc(false);
                 }}
-                className="w-full bg-accent/30 border border-border text-[11px] px-2 py-1 rounded-md outline-none focus:ring-1 focus:ring-primary text-muted-foreground"
+                className="flex-1 bg-accent/40 border border-border text-[11px] px-2 py-1 rounded outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => setEditandoDesc(true)}
-              className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1.5 py-0.5 transition-colors cursor-pointer"
-            >
-              <HelpCircle size={12} className="opacity-70" />
-              <span>Adicionar dica ou descrição...</span>
-            </button>
+            descricaoAtual && (
+              <p className="text-[11px] text-foreground/80 bg-accent/30 p-1.5 rounded border border-border/40 italic">
+                "{descricaoAtual}"
+              </p>
+            )
           )}
         </div>
 
         {/* Visibilidade */}
-        <div className="border-t border-border/50 pt-2">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
+        <div className="space-y-1 pt-1 border-t border-border/50">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
             Visibilidade
           </span>
           <div className="grid grid-cols-3 gap-1">
@@ -282,6 +299,26 @@ export function MenuConfiguracaoPropriedade({
               aoAtualizarCor={aoAtualizarCorTag}
               aoRenomearOpcao={aoRenomearTag}
               aoExcluirOpcao={aoExcluirTag}
+            />
+          </div>
+        )}
+
+        {/* Gestão de Status Agrupado */}
+        {tipoAtual === "status" && statusLista && aoAtualizarStatusLista && (
+          <div className="border-t border-border/50 pt-2">
+            <EditorStatusNotion
+              statusLista={statusLista}
+              aoSalvarLista={aoAtualizarStatusLista}
+            />
+          </div>
+        )}
+
+        {/* Configuração de Número / Moeda / Barra de Progresso */}
+        {tipoAtual === "numero" && aoAtualizarConfigNumero && (
+          <div className="border-t border-border/50 pt-2">
+            <ConfiguradorNumeroModal
+              config={configNumero}
+              aoSalvarConfig={aoAtualizarConfigNumero}
             />
           </div>
         )}
