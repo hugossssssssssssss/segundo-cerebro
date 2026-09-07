@@ -55,6 +55,7 @@ import {
 } from "./propriedades/GerenciadorStatusNotion";
 import { SeletorRelacaoNotion, type ItemRelacionavel } from "./propriedades/SeletorRelacaoNotion";
 import { ResumoRelacaoRollup, type ItemVinculadoDetalhe, type MencaoBacklink } from "./propriedades/ResumoRelacaoRollup";
+import { carregarCerebro, ehItemAtivo, excluirTagCascata, renomearTagCascata } from "@/lib/cerebro";
 
 export function obterOpcoesExcluidas(chave: string): Set<string> {
   try {
@@ -128,9 +129,21 @@ export function obterOpcoesDaPropriedade(
   }
 
   if (cache && cache.itens) {
-    const itensFiltrados = prefixoCaminho
-      ? cache.itens.filter(i => i.caminho.startsWith(prefixoCaminho))
-      : cache.itens;
+    // Se for tags, busca as tags oficiais do catálogo do Cérebro
+    if (chave === "tags" || chave === "tag") {
+      const cerebro = carregarCerebro(cache.itens);
+      for (const t of Object.keys(cerebro.tags)) {
+        if (t.trim() && !excluidas.has(t.trim().toLowerCase())) {
+          setOpcoes.add(t.trim());
+        }
+      }
+    }
+
+    const itensFiltrados = cache.itens.filter(i => {
+      if (!ehItemAtivo(i.caminho)) return false;
+      if (prefixoCaminho && !i.caminho.startsWith(prefixoCaminho)) return false;
+      return true;
+    });
 
     itensFiltrados.forEach(item => {
       const val = item.doc?.dados?.[chave];
@@ -1741,27 +1754,48 @@ export function PropriedadesNotion({
         aoExcluir={() => remover(chave)}
         aoAtualizarOpcoes={(novas) => salvarOpcoesPropriedadeLocal(chave, novas)}
         aoAtualizarCorTag={(tag, cor) => atualizarCorTag(tag, cor)}
-        aoRenomearTag={(antiga, nova) => {
+        aoRenomearTag={async (antiga, nova) => {
           const novas = opcoesCadastradas.map((x) => (x === antiga ? nova : x));
           salvarOpcoesPropriedadeLocal(chave, novas);
-          if (chave === "tags") {
+          if (chave === "tags" || chave === "tag") {
             const novasCores = { ...globalConfig.coresTags };
             const cAntiga = novasCores[antiga] || "azul";
             delete novasCores[antiga];
             novasCores[nova] = cAntiga;
             salvarConfigPropriedadesGlobais(undefined, novasCores);
             setGlobalConfig(lerConfigPropriedadesGlobais());
+
+            // Cascata do Cérebro: renomeia no cerebro.json e nos arquivos .md ativos
+            if (cache?.itens) {
+              const cfg = lerConfig();
+              await renomearTagCascata(antiga, nova, cache.itens, cfg, cAntiga);
+            }
           }
         }}
-        aoExcluirTag={(tag) => {
+        aoExcluirTag={async (tag) => {
           registrarOpcaoExcluida(chave, tag);
           const novas = opcoesCadastradas.filter((x) => x !== tag);
           salvarOpcoesPropriedadeLocal(chave, novas);
-          if (chave === "tags") {
+          if (chave === "tags" || chave === "tag") {
             const novasCores = { ...globalConfig.coresTags };
             delete novasCores[tag];
             salvarConfigPropriedadesGlobais(undefined, novasCores);
             setGlobalConfig(lerConfigPropriedadesGlobais());
+
+            // Cascata do Cérebro: remove do cerebro.json e de todos os arquivos .md ativos
+            if (cache?.itens) {
+              const cfg = lerConfig();
+              const res = await excluirTagCascata(tag, cache.itens, cfg);
+              if (res.totalModificados > 1) {
+                toast(`Tag "${tag}" removida de ${res.totalModificados} itens.`);
+              } else {
+                toast(`Tag "${tag}" excluída.`);
+              }
+            } else {
+              toast(`Opção "${tag}" excluída.`);
+            }
+          } else {
+            toast(`Opção "${tag}" excluída.`);
           }
           const valItem = dados[chave];
           if (Array.isArray(valItem) && valItem.includes(tag)) {
@@ -1769,7 +1803,6 @@ export function PropriedadesNotion({
           } else if (valItem === tag) {
             atualizar(chave, undefined);
           }
-          toast(`Opção "${tag}" excluída.`);
         }}
         dadosPomodoro={{
           estimados: dados.pomodoros_estimados ?? dados.Pomodoro ?? dados.pomodoro,
