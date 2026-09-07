@@ -8,6 +8,7 @@ import {
   excluirTagCascata,
   renomearTagCascata,
   CAMINHO_CEREBRO,
+  obterRelacoesBidirecionais,
 } from "./cerebro";
 import type { ItemRepo } from "./repo";
 import type { Settings } from "./settings";
@@ -171,6 +172,62 @@ describe("Módulo Cérebro Central (cerebro.ts)", () => {
       const alt1 = resultado.itensAtualizados.find((x) => x.caminho === "notas/briefing-design.md");
       expect(alt1?.textoDepois).toContain("Design Gráfico");
       expect(alt1?.textoDepois).not.toContain("design");
+    });
+  });
+
+  describe("Esquemas Personalizados por Tipo de Nota", () => {
+    it("retorna propriedades específicas para subtipos como reuniao, briefing e leitura", () => {
+      const cerebro = carregarCerebro([itemNotaAtiva1]);
+      const esquemaReuniao = cerebro.propriedades.notas_tipos?.reuniao;
+      expect(esquemaReuniao).toBeDefined();
+      expect(esquemaReuniao?.data_reuniao).toBeDefined();
+      expect(esquemaReuniao?.participantes).toBeDefined();
+
+      const esquemaBriefing = cerebro.propriedades.notas_tipos?.briefing;
+      expect(esquemaBriefing?.cliente).toBeDefined();
+      expect(esquemaBriefing?.prazo_entrega).toBeDefined();
+    });
+  });
+
+  describe("Relações Bidirecionais e Rollups", () => {
+    it("identifica tarefas vinculadas e calcula rollup de progresso automaticamente", () => {
+      const metaItem: ItemRepo = {
+        caminho: "pdi/metas/lancar-marca.md",
+        nome: "lancar-marca.md",
+        sha: "meta123",
+        tamanho: 100,
+        texto: "---\ntitulo: Lançar Marca\n---\nMeta principal.",
+        doc: { dados: { titulo: "Lançar Marca" }, corpo: "Meta principal." },
+      };
+
+      const tarefaFeita: ItemRepo = {
+        caminho: "tarefas/criar-logo.md",
+        nome: "criar-logo.md",
+        sha: "t1",
+        tamanho: 100,
+        texto: "---\ntitulo: Criar Logo\nstatus: feito\nrelacionamentos: ['@Lançar Marca']\n---\nOk.",
+        doc: { dados: { titulo: "Criar Logo", status: "feito", relacionamentos: ["@Lançar Marca"] }, corpo: "Ok." },
+      };
+
+      const tarefaPendente: ItemRepo = {
+        caminho: "tarefas/registrar-dominio.md",
+        nome: "registrar-dominio.md",
+        sha: "t2",
+        tamanho: 100,
+        texto: "---\ntitulo: Registrar Domínio\nstatus: a-fazer\nrelacionamentos: ['@Lançar Marca']\n---\nPendente.",
+        doc: { dados: { titulo: "Registrar Domínio", status: "a-fazer", relacionamentos: ["@Lançar Marca"] }, corpo: "Pendente." },
+      };
+
+      const rels = obterRelacoesBidirecionais(
+        "pdi/metas/lancar-marca.md",
+        "Lançar Marca",
+        [metaItem, tarefaFeita, tarefaPendente]
+      );
+
+      expect(rels.itensVinculados).toHaveLength(2);
+      expect(rels.rollupTarefas.total).toBe(2);
+      expect(rels.rollupTarefas.concluidas).toBe(1);
+      expect(rels.rollupTarefas.percentual).toBe(50);
     });
   });
 });

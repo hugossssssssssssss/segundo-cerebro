@@ -11,11 +11,12 @@
 
 import type { Settings } from "./settings";
 import type { ItemRepo } from "./repo";
-import { lerMarkdown, escreverMarkdown, mesclarFrontmatter } from "./markdown";
+import { lerMarkdown, escreverMarkdown, mesclarFrontmatter, tituloProvavel } from "./markdown";
 import { gravar } from "./github";
 import { atualizarCacheLocal, invalidarCache } from "./repo";
 import { dispararAtualizacaoAcervo } from "./eventos";
 import { notificarOutrasAbas } from "./syncChannel";
+import { chave as normalizarChaveLink } from "./links";
 
 export const CAMINHO_CEREBRO = ".klaus/cerebro.json";
 export const CAMINHO_CEREBRO_LEGADO = "cerebro.json";
@@ -63,23 +64,63 @@ export interface StatusDefinicao {
   ordem: number;
 }
 
+export interface VisaoSalva {
+  id: string;
+  nome: string;
+  icone?: string;
+  tipoVisao: "tabela" | "quadro" | "lista" | "galeria";
+  filtros?: { propriedadeId: string; operador: string; valor: any }[];
+  ordenacao?: { campo: string; direcao: "asc" | "desc" };
+}
+
 export interface CerebroDados {
   versao: 1;
   atualizado_em: string;
   tags: Record<string, TagMetadado>;
   propriedades: {
     notas?: Record<string, PropriedadeDefinicao>;
+    notas_tipos?: Record<string, Record<string, PropriedadeDefinicao>>;
     tarefas?: Record<string, PropriedadeDefinicao>;
     contatos?: Record<string, PropriedadeDefinicao>;
     metas?: Record<string, PropriedadeDefinicao>;
     entregas?: Record<string, PropriedadeDefinicao>;
     referencias?: Record<string, PropriedadeDefinicao>;
-    [colecao: string]: Record<string, PropriedadeDefinicao> | undefined;
+    [colecao: string]: Record<string, any> | undefined;
   };
   status?: {
     tarefas?: StatusDefinicao[];
     metas?: StatusDefinicao[];
     [colecao: string]: StatusDefinicao[] | undefined;
+  };
+  visoesSalvas?: {
+    notas?: VisaoSalva[];
+    tarefas?: VisaoSalva[];
+    [colecao: string]: VisaoSalva[] | undefined;
+  };
+}
+
+export interface ItemVinculadoDetalhe {
+  caminho: string;
+  titulo: string;
+  tipo: string;
+  status?: string;
+  concluido?: boolean;
+}
+
+export interface MencaoBacklink {
+  caminho: string;
+  titulo: string;
+  tipo: string;
+  trecho?: string;
+}
+
+export interface ResumoRelacoesBidirecionais {
+  itensVinculados: ItemVinculadoDetalhe[];
+  mencoes: MencaoBacklink[];
+  rollupTarefas: {
+    total: number;
+    concluidas: number;
+    percentual: number;
   };
 }
 
@@ -105,7 +146,7 @@ export function filtrarItensAtivos(itens: ItemRepo[]): ItemRepo[] {
 }
 
 /**
- * Cria a estrutura inicial padrão vazia do Cérebro.
+ * Cria a estrutura inicial padrão rica do Cérebro.
  */
 export function criarCerebroPadrao(): CerebroDados {
   return {
@@ -114,6 +155,28 @@ export function criarCerebroPadrao(): CerebroDados {
     tags: {},
     propriedades: {
       notas: {},
+      notas_tipos: {
+        reuniao: {
+          data_reuniao: { rotulo: "Data da Reunião", tipo: "data", icone: "Calendar", corIcone: "azul" },
+          participantes: { rotulo: "Participantes", tipo: "multiselect", icone: "Users", corIcone: "verde" },
+          decisoes: { rotulo: "Decisões Tomadas", tipo: "texto", icone: "CheckSquare", corIcone: "amarelo" },
+        },
+        briefing: {
+          cliente: { rotulo: "Cliente", tipo: "relation", icone: "Building", corIcone: "azul" },
+          prazo_entrega: { rotulo: "Prazo de Entrega", tipo: "data", icone: "Clock", corIcone: "laranja" },
+          status_briefing: { rotulo: "Status do Briefing", tipo: "select", opcoes: ["Rascunho", "Em Aprovação", "Aprovado"], icone: "Flag", corIcone: "roxo" },
+        },
+        leitura: {
+          autor: { rotulo: "Autor", tipo: "texto", icone: "User", corIcone: "azul" },
+          status_leitura: { rotulo: "Status", tipo: "select", opcoes: ["Quero Ler", "Lendo", "Lido"], icone: "BookOpen", corIcone: "verde" },
+          avaliacao: { rotulo: "Avaliação (1-5)", tipo: "numero", icone: "Star", corIcone: "amarelo" },
+        },
+        projeto: {
+          cliente: { rotulo: "Cliente", tipo: "relation", icone: "Building", corIcone: "azul" },
+          prazo: { rotulo: "Prazo Final", tipo: "data", icone: "Clock", corIcone: "laranja" },
+          orcamento: { rotulo: "Orçamento", tipo: "numero", icone: "DollarSign", corIcone: "verde" },
+        },
+      },
       tarefas: {},
       contatos: {},
       metas: {},
@@ -132,7 +195,33 @@ export function criarCerebroPadrao(): CerebroDados {
         { id: "concluida", rotulo: "Concluída", cor: "verde", grupo: "concluido", ordem: 3 },
       ],
     },
+    visoesSalvas: {
+      notas: [
+        { id: "visao-todas", nome: "Todas as Notas", tipoVisao: "tabela" },
+      ],
+      tarefas: [
+        { id: "visao-todas", nome: "Todas as Tarefas", tipoVisao: "quadro" },
+      ],
+    },
   };
+}
+
+/**
+ * Retorna as propriedades mescladas para um item levando em conta seu subtipo.
+ */
+export function obterEsquemaPropriedadesItem(
+  cerebro: CerebroDados,
+  colecao: string,
+  subtipo?: string
+): Record<string, PropriedadeDefinicao> {
+  const baseColecao = cerebro.propriedades[colecao] || {};
+  if (colecao === "notas" && subtipo && cerebro.propriedades.notas_tipos?.[subtipo]) {
+    return {
+      ...baseColecao,
+      ...cerebro.propriedades.notas_tipos[subtipo],
+    };
+  }
+  return baseColecao;
 }
 
 /**
@@ -226,12 +315,21 @@ export function carregarCerebro(itensRepo: ItemRepo[]): CerebroDados {
     try {
       const parseado = JSON.parse(itemCerebro.texto);
       if (parseado && typeof parseado === "object" && parseado.tags) {
+        const padrao = criarCerebroPadrao();
         cerebro = {
           versao: 1,
           atualizado_em: parseado.atualizado_em || new Date().toISOString(),
           tags: parseado.tags || {},
-          propriedades: parseado.propriedades || {},
-          status: parseado.status || criarCerebroPadrao().status,
+          propriedades: {
+            ...padrao.propriedades,
+            ...(parseado.propriedades || {}),
+            notas_tipos: {
+              ...padrao.propriedades.notas_tipos,
+              ...(parseado.propriedades?.notas_tipos || {}),
+            },
+          },
+          status: parseado.status || padrao.status,
+          visoesSalvas: parseado.visoesSalvas || padrao.visoesSalvas,
         };
       }
     } catch {
@@ -291,6 +389,96 @@ export async function salvarCerebroNoRepo(
 ): Promise<void> {
   const jsonTexto = JSON.stringify(cerebro, null, 2);
   await gravar(cfg, CAMINHO_CEREBRO, jsonTexto, shaAtual);
+}
+
+/**
+ * Calcula relações bidirecionais e rollups para um item específico varrendo os itens ativos do repositório.
+ */
+export function obterRelacoesBidirecionais(
+  caminhoItem: string,
+  tituloItem: string,
+  itensRepo: ItemRepo[]
+): ResumoRelacoesBidirecionais {
+  const itensVinculados: ItemVinculadoDetalhe[] = [];
+  const mencoes: MencaoBacklink[] = [];
+
+  if (!caminhoItem && !tituloItem) {
+    return { itensVinculados: [], mencoes: [], rollupTarefas: { total: 0, concluidas: 0, percentual: 0 } };
+  }
+
+  const itensAtivos = filtrarItensAtivos(itensRepo);
+  const chaveItemNorm = tituloItem ? normalizarChaveLink(tituloItem) : "";
+  const caminhoLimpo = caminhoItem ? caminhoItem.toLowerCase() : "";
+
+  for (const item of itensAtivos) {
+    if (item.caminho === caminhoItem) continue;
+
+    const doc = item.doc || lerMarkdown(item.texto || "");
+    const tit = tituloProvavel(doc, item.nome);
+    const tipo = item.caminho.split("/")[0] || "nota";
+
+    // 1. Verifica campo relacionamentos ou relacao no frontmatter
+    const rels = doc.dados?.relacionamentos || doc.dados?.relacao || doc.dados?.metas || [];
+    const relsArr = Array.isArray(rels) ? rels : [rels];
+    const estaVinculado = relsArr.some((r: any) => {
+      const str = typeof r === "string" ? r : r?.titulo || r?.caminho || "";
+      const limpo = str.startsWith("@") ? str.slice(1) : str;
+      return (
+        normalizarChaveLink(limpo) === chaveItemNorm ||
+        str.toLowerCase() === caminhoLimpo ||
+        str === tituloItem
+      );
+    });
+
+    if (estaVinculado) {
+      const status = doc.dados?.status;
+      const concluido =
+        doc.dados?.concluido === true ||
+        status === "feito" ||
+        status === "concluido" ||
+        status === "concluida" ||
+        status === "finalizado";
+
+      const tipoStr = typeof doc.dados?.tipo === "string" ? doc.dados.tipo : (item.caminho.startsWith("tarefas/") ? "tarefa" : item.caminho.startsWith("pdi/entregas/") ? "entrega" : tipo);
+      itensVinculados.push({
+        caminho: item.caminho,
+        titulo: tit,
+        tipo: tipoStr,
+        status: typeof status === "string" ? status : undefined,
+        concluido,
+      });
+    }
+
+    // 2. Verifica menção @Titulo no corpo do markdown
+    if (chaveItemNorm && doc.corpo) {
+      const regexArroba = new RegExp(`@${tituloItem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i");
+      if (regexArroba.test(doc.corpo)) {
+        mencoes.push({
+          caminho: item.caminho,
+          titulo: tit,
+          tipo,
+        });
+      }
+    }
+  }
+
+  // Rollup de Tarefas e Entregas vinculadas
+  const tarefasVinculadas = itensVinculados.filter(
+    (it) => it.tipo === "tarefa" || it.tipo === "entrega" || it.caminho.startsWith("tarefas/") || it.caminho.startsWith("pdi/entregas/")
+  );
+  const total = tarefasVinculadas.length;
+  const concluidas = tarefasVinculadas.filter((t) => t.concluido).length;
+  const percentual = total > 0 ? Math.round((concluidas / total) * 100) : 0;
+
+  return {
+    itensVinculados,
+    mencoes,
+    rollupTarefas: {
+      total,
+      concluidas,
+      percentual,
+    },
+  };
 }
 
 export type ItemModificadoCascata = {

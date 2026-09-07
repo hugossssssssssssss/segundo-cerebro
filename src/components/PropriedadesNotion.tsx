@@ -33,7 +33,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link as LinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { montarIndice, alvosUnicos, mencoesA, chave as chaveNormalizada } from "@/lib/links";
+import { montarIndice, alvosUnicos, chave as chaveNormalizada } from "@/lib/links";
 import { lerConfig, nomeExibido as nomeDoUsuario } from "@/lib/settings";
 import { cache, invalidarCache, carregarRepo } from "@/lib/repo";
 import { gravar } from "@/lib/github";
@@ -54,8 +54,14 @@ import {
   type ItemStatusNotion,
 } from "./propriedades/GerenciadorStatusNotion";
 import { SeletorRelacaoNotion, type ItemRelacionavel } from "./propriedades/SeletorRelacaoNotion";
-import { ResumoRelacaoRollup, type ItemVinculadoDetalhe, type MencaoBacklink } from "./propriedades/ResumoRelacaoRollup";
-import { carregarCerebro, ehItemAtivo, excluirTagCascata, renomearTagCascata } from "@/lib/cerebro";
+import { ResumoRelacaoRollup, type ItemVinculadoDetalhe } from "./propriedades/ResumoRelacaoRollup";
+import {
+  carregarCerebro,
+  ehItemAtivo,
+  excluirTagCascata,
+  renomearTagCascata,
+  obterRelacoesBidirecionais,
+} from "@/lib/cerebro";
 
 export function obterOpcoesExcluidas(chave: string): Set<string> {
   try {
@@ -737,62 +743,9 @@ export function PropriedadesNotion({
     }));
   }, [opcoesRelacionamento]);
 
-  const { itensVinculadosDetalhe, mencoesBacklinks } = useMemo(() => {
-    const rels = dados.relacionamentos || dados.relacao || [];
-    const relsArray = Array.isArray(rels) ? rels : [rels];
-
-    const vinculados: ItemVinculadoDetalhe[] = [];
-    if (cache?.itens) {
-      for (const r of relsArray) {
-        const tit = (typeof r === "string" ? (r.startsWith("@") ? r.slice(1) : r) : r?.titulo || "").trim().toLowerCase();
-        if (!tit) continue;
-        const itemRepo = cache.itens.find((i) => {
-          const t = tituloProvavel(i.doc, i.nome).trim().toLowerCase();
-          return t === tit || i.caminho.toLowerCase().includes(tit);
-        });
-        if (itemRepo) {
-          vinculados.push({
-            caminho: itemRepo.caminho,
-            titulo: tituloProvavel(itemRepo.doc, itemRepo.nome),
-            tipo: itemRepo.caminho.split("/")[0] || "nota",
-            status: (itemRepo.doc.dados?.status as string) || undefined,
-            concluido: itemRepo.doc.dados?.status === "feito" || itemRepo.doc.dados?.concluido === true,
-          });
-        }
-      }
-    }
-
-    let backlinks: MencaoBacklink[] = [];
-    if (caminhoItem && cache?.itens) {
-      const indice = montarIndice(cache.itens);
-      const enc = mencoesA(caminhoItem, cache.itens, indice);
-      backlinks = enc.map((m) => ({
-        caminho: m.caminho,
-        titulo: m.titulo,
-        tipo: m.tipo,
-        trecho: m.trecho,
-      }));
-    }
-
-    return { itensVinculadosDetalhe: vinculados, mencoesBacklinks: backlinks };
-  }, [dados.relacionamentos, dados.relacao, caminhoItem]);
-
-  useEffect(() => {
-    setGlobalConfig(lerConfigPropriedadesGlobais());
-  }, []);
-
-  useEffect(() => {
-    if (focoPropriedadeInicial) {
-      const timer = setTimeout(() => {
-        const el = document.getElementById(`prop-input-${focoPropriedadeInicial}`);
-        if (el) {
-          el.focus();
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }, 70);
-      return () => clearTimeout(timer);
-    }
-  }, [focoPropriedadeInicial]);
+  const cerebro = useMemo(() => {
+    return carregarCerebro(cache?.itens || []);
+  }, [cache?.itens]);
 
   const { pastaRaiz, subpastaAtualTexto, nomeAmigavelRaiz, trilhaAmigavel } = useMemo(() => {
     let raiz = "notas";
@@ -835,6 +788,21 @@ export function PropriedadesNotion({
     };
   }, [caminhoItem, rotuloTipo, dados.tipo]);
 
+  const todosCamposFixos = useMemo(() => {
+    const subtipo = (dados.subtipo as string) || (dados.tipo as string) || "";
+    const camposSubtipo: Record<string, { icone?: React.ReactNode; tipo?: TipoPropriedade; opcoes?: string[] }> = {};
+    if (pastaRaiz === "notas" && subtipo && cerebro.propriedades.notas_tipos?.[subtipo]) {
+      const defs = cerebro.propriedades.notas_tipos[subtipo];
+      for (const [k, d] of Object.entries(defs)) {
+        camposSubtipo[k] = {
+          tipo: d.tipo as TipoPropriedade,
+          opcoes: d.opcoes,
+        };
+      }
+    }
+    return { ...camposSubtipo, ...camposFixos };
+  }, [cerebro, pastaRaiz, dados.subtipo, dados.tipo, camposFixos]);
+
   const pastasDaCategoria = useMemo(() => {
     if (!pastaRaiz || !cache || !cache.itens) return [];
     const prefixo = `${pastaRaiz}/`;
@@ -851,6 +819,45 @@ export function PropriedadesNotion({
     }
     return Array.from(conjunto).sort((a, b) => a.localeCompare(b));
   }, [pastaRaiz]);
+
+  const { itensVinculadosDetalhe, mencoesBacklinks } = useMemo(() => {
+    if (!cache?.itens) return { itensVinculadosDetalhe: [], mencoesBacklinks: [] };
+    const titItem = (dados.titulo as string) || (caminhoItem ? tituloProvavel(undefined as any, caminhoItem) : "");
+    const res = obterRelacoesBidirecionais(caminhoItem || "", titItem, cache.itens);
+
+    const rels = dados.relacionamentos || dados.relacao || [];
+    const relsArray = Array.isArray(rels) ? rels : [rels];
+    const vinculadosMap = new Map<string, ItemVinculadoDetalhe>();
+
+    // 1. Vínculos e tarefas bidirecionais do Cérebro
+    for (const v of res.itensVinculados) {
+      vinculadosMap.set(v.caminho, v);
+    }
+
+    // 2. Vínculos diretos deste documento
+    for (const r of relsArray) {
+      const tit = (typeof r === "string" ? (r.startsWith("@") ? r.slice(1) : r) : r?.titulo || "").trim().toLowerCase();
+      if (!tit) continue;
+      const itemRepo = cache.itens.find((i) => {
+        const t = tituloProvavel(i.doc, i.nome).trim().toLowerCase();
+        return t === tit || i.caminho.toLowerCase().includes(tit);
+      });
+      if (itemRepo && !vinculadosMap.has(itemRepo.caminho)) {
+        vinculadosMap.set(itemRepo.caminho, {
+          caminho: itemRepo.caminho,
+          titulo: tituloProvavel(itemRepo.doc, itemRepo.nome),
+          tipo: itemRepo.caminho.split("/")[0] || "nota",
+          status: (itemRepo.doc.dados?.status as string) || undefined,
+          concluido: itemRepo.doc.dados?.status === "feito" || itemRepo.doc.dados?.concluido === true,
+        });
+      }
+    }
+
+    return {
+      itensVinculadosDetalhe: Array.from(vinculadosMap.values()),
+      mencoesBacklinks: res.mencoes,
+    };
+  }, [dados.relacionamentos, dados.relacao, dados.titulo, caminhoItem]);
 
   useEffect(() => {
     if (!menuAberto) return;
@@ -881,7 +888,7 @@ export function PropriedadesNotion({
   const chavesLembrete = ["horario", "hora", "aviso_inbox", "notificacao_inbox", "aviso_telegram", "notificacao_telegram", "aviso_email", "notificacao_email"];
   const chavesExclusivasTarefa = ["caminho", "pasta", "status", "prioridade", "pomodoro", "pomodoros", "pomodoros_estimados", "pomodoro_estimado", "pomodoros_realizados", "pomodoro_realizado", "pomodoro_fraturado", "PomodoroFraturado", "fraturados", "estimativa", "c", "indicador", "metas"];
 
-  const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
+  const todasAsChaves = Array.from(new Set([...Object.keys(todosCamposFixos), ...Object.keys(dados)]))
     .filter(k => {
       if ([
         "titulo", "tipo", "atualizado", "atualizado_em", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "_icones", "_coresIcones", "_descricoes", "_formatosNumero", "_statusConfig", "_ordem", "c", "pomodoro", "pomodoros", "pomodoros_estimados", "pomodoro_estimado", "pomodoros_realizados", "pomodoro_realizado", "pomodoro_fraturado", "PomodoroFraturado", "fraturados", "estimativa", "porque", "anotacoes",
@@ -1006,7 +1013,7 @@ export function PropriedadesNotion({
   }
 
   function remover(chave: string) {
-    if (camposFixos[chave]) return;
+    if (todosCamposFixos[chave]) return;
     const novos: Record<string, any> = { ...dados };
     delete novos[chave];
     if (novos.esquema) delete (novos.esquema as any)[chave];
@@ -1028,7 +1035,7 @@ export function PropriedadesNotion({
     
     const novos: Record<string, any> = { ...dados, _rotulos: novosRotulos };
 
-    if (!camposFixos[velha] && velha !== nova) {
+    if (!todosCamposFixos[velha] && velha !== nova) {
       novos[nova] = novos[velha];
       delete novos[velha];
 
@@ -1062,10 +1069,10 @@ export function PropriedadesNotion({
   }
 
   function duplicarPropriedade(chave: string) {
-    if (camposFixos[chave]) return;
+    if (todosCamposFixos[chave]) return;
     let novoNome = `${chave}_copia`;
     let idx = 2;
-    while (dados[novoNome] !== undefined || camposFixos[novoNome] !== undefined) {
+    while (dados[novoNome] !== undefined || todosCamposFixos[novoNome] !== undefined) {
       novoNome = `${chave}_copia_${idx}`;
       idx++;
     }
@@ -1090,7 +1097,7 @@ export function PropriedadesNotion({
     const nomeBase = nomeNovoCampo.trim() || nomePadrao;
     let nomeFinal = nomeBase;
     let idx = 2;
-    while (dados[nomeFinal] !== undefined || camposFixos[nomeFinal] !== undefined) {
+    while (dados[nomeFinal] !== undefined || todosCamposFixos[nomeFinal] !== undefined) {
       nomeFinal = `${nomeBase} ${idx}`;
       idx++;
     }
@@ -1230,7 +1237,7 @@ export function PropriedadesNotion({
   }
 
   function renderizarValor(chave: string) {
-    const fixo = camposFixos[chave];
+    const fixo = todosCamposFixos[chave];
     const valor = dados[chave];
     const tipo = 
       chave === "status" ? "status" :
@@ -1862,7 +1869,7 @@ export function PropriedadesNotion({
       )}
 
       {chavesVisiveis.map((chave, idx) => {
-        const fixo = camposFixos[chave];
+        const fixo = todosCamposFixos[chave];
         const descricao = descricoesMap[chave];
         return (
           <div key={chave} className="flex min-h-8 items-center gap-1.5 sm:gap-3 text-xs group relative">
@@ -1957,7 +1964,7 @@ export function PropriedadesNotion({
           {mostrandoOcultas && (
             <div className="flex flex-col gap-1.5 mt-1.5 pl-2 border-l border-border/60">
               {chavesOcultas.map((chave, idx) => {
-                const fixo = camposFixos[chave];
+                const fixo = todosCamposFixos[chave];
                 const descricao = descricoesMap[chave];
                 return (
                   <div key={chave} className="flex min-h-8 items-center gap-1.5 sm:gap-3 text-xs group opacity-75 hover:opacity-100 relative">
