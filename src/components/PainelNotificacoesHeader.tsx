@@ -154,14 +154,14 @@ export function PainelNotificacoesHeader() {
     return () => window.removeEventListener("acervo-atualizado", carregarNotificacoes);
   }, [carregarNotificacoes]);
 
-  // Contagem de não vistos: apenas itens que venceram ou vencem HOJE (nunca itens futuros)
+  // Contagem de não vistos: apenas itens que começaram até hoje (nunca itens puramente futuros)
   const naoVistosCount = useMemo(() => {
     const hojeStr = hojeISO();
     return itens.filter((i) => {
       if (i.visto) return false;
-      const dataIso = normalizarDataISO(i.dataVencimento);
-      if (!dataIso) return true;
-      return dataIso <= hojeStr;
+      const inicioIso = i.dataInicioIso || normalizarDataISO(i.dataVencimento);
+      if (!inicioIso) return true;
+      return inicioIso <= hojeStr;
     }).length;
   }, [itens]);
 
@@ -175,20 +175,26 @@ export function PainelNotificacoesHeader() {
     if (filtro === "nao_vistos") {
       return itens.filter((i) => {
         if (i.visto) return false;
-        const dataIso = normalizarDataISO(i.dataVencimento);
-        if (!dataIso) return true;
-        return dataIso <= hojeStr;
+        const inicioIso = i.dataInicioIso || normalizarDataISO(i.dataVencimento);
+        if (!inicioIso) return true;
+        return inicioIso <= hojeStr;
       });
     }
 
     if (filtro === "semana") {
       return itens.filter((i) => {
-        if (!i.dataVencimento) return !i.visto;
-        const d = new Date(i.dataVencimento);
-        if (isNaN(d.getTime())) return true;
-        const diff = d.getTime() - agoraMs;
-        // Compromissos entre hoje e próximos 7 dias ou atrasados pendentes
-        return diff >= -24 * 60 * 60 * 1000 && diff <= seteDiasFrenteMs;
+        const inicioIso = i.dataInicioIso || normalizarDataISO(i.dataVencimento);
+        const fimIso = i.dataFimIso || inicioIso;
+        if (!inicioIso) return !i.visto;
+
+        const dInicio = new Date(`${inicioIso}T00:00:00`);
+        const dFim = new Date(`${fimIso || inicioIso}T23:59:59`);
+        if (isNaN(dInicio.getTime()) || isNaN(dFim.getTime())) return true;
+
+        const fimJanela = agoraMs + seteDiasFrenteMs;
+        const inicioJanela = agoraMs - 24 * 60 * 60 * 1000;
+
+        return dInicio.getTime() <= fimJanela && dFim.getTime() >= inicioJanela;
       });
     }
 
@@ -422,7 +428,8 @@ export function PainelNotificacoesHeader() {
             ) : (
               itensExibidos.map((item) => {
                 const ehNovo = !item.visto;
-                const ehAtrasada = item.tipo === "tarefa_atrasada";
+                const dataFimCalculada = item.dataFimIso || normalizarDataISO(item.dataVencimento);
+                const ehAtrasada = item.tipo === "tarefa_atrasada" || (dataFimCalculada ? dataFimCalculada < hojeISO() && item.tipo !== "google_calendar" : false);
                 const ehGoogle = item.tipo === "google_calendar" || item.id.startsWith("google-");
                 const infoDoc = obterInfoDocumento(item);
                 const IconeDoc = infoDoc.Icone;
@@ -507,7 +514,11 @@ export function PainelNotificacoesHeader() {
                               : "text-muted-foreground bg-secondary/60"
                           )}
                         >
-                          {item.dataVencimento.replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1").slice(0, 10)}
+                          {item.dataInicioIso && item.dataFimIso && item.dataInicioIso !== item.dataFimIso
+                            ? `${item.dataInicioIso.slice(8, 10)}/${item.dataInicioIso.slice(5, 7)} → ${item.dataFimIso.slice(8, 10)}/${item.dataFimIso.slice(5, 7)}`
+                            : item.dataVencimento.includes("→") || item.dataVencimento.includes(" a ")
+                            ? item.dataVencimento
+                            : item.dataVencimento.replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1").slice(0, 10)}
                         </span>
                       )}
 

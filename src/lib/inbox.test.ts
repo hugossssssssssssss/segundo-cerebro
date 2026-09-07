@@ -8,8 +8,10 @@ import {
   salvarEstadoInboxLocal,
   adiarDataHora,
   aplicarEstadoInboxNoFrontmatter,
+  compilarEventosGoogleParaInbox,
 } from "./inbox";
 import type { ItemRepo } from "./repo";
+import type { EventoGoogle } from "./googleCalendar";
 
 describe("inbox", () => {
   beforeEach(() => {
@@ -337,6 +339,43 @@ apagado_em: 2026-08-15T10:00:00.000Z
     const agora = new Date(2026, 7, 21);
     const caixa = compilarItensInbox(itensRepo, {}, agora);
     expect(caixa).toHaveLength(0);
+  });
+
+  it("compilarEventosGoogleParaInbox não marca como atrasado evento com intervalo em andamento", () => {
+    const eventos: EventoGoogle[] = [
+      {
+        id: "ev-intervalo-1",
+        titulo: "Semana de Design",
+        inicio: "2026-08-31",
+        fim: "2026-09-16", // Google end.date exclusiva (+1 dia) = termina 15/09
+        oDiaTodo: true,
+        agendaNome: "Design Team",
+      },
+      {
+        id: "ev-passado",
+        titulo: "Evento Passado",
+        inicio: "2026-08-01",
+        fim: "2026-08-05",
+        oDiaTodo: true,
+      },
+    ];
+
+    // Hoje é 07/09/2026
+    const agora = new Date(2026, 8, 7, 12, 0, 0);
+    const itens = compilarEventosGoogleParaInbox(eventos, {}, agora);
+
+    expect(itens).toHaveLength(2);
+
+    const emAndamento = itens.find((i) => i.id === "google-ev-intervalo-1");
+    expect(emAndamento).toBeDefined();
+    expect(emAndamento?.dataInicioIso).toBe("2026-08-31");
+    expect(emAndamento?.dataFimIso).toBe("2026-09-15");
+    // Como hoje (07/09) está dentro do intervalo [31/08, 15/09], não é atrasado e está ativo/em andamento hoje
+    expect(emAndamento?.visto).toBe(false);
+
+    const passado = itens.find((i) => i.id === "google-ev-passado");
+    expect(passado).toBeDefined();
+    expect(passado?.dataFimIso).toBe("2026-08-04");
   });
 });
 

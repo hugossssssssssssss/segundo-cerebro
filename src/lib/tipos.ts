@@ -203,6 +203,8 @@ export interface ItemInbox {
   caminhoOrigem: string;
   tituloOrigem: string;
   dataVencimento: string;
+  dataInicioIso?: string;
+  dataFimIso?: string;
   visto: boolean;
   vistoEm?: string;
   notificadoTelegram?: boolean;

@@ -18,7 +18,7 @@ import { comoTarefa } from "./entidades";
 import { extrairIntervaloTarefa } from "./tarefas";
 import { ler } from "./github";
 import { formatarDataPtBR, rotuloStatusAmigavel, normalizarDataISO } from "./utils";
-import { obterEstiloEventoGoogle, type EventoGoogle } from "./googleCalendar";
+import { obterEstiloEventoGoogle, extrairIntervaloEventoGoogle, type EventoGoogle } from "./googleCalendar";
 
 export const CAMINHO_ESTADO_INBOX = "caixa-entrada/estado.json";
 const CHAVE_LOCAL_INBOX = "segundo-cerebro:inbox-estado";
@@ -312,6 +312,8 @@ export function compilarItensInbox(
               caminhoOrigem: item.caminho,
               tituloOrigem: tituloDoc,
               dataVencimento: intervalo.textoFormatado,
+              dataInicioIso: inicioIso,
+              dataFimIso: fimIso,
               visto: vistoFinal,
               vistoEm: vistoEmNoDoc || estado?.vistoEm || (criadoRecentemente ? agora.toISOString() : undefined),
               notificadoTelegram: estado?.notificadoTelegram,
@@ -346,6 +348,8 @@ export function compilarItensInbox(
           caminhoOrigem: lembrete.caminhoOrigem,
           tituloOrigem: lembrete.tituloOrigem,
           dataVencimento: lembrete.dataHora,
+          dataInicioIso: dataNormalizada,
+          dataFimIso: dataNormalizada,
           visto: ehFuturo || Boolean(estado?.visto),
           vistoEm: estado?.vistoEm,
           notificadoTelegram: estado?.notificadoTelegram,
@@ -413,6 +417,8 @@ export function compilarItensInbox(
             caminhoOrigem: item.caminho,
             tituloOrigem: tituloDoc,
             dataVencimento: dataValor,
+            dataInicioIso: dataValor,
+            dataFimIso: dataValor,
             visto: ehFuturo || vistoNoDoc || Boolean(estado?.visto) || (criadoRecentemente && !ehAtrasado),
             vistoEm: vistoEmNoDoc || estado?.vistoEm || (criadoRecentemente ? agora.toISOString() : undefined),
             notificadoTelegram: estado?.notificadoTelegram,
@@ -450,7 +456,10 @@ export function compilarEventosGoogleParaInbox(
   mapaEstado: MapaEstadoInbox,
   agora: Date = new Date()
 ): ItemInbox[] {
-  const hojeIso = agora.toISOString().slice(0, 10);
+  const ano = agora.getFullYear();
+  const mes = String(agora.getMonth() + 1).padStart(2, "0");
+  const dia = String(agora.getDate()).padStart(2, "0");
+  const hojeIso = `${ano}-${mes}-${dia}`;
   const itens: ItemInbox[] = [];
 
   for (const ev of eventos) {
@@ -458,23 +467,49 @@ export function compilarEventosGoogleParaInbox(
     const estado = mapaEstado[id];
     if (estado?.descartado) continue;
 
-    const dataVenc = ev.inicio ? ev.inicio.slice(0, 10) : hojeIso;
+    const intervalo = extrairIntervaloEventoGoogle(ev);
+    let inicioIso: string;
+    let fimIso: string;
+
+    if (intervalo) {
+      const anoI = intervalo.inicio.getFullYear();
+      const mesI = String(intervalo.inicio.getMonth() + 1).padStart(2, "0");
+      const diaI = String(intervalo.inicio.getDate()).padStart(2, "0");
+      inicioIso = `${anoI}-${mesI}-${diaI}`;
+
+      const anoF = intervalo.fim.getFullYear();
+      const mesF = String(intervalo.fim.getMonth() + 1).padStart(2, "0");
+      const diaF = String(intervalo.fim.getDate()).padStart(2, "0");
+      fimIso = `${anoF}-${mesF}-${diaF}`;
+    } else {
+      inicioIso = ev.inicio ? ev.inicio.slice(0, 10) : hojeIso;
+      fimIso = ev.fim ? ev.fim.slice(0, 10) : inicioIso;
+    }
+
     const hora = ev.inicio && !ev.oDiaTodo && ev.inicio.includes("T")
       ? ev.inicio.slice(11, 16)
       : "";
     const horaFormatada = ev.oDiaTodo ? "Dia inteiro" : hora ? `${hora}` : "";
 
     const estilo = obterEstiloEventoGoogle(ev);
-    const ehHoje = dataVenc === hojeIso;
-    const ehAtrasado = dataVenc < hojeIso;
+    const ehAtrasado = fimIso < hojeIso;
+    const ehHoje = hojeIso >= inicioIso && hojeIso <= fimIso;
 
     const detalhes: string[] = [];
-    if (horaFormatada) detalhes.push(horaFormatada);
+    if (intervalo?.ehIntervalo && intervalo.textoFormatado) {
+      detalhes.push(intervalo.textoFormatado);
+    } else if (horaFormatada) {
+      detalhes.push(horaFormatada);
+    }
     if (ev.local) detalhes.push(`📍 ${ev.local}`);
     if (ev.agendaNome) detalhes.push(`[${ev.agendaNome}]`);
     if (ev.descricao) detalhes.push(ev.descricao.slice(0, 90));
 
     const descricao = detalhes.join(" • ") || "Evento sincronizado do Google Calendar.";
+
+    const dataVencimentoFormatada = intervalo?.ehIntervalo && intervalo.textoFormatado
+      ? intervalo.textoFormatado
+      : (ev.inicio || inicioIso);
 
     itens.push({
       id,
@@ -483,7 +518,9 @@ export function compilarEventosGoogleParaInbox(
       descricao,
       caminhoOrigem: "",
       tituloOrigem: ev.agendaNome || "Google Calendar",
-      dataVencimento: ev.inicio || dataVenc,
+      dataVencimento: dataVencimentoFormatada,
+      dataInicioIso: inicioIso,
+      dataFimIso: fimIso,
       visto: Boolean(estado?.visto) || (!ehHoje && !ehAtrasado),
       vistoEm: estado?.vistoEm,
       link: ev.link,
