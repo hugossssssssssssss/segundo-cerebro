@@ -2,8 +2,10 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { lerConfig } from "@/lib/settings";
-import { Pencil, Check, RotateCcw, Plus, X } from "lucide-react";
+import { Pencil, Check, RotateCcw, Plus, X, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RenderizadorIconeItem } from "@/components/ModalSelecionarIconeFavorito";
+import { sugerirIconePorUrl } from "@/lib/catalogoIconesMarcas";
 
 /**
  * Interface de um App / Atalho no Launcher do Google
@@ -12,246 +14,103 @@ export interface ItemGoogleApp {
   id: string;
   nome: string;
   url: string;
-  icone:
-    | "conta"
-    | "drive"
-    | "gmail"
-    | "youtube"
-    | "gemini"
-    | "maps"
-    | "pesquisa"
-    | "agenda"
-    | "notebook"
-    | "chrome"
-    | "noticias"
-    | "fotos"
-    | "meet"
-    | "tradutor"
-    | "play"
-    | "custom";
+  iconeId?: string; // id do catálogo ex: "si:gmail", "si:googledrive"
+  tipoEspecial?: "conta";
   personalizado?: boolean;
 }
 
 export const APPS_PADRAO_GOOGLE: ItemGoogleApp[] = [
-  { id: "conta", nome: "Conta", url: "https://myaccount.google.com/", icone: "conta" },
-  { id: "drive", nome: "Drive", url: "https://drive.google.com/", icone: "drive" },
-  { id: "gmail", nome: "Gmail", url: "https://mail.google.com/", icone: "gmail" },
-  { id: "youtube", nome: "YouTube", url: "https://www.youtube.com/", icone: "youtube" },
-  { id: "gemini", nome: "Gemini", url: "https://gemini.google.com/", icone: "gemini" },
-  { id: "maps", nome: "Maps", url: "https://maps.google.com/", icone: "maps" },
-  { id: "pesquisa", nome: "Pesquisa", url: "https://www.google.com/", icone: "pesquisa" },
-  { id: "agenda", nome: "Agenda", url: "https://calendar.google.com/", icone: "agenda" },
-  { id: "notebook", nome: "Notebook", url: "https://notebooklm.google.com/", icone: "notebook" },
-  { id: "chrome", nome: "Chrome", url: "https://www.google.com/chrome/", icone: "chrome" },
-  { id: "noticias", nome: "Notícias", url: "https://news.google.com/", icone: "noticias" },
-  { id: "fotos", nome: "Fotos", url: "https://photos.google.com/", icone: "fotos" },
-  { id: "meet", nome: "Meet", url: "https://meet.google.com/", icone: "meet" },
-  { id: "tradutor", nome: "Tradutor", url: "https://translate.google.com/", icone: "tradutor" },
-  { id: "play", nome: "Play", url: "https://play.google.com/", icone: "play" },
+  { id: "conta", nome: "Conta", url: "https://myaccount.google.com/", tipoEspecial: "conta" },
+  { id: "drive", nome: "Drive", url: "https://drive.google.com/", iconeId: "si:googledrive" },
+  { id: "gmail", nome: "Gmail", url: "https://mail.google.com/", iconeId: "si:gmail" },
+  { id: "youtube", nome: "YouTube", url: "https://www.youtube.com/", iconeId: "si:youtube" },
+  { id: "gemini", nome: "Gemini", url: "https://gemini.google.com/", iconeId: "si:googlegemini" },
+  { id: "maps", nome: "Maps", url: "https://maps.google.com/", iconeId: "si:googlemaps" },
+  { id: "pesquisa", nome: "Pesquisa", url: "https://www.google.com/", iconeId: "si:google" },
+  { id: "agenda", nome: "Agenda", url: "https://calendar.google.com/", iconeId: "si:googlecalendar" },
+  { id: "notebook", nome: "Notebook", url: "https://notebooklm.google.com/", iconeId: "si:googlekeep" },
+  { id: "chrome", nome: "Chrome", url: "https://www.google.com/chrome/", iconeId: "si:googlechrome" },
+  { id: "noticias", nome: "Notícias", url: "https://news.google.com/", iconeId: "si:googlenews" },
+  { id: "fotos", nome: "Fotos", url: "https://photos.google.com/", iconeId: "si:googlephotos" },
+  { id: "meet", nome: "Meet", url: "https://meet.google.com/", iconeId: "si:googlemeet" },
+  { id: "tradutor", nome: "Tradutor", url: "https://translate.google.com/", iconeId: "si:googletranslate" },
+  { id: "play", nome: "Play", url: "https://play.google.com/", iconeId: "si:googleplay" },
 ];
 
 const CHAVE_STORAGE = "klaus_google_apps_favoritos_ordem";
 
+function extrairDominio(url: string): string {
+  try {
+    const semProtocolo = url.replace(/^https?:\/\//i, "");
+    return semProtocolo.split("/")[0].split("?")[0].split("#")[0];
+  } catch {
+    return "";
+  }
+}
+
 /**
- * Ícones Oficiais do Google em SVG de Alta Fidelidade
+ * Renderizador de Ícones Oficiais do Pacote de Favoritos do Klaus
  */
-export function IconeGoogleOficial({
-  tipo,
-  nome,
+export function IconeAppOficial({
+  app,
   avatarUrl,
 }: {
-  tipo: ItemGoogleApp["icone"];
-  nome: string;
+  app: ItemGoogleApp;
   avatarUrl?: string;
 }) {
-  switch (tipo) {
-    case "conta":
-      return (
-        <div className="w-11 h-11 rounded-full p-[1.5px] bg-gradient-to-tr from-[#4285F4] via-[#EA4335] to-[#FBBC05] shadow-xs flex items-center justify-center select-none shrink-0">
-          <div className="w-full h-full rounded-full overflow-hidden bg-background flex items-center justify-center">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={nome} className="w-full h-full object-cover" />
-            ) : (
-              <span className="font-semibold text-primary text-sm">
-                {nome.slice(0, 1).toUpperCase()}
-              </span>
-            )}
-          </div>
+  const [erroImagem, setErroImagem] = useState(false);
+
+  // 1. Caso especial: Foto da conta do usuário
+  if (app.tipoEspecial === "conta" || app.id === "conta") {
+    return (
+      <div className="w-11 h-11 rounded-full p-[1.5px] bg-gradient-to-tr from-[#4285F4] via-[#EA4335] to-[#FBBC05] shadow-xs flex items-center justify-center select-none shrink-0">
+        <div className="w-full h-full rounded-full overflow-hidden bg-background flex items-center justify-center">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={app.nome} className="w-full h-full object-cover" />
+          ) : (
+            <span className="font-semibold text-primary text-sm">
+              {app.nome.slice(0, 1).toUpperCase()}
+            </span>
+          )}
         </div>
-      );
-
-    case "drive":
-      return (
-        <svg viewBox="0 0 87.3 78" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M6.6 66.85L38.55 11.5H74.35L42.4 66.85H6.6Z" fill="#0066DA" />
-          <path d="M43.65 66.85L59.15 40L87.3 66.85H43.65Z" fill="#00AC47" />
-          <path d="M29.1 11.5L0 66.85H35.8L64.9 11.5H29.1Z" fill="#FFBA00" />
-          <path d="M74.35 11.5L58.85 38.35L29.1 11.5H74.35Z" fill="#FFBA00" />
-          <path d="M58.2 16.45L87.3 66.85H51.5L22.4 16.45H58.2Z" fill="#00AC47" />
-        </svg>
-      );
-
-    case "gmail":
-      return (
-        <svg viewBox="0 0 64 64" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 48V21.6L32 36.6L52 21.6V48C52 50.2 50.2 52 48 52H16C13.8 52 12 50.2 12 48Z" fill="#4285F4" opacity="0.12" />
-          <path d="M48 12H52C54.2 12 56 13.8 56 16V48C56 50.2 54.2 52 52 52H48V21.6L32 33.6L16 21.6V52H12C9.8 52 8 50.2 8 48V16C8 13.8 9.8 12 12 12H16L32 24L48 12Z" fill="#EA4335" />
-          <path d="M8 16C8 13.8 9.8 12 12 12H16V26.4L8 20.4V16Z" fill="#C5221F" />
-          <path d="M56 16C56 13.8 54.2 12 52 12H48V26.4L56 20.4V16Z" fill="#C5221F" />
-          <path d="M8 48C8 50.2 9.8 52 12 52H16V31L8 25V48Z" fill="#4285F4" />
-          <path d="M56 48C56 50.2 54.2 52 52 52H48V31L56 25V48Z" fill="#34A853" />
-          <path d="M16 52H48V33.6L32 45.6L16 33.6V52Z" fill="#FBBC05" />
-        </svg>
-      );
-
-    case "youtube":
-      return (
-        <svg viewBox="0 0 64 64" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="6" y="14" width="52" height="36" rx="11" fill="#FF0000" />
-          <path d="M26 23L42 32L26 41V23Z" fill="white" />
-        </svg>
-      );
-
-    case "gemini":
-      return (
-        <svg viewBox="0 0 64 64" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="geminiOfficial" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#1BA1E3" />
-              <stop offset="35%" stopColor="#5B76F7" />
-              <stop offset="70%" stopColor="#9B51E0" />
-              <stop offset="100%" stopColor="#F28B82" />
-            </linearGradient>
-          </defs>
-          <path
-            d="M32 4C32 19.464 19.464 32 4 32C19.464 32 32 44.536 32 60C32 44.536 44.536 32 60 32C44.536 32 32 19.464 32 4Z"
-            fill="url(#geminiOfficial)"
-          />
-        </svg>
-      );
-
-    case "maps":
-      return (
-        <svg viewBox="0 0 64 64" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M32 6C20.4 6 11 15.4 11 27C11 40.5 29.2 55.4 30.5 56.5C31.4 57.2 32.6 57.2 33.5 56.5C34.8 55.4 53 40.5 53 27C53 15.4 43.6 6 32 6Z" fill="#EA4335" />
-          <path d="M32 6C20.4 6 11 15.4 11 27C11 32.8 14 38.6 18.5 43.6L32 27V6Z" fill="#4285F4" />
-          <path d="M32 27L45.5 43.6C50 38.6 53 32.8 53 27C53 15.4 43.6 6 32 6V27Z" fill="#EA4335" />
-          <path d="M18.5 43.6L32 56.5V27L18.5 43.6Z" fill="#34A853" />
-          <path d="M32 56.5L45.5 43.6L32 27V56.5Z" fill="#FBBC04" />
-          <circle cx="32" cy="27" r="7.5" fill="#1A73E8" />
-        </svg>
-      );
-
-    case "pesquisa":
-      return (
-        <svg viewBox="0 0 64 64" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M54.5 32.5C54.5 30.7 54.3 29 54 27.5H32V36.2H44.7C44.1 39.2 42.4 41.7 39.8 43.4V49.4H47.4C51.8 45.3 54.5 39.5 54.5 32.5Z" fill="#4285F4" />
-          <path d="M32 55.5C38.3 55.5 43.6 53.4 47.4 49.4L39.8 43.4C37.8 44.8 35.1 45.7 32 45.7C25.8 45.7 20.6 41.5 18.7 35.8H10.9V42H18.7C22.6 49.8 30.6 55.5 32 55.5Z" fill="#34A853" />
-          <path d="M18.7 35.8C18.2 34.3 17.9 32.7 17.9 31C17.9 29.3 18.2 27.7 18.7 26.2V20H10.9C9.3 23.3 8.4 27.1 8.4 31C8.4 34.9 9.3 38.7 10.9 42L18.7 35.8Z" fill="#FBBC05" />
-          <path d="M32 16.3C35.5 16.3 38.6 17.5 41 19.8L47.6 13.2C43.6 9.4 38.3 7 32 7C22.6 7 14.6 12.7 10.9 20L18.7 26.2C20.6 20.5 25.8 16.3 32 16.3Z" fill="#EA4335" />
-        </svg>
-      );
-
-    case "agenda":
-      return (
-        <svg viewBox="0 0 64 64" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="8" y="10" width="48" height="48" rx="12" fill="#4285F4" />
-          <rect x="8" y="10" width="48" height="15" rx="12" fill="#1A73E8" />
-          <rect x="8" y="20" width="48" height="5" fill="#1A73E8" />
-          <text x="32" y="47" textAnchor="middle" fill="white" fontSize="20" fontWeight="bold" fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
-            31
-          </text>
-        </svg>
-      );
-
-    case "notebook":
-      return (
-        <svg viewBox="0 0 64 64" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="nbOficial" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#1A73E8" />
-              <stop offset="100%" stopColor="#8AB4F8" />
-            </linearGradient>
-          </defs>
-          <circle cx="32" cy="32" r="23" fill="none" stroke="url(#nbOficial)" strokeWidth="4.5" />
-          <circle cx="32" cy="32" r="14.5" fill="none" stroke="#A8C7FA" strokeWidth="4" />
-          <circle cx="32" cy="32" r="6" fill="#1A73E8" />
-        </svg>
-      );
-
-    case "chrome":
-      return (
-        <svg viewBox="0 0 64 64" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="32" cy="32" r="25" fill="#EA4335" />
-          <path d="M32 7C44.2 7 54.4 15.3 57.2 26.5H32L23 11.2C25.8 8.5 28.8 7 32 7Z" fill="#EA4335" />
-          <path d="M57.2 26.5C58.1 28.6 58.5 30.9 58.5 33.3C58.5 46.5 48.5 57.5 35.6 59.1L45.2 42.5L57.2 26.5Z" fill="#FBBC05" />
-          <path d="M35.6 59.1C34.4 59.2 33.2 59.3 32 59.3C18.6 59.3 7.6 49.3 6 36.5L19.2 36.5L35.6 59.1Z" fill="#34A853" />
-          <circle cx="32" cy="32" r="12.5" fill="white" />
-          <circle cx="32" cy="32" r="9.5" fill="#1A73E8" />
-        </svg>
-      );
-
-    case "noticias":
-      return (
-        <svg viewBox="0 0 64 64" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="10" y="12" width="44" height="40" rx="7" fill="#4285F4" />
-          <rect x="16" y="20" width="32" height="13" rx="2" fill="white" />
-          <rect x="16" y="38" width="18" height="3" rx="1.5" fill="#E8F0FE" />
-          <rect x="16" y="43" width="14" height="3" rx="1.5" fill="#E8F0FE" />
-          <rect x="38" y="37" width="10" height="9" rx="2" fill="#EA4335" />
-        </svg>
-      );
-
-    case "fotos":
-      return (
-        <svg viewBox="0 0 64 64" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M32 9C37.8 9 42.5 13.7 42.5 19.5V32H32C26.2 32 21.5 27.3 21.5 21.5C21.5 15.7 26.2 9 32 9Z" fill="#EA4335" />
-          <path d="M55 32C55 37.8 50.3 42.5 44.5 42.5H32V32C32 26.2 36.7 21.5 42.5 21.5C48.3 21.5 55 26.2 55 32Z" fill="#4285F4" />
-          <path d="M32 55C26.2 55 21.5 50.3 21.5 44.5V32H32C37.8 32 42.5 36.7 42.5 42.5C42.5 48.3 37.8 55 32 55Z" fill="#34A853" />
-          <path d="M9 32C9 26.2 13.7 21.5 19.5 21.5H32V32C32 37.8 27.3 42.5 21.5 42.5C15.7 42.5 9 37.8 9 32Z" fill="#FBBC05" />
-        </svg>
-      );
-
-    case "meet":
-      return (
-        <svg viewBox="0 0 64 64" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="8" y="16" width="32" height="32" rx="7" fill="#00AC47" />
-          <path d="M40 26L56 16V48L40 38V26Z" fill="#00832D" />
-          <circle cx="24" cy="32" r="6" fill="#FFE01B" />
-        </svg>
-      );
-
-    case "tradutor":
-      return (
-        <svg viewBox="0 0 64 64" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="8" y="12" width="34" height="34" rx="7" fill="#4285F4" />
-          <text x="25" y="36" textAnchor="middle" fill="white" fontSize="20" fontWeight="bold" fontFamily="sans-serif">
-            G
-          </text>
-          <rect x="22" y="24" width="34" height="34" rx="7" fill="#EA4335" />
-          <text x="39" y="48" textAnchor="middle" fill="white" fontSize="18" fontWeight="bold" fontFamily="sans-serif">
-            文
-          </text>
-        </svg>
-      );
-
-    case "play":
-      return (
-        <svg viewBox="0 0 64 64" className="w-10 h-10 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M13 9L38 32L13 55V9Z" fill="#4285F4" />
-          <path d="M46 23.5L38 32L13 9L46 23.5Z" fill="#EA4335" />
-          <path d="M38 32L46 40.5L13 55L38 32Z" fill="#00AC47" />
-          <path d="M52 32L46 23.5L38 32L46 40.5L52 32Z" fill="#FFBA00" />
-        </svg>
-      );
-
-    default:
-      return (
-        <div className="w-10 h-10 rounded-2xl bg-secondary flex items-center justify-center text-foreground font-semibold text-sm border border-border/40 shadow-xs">
-          {nome.slice(0, 2).toUpperCase()}
-        </div>
-      );
+      </div>
+    );
   }
+
+  const dominio = extrairDominio(app.url);
+  const urlFaviconAltaRes = dominio
+    ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(dominio)}&sz=128`
+    : "";
+
+  const idIconeCatalogo = app.iconeId || sugerirIconePorUrl(app.url);
+
+  // Se a imagem direta carregar sem erro, exibe o ícone oficial em alta definição
+  if (urlFaviconAltaRes && !erroImagem) {
+    return (
+      <img
+        src={urlFaviconAltaRes}
+        alt={app.nome}
+        onError={() => setErroImagem(true)}
+        className="w-10 h-10 object-contain rounded-xl shrink-0 pointer-events-none transition-transform"
+        loading="lazy"
+      />
+    );
+  }
+
+  // Fallback para os ícones do pacote de marcas de favoritos
+  if (idIconeCatalogo) {
+    return (
+      <div className="w-10 h-10 flex items-center justify-center shrink-0">
+        <RenderizadorIconeItem iconeId={idIconeCatalogo} tamanho={36} className="w-9 h-9" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-10 h-10 rounded-2xl bg-secondary flex items-center justify-center text-foreground font-semibold text-sm border border-border/40 shadow-xs shrink-0">
+      <Globe size={20} className="text-muted-foreground" />
+    </div>
+  );
 }
 
 interface LauncherGoogleAppsProps {
@@ -260,7 +119,7 @@ interface LauncherGoogleAppsProps {
 
 /**
  * LauncherGoogleApps — Botão de 9 pontinhos e modal "Seus favoritos" estilo Google Apps
- * com reordenação fluida Drag & Drop nativa e design hiper clean
+ * com reaproveitamento do pacote oficial de ícones de marcas e Drag & Drop clean
  */
 export function LauncherGoogleApps({ aoAbrirBuscaWeb }: LauncherGoogleAppsProps) {
   const [aberto, setAberto] = useState(false);
@@ -368,11 +227,12 @@ export function LauncherGoogleApps({ aoAbrirBuscaWeb }: LauncherGoogleAppsProps)
     if (!/^https?:\/\//i.test(urlFormatada)) {
       urlFormatada = `https://${urlFormatada}`;
     }
+    const iconeSugerido = sugerirIconePorUrl(urlFormatada);
     const novo: ItemGoogleApp = {
       id: `custom_${Date.now()}`,
       nome: novoNome.trim(),
       url: urlFormatada,
-      icone: "custom",
+      iconeId: iconeSugerido,
       personalizado: true,
     };
     salvarLista([...apps, novo]);
@@ -486,7 +346,7 @@ export function LauncherGoogleApps({ aoAbrirBuscaWeb }: LauncherGoogleAppsProps)
           </div>
         )}
 
-        {/* Modal / Sheet Clean para Adicionar Novo Atalho */}
+        {/* Modal Clean para Adicionar Novo Atalho */}
         {modalNovoAberto && (
           <div className="mx-5 mb-3 p-3.5 rounded-2xl bg-card border border-border/80 shadow-md animate-in fade-in-0 zoom-in-95">
             <div className="flex items-center justify-between mb-2">
@@ -576,12 +436,11 @@ export function LauncherGoogleApps({ aoAbrirBuscaWeb }: LauncherGoogleAppsProps)
                     </button>
                   )}
 
-                  {/* Ícone Oficial */}
+                  {/* Ícone Oficial do Pacote de Marcas */}
                   <div className="flex items-center justify-center relative my-0.5 pointer-events-none">
-                    <IconeGoogleOficial
-                      tipo={app.icone}
-                      nome={app.nome}
-                      avatarUrl={app.icone === "conta" ? avatarHugo : undefined}
+                    <IconeAppOficial
+                      app={app}
+                      avatarUrl={app.tipoEspecial === "conta" ? avatarHugo : undefined}
                     />
                   </div>
 
