@@ -23,15 +23,19 @@ import {
   Globe,
   RefreshCw,
   Check,
+  Circle,
+  ExternalLink,
+  Play,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { SeloStatus } from "@/components/SeloStatus";
 import { TagChip } from "@/components/TagChip";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { urgencia, extrairIntervaloTarefa, type Tarefa } from "@/lib/tarefas";
+import { urgencia, extrairIntervaloTarefa, type Tarefa, type Status } from "@/lib/tarefas";
 import { CORES_NOTION, lerConfigPropriedadesGlobais } from "@/components/PropriedadesNotion";
 import { MenuAcoesTarefa } from "@/components/MenuAcoesTarefa";
-import { Circle, Plus, ExternalLink } from "lucide-react";
 import {
   obterEstiloEventoGoogle,
   extrairIntervaloEventoGoogle,
@@ -112,7 +116,9 @@ export function Calendario({
   eventosGoogle = [],
   agendasGoogle = [],
   aoAlternarAgendaGoogle,
-  aoImportarEventoGoogle,
+  aoMudarStatusEventoGoogle,
+  aoEditarEventoGoogle,
+  aoExcluirEventoGoogle,
   mostrarEventosGoogle = true,
   aoAlternarMostrarEventosGoogle,
   aoMudarMes,
@@ -130,7 +136,9 @@ export function Calendario({
   eventosGoogle?: EventoGoogle[];
   agendasGoogle?: AgendaGoogle[];
   aoAlternarAgendaGoogle?: (agendaId: string) => void;
-  aoImportarEventoGoogle?: (ev: EventoGoogle) => void;
+  aoMudarStatusEventoGoogle?: (ev: EventoGoogle, status: Status) => void;
+  aoEditarEventoGoogle?: (ev: EventoGoogle) => void;
+  aoExcluirEventoGoogle?: (ev: EventoGoogle) => void;
   mostrarEventosGoogle?: boolean;
   aoAlternarMostrarEventosGoogle?: (mostrar: boolean) => void;
   aoMudarMes?: (mes: Date) => void;
@@ -514,7 +522,7 @@ export function Calendario({
                     {/* Exibe barra unificada contínua em telas médias/grandes */}
                     <div className="hidden sm:block space-y-1">
                       {/* Eventos do Google Calendar com Cores Reais e Conexão de Múltiplos Dias */}
-                      {eventosDia.slice(0, 2).map((ev) => {
+                      {eventosDia.slice(0, 3).map((ev) => {
                         const estiloEv = obterEstiloEventoGoogle(ev);
                         const intervaloEv = extrairIntervaloEventoGoogle(ev);
                         let formaIntervalo = "rounded-md px-1.5";
@@ -539,7 +547,7 @@ export function Calendario({
                           }
                         }
 
-                        const tooltipTexto = `${ev.agendaNome ? `[${ev.agendaNome}] ` : ""}${ev.titulo}${
+                        const tooltipTexto = `${ev.titulo}${
                           intervaloEv?.ehIntervalo ? ` (${intervaloEv.textoFormatado})` : ev.local ? ` (${ev.local})` : ""
                         }`;
 
@@ -552,28 +560,20 @@ export function Calendario({
                               }}
                               className={cn(
                                 "min-h-[20px] h-auto py-0.5 flex items-center gap-1 text-[10px] font-medium border leading-snug cursor-pointer break-words transition-all",
-                                formaIntervalo,
-                                estiloEv.bg,
-                                estiloEv.text,
-                                estiloEv.border
+                                formaIntervalo
                               )}
-                              style={
-                                estiloEv.corHex && !ev.corId
-                                  ? {
-                                      backgroundColor: `${estiloEv.corHex}20`,
-                                      borderColor: `${estiloEv.corHex}40`,
-                                    }
-                                  : undefined
-                              }
+                              style={{
+                                backgroundColor: `${estiloEv.corHex}26`,
+                                borderColor: `${estiloEv.corHex}55`,
+                              }}
                             >
                               {deveExibirTitulo ? (
                                 <>
-                                  <Globe
-                                    size={10}
-                                    className="shrink-0"
-                                    style={{ color: estiloEv.corHex || "#3b82f6" }}
+                                  <span
+                                    className="h-1.5 w-1.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: estiloEv.corHex }}
                                   />
-                                  <span className="truncate">{ev.titulo}</span>
+                                  <span className="truncate text-foreground font-semibold">{ev.titulo}</span>
                                 </>
                               ) : (
                                 <span className="invisible select-none">&nbsp;</span>
@@ -655,16 +655,16 @@ export function Calendario({
 
                     {/* Indicador por pontos coloridos no celular */}
                     <div className="sm:hidden flex items-center gap-1 justify-center pt-1 flex-wrap">
-                      {eventosDia.slice(0, 2).map((ev) => {
+                      {eventosDia.slice(0, 3).map((ev) => {
                         const estiloEv = obterEstiloEventoGoogle(ev);
                         return (
                           <Tooltip
                             key={ev.id}
-                            conteudo={`${ev.agendaNome ? `[${ev.agendaNome}] ` : ""}${ev.titulo}`}
+                            conteudo={ev.titulo}
                           >
                             <span
                               className="h-1.5 w-1.5 rounded-full shrink-0 cursor-pointer"
-                              style={{ backgroundColor: estiloEv.corHex || "#3b82f6" }}
+                              style={{ backgroundColor: estiloEv.corHex }}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelecionado(d);
@@ -736,48 +736,41 @@ export function Calendario({
                       ? format(new Date(ev.inicio), "HH:mm")
                       : "";
 
+                    const tarefaVinculada = tarefas.find(
+                      (t) => t.googleCalendarId === ev.id || t.bruto?.google_calendar_id === ev.id
+                    );
+
                     return (
                       <div
                         key={ev.id}
-                        className={cn(
-                          "p-3 rounded-xl border transition-colors space-y-2 text-xs",
-                          estiloEv.bg,
-                          estiloEv.border
-                        )}
-                        style={
-                          estiloEv.corHex && !ev.corId
-                            ? {
-                                backgroundColor: `${estiloEv.corHex}15`,
-                                borderColor: `${estiloEv.corHex}35`,
-                              }
-                            : undefined
-                        }
+                        className="p-3 rounded-xl border transition-all space-y-2.5 text-xs bg-card/70 hover:bg-card group"
+                        style={{
+                          backgroundColor: `${estiloEv.corHex}12`,
+                          borderColor: `${estiloEv.corHex}45`,
+                        }}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div className="space-y-0.5 flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {ev.agendaNome && (
-                                <span
-                                  className="text-[9px] font-bold px-1.5 py-0.2 rounded-md border flex items-center gap-1"
-                                  style={{
-                                    backgroundColor: `${estiloEv.corHex || "#3b82f6"}20`,
-                                    borderColor: `${estiloEv.corHex || "#3b82f6"}40`,
-                                    color: estiloEv.corHex || "#3b82f6",
-                                  }}
-                                >
-                                  {ev.agendaNome}
-                                </span>
-                              )}
-                              <p className="font-bold text-foreground leading-snug break-words flex-1 min-w-0">
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <div className="flex items-start gap-2">
+                              <span
+                                className="w-2 h-2 rounded-full shrink-0 mt-1"
+                                style={{ backgroundColor: estiloEv.corHex }}
+                              />
+                              <p
+                                className={cn(
+                                  "font-bold text-foreground leading-snug break-words flex-1 min-w-0",
+                                  tarefaVinculada?.status === "feito" && "line-through text-muted-foreground"
+                                )}
+                              >
                                 {ev.titulo}
                               </p>
                             </div>
-                            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pl-4">
                               <Clock
                                 size={11}
-                                style={{ color: estiloEv.corHex || "#3b82f6" }}
+                                style={{ color: estiloEv.corHex }}
                               />
-                              {horaFormatada}
+                              <span>{horaFormatada}</span>
                               {ev.local && <span className="truncate"> • 📍 {ev.local}</span>}
                             </p>
                           </div>
@@ -786,7 +779,7 @@ export function Calendario({
                               href={ev.link}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-muted-foreground hover:text-blue-500 p-1"
+                              className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-accent transition-colors"
                               title="Abrir no Google Calendar"
                             >
                               <ExternalLink size={13} />
@@ -795,11 +788,11 @@ export function Calendario({
                         </div>
 
                         {intervaloEv?.ehIntervalo && (
-                          <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md min-w-0 max-w-full overflow-hidden">
+                          <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5 bg-background/70 px-2 py-1 rounded-md min-w-0 max-w-full overflow-hidden border border-border/40">
                             <CalendarIcon
                               size={12}
                               className="shrink-0"
-                              style={{ color: estiloEv.corHex || "#3b82f6" }}
+                              style={{ color: estiloEv.corHex }}
                             />
                             <span className="truncate">
                               Período: <strong className="text-foreground">{intervaloEv.textoFormatado}</strong>
@@ -808,20 +801,121 @@ export function Calendario({
                         )}
 
                         {ev.descricao && (
-                          <p className="text-[11px] text-muted-foreground line-clamp-2">
+                          <p className="text-[11px] text-muted-foreground line-clamp-2 pl-2 border-l-2 border-border/80">
                             {ev.descricao}
                           </p>
                         )}
 
-                        {aoImportarEventoGoogle && (
-                          <button
-                            type="button"
-                            onClick={() => aoImportarEventoGoogle(ev)}
-                            className="w-full mt-1.5 py-1 px-2 rounded-lg bg-background hover:bg-blue-500/10 border border-border/70 text-[11px] font-semibold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <Plus size={12} /> Transformar em Tarefa do Klaus
-                          </button>
-                        )}
+                        {/* Barra de Ações com Ícones Didáticos (Status, Editar, Concluir, Excluir) */}
+                        <div className="flex items-center justify-between pt-2 border-t border-border/40 gap-1.5">
+                          {/* Botões rápidos de Status */}
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <Tooltip
+                              conteudo={
+                                tarefaVinculada?.status === "a-fazer"
+                                  ? "Status no Klaus: A fazer"
+                                  : "Marcar / Mover para: A fazer"
+                              }
+                            >
+                              <button
+                                type="button"
+                                onClick={() => aoMudarStatusEventoGoogle?.(ev, "a-fazer")}
+                                className={cn(
+                                  "px-2 py-1 rounded-lg border text-xs font-medium flex items-center gap-1 transition-all cursor-pointer",
+                                  tarefaVinculada?.status === "a-fazer"
+                                    ? "bg-stone-500/20 text-stone-700 dark:text-stone-300 border-stone-500/40 shadow-xs font-semibold"
+                                    : "bg-background/80 hover:bg-accent text-muted-foreground border-border/60 hover:text-foreground"
+                                )}
+                              >
+                                <Circle size={12} />
+                                <span className="text-[10px]">A fazer</span>
+                              </button>
+                            </Tooltip>
+
+                            <Tooltip
+                              conteudo={
+                                tarefaVinculada?.status === "fazendo"
+                                  ? "Status no Klaus: Em andamento"
+                                  : "Marcar / Mover para: Em andamento"
+                              }
+                            >
+                              <button
+                                type="button"
+                                onClick={() => aoMudarStatusEventoGoogle?.(ev, "fazendo")}
+                                className={cn(
+                                  "px-2 py-1 rounded-lg border text-xs font-medium flex items-center gap-1 transition-all cursor-pointer",
+                                  tarefaVinculada?.status === "fazendo"
+                                    ? "bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/40 shadow-xs font-semibold"
+                                    : "bg-background/80 hover:bg-accent text-muted-foreground border-border/60 hover:text-foreground"
+                                )}
+                              >
+                                <Play
+                                  size={12}
+                                  className={tarefaVinculada?.status === "fazendo" ? "fill-blue-500" : ""}
+                                />
+                                <span className="text-[10px]">Em andamento</span>
+                              </button>
+                            </Tooltip>
+
+                            <Tooltip
+                              conteudo={
+                                tarefaVinculada?.status === "feito"
+                                  ? "Status no Klaus: Concluída"
+                                  : "Concluir / Encerrar tarefa"
+                              }
+                            >
+                              <button
+                                type="button"
+                                onClick={() => aoMudarStatusEventoGoogle?.(ev, "feito")}
+                                className={cn(
+                                  "px-2 py-1 rounded-lg border text-xs font-medium flex items-center gap-1 transition-all cursor-pointer",
+                                  tarefaVinculada?.status === "feito"
+                                    ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-xs font-semibold"
+                                    : "bg-background/80 hover:bg-emerald-500/10 text-muted-foreground border-border/60 hover:text-emerald-600"
+                                )}
+                              >
+                                <CheckCircle2
+                                  size={12}
+                                  className={
+                                    tarefaVinculada?.status === "feito"
+                                      ? "fill-emerald-500/20 text-emerald-600"
+                                      : ""
+                                  }
+                                />
+                                <span className="text-[10px]">Feito</span>
+                              </button>
+                            </Tooltip>
+                          </div>
+
+                          {/* Botões de Ação (Editar e Excluir) */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {aoEditarEventoGoogle && (
+                              <Tooltip conteudo="Editar evento (reflete no Google Calendar e Klaus)">
+                                <button
+                                  type="button"
+                                  onClick={() => aoEditarEventoGoogle(ev)}
+                                  className="p-1.5 rounded-lg bg-background/80 hover:bg-accent text-muted-foreground hover:text-foreground border border-border/60 transition-colors cursor-pointer"
+                                  aria-label="Editar evento"
+                                >
+                                  <Pencil size={13} />
+                                </button>
+                              </Tooltip>
+                            )}
+
+                            {aoExcluirEventoGoogle && (
+                              <Tooltip conteudo="Excluir evento do Google Calendar">
+                                <button
+                                  type="button"
+                                  onClick={() => aoExcluirEventoGoogle(ev)}
+                                  className="p-1.5 rounded-lg bg-background/80 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border/60 transition-colors cursor-pointer"
+                                  aria-label="Excluir evento"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     );
                   })}

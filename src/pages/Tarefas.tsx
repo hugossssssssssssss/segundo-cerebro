@@ -465,6 +465,22 @@ export default function Tarefas() {
         return orig;
       });
       recarregar();
+
+      // Sincroniza em segundo plano com o Google Calendar se houver vínculo
+      if (salva.googleCalendarId && temTokenGoogleValido()) {
+        const dataEvento = salva.prazo || new Date().toISOString().slice(0, 10);
+        atualizarEventoGoogle(salva.googleCalendarId, {
+          titulo: salva.titulo,
+          dataInicio: dataEvento,
+          descricao: salva.corpo,
+        })
+          .then(() => {
+            carregarEventosGoogle(mesCalendarioAtual);
+          })
+          .catch((err) => {
+            console.warn("Falha ao sincronizar com Google Calendar após salvar:", err);
+          });
+      }
     } catch {
       // erro gerenciado por useSalvar
     }
@@ -624,6 +640,78 @@ export default function Tarefas() {
     setEditando(nova);
   }
 
+  async function mudarStatusEventoGoogle(ev: EventoGoogle, novoStatus: Status) {
+    const existente = tarefas.find(
+      (t) => t.googleCalendarId === ev.id || t.bruto?.google_calendar_id === ev.id
+    );
+
+    if (existente) {
+      await mudarStatus(existente, novoStatus);
+      return;
+    }
+
+    try {
+      const dataInicio = ev.inicio ? ev.inicio.slice(0, 10) : new Date().toISOString().slice(0, 10);
+      const tagAgenda = ev.agendaNome || "Google";
+      const nova: Tarefa = {
+        bruto: {
+          tipo: "tarefa",
+          status: novoStatus,
+          prazo: dataInicio,
+          google_calendar_id: ev.id,
+        },
+        caminho: "",
+        sha: "",
+        titulo: ev.titulo || "Evento Google",
+        corpo: ev.descricao ? `${ev.descricao}\n\nLink: ${ev.link || ""}` : "",
+        status: novoStatus,
+        prazo: dataInicio,
+        googleCalendarId: ev.id,
+        tags: [tagAgenda],
+      };
+
+      await gravarTarefa(nova, `cria tarefa do google: ${nova.titulo}`);
+      recarregar();
+      toast(`Tarefa registrada como "${novoStatus === "feito" ? "Concluída" : novoStatus === "fazendo" ? "Em andamento" : "A fazer"}"!`, { tipo: "sucesso" });
+    } catch (e: any) {
+      toast(`Erro ao registrar tarefa: ${e?.message || e}`, { tipo: "erro" });
+    }
+  }
+
+  function editarEventoGoogle(ev: EventoGoogle) {
+    const existente = tarefas.find(
+      (t) => t.googleCalendarId === ev.id || t.bruto?.google_calendar_id === ev.id
+    );
+    if (existente) {
+      abrir(existente);
+    } else {
+      importarEventoGoogleParaTarefa(ev);
+    }
+  }
+
+  const [eventoGoogleParaExcluir, setEventoGoogleParaExcluir] = useState<EventoGoogle | null>(null);
+
+  async function confirmarExcluirEventoGoogle() {
+    if (!eventoGoogleParaExcluir) return;
+    try {
+      await excluirEventoGoogle(eventoGoogleParaExcluir.id, eventoGoogleParaExcluir.agendaId);
+
+      const vinculada = tarefas.find(
+        (t) => t.googleCalendarId === eventoGoogleParaExcluir.id || t.bruto?.google_calendar_id === eventoGoogleParaExcluir.id
+      );
+      if (vinculada) {
+        await apagarItem(vinculada.caminho, vinculada.sha);
+        recarregar();
+      }
+
+      setEventoGoogleParaExcluir(null);
+      toast("Evento excluído do Google Calendar!", { tipo: "sucesso" });
+      carregarEventosGoogle(mesCalendarioAtual);
+    } catch (e: any) {
+      toast(`Erro ao excluir do Google Calendar: ${e?.message || e}`, { tipo: "erro" });
+    }
+  }
+
   async function confirmarRemoverTarefa() {
     if (!tarefaParaExcluir) return;
     try {
@@ -651,6 +739,24 @@ export default function Tarefas() {
     try {
       await gravarTarefa(novo, `${verbo} ${t.titulo}`);
       recarregar();
+
+      // Se tiver vínculo com o Google Calendar, atualiza no Google Calendar
+      if (novo.googleCalendarId && temTokenGoogleValido()) {
+        const prefixoConcluido = "[Concluído] ";
+        let novoTituloGoogle = novo.titulo;
+        if (novoStatus === "feito" && !novo.titulo.startsWith(prefixoConcluido)) {
+          novoTituloGoogle = `${prefixoConcluido}${novo.titulo}`;
+        } else if (novoStatus !== "feito" && novo.titulo.startsWith(prefixoConcluido)) {
+          novoTituloGoogle = novo.titulo.replace(prefixoConcluido, "");
+        }
+        if (novoTituloGoogle !== novo.titulo) {
+          atualizarEventoGoogle(novo.googleCalendarId, {
+            titulo: novoTituloGoogle,
+          })
+            .then(() => carregarEventosGoogle(mesCalendarioAtual))
+            .catch(() => {});
+        }
+      }
     } catch (e) {
       setErroLocal(e instanceof Error ? e.message : String(e));
     } finally {
@@ -925,7 +1031,9 @@ export default function Tarefas() {
           eventosGoogle={eventosGoogle}
           agendasGoogle={agendasGoogle}
           aoAlternarAgendaGoogle={alternarAgendaGoogle}
-          aoImportarEventoGoogle={importarEventoGoogleParaTarefa}
+          aoMudarStatusEventoGoogle={mudarStatusEventoGoogle}
+          aoEditarEventoGoogle={editarEventoGoogle}
+          aoExcluirEventoGoogle={(ev) => setEventoGoogleParaExcluir(ev)}
           mostrarEventosGoogle={mostrarEventosGoogle}
           aoAlternarMostrarEventosGoogle={setMostrarEventosGoogle}
           aoMudarMes={(novoMes) => {
@@ -1079,6 +1187,19 @@ export default function Tarefas() {
           varianteConfirmar="perigo"
           aoConfirmar={confirmarExcluirSelecionadas}
           aoCancelar={() => setConfirmarExclusaoLote(false)}
+        />
+      )}
+
+      {/* Modal de confirmação de exclusão de evento do Google Calendar */}
+      {eventoGoogleParaExcluir && (
+        <ModalConfirmacao
+          aberto={true}
+          titulo="Excluir evento do Google Agenda"
+          descricao={`Tem certeza que deseja excluir o evento "${eventoGoogleParaExcluir.titulo}" do Google Calendar? Esta ação removerá o evento da sua agenda.`}
+          textoConfirmar="Sim, excluir do Google"
+          varianteConfirmar="perigo"
+          aoConfirmar={confirmarExcluirEventoGoogle}
+          aoCancelar={() => setEventoGoogleParaExcluir(null)}
         />
       )}
 

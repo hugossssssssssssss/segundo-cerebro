@@ -130,7 +130,7 @@ export function obterEstiloEventoGoogle(ev: EventoGoogle): {
   text: string;
   border: string;
   dot: string;
-  corHex?: string;
+  corHex: string;
 } {
   if (ev.corId && PALETA_CORES_GOOGLE[ev.corId]) {
     const estilo = PALETA_CORES_GOOGLE[ev.corId];
@@ -143,23 +143,14 @@ export function obterEstiloEventoGoogle(ev: EventoGoogle): {
     };
   }
 
-  if (ev.agendaCor) {
-    return {
-      bg: "bg-opacity-15",
-      text: "text-foreground",
-      border: "border-opacity-30",
-      dot: "bg-current",
-      corHex: ev.agendaCor,
-    };
-  }
+  const corHex = ev.agendaCor || "#3b82f6";
 
-  // Padrão: Azul Google
   return {
-    bg: "bg-blue-500/15",
-    text: "text-blue-700 dark:text-blue-300",
-    border: "border-blue-500/25",
-    dot: "bg-blue-500",
-    corHex: "#3b82f6",
+    bg: "bg-primary/15",
+    text: "text-foreground",
+    border: "border-border/60",
+    dot: "bg-primary",
+    corHex,
   };
 }
 
