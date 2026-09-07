@@ -28,12 +28,15 @@ import {
   Target,
   Sparkles,
   Bookmark,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 import {
   type MapaEstadoInbox,
   carregarEstadoInbox,
   gravarEstadoInbox,
   compilarItensInbox,
+  compilarEventosGoogleParaInbox,
 } from "@/lib/inbox";
 import type { ItemInbox } from "@/lib/tipos";
 import { carregarRepo } from "@/lib/repo";
@@ -43,27 +46,37 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip } from "@/components/ui/tooltip";
 import { ModalLembrete } from "@/components/ModalLembrete";
 import { toast } from "@/lib/toast";
+import { buscarEventosGoogleSilencioso, temTokenGoogleValido } from "@/lib/googleCalendar";
+import { startOfWeek, endOfWeek, addDays } from "date-fns";
 
 type FiltroNotificacao = "semana" | "nao_vistos" | "todos";
 
 function obterInfoDocumento(item: ItemInbox) {
+  if (item.tipo === "google_calendar" || item.id.startsWith("google-")) {
+    return {
+      Icone: Globe,
+      cor: "text-blue-600 dark:text-blue-400",
+      bg: "bg-blue-500/10",
+      corHex: item.corHex || "#3b82f6",
+    };
+  }
   const caminho = (item.caminhoOrigem || "").toLowerCase();
   if (caminho.startsWith("tarefas/") || item.tipo === "tarefa_atrasada") {
-    return { Icone: CheckSquare, cor: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" };
+    return { Icone: CheckSquare, cor: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", corHex: undefined };
   }
   if (caminho.startsWith("pdi/metas/")) {
-    return { Icone: Target, cor: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" };
+    return { Icone: Target, cor: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10", corHex: undefined };
   }
   if (caminho.startsWith("pdi/entregas/")) {
-    return { Icone: Sparkles, cor: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-500/10" };
+    return { Icone: Sparkles, cor: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-500/10", corHex: undefined };
   }
   if (caminho.startsWith("referencias/")) {
-    return { Icone: Bookmark, cor: "text-pink-600 dark:text-pink-400", bg: "bg-pink-500/10" };
+    return { Icone: Bookmark, cor: "text-pink-600 dark:text-pink-400", bg: "bg-pink-500/10", corHex: undefined };
   }
   if (caminho.startsWith("notas/") || item.tipo === "nota_inativa") {
-    return { Icone: FileText, cor: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" };
+    return { Icone: FileText, cor: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10", corHex: undefined };
   }
-  return { Icone: Bell, cor: "text-sky-600 dark:text-sky-400", bg: "bg-sky-500/10" };
+  return { Icone: Bell, cor: "text-sky-600 dark:text-sky-400", bg: "bg-sky-500/10", corHex: undefined };
 }
 
 export function PainelNotificacoesHeader() {
@@ -79,7 +92,7 @@ export function PainelNotificacoesHeader() {
   const pronto = configCompleta(cfg);
   const navegar = useNavigate();
 
-  // Carrega notificações e compromissos
+  // Carrega notificações, compromissos e eventos do Google Agenda
   const carregarNotificacoes = useCallback(async () => {
     if (!pronto) return;
     try {
@@ -91,6 +104,21 @@ export function PainelNotificacoesHeader() {
 
       const agora = new Date();
       const todosItens = compilarItensInbox(todos, estadoRes.mapa, agora, true);
+
+      // Busca eventos do Google Calendar silenciosamente se autenticado
+      if (temTokenGoogleValido()) {
+        try {
+          const inicioGoogle = startOfWeek(agora, { weekStartsOn: 0 });
+          const fimGoogle = endOfWeek(addDays(agora, 14), { weekStartsOn: 0 });
+          const resGoogle = await buscarEventosGoogleSilencioso(inicioGoogle, fimGoogle);
+          if (resGoogle.eventos.length > 0) {
+            const itensGoogle = compilarEventosGoogleParaInbox(resGoogle.eventos, estadoRes.mapa, agora);
+            todosItens.push(...itensGoogle);
+          }
+        } catch {
+          // Erro silencioso do Google Calendar
+        }
+      }
 
       // Regra: filtrar lembretes com mais de 15 dias no passado
       const limite15DiasMs = 15 * 24 * 60 * 60 * 1000;
@@ -226,6 +254,10 @@ export function PainelNotificacoesHeader() {
   const aoAbrirItem = (item: ItemInbox) => {
     marcarComoLido(item.id);
     setAberto(false);
+    if (item.tipo === "google_calendar" || item.id.startsWith("google-")) {
+      navegar("/tarefas");
+      return;
+    }
     if (item.caminhoOrigem) {
       const pasta = item.caminhoOrigem.split("/")[0]?.toLowerCase() || "";
       let rota = "/notas";
@@ -391,6 +423,7 @@ export function PainelNotificacoesHeader() {
               itensExibidos.map((item) => {
                 const ehNovo = !item.visto;
                 const ehAtrasada = item.tipo === "tarefa_atrasada";
+                const ehGoogle = item.tipo === "google_calendar" || item.id.startsWith("google-");
                 const infoDoc = obterInfoDocumento(item);
                 const IconeDoc = infoDoc.Icone;
 
@@ -413,6 +446,15 @@ export function PainelNotificacoesHeader() {
                           infoDoc.bg,
                           infoDoc.cor
                         )}
+                        style={
+                          infoDoc.corHex
+                            ? {
+                                color: infoDoc.corHex,
+                                backgroundColor: `${infoDoc.corHex}15`,
+                                borderColor: `${infoDoc.corHex}35`,
+                              }
+                            : undefined
+                        }
                       >
                         <IconeDoc size={14} />
                       </div>
@@ -431,21 +473,41 @@ export function PainelNotificacoesHeader() {
                             {item.titulo}
                           </p>
                         </div>
+                        {item.descricao && (
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {item.descricao}
+                          </p>
+                        )}
                       </div>
                     </div>
 
-                    {/* Lado direito: Data de vencimento + Ações (Lido, Limpar) */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Lado direito: Data de vencimento + Ações (Link, Lido, Limpar) */}
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {item.link && (
+                        <Tooltip conteudo="Abrir no Google Calendar">
+                          <a
+                            href={item.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1 rounded text-muted-foreground hover:text-blue-500 transition-colors"
+                          >
+                            <ExternalLink size={12} />
+                          </a>
+                        </Tooltip>
+                      )}
+
                       {item.dataVencimento && (
                         <span
                           className={cn(
                             "text-[10px] font-mono px-1.5 py-0.5 rounded-md",
                             ehAtrasada
                               ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold"
+                              : ehGoogle
+                              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
                               : "text-muted-foreground bg-secondary/60"
                           )}
                         >
-                          {item.dataVencimento.replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1")}
+                          {item.dataVencimento.replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1").slice(0, 10)}
                         </span>
                       )}
 

@@ -182,7 +182,7 @@ export interface LousaDados {
   files?: unknown;
 }
 
-export type TipoItemInbox = "lembrete" | "tarefa_atrasada" | "nota_inativa";
+export type TipoItemInbox = "lembrete" | "tarefa_atrasada" | "nota_inativa" | "google_calendar";
 
 export interface Lembrete {
   id: string;
@@ -209,6 +209,9 @@ export interface ItemInbox {
   notificadoEmail?: boolean;
   lembreteBruto?: string;
   tags?: string[];
+  link?: string;
+  corHex?: string;
+  agendaNome?: string;
 }
 
 /** Um contato ou pessoa vinculada em `contatos/`. */

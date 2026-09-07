@@ -18,6 +18,7 @@ import { comoTarefa } from "./entidades";
 import { extrairIntervaloTarefa } from "./tarefas";
 import { ler } from "./github";
 import { formatarDataPtBR, rotuloStatusAmigavel, normalizarDataISO } from "./utils";
+import { obterEstiloEventoGoogle, type EventoGoogle } from "./googleCalendar";
 
 export const CAMINHO_ESTADO_INBOX = "caixa-entrada/estado.json";
 const CHAVE_LOCAL_INBOX = "segundo-cerebro:inbox-estado";
@@ -439,6 +440,60 @@ export function compilarItensInbox(
 
   // Ordenar por data de vencimento (os mais recentes/urgentes primeiro)
   return resultado.sort((a, b) => b.dataVencimento.localeCompare(a.dataVencimento));
+}
+
+/**
+ * Converte eventos do Google Calendar em itens padronizados da Inbox/Notificações do Klaus.
+ */
+export function compilarEventosGoogleParaInbox(
+  eventos: EventoGoogle[],
+  mapaEstado: MapaEstadoInbox,
+  agora: Date = new Date()
+): ItemInbox[] {
+  const hojeIso = agora.toISOString().slice(0, 10);
+  const itens: ItemInbox[] = [];
+
+  for (const ev of eventos) {
+    const id = `google-${ev.id}`;
+    const estado = mapaEstado[id];
+    if (estado?.descartado) continue;
+
+    const dataVenc = ev.inicio ? ev.inicio.slice(0, 10) : hojeIso;
+    const hora = ev.inicio && !ev.oDiaTodo && ev.inicio.includes("T")
+      ? ev.inicio.slice(11, 16)
+      : "";
+    const horaFormatada = ev.oDiaTodo ? "Dia inteiro" : hora ? `${hora}` : "";
+
+    const estilo = obterEstiloEventoGoogle(ev);
+    const ehHoje = dataVenc === hojeIso;
+    const ehAtrasado = dataVenc < hojeIso;
+
+    const detalhes: string[] = [];
+    if (horaFormatada) detalhes.push(horaFormatada);
+    if (ev.local) detalhes.push(`📍 ${ev.local}`);
+    if (ev.agendaNome) detalhes.push(`[${ev.agendaNome}]`);
+    if (ev.descricao) detalhes.push(ev.descricao.slice(0, 90));
+
+    const descricao = detalhes.join(" • ") || "Evento sincronizado do Google Calendar.";
+
+    itens.push({
+      id,
+      tipo: "google_calendar",
+      titulo: ev.titulo || "Evento Google Calendar",
+      descricao,
+      caminhoOrigem: "",
+      tituloOrigem: ev.agendaNome || "Google Calendar",
+      dataVencimento: ev.inicio || dataVenc,
+      visto: Boolean(estado?.visto) || (!ehHoje && !ehAtrasado),
+      vistoEm: estado?.vistoEm,
+      link: ev.link,
+      corHex: estilo.corHex,
+      agendaNome: ev.agendaNome,
+      tags: ev.agendaNome ? [ev.agendaNome] : ["Google"],
+    });
+  }
+
+  return itens;
 }
 
 /**

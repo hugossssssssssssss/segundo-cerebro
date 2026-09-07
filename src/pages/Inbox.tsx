@@ -22,6 +22,7 @@ import {
   MoreVertical,
   Edit3,
   Copy,
+  Globe,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { carregarRepo, type ItemRepo, invalidarCache } from "@/lib/repo";
@@ -48,10 +49,16 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { cn, formatarNomeAmigavel, hojeISO } from "@/lib/utils";
 import { format, startOfWeek, endOfWeek, addDays, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import {
+  buscarEventosGoogleSilencioso,
+  temTokenGoogleValido,
+  obterEstiloEventoGoogle,
+  type EventoGoogle,
+} from "@/lib/googleCalendar";
 
 export interface CompromissoSemana {
   id: string;
-  tipo: "tarefa" | "nota" | "meta" | "entrega" | "lembrete";
+  tipo: "tarefa" | "nota" | "meta" | "entrega" | "lembrete" | "google";
   titulo: string;
   dataIso: string; // YYYY-MM-DD
   dataBr: string; // DD/MM/AAAA
@@ -62,6 +69,8 @@ export interface CompromissoSemana {
   dados: Record<string, any>;
   concluido?: boolean;
   atrasado?: boolean;
+  link?: string;
+  corHex?: string;
 }
 
 type AbaInbox = "agenda" | "rascunhos";
@@ -101,6 +110,13 @@ const ESTILOS_TIPO: Record<string, { border: string; bg: string; text: string; b
     text: "text-sky-600 dark:text-sky-400",
     badgeBg: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
     rotulo: "Lembrete",
+  },
+  google: {
+    border: "border-blue-500/30 hover:border-blue-500/60",
+    bg: "bg-blue-500/5",
+    text: "text-blue-600 dark:text-blue-400",
+    badgeBg: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    rotulo: "Google Agenda",
   },
 };
 
@@ -212,12 +228,15 @@ export default function Inbox() {
   const [salvandoItem, setSalvandoItem] = useState(false);
   const [temMudancasItem, setTemMudancasItem] = useState(false);
 
+  // Eventos do Google Calendar
+  const [eventosGoogle, setEventosGoogle] = useState<EventoGoogle[]>([]);
+
   // Atualiza rascunhos locais
   const atualizarRascunhos = useCallback(() => {
     setRascunhos(obterRascunhosLocais());
   }, []);
 
-  // Carrega repositório
+  // Carrega repositório e eventos do Google Calendar
   const carregar = useCallback(async () => {
     if (!pronto) return;
     try {
@@ -228,12 +247,23 @@ export default function Inbox() {
       const todos = await carregarRepo(cfg);
       setAcervo(todos);
       atualizarRascunhos();
+
+      if (temTokenGoogleValido()) {
+        try {
+          const ini = startOfWeek(subWeeks(dataReferencia, 1), { weekStartsOn: 1 });
+          const fim = endOfWeek(addWeeks(dataReferencia, 2), { weekStartsOn: 1 });
+          const res = await buscarEventosGoogleSilencioso(ini, fim);
+          setEventosGoogle(res.eventos);
+        } catch {
+          // Erro silencioso do Google Calendar
+        }
+      }
     } catch {
       // Erro tratado silenciosamente
     } finally {
       setCarregando(false);
     }
-  }, [pronto, cfg, atualizarRascunhos]);
+  }, [pronto, cfg, atualizarRascunhos, dataReferencia]);
 
   useEffect(() => {
     carregar();
@@ -258,6 +288,30 @@ export default function Inbox() {
   const todosCompromissos = useMemo<CompromissoSemana[]>(() => {
     const hojeStr = hojeISO();
     const lista: CompromissoSemana[] = [];
+
+    // Eventos do Google Calendar
+    for (const ev of eventosGoogle) {
+      const dataIso = ev.inicio ? ev.inicio.slice(0, 10) : hojeStr;
+      const hora = ev.inicio && !ev.oDiaTodo && ev.inicio.includes("T")
+        ? ev.inicio.slice(11, 16)
+        : undefined;
+      const estilo = obterEstiloEventoGoogle(ev);
+
+      lista.push({
+        id: `google-${ev.id}`,
+        tipo: "google",
+        titulo: ev.titulo || "Evento Google",
+        dataIso,
+        dataBr: formatarBr(dataIso),
+        hora,
+        caminho: "",
+        sha: "",
+        corpo: ev.descricao || "",
+        dados: { google: true, agendaNome: ev.agendaNome },
+        link: ev.link,
+        corHex: estilo.corHex,
+      });
+    }
 
     for (const item of acervo) {
       if (!item.texto) continue;
@@ -425,7 +479,7 @@ export default function Inbox() {
     }
 
     return lista;
-  }, [acervo]);
+  }, [acervo, eventosGoogle]);
 
   // ── Dias da Semana Atual (Segunda a Domingo) ──────────────────────────────
   const inicioSemana = useMemo(() => {
@@ -1240,12 +1294,14 @@ export default function Inbox() {
                               ? Sparkles
                               : c.tipo === "nota"
                               ? FileText
+                              : c.tipo === "google"
+                              ? Globe
                               : Bell;
 
                           return (
                             <div
                               key={c.id}
-                              draggable={true}
+                              draggable={c.tipo !== "google"}
                               onDragStart={(e) => {
                                 itemArrastandoRef.current = c;
                                 setItemArrastando(c);
@@ -1266,6 +1322,14 @@ export default function Inbox() {
                                 itemArrastando?.id === c.id && "opacity-30 scale-95 ring-2 ring-primary border-primary",
                                 itemArrastando && itemArrastando.id !== c.id && "pointer-events-none"
                               )}
+                              style={
+                                c.corHex
+                                  ? {
+                                      borderColor: `${c.corHex}40`,
+                                      backgroundColor: `${c.corHex}0d`,
+                                    }
+                                  : undefined
+                              }
                             >
                               <div className="flex items-center gap-2 min-w-0 flex-1 cursor-grab active:cursor-grabbing">
                                 {c.tipo === "tarefa" ? (
@@ -1285,7 +1349,11 @@ export default function Inbox() {
                                     {c.concluido && <Check size={10} strokeWidth={3} />}
                                   </button>
                                 ) : (
-                                  <Icone size={13} className={cn("shrink-0", estilo.text)} />
+                                  <Icone
+                                    size={13}
+                                    className={cn("shrink-0", estilo.text)}
+                                    style={c.corHex ? { color: c.corHex } : undefined}
+                                  />
                                 )}
 
                                 <div className="min-w-0 flex-1">
@@ -1412,12 +1480,14 @@ export default function Inbox() {
                               ? Sparkles
                               : c.tipo === "nota"
                               ? FileText
+                              : c.tipo === "google"
+                              ? Globe
                               : Bell;
 
                           return (
                             <div
                               key={c.id}
-                              draggable={true}
+                              draggable={c.tipo !== "google"}
                               onDragStart={(e) => {
                                 itemArrastandoRef.current = c;
                                 setItemArrastando(c);
@@ -1438,6 +1508,14 @@ export default function Inbox() {
                                 itemArrastando?.id === c.id && "opacity-30 scale-95 ring-2 ring-primary border-primary",
                                 itemArrastando && itemArrastando.id !== c.id && "pointer-events-none"
                               )}
+                              style={
+                                c.corHex
+                                  ? {
+                                      borderColor: `${c.corHex}40`,
+                                      backgroundColor: `${c.corHex}0d`,
+                                    }
+                                  : undefined
+                              }
                             >
                               <div className="flex items-center gap-2 min-w-0 flex-1 cursor-grab active:cursor-grabbing">
                                 {c.tipo === "tarefa" ? (
@@ -1457,7 +1535,11 @@ export default function Inbox() {
                                     {c.concluido && <Check size={10} strokeWidth={3} />}
                                   </button>
                                 ) : (
-                                  <Icone size={13} className={cn("shrink-0", estilo.text)} />
+                                  <Icone
+                                    size={13}
+                                    className={cn("shrink-0", estilo.text)}
+                                    style={c.corHex ? { color: c.corHex } : undefined}
+                                  />
                                 )}
 
                                 <div className="min-w-0 flex-1">

@@ -593,14 +593,14 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`adiarDataHora`** — _Adia uma data/hora de lembrete com base na opção selecionada (Snooze)._
 - `funcao` **`compilarNotasInativas`** — _Identifica notas paradas/inativas no repositório há mais de X dias (Ideia 10)._
 - `funcao` **`compilarItensInbox`** — _Varre todo o acervo do repositório para extrair lembretes, tarefas atrasadas e notas inativas._
+- `funcao` **`compilarEventosGoogleParaInbox`** — _Converte eventos do Google Calendar em itens padronizados da Inbox/Notificações do Klaus._
 - `funcao` **`lerEstadoInboxLocal`** — _Lê o mapa de estado da Inbox do localStorage._
 - `funcao` **`salvarEstadoInboxLocal`** — _Salva o mapa de estado da Inbox no localStorage._
 - `funcao` **`marcarItemComoVistoLocal`** — _Marca um documento específico como visto localmente no mapa da inbox_
 - `funcao` **`mesclarEstadosInbox`**
 - `funcao` **`carregarEstadoInbox`** — _Carrega o estado da Inbox sincronizado do repositório GitHub (com fallback pro local)._
 - `interface` **`ResultadoGravarEstadoInbox`**
-- `funcao` **`gravarEstadoInbox`** — _Grava o estado atualizado da Inbox no repositório GitHub._
-- _...e mais 5 exportações secundárias._
+- _...e mais 6 exportações secundárias._
 
 ### 7. Entidades Especializadas & Regras de Negócio
 
