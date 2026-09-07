@@ -350,16 +350,26 @@ export async function sincronizarFilaOffline(cfgProp?: Settings, forcar = false)
                 concluidos++;
                 resolvidoSemConflito = true;
               } else {
-                // Tenta resolver divergências automaticamente via Auto-Merge 3-Way
-                const { autoMergeDocumentoMarkdown } = await import("./autoMergeMarkdown");
-                const merge = autoMergeDocumentoMarkdown("", item.texto, remoto.texto);
-                if (merge.sucesso && !merge.teveConflito) {
-                  const novoSha = await gravar(cfg, item.caminho, merge.textoMesclado, remoto.sha, "Auto-merge em segundo plano");
+                // Tenta gravar diretamente com o SHA remoto fresco
+                try {
+                  const novoSha = await gravar(cfg, item.caminho, item.texto, remoto.sha, item.mensagemCommit || "Sincronização em segundo plano");
                   removerRascunhoLocal(item.id);
-                  const doc = lerMarkdown(merge.textoMesclado);
-                  atualizarCacheLocal(item.caminho, merge.textoMesclado, doc, novoSha);
+                  const doc = lerMarkdown(item.texto);
+                  atualizarCacheLocal(item.caminho, item.texto, doc, novoSha);
                   concluidos++;
                   resolvidoSemConflito = true;
+                } catch {
+                  // Tenta resolver divergências automaticamente via Auto-Merge 3-Way
+                  const { autoMergeDocumentoMarkdown } = await import("./autoMergeMarkdown");
+                  const merge = autoMergeDocumentoMarkdown(remoto.texto, item.texto, remoto.texto);
+                  if (merge.sucesso && !merge.teveConflito) {
+                    const novoSha = await gravar(cfg, item.caminho, merge.textoMesclado, remoto.sha, "Auto-merge em segundo plano");
+                    removerRascunhoLocal(item.id);
+                    const doc = lerMarkdown(merge.textoMesclado);
+                    atualizarCacheLocal(item.caminho, merge.textoMesclado, doc, novoSha);
+                    concluidos++;
+                    resolvidoSemConflito = true;
+                  }
                 }
               }
             }

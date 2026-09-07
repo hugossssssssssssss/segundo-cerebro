@@ -840,7 +840,7 @@ export default function Contatos() {
           setTitulo={(t) => setAberta({ ...aberto, titulo: t })}
           corpo={aberto.corpo}
           setCorpo={(c) => setAberta({ ...aberto, corpo: c })}
-          dadosProps={aberto.bruto}
+          dadosProps={{ ...aberto.bruto, titulo: aberto.titulo }}
           onChangeProps={(novosDados) => setAberta({ ...aberto, bruto: novosDados })}
           camposFixosProps={{
             cargo: { icone: <Briefcase className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "texto" },

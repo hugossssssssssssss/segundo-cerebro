@@ -2073,7 +2073,7 @@ export default function Notas() {
           corpo={aberta.corpo}
           setCorpo={(c) => setAberta({ ...aberta, corpo: c })}
           caminhoItem={aberta.caminho}
-          dadosProps={aberta.bruto}
+          dadosProps={{ ...aberta.bruto, titulo: aberta.titulo }}
           onChangeProps={(novosDados) =>
             setAberta({
               ...aberta,

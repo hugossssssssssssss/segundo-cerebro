@@ -1028,6 +1028,7 @@ export default function Referencias() {
           setCorpo={(c) => setEditando({ ...editando, corpo: c })}
           caminhoItem={editando.caminho}
           dadosProps={{
+            titulo: editando.titulo,
             porque: editando.porque,
             fonte: editando.fonte,
             tags: editando.tags,

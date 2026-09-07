@@ -568,6 +568,15 @@ export function PainelNotionBase({
     };
   }, [temMudancas, salvando, titulo, corpo, dadosProps]);
 
+  // Salva automaticamente ao desmontar o componente caso o usuário troque de rota ou tela
+  useEffect(() => {
+    return () => {
+      if (temMudancasRef.current && !fechandoRef.current && !salvandoRef.current) {
+        aoSalvarRef.current().catch(() => {});
+      }
+    };
+  }, []);
+
   const tentarFechar = useCallback(async () => {
     if (fechandoRef.current) return;
     if (!temMudancasRef.current) {

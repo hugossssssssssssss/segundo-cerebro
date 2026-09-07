@@ -808,6 +808,7 @@ export default function Tarefas() {
           caminhoItem={editando.caminho}
           dadosProps={{
             ...editando.bruto,
+            titulo: editando.titulo,
             status: editando.status,
             prioridade: editando.prioridade || "media",
             prazo: editando.prazo,

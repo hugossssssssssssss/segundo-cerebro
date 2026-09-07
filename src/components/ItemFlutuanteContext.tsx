@@ -275,7 +275,7 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
           setCorpo={(c) => {
             setPainelEsquerdo((prev) => (prev ? { ...prev, corpo: c, temMudancas: true } : null));
           }}
-          dadosProps={painelEsquerdo.dadosProps}
+          dadosProps={{ ...painelEsquerdo.dadosProps, titulo: painelEsquerdo.titulo }}
           onChangeProps={(novosDados) => {
             setPainelEsquerdo((prev) => (prev ? { ...prev, dadosProps: novosDados, temMudancas: true } : null));
           }}
@@ -310,7 +310,7 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
           setCorpo={(c) => {
             setPainelDireito((prev) => (prev ? { ...prev, corpo: c, temMudancas: true } : null));
           }}
-          dadosProps={painelDireito.dadosProps}
+          dadosProps={{ ...painelDireito.dadosProps, titulo: painelDireito.titulo }}
           onChangeProps={(novosDados) => {
             setPainelDireito((prev) => (prev ? { ...prev, dadosProps: novosDados, temMudancas: true } : null));
           }}
@@ -345,7 +345,7 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
           setCorpo={(c) => {
             setPainelPopup((prev) => (prev ? { ...prev, corpo: c, temMudancas: true } : null));
           }}
-          dadosProps={painelPopup.dadosProps}
+          dadosProps={{ ...painelPopup.dadosProps, titulo: painelPopup.titulo }}
           onChangeProps={(novosDados) => {
             setPainelPopup((prev) => (prev ? { ...prev, dadosProps: novosDados, temMudancas: true } : null));
           }}
@@ -382,7 +382,7 @@ export function ProvedorFlutuanteGlobal({ children }: { children: React.ReactNod
             itemFlutuante.setCorpo?.(c);
             setItemFlutuante({ ...itemFlutuante, corpo: c, temMudancas: true });
           }}
-          dadosProps={itemFlutuante.dadosProps}
+          dadosProps={{ ...itemFlutuante.dadosProps, titulo: itemFlutuante.titulo }}
           onChangeProps={(novosDados) => {
             itemFlutuante.onChangeProps?.(novosDados);
             setItemFlutuante({ ...itemFlutuante, dadosProps: novosDados, temMudancas: true });

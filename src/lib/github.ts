@@ -274,8 +274,15 @@ export async function gravar(
             return shaDestino;
           }
 
-          // 1. Tenta Auto-Merge Semântico 3-Way entre a versão remota e a versão local
-          const merge = autoMergeDocumentoMarkdown("", texto, textoDestino);
+          // 1. Tenta gravar diretamente com o shaDestino fresco (edição local mais recente do mesmo autor)
+          const putDireto = await fazerPut(shaDestino, texto);
+          if (putDireto.ok) {
+            const dadosDireto = await putDireto.json();
+            return dadosDireto.content.sha as string;
+          }
+
+          // 2. Se falhar, tenta Auto-Merge Semântico 3-Way entre a versão remota e a versão local
+          const merge = autoMergeDocumentoMarkdown(textoDestino, texto, textoDestino);
           if (merge.sucesso) {
             const putRes = await fazerPut(shaDestino, merge.textoMesclado);
             if (putRes.ok) {
@@ -284,7 +291,7 @@ export async function gravar(
             }
           }
 
-          // 2. O conteúdo tem conflito real de mesma linha: lança erro explicativo
+          // 3. O conteúdo tem conflito real de mesma linha: lança erro explicativo
           throw new ErroGitHub(
             `Conflito de edição no GitHub (HTTP 409). O arquivo foi modificado por outro aparelho simultaneamente.\n\nAcesse a Caixa de Entrada > Rascunhos Offline para reconciliar a versão local ou remota.`,
             409,

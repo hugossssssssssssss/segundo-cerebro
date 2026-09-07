@@ -2160,6 +2160,7 @@ export default function PDI() {
           setCorpo={(c) => setEditandoMeta({ ...editandoMeta, corpo: c })}
           caminhoItem={editandoMeta.caminho}
           dadosProps={{
+            titulo: editandoMeta.titulo,
             status: editandoMeta.status,
             prazo: editandoMeta.prazo,
             indicador: editandoMeta.indicador,
@@ -2202,6 +2203,7 @@ export default function PDI() {
           caminhoItem={editandoEntrega.caminho}
           campoFocoInicial={campoFocoEntrega}
           dadosProps={{
+            titulo: editandoEntrega.titulo,
             data: editandoEntrega.data,
             metas: editandoEntrega.metas.map(id => metas.find(m => m.id === id)?.titulo || "").filter(Boolean),
             conquista: editandoEntrega.conquista || "",
@@ -2280,6 +2282,7 @@ export default function PDI() {
           setCorpo={(c) => setEditandoTarefa({ ...editandoTarefa, corpo: c })}
           caminhoItem={editandoTarefa.caminho}
           dadosProps={{
+            titulo: editandoTarefa.titulo,
             status: editandoTarefa.status,
             prazo: editandoTarefa.prazo,
             tags: editandoTarefa.tags || [],
