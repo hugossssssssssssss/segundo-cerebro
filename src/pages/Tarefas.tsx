@@ -72,7 +72,7 @@ import {
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
-import { cn, lerParametroAbrir, correspondeBusca } from "@/lib/utils";
+import { cn, lerParametroAbrir, correspondeBusca, formatarDataPtBR } from "@/lib/utils";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { BarraFiltrosAvancados, filtrarItensPorRegras, type DefinicaoPropriedade, type RegraFiltro } from "@/components/BarraFiltrosAvancados";
 import { DropdownNovoViaModelo } from "@/components/DropdownNovoViaModelo";
@@ -640,45 +640,39 @@ export default function Tarefas() {
     }
 
     const intervalo = extrairIntervaloEventoGoogle(ev);
-    let inicioIso: string;
-    let fimIso: string;
+    let prazoFormatado: string;
 
     if (intervalo) {
-      const anoI = intervalo.inicio.getFullYear();
-      const mesI = String(intervalo.inicio.getMonth() + 1).padStart(2, "0");
-      const diaI = String(intervalo.inicio.getDate()).padStart(2, "0");
-      inicioIso = `${anoI}-${mesI}-${diaI}`;
+      const dI = String(intervalo.inicio.getDate()).padStart(2, "0");
+      const mI = String(intervalo.inicio.getMonth() + 1).padStart(2, "0");
+      const aI = intervalo.inicio.getFullYear();
+      const inicioBr = `${dI}/${mI}/${aI}`;
 
-      const anoF = intervalo.fim.getFullYear();
-      const mesF = String(intervalo.fim.getMonth() + 1).padStart(2, "0");
-      const diaF = String(intervalo.fim.getDate()).padStart(2, "0");
-      fimIso = `${anoF}-${mesF}-${diaF}`;
+      const dF = String(intervalo.fim.getDate()).padStart(2, "0");
+      const mF = String(intervalo.fim.getMonth() + 1).padStart(2, "0");
+      const aF = intervalo.fim.getFullYear();
+      const fimBr = `${dF}/${mF}/${aF}`;
+
+      prazoFormatado = inicioBr !== fimBr ? `${inicioBr} → ${fimBr}` : inicioBr;
     } else {
-      inicioIso = ev.inicio ? ev.inicio.slice(0, 10) : new Date().toISOString().slice(0, 10);
-      fimIso = ev.fim ? ev.fim.slice(0, 10) : inicioIso;
+      const dataIso = ev.inicio ? ev.inicio.slice(0, 10) : new Date().toISOString().slice(0, 10);
+      prazoFormatado = formatarDataPtBR(dataIso) || dataIso;
     }
-
-    const prazoFinal = inicioIso !== fimIso ? `${inicioIso} → ${fimIso}` : inicioIso;
 
     return {
       bruto: {
         tipo: "tarefa",
         status: statusInicial,
-        prazo: prazoFinal,
-        data_inicio: inicioIso,
-        data_fim: fimIso,
-        inicio: inicioIso,
-        fim: fimIso,
+        prazo: prazoFormatado,
         google_calendar_id: ev.id,
         tags: [tagGoogle],
-        cor: corHex,
       },
       caminho: "",
       sha: "",
       titulo: ev.titulo || "Novo Evento",
       corpo: ev.descricao ? `${ev.descricao}\n\nLink: ${ev.link || ""}` : "",
       status: statusInicial,
-      prazo: prazoFinal,
+      prazo: prazoFormatado,
       googleCalendarId: ev.id,
       tags: [tagGoogle],
     };
@@ -708,29 +702,25 @@ export default function Tarefas() {
         });
       }
 
-      let tarefaParaAtualizar = tarefa;
-      if (!tarefaParaAtualizar && evento) {
-        const existente = tarefas.find(
-          (t) => t.googleCalendarId === evento.id || t.bruto?.google_calendar_id === evento.id
-        );
-        if (existente) {
-          tarefaParaAtualizar = existente;
-        } else {
-          tarefaParaAtualizar = prepararTarefaDeEventoGoogle(evento, "feito");
-        }
-      }
+      // IMPORTANTE: Só atualiza tarefa no Klaus se ela JÁ EXISTE como arquivo no repositório.
+      // Se era apenas um evento do Google Calendar (sem arquivo no Klaus), NÃO cria arquivo no repositório.
+      const tarefaExistente = (tarefa && tarefa.caminho)
+        ? tarefa
+        : evento
+        ? tarefas.find((t) => (t.googleCalendarId === evento.id || t.bruto?.google_calendar_id === evento.id) && Boolean(t.caminho))
+        : undefined;
 
-      if (tarefaParaAtualizar) {
+      if (tarefaExistente && tarefaExistente.caminho) {
         const atualizada: Tarefa = {
-          ...tarefaParaAtualizar,
+          ...tarefaExistente,
           status: "feito",
           bruto: {
-            ...tarefaParaAtualizar.bruto,
+            ...tarefaExistente.bruto,
             status: "feito",
           },
         };
         await gravarTarefa(atualizada, `conclui ${atualizada.titulo}`);
-        if (editando && (editando.caminho === atualizada.caminho || (!editando.caminho && editando.titulo === atualizada.titulo))) {
+        if (editando && editando.caminho === atualizada.caminho) {
           setEditando(atualizada);
         }
         recarregar();
@@ -739,12 +729,12 @@ export default function Tarefas() {
       carregarEventosGoogle(mesCalendarioAtual);
       toast(
         removerDoGoogle
-          ? "Tarefa concluída e evento removido da Google Agenda!"
-          : "Tarefa marcada como concluída no Klaus!",
+          ? "Evento removido da Google Agenda!"
+          : "Tarefa marcada como concluída!",
         { tipo: "sucesso" }
       );
     } catch (err: any) {
-      toast(`Erro ao concluir tarefa: ${err?.message || err}`, { tipo: "erro" });
+      toast(`Erro ao processar ação: ${err?.message || err}`, { tipo: "erro" });
     }
   }
 

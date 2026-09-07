@@ -892,7 +892,7 @@ export function PropriedadesNotion({
     .filter(k => {
       if ([
         "titulo", "tipo", "atualizado", "atualizado_em", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "_icones", "_coresIcones", "_descricoes", "_formatosNumero", "_statusConfig", "_ordem", "c", "pomodoro", "pomodoros", "pomodoros_estimados", "pomodoro_estimado", "pomodoros_realizados", "pomodoro_realizado", "pomodoro_fraturado", "PomodoroFraturado", "fraturados", "estimativa", "porque", "anotacoes",
-        "subtipo", "fixado", "demo", "ia_sugeriu", "data_fim", "prazo_fim", "prazo_hora", "data_hora", "prazo_lembrete", "data_lembrete",
+        "subtipo", "fixado", "demo", "ia_sugeriu", "data_inicio", "data_fim", "inicio", "fim", "cor", "cor_tag", "cor_fundo", "prazo_fim", "prazo_hora", "data_hora", "prazo_lembrete", "data_lembrete",
         "google_calendar_id", "googleCalendarId", "google_calendar_sincronizado"
       ].includes(k)) return false;
       if (ehLembrete && chavesExclusivasTarefa.includes(k)) return false;

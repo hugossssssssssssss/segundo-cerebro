@@ -9,7 +9,7 @@
  * Este arquivo re-exporta tudo com os nomes legados para não quebrar imports.
  */
 
-import { diasAte, dataISO, formatarDataPtBR } from "./utils";
+import { diasAte, dataISO, formatarDataPtBR, normalizarDataISO } from "./utils";
 import type { Tarefa } from "./tipos";
 
 // Re-exporta os contratos centrais com os nomes que o restante do app usa
@@ -138,16 +138,11 @@ export function extrairIntervaloTarefa(t: Tarefa): IntervaloTarefa | null {
 
   if (!strInicio) return null;
 
-  const extrairDataIso = (s: string): string => {
-    const match = s.match(/(\d{4}-\d{2}-\d{2})/);
-    return match ? match[1] : s.slice(0, 10);
-  };
+  const isoInicio = normalizarDataISO(strInicio);
+  const isoFim = strFim ? normalizarDataISO(strFim) : isoInicio;
 
-  const isoInicio = extrairDataIso(strInicio);
-  const isoFim = strFim ? extrairDataIso(strFim) : isoInicio;
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoInicio)) return null;
-  const isoFimValido = /^\d{4}-\d{2}-\d{2}$/.test(isoFim) ? isoFim : isoInicio;
+  if (!isoInicio) return null;
+  const isoFimValido = isoFim || isoInicio;
 
   const [anoI, mesI, diaI] = isoInicio.split("-").map(Number);
   const [anoF, mesF, diaF] = isoFimValido.split("-").map(Number);
