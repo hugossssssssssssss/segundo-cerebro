@@ -278,7 +278,7 @@ export function extrairCerebroDeArquivos(
 
   for (const item of itensAtivos) {
     const doc = item.doc || lerMarkdown(item.texto || "");
-    const tagsDoc = extrairTagsDeDoc(doc.dados);
+    const tagsDoc = extrairTagsDeDoc(doc?.dados);
 
     for (const tag of tagsDoc) {
       const tagLimpa = tag.trim();
@@ -358,7 +358,7 @@ export function carregarCerebro(itensRepo: ItemRepo[]): CerebroDados {
 
   for (const item of itensAtivos) {
     const doc = item.doc || lerMarkdown(item.texto || "");
-    const tagsDoc = extrairTagsDeDoc(doc.dados);
+    const tagsDoc = extrairTagsDeDoc(doc?.dados);
     for (const tag of tagsDoc) {
       const limpa = tag.trim();
       if (limpa && !cerebro.tags[limpa]) {

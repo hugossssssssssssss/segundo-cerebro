@@ -75,17 +75,18 @@ export function escreverMarkdown(doc: Documento): string {
 }
 
 /** Primeira linha de conteúdo, usada como título quando não há campo `titulo`. */
-export function tituloProvavel(doc: Documento, nomeArquivo: string): string {
-  if (typeof doc.dados.titulo === "string" && doc.dados.titulo.trim()) {
+export function tituloProvavel(doc?: Documento | null, nomeArquivo: string = ""): string {
+  if (doc?.dados && typeof doc.dados.titulo === "string" && doc.dados.titulo.trim()) {
     return doc.dados.titulo.trim();
   }
-  const cabecalho = doc.corpo.match(/^#{1,6}\s+(.+)$/m);
+  const cabecalho = doc?.corpo?.match(/^#{1,6}\s+(.+)$/m);
   if (cabecalho) return cabecalho[1].trim();
 
-  const primeira = doc.corpo.split("\n").find((l) => l.trim());
+  const primeira = doc?.corpo?.split("\n").find((l) => l.trim());
   if (primeira) return primeira.trim().slice(0, 80);
 
-  return nomeArquivo.replace(/\.md$/, "");
+  const base = (nomeArquivo || "").split("/").pop() || "";
+  return base.replace(/\.(md|json)$/i, "") || "Sem título";
 }
 
 /** Transforma um título em nome de arquivo seguro (sem acento, sem símbolo). */

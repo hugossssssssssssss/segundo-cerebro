@@ -108,6 +108,12 @@ describe("tituloProvavel", () => {
   it("cai para o nome do arquivo quando não há nada", () => {
     expect(tituloProvavel(lerMarkdown(""), "minha-nota.md")).toBe("minha-nota");
   });
+
+  it("não estoura erro se doc for undefined ou nulo", () => {
+    expect(tituloProvavel(undefined, "minha-nota.md")).toBe("minha-nota");
+    expect(tituloProvavel(null, "pasta/outra-nota.md")).toBe("outra-nota");
+    expect(tituloProvavel(undefined, "")).toBe("Sem título");
+  });
 });
 
 describe("nomeDeArquivo", () => {

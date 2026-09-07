@@ -822,10 +822,10 @@ export function PropriedadesNotion({
 
   const { itensVinculadosDetalhe, mencoesBacklinks } = useMemo(() => {
     if (!cache?.itens) return { itensVinculadosDetalhe: [], mencoesBacklinks: [] };
-    const titItem = (dados.titulo as string) || (caminhoItem ? tituloProvavel(undefined as any, caminhoItem) : "");
+    const titItem = (dados?.titulo as string) || (caminhoItem ? tituloProvavel(undefined, caminhoItem) : "");
     const res = obterRelacoesBidirecionais(caminhoItem || "", titItem, cache.itens);
 
-    const rels = dados.relacionamentos || dados.relacao || [];
+    const rels = dados?.relacionamentos || dados?.relacao || [];
     const relsArray = Array.isArray(rels) ? rels : [rels];
     const vinculadosMap = new Map<string, ItemVinculadoDetalhe>();
 
@@ -847,8 +847,8 @@ export function PropriedadesNotion({
           caminho: itemRepo.caminho,
           titulo: tituloProvavel(itemRepo.doc, itemRepo.nome),
           tipo: itemRepo.caminho.split("/")[0] || "nota",
-          status: (itemRepo.doc.dados?.status as string) || undefined,
-          concluido: itemRepo.doc.dados?.status === "feito" || itemRepo.doc.dados?.concluido === true,
+          status: (itemRepo.doc?.dados?.status as string) || undefined,
+          concluido: itemRepo.doc?.dados?.status === "feito" || itemRepo.doc?.dados?.concluido === true,
         });
       }
     }
@@ -857,7 +857,7 @@ export function PropriedadesNotion({
       itensVinculadosDetalhe: Array.from(vinculadosMap.values()),
       mencoesBacklinks: res.mencoes,
     };
-  }, [dados.relacionamentos, dados.relacao, dados.titulo, caminhoItem]);
+  }, [dados?.relacionamentos, dados?.relacao, dados?.titulo, caminhoItem]);
 
   useEffect(() => {
     if (!menuAberto) return;
