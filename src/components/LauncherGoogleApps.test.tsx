@@ -13,10 +13,10 @@ describe("LauncherGoogleApps", () => {
     expect(botao).toBeDefined();
   });
 
-  it("abre o popover com 'Seus favoritos' ao clicar no botão", async () => {
+  it("abre o popover com 'Seus favoritos' ao clicar no botão", () => {
     render(<LauncherGoogleApps />);
     const botao = screen.getByLabelText("Google Apps e Favoritos");
-    
+
     act(() => {
       fireEvent.click(botao);
     });
@@ -27,10 +27,10 @@ describe("LauncherGoogleApps", () => {
     expect(screen.getByText("Gemini")).toBeDefined();
   });
 
-  it("permite ativar o modo de edição ao clicar no lápis", () => {
+  it("permite alternar o modo de edição ao clicar no lápis", () => {
     render(<LauncherGoogleApps />);
     const botao = screen.getByLabelText("Google Apps e Favoritos");
-    
+
     act(() => {
       fireEvent.click(botao);
     });
@@ -40,15 +40,15 @@ describe("LauncherGoogleApps", () => {
       fireEvent.click(botaoLapis);
     });
 
-    expect(screen.getByText(/Modo de edição ativo/i)).toBeDefined();
-    expect(screen.getByText(/Adicionar/i)).toBeDefined();
+    expect(screen.getByText(/Arraste os ícones para reordenar/i)).toBeDefined();
+    expect(screen.getByText(/Novo Atalho/i)).toBeDefined();
   });
 
-  it("chama aoAbrirBuscaKlaus quando o app Pesquisa for clicado", () => {
-    const fnBusca = vi.fn();
-    render(<LauncherGoogleApps aoAbrirBuscaKlaus={fnBusca} />);
+  it("chama aoAbrirBuscaWeb quando o app Pesquisa for clicado", () => {
+    const fnBuscaWeb = vi.fn();
+    render(<LauncherGoogleApps aoAbrirBuscaWeb={fnBuscaWeb} />);
     const botao = screen.getByLabelText("Google Apps e Favoritos");
-    
+
     act(() => {
       fireEvent.click(botao);
     });
@@ -58,6 +58,34 @@ describe("LauncherGoogleApps", () => {
       fireEvent.click(appPesquisa);
     });
 
-    expect(fnBusca).toHaveBeenCalledTimes(1);
+    expect(fnBuscaWeb).toHaveBeenCalledTimes(1);
+  });
+
+  it("suporta reordenação via drag and drop", () => {
+    render(<LauncherGoogleApps />);
+    const botao = screen.getByLabelText("Google Apps e Favoritos");
+
+    act(() => {
+      fireEvent.click(botao);
+    });
+
+    const appGmail = screen.getByText("Gmail").closest('[role="button"]')!;
+    const appDrive = screen.getByText("Drive").closest('[role="button"]')!;
+
+    const dataTransfer = {
+      effectAllowed: "none",
+      dropEffect: "none",
+      setData: vi.fn(),
+      getData: vi.fn(),
+    };
+
+    act(() => {
+      fireEvent.dragStart(appGmail, { dataTransfer });
+      fireEvent.dragOver(appDrive, { dataTransfer });
+      fireEvent.drop(appDrive, { dataTransfer });
+      fireEvent.dragEnd(appGmail);
+    });
+
+    expect(screen.getByText("Seus favoritos")).toBeDefined();
   });
 });

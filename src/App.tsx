@@ -20,7 +20,7 @@ import {
   Pause,
   VolumeX,
   Minimize2,
-  Globe,
+  Search,
 } from "lucide-react";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
@@ -501,20 +501,19 @@ function Estrutura({ children }: { children: React.ReactNode }) {
               {/* Painel de Notificações Popover (Estilo Central de Notificações) */}
               <PainelNotificacoesHeader />
 
-              {/* Busca Web Externa */}
-              <Tooltip conteudo="Busca Web Externa">
+              {/* Google Apps e Favoritos (9 pontinhos — substitui o antigo globo) */}
+              <LauncherGoogleApps aoAbrirBuscaWeb={() => setBuscandoWeb(true)} />
+
+              {/* Busca Global em tudo (⌘K) */}
+              <Tooltip conteudo="Buscar em tudo" atalho="⌘K">
                 <button
-                  type="button"
-                  onClick={() => setBuscandoWeb(true)}
+                  onClick={() => setBuscando(true)}
                   className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
-                  aria-label="Busca Web"
+                  aria-label="Buscar"
                 >
-                  <Globe size={18} />
+                  <Search size={18} />
                 </button>
               </Tooltip>
-
-              {/* Google Apps e Favoritos (9 pontinhos) */}
-              <LauncherGoogleApps aoAbrirBuscaKlaus={() => setBuscando(true)} />
 
               {/* Botão de Sair do modo Workspace / Tela Cheia */}
               {workspaceAberto && (
