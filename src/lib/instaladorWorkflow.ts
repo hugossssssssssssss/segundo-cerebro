@@ -47,6 +47,16 @@ jobs:
           const hoje = new Date().toISOString().slice(0, 10);
           console.log("Verificando lembretes para a data:", hoje);
 
+          function normalizarData(str) {
+            if (!str) return null;
+            const limpo = str.trim();
+            const mIso = limpo.match(/^(\\d{4})[-/](\\d{1,2})[-/](\\d{1,2})/);
+            if (mIso) return \`\${mIso[1]}-\${mIso[2].padStart(2, '0')}-\${mIso[3].padStart(2, '0')}\`;
+            const mBr = limpo.match(/^(\\d{1,2})[-/](\\d{1,2})[-/](\\d{4})/);
+            if (mBr) return \`\${mBr[3]}-\${mBr[2].padStart(2, '0')}-\${mBr[1].padStart(2, '0')}\`;
+            return null;
+          }
+
           const pastas = ['tarefas', 'notas'];
           const pendencias = [];
 
@@ -56,7 +66,7 @@ jobs:
 
             for (const arq of arquivos) {
               const caminho = path.join(pasta, arq);
-              if (caminho.startsWith('.lixeira') || caminho.includes('lixeira')) continue;
+              if (caminho.startsWith('.lixeira') || caminho.includes('lixeira') || caminho.startsWith('pdi') || caminho.includes('pdi')) continue;
               const conteudo = fs.readFileSync(caminho, 'utf8');
 
               // Verifica se a tarefa já está feita, vista ou apagada na lixeira
@@ -65,21 +75,26 @@ jobs:
                 conteudo.includes('status: "feito"') ||
                 conteudo.includes('visto_em:') ||
                 conteudo.includes('apagado_em:') ||
-                conteudo.includes('caminho_origem:')
+                conteudo.includes('caminho_origem:') ||
+                conteudo.includes('tipo: meta')
               ) {
                 continue;
               }
 
               // Busca prazos ou tags de lembrete
-              const matchPrazo = conteudo.match(/prazo:\\s*["']?(\\d{4}-\\d{2}-\\d{2})/);
-              const matchLembrete = conteudo.match(/\\[⏰\\s*Lembrete:\\s*([^|\\]]+)\\|\\s*([\\d\\s\\-:T]+)\\]/);
+              const matchPrazo = conteudo.match(/prazo:\\s*["']?([^"'\n]+)/);
+              const prazoIso = matchPrazo ? normalizarData(matchPrazo[1]) : null;
 
-              const matchTitulo = conteudo.match(/titulo:\\s*["']?([^"'\\n]+)/);
+              const matchLembrete = conteudo.match(/\\[⏰\\s*Lembrete:\\s*([^|\\]]+)\\|\\s*([\\d\\s\\-:T]+)\\]/);
+              const lembreteIso = matchLembrete ? normalizarData(matchLembrete[2].slice(0, 10)) : null;
+
+              const matchTitulo = conteudo.match(/titulo:\\s*["']?([^"'\n]+)/);
               const titulo = matchTitulo ? matchTitulo[1] : arq.replace('.md', '');
 
-              if (matchPrazo && matchPrazo[1] <= hoje) {
-                pendencias.push(\`⏰ *Tarefa:* \${titulo} (Prazo: \${matchPrazo[1]})\`);
-              } else if (matchLembrete && matchLembrete[2].slice(0, 10) <= hoje) {
+              // Apenas inclui se a data venceu ou vence HOJE (nunca datas futuras!)
+              if (prazoIso && prazoIso <= hoje) {
+                pendencias.push(\`⏰ *Tarefa:* \${titulo} (Prazo: \${prazoIso})\`);
+              } else if (lembreteIso && lembreteIso <= hoje) {
                 pendencias.push(\`⏰ *Lembrete:* \${matchLembrete[1].trim()}\`);
               }
             }

@@ -1,6 +1,6 @@
 # Contexto de IA & Mapa de Navegação do Klaus
 
-> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-09-06.**
+> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-09-07.**
 > Não edite as tabelas de módulos à mão — execute `npm run mapa-ia` ou `npm run build` para sincronizar com o código.
 
 Este arquivo foi desenhado sob medida para **Agentes de IA e LLMs** que operam no repositório Klaus.
@@ -884,6 +884,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`cn`** — _Junta classes do Tailwind resolvendo conflitos. Padrão do shadcn/ui._
 - `funcao` **`dataCurta`** — _"2026-08-13" -> "13 de agosto"_
 - `funcao` **`formatarDataPtBR`** — _Converte data ISO ("2026-08-17") ou com hora ("2026-08-17 15:00") para o formato pt-BR ("17/08/26" o..._
+- `funcao` **`normalizarDataISO`** — _Normaliza qualquer formato de data (ISO YYYY-MM-DD, pt-BR DD/MM/AAAA ou DD/MM) para YYYY-MM-DD._
 - `funcao` **`rotuloStatusAmigavel`** — _Traduz status técnicos (ex: "a-fazer" -> "Pendente")._
 - `funcao` **`diasAte`** — _Quantos dias faltam (negativo = atrasado)._
 - `funcao` **`hojeISO`** — _Data de hoje no fuso LOCAL, não em UTC. `toISOString()` converte para UTC: às 22h no horário de Bras..._
@@ -895,8 +896,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`correspondeBusca`** — _Verifica se um texto contém o termo de busca, tolerante a maiúsculas/minúsculas, acentos e trechos i..._
 - `funcao` **`formatarNomeAmigavel`** — _Converte um caminho de arquivo técnico (ex: "tarefas/2026-08-13-fazer-a-capa.md") em um título legív..._
 - `funcao` **`formatarCaminhoAmigavel`** — _Converte um caminho técnico (ex: "pdi/metas/2026-08-13-meta.md" ou "notas/projetos/klaus.md") em uma..._
-- `funcao` **`formatarTituloAmigavel`** — _Garante um título limpo e legível para documentos, removendo extensões .md/.json, carimbos de data n..._
-- _...e mais 3 exportações secundárias._
+- _...e mais 4 exportações secundárias._
 
 #### 📄 `src/lib/versao.ts`
 > Versão atual da aplicação Klaus. REGRA MANDATÓRIA PARA AGENTES DE IA: Sempre que implementar uma nova funcionalidade, correção ou alteração no código, você DEVE incrementar esta versão (ex: 1.1.0 -> 1.1.1 ou 1.2.0) e atualizar também o campo "version" no package.json.

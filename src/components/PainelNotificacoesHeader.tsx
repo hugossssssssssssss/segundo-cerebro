@@ -38,7 +38,7 @@ import {
 import type { ItemInbox } from "@/lib/tipos";
 import { carregarRepo } from "@/lib/repo";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { cn } from "@/lib/utils";
+import { cn, normalizarDataISO, hojeISO } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ModalLembrete } from "@/components/ModalLembrete";
@@ -126,19 +126,31 @@ export function PainelNotificacoesHeader() {
     return () => window.removeEventListener("acervo-atualizado", carregarNotificacoes);
   }, [carregarNotificacoes]);
 
-  // Contagem de não vistos
+  // Contagem de não vistos: apenas itens que venceram ou vencem HOJE (nunca itens futuros)
   const naoVistosCount = useMemo(() => {
-    return itens.filter((i) => !i.visto).length;
+    const hojeStr = hojeISO();
+    return itens.filter((i) => {
+      if (i.visto) return false;
+      const dataIso = normalizarDataISO(i.dataVencimento);
+      if (!dataIso) return true;
+      return dataIso <= hojeStr;
+    }).length;
   }, [itens]);
 
   // Filtragem por aba
   const itensFiltradosAba = useMemo(() => {
     const agora = new Date();
+    const hojeStr = hojeISO();
     const seteDiasFrenteMs = 7 * 24 * 60 * 60 * 1000;
     const agoraMs = agora.getTime();
 
     if (filtro === "nao_vistos") {
-      return itens.filter((i) => !i.visto);
+      return itens.filter((i) => {
+        if (i.visto) return false;
+        const dataIso = normalizarDataISO(i.dataVencimento);
+        if (!dataIso) return true;
+        return dataIso <= hojeStr;
+      });
     }
 
     if (filtro === "semana") {

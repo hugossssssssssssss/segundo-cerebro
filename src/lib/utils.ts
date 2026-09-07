@@ -40,6 +40,52 @@ export function formatarDataPtBR(iso?: string): string {
   return dataFormatada;
 }
 
+/**
+ * Normaliza qualquer formato de data (ISO YYYY-MM-DD, pt-BR DD/MM/AAAA ou DD/MM) para YYYY-MM-DD.
+ */
+export function normalizarDataISO(valor?: string): string | null {
+  if (!valor || typeof valor !== "string") return null;
+  const limpo = valor.trim();
+
+  // Caso 1: YYYY-MM-DD
+  const mIso = limpo.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (mIso) {
+    const ano = mIso[1];
+    const mes = mIso[2].padStart(2, "0");
+    const dia = mIso[3].padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  // Caso 2: DD/MM/YYYY ou DD-MM-YYYY
+  const mBr4 = limpo.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+  if (mBr4) {
+    const dia = mBr4[1].padStart(2, "0");
+    const mes = mBr4[2].padStart(2, "0");
+    const ano = mBr4[3];
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  // Caso 3: DD/MM/YY
+  const mBr2 = limpo.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2})$/);
+  if (mBr2) {
+    const dia = mBr2[1].padStart(2, "0");
+    const mes = mBr2[2].padStart(2, "0");
+    const ano = `20${mBr2[3]}`;
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  // Caso 4: DD/MM (assume o ano atual)
+  const mBrDiaMes = limpo.match(/^(\d{1,2})[-/](\d{1,2})$/);
+  if (mBrDiaMes) {
+    const dia = mBrDiaMes[1].padStart(2, "0");
+    const mes = mBrDiaMes[2].padStart(2, "0");
+    const ano = new Date().getFullYear();
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  return null;
+}
+
 /** Traduz status técnicos (ex: "a-fazer" -> "Pendente"). */
 export function rotuloStatusAmigavel(status?: string): string {
   if (!status) return "Pendente";

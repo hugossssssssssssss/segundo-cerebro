@@ -157,3 +157,16 @@ describe("ehMac e formatarAtalho", () => {
   });
 });
 
+describe("normalizarDataISO", () => {
+  it("normaliza formatos ISO e pt-BR com perfeição", async () => {
+    const { normalizarDataISO } = await import("./utils");
+    expect(normalizarDataISO("2026-09-11")).toBe("2026-09-11");
+    expect(normalizarDataISO("11/09/2026")).toBe("2026-09-11");
+    expect(normalizarDataISO("11-09-2026")).toBe("2026-09-11");
+    expect(normalizarDataISO("11/09/26")).toBe("2026-09-11");
+    expect(normalizarDataISO("07/09/2026")).toBe("2026-09-07");
+    expect(normalizarDataISO("")).toBeNull();
+    expect(normalizarDataISO("data-invalida")).toBeNull();
+  });
+});
+

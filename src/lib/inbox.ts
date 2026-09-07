@@ -17,7 +17,7 @@ import { lerMarkdown, escreverMarkdown, tituloProvavel } from "./markdown";
 import { comoTarefa } from "./entidades";
 import { extrairIntervaloTarefa } from "./tarefas";
 import { ler } from "./github";
-import { formatarDataPtBR, rotuloStatusAmigavel } from "./utils";
+import { formatarDataPtBR, rotuloStatusAmigavel, normalizarDataISO } from "./utils";
 
 export const CAMINHO_ESTADO_INBOX = "caixa-entrada/estado.json";
 const CHAVE_LOCAL_INBOX = "segundo-cerebro:inbox-estado";
@@ -278,6 +278,13 @@ export function compilarItensInbox(
 
             const ehAtrasada = fimIso < hojeIso;
             const ehHoje = hojeIso >= inicioIso && hojeIso <= fimIso;
+            const ehFutura = fimIso > hojeIso && !ehHoje;
+
+            // Se for futura e não foi solicitado incluirFuturos (ex: tela de lembretes/notificações ativas), ignora
+            if (ehFutura && !incluirFuturos) {
+              continue;
+            }
+
             const statusAmigavel = rotuloStatusAmigavel(typeof status === "string" ? status : undefined);
 
             const descricao = ehAtrasada
@@ -293,6 +300,9 @@ export function compilarItensInbox(
               return !isNaN(t) && Math.abs(agora.getTime() - t) < 24 * 60 * 60 * 1000;
             })();
 
+            // Itens futuros NUNCA são marcados como não vistos (para não gerarem contagem de notificação falsa)
+            const vistoFinal = ehFutura || vistoNoDoc || Boolean(estado?.visto) || (criadoRecentemente && !ehAtrasada);
+
             resultado.push({
               id,
               tipo: ehAtrasada ? "tarefa_atrasada" : "lembrete",
@@ -301,7 +311,7 @@ export function compilarItensInbox(
               caminhoOrigem: item.caminho,
               tituloOrigem: tituloDoc,
               dataVencimento: intervalo.textoFormatado,
-              visto: vistoNoDoc || Boolean(estado?.visto) || (criadoRecentemente && !ehAtrasada),
+              visto: vistoFinal,
               vistoEm: vistoEmNoDoc || estado?.vistoEm || (criadoRecentemente ? agora.toISOString() : undefined),
               notificadoTelegram: estado?.notificadoTelegram,
               notificadoEmail: estado?.notificadoEmail,
@@ -318,11 +328,15 @@ export function compilarItensInbox(
       const id = lembrete.id;
       const estado = mapaEstado[id];
 
-      // O lembrete entra na inbox se a dataHora já chegou/passou ou é do dia
-      const dataIso = lembrete.dataHora.slice(0, 10);
-      const venceu = dataIso <= hojeIso;
+      const dataNormalizada = normalizarDataISO(lembrete.dataHora.slice(0, 10)) || lembrete.dataHora.slice(0, 10);
+      const venceu = dataNormalizada <= hojeIso;
+      const ehFuturo = !venceu;
 
-      if ((incluirFuturos || venceu) && !estado?.descartado) {
+      if (!venceu && !incluirFuturos) {
+        continue;
+      }
+
+      if (!estado?.descartado) {
         resultado.push({
           id,
           tipo: "lembrete",
@@ -331,7 +345,7 @@ export function compilarItensInbox(
           caminhoOrigem: lembrete.caminhoOrigem,
           tituloOrigem: lembrete.tituloOrigem,
           dataVencimento: lembrete.dataHora,
-          visto: Boolean(estado?.visto),
+          visto: ehFuturo || Boolean(estado?.visto),
           vistoEm: estado?.vistoEm,
           notificadoTelegram: estado?.notificadoTelegram,
           notificadoEmail: estado?.notificadoEmail,
@@ -341,23 +355,30 @@ export function compilarItensInbox(
       }
     }
 
-    // 3. Outras entidades com campo de data ou prazo explícito (Metas PDI, Entregas, Notas com data, Contatos)
-    if (!item.caminho.startsWith("tarefas/")) {
-      const dataCampos = ["data", "prazo", "data_reuniao", "data_inicio", "data_fim"];
+    // 3. Notas com data explícita de reunião ou evento (apenas notas/, nunca metas ou entregas)
+    if (item.caminho.startsWith("notas/")) {
+      const dataCampos = ["data", "data_reuniao", "data_inicio", "data_fim"];
       let dataValor: string | undefined;
 
       for (const campo of dataCampos) {
         const val = doc.dados[campo];
         if (typeof val === "string") {
-          const match = val.trim().match(/\d{4}-\d{2}-\d{2}/);
-          if (match) {
-            dataValor = match[0];
+          const iso = normalizarDataISO(val);
+          if (iso) {
+            dataValor = iso;
             break;
           }
         }
       }
 
-      if (dataValor && (incluirFuturos || dataValor <= hojeIso)) {
+      if (dataValor) {
+        const venceu = dataValor <= hojeIso;
+        const ehFuturo = !venceu;
+
+        if (!venceu && !incluirFuturos) {
+          continue;
+        }
+
         const id = `entidade-data-${item.caminho}`;
         const estado = mapaEstado[id];
 
@@ -368,25 +389,13 @@ export function compilarItensInbox(
         const descartadoFinal = descartadoNoDoc || Boolean(estado?.descartado);
 
         if (!descartadoFinal) {
-          let tipoEntidade = "nota";
-          if (item.caminho.startsWith("pdi/metas/")) tipoEntidade = "meta";
-          else if (item.caminho.startsWith("pdi/entregas/")) tipoEntidade = "entrega";
-          else if (item.caminho.startsWith("referencias/")) tipoEntidade = "referencia";
-          else if (item.caminho.startsWith("contatos/")) tipoEntidade = "contato";
-
-          const rotuloEntidade = tipoEntidade === "nota" ? "Nota"
-                               : tipoEntidade === "meta" ? "Meta"
-                               : tipoEntidade === "entrega" ? "Entrega"
-                               : tipoEntidade === "referencia" ? "Referência"
-                               : "Contato";
-
           const ehAtrasado = dataValor < hojeIso;
           const ehHoje = dataValor === hojeIso;
           const descricao = ehHoje
-            ? `${rotuloEntidade} agendada para HOJE.`
+            ? `Nota com evento agendado para HOJE.`
             : ehAtrasado
-            ? `${rotuloEntidade} com data vencida em ${formatarDataPtBR(dataValor)}.`
-            : `${rotuloEntidade} agendada para ${formatarDataPtBR(dataValor)}.`;
+            ? `Nota com data vencida em ${formatarDataPtBR(dataValor)}.`
+            : `Nota agendada para ${formatarDataPtBR(dataValor)}.`;
 
           const criadoRecentemente = (() => {
             const c = (doc.dados.criado_em as string) || (doc.dados.criado as string);
@@ -403,11 +412,10 @@ export function compilarItensInbox(
             caminhoOrigem: item.caminho,
             tituloOrigem: tituloDoc,
             dataVencimento: dataValor,
-            visto: vistoNoDoc || Boolean(estado?.visto) || (criadoRecentemente && !ehAtrasado),
+            visto: ehFuturo || vistoNoDoc || Boolean(estado?.visto) || (criadoRecentemente && !ehAtrasado),
             vistoEm: vistoEmNoDoc || estado?.vistoEm || (criadoRecentemente ? agora.toISOString() : undefined),
             notificadoTelegram: estado?.notificadoTelegram,
             notificadoEmail: estado?.notificadoEmail,
-            tags: tagsDoc,
           });
         }
       }

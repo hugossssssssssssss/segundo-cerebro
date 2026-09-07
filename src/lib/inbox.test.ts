@@ -137,7 +137,7 @@ prazo: 2026-08-10
     expect(amanha).toContain("09:00");
   });
 
-  it("compilarItensInbox inclui metas ou notas com data apenas no dia correspondente (fuso local)", () => {
+  it("compilarItensInbox inclui notas com data apenas no dia correspondente (fuso local) e ignora metas e datas futuras", () => {
     const itensRepo: ItemRepo[] = [
       {
         caminho: "pdi/metas/meta-estudar.md",
@@ -176,12 +176,12 @@ data: 2026-08-21
         tamanho: 120,
         texto: `---
 tipo: nota
-data: 2026-08-22
+data: 2026-09-11
 ---
-# Evento Amanha`,
+# Evento Futuro 11/09`,
         doc: {
-          dados: { tipo: "nota", data: "2026-08-22" },
-          corpo: "# Evento Amanha",
+          dados: { tipo: "nota", data: "2026-09-11" },
+          corpo: "# Evento Futuro 11/09",
         },
       }
     ];
@@ -191,10 +191,13 @@ data: 2026-08-22
     const caixa = compilarItensInbox(itensRepo, {}, agoraLocalDefinido);
 
     const titulos = caixa.map(i => i.titulo);
-    expect(titulos).toContain("Estudar Design");
+    // Metas do PDI não entram na inbox/notificações
+    expect(titulos).not.toContain("Estudar Design");
+    // Notas do dia entram
     expect(titulos).toContain("Evento Importante");
-    expect(titulos).not.toContain("Evento Amanha");
-    expect(caixa).toHaveLength(2);
+    // Eventos futuros (11/09) NUNCA entram na lista de hoje
+    expect(titulos).not.toContain("Evento Futuro 11/09");
+    expect(caixa).toHaveLength(1);
   });
 
   it("compilarItensInbox inclui tarefas com intervalo de datas", () => {
