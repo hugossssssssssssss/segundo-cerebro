@@ -14,13 +14,7 @@ import {
   Home as HomeIcon,
   Plus,
   MoreHorizontal,
-  Headphones,
-  Music,
-  Play,
-  Pause,
-  VolumeX,
   Minimize2,
-  Search,
 } from "lucide-react";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
@@ -38,8 +32,7 @@ import { toast } from "@/lib/toast";
 import { GavetaMais } from "@/components/GavetaMais";
 import { LogoKlaus } from "@/components/LogoKlaus";
 import { Carregando } from "@/components/ui";
-import { PainelNotificacoesHeader } from "@/components/PainelNotificacoesHeader";
-import { LauncherGoogleApps } from "@/components/LauncherGoogleApps";
+import { HeaderAcoesOrdenaveis } from "@/components/HeaderAcoesOrdenaveis";
 import { BarraFavoritos } from "@/components/BarraFavoritos";
 import { Rodape } from "@/components/Rodape";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -51,7 +44,7 @@ import { sincronizarFilaOffline as syncOffline } from "@/lib/offlineQueue";
 import { gerenciadorCamadas, NIVEIS_CAMADAS } from "@/lib/camadas";
 import { ConsoleDesenvolvedor } from "@/components/ConsoleDesenvolvedor";
 import { inicializarLogger } from "@/lib/logger";
-import { CronometroProvider, useCronometro, LISTA_SONS_AMBIENTE } from "@/components/ContextoCronometro";
+import { CronometroProvider } from "@/components/ContextoCronometro";
 import { Pomodoro } from "@/components/Pomodoro";
 import { obterRotuloRota, EVENTO_MENU_ATUALIZADO } from "@/lib/menuPersonalizado";
 import { sincronizarTudoComGithub } from "@/lib/preferenciasApp";
@@ -112,16 +105,6 @@ function Estrutura({ children }: { children: React.ReactNode }) {
     const salvo = localStorage.getItem("sidebar-colapsada");
     return salvo ? salvo === "true" : false;
   });
-
-  const {
-    somAmbiente,
-    setSomAmbiente,
-    somAmbienteTocando,
-    setSomAmbienteTocando,
-    volumeSomAmbiente,
-    setVolumeSomAmbiente,
-  } = useCronometro();
-  const [somMenuAberto, setSomMenuAberto] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("sidebar-colapsada", String(colapsada));
@@ -377,143 +360,12 @@ function Estrutura({ children }: { children: React.ReactNode }) {
               </div>
             )}
 
-            {/* Lado Direito: Captura Rápida, Caixa de Som, Inbox, Busca e Sair da Tela Cheia */}
-            <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
-              <Tooltip conteudo="Captura rápida" atalho="⌘J">
-                <button
-                  onClick={() => setCapturando(true)}
-                  className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
-                  aria-label="Captura rápida"
-                >
-                  <Plus size={18} />
-                </button>
-              </Tooltip>
-
-              {/* Botão de Som Ambiente no Header */}
-              {somAmbiente && (
-                <div className="relative">
-                  <Tooltip conteudo="Configurações de som ambiente">
-                    <button
-                      onClick={() => setSomMenuAberto(!somMenuAberto)}
-                      className={cn(
-                        "rounded-lg p-1.5 sm:p-2 transition-colors relative flex items-center justify-center cursor-pointer",
-                        somAmbienteTocando 
-                          ? "bg-primary/10 text-primary" 
-                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                      )}
-                      aria-label="Controle de áudio"
-                    >
-                      <Headphones size={18} className={somAmbienteTocando ? "animate-pulse" : ""} />
-                      {somAmbienteTocando && (
-                        <span className="absolute bottom-1 right-1 flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                        </span>
-                      )}
-                    </button>
-                  </Tooltip>
-
-                  {/* Menu suspenso de áudio */}
-                  {somMenuAberto && (
-                    <div className="absolute right-0 mt-2 w-64 rounded-xl border border-border bg-card/95 p-4 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 z-50">
-                      <div className="flex items-center justify-between border-b border-border/40 pb-2 mb-3">
-                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                          <Music size={13} className="text-primary" />
-                          Som de Fundo
-                        </span>
-                        <button
-                          onClick={() => setSomMenuAberto(false)}
-                          className="text-[10px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
-                        >
-                          Fechar
-                        </button>
-                      </div>
-
-                      <div className="space-y-3">
-                        {/* Seletor rápido de sons */}
-                        <div className="grid grid-cols-2 gap-1">
-                          {LISTA_SONS_AMBIENTE.map((s) => (
-                            <button
-                              key={s.id}
-                              onClick={() => {
-                                setSomAmbiente(s.id);
-                              }}
-                              className={cn(
-                                "text-[11px] px-2 py-1 rounded-md text-left truncate transition-colors cursor-pointer",
-                                somAmbiente === s.id
-                                  ? "bg-primary/15 text-primary font-semibold"
-                                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                              )}
-                            >
-                              {s.nome}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Controles de Play/Pause/Volume */}
-                        <div className="flex items-center justify-between border-t border-border/40 pt-2.5 mt-1 gap-2">
-                          <Tooltip conteudo={somAmbienteTocando ? "Pausar som" : "Tocar som"}>
-                            <button
-                              onClick={() => setSomAmbienteTocando(!somAmbienteTocando)}
-                              className="p-1.5 rounded-lg bg-secondary text-foreground hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
-                              aria-label={somAmbienteTocando ? "Pausar som" : "Tocar som"}
-                            >
-                              {somAmbienteTocando ? <Pause size={14} /> : <Play size={14} />}
-                            </button>
-                          </Tooltip>
-                          
-                          {/* Slider de volume */}
-                          <div className="flex-1 flex items-center gap-1.5">
-                            <input
-                              type="range"
-                              min="0"
-                              max="1"
-                              step="0.1"
-                              value={volumeSomAmbiente}
-                              onChange={(e) => setVolumeSomAmbiente(Number(e.target.value))}
-                              className="w-full accent-primary h-1 rounded bg-secondary appearance-none cursor-pointer"
-                              aria-label="Volume"
-                            />
-                            <span className="text-[10px] font-mono text-muted-foreground w-6 text-right select-none">
-                              {Math.round(volumeSomAmbiente * 100)}%
-                            </span>
-                          </div>
-
-                          <Tooltip conteudo="Desligar e fechar áudio">
-                            <button
-                              onClick={() => {
-                                setSomAmbiente(null);
-                                setSomMenuAberto(false);
-                              }}
-                              className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-                              aria-label="Desligar e fechar"
-                            >
-                              <VolumeX size={14} />
-                            </button>
-                          </Tooltip>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Painel de Notificações Popover (Estilo Central de Notificações) */}
-              <PainelNotificacoesHeader />
-
-              {/* Google Apps e Favoritos (9 pontinhos — substitui o antigo globo) */}
-              <LauncherGoogleApps aoAbrirBuscaWeb={() => setBuscandoWeb(true)} />
-
-              {/* Busca Global em tudo (⌘K) */}
-              <Tooltip conteudo="Buscar em tudo" atalho="⌘K">
-                <button
-                  onClick={() => setBuscando(true)}
-                  className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
-                  aria-label="Buscar"
-                >
-                  <Search size={18} />
-                </button>
-              </Tooltip>
+              {/* Ações do Header Reordenáveis via Drag and Drop */}
+              <HeaderAcoesOrdenaveis
+                onAbrirCaptura={() => setCapturando(true)}
+                onAbrirBusca={() => setBuscando(true)}
+                onAbrirBuscaWeb={() => setBuscandoWeb(true)}
+              />
 
               {/* Botão de Sair do modo Workspace / Tela Cheia */}
               {workspaceAberto && (
@@ -528,7 +380,6 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                 </Tooltip>
               )}
             </div>
-          </div>
         </header>
 
         {/*
