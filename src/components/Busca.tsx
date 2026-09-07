@@ -101,6 +101,28 @@ export function Busca({
     }
   });
   const entrada = useRef<HTMLInputElement>(null);
+  const [arrastoY, setArrastoY] = useState(0);
+  const [toqueInicialY, setToqueInicialY] = useState<number | null>(null);
+
+  const lidarTouchStart = (e: React.TouchEvent) => {
+    setToqueInicialY(e.touches[0].clientY);
+  };
+
+  const lidarTouchMove = (e: React.TouchEvent) => {
+    if (toqueInicialY === null) return;
+    const deltaY = e.touches[0].clientY - toqueInicialY;
+    if (deltaY > 0) {
+      setArrastoY(deltaY);
+    }
+  };
+
+  const lidarTouchEnd = () => {
+    if (arrastoY > 75) {
+      aoFechar();
+    }
+    setArrastoY(0);
+    setToqueInicialY(null);
+  };
 
   const salvarBuscaRecente = (buscaTermo: string) => {
     const t = buscaTermo.trim();
@@ -377,39 +399,58 @@ export function Busca({
 
   return (
     <div
-      className="fixed inset-0 z-[600] flex items-start justify-center bg-black/60 p-0 sm:p-4 sm:pt-20 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[600] flex items-end sm:items-start justify-center bg-black/60 p-0 sm:p-4 sm:pt-20 backdrop-blur-xs animate-in fade-in duration-150 overscroll-none select-none sm:select-auto"
       onClick={aoFechar}
     >
       <div
-        className="flex h-[100dvh] max-h-[100dvh] w-full flex-col border-border bg-card shadow-2xl sm:h-auto sm:max-h-[85dvh] sm:max-w-3xl lg:max-w-4xl sm:rounded-2xl sm:border overflow-hidden overflow-x-hidden pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]"
+        style={{
+          transform: arrastoY > 0 ? `translateY(${arrastoY}px)` : undefined,
+          transition: arrastoY === 0 ? "transform 0.2s ease" : "none",
+        }}
+        className="flex h-[92dvh] max-h-[92dvh] sm:h-auto sm:max-h-[85dvh] w-full flex-col rounded-t-3xl sm:rounded-2xl border-t border-border sm:border bg-card shadow-2xl sm:max-w-3xl lg:max-w-4xl overflow-hidden overflow-x-hidden pt-1 sm:pt-0 pb-[max(env(safe-area-inset-bottom),8px)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Puxador nativo de Bottom Sheet no mobile */}
+        <div
+          onTouchStart={lidarTouchStart}
+          onTouchMove={lidarTouchMove}
+          onTouchEnd={lidarTouchEnd}
+          className="w-full pt-2 pb-1 sm:hidden flex flex-col items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+        >
+          <div className="w-12 h-1.5 rounded-full bg-muted-foreground/30 select-none hover:bg-muted-foreground/50 transition-colors" />
+        </div>
+
         {/* Campo de Entrada */}
-        <div className="flex shrink-0 items-center gap-2 border-b border-border p-3 sm:p-3.5">
-          <Search size={18} className="shrink-0 text-muted-foreground ml-1" />
+        <div
+          onTouchStart={lidarTouchStart}
+          onTouchMove={lidarTouchMove}
+          onTouchEnd={lidarTouchEnd}
+          className="flex shrink-0 items-center gap-2 border-b border-border p-3 sm:p-3.5"
+        >
+          <Search size={19} className="shrink-0 text-muted-foreground ml-1" />
           <Campo
             ref={entrada}
             value={termo}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTermo(e.target.value)}
-            placeholder="Buscar notas, tarefas, ferramentas (ex: 'PDF para PNG', 'transcrição')..."
-            className="border-0 bg-transparent focus-visible:ring-0 text-base"
+            placeholder="Buscar notas, tarefas, ferramentas..."
+            className="border-0 bg-transparent focus-visible:ring-0 text-base touch-manipulation flex-1"
             autoFocus
           />
           {termo && (
             <Tooltip conteudo="Limpar busca" posicao="bottom">
               <button
                 onClick={() => setTermo("")}
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground cursor-pointer touch-manipulation"
                 aria-label="Limpar busca"
               >
-                <X size={16} />
+                <X size={17} />
               </button>
             </Tooltip>
           )}
           <Tooltip conteudo="Fechar busca" atalho="Esc" posicao="bottom">
             <button
               onClick={aoFechar}
-              className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer touch-manipulation"
               aria-label="Fechar busca"
             >
               <X size={18} />
@@ -417,17 +458,17 @@ export function Busca({
           </Tooltip>
         </div>
 
-        {/* Filtros por Categoria sem rolagem horizontal */}
-        <div className="flex items-center flex-wrap gap-1.5 px-3.5 py-2.5 border-b border-border/60 bg-card/50 shrink-0 select-none">
+        {/* Filtros por Categoria com carrossel horizontal suave no mobile */}
+        <div className="flex items-center gap-1.5 px-3.5 py-2.5 border-b border-border/60 bg-card/50 shrink-0 select-none overflow-x-auto no-scrollbar scroll-smooth">
           {OPCOES_FILTRO.map((f) => (
             <button
               key={f.id}
               onClick={() => setCategoria(f.id)}
               className={cn(
-                "px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 select-none cursor-pointer",
+                "px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 select-none cursor-pointer touch-manipulation min-h-[34px]",
                 categoria === f.id
                   ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "bg-secondary/60 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  : "bg-secondary/70 text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
               {f.rotulo}

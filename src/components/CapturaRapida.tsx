@@ -105,6 +105,28 @@ export function CapturaRapida({
   // o frontmatter na hora de salvar
   const [dadosDaCaptura, setDadosDaCaptura] = useState<Record<string, string>>({});
   const area = useRef<HTMLTextAreaElement>(null);
+  const [arrastoY, setArrastoY] = useState(0);
+  const [toqueInicialY, setToqueInicialY] = useState<number | null>(null);
+
+  const lidarTouchStart = (e: React.TouchEvent) => {
+    setToqueInicialY(e.touches[0].clientY);
+  };
+
+  const lidarTouchMove = (e: React.TouchEvent) => {
+    if (toqueInicialY === null) return;
+    const deltaY = e.touches[0].clientY - toqueInicialY;
+    if (deltaY > 0) {
+      setArrastoY(deltaY);
+    }
+  };
+
+  const lidarTouchEnd = () => {
+    if (arrastoY > 75) {
+      aoFechar();
+    }
+    setArrastoY(0);
+    setToqueInicialY(null);
+  };
 
   // Pastas disponíveis baseadas no destino selecionado
   const pastasDisponiveis = useMemo(() => {
@@ -231,22 +253,40 @@ export function CapturaRapida({
 
   return (
     <div
-      className="fixed inset-0 z-[600] flex items-end justify-center bg-black/50 p-0 sm:items-start sm:p-4 sm:pt-28"
+      className="fixed inset-0 z-[600] flex items-end justify-center bg-black/50 p-0 sm:items-start sm:p-4 sm:pt-28 backdrop-blur-xs animate-in fade-in duration-150 overscroll-none select-none sm:select-auto"
       onClick={aoFechar}
     >
       <Cartao
-        className="w-full rounded-t-3xl rounded-b-none p-4 pb-[max(env(safe-area-inset-bottom),16px)] sm:max-w-lg sm:rounded-2xl border-t border-border shadow-2xl"
+        style={{
+          transform: arrastoY > 0 ? `translateY(${arrastoY}px)` : undefined,
+          transition: arrastoY === 0 ? "transform 0.2s ease" : "none",
+        }}
+        className="w-full rounded-t-3xl rounded-b-none p-4 pb-[max(env(safe-area-inset-bottom),16px)] sm:max-w-lg sm:rounded-2xl border-t border-border shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-10 h-1.5 rounded-full bg-muted-foreground/30 mx-auto -mt-1 mb-2.5 sm:hidden select-none" />
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-bold tracking-tight">Captura rápida</span>
+        {/* Puxador com gesto de arrasto no mobile */}
+        <div
+          onTouchStart={lidarTouchStart}
+          onTouchMove={lidarTouchMove}
+          onTouchEnd={lidarTouchEnd}
+          className="w-full pt-1 pb-2 sm:hidden flex flex-col items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+        >
+          <div className="w-12 h-1.5 rounded-full bg-muted-foreground/30 select-none hover:bg-muted-foreground/50 transition-colors" />
+        </div>
+
+        <div
+          onTouchStart={lidarTouchStart}
+          onTouchMove={lidarTouchMove}
+          onTouchEnd={lidarTouchEnd}
+          className="mb-2.5 flex items-center justify-between touch-none"
+        >
+          <span className="text-sm font-bold tracking-tight text-foreground">Captura rápida</span>
           <button
             onClick={aoFechar}
-            className="-m-1.5 rounded-md p-1.5 text-muted-foreground hover:bg-accent cursor-pointer transition-colors"
+            className="-m-1.5 rounded-md p-2 text-muted-foreground hover:bg-accent cursor-pointer transition-colors touch-manipulation"
             aria-label="Fechar"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
 
