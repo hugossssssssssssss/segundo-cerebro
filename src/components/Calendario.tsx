@@ -11,6 +11,7 @@ import {
   isSameMonth,
   isSameDay,
   isToday,
+  startOfDay,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -20,6 +21,8 @@ import {
   Clock,
   Filter,
   CheckCircle2,
+  Globe,
+  RefreshCw,
 } from "lucide-react";
 import { SeloStatus } from "@/components/SeloStatus";
 import { TagChip } from "@/components/TagChip";
@@ -28,7 +31,7 @@ import { cn } from "@/lib/utils";
 import { urgencia, extrairIntervaloTarefa, type Tarefa } from "@/lib/tarefas";
 import { CORES_NOTION, lerConfigPropriedadesGlobais } from "@/components/PropriedadesNotion";
 import { MenuAcoesTarefa } from "@/components/MenuAcoesTarefa";
-import { Circle, Globe, Plus, ExternalLink } from "lucide-react";
+import { Circle, Plus, ExternalLink } from "lucide-react";
 import type { EventoGoogle } from "@/lib/googleCalendar";
 
 type FiltroStatusCalendario = "todas" | "pendentes" | "atrasadas" | "concluidas";
@@ -106,6 +109,9 @@ export function Calendario({
   mostrarEventosGoogle = true,
   aoAlternarMostrarEventosGoogle,
   aoMudarMes,
+  googleConfigurado = false,
+  aoConectarGoogle,
+  carregandoGoogle = false,
 }: {
   tarefas: Tarefa[];
   aoAbrir: (t: Tarefa) => void;
@@ -119,6 +125,9 @@ export function Calendario({
   mostrarEventosGoogle?: boolean;
   aoAlternarMostrarEventosGoogle?: (mostrar: boolean) => void;
   aoMudarMes?: (mes: Date) => void;
+  googleConfigurado?: boolean;
+  aoConectarGoogle?: () => void;
+  carregandoGoogle?: boolean;
 }) {
   const [mesAtual, setMesAtual] = useState(new Date());
   const [selecionado, setSelecionado] = useState<Date>(new Date());
@@ -177,7 +186,7 @@ export function Calendario({
     return mapa;
   }, [tarefasFiltradas]);
 
-  // Mapa de eventos do Google agrupados por data ISO (yyyy-MM-dd)
+  // Mapa de eventos do Google agrupados por data local (yyyy-MM-dd)
   const eventosGooglePorDia = useMemo(() => {
     if (!mostrarEventosGoogle || !eventosGoogle || eventosGoogle.length === 0) {
       return new Map<string, EventoGoogle[]>();
@@ -185,12 +194,55 @@ export function Calendario({
     const mapa = new Map<string, EventoGoogle[]>();
     for (const ev of eventosGoogle) {
       if (!ev.inicio) continue;
-      const chave = ev.inicio.slice(0, 10);
-      const lista = mapa.get(chave) ?? [];
-      if (!lista.some((x) => x.id === ev.id)) {
-        lista.push(ev);
+      
+      let dataInicio: Date;
+      let dataFim: Date;
+
+      if (ev.oDiaTodo) {
+        // Formato "2026-09-08"
+        const partes = ev.inicio.slice(0, 10).split("-").map(Number);
+        dataInicio = new Date(partes[0], partes[1] - 1, partes[2], 12, 0, 0);
+        if (ev.fim && ev.fim !== ev.inicio) {
+          const partesFim = ev.fim.slice(0, 10).split("-").map(Number);
+          const fimBruto = new Date(partesFim[0], partesFim[1] - 1, partesFim[2], 12, 0, 0);
+          // O Google Calendar usa end date exclusivo no dia seguinte para eventos de 1 dia
+          if (fimBruto.getTime() > dataInicio.getTime() + 24 * 3600 * 1000) {
+            dataFim = new Date(fimBruto.getTime() - 24 * 3600 * 1000);
+          } else {
+            dataFim = dataInicio;
+          }
+        } else {
+          dataFim = dataInicio;
+        }
+      } else {
+        dataInicio = new Date(ev.inicio);
+        dataFim = ev.fim ? new Date(ev.fim) : dataInicio;
       }
-      mapa.set(chave, lista);
+
+      if (isNaN(dataInicio.getTime())) continue;
+
+      try {
+        const dias = eachDayOfInterval({
+          start: startOfDay(dataInicio),
+          end: startOfDay(dataFim >= dataInicio ? dataFim : dataInicio),
+        });
+
+        for (const d of dias) {
+          const chave = format(d, "yyyy-MM-dd");
+          const lista = mapa.get(chave) ?? [];
+          if (!lista.some((x) => x.id === ev.id)) {
+            lista.push(ev);
+          }
+          mapa.set(chave, lista);
+        }
+      } catch {
+        const chaveFallback = ev.inicio.slice(0, 10);
+        const lista = mapa.get(chaveFallback) ?? [];
+        if (!lista.some((x) => x.id === ev.id)) {
+          lista.push(ev);
+        }
+        mapa.set(chaveFallback, lista);
+      }
     }
     return mapa;
   }, [eventosGoogle, mostrarEventosGoogle]);
@@ -282,24 +334,54 @@ export function Calendario({
 
         {/* Filtros e Alternador do Google Calendar */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 flex-wrap">
-          {aoAlternarMostrarEventosGoogle && eventosGoogle.length > 0 && (
-            <button
-              type="button"
-              onClick={() => aoAlternarMostrarEventosGoogle(!mostrarEventosGoogle)}
-              className={cn(
-                "px-2.5 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap",
-                mostrarEventosGoogle
-                  ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 font-semibold"
-                  : "bg-secondary/40 text-muted-foreground border-transparent hover:bg-accent"
+          {googleConfigurado && (
+            <div className="flex items-center gap-1 bg-blue-500/10 p-0.5 rounded-lg border border-blue-500/20">
+              <button
+                type="button"
+                onClick={() => {
+                  if (eventosGoogle.length === 0 && aoConectarGoogle) {
+                    aoConectarGoogle();
+                  } else if (aoAlternarMostrarEventosGoogle) {
+                    aoAlternarMostrarEventosGoogle(!mostrarEventosGoogle);
+                  }
+                }}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap",
+                  mostrarEventosGoogle && eventosGoogle.length > 0
+                    ? "bg-blue-500 text-white font-semibold shadow-xs"
+                    : "text-blue-600 dark:text-blue-400 hover:bg-blue-500/15"
+                )}
+                title={
+                  eventosGoogle.length === 0
+                    ? "Clique para conectar e carregar eventos da Google Agenda"
+                    : mostrarEventosGoogle
+                    ? "Ocultar eventos da Google Agenda"
+                    : "Mostrar eventos da Google Agenda"
+                }
+              >
+                <Globe size={13} className={carregandoGoogle ? "animate-spin" : ""} />
+                {eventosGoogle.length > 0 ? "Google Agenda" : "Carregar Google Agenda"}
+                {eventosGoogle.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-bold">
+                    {eventosGoogle.length}
+                  </span>
+                )}
+              </button>
+
+              {aoConectarGoogle && (
+                <Tooltip conteudo="Atualizar eventos da Google Agenda">
+                  <button
+                    type="button"
+                    onClick={aoConectarGoogle}
+                    disabled={carregandoGoogle}
+                    className="p-1 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors cursor-pointer"
+                    aria-label="Atualizar Google Agenda"
+                  >
+                    <RefreshCw size={12} className={carregandoGoogle ? "animate-spin" : ""} />
+                  </button>
+                </Tooltip>
               )}
-              title={mostrarEventosGoogle ? "Ocultar eventos da Google Agenda" : "Mostrar eventos da Google Agenda"}
-            >
-              <Globe size={13} className={mostrarEventosGoogle ? "text-blue-500" : "text-muted-foreground"} />
-              Google Agenda
-              <span className="text-[10px] opacity-75 px-1 py-0.2 rounded-full bg-blue-500/20">
-                {eventosGoogle.length}
-              </span>
-            </button>
+            </div>
           )}
 
           <div className="h-4 w-px bg-border/60 hidden sm:block" />

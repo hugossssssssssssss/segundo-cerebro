@@ -46,10 +46,13 @@ import { Calendario } from "@/components/Calendario";
 import { Quadro } from "@/components/Quadro";
 import {
   listarEventosGoogle,
+  buscarEventosGoogleSilencioso,
+  solicitarAutorizacaoGoogle,
   criarEventoGoogle,
   atualizarEventoGoogle,
   excluirEventoGoogle,
   estaConectadoGoogle,
+  temTokenGoogleValido,
   type EventoGoogle,
 } from "@/lib/googleCalendar";
 import {
@@ -133,28 +136,54 @@ export default function Tarefas() {
 
   // ── Integração Google Calendar ──────────────────────────────────────────
   const [eventosGoogle, setEventosGoogle] = useState<EventoGoogle[]>([]);
+  const [carregandoGoogle, setCarregandoGoogle] = useState(false);
   const [mostrarEventosGoogle, setMostrarEventosGoogle] = useState<boolean>(() => {
     return cfg.googleCalendarMostrarNoCalendario !== false;
   });
   const [mesCalendarioAtual, setMesCalendarioAtual] = useState<Date>(new Date());
 
   const carregarEventosGoogle = useCallback(async (mesReferencia = mesCalendarioAtual) => {
-    if (!estaConectadoGoogle(cfg)) return;
+    if (!Boolean(cfg.googleCalendarClientId)) return;
     try {
+      const inicio = startOfWeek(startOfMonth(mesReferencia), { weekStartsOn: 0 });
+      const fim = endOfWeek(endOfMonth(mesReferencia), { weekStartsOn: 0 });
+      if (temTokenGoogleValido()) {
+        const lista = await buscarEventosGoogleSilencioso(inicio, fim);
+        setEventosGoogle(lista);
+      }
+    } catch (err: any) {
+      console.warn("Não foi possível carregar eventos do Google Calendar:", err);
+    }
+  }, [cfg.googleCalendarClientId, mesCalendarioAtual]);
+
+  const conectarEAtualizarGoogleAgenda = useCallback(async (mesReferencia = mesCalendarioAtual) => {
+    if (!cfg.googleCalendarClientId) {
+      toast("Configure o Google Client ID nos Ajustes para conectar.", { tipo: "info" });
+      navegar("/config");
+      return;
+    }
+
+    setCarregandoGoogle(true);
+    try {
+      await solicitarAutorizacaoGoogle(cfg.googleCalendarClientId);
       const inicio = startOfWeek(startOfMonth(mesReferencia), { weekStartsOn: 0 });
       const fim = endOfWeek(endOfMonth(mesReferencia), { weekStartsOn: 0 });
       const lista = await listarEventosGoogle(inicio, fim);
       setEventosGoogle(lista);
+      setMostrarEventosGoogle(true);
+      toast(`${lista.length} evento(s) do Google Agenda sincronizado(s)!`, { tipo: "sucesso" });
     } catch (err: any) {
-      console.warn("Não foi possível carregar eventos do Google Calendar:", err);
+      toast(err?.message || "Falha ao conectar com o Google Calendar.", { tipo: "erro" });
+    } finally {
+      setCarregandoGoogle(false);
     }
-  }, [cfg, mesCalendarioAtual]);
+  }, [cfg.googleCalendarClientId, mesCalendarioAtual, navegar]);
 
   useEffect(() => {
-    if (visao === "calendario" && estaConectadoGoogle(cfg)) {
+    if (visao === "calendario" && Boolean(cfg.googleCalendarClientId)) {
       carregarEventosGoogle(mesCalendarioAtual);
     }
-  }, [visao, cfg, mesCalendarioAtual, carregarEventosGoogle]);
+  }, [visao, cfg.googleCalendarClientId, mesCalendarioAtual, carregarEventosGoogle]);
 
   // ── Pastas existentes para filtro e organização ────────────────────────────
   const pastasExistentes = useMemo(() => {
@@ -867,6 +896,9 @@ export default function Tarefas() {
             setMesCalendarioAtual(novoMes);
             carregarEventosGoogle(novoMes);
           }}
+          googleConfigurado={Boolean(cfg.googleCalendarClientId)}
+          aoConectarGoogle={conectarEAtualizarGoogleAgenda}
+          carregandoGoogle={carregandoGoogle}
         />
       ) : (
         <Quadro

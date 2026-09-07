@@ -119,9 +119,16 @@ export function limparTokenGoogle(): void {
 }
 
 /**
+ * Retorna se há um token de acesso válido armazenado no navegador.
+ */
+export function temTokenGoogleValido(): boolean {
+  return Boolean(obterTokenGoogleSalvo());
+}
+
+/**
  * Dispara o popup oficial do Google para autorização do usuário e retorno do Access Token.
  */
-export async function solicitarAutorizacaoGoogle(clientId?: string): Promise<string> {
+export async function solicitarAutorizacaoGoogle(clientId?: string, prompt?: string): Promise<string> {
   const cfg = lerConfig();
   const cId = (clientId || cfg.googleCalendarClientId || "").trim();
 
@@ -162,7 +169,8 @@ export async function solicitarAutorizacaoGoogle(clientId?: string): Promise<str
         },
       });
 
-      client.requestAccessToken({ prompt: "consent" });
+      const configPrompt = prompt !== undefined ? prompt : (cfg.googleCalendarAtivo ? "" : "consent");
+      client.requestAccessToken({ prompt: configPrompt });
     } catch (e: any) {
       reject(new Error(e?.message || "Falha ao iniciar login do Google."));
     }
@@ -207,7 +215,64 @@ async function obterTokenValido(): Promise<string> {
 }
 
 /**
- * Lista eventos do Google Calendar primário dentro de uma faixa de datas.
+ * Busca eventos do Google Calendar silenciosamente apenas se já houver token ativo.
+ * Não dispara pop-up em segundo plano (evita bloqueio pelo navegador).
+ */
+export async function buscarEventosGoogleSilencioso(inicio: Date, fim: Date): Promise<EventoGoogle[]> {
+  const token = obterTokenGoogleSalvo();
+  if (!token) return [];
+
+  try {
+    const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+    url.searchParams.set("timeMin", inicio.toISOString());
+    url.searchParams.set("timeMax", fim.toISOString());
+    url.searchParams.set("singleEvents", "true");
+    url.searchParams.set("orderBy", "startTime");
+    url.searchParams.set("maxResults", "250");
+
+    const resposta = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+
+    if (resposta.status === 401) {
+      limparTokenGoogle();
+      return [];
+    }
+
+    if (!resposta.ok) {
+      return [];
+    }
+
+    const dados = await resposta.json();
+    const itens = Array.isArray(dados.items) ? dados.items : [];
+
+    return itens.map((item: any): EventoGoogle => {
+      const isAllDay = Boolean(item.start?.date && !item.start?.dateTime);
+      const inicioStr = item.start?.dateTime || item.start?.date || "";
+      const fimStr = item.end?.dateTime || item.end?.date || inicioStr;
+
+      return {
+        id: item.id,
+        titulo: item.summary || "(Sem título)",
+        descricao: item.description || "",
+        inicio: inicioStr,
+        fim: fimStr,
+        oDiaTodo: isAllDay,
+        link: item.htmlLink,
+        local: item.location,
+        corId: item.colorId,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Lista eventos do Google Calendar primário dentro de uma faixa de datas (autentica se necessário).
  */
 export async function listarEventosGoogle(inicio: Date, fim: Date): Promise<EventoGoogle[]> {
   const token = await obterTokenValido();
@@ -227,7 +292,6 @@ export async function listarEventosGoogle(inicio: Date, fim: Date): Promise<Even
   });
 
   if (resposta.status === 401) {
-    // Token expirou ou foi invalidado
     limparTokenGoogle();
     throw new Error("Sessão do Google expirada. Por favor, conecte novamente.");
   }
