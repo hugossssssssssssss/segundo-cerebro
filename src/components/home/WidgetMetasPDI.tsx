@@ -1,5 +1,6 @@
 import { type ResumoMeta } from "@/lib/pdi";
 import { formatarDataPtBR } from "@/lib/utils";
+import { gerarPropsArrasto } from "@/lib/arrastoItem";
 
 interface WidgetMetasPDIProps {
   resumos: ResumoMeta[];
@@ -28,6 +29,7 @@ export function WidgetMetasPDI({
               <div
                 key={r.meta.caminho}
                 onClick={() => aoAbrirMeta(r.meta.caminho)}
+                {...gerarPropsArrasto({ caminho: r.meta.caminho, titulo: r.meta.titulo, rotuloTipo: "Meta" })}
                 className="group p-2 rounded-xl hover:bg-secondary/40 transition-colors cursor-pointer flex items-center justify-between gap-2"
               >
                 <div className="min-w-0">

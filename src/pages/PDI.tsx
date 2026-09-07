@@ -45,6 +45,7 @@ import type { Tarefa } from "@/lib/tarefas";
 import { CheckCircle2, Circle } from "lucide-react";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
+import { TIPO_MIME_ITEM_KLAUS, definirItemArrastadoAtual, gerarPropsArrasto } from "@/lib/arrastoItem";
 import {
   escreverMarkdown,
   tituloProvavel,
@@ -1140,8 +1141,9 @@ export default function PDI() {
                 {resumosFiltrados.map(({ meta: m, entregas: ligadas }) => (
                   <Cartao
                     key={m.id}
+                    {...gerarPropsArrasto({ caminho: m.caminho, titulo: m.titulo, rotuloTipo: "Meta" })}
                     className={cn(
-                      "p-4 transition-all flex flex-col justify-between border",
+                      "p-4 transition-all flex flex-col justify-between border cursor-pointer",
                       metaHoverId === m.id
                         ? "bg-teal-500/10 border-teal-500 ring-2 ring-teal-500/30 scale-[1.008] shadow-md"
                         : "hover:border-muted-foreground/30 border-border/70"
@@ -1621,7 +1623,13 @@ export default function PDI() {
                               )}
                               draggable
                               onDragStart={(ev) => {
+                                ev.dataTransfer.effectAllowed = "copyMove";
                                 ev.dataTransfer.setData("text/plain", `entrega:${e.id}`);
+                                ev.dataTransfer.setData(TIPO_MIME_ITEM_KLAUS, JSON.stringify({ caminho: e.caminho, titulo: e.titulo, rotuloTipo: "Entrega" }));
+                                definirItemArrastadoAtual({ caminho: e.caminho, titulo: e.titulo, rotuloTipo: "Entrega" });
+                              }}
+                              onDragEnd={() => {
+                                definirItemArrastadoAtual(null);
                               }}
                               onClick={() => {
                                 setEditandoEntrega(e);

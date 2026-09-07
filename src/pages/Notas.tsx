@@ -65,6 +65,7 @@ import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotio
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { MenuContextoNotas, type AcaoMenuContexto } from "@/components/MenuContextoNotas";
 import { toast } from "@/lib/toast";
+import { TIPO_MIME_ITEM_KLAUS, definirItemArrastadoAtual } from "@/lib/arrastoItem";
 
 import type { Nota } from "@/lib/tipos";
 
@@ -1846,11 +1847,14 @@ export default function Notas() {
                     totalMoodboard={contagemMoodboardPorNota.get(tituloNota.toLowerCase())}
                     draggable
                     onDragStart={(e) => {
-                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.effectAllowed = "copyMove";
                       e.dataTransfer.setData("text/plain", nota.caminho);
+                      e.dataTransfer.setData(TIPO_MIME_ITEM_KLAUS, JSON.stringify({ caminho: nota.caminho, titulo: tituloNota, rotuloTipo: "Nota" }));
+                      definirItemArrastadoAtual({ caminho: nota.caminho, titulo: tituloNota, rotuloTipo: "Nota" });
                       setNotaArrastada(nota.caminho);
                     }}
                     onDragEnd={() => {
+                      definirItemArrastadoAtual(null);
                       setNotaArrastada(null);
                       setPastaAlvo(null);
                     }}
@@ -1905,11 +1909,14 @@ export default function Notas() {
                     totalMoodboard={contagemMoodboardPorNota.get(tituloNota.toLowerCase())}
                     draggable
                     onDragStart={(e) => {
-                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.effectAllowed = "copyMove";
                       e.dataTransfer.setData("text/plain", nota.caminho);
+                      e.dataTransfer.setData(TIPO_MIME_ITEM_KLAUS, JSON.stringify({ caminho: nota.caminho, titulo: tituloNota, rotuloTipo: "Nota" }));
+                      definirItemArrastadoAtual({ caminho: nota.caminho, titulo: tituloNota, rotuloTipo: "Nota" });
                       setNotaArrastada(nota.caminho);
                     }}
                     onDragEnd={() => {
+                      definirItemArrastadoAtual(null);
                       setNotaArrastada(null);
                       setPastaAlvo(null);
                     }}
@@ -1970,11 +1977,14 @@ export default function Notas() {
                     totalMoodboard={contagemMoodboardPorNota.get(tituloNota.toLowerCase())}
                     draggable
                     onDragStart={(e) => {
-                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.effectAllowed = "copyMove";
                       e.dataTransfer.setData("text/plain", nota.caminho);
+                      e.dataTransfer.setData(TIPO_MIME_ITEM_KLAUS, JSON.stringify({ caminho: nota.caminho, titulo: tituloNota, rotuloTipo: "Nota" }));
+                      definirItemArrastadoAtual({ caminho: nota.caminho, titulo: tituloNota, rotuloTipo: "Nota" });
                       setNotaArrastada(nota.caminho);
                     }}
                     onDragEnd={() => {
+                      definirItemArrastadoAtual(null);
                       setNotaArrastada(null);
                       setPastaAlvo(null);
                     }}

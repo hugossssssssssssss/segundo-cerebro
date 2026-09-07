@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, AlertCircle } from "lucide-react";
 import { type Tarefa, urgencia, textoPrazo } from "@/lib/tarefas";
 import { cn, hojeISO } from "@/lib/utils";
+import { gerarPropsArrasto } from "@/lib/arrastoItem";
 
 interface WidgetFocoHojeProps {
   tarefas: Tarefa[];
@@ -54,6 +55,7 @@ export function WidgetFocoHoje({
               <div
                 key={t.caminho}
                 onClick={() => aoAbrirTarefa(t)}
+                {...gerarPropsArrasto({ caminho: t.caminho, titulo: t.titulo, rotuloTipo: "Tarefa" })}
                 className="group flex items-center justify-between gap-2.5 p-2 rounded-xl hover:bg-secondary/40 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2 min-w-0">

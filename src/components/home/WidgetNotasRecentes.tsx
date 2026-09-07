@@ -1,6 +1,7 @@
 import { FileText, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { obterEstiloTagChip } from "@/components/TagChip";
+import { gerarPropsArrasto } from "@/lib/arrastoItem";
 
 export interface NotaItemHome {
   caminho: string;
@@ -45,6 +46,7 @@ export function WidgetNotasRecentes({
               <div
                 key={n.caminho}
                 onClick={() => aoAbrirNota(n.caminho)}
+                {...gerarPropsArrasto({ caminho: n.caminho, titulo: n.titulo, rotuloTipo: "Nota" })}
                 className="group relative flex flex-col justify-between p-3.5 rounded-2xl border border-border/60 bg-card hover:bg-accent/40 hover:border-border transition-colors duration-150 cursor-pointer min-h-[105px] overflow-hidden"
               >
                 <div className="space-y-1">

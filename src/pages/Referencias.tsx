@@ -62,6 +62,7 @@ import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotio
 import { cn } from "@/lib/utils";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { toast } from "@/lib/toast";
+import { gerarPropsArrasto } from "@/lib/arrastoItem";
 
 type ModoVisaoRef = "masonry" | "grade" | "lista";
 
@@ -744,6 +745,7 @@ export default function Referencias() {
               render={(r) => (
                 <div
                   key={r.caminho}
+                  {...gerarPropsArrasto({ caminho: r.caminho, titulo: r.titulo, rotuloTipo: "Referência" })}
                   onClick={() => {
                     if (focarFlutuante(r.caminho)) return;
                     setEditando(r);
@@ -891,6 +893,7 @@ export default function Referencias() {
               {visiveis.map((r) => (
                 <div
                   key={r.caminho}
+                  {...gerarPropsArrasto({ caminho: r.caminho, titulo: r.titulo, rotuloTipo: "Referência" })}
                   onClick={() => {
                     if (focarFlutuante(r.caminho)) return;
                     setEditando(r);
@@ -955,6 +958,7 @@ export default function Referencias() {
               {visiveis.map((r) => (
                 <div
                   key={r.caminho}
+                  {...gerarPropsArrasto({ caminho: r.caminho, titulo: r.titulo, rotuloTipo: "Referência" })}
                   onClick={() => {
                     if (focarFlutuante(r.caminho)) return;
                     setEditando(r);

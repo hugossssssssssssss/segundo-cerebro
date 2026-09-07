@@ -1,4 +1,5 @@
 import { Layout, ArrowUpRight } from "lucide-react";
+import { gerarPropsArrasto } from "@/lib/arrastoItem";
 
 export interface LousaItemHome {
   caminho: string;
@@ -34,6 +35,7 @@ export function WidgetLousasRecentes({
             <div
               key={l.caminho}
               onClick={() => aoAbrirLousa(l.caminho)}
+              {...gerarPropsArrasto({ caminho: l.caminho, titulo: l.titulo, rotuloTipo: "Lousa" })}
               className="group p-2.5 rounded-2xl border border-border/50 bg-card hover:bg-accent/40 hover:border-border transition-colors cursor-pointer flex items-center justify-between"
             >
               <div className="flex items-center gap-2 min-w-0">

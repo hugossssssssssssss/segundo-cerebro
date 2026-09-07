@@ -1,6 +1,7 @@
 import { ImageIcon } from "lucide-react";
 import { type Referencia } from "@/lib/referencias";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
+import { gerarPropsArrasto } from "@/lib/arrastoItem";
 
 interface WidgetReferenciasMuralProps {
   referencias: Referencia[];
@@ -31,6 +32,7 @@ export function WidgetReferenciasMural({
             <div
               key={r.caminho}
               onClick={() => aoAbrirReferencia(r)}
+              {...gerarPropsArrasto({ caminho: r.caminho, titulo: r.titulo, rotuloTipo: "Referência" })}
               className="group relative aspect-square rounded-2xl overflow-hidden border border-border/70 bg-black/10 hover:border-border transition-colors duration-200 cursor-pointer"
             >
               {r.imagem ? (

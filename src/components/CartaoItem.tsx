@@ -2,6 +2,7 @@ import React from "react";
 import { Cartao } from "@/components/ui";
 import { TagChip } from "@/components/TagChip";
 import { cn } from "@/lib/utils";
+import { gerarPropsArrasto } from "@/lib/arrastoItem";
 
 interface CartaoItemProps {
   icone?: React.ReactNode;
@@ -12,6 +13,8 @@ interface CartaoItemProps {
   acoes?: React.ReactNode;
   ativo?: boolean;
   selecionado?: boolean;
+  caminhoItem?: string;
+  rotuloTipo?: string;
   onClick?: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
   className?: string;
@@ -30,17 +33,27 @@ export function CartaoItem({
   acoes,
   ativo = false,
   selecionado = false,
+  caminhoItem,
+  rotuloTipo,
   onClick,
   onContextMenu,
   className,
   children,
 }: CartaoItemProps) {
   const temTags = tags && tags.length > 0;
+  const propsArrasto = caminhoItem
+    ? gerarPropsArrasto({
+        caminho: caminhoItem,
+        titulo: typeof titulo === "string" ? titulo : undefined,
+        rotuloTipo,
+      })
+    : {};
 
   return (
     <Cartao
       onClick={onClick}
       onContextMenu={onContextMenu}
+      {...propsArrasto}
       className={cn(
         "p-4 transition-all duration-200 group relative flex flex-col justify-between border-border/80 bg-card",
         onClick && "cursor-pointer hover:border-border hover:bg-accent/30",

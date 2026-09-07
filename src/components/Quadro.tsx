@@ -51,6 +51,7 @@ import { TagChip } from "@/components/TagChip";
 import { cn } from "@/lib/utils";
 import { PrismasFoco } from "@/components/PrismasFoco";
 import { MenuAcoesTarefa } from "@/components/MenuAcoesTarefa";
+import { definirItemArrastadoAtual } from "@/lib/arrastoItem";
 
 /**
  * Quadro de tarefas em colunas — a fazer, fazendo, feito.
@@ -649,11 +650,16 @@ export function Quadro({
   );
 
   function aoComecar(e: DragStartEvent) {
-    setArrastando(tarefas.find((t) => t.caminho === e.active.id) ?? null);
+    const t = tarefas.find((item) => item.caminho === e.active.id) ?? null;
+    setArrastando(t);
+    if (t) {
+      definirItemArrastadoAtual({ caminho: t.caminho, titulo: t.titulo, rotuloTipo: "Tarefa" });
+    }
   }
 
   function aoTerminar(e: DragEndEvent) {
     setArrastando(null);
+    definirItemArrastadoAtual(null);
     const { active, over } = e;
     if (!over) return;
     const destinoStatus = over.id as Status;
