@@ -28,6 +28,10 @@ import {
   Copy,
   Check,
   Zap,
+  Globe,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
@@ -48,6 +52,11 @@ import { CardConsumoGitHub } from "@/components/CardConsumoGitHub";
 import { instalarWorkflowLembretes } from "@/lib/instaladorWorkflow";
 import { hojeISO, cn } from "@/lib/utils";
 import {
+  solicitarAutorizacaoGoogle,
+  desconectarGoogle,
+  estaConectadoGoogle,
+} from "@/lib/googleCalendar";
+import {
   obterRascunhosLocais,
   limparRascunhosComErro,
   redefinirRascunhosComErroParaPendente,
@@ -60,13 +69,14 @@ import {
 } from "@/lib/preferenciasApp";
 import JSZip from "jszip";
 
-type AbaConfig = "geral" | "github" | "ia" | "notificacoes" | "dados";
+type AbaConfig = "geral" | "github" | "ia" | "notificacoes" | "integracoes" | "dados";
 
 const OPCOES_ABAS: OpcaoVisao<AbaConfig>[] = [
   { id: "geral", rotulo: "Geral & Perfil", icone: <User size={15} /> },
   { id: "github", rotulo: "GitHub & Sincronização", icone: <GitBranch size={15} /> },
   { id: "ia", rotulo: "Inteligência Artificial", icone: <Bot size={15} /> },
   { id: "notificacoes", rotulo: "Notificações & Automações", icone: <Bell size={15} /> },
+  { id: "integracoes", rotulo: "Integrações & Google", icone: <Calendar size={15} /> },
   { id: "dados", rotulo: "Dados & Manutenção", icone: <Database size={15} /> },
 ];
 
@@ -114,10 +124,41 @@ export default function Configuracoes() {
   const [instalandoWorkflow, setInstalandoWorkflow] = useState(false);
   const [msgWorkflow, setMsgWorkflow] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
 
+  // Estados do Google Calendar
+  const [conectandoGoogle, setConectandoGoogle] = useState(false);
+  const [googleConectado, setGoogleConectado] = useState<boolean>(() => estaConectadoGoogle(cfg));
+  const [guiaGoogleAberto, setGuiaGoogleAberto] = useState(false);
 
   // Estados da Sincronização de Preferências na Nuvem (.klaus/preferencias.json)
   const [statusSync, setStatusSync] = useState<StatusSincronizacao>(() => obterStatusSincronizacao());
   const [sincronizandoPrefs, setSincronizandoPrefs] = useState(false);
+
+  const conectarGoogle = async () => {
+    if (!cfg.googleCalendarClientId) {
+      toast("Preencha o Google Client ID antes de conectar.", { tipo: "erro" });
+      return;
+    }
+    setConectandoGoogle(true);
+    try {
+      await solicitarAutorizacaoGoogle(cfg.googleCalendarClientId);
+      const atualizada = lerConfig();
+      setCfg(atualizada);
+      setGoogleConectado(true);
+      toast("Conta do Google conectada com sucesso!", { tipo: "sucesso" });
+    } catch (err: any) {
+      toast(err?.message || "Falha ao conectar com o Google.", { tipo: "erro" });
+    } finally {
+      setConectandoGoogle(false);
+    }
+  };
+
+  const desconectarGoogleConta = () => {
+    desconectarGoogle();
+    const atualizada = lerConfig();
+    setCfg(atualizada);
+    setGoogleConectado(false);
+    toast("Conta do Google desconectada.", { tipo: "sucesso" });
+  };
 
 
   const sincronizarPreferenciasAgora = async (forcarEnvio = false) => {
@@ -1237,6 +1278,185 @@ export default function Configuracoes() {
                 </div>
               </div>
             )}
+          </Cartao>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* ABA: INTEGRAÇÕES & GOOGLE CALENDAR */}
+      {/* ========================================================= */}
+      {abaAtiva === "integracoes" && (
+        <div className="space-y-5 animate-in fade-in duration-150">
+          {/* Cartão Google Calendar */}
+          <Cartao className="p-5 space-y-4">
+            <div className="flex items-center justify-between gap-3 pb-2 border-b border-border/60 flex-wrap">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <Globe size={18} />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-foreground text-sm sm:text-base flex items-center gap-2">
+                    Google Calendar
+                    {googleConectado ? (
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                        Conectado
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border">
+                        Não conectado
+                      </span>
+                    )}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Visualize seus compromissos no calendário do Klaus e envie tarefas diretamente para sua Google Agenda.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-1">
+              <div>
+                <Rotulo dica="Identificador do cliente OAuth 2.0 Web criado no Google Cloud Console. Termina com .apps.googleusercontent.com">
+                  Google Client ID (OAuth 2.0 Web)
+                </Rotulo>
+                <Campo
+                  value={cfg.googleCalendarClientId || ""}
+                  onChange={(e) => atualizar("googleCalendarClientId", e.target.value)}
+                  placeholder="ex: 1234567890-abcdefg.apps.googleusercontent.com"
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-secondary/40 border border-border/60">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold text-foreground">Exibir eventos no Calendário</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Mostrar automaticamente os compromissos da Google Agenda na grade do calendário de tarefas.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={cfg.googleCalendarMostrarNoCalendario !== false}
+                    onChange={(e) => {
+                      const ativo = e.target.checked;
+                      setCfg((c) => ({ ...c, googleCalendarMostrarNoCalendario: ativo }));
+                      salvarConfig({ ...cfg, googleCalendarMostrarNoCalendario: ativo });
+                    }}
+                    className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                  />
+                  <span className="text-xs font-medium">
+                    {cfg.googleCalendarMostrarNoCalendario !== false ? "Sim" : "Não"}
+                  </span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-2 flex-wrap border-t border-border/60">
+                <div className="flex items-center gap-2">
+                  <Botao
+                    variante="neutro"
+                    onClick={() => {
+                      const limpa = salvarConfig(cfg);
+                      setCfg(limpa);
+                      toast("Client ID salvo com sucesso!");
+                    }}
+                  >
+                    <Save size={14} />
+                    Salvar Client ID
+                  </Botao>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {googleConectado ? (
+                    <>
+                      <Botao
+                        variante="neutro"
+                        onClick={conectarGoogle}
+                        disabled={conectandoGoogle}
+                      >
+                        <RefreshCw size={14} className={conectandoGoogle ? "animate-spin" : ""} />
+                        {conectandoGoogle ? "Conectando…" : "Reconectar Conta"}
+                      </Botao>
+                      <Botao
+                        variante="perigo"
+                        onClick={desconectarGoogleConta}
+                        disabled={conectandoGoogle}
+                      >
+                        <Trash2 size={14} />
+                        Desconectar
+                      </Botao>
+                    </>
+                  ) : (
+                    <Botao
+                      variante="primario"
+                      onClick={conectarGoogle}
+                      disabled={!cfg.googleCalendarClientId || conectandoGoogle}
+                    >
+                      <Globe size={14} className={conectandoGoogle ? "animate-spin" : ""} />
+                      {conectandoGoogle ? "Conectando…" : "Conectar com o Google"}
+                    </Botao>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Accordion / Guia Passo a Passo */}
+            <div className="mt-4 pt-3 border-t border-border/60">
+              <button
+                type="button"
+                onClick={() => setGuiaGoogleAberto(!guiaGoogleAberto)}
+                className="w-full py-2 px-3 rounded-xl bg-secondary/30 hover:bg-secondary/60 transition-colors flex items-center justify-between text-xs font-semibold text-foreground cursor-pointer text-left"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-primary" />
+                  Como criar seu Client ID gratuito no Google Cloud (Passo a Passo)
+                </span>
+                {guiaGoogleAberto ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+
+              {guiaGoogleAberto && (
+                <div className="mt-3 p-4 rounded-xl bg-card border border-border/80 space-y-3 text-xs leading-relaxed text-muted-foreground animate-in fade-in duration-150">
+                  <p className="font-semibold text-foreground">
+                    Siga estes 5 passos rápidos (leva menos de 2 minutos e é 100% gratuito):
+                  </p>
+                  <ol className="list-decimal list-inside space-y-2 pl-1">
+                    <li>
+                      Acesse o{" "}
+                      <a
+                        href="https://console.cloud.google.com/"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary underline font-medium"
+                      >
+                        Google Cloud Console
+                      </a>{" "}
+                      e crie um projeto novo (ex: <strong>Klaus</strong>).
+                    </li>
+                    <li>
+                      No menu lateral, vá em <strong>APIs e Serviços &gt; Biblioteca</strong>, procure por{" "}
+                      <strong className="text-foreground">Google Calendar API</strong> e clique em <strong>Ativar</strong>.
+                    </li>
+                    <li>
+                      Vá em <strong>APIs e Serviços &gt; Tela de consentimento OAuth</strong>, selecione <em>Externo</em>, preencha o nome do app (ex: <em>Klaus</em>) e salve.
+                    </li>
+                    <li>
+                      Em <strong>Credenciais &gt; Criar Credenciais &gt; ID do cliente OAuth</strong>:
+                      <ul className="list-disc list-inside pl-4 pt-1 space-y-1 text-[11px]">
+                        <li>Tipo de aplicativo: <strong>Aplicativo da Web</strong></li>
+                        <li>
+                          Em <strong>Origens JavaScript autorizadas</strong>, adicione:{" "}
+                          <code className="px-1 py-0.5 bg-secondary rounded text-foreground font-mono">
+                            {typeof window !== "undefined" ? window.location.origin : "https://hugossssssssssssss.github.io"}
+                          </code>
+                        </li>
+                      </ul>
+                    </li>
+                    <li>
+                      Clique em <strong>Criar</strong>, copie o <strong>ID do cliente</strong> gerado e cole no campo acima!
+                    </li>
+                  </ol>
+                </div>
+              )}
+            </div>
           </Cartao>
         </div>
       )}

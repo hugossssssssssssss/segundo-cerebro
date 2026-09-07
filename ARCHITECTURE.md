@@ -1,6 +1,6 @@
 # Arquitetura do Klaus
 
-> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-09-05.**
+> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-09-07.**
 > Não edite este arquivo à mão — ele é reescrito a cada `npm run build`.
 > Para mudar o que está aqui, mude `src/lib/tipos.ts` e `src/lib/entidades.ts`.
 
@@ -80,6 +80,7 @@ Uma tarefa em `tarefas/`.
 | `pomodoro` | `number` | não | — |
 | `Pomodoro` | `number` | não | — |
 | `fraturados` | `number` | não | — |
+| `googleCalendarId` | `string` | não | ID do evento correspondente no Google Calendar |
 
 ### Meta
 

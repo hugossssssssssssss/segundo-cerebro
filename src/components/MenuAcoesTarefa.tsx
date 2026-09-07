@@ -10,6 +10,7 @@ import {
   Share2,
   Trash2,
   MoreVertical,
+  Globe,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -24,6 +25,8 @@ interface MenuAcoesTarefaProps {
   aoDuplicar?: () => void;
   aoRegistrarEntregaPDI?: () => void;
   aoExcluir?: () => void;
+  aoSincronizarGoogleCalendar?: () => void;
+  aoRemoverGoogleCalendar?: () => void;
   className?: string;
   triggerVisivelSempre?: boolean;
 }
@@ -36,6 +39,8 @@ export function MenuAcoesTarefa({
   aoDuplicar,
   aoRegistrarEntregaPDI,
   aoExcluir,
+  aoSincronizarGoogleCalendar,
+  aoRemoverGoogleCalendar,
   className,
   triggerVisivelSempre = false,
 }: MenuAcoesTarefaProps) {
@@ -185,6 +190,37 @@ export function MenuAcoesTarefa({
             <Share2 size={14} className="text-muted-foreground shrink-0" />
             <span className="font-medium">Compartilhar</span>
           </button>
+
+          {/* Sincronização Google Calendar */}
+          {aoSincronizarGoogleCalendar && (
+            <button
+              type="button"
+              onClick={() => {
+                setAberto(false);
+                aoSincronizarGoogleCalendar();
+              }}
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent transition-colors cursor-pointer text-left touch-manipulation min-h-[38px]"
+            >
+              <Globe size={14} className="text-blue-500 shrink-0" />
+              <span className="font-medium">
+                {tarefa.googleCalendarId ? "Atualizar no Google Calendar" : "Enviar p/ Google Calendar"}
+              </span>
+            </button>
+          )}
+
+          {aoRemoverGoogleCalendar && tarefa.googleCalendarId && (
+            <button
+              type="button"
+              onClick={() => {
+                setAberto(false);
+                aoRemoverGoogleCalendar();
+              }}
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-amber-600 dark:text-amber-400 hover:bg-accent hover:text-accent-foreground active:bg-accent transition-colors cursor-pointer text-left touch-manipulation min-h-[38px]"
+            >
+              <Globe size={14} className="shrink-0 text-amber-500" />
+              <span className="font-medium">Remover do Google Calendar</span>
+            </button>
+          )}
 
           {/* Divisor */}
           {aoExcluir && <div className="h-px bg-border/60 my-1" />}

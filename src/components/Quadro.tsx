@@ -169,6 +169,8 @@ function CartaoArrastavel({
   aoDuplicar,
   aoRegistrarEntregaPDI,
   aoExcluir,
+  aoSincronizarGoogleCalendar,
+  aoRemoverGoogleCalendar,
   aoFiltrarTag,
   gravando,
   selecionadas,
@@ -182,6 +184,8 @@ function CartaoArrastavel({
   aoDuplicar?: (t: Tarefa) => void;
   aoRegistrarEntregaPDI?: (t: Tarefa) => void;
   aoExcluir?: (t: Tarefa) => void;
+  aoSincronizarGoogleCalendar?: (t: Tarefa) => void;
+  aoRemoverGoogleCalendar?: (t: Tarefa) => void;
   aoFiltrarTag?: (tag: string) => void;
   gravando: boolean;
   selecionadas?: Set<string>;
@@ -331,6 +335,8 @@ function CartaoArrastavel({
             aoDuplicar={aoDuplicar ? () => aoDuplicar(t) : undefined}
             aoRegistrarEntregaPDI={aoRegistrarEntregaPDI ? () => aoRegistrarEntregaPDI(t) : undefined}
             aoExcluir={aoExcluir ? () => aoExcluir(t) : undefined}
+            aoSincronizarGoogleCalendar={aoSincronizarGoogleCalendar ? () => aoSincronizarGoogleCalendar(t) : undefined}
+            aoRemoverGoogleCalendar={aoRemoverGoogleCalendar ? () => aoRemoverGoogleCalendar(t) : undefined}
           />
 
           {/* Alça de arrasto visível no hover */}
@@ -362,6 +368,8 @@ function Coluna({
   aoDuplicar,
   aoRegistrarEntregaPDI,
   aoExcluir,
+  aoSincronizarGoogleCalendar,
+  aoRemoverGoogleCalendar,
   aoCriarRapido,
   aoFiltrarTag,
   gravandoCaminho,
@@ -379,6 +387,8 @@ function Coluna({
   aoDuplicar?: (t: Tarefa) => void;
   aoRegistrarEntregaPDI?: (t: Tarefa) => void;
   aoExcluir?: (t: Tarefa) => void;
+  aoSincronizarGoogleCalendar?: (t: Tarefa) => void;
+  aoRemoverGoogleCalendar?: (t: Tarefa) => void;
   aoCriarRapido?: (status: Status, titulo: string) => Promise<void> | void;
   aoFiltrarTag?: (tag: string) => void;
   gravandoCaminho: string | null;
@@ -478,6 +488,8 @@ function Coluna({
               aoDuplicar={aoDuplicar}
               aoRegistrarEntregaPDI={aoRegistrarEntregaPDI}
               aoExcluir={aoExcluir}
+              aoSincronizarGoogleCalendar={aoSincronizarGoogleCalendar}
+              aoRemoverGoogleCalendar={aoRemoverGoogleCalendar}
               aoFiltrarTag={aoFiltrarTag}
               gravando={gravandoCaminho === t.caminho}
               selecionadas={selecionadas}
@@ -580,6 +592,8 @@ export function Quadro({
   aoDuplicar,
   aoRegistrarEntregaPDI,
   aoExcluir,
+  aoSincronizarGoogleCalendar,
+  aoRemoverGoogleCalendar,
   aoCriarRapido,
   aoFiltrarTag,
   gravandoCaminho,
@@ -595,6 +609,8 @@ export function Quadro({
   aoDuplicar?: (t: Tarefa) => void;
   aoRegistrarEntregaPDI?: (t: Tarefa) => void;
   aoExcluir?: (t: Tarefa) => void;
+  aoSincronizarGoogleCalendar?: (t: Tarefa) => void;
+  aoRemoverGoogleCalendar?: (t: Tarefa) => void;
   aoCriarRapido?: (status: Status, titulo: string) => Promise<void> | void;
   aoFiltrarTag?: (tag: string) => void;
   gravandoCaminho: string | null;
@@ -753,6 +769,8 @@ export function Quadro({
             aoDuplicar={aoDuplicar}
             aoRegistrarEntregaPDI={aoRegistrarEntregaPDI}
             aoExcluir={aoExcluir}
+            aoSincronizarGoogleCalendar={aoSincronizarGoogleCalendar}
+            aoRemoverGoogleCalendar={aoRemoverGoogleCalendar}
             aoCriarRapido={aoCriarRapido}
             aoFiltrarTag={aoFiltrarTag}
             gravandoCaminho={gravandoCaminho}

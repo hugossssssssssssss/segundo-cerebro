@@ -28,7 +28,8 @@ import { cn } from "@/lib/utils";
 import { urgencia, extrairIntervaloTarefa, type Tarefa } from "@/lib/tarefas";
 import { CORES_NOTION, lerConfigPropriedadesGlobais } from "@/components/PropriedadesNotion";
 import { MenuAcoesTarefa } from "@/components/MenuAcoesTarefa";
-import { Circle } from "lucide-react";
+import { Circle, Globe, Plus, ExternalLink } from "lucide-react";
+import type { EventoGoogle } from "@/lib/googleCalendar";
 
 type FiltroStatusCalendario = "todas" | "pendentes" | "atrasadas" | "concluidas";
 
@@ -100,6 +101,11 @@ export function Calendario({
   aoDuplicar,
   aoExcluir,
   aoFiltrarTag,
+  eventosGoogle = [],
+  aoImportarEventoGoogle,
+  mostrarEventosGoogle = true,
+  aoAlternarMostrarEventosGoogle,
+  aoMudarMes,
 }: {
   tarefas: Tarefa[];
   aoAbrir: (t: Tarefa) => void;
@@ -108,6 +114,11 @@ export function Calendario({
   aoDuplicar?: (t: Tarefa) => void;
   aoExcluir?: (t: Tarefa) => void;
   aoFiltrarTag?: (tag: string) => void;
+  eventosGoogle?: EventoGoogle[];
+  aoImportarEventoGoogle?: (ev: EventoGoogle) => void;
+  mostrarEventosGoogle?: boolean;
+  aoAlternarMostrarEventosGoogle?: (mostrar: boolean) => void;
+  aoMudarMes?: (mes: Date) => void;
 }) {
   const [mesAtual, setMesAtual] = useState(new Date());
   const [selecionado, setSelecionado] = useState<Date>(new Date());
@@ -166,6 +177,24 @@ export function Calendario({
     return mapa;
   }, [tarefasFiltradas]);
 
+  // Mapa de eventos do Google agrupados por data ISO (yyyy-MM-dd)
+  const eventosGooglePorDia = useMemo(() => {
+    if (!mostrarEventosGoogle || !eventosGoogle || eventosGoogle.length === 0) {
+      return new Map<string, EventoGoogle[]>();
+    }
+    const mapa = new Map<string, EventoGoogle[]>();
+    for (const ev of eventosGoogle) {
+      if (!ev.inicio) continue;
+      const chave = ev.inicio.slice(0, 10);
+      const lista = mapa.get(chave) ?? [];
+      if (!lista.some((x) => x.id === ev.id)) {
+        lista.push(ev);
+      }
+      mapa.set(chave, lista);
+    }
+    return mapa;
+  }, [eventosGoogle, mostrarEventosGoogle]);
+
   // Dias sem data marcada
   const semData = useMemo(() => {
     return tarefasFiltradas.filter((t) => !extrairIntervaloTarefa(t) && t.status !== "feito");
@@ -183,19 +212,29 @@ export function Calendario({
   // Tarefas da data selecionada
   const dataChaveSelecionada = format(selecionado, "yyyy-MM-dd");
   const tarefasDoDia = porDia.get(dataChaveSelecionada) ?? [];
+  const eventosGoogleDoDia = eventosGooglePorDia.get(dataChaveSelecionada) ?? [];
 
   function proximoMes() {
-    setMesAtual((m) => addMonths(m, 1));
+    setMesAtual((m) => {
+      const novo = addMonths(m, 1);
+      if (aoMudarMes) aoMudarMes(novo);
+      return novo;
+    });
   }
 
   function mesAnterior() {
-    setMesAtual((m) => subMonths(m, 1));
+    setMesAtual((m) => {
+      const novo = subMonths(m, 1);
+      if (aoMudarMes) aoMudarMes(novo);
+      return novo;
+    });
   }
 
   function irParaHoje() {
     const agora = new Date();
     setMesAtual(agora);
     setSelecionado(agora);
+    if (aoMudarMes) aoMudarMes(agora);
   }
 
   const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -204,7 +243,7 @@ export function Calendario({
     <div className="space-y-6">
       {/* ── Barra Superior do Calendário ────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-4 rounded-2xl border border-border/80 shadow-xs">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1 bg-secondary/60 p-1 rounded-xl border border-border/60">
             <Tooltip conteudo="Mês anterior">
               <button
@@ -241,8 +280,30 @@ export function Calendario({
           ) : null}
         </div>
 
-        {/* Filtros de Status */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+        {/* Filtros e Alternador do Google Calendar */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 flex-wrap">
+          {aoAlternarMostrarEventosGoogle && eventosGoogle.length > 0 && (
+            <button
+              type="button"
+              onClick={() => aoAlternarMostrarEventosGoogle(!mostrarEventosGoogle)}
+              className={cn(
+                "px-2.5 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap",
+                mostrarEventosGoogle
+                  ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 font-semibold"
+                  : "bg-secondary/40 text-muted-foreground border-transparent hover:bg-accent"
+              )}
+              title={mostrarEventosGoogle ? "Ocultar eventos da Google Agenda" : "Mostrar eventos da Google Agenda"}
+            >
+              <Globe size={13} className={mostrarEventosGoogle ? "text-blue-500" : "text-muted-foreground"} />
+              Google Agenda
+              <span className="text-[10px] opacity-75 px-1 py-0.2 rounded-full bg-blue-500/20">
+                {eventosGoogle.length}
+              </span>
+            </button>
+          )}
+
+          <div className="h-4 w-px bg-border/60 hidden sm:block" />
+
           <span className="text-xs font-medium text-muted-foreground hidden md:flex items-center gap-1 mr-1">
             <Filter size={12} /> Mostrar:
           </span>
@@ -288,6 +349,8 @@ export function Calendario({
             {diasDaGrade.map((d) => {
               const chave = format(d, "yyyy-MM-dd");
               const tarefasDia = porDia.get(chave) ?? [];
+              const eventosDia = eventosGooglePorDia.get(chave) ?? [];
+              const totalItensDia = tarefasDia.length + eventosDia.length;
               const ehMesAtual = isSameMonth(d, mesAtual);
               const ehHoje = isToday(d);
               const ehSelecionado = isSameDay(d, selecionado);
@@ -320,18 +383,35 @@ export function Calendario({
                       {format(d, "d")}
                     </span>
 
-                    {tarefasDia.length > 0 && (
+                    {totalItensDia > 0 && (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-mono">
-                        {tarefasDia.length}
+                        {totalItensDia}
                       </span>
                     )}
                   </div>
 
-                  {/* Indicadores Visuais de Tarefas no Dia com suporte a Intervalo Contínuo e Cores de Tags */}
+                  {/* Indicadores Visuais no Dia (Tarefas e Eventos do Google) */}
                   <div className="space-y-1 mt-1">
-                    {/* Exibe barra unificada contínua em telas médias/grandes com quebra de linha natural */}
+                    {/* Exibe barra unificada contínua em telas médias/grandes */}
                     <div className="hidden sm:block space-y-1">
-                      {tarefasDia.slice(0, 3).map((t) => {
+                      {/* Eventos do Google Calendar */}
+                      {eventosDia.slice(0, 2).map((ev) => (
+                        <Tooltip key={ev.id} conteudo={`Google Agenda: ${ev.titulo}${ev.local ? ` (${ev.local})` : ""}`}>
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelecionado(d);
+                            }}
+                            className="min-h-[20px] h-auto py-0.5 px-1.5 rounded-md flex items-center gap-1 text-[10px] font-medium border bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/25 leading-snug cursor-pointer break-words"
+                          >
+                            <Globe size={10} className="shrink-0 text-blue-500" />
+                            <span className="truncate">{ev.titulo}</span>
+                          </div>
+                        </Tooltip>
+                      ))}
+
+                      {/* Tarefas do Klaus */}
+                      {tarefasDia.slice(0, Math.max(1, 3 - eventosDia.length)).map((t) => {
                         const intervalo = extrairIntervaloTarefa(t);
                         const estiloTag = obterEstiloTagCalendario(t);
                         const ehFeito = t.status === "feito";
@@ -392,15 +472,27 @@ export function Calendario({
                           </Tooltip>
                         );
                       })}
-                      {tarefasDia.length > 3 && (
+
+                      {totalItensDia > 3 && (
                         <p className="text-[9px] font-bold text-muted-foreground px-1">
-                          +{tarefasDia.length - 3} mais
+                          +{totalItensDia - 3} mais
                         </p>
                       )}
                     </div>
 
                     {/* Indicador por pontos coloridos no celular */}
                     <div className="sm:hidden flex items-center gap-1 justify-center pt-1 flex-wrap">
+                      {eventosDia.slice(0, 2).map((ev) => (
+                        <Tooltip key={ev.id} conteudo={`Google Agenda: ${ev.titulo}`}>
+                          <span
+                            className="h-1.5 w-1.5 rounded-full shrink-0 bg-blue-500 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelecionado(d);
+                            }}
+                          />
+                        </Tooltip>
+                      ))}
                       {tarefasDia.slice(0, 4).map((t) => {
                         const estilo = obterEstiloTagCalendario(t);
                         const ehFeito = t.status === "feito";
@@ -442,10 +534,78 @@ export function Calendario({
                 </h3>
               </div>
               <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/20 shrink-0">
-                {tarefasDoDia.length} {tarefasDoDia.length === 1 ? "tarefa" : "tarefas"}
+                {tarefasDoDia.length + eventosGoogleDoDia.length} itens
               </span>
             </div>
 
+            {/* Seção de Eventos do Google Agenda */}
+            {eventosGoogleDoDia.length > 0 && (
+              <div className="space-y-2.5 border-b border-border/60 pb-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                    <Globe size={13} /> Google Agenda ({eventosGoogleDoDia.length})
+                  </h4>
+                </div>
+                <div className="grid gap-2">
+                  {eventosGoogleDoDia.map((ev) => {
+                    const horaFormatada = ev.oDiaTodo
+                      ? "Dia inteiro"
+                      : ev.inicio
+                      ? format(new Date(ev.inicio), "HH:mm")
+                      : "";
+
+                    return (
+                      <div
+                        key={ev.id}
+                        className="p-3 rounded-xl border border-blue-500/25 bg-blue-500/5 hover:bg-blue-500/10 transition-colors space-y-2 text-xs"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-0.5 flex-1 min-w-0">
+                            <p className="font-bold text-foreground leading-snug break-words">
+                              {ev.titulo}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                              <Clock size={11} className="text-blue-500" />
+                              {horaFormatada}
+                              {ev.local && <span className="truncate"> • 📍 {ev.local}</span>}
+                            </p>
+                          </div>
+                          {ev.link && (
+                            <a
+                              href={ev.link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-muted-foreground hover:text-blue-500 p-1"
+                              title="Abrir no Google Calendar"
+                            >
+                              <ExternalLink size={13} />
+                            </a>
+                          )}
+                        </div>
+
+                        {ev.descricao && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-2">
+                            {ev.descricao}
+                          </p>
+                        )}
+
+                        {aoImportarEventoGoogle && (
+                          <button
+                            type="button"
+                            onClick={() => aoImportarEventoGoogle(ev)}
+                            className="w-full mt-1.5 py-1 px-2 rounded-lg bg-background hover:bg-blue-500/10 border border-border/70 text-[11px] font-semibold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Plus size={12} /> Transformar em Tarefa do Klaus
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Seção de Tarefas do Klaus */}
             {tarefasDoDia.length > 0 ? (
               <div className="grid gap-2.5 min-w-0">
                 {tarefasDoDia.map((t) => {

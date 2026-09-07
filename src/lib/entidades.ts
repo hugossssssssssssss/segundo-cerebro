@@ -167,6 +167,13 @@ export function comoTarefa(
   const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
   const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
 
+  const googleCalendarId =
+    typeof d.google_calendar_id === "string" && d.google_calendar_id.trim()
+      ? d.google_calendar_id.trim()
+      : typeof d.googleCalendarId === "string" && d.googleCalendarId.trim()
+      ? d.googleCalendarId.trim()
+      : undefined;
+
   return {
     bruto: doc.dados,
     caminho,
@@ -185,6 +192,7 @@ export function comoTarefa(
     pomodoro: pomodorosEstimados,
     Pomodoro: pomodorosEstimados,
     fraturados: pomodorosRealizados,
+    googleCalendarId,
     criadoEm,
     atualizadoEm,
     corpo: doc.corpo,
@@ -209,9 +217,11 @@ export function tarefaParaArquivo(t: Tarefa): { dados: Frontmatter; corpo: strin
       tags:                 tagsParaSalvar && tagsParaSalvar.length ? tagsParaSalvar : undefined,
       pomodoros_estimados:  estimativa,
       pomodoros_realizados: realizados,
+      google_calendar_id:   t.googleCalendarId || undefined,
       criado_em:            criadoEm,
       atualizado_em:        agora,
       // Remove campos legados do frontmatter para limpeza
+      googleCalendarId:     undefined,
       Pomodoro:             undefined,
       PomodoroFraturado:    undefined,
       estimativa:           undefined,

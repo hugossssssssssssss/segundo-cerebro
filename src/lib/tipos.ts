@@ -91,6 +91,8 @@ export interface Tarefa extends ItemBase {
   pomodoro?: number;
   Pomodoro?: number;
   fraturados?: number;
+  /** ID do evento correspondente no Google Calendar */
+  googleCalendarId?: string;
 }
 
 /** Os três estados de uma meta de PDI. */

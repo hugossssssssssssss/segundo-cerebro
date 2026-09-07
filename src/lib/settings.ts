@@ -58,6 +58,13 @@ export type Settings = {
   modoDesenvolvedor?: boolean;
   /** Motor de busca web padrão ('google' | 'bing' | 'duckduckgo') */
   defaultWebSearchEngine?: "google" | "bing" | "duckduckgo";
+
+  /** Client ID do Google Cloud Console para o Google Calendar */
+  googleCalendarClientId?: string;
+  /** Se a integração com Google Calendar está conectada/ativa */
+  googleCalendarAtivo?: boolean;
+  /** Se deve exibir eventos do Google Calendar na grade do calendário */
+  googleCalendarMostrarNoCalendario?: boolean;
 };
 
 const CHAVE = "segundo-cerebro:config";
@@ -217,6 +224,10 @@ export const PADRAO: Settings = {
   googleEmailAtivo: false,
   modoDesenvolvedor: false,
   defaultWebSearchEngine: "google",
+
+  googleCalendarClientId: "",
+  googleCalendarAtivo: false,
+  googleCalendarMostrarNoCalendario: true,
 };
 
 export function limparToken(token: string): string {
@@ -287,6 +298,9 @@ function limpar(s: Settings): Settings {
     defaultWebSearchEngine: (["google", "bing", "duckduckgo"].includes(s.defaultWebSearchEngine as string)
       ? s.defaultWebSearchEngine
       : "google") as "google" | "bing" | "duckduckgo",
+    googleCalendarClientId: (s.googleCalendarClientId || "").trim(),
+    googleCalendarAtivo: Boolean(s.googleCalendarAtivo),
+    googleCalendarMostrarNoCalendario: s.googleCalendarMostrarNoCalendario !== false,
   };
 }
 

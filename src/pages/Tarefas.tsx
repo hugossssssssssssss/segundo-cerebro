@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+} from "date-fns";
+import {
   Plus,
   Columns3,
   CalendarDays,
@@ -38,6 +44,14 @@ import { useCronometro } from "@/components/ContextoCronometro";
 import { Timer } from "lucide-react";
 import { Calendario } from "@/components/Calendario";
 import { Quadro } from "@/components/Quadro";
+import {
+  listarEventosGoogle,
+  criarEventoGoogle,
+  atualizarEventoGoogle,
+  excluirEventoGoogle,
+  estaConectadoGoogle,
+  type EventoGoogle,
+} from "@/lib/googleCalendar";
 import {
   Botao,
   Aviso,
@@ -116,6 +130,31 @@ export default function Tarefas() {
     setModoVisao(novo);
     localStorage.setItem("tarefa-modo-visao", novo);
   };
+
+  // ── Integração Google Calendar ──────────────────────────────────────────
+  const [eventosGoogle, setEventosGoogle] = useState<EventoGoogle[]>([]);
+  const [mostrarEventosGoogle, setMostrarEventosGoogle] = useState<boolean>(() => {
+    return cfg.googleCalendarMostrarNoCalendario !== false;
+  });
+  const [mesCalendarioAtual, setMesCalendarioAtual] = useState<Date>(new Date());
+
+  const carregarEventosGoogle = useCallback(async (mesReferencia = mesCalendarioAtual) => {
+    if (!estaConectadoGoogle(cfg)) return;
+    try {
+      const inicio = startOfWeek(startOfMonth(mesReferencia), { weekStartsOn: 0 });
+      const fim = endOfWeek(endOfMonth(mesReferencia), { weekStartsOn: 0 });
+      const lista = await listarEventosGoogle(inicio, fim);
+      setEventosGoogle(lista);
+    } catch (err: any) {
+      console.warn("Não foi possível carregar eventos do Google Calendar:", err);
+    }
+  }, [cfg, mesCalendarioAtual]);
+
+  useEffect(() => {
+    if (visao === "calendario" && estaConectadoGoogle(cfg)) {
+      carregarEventosGoogle(mesCalendarioAtual);
+    }
+  }, [visao, cfg, mesCalendarioAtual, carregarEventosGoogle]);
 
   // ── Pastas existentes para filtro e organização ────────────────────────────
   const pastasExistentes = useMemo(() => {
@@ -439,6 +478,89 @@ export default function Tarefas() {
     }
   }
 
+  async function sincronizarComGoogle(t: Tarefa) {
+    if (!estaConectadoGoogle(cfg)) {
+      toast("Conecte sua conta do Google em Ajustes para sincronizar.", { tipo: "info" });
+      navegar("/config");
+      return;
+    }
+
+    try {
+      const dataEvento = t.prazo || new Date().toISOString().slice(0, 10);
+      if (t.googleCalendarId) {
+        await atualizarEventoGoogle(t.googleCalendarId, {
+          titulo: t.titulo,
+          dataInicio: dataEvento,
+          descricao: t.corpo,
+        });
+        toast(`Evento "${t.titulo}" atualizado no Google Calendar!`, { tipo: "sucesso" });
+      } else {
+        const idEvento = await criarEventoGoogle({
+          titulo: t.titulo,
+          dataInicio: dataEvento,
+          descricao: t.corpo,
+        });
+        const atualizada: Tarefa = {
+          ...t,
+          googleCalendarId: idEvento,
+          bruto: {
+            ...t.bruto,
+            google_calendar_id: idEvento,
+          },
+        };
+        await gravarTarefa(atualizada, `sync google calendar: ${t.titulo}`);
+        recarregar();
+        toast(`Tarefa "${t.titulo}" sincronizada com Google Calendar!`, { tipo: "sucesso" });
+      }
+      carregarEventosGoogle();
+    } catch (e: any) {
+      toast(`Falha ao sincronizar com Google Calendar: ${e?.message || e}`, { tipo: "erro" });
+    }
+  }
+
+  async function removerDoGoogle(t: Tarefa) {
+    if (!t.googleCalendarId) return;
+    try {
+      await excluirEventoGoogle(t.googleCalendarId);
+      const atualizada: Tarefa = {
+        ...t,
+        googleCalendarId: undefined,
+        bruto: {
+          ...t.bruto,
+          google_calendar_id: undefined,
+        },
+      };
+      await gravarTarefa(atualizada, `desvincula google calendar: ${t.titulo}`);
+      recarregar();
+      toast(`Evento desvinculado do Google Calendar.`, { tipo: "sucesso" });
+      carregarEventosGoogle();
+    } catch (e: any) {
+      toast(`Erro ao desvincular do Google Calendar: ${e?.message || e}`, { tipo: "erro" });
+    }
+  }
+
+  function importarEventoGoogleParaTarefa(ev: EventoGoogle) {
+    const dataInicio = ev.inicio ? ev.inicio.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const nova: Tarefa = {
+      bruto: {
+        tipo: "tarefa",
+        status: "a-fazer",
+        prazo: dataInicio,
+        google_calendar_id: ev.id,
+      },
+      caminho: "",
+      sha: "",
+      titulo: ev.titulo || "Novo Evento",
+      corpo: ev.descricao ? `${ev.descricao}\n\nLink: ${ev.link || ""}` : "",
+      status: "a-fazer",
+      prazo: dataInicio,
+      googleCalendarId: ev.id,
+      tags: ["Google"],
+    };
+    setOriginal(null);
+    setEditando(nova);
+  }
+
   async function confirmarRemoverTarefa() {
     if (!tarefaParaExcluir) return;
     try {
@@ -737,6 +859,14 @@ export default function Tarefas() {
           aoDuplicar={duplicarTarefa}
           aoExcluir={(t) => setTarefaParaExcluir(t)}
           aoFiltrarTag={aplicarFiltroTag}
+          eventosGoogle={eventosGoogle}
+          aoImportarEventoGoogle={importarEventoGoogleParaTarefa}
+          mostrarEventosGoogle={mostrarEventosGoogle}
+          aoAlternarMostrarEventosGoogle={setMostrarEventosGoogle}
+          aoMudarMes={(novoMes) => {
+            setMesCalendarioAtual(novoMes);
+            carregarEventosGoogle(novoMes);
+          }}
         />
       ) : (
         <Quadro
@@ -749,6 +879,8 @@ export default function Tarefas() {
           aoDuplicar={duplicarTarefa}
           aoExcluir={(t) => setTarefaParaExcluir(t)}
           aoRegistrarEntregaPDI={(t) => setTarefaParaPDI(t)}
+          aoSincronizarGoogleCalendar={sincronizarComGoogle}
+          aoRemoverGoogleCalendar={removerDoGoogle}
           aoFiltrarTag={aplicarFiltroTag}
           gravandoCaminho={gravandoCaminho}
           selecionadas={selecionadas}
@@ -816,6 +948,7 @@ export default function Tarefas() {
             Pomodoro: editando.Pomodoro ?? editando.pomodorosEstimados,
             pomodoros_estimados: editando.pomodorosEstimados ?? editando.Pomodoro,
             pomodoros_realizados: editando.pomodorosRealizados,
+            google_calendar_id: editando.googleCalendarId || editando.bruto?.google_calendar_id,
           }}
           onChangeProps={(nProps) => {
             setEditando({
@@ -824,6 +957,7 @@ export default function Tarefas() {
               status: (nProps.status as Status) || editando.status,
               prioridade: nProps.prioridade as Tarefa["prioridade"],
               prazo: nProps.prazo as string | undefined,
+              googleCalendarId: (nProps.google_calendar_id as string) || editando.googleCalendarId,
               tags: Array.isArray(nProps.tags) ? nProps.tags as string[] : editando.tags,
               Pomodoro: typeof nProps.Pomodoro === "number"
                 ? nProps.Pomodoro
