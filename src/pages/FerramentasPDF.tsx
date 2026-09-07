@@ -486,8 +486,8 @@ export default function FerramentasPDF({ modoFocado, abaInicial }: FerramentasPD
             corIcone="bg-red-500/10 text-red-600 dark:text-red-400"
           />
 
-          {/* Grade de Ferramentas com Visual Unificado do Conversor */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          {/* Grade de Ferramentas com Visual Unificado do Conversor e Carrossel Mobile */}
+          <div className="flex sm:grid sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 snap-x snap-mandatory scrollbar-none">
             {abasFerramentas.map((f) => {
               const ativa = abaAtiva === f.id;
               const IconeComp = f.Icone;
@@ -502,7 +502,7 @@ export default function FerramentasPDF({ modoFocado, abaInicial }: FerramentasPD
                     setMensagemSucesso("");
                   }}
                   className={cn(
-                    "group relative flex flex-col justify-between p-4 rounded-2xl border transition-all cursor-pointer shadow-xs",
+                    "group relative flex flex-col justify-between p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer shadow-xs shrink-0 w-[240px] sm:w-auto snap-start select-none",
                     ativa
                       ? "border-primary bg-primary/5 ring-2 ring-primary/30"
                       : "border-border/80 bg-card hover:bg-accent/50 hover:border-primary/40"

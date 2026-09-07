@@ -48,7 +48,12 @@ export default function GrafoNeural() {
   const { acervo, carregando, erro } = useAcervoRepo(cfg);
 
   const [aberto, setAberto] = useState<ItemAberto | null>(null);
-  const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>("lado");
+  const [modoVisao, setModoVisao] = useState<ModoVisaoNotion>(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      return "popup";
+    }
+    return "lado";
+  });
 
   const indice = useMemo(() => montarIndice(acervo), [acervo]);
   const opcoesRelacionamento = useMemo(
@@ -59,6 +64,10 @@ export default function GrafoNeural() {
   const abrirItemDoGrafo = (caminho: string) => {
     const item = acervo.find((i) => i.caminho === caminho);
     if (!item) return;
+
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      setModoVisao("popup");
+    }
 
     const titulo = String(item.doc.dados.titulo || tituloProvavel(item.doc, item.nome));
     const tipoRotulo =

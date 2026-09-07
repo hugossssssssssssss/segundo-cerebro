@@ -395,19 +395,19 @@ export default function Lousas() {
       <div
         className={
           telaCheia
-            ? "fixed inset-0 z-50 bg-background flex flex-col p-4 space-y-3"
-            : "flex flex-col gap-4 h-[calc(100vh-120px)] w-full"
+            ? "fixed inset-0 z-50 bg-background flex flex-col p-2 sm:p-4 space-y-2 sm:space-y-3 pb-[max(env(safe-area-inset-bottom),8px)] pt-[max(env(safe-area-inset-top),8px)] pl-[max(env(safe-area-inset-left),8px)] pr-[max(env(safe-area-inset-right),8px)]"
+            : "flex flex-col gap-3 sm:gap-4 h-[calc(100dvh-120px)] w-full"
         }
       >
         {/* Barra Superior da Lousa Aberta com Divulgação Progressiva */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card/90 backdrop-blur-md p-2.5 px-4 rounded-2xl border border-border/80 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 bg-card/90 backdrop-blur-md p-2 sm:p-2.5 px-3 sm:px-4 rounded-2xl border border-border/80 shadow-2xs">
           <div className="flex items-center gap-2 flex-1 max-w-lg min-w-0">
             <Tooltip conteudo="Voltar para a galeria de lousas" posicao="bottom">
               <Botao
                 variante="fantasma"
                 tamanho="icone"
                 onClick={() => setAberta(null)}
-                className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                className="h-9 w-9 text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
                 aria-label="Voltar"
               >
                 <ArrowLeft size={16} />
@@ -420,11 +420,11 @@ export default function Lousas() {
               value={aberta.titulo}
               onChange={(e) => setAberta({ ...aberta, titulo: e.target.value })}
               placeholder="Nome do Mapa Mental / Lousa"
-              className="text-sm font-semibold flex-1 h-9"
+              className="text-xs sm:text-sm font-semibold flex-1 h-9"
             />
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 justify-end shrink-0">
             {/* Badge de contagem de elementos */}
             <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-xl bg-secondary text-muted-foreground border border-border/60">
               <Layers size={13} className="text-cyan-500" />
@@ -436,7 +436,7 @@ export default function Lousas() {
                 variante="neutro"
                 tamanho="icone"
                 onClick={() => setTelaCheia(!telaCheia)}
-                className="h-9 w-9"
+                className="h-9 w-9 cursor-pointer"
                 aria-label="Tela Cheia"
               >
                 {telaCheia ? <Minimize2 size={16} /> : <Maximize2 size={16} />}

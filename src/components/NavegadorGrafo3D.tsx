@@ -585,14 +585,14 @@ export function NavegadorGrafo3D({
       )}
 
       {/* Controles de Câmera e Status no Rodapé */}
-      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none">
-        <div className="flex items-center gap-2 bg-card/85 backdrop-blur-md px-3 py-1 rounded-full border border-border/60 text-[11px] font-medium text-muted-foreground pointer-events-auto">
+      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
+        <div className="hidden sm:flex items-center gap-2 bg-card/85 backdrop-blur-md px-3 py-1 rounded-full border border-border/60 text-[11px] font-medium text-muted-foreground pointer-events-auto">
           <span>{grafoRef.current.nos.length} nós</span>
           <span>•</span>
           <span>{grafoRef.current.arestas.length} conexões</span>
         </div>
 
-        <div className="flex items-center gap-1 bg-card/90 backdrop-blur-md p-1 rounded-xl border border-border/80 shadow-md pointer-events-auto">
+        <div className="flex items-center gap-1 bg-card/90 backdrop-blur-md p-1.5 rounded-2xl border border-border/80 shadow-md pointer-events-auto ml-auto sm:ml-0">
           <Tooltip conteudo={simulando ? "Pausar física" : "Ativar física"}>
             <button
               onClick={() => {
@@ -603,22 +603,22 @@ export function NavegadorGrafo3D({
                 setSimulando(!simulando);
               }}
               className={cn(
-                "p-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 cursor-pointer",
+                "min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-xs font-medium transition-colors cursor-pointer",
                 simulando ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground hover:bg-accent"
               )}
               aria-label={simulando ? "Pausar física" : "Ativar física"}
             >
-              {simulando ? <Pause size={14} /> : <Play size={14} />}
+              {simulando ? <Pause size={16} /> : <Play size={16} />}
             </button>
           </Tooltip>
 
           <Tooltip conteudo="Reorganizar Layout">
             <button
               onClick={reorganizarGrafo}
-              className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
               aria-label="Reorganizar Layout"
             >
-              <RotateCcw size={14} />
+              <RotateCcw size={16} />
             </button>
           </Tooltip>
 
@@ -627,10 +627,10 @@ export function NavegadorGrafo3D({
               onClick={() => {
                 cameraRef.current.zoom = Math.min(cameraRef.current.zoom * 1.25, 3.5);
               }}
-              className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
               aria-label="Aumentar Zoom"
             >
-              <ZoomIn size={14} />
+              <ZoomIn size={16} />
             </button>
           </Tooltip>
 
@@ -639,20 +639,20 @@ export function NavegadorGrafo3D({
               onClick={() => {
                 cameraRef.current.zoom = Math.max(cameraRef.current.zoom * 0.8, 0.4);
               }}
-              className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
               aria-label="Diminuir Zoom"
             >
-              <ZoomOut size={14} />
+              <ZoomOut size={16} />
             </button>
           </Tooltip>
 
           <Tooltip conteudo="Centralizar Câmera">
             <button
               onClick={reajustarCentralizacao}
-              className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
               aria-label="Centralizar Câmera"
             >
-              <Crosshair size={14} />
+              <Crosshair size={16} />
             </button>
           </Tooltip>
         </div>

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Send, Sparkles, Trash2, Copy, Check, RefreshCw, MessageSquare, Sun, Target, Lightbulb, Zap, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { Send, Sparkles, Trash2, Copy, Check, RefreshCw, MessageSquare, Sun, Target, Lightbulb, Zap, Eye, EyeOff, ExternalLink, Mic, MicOff } from "lucide-react";
 import { lerConfig, salvarConfig, configCompleta, type Settings } from "@/lib/settings";
 import { useAcervoRepo } from "@/lib/useItemRepo";
 import { conversar, PROMPTS, type Mensagem, type PromptSalvo } from "@/lib/gemini";
@@ -11,6 +11,8 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
 import { montarContextoSemantico } from "@/lib/ragLocal";
+import { iniciarDitadoVoz, suportaDitadoVoz, type SessaoDitado } from "@/lib/vozCaptura";
+import { toast } from "@/lib/toast";
 
 /** Uma fala da conversa, com as ações que a IA propôs junto dela. */
 type Fala = Mensagem & { acoes?: Acao[] };
@@ -32,6 +34,62 @@ export default function Chat({ modoFlutuante, mensagemInicial, aoFechar: _aoFech
   const [erro, setErro] = useState("");
   const [copiado, setCopiado] = useState<number | null>(null);
   const [descartadas, setDescartadas] = useState<Set<string>>(new Set());
+
+  // Estado de Reconhecimento e Ditado de Voz
+  const [ouvindoVoz, setOuvindoVoz] = useState(false);
+  const ditadoRef = useRef<SessaoDitado | null>(null);
+  const suportaMic = typeof window !== "undefined" && suportaDitadoVoz();
+
+  // Limpeza ao desmontar o componente
+  useEffect(() => {
+    return () => {
+      if (ditadoRef.current) {
+        ditadoRef.current.parar();
+      }
+    };
+  }, []);
+
+  const alternarDitadoVoz = useCallback(() => {
+    if (ouvindoVoz) {
+      if (ditadoRef.current) {
+        ditadoRef.current.parar();
+        ditadoRef.current = null;
+      }
+      setOuvindoVoz(false);
+      return;
+    }
+
+    if (!suportaMic) {
+      toast("Reconhecimento de voz não suportado neste navegador.", { tipo: "aviso" });
+      return;
+    }
+
+    const sessao = iniciarDitadoVoz({
+      idioma: "pt-BR",
+      continuo: true,
+      aoIniciar: () => {
+        setOuvindoVoz(true);
+        toast("Microfone ativo! Fale sua mensagem...", { tipo: "info" });
+      },
+      aoReceberTexto: (textoTranscrito) => {
+        setEntrada((antigo) => {
+          const base = antigo.trim();
+          return base ? `${base} ${textoTranscrito}` : textoTranscrito;
+        });
+      },
+      aoErro: (erroMsg) => {
+        setOuvindoVoz(false);
+        ditadoRef.current = null;
+        toast(erroMsg, { tipo: "erro" });
+      },
+      aoFinalizar: () => {
+        setOuvindoVoz(false);
+        ditadoRef.current = null;
+      },
+    });
+
+    ditadoRef.current = sessao;
+  }, [ouvindoVoz, suportaMic]);
 
   // Estado para configuração rápida da chave do Gemini se ainda não estiver configurada
   const [chaveInput, setChaveInput] = useState("");
@@ -435,35 +493,57 @@ export default function Chat({ modoFlutuante, mensagemInicial, aoFechar: _aoFech
               <Tooltip conteudo="Reler seus arquivos do repositório">
                 <button
                   onClick={() => recarregar()}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer min-h-[36px] px-1.5"
                   aria-label="Reler seus arquivos"
                 >
-                  <RefreshCw size={12} />
+                  <RefreshCw size={13} />
                   <span className="hidden sm:inline">{acervo.length} arquivos</span>
                 </button>
               </Tooltip>
             )}
           </div>
-          {pensando ? (
-            <Botao
-              tamanho="pequeno"
-              variante="perigo"
-              onClick={cancelarGeracao}
-              className="gap-1.5"
-            >
-              <span>Parar</span>
-            </Botao>
-          ) : (
-            <Botao
-              tamanho="pequeno"
-              onClick={() => enviar(entrada)}
-              disabled={!entrada.trim()}
-              className="gap-1.5"
-            >
-              <Send size={14} />
-              <span>Enviar</span>
-            </Botao>
-          )}
+
+          <div className="flex items-center gap-2">
+            {/* Botão de Ditado por Voz */}
+            {suportaMic && (
+              <Tooltip conteudo={ouvindoVoz ? "Parar microfone" : "Ditar mensagem por voz"}>
+                <button
+                  type="button"
+                  onClick={alternarDitadoVoz}
+                  className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-xl border transition-all cursor-pointer",
+                    ouvindoVoz
+                      ? "bg-rose-500 text-white border-rose-600 animate-pulse shadow-md shadow-rose-500/20 ring-2 ring-rose-400/40"
+                      : "border-border/80 bg-secondary/80 text-muted-foreground hover:text-foreground hover:bg-accent"
+                  )}
+                  aria-label={ouvindoVoz ? "Parar de escutar" : "Ditar mensagem por voz"}
+                >
+                  {ouvindoVoz ? <MicOff size={16} /> : <Mic size={16} />}
+                </button>
+              </Tooltip>
+            )}
+
+            {pensando ? (
+              <Botao
+                tamanho="pequeno"
+                variante="perigo"
+                onClick={cancelarGeracao}
+                className="gap-1.5 min-h-[38px] px-3.5"
+              >
+                <span>Parar</span>
+              </Botao>
+            ) : (
+              <Botao
+                tamanho="pequeno"
+                onClick={() => enviar(entrada)}
+                disabled={!entrada.trim()}
+                className="gap-1.5 min-h-[38px] px-3.5"
+              >
+                <Send size={14} />
+                <span>Enviar</span>
+              </Botao>
+            )}
+          </div>
         </div>
       </Cartao>
     </div>
