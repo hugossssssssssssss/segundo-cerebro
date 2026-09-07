@@ -46,14 +46,18 @@ import { identificarArquivosProcessos, apagarArquivosProcessosEmLote } from "@/l
 import { popularKlausComDadosDemo, apagarTodosDadosDemo } from "@/lib/dadosDemo";
 import { CardConsumoGitHub } from "@/components/CardConsumoGitHub";
 import { instalarWorkflowLembretes } from "@/lib/instaladorWorkflow";
-import { hojeISO } from "@/lib/utils";
+import { hojeISO, cn } from "@/lib/utils";
 import {
   obterRascunhosLocais,
   limparRascunhosComErro,
   redefinirRascunhosComErroParaPendente,
   sincronizarFilaOffline,
 } from "@/lib/offlineQueue";
-import { sincronizarTudoComGithub } from "@/lib/preferenciasApp";
+import {
+  obterStatusSincronizacao,
+  sincronizarTudoComGithub,
+  type StatusSincronizacao,
+} from "@/lib/preferenciasApp";
 import JSZip from "jszip";
 
 type AbaConfig = "geral" | "github" | "ia" | "notificacoes" | "dados";
@@ -106,10 +110,32 @@ export default function Configuracoes() {
   const [excluindoProcessos, setExcluindoProcessos] = useState(false);
   const [progressoProcessos, setProgressoProcessos] = useState<{ atual: number; total: number; msg: string } | null>(null);
   const [msgProcessos, setMsgProcessos] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
-
   // Estados do Agendador Autônomo GitHub Actions
   const [instalandoWorkflow, setInstalandoWorkflow] = useState(false);
   const [msgWorkflow, setMsgWorkflow] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
+
+
+  // Estados da Sincronização de Preferências na Nuvem (.klaus/preferencias.json)
+  const [statusSync, setStatusSync] = useState<StatusSincronizacao>(() => obterStatusSincronizacao());
+  const [sincronizandoPrefs, setSincronizandoPrefs] = useState(false);
+
+
+  const sincronizarPreferenciasAgora = async (forcarEnvio = false) => {
+    setSincronizandoPrefs(true);
+    try {
+      const res = await sincronizarTudoComGithub(cfg, { forcarEnvioLocal: forcarEnvio });
+      setStatusSync(obterStatusSincronizacao());
+      if (res.sucesso) {
+        toast(res.mensagem || "Preferências sincronizadas com sucesso!", { tipo: "sucesso" });
+      } else {
+        toast(res.mensagem || "Falha na sincronização", { tipo: "erro" });
+      }
+    } catch (err: any) {
+      toast(err?.message || "Erro ao sincronizar", { tipo: "erro" });
+    } finally {
+      setSincronizandoPrefs(false);
+    }
+  };
 
   const atualizar = <K extends keyof Settings>(campo: K, valor: Settings[K]) => {
     setCfg((c) => ({ ...c, [campo]: valor }));
@@ -120,6 +146,7 @@ export default function Configuracoes() {
     const limpa = salvarConfig(cfg);
     setCfg(limpa);
     sincronizarTudoComGithub(limpa).catch(() => {});
+    setStatusSync(obterStatusSincronizacao());
     toast("Preferências salvas com sucesso!");
   };
 
@@ -584,6 +611,65 @@ export default function Configuracoes() {
                     Passo a Passo
                   </Link>
                 </div>
+              </div>
+            </div>
+          </Cartao>
+
+          {/* Cartão Sincronização de Preferências em Nuvem */}
+          <Cartao className="p-5 space-y-4">
+            <div className="flex items-center justify-between gap-4 pb-2 border-b border-border/60">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <RefreshCw size={18} className={sincronizandoPrefs ? "animate-spin" : ""} />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-foreground text-sm sm:text-base">
+                    Sincronização de Preferências (Mac ↔ Celular)
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Mantém seus atalhos da Barra de Favoritos, ordem do Menu Lateral, widgets da Home e tema 100% idênticos em todos os aparelhos através de <code className="text-primary font-mono text-[11px]">.klaus/preferencias.json</code>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground border border-border">
+                <span className={cn("h-2 w-2 rounded-full", statusSync.sucesso ? "bg-emerald-500" : "bg-destructive")} />
+                {statusSync.emAndamento ? "Sincronizando…" : statusSync.sucesso ? "Conectado" : "Erro"}
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl border border-border/80 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="space-y-0.5">
+                <span className="text-muted-foreground font-medium">Última sincronização com GitHub:</span>
+                <p className="font-medium text-foreground">
+                  {statusSync.ultimaSincronizacao
+                    ? new Date(statusSync.ultimaSincronizacao).toLocaleString("pt-BR")
+                    : "Ainda não sincronizado nesta sessão"}
+                </p>
+                {statusSync.erro && (
+                  <p className="text-destructive text-[11px] mt-0.5">{statusSync.erro}</p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Botao
+                  variante="neutro"
+                  tamanho="pequeno"
+                  onClick={() => sincronizarPreferenciasAgora(false)}
+                  disabled={sincronizandoPrefs}
+                >
+                  <RefreshCw size={14} className={sincronizandoPrefs ? "animate-spin" : ""} />
+                  {sincronizandoPrefs ? "Sincronizando…" : "Baixar da Nuvem"}
+                </Botao>
+                <Botao
+                  variante="primario"
+                  tamanho="pequeno"
+                  onClick={() => sincronizarPreferenciasAgora(true)}
+                  disabled={sincronizandoPrefs}
+                >
+                  <Upload size={14} />
+                  Enviar deste Aparelho
+                </Botao>
               </div>
             </div>
           </Cartao>

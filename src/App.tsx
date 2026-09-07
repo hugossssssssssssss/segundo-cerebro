@@ -205,9 +205,15 @@ function Estrutura({ children }: { children: React.ReactNode }) {
 
 
 
-  // Sincronização automática de rascunhos offline ao reconectar à internet
+  // Sincronização automática de rascunhos offline e preferências ao reconectar à internet ou focar no app
   useEffect(() => {
-    const aoVoltarOnline = async () => {
+    let ultimoSyncEm = 0;
+
+    const executarSincronizacao = async (forcar = false) => {
+      const agora = Date.now();
+      if (!forcar && agora - ultimoSyncEm < 30_000) return; // Limite de 30s para não sobrecarregar API
+      ultimoSyncEm = agora;
+
       const cfg = lerConfig();
       if (configCompleta(cfg)) {
         const res = await syncOffline(cfg);
@@ -223,10 +229,23 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         sincronizarTudoComGithub(cfg).catch(() => {});
       }
     };
-    window.addEventListener("online", aoVoltarOnline);
-    aoVoltarOnline();
-    return () => window.removeEventListener("online", aoVoltarOnline);
+
+    const aoMudarVisibilidade = () => {
+      if (document.visibilityState === "visible") {
+        executarSincronizacao(false);
+      }
+    };
+
+    window.addEventListener("online", () => executarSincronizacao(true));
+    document.addEventListener("visibilitychange", aoMudarVisibilidade);
+    executarSincronizacao(true);
+
+    return () => {
+      window.removeEventListener("online", () => executarSincronizacao(true));
+      document.removeEventListener("visibilitychange", aoMudarVisibilidade);
+    };
   }, []);
+
 
   /**
    * Badge de pendências no título da aba.
