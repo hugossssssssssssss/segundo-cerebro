@@ -20,7 +20,13 @@ import {
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { SeletorIconePropriedade, ICONES_MAPA, CORES_ICONE } from "./SeletorIconePropriedade";
+import { 
+  SeletorIconePropriedade, 
+  ICONES_MAPA, 
+  CORES_ICONE,
+  obterIconePadraoPropriedade,
+  obterCorPadraoPropriedade,
+} from "./SeletorIconePropriedade";
 import { GerenciadorOpcoesSelect } from "./GerenciadorOpcoesSelect";
 import { ConfiguradorNumeroModal } from "./ConfiguradorNumeroModal";
 import type { ConfigFormatoNumero } from "./FormatadorNumero";
@@ -133,11 +139,14 @@ export function MenuConfiguracaoPropriedade({
   const [editandoDesc, setEditandoDesc] = useState(false);
   const [descTemp, setDescTemp] = useState(descricaoAtual);
 
-  const IconePadrao = ICONES_TIPO_PADRAO[tipoAtual] || Type;
+  const iconeNomePadrao = obterIconePadraoPropriedade(chave, tipoAtual);
+  const corNomePadrao = obterCorPadraoPropriedade(chave, tipoAtual);
+  const iconeNomeEfetivo = iconePersonalizado || iconeNomePadrao;
+  const corIconeEfetiva = corIconePersonalizada && corIconePersonalizada !== "padrao" ? corIconePersonalizada : corNomePadrao;
   const IconeComponente =
-    (iconePersonalizado && ICONES_MAPA[iconePersonalizado]) || IconePadrao;
+    ICONES_MAPA[iconeNomeEfetivo] || ICONES_TIPO_PADRAO[tipoAtual] || Type;
   const corIconeObj =
-    CORES_ICONE.find((c) => c.id === corIconePersonalizada) || CORES_ICONE[0];
+    CORES_ICONE.find((c) => c.id === corIconeEfetiva) || CORES_ICONE[0];
 
   const handleSalvarNome = () => {
     setEditandoNome(false);

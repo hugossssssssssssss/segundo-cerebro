@@ -1,10 +1,36 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { SeletorIconePropriedade } from "./SeletorIconePropriedade";
+import { 
+  SeletorIconePropriedade,
+  obterIconePadraoPropriedade,
+  obterCorPadraoPropriedade,
+} from "./SeletorIconePropriedade";
 import { GerenciadorOpcoesSelect } from "./GerenciadorOpcoesSelect";
 import { MenuConfiguracaoPropriedade } from "./MenuConfiguracaoPropriedade";
 
 describe("SeletorIconePropriedade", () => {
+  it("resolve ícones e cores padrão semânticos por nome e tipo da propriedade", () => {
+    expect(obterIconePadraoPropriedade("prazo")).toBe("Calendar");
+    expect(obterIconePadraoPropriedade("status")).toBe("ListTodo");
+    expect(obterIconePadraoPropriedade("prioridade")).toBe("Flag");
+    expect(obterIconePadraoPropriedade("tags")).toBe("Tags");
+    expect(obterIconePadraoPropriedade("relacionamentos")).toBe("Link");
+    expect(obterIconePadraoPropriedade("email")).toBe("Mail");
+    expect(obterIconePadraoPropriedade("telefone")).toBe("Phone");
+    expect(obterIconePadraoPropriedade("cargo")).toBe("Briefcase");
+    expect(obterIconePadraoPropriedade("empresa")).toBe("Building");
+    expect(obterIconePadraoPropriedade("impacto")).toBe("Sparkles");
+    expect(obterIconePadraoPropriedade("preco")).toBe("DollarSign");
+    expect(obterIconePadraoPropriedade("qualquer_coisa", "data")).toBe("Calendar");
+    expect(obterIconePadraoPropriedade("qualquer_coisa", "numero")).toBe("Hash");
+
+    expect(obterCorPadraoPropriedade("prazo")).toBe("vermelho");
+    expect(obterCorPadraoPropriedade("prioridade")).toBe("amarelo");
+    expect(obterCorPadraoPropriedade("status")).toBe("azul");
+    expect(obterCorPadraoPropriedade("tags")).toBe("verde");
+    expect(obterCorPadraoPropriedade("relacionamentos")).toBe("roxo");
+  });
+
   it("renderiza a grade de ícones e dispara a seleção de ícone", () => {
     const aoMudarIcone = vi.fn();
     const aoMudarCor = vi.fn();

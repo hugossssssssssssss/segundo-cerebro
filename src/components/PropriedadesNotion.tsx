@@ -45,7 +45,7 @@ import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import { toast } from "@/lib/toast";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { MenuConfiguracaoPropriedade } from "./propriedades/MenuConfiguracaoPropriedade";
-import { ICONES_MAPA, CORES_ICONE } from "./propriedades/SeletorIconePropriedade";
+import { ICONES_MAPA, CORES_ICONE, obterIconePadraoPropriedade, obterCorPadraoPropriedade } from "./propriedades/SeletorIconePropriedade";
 import { FormatadorNumero, type ConfigFormatoNumero } from "./propriedades/FormatadorNumero";
 import { SeletorDataAvancada, formatarDataExibicao, type DadosDataAvancada } from "./propriedades/SeletorDataAvancada";
 import { 
@@ -1700,11 +1700,14 @@ export function PropriedadesNotion({
       coresMap
     );
     const iconePersonalizado = iconesMap[chave];
-    const corIconePersonalizada = coresIconesMap[chave] || "padrao";
+    const iconeNomePadrao = obterIconePadraoPropriedade(chave, tipoAtual);
+    const corNomePadrao = obterCorPadraoPropriedade(chave, tipoAtual);
+    const iconeNomeEfetivo = iconePersonalizado || (fixo?.icone ? undefined : iconeNomePadrao);
+    const corIconePersonalizada = coresIconesMap[chave] || corNomePadrao;
     const descricaoAtual = descricoesMap[chave] || "";
     const IconeComponente =
-      (iconePersonalizado && ICONES_MAPA[iconePersonalizado]) ||
-      (fixo?.icone ? () => <>{fixo.icone}</> : ICONES_MAPA.Type);
+      (iconeNomeEfetivo && ICONES_MAPA[iconeNomeEfetivo]) ||
+      (fixo?.icone ? () => <>{fixo.icone}</> : ICONES_MAPA[iconeNomePadrao] || ICONES_MAPA.Type);
     const corIconeObj = CORES_ICONE.find((c) => c.id === corIconePersonalizada) || CORES_ICONE[0];
 
     return (

@@ -83,6 +83,79 @@ export const CORES_ICONE = [
   { id: "ciano", nome: "Ciano", classe: "text-cyan-500", bg: "bg-cyan-500" },
 ];
 
+/**
+ * Resolve o ícone padrão mais expressivo e representativo para a propriedade,
+ * analisando o nome da chave e o tipo de dados.
+ */
+export function obterIconePadraoPropriedade(chave: string, tipo?: string): string {
+  const c = chave.toLowerCase().replace(/[-_]/g, "");
+
+  // Mapeamentos por nome semântico da chave
+  if (c.includes("prazo") || c.includes("data") || c.includes("vencimento") || c.includes("due") || c.includes("date")) return "Calendar";
+  if (c.includes("status") || c.includes("estado") || c.includes("fase") || c.includes("etapa")) return "ListTodo";
+  if (c.includes("prioridade") || c.includes("prio") || c.includes("urgencia") || c.includes("urgente")) return "Flag";
+  if (c.includes("tag") || c.includes("etiqueta") || c.includes("categoria") || c.includes("label")) return "Tags";
+  if (c.includes("paleta") || c.includes("cor") || c.includes("cores") || c.includes("palette")) return "Palette";
+  if (c.includes("relac") || c.includes("vinculo") || c.includes("conex") || c.includes("link") || c.includes("backlink")) return "Link";
+  if (c.includes("email") || c.includes("mail")) return "Mail";
+  if (c.includes("tel") || c.includes("fone") || c.includes("phone") || c.includes("celular") || c.includes("whatsapp")) return "Phone";
+  if (c.includes("cargo") || c.includes("funcao") || c.includes("profissao") || c.includes("role") || c.includes("job")) return "Briefcase";
+  if (c.includes("empresa") || c.includes("company") || c.includes("organizacao") || c.includes("orgao")) return "Building";
+  if (c.includes("autor") || c.includes("responsavel") || c.includes("pessoa") || c.includes("user") || c.includes("contato") || c.includes("membro") || c.includes("participante") || c.includes("criadopor")) return "User";
+  if (c.includes("impacto") || c.includes("ia") || c.includes("elogio") || c.includes("destaque") || c.includes("brag")) return "Sparkles";
+  if (c.includes("meta") || c.includes("objetivo") || c.includes("target") || c.includes("alvo") || c.includes("okr")) return "Award";
+  if (c.includes("tempo") || c.includes("duracao") || c.includes("pomodoro") || c.includes("timer") || c.includes("minutos") || c.includes("horas")) return "Timer";
+  if (c.includes("criado") || c.includes("atualizado") || c.includes("edicao") || c.includes("hora") || c.includes("clock")) return "Clock";
+  if (c.includes("preco") || c.includes("valor") || c.includes("custo") || c.includes("orcamento") || c.includes("moeda") || c.includes("dinheiro") || c.includes("receita") || c.includes("gasto")) return "DollarSign";
+  if (c.includes("porcentagem") || c.includes("percentual") || c.includes("progresso") || c.includes("conclusao") || c.includes("taxa")) return "Percent";
+  if (c.includes("site") || c.includes("web") || c.includes("fonte") || c.includes("url") || c.includes("dominio") || c.includes("linkexterno")) return "Globe";
+  if (c.includes("pasta") || c.includes("caminho") || c.includes("diretorio") || c.includes("folder")) return "Folder";
+  if (c.includes("documento") || c.includes("doc") || c.includes("arquivo") || c.includes("anexo") || c.includes("resumo") || c.includes("briefing") || c.includes("ata") || c.includes("conteudo")) return "FileText";
+  if (c.includes("citacao") || c.includes("quote") || c.includes("frase") || c.includes("depoimento")) return "MessageSquareQuote";
+  if (c.includes("favorito") || c.includes("star") || c.includes("estrela")) return "Star";
+  if (c.includes("curtida") || c.includes("heart") || c.includes("gostei") || c.includes("amor")) return "Heart";
+  if (c.includes("fixado") || c.includes("pin") || c.includes("alfinete")) return "Pin";
+  if (c.includes("camada") || c.includes("secao") || c.includes("grupo")) return "Layers";
+  if (c.includes("feito") || c.includes("concluido") || c.includes("marcado") || c.includes("aprovado") || c.includes("check")) return "CheckSquare";
+  if (c.includes("qtd") || c.includes("quantidade") || c.includes("total") || c.includes("numero") || c.includes("num") || c.includes("ranking") || c.includes("ordem") || c.includes("id")) return "Hash";
+
+  // Mapeamentos de fallback por tipo de propriedade
+  if (tipo === "data") return "Calendar";
+  if (tipo === "numero") return "Hash";
+  if (tipo === "status") return "ListTodo";
+  if (tipo === "checkbox") return "CheckSquare";
+  if (tipo === "select") return "ListTodo";
+  if (tipo === "multiselect") return "Tags";
+  if (tipo === "relation") return "Link";
+  if (tipo === "criado_por") return "User";
+  if (tipo === "criado_em" || tipo === "ultima_edicao") return "Clock";
+
+  return "Type";
+}
+
+/**
+ * Resolve a cor padrão temática para a propriedade caso não tenha sido personalizada.
+ */
+export function obterCorPadraoPropriedade(chave: string, tipo?: string): string {
+  const c = chave.toLowerCase().replace(/[-_]/g, "");
+
+  if (c.includes("prazo") || c.includes("vencimento") || c.includes("urgente")) return "vermelho";
+  if (c.includes("prioridade") || c.includes("impacto") || c.includes("elogio") || c.includes("star")) return "amarelo";
+  if (c.includes("status") || c.includes("estado") || c.includes("cargo") || c.includes("fonte") || c.includes("link")) return "azul";
+  if (c.includes("tag") || c.includes("categoria") || c.includes("valor") || c.includes("preco") || c.includes("aprovado") || c.includes("feito")) return "verde";
+  if (c.includes("relac") || c.includes("vinculo") || c.includes("ia")) return "roxo";
+  if (c.includes("email") || c.includes("contato") || c.includes("user")) return "indigo";
+  if (c.includes("paleta") || c.includes("cor")) return "rosa";
+  if (c.includes("tempo") || c.includes("pomodoro") || c.includes("timer")) return "laranja";
+
+  if (tipo === "data") return "azul";
+  if (tipo === "status") return "azul";
+  if (tipo === "multiselect") return "verde";
+  if (tipo === "relation") return "roxo";
+
+  return "padrao";
+}
+
 interface SeletorIconePropriedadeProps {
   iconeAtual?: string;
   corAtual?: string;
