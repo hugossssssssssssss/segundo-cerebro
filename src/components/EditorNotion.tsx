@@ -6,7 +6,24 @@ import {
   getDefaultReactSlashMenuItems,
 } from "@blocknote/react";
 import { filterSuggestionItems } from "@blocknote/core";
-import { Sparkles, ListOrdered, Maximize2, Minimize2, Printer, Table, CheckSquare, X } from "lucide-react";
+import {
+  Sparkles,
+  ListOrdered,
+  Maximize2,
+  Minimize2,
+  Printer,
+  Table,
+  CheckSquare,
+  X,
+  Bold,
+  Italic,
+  Heading2,
+  List as ListIcon,
+  Quote,
+  AtSign,
+  Eye,
+  Pencil,
+} from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import * as locales from "@blocknote/core/locales";
@@ -319,7 +336,53 @@ export function EditorNotion({
   );
   const [modoZen, setModoZen] = useState(false);
   const [mostrarSumario, setMostrarSumario] = useState(false);
+  const [modoLeituraMobile, setModoLeituraMobile] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const aplicarNegrito = () => {
+    try {
+      editor.toggleStyles({ bold: true });
+    } catch {}
+  };
+
+  const aplicarItalico = () => {
+    try {
+      editor.toggleStyles({ italic: true });
+    } catch {}
+  };
+
+  const transformarBloco = (tipo: string, props?: any) => {
+    try {
+      const pos = editor.getTextCursorPosition();
+      if (pos?.block) {
+        editor.updateBlock(pos.block, { type: tipo as any, props });
+      }
+    } catch {}
+  };
+
+  const inserirMencao = () => {
+    try {
+      editor.insertInlineContent(["@"]);
+    } catch {}
+  };
+
+  const abrirIA = () => {
+    let x = 16;
+    let y = 140;
+    try {
+      const pos = editor.getTextCursorPosition();
+      if (pos?.block) {
+        const el = editor.domElement?.querySelector(`[data-id="${pos.block.id}"]`);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          x = Math.max(16, rect.left);
+          y = Math.max(80, rect.bottom + 6);
+        }
+      }
+    } catch {}
+    setPosicaoIA({ x, y });
+    setModalIAAberto(true);
+  };
 
   const estatisticas = useMemo(() => {
     const textoLimpo = (markdown || "").replace(/[#*`_~[\]()-]/g, " ").trim();
@@ -1027,9 +1090,128 @@ export function EditorNotion({
           Carregando editor…
         </div>
       )}
+      {/* Barra Rápida de Formatação no Mobile (Dock de Ações Acima do Editor) */}
+      {editable && (
+        <div className="flex sm:hidden items-center justify-between gap-1 p-1.5 mb-2 bg-card/90 border border-border/80 rounded-2xl shadow-xs backdrop-blur-md overflow-x-auto no-scrollbar select-none sticky top-0 z-30">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                aplicarNegrito();
+              }}
+              className="p-2 rounded-xl text-foreground hover:bg-accent active:bg-accent/80 transition-colors touch-manipulation min-w-[36px] flex items-center justify-center font-bold text-xs"
+              aria-label="Negrito"
+            >
+              <Bold size={15} />
+            </button>
+
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                aplicarItalico();
+              }}
+              className="p-2 rounded-xl text-foreground hover:bg-accent active:bg-accent/80 transition-colors touch-manipulation min-w-[36px] flex items-center justify-center italic text-xs"
+              aria-label="Itálico"
+            >
+              <Italic size={15} />
+            </button>
+
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                transformarBloco("heading", { level: 2 });
+              }}
+              className="p-2 rounded-xl text-foreground hover:bg-accent active:bg-accent/80 transition-colors touch-manipulation min-w-[36px] flex items-center justify-center font-bold text-xs"
+              aria-label="Título H2"
+            >
+              <Heading2 size={16} />
+            </button>
+
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                transformarBloco("checkListItem");
+              }}
+              className="p-2 rounded-xl text-foreground hover:bg-accent active:bg-accent/80 transition-colors touch-manipulation min-w-[36px] flex items-center justify-center"
+              aria-label="Checklist de tarefas"
+            >
+              <CheckSquare size={15} className="text-emerald-500" />
+            </button>
+
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                transformarBloco("bulletListItem");
+              }}
+              className="p-2 rounded-xl text-foreground hover:bg-accent active:bg-accent/80 transition-colors touch-manipulation min-w-[36px] flex items-center justify-center"
+              aria-label="Lista de marcadores"
+            >
+              <ListIcon size={15} />
+            </button>
+
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                transformarBloco("blockquote" as any);
+              }}
+              className="p-2 rounded-xl text-foreground hover:bg-accent active:bg-accent/80 transition-colors touch-manipulation min-w-[36px] flex items-center justify-center"
+              aria-label="Citação"
+            >
+              <Quote size={15} />
+            </button>
+
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                inserirMencao();
+              }}
+              className="p-2 rounded-xl text-foreground hover:bg-accent active:bg-accent/80 transition-colors touch-manipulation min-w-[36px] flex items-center justify-center text-primary font-bold"
+              aria-label="Inserir menção @"
+            >
+              <AtSign size={15} />
+            </button>
+
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                abrirIA();
+              }}
+              className="p-2 rounded-xl text-amber-500 hover:bg-accent active:bg-accent/80 transition-colors touch-manipulation min-w-[36px] flex items-center justify-center"
+              aria-label="Assistente de IA"
+            >
+              <Sparkles size={15} />
+            </button>
+          </div>
+
+          {/* Botão de Alternar Modo Leitura / Edição */}
+          <button
+            type="button"
+            onClick={() => setModoLeituraMobile(!modoLeituraMobile)}
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all touch-manipulation border shrink-0",
+              modoLeituraMobile
+                ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                : "bg-secondary/70 text-muted-foreground border-border hover:text-foreground"
+            )}
+            aria-label={modoLeituraMobile ? "Voltar a editar" : "Modo leitura"}
+          >
+            {modoLeituraMobile ? <Eye size={14} /> : <Pencil size={14} />}
+            <span>{modoLeituraMobile ? "Leitura" : "Editar"}</span>
+          </button>
+        </div>
+      )}
+
       <BlockNoteView
         editor={editor}
-        editable={editable}
+        editable={editable && !modoLeituraMobile}
         theme={escuro ? "dark" : "light"}
         slashMenu={false}
         onChange={handleEditorChange}
@@ -1151,9 +1333,40 @@ export function EditorNotion({
       />
       <style>{`
         .notion-editor-wrapper .bn-container { font-family: inherit; }
-        .notion-editor-wrapper .bn-editor { padding-left: 0; padding-right: 0; }
+        .notion-editor-wrapper .bn-editor { 
+          padding-left: 0; 
+          padding-right: 0; 
+          padding-bottom: max(220px, 35vh) !important;
+          font-size: 16px !important;
+          line-height: 1.65 !important;
+        }
         @media (min-width: 640px) {
-          .notion-editor-wrapper .bn-editor { padding-left: 24px; padding-right: 24px; }
+          .notion-editor-wrapper .bn-editor { 
+            padding-left: 24px; 
+            padding-right: 24px; 
+            padding-bottom: 80px !important;
+            font-size: inherit !important;
+          }
+        }
+
+        /* Tipografia de parágrafos e títulos no celular */
+        @media (max-width: 639px) {
+          .notion-editor-wrapper .bn-block-content {
+            font-size: 16px !important;
+            line-height: 1.65 !important;
+          }
+          .notion-editor-wrapper .bn-block-content [data-content-type="heading"][data-level="1"] {
+            font-size: 1.45rem !important;
+            font-weight: 700 !important;
+          }
+          .notion-editor-wrapper .bn-block-content [data-content-type="heading"][data-level="2"] {
+            font-size: 1.25rem !important;
+            font-weight: 600 !important;
+          }
+          .notion-editor-wrapper .bn-block-content [data-content-type="heading"][data-level="3"] {
+            font-size: 1.1rem !important;
+            font-weight: 600 !important;
+          }
         }
 
         /* Sobrescreve as cores de bloco e seleção do BlockNote para tons suaves e discretos */
@@ -1276,6 +1489,7 @@ export function EditorNotion({
         .bn-suggestion-menu,
         .bn-grid-suggestion-menu {
           max-height: min(320px, 50vh) !important;
+          max-width: min(340px, calc(100vw - 32px)) !important;
           height: auto !important;
           overflow-y: auto !important;
           overflow-x: hidden !important;
@@ -1294,6 +1508,7 @@ export function EditorNotion({
         .tippy-box,
         [data-floating-ui-portal] {
           max-height: min(360px, 75vh) !important;
+          max-width: min(360px, calc(100vw - 24px)) !important;
           overflow: visible !important;
         }
       `}</style>
