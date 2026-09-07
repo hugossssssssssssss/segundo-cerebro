@@ -46,6 +46,20 @@ describe("googleCalendar", () => {
       desconectarGoogle();
       expect(obterTokenGoogleSalvo()).toBeNull();
     });
+
+    it("autenticarOuRenovarSilencioso retorna token salvo se ainda válido", async () => {
+      salvarTokenGoogle("token-existente", 3600);
+      const { autenticarOuRenovarSilencioso } = await import("./googleCalendar");
+      const token = await autenticarOuRenovarSilencioso();
+      expect(token).toBe("token-existente");
+    });
+
+    it("buscarEventosGoogleSilencioso retorna vazio se não houver token ou clientId", async () => {
+      const { buscarEventosGoogleSilencioso } = await import("./googleCalendar");
+      const res = await buscarEventosGoogleSilencioso(new Date(), new Date());
+      expect(res.eventos).toEqual([]);
+      expect(res.agendas).toEqual([]);
+    });
   });
 
   describe("mapeamento de cores bidirecional", () => {

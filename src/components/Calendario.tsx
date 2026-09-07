@@ -375,7 +375,9 @@ export function Calendario({
                 }
               >
                 <Globe size={13} className={carregandoGoogle ? "animate-spin" : ""} />
-                {eventosGoogle.length > 0 ? "Google Agenda" : "Carregar Google Agenda"}
+                {carregandoGoogle
+                  ? "Sincronizando..."
+                  : "Google Agenda"}
                 {eventosGoogle.length > 0 && (
                   <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-bold">
                     {eventosGoogle.length}

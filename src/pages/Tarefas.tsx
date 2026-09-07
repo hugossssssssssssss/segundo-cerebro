@@ -153,12 +153,12 @@ export default function Tarefas() {
     try {
       const inicio = startOfWeek(startOfMonth(mesReferencia), { weekStartsOn: 0 });
       const fim = endOfWeek(endOfMonth(mesReferencia), { weekStartsOn: 0 });
-      if (temTokenGoogleValido()) {
-        const { eventos, agendas } = await buscarEventosGoogleSilencioso(
-          inicio,
-          fim,
-          agendasExistentes || (agendasGoogle.length > 0 ? agendasGoogle : undefined)
-        );
+      const { eventos, agendas } = await buscarEventosGoogleSilencioso(
+        inicio,
+        fim,
+        agendasExistentes || (agendasGoogle.length > 0 ? agendasGoogle : undefined)
+      );
+      if (eventos.length > 0 || agendas.length > 0) {
         setEventosGoogle(eventos);
         if (agendas.length > 0 && agendasGoogle.length === 0) {
           setAgendasGoogle(agendas);
@@ -205,11 +205,26 @@ export default function Tarefas() {
     });
   }, [mesCalendarioAtual]);
 
+  // Carregamento automático e sincronização contínua (ao abrir, mudar mês, foco da janela e periodicamente)
   useEffect(() => {
-    if (visao === "calendario" && Boolean(cfg.googleCalendarClientId)) {
+    if (!Boolean(cfg.googleCalendarClientId)) return;
+
+    carregarEventosGoogle(mesCalendarioAtual);
+
+    const aoFocarJanela = () => {
       carregarEventosGoogle(mesCalendarioAtual);
-    }
-  }, [visao, cfg.googleCalendarClientId, mesCalendarioAtual, carregarEventosGoogle]);
+    };
+    window.addEventListener("focus", aoFocarJanela);
+
+    const intervalo = setInterval(() => {
+      carregarEventosGoogle(mesCalendarioAtual);
+    }, 5 * 60 * 1000); // a cada 5 minutos
+
+    return () => {
+      window.removeEventListener("focus", aoFocarJanela);
+      clearInterval(intervalo);
+    };
+  }, [cfg.googleCalendarClientId, mesCalendarioAtual, carregarEventosGoogle]);
 
   // ── Pastas existentes para filtro e organização ────────────────────────────
   const pastasExistentes = useMemo(() => {

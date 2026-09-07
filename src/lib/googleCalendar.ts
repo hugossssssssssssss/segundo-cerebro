@@ -308,11 +308,32 @@ export function estaConectadoGoogle(cfg?: Settings): boolean {
 }
 
 /**
+ * Tenta autenticar ou renovar o token do Google silenciosamente (sem popup intrusivo).
+ */
+export async function autenticarOuRenovarSilencioso(clientId?: string): Promise<string | null> {
+  const tokenSalvo = obterTokenGoogleSalvo();
+  if (tokenSalvo) return tokenSalvo;
+
+  const cfg = lerConfig();
+  const cId = (clientId || cfg.googleCalendarClientId || "").trim();
+  if (!cId || !cfg.googleCalendarAtivo) return null;
+
+  try {
+    const novoToken = await solicitarAutorizacaoGoogle(cId, "");
+    return novoToken;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Garante que temos um token válido antes de chamar a API.
  */
 async function obterTokenValido(): Promise<string> {
   const tokenSalvo = obterTokenGoogleSalvo();
   if (tokenSalvo) return tokenSalvo;
+  const tokenSilencioso = await autenticarOuRenovarSilencioso();
+  if (tokenSilencioso) return tokenSilencioso;
   return solicitarAutorizacaoGoogle();
 }
 
@@ -512,7 +533,7 @@ async function buscarEventosDeAgenda(
 }
 
 /**
- * Busca eventos do Google Calendar silenciosamente apenas se já houver token ativo.
+ * Busca eventos do Google Calendar silenciosamente se houver token ativo ou renovação silenciosa disponível.
  * Itera por todas as agendas disponíveis/selecionadas.
  */
 export async function buscarEventosGoogleSilencioso(
@@ -520,7 +541,10 @@ export async function buscarEventosGoogleSilencioso(
   fim: Date,
   agendasAlvo?: AgendaGoogle[]
 ): Promise<{ eventos: EventoGoogle[]; agendas: AgendaGoogle[] }> {
-  const token = obterTokenGoogleSalvo();
+  let token = obterTokenGoogleSalvo();
+  if (!token) {
+    token = await autenticarOuRenovarSilencioso();
+  }
   if (!token) return { eventos: [], agendas: [] };
 
   try {
