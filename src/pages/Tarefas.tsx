@@ -54,10 +54,12 @@ import {
   estaConectadoGoogle,
   temTokenGoogleValido,
   mapearCorNotionParaGoogleColorId,
+  obterEstiloEventoGoogle,
+  extrairIntervaloEventoGoogle,
   type EventoGoogle,
   type AgendaGoogle,
 } from "@/lib/googleCalendar";
-import { lerConfigPropriedadesGlobais } from "@/components/PropriedadesNotion";
+import { lerConfigPropriedadesGlobais, salvarConfigPropriedadesGlobais } from "@/components/PropriedadesNotion";
 import {
   Botao,
   Aviso,
@@ -617,25 +619,63 @@ export default function Tarefas() {
     }
   }
 
-  function importarEventoGoogleParaTarefa(ev: EventoGoogle) {
-    const dataInicio = ev.inicio ? ev.inicio.slice(0, 10) : new Date().toISOString().slice(0, 10);
-    const tagAgenda = ev.agendaNome || "Google";
-    const nova: Tarefa = {
+  function prepararTarefaDeEventoGoogle(ev: EventoGoogle, statusInicial: Status = "a-fazer"): Tarefa {
+    const estilo = obterEstiloEventoGoogle(ev);
+    const corHex = estilo.corHex;
+    const tagGoogle = "Google Drive";
+
+    // Salva a cor da tag globalmente para que a tag 'Google Drive' reflita a cor do evento
+    if (corHex) {
+      salvarConfigPropriedadesGlobais(undefined, { [tagGoogle]: corHex });
+    }
+
+    const intervalo = extrairIntervaloEventoGoogle(ev);
+    let inicioIso: string;
+    let fimIso: string;
+
+    if (intervalo) {
+      const anoI = intervalo.inicio.getFullYear();
+      const mesI = String(intervalo.inicio.getMonth() + 1).padStart(2, "0");
+      const diaI = String(intervalo.inicio.getDate()).padStart(2, "0");
+      inicioIso = `${anoI}-${mesI}-${diaI}`;
+
+      const anoF = intervalo.fim.getFullYear();
+      const mesF = String(intervalo.fim.getMonth() + 1).padStart(2, "0");
+      const diaF = String(intervalo.fim.getDate()).padStart(2, "0");
+      fimIso = `${anoF}-${mesF}-${diaF}`;
+    } else {
+      inicioIso = ev.inicio ? ev.inicio.slice(0, 10) : new Date().toISOString().slice(0, 10);
+      fimIso = ev.fim ? ev.fim.slice(0, 10) : inicioIso;
+    }
+
+    const prazoFinal = inicioIso !== fimIso ? `${inicioIso} → ${fimIso}` : inicioIso;
+
+    return {
       bruto: {
         tipo: "tarefa",
-        status: "a-fazer",
-        prazo: dataInicio,
+        status: statusInicial,
+        prazo: prazoFinal,
+        data_inicio: inicioIso,
+        data_fim: fimIso,
+        inicio: inicioIso,
+        fim: fimIso,
         google_calendar_id: ev.id,
+        tags: [tagGoogle],
+        cor: corHex,
       },
       caminho: "",
       sha: "",
       titulo: ev.titulo || "Novo Evento",
       corpo: ev.descricao ? `${ev.descricao}\n\nLink: ${ev.link || ""}` : "",
-      status: "a-fazer",
-      prazo: dataInicio,
+      status: statusInicial,
+      prazo: prazoFinal,
       googleCalendarId: ev.id,
-      tags: [tagAgenda],
+      tags: [tagGoogle],
     };
+  }
+
+  function importarEventoGoogleParaTarefa(ev: EventoGoogle) {
+    const nova = prepararTarefaDeEventoGoogle(ev, "a-fazer");
     setOriginal(null);
     setEditando(nova);
   }
@@ -651,25 +691,7 @@ export default function Tarefas() {
     }
 
     try {
-      const dataInicio = ev.inicio ? ev.inicio.slice(0, 10) : new Date().toISOString().slice(0, 10);
-      const tagAgenda = ev.agendaNome || "Google";
-      const nova: Tarefa = {
-        bruto: {
-          tipo: "tarefa",
-          status: novoStatus,
-          prazo: dataInicio,
-          google_calendar_id: ev.id,
-        },
-        caminho: "",
-        sha: "",
-        titulo: ev.titulo || "Evento Google",
-        corpo: ev.descricao ? `${ev.descricao}\n\nLink: ${ev.link || ""}` : "",
-        status: novoStatus,
-        prazo: dataInicio,
-        googleCalendarId: ev.id,
-        tags: [tagAgenda],
-      };
-
+      const nova = prepararTarefaDeEventoGoogle(ev, novoStatus);
       await gravarTarefa(nova, `cria tarefa do google: ${nova.titulo}`);
       recarregar();
       toast(`Tarefa registrada como "${novoStatus === "feito" ? "Concluída" : novoStatus === "fazendo" ? "Em andamento" : "A fazer"}"!`, { tipo: "sucesso" });

@@ -511,13 +511,24 @@ export function compilarEventosGoogleParaInbox(
       ? intervalo.textoFormatado
       : (ev.inicio || inicioIso);
 
+    if (estilo.corHex && typeof localStorage !== "undefined") {
+      try {
+        const raw = localStorage.getItem("segundo-cerebro-propriedades-config");
+        const parsed = raw ? JSON.parse(raw) : {};
+        if (!parsed.coresTags?.["Google Drive"]) {
+          parsed.coresTags = { ...(parsed.coresTags || {}), "Google Drive": estilo.corHex };
+          localStorage.setItem("segundo-cerebro-propriedades-config", JSON.stringify(parsed));
+        }
+      } catch {}
+    }
+
     itens.push({
       id,
       tipo: "google_calendar",
       titulo: ev.titulo || "Evento Google Calendar",
       descricao,
       caminhoOrigem: "",
-      tituloOrigem: ev.agendaNome || "Google Calendar",
+      tituloOrigem: "Google Drive",
       dataVencimento: dataVencimentoFormatada,
       dataInicioIso: inicioIso,
       dataFimIso: fimIso,
@@ -525,8 +536,8 @@ export function compilarEventosGoogleParaInbox(
       vistoEm: estado?.vistoEm,
       link: ev.link,
       corHex: estilo.corHex,
-      agendaNome: ev.agendaNome,
-      tags: ev.agendaNome ? [ev.agendaNome] : ["Google"],
+      agendaNome: "Google Drive",
+      tags: ["Google Drive"],
     });
   }
 

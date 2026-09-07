@@ -370,12 +370,14 @@ apagado_em: 2026-08-15T10:00:00.000Z
     expect(emAndamento).toBeDefined();
     expect(emAndamento?.dataInicioIso).toBe("2026-08-31");
     expect(emAndamento?.dataFimIso).toBe("2026-09-15");
+    expect(emAndamento?.tags).toEqual(["Google Drive"]);
     // Como hoje (07/09) está dentro do intervalo [31/08, 15/09], não é atrasado e está ativo/em andamento hoje
     expect(emAndamento?.visto).toBe(false);
 
     const passado = itens.find((i) => i.id === "google-ev-passado");
     expect(passado).toBeDefined();
     expect(passado?.dataFimIso).toBe("2026-08-04");
+    expect(passado?.tags).toEqual(["Google Drive"]);
   });
 });
 

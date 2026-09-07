@@ -806,6 +806,10 @@ export function Calendario({
                           </p>
                         )}
 
+                        <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                          <TagChip tag="Google Drive" cor={estiloEv.corHex} className="text-[10px] py-0.5 px-2" />
+                        </div>
+
                         {/* Barra de Ações com Ícones Didáticos (Status, Editar, Concluir, Excluir) */}
                         <div className="flex items-center justify-between pt-2 border-t border-border/40 gap-1.5">
                           {/* Botões rápidos de Status */}

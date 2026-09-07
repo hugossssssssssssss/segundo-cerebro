@@ -21,7 +21,17 @@ export function obterEstiloTagChip(tag: string, corFornecida?: string) {
   const corNome = corFornecida || globalConfig.coresTags?.[nomeLimpo] || globalConfig.coresTags?.[`#${nomeLimpo}`];
 
   if (corNome && CORES_NOTION[corNome]) {
-    return CORES_NOTION[corNome];
+    return { ...CORES_NOTION[corNome], customHex: undefined };
+  }
+
+  if (corNome && (corNome.startsWith("#") || corNome.startsWith("rgb"))) {
+    return {
+      bg: "",
+      text: "",
+      border: "",
+      nome: corNome,
+      customHex: corNome,
+    };
   }
 
   return null;
@@ -41,6 +51,14 @@ export function TagChip({
   const nomeLimpo = tag.startsWith("#") ? tag.slice(1) : tag;
   const estiloCor = obterEstiloTagChip(nomeLimpo, cor);
 
+  const estiloCustomizado = !ativa && estiloCor?.customHex
+    ? {
+        backgroundColor: `${estiloCor.customHex}18`,
+        color: estiloCor.customHex,
+        borderColor: `${estiloCor.customHex}40`,
+      }
+    : undefined;
+
   return (
     <span
       onClick={(e) => {
@@ -49,18 +67,21 @@ export function TagChip({
           aoClicar();
         }
       }}
+      style={estiloCustomizado}
       className={cn(
         "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold border transition-all select-none shrink-0",
         aoClicar && "cursor-pointer",
         ativa
           ? "bg-primary text-primary-foreground border-primary shadow-2xs font-bold"
-          : estiloCor
+          : estiloCor && !estiloCor.customHex
           ? cn(estiloCor.bg, estiloCor.text, estiloCor.border, "hover:opacity-85")
+          : estiloCor?.customHex
+          ? "hover:opacity-85"
           : "bg-muted/60 text-muted-foreground border-border/60 hover:border-border hover:text-foreground hover:bg-accent",
         className
       )}
     >
-      <TagIcon size={11} className="opacity-70 shrink-0" />
+      <TagIcon size={11} className="opacity-70 shrink-0" style={estiloCor?.customHex ? { color: estiloCor.customHex } : undefined} />
       <span>#{nomeLimpo}</span>
       {aoRemover && (
         <Tooltip conteudo="Remover tag">
