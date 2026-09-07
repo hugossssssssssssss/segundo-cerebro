@@ -25,6 +25,7 @@ import {
   Eye,
   EyeOff,
   Sparkles,
+  Share2,
 } from "lucide-react";
 import { Aviso, ModalConfirmacao, Tooltip } from "@/components/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -845,6 +846,24 @@ export function PainelNotionBase({
                   >
                     <Copy size={14} className="opacity-70 shrink-0" />
                     <span>Copiar link</span>
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      setMenuAcoesAberto(false);
+                      const { compartilhar } = await import("@/lib/compartilhar");
+                      const res = await compartilhar({
+                        titulo: titulo || "Documento Klaus",
+                        texto: corpo,
+                      });
+                      if (res.metodo === "copiado" && res.sucesso) {
+                        toast("Conteúdo copiado para a área de transferência!", { tipo: "sucesso" });
+                      }
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left text-foreground hover:bg-accent transition-colors cursor-pointer"
+                  >
+                    <Share2 size={14} className="opacity-70 shrink-0" />
+                    <span>Compartilhar</span>
                   </button>
 
                   <button

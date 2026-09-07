@@ -19,6 +19,8 @@ import {
   X,
   Trash2,
   Palette,
+  Camera,
+  Share2,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { BarraAcoesLote, BotaoAcaoLote } from "@/components/BarraAcoesLote";
@@ -124,6 +126,7 @@ export default function Referencias() {
   const [modoVisaoNotion, setModoVisaoNotion] = useState<ModoVisaoNotion>("popup");
   const [previa, setPrevia] = useState<string | null>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
+  const inputCameraNativaRef = useRef<HTMLInputElement>(null);
 
   // ── OCR com seleção de área ───────────────────────────────────────────────
   const [modoOcr, setModoOcr] = useState(false);
@@ -589,6 +592,18 @@ export default function Referencias() {
         corIcone="bg-purple-500/10 text-purple-600 dark:text-purple-400"
         acoes={
           <>
+            <Tooltip conteudo="Tirar foto com a câmera no celular" posicao="bottom">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => inputCameraNativaRef.current?.click()}
+                className="h-9 w-9 text-muted-foreground hover:text-foreground bg-background shadow-2xs sm:hidden"
+                aria-label="Tirar Foto"
+              >
+                <Camera size={15} />
+              </Button>
+            </Tooltip>
+
             <Tooltip conteudo="Criar nova pasta de referências" posicao="bottom">
               <Button
                 variant="outline"
@@ -1150,6 +1165,38 @@ export default function Referencias() {
                   e.target.value = "";
                 }}
               />
+
+              <input
+                ref={inputCameraNativaRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    if (editando) {
+                      enviarImagem(f, editando);
+                    } else {
+                      const nova = {
+                        bruto: {},
+                        caminho: "",
+                        sha: "",
+                        id: "",
+                        titulo: f.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ") || "Nova Foto",
+                        fonte: "",
+                        tags: [],
+                        porque: "",
+                        corpo: "",
+                      };
+                      setEditando(nova);
+                      setOrigRef(null);
+                      await enviarImagem(f, nova);
+                    }
+                  }
+                  e.target.value = "";
+                }}
+              />
             </div>
           }
           salvando={salvando}
@@ -1178,6 +1225,28 @@ export default function Referencias() {
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={async () => {
+                  const { compartilharReferencia } = await import("@/lib/compartilhar");
+                  const { toast } = await import("@/lib/toast");
+                  const res = await compartilharReferencia(
+                    lightboxRef.titulo,
+                    lightboxRef.fonte,
+                    lightboxRef.porque
+                  );
+                  if (res.metodo === "copiado" && res.sucesso) {
+                    toast("Link/referência copiado para a área de transferência!", { tipo: "sucesso" });
+                  }
+                }}
+                className="text-xs h-8 gap-1.5 bg-white/15 hover:bg-white/25 text-white border-white/20 cursor-pointer"
+                title="Compartilhar referência"
+              >
+                <Share2 size={13} />
+                <span className="hidden sm:inline">Compartilhar</span>
+              </Button>
+
               <Button
                 size="sm"
                 variant="secondary"

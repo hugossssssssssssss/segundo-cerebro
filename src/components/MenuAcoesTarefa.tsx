@@ -7,6 +7,7 @@ import {
   Timer,
   Target,
   Copy,
+  Share2,
   Trash2,
   MoreVertical,
 } from "lucide-react";
@@ -166,6 +167,24 @@ export function MenuAcoesTarefa({
               <span className="font-medium">Duplicar tarefa</span>
             </button>
           )}
+
+          {/* Compartilhar Tarefa */}
+          <button
+            type="button"
+            onClick={async () => {
+              setAberto(false);
+              const { compartilharTarefa } = await import("@/lib/compartilhar");
+              const { toast } = await import("@/lib/toast");
+              const res = await compartilharTarefa(tarefa);
+              if (res.metodo === "copiado" && res.sucesso) {
+                toast("Tarefa copiada para a área de transferência!", { tipo: "sucesso" });
+              }
+            }}
+            className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent transition-colors cursor-pointer text-left touch-manipulation min-h-[38px]"
+          >
+            <Share2 size={14} className="text-muted-foreground shrink-0" />
+            <span className="font-medium">Compartilhar</span>
+          </button>
 
           {/* Divisor */}
           {aoExcluir && <div className="h-px bg-border/60 my-1" />}
