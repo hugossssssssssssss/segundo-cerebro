@@ -78,17 +78,17 @@ export function MenuAcoesTarefa({
                 setAberto(false);
                 aoAlternarStatus();
               }}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer text-left"
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent transition-colors cursor-pointer text-left touch-manipulation min-h-[38px]"
             >
               {feita ? (
                 <>
-                  <Circle size={13} className="text-muted-foreground" />
-                  <span>Reabrir tarefa</span>
+                  <Circle size={14} className="text-muted-foreground shrink-0" />
+                  <span className="font-medium">Reabrir tarefa</span>
                 </>
               ) : (
                 <>
-                  <CheckCircle2 size={13} className="text-emerald-500" />
-                  <span>Marcar como feita</span>
+                  <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                  <span className="font-medium">Marcar como feita</span>
                 </>
               )}
             </button>
@@ -102,10 +102,10 @@ export function MenuAcoesTarefa({
                 setAberto(false);
                 aoCronometrar();
               }}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer text-left"
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent transition-colors cursor-pointer text-left touch-manipulation min-h-[38px]"
             >
-              <Timer size={13} className="text-primary" />
-              <span>Iniciar foco (Pomodoro)</span>
+              <Timer size={14} className="text-primary shrink-0" />
+              <span className="font-medium">Iniciar foco (Pomodoro)</span>
             </button>
           )}
 
@@ -118,10 +118,10 @@ export function MenuAcoesTarefa({
                   setAberto(false);
                   aoAdiarPrazo(1);
                 }}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer text-left"
+                className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent transition-colors cursor-pointer text-left touch-manipulation min-h-[38px]"
               >
-                <Calendar size={13} className="text-amber-500" />
-                <span>Adiar para amanhã (+1 dia)</span>
+                <Calendar size={14} className="text-amber-500 shrink-0" />
+                <span className="font-medium">Adiar para amanhã (+1 dia)</span>
               </button>
               <button
                 type="button"
@@ -129,10 +129,10 @@ export function MenuAcoesTarefa({
                   setAberto(false);
                   aoAdiarPrazo(7);
                 }}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer text-left"
+                className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent transition-colors cursor-pointer text-left touch-manipulation min-h-[38px]"
               >
-                <CalendarPlus size={13} className="text-blue-500" />
-                <span>Adiar 1 semana (+7 dias)</span>
+                <CalendarPlus size={14} className="text-blue-500 shrink-0" />
+                <span className="font-medium">Adiar 1 semana (+7 dias)</span>
               </button>
             </>
           )}
@@ -145,10 +145,10 @@ export function MenuAcoesTarefa({
                 setAberto(false);
                 aoRegistrarEntregaPDI();
               }}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer text-left"
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent transition-colors cursor-pointer text-left touch-manipulation min-h-[38px]"
             >
-              <Target size={13} className="text-purple-500" />
-              <span>Registrar entrega no PDI</span>
+              <Target size={14} className="text-purple-500 shrink-0" />
+              <span className="font-medium">Registrar entrega no PDI</span>
             </button>
           )}
 
@@ -160,10 +160,10 @@ export function MenuAcoesTarefa({
                 setAberto(false);
                 aoDuplicar();
               }}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer text-left"
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent transition-colors cursor-pointer text-left touch-manipulation min-h-[38px]"
             >
-              <Copy size={13} className="text-muted-foreground" />
-              <span>Duplicar tarefa</span>
+              <Copy size={14} className="text-muted-foreground shrink-0" />
+              <span className="font-medium">Duplicar tarefa</span>
             </button>
           )}
 
@@ -178,10 +178,10 @@ export function MenuAcoesTarefa({
                 setAberto(false);
                 aoExcluir();
               }}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer text-left"
+              className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-destructive hover:bg-destructive/10 active:bg-destructive/20 transition-colors cursor-pointer text-left touch-manipulation min-h-[38px]"
             >
-              <Trash2 size={13} />
-              <span>Excluir tarefa</span>
+              <Trash2 size={14} className="shrink-0" />
+              <span className="font-medium">Excluir tarefa</span>
             </button>
           )}
         </div>

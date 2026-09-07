@@ -276,17 +276,17 @@ function CartaoArrastavel({
                   aoAlternarStatus(t);
                 }}
                 className={cn(
-                  "p-1 rounded-md transition-colors cursor-pointer shrink-0",
+                  "p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 touch-manipulation",
                   t.status === "feito"
                     ? "text-emerald-500 hover:bg-emerald-500/15"
-                    : "text-muted-foreground/60 hover:text-emerald-500 hover:bg-emerald-500/10 opacity-0 group-hover:opacity-100 sm:opacity-0 focus:opacity-100"
+                    : "text-muted-foreground/70 hover:text-emerald-500 hover:bg-emerald-500/10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
                 )}
                 aria-label={t.status === "feito" ? `Reabrir ${t.titulo}` : `Concluir ${t.titulo}`}
               >
                 {t.status === "feito" ? (
-                  <CheckCircle2 size={13} className="text-emerald-500 fill-emerald-500/20" />
+                  <CheckCircle2 size={15} className="text-emerald-500 fill-emerald-500/20" />
                 ) : (
-                  <CheckCircle2 size={13} />
+                  <CheckCircle2 size={15} />
                 )}
               </button>
             </Tooltip>
@@ -302,20 +302,20 @@ function CartaoArrastavel({
                 type="button"
                 onClick={aoClicarCronometro}
                 className={cn(
-                  "p-1 rounded-md transition-colors cursor-pointer",
+                  "p-1.5 rounded-lg transition-colors cursor-pointer touch-manipulation",
                   isAtivo
                     ? rodando
                       ? "text-primary bg-primary/20 animate-pulse"
                       : "text-muted-foreground bg-muted"
-                    : "text-muted-foreground/50 hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 sm:opacity-0 focus:opacity-100"
+                    : "text-muted-foreground/60 hover:text-primary hover:bg-primary/10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
                 )}
                 title={isAtivo ? (rodando ? "Pausar pomodoro" : "Retomar pomodoro") : "Iniciar pomodoro"}
                 aria-label={isAtivo ? (rodando ? "Pausar foco" : "Retomar foco") : "Iniciar foco"}
               >
                 {isAtivo && rodando ? (
-                  <Pause size={13} className="animate-pulse" />
+                  <Pause size={15} className="animate-pulse" />
                 ) : (
-                  <Timer size={13} />
+                  <Timer size={15} />
                 )}
               </button>
             </Tooltip>
@@ -324,6 +324,7 @@ function CartaoArrastavel({
           {/* Menu de ações rápidas (...) */}
           <MenuAcoesTarefa
             tarefa={t}
+            triggerVisivelSempre={true}
             aoAlternarStatus={aoAlternarStatus ? () => aoAlternarStatus(t) : undefined}
             aoAdiarPrazo={aoAdiarPrazo ? (dias) => aoAdiarPrazo(t, dias) : undefined}
             aoCronometrar={() => aoCronometrar(t)}

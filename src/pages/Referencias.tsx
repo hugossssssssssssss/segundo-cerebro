@@ -739,7 +739,7 @@ export default function Referencias() {
               items={visiveis}
               config={{
                 columns: [2, 2, 3, 4, 5, 6],
-                gap: [10, 12, 16, 20, 24, 24],
+                gap: [8, 12, 16, 20, 24, 24],
                 media: [640, 768, 1024, 1280, 1600, 1920],
               }}
               render={(r) => (
@@ -752,7 +752,7 @@ export default function Referencias() {
                     setOrigRef(r);
                   }}
                   className={cn(
-                    "group relative rounded-2xl sm:rounded-3xl overflow-hidden border border-border/80 bg-card hover:bg-accent/20 hover:border-border transition-colors duration-200 cursor-pointer mb-2.5 sm:mb-4",
+                    "group relative rounded-2xl sm:rounded-3xl overflow-hidden border border-border/80 bg-card hover:bg-accent/20 hover:border-border transition-colors duration-200 cursor-pointer mb-2.5 sm:mb-4 touch-manipulation",
                     selecionadas.has(r.caminho) && "border-primary ring-2 ring-primary/40 bg-primary/5"
                   )}
                 >
@@ -769,7 +769,7 @@ export default function Referencias() {
                         onClick={(e) => e.stopPropagation()}
                         className={cn(
                           "h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer transition-opacity shadow-sm",
-                          selecionadas.size > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                          selecionadas.size > 0 ? "opacity-100" : "opacity-0 sm:group-hover:opacity-100"
                         )}
                         aria-label="Selecionar imagem"
                       />
@@ -793,7 +793,7 @@ export default function Referencias() {
                             await navigator.clipboard.writeText(codigo);
                             toast("Código da imagem copiado! Cole em qualquer nota.", { tipo: "sucesso" });
                           }}
-                          className="absolute top-2 left-8 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
+                          className="absolute top-2 left-8 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 sm:group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
                           aria-label="Copiar código Markdown"
                         >
                           <Copy size={13} />
@@ -807,7 +807,7 @@ export default function Referencias() {
                             e.stopPropagation();
                             setLightboxRef(r);
                           }}
-                          className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md"
+                          className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white backdrop-blur-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:scale-110 cursor-pointer shadow-md touch-manipulation"
                           aria-label="Ver imagem em tela cheia"
                         >
                           <Maximize2 size={13} />
