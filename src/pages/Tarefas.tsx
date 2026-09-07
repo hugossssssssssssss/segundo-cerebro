@@ -53,8 +53,11 @@ import {
   excluirEventoGoogle,
   estaConectadoGoogle,
   temTokenGoogleValido,
+  mapearCorNotionParaGoogleColorId,
   type EventoGoogle,
+  type AgendaGoogle,
 } from "@/lib/googleCalendar";
+import { lerConfigPropriedadesGlobais } from "@/components/PropriedadesNotion";
 import {
   Botao,
   Aviso,
@@ -136,25 +139,33 @@ export default function Tarefas() {
 
   // ── Integração Google Calendar ──────────────────────────────────────────
   const [eventosGoogle, setEventosGoogle] = useState<EventoGoogle[]>([]);
+  const [agendasGoogle, setAgendasGoogle] = useState<AgendaGoogle[]>([]);
   const [carregandoGoogle, setCarregandoGoogle] = useState(false);
   const [mostrarEventosGoogle, setMostrarEventosGoogle] = useState<boolean>(() => {
     return cfg.googleCalendarMostrarNoCalendario !== false;
   });
   const [mesCalendarioAtual, setMesCalendarioAtual] = useState<Date>(new Date());
 
-  const carregarEventosGoogle = useCallback(async (mesReferencia = mesCalendarioAtual) => {
+  const carregarEventosGoogle = useCallback(async (mesReferencia = mesCalendarioAtual, agendasExistentes?: AgendaGoogle[]) => {
     if (!Boolean(cfg.googleCalendarClientId)) return;
     try {
       const inicio = startOfWeek(startOfMonth(mesReferencia), { weekStartsOn: 0 });
       const fim = endOfWeek(endOfMonth(mesReferencia), { weekStartsOn: 0 });
       if (temTokenGoogleValido()) {
-        const lista = await buscarEventosGoogleSilencioso(inicio, fim);
-        setEventosGoogle(lista);
+        const { eventos, agendas } = await buscarEventosGoogleSilencioso(
+          inicio,
+          fim,
+          agendasExistentes || (agendasGoogle.length > 0 ? agendasGoogle : undefined)
+        );
+        setEventosGoogle(eventos);
+        if (agendas.length > 0 && agendasGoogle.length === 0) {
+          setAgendasGoogle(agendas);
+        }
       }
     } catch (err: any) {
       console.warn("Não foi possível carregar eventos do Google Calendar:", err);
     }
-  }, [cfg.googleCalendarClientId, mesCalendarioAtual]);
+  }, [cfg.googleCalendarClientId, mesCalendarioAtual, agendasGoogle]);
 
   const conectarEAtualizarGoogleAgenda = useCallback(async (mesReferencia = mesCalendarioAtual) => {
     if (!cfg.googleCalendarClientId) {
@@ -168,16 +179,29 @@ export default function Tarefas() {
       await solicitarAutorizacaoGoogle(cfg.googleCalendarClientId);
       const inicio = startOfWeek(startOfMonth(mesReferencia), { weekStartsOn: 0 });
       const fim = endOfWeek(endOfMonth(mesReferencia), { weekStartsOn: 0 });
-      const lista = await listarEventosGoogle(inicio, fim);
-      setEventosGoogle(lista);
+      const { eventos, agendas } = await listarEventosGoogle(inicio, fim);
+      setEventosGoogle(eventos);
+      setAgendasGoogle(agendas);
       setMostrarEventosGoogle(true);
-      toast(`${lista.length} evento(s) do Google Agenda sincronizado(s)!`, { tipo: "sucesso" });
+      toast(`${eventos.length} evento(s) do Google Agenda sincronizado(s)!`, { tipo: "sucesso" });
     } catch (err: any) {
       toast(err?.message || "Falha ao conectar com o Google Calendar.", { tipo: "erro" });
     } finally {
       setCarregandoGoogle(false);
     }
   }, [cfg.googleCalendarClientId, mesCalendarioAtual, navegar]);
+
+  const alternarAgendaGoogle = useCallback((agendaId: string) => {
+    setAgendasGoogle((prev) => {
+      const novas = prev.map((ag) => (ag.id === agendaId ? { ...ag, selecionada: !ag.selecionada } : ag));
+      const inicio = startOfWeek(startOfMonth(mesCalendarioAtual), { weekStartsOn: 0 });
+      const fim = endOfWeek(endOfMonth(mesCalendarioAtual), { weekStartsOn: 0 });
+      buscarEventosGoogleSilencioso(inicio, fim, novas).then((res) => {
+        setEventosGoogle(res.eventos);
+      });
+      return novas;
+    });
+  }, [mesCalendarioAtual]);
 
   useEffect(() => {
     if (visao === "calendario" && Boolean(cfg.googleCalendarClientId)) {
@@ -516,11 +540,19 @@ export default function Tarefas() {
 
     try {
       const dataEvento = t.prazo || new Date().toISOString().slice(0, 10);
+      const primeiraTag = t.tags && t.tags.length > 0 ? t.tags[0] : undefined;
+      const globalConfig = lerConfigPropriedadesGlobais();
+      const corNome = primeiraTag
+        ? (t.bruto?._coresTags as any)?.[primeiraTag] || globalConfig.coresTags?.[primeiraTag]
+        : undefined;
+      const corId = mapearCorNotionParaGoogleColorId(corNome || primeiraTag);
+
       if (t.googleCalendarId) {
         await atualizarEventoGoogle(t.googleCalendarId, {
           titulo: t.titulo,
           dataInicio: dataEvento,
           descricao: t.corpo,
+          corId,
         });
         toast(`Evento "${t.titulo}" atualizado no Google Calendar!`, { tipo: "sucesso" });
       } else {
@@ -528,6 +560,7 @@ export default function Tarefas() {
           titulo: t.titulo,
           dataInicio: dataEvento,
           descricao: t.corpo,
+          corId,
         });
         const atualizada: Tarefa = {
           ...t,
@@ -570,6 +603,7 @@ export default function Tarefas() {
 
   function importarEventoGoogleParaTarefa(ev: EventoGoogle) {
     const dataInicio = ev.inicio ? ev.inicio.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const tagAgenda = ev.agendaNome || "Google";
     const nova: Tarefa = {
       bruto: {
         tipo: "tarefa",
@@ -584,7 +618,7 @@ export default function Tarefas() {
       status: "a-fazer",
       prazo: dataInicio,
       googleCalendarId: ev.id,
-      tags: ["Google"],
+      tags: [tagAgenda],
     };
     setOriginal(null);
     setEditando(nova);
@@ -889,6 +923,8 @@ export default function Tarefas() {
           aoExcluir={(t) => setTarefaParaExcluir(t)}
           aoFiltrarTag={aplicarFiltroTag}
           eventosGoogle={eventosGoogle}
+          agendasGoogle={agendasGoogle}
+          aoAlternarAgendaGoogle={alternarAgendaGoogle}
           aoImportarEventoGoogle={importarEventoGoogleParaTarefa}
           mostrarEventosGoogle={mostrarEventosGoogle}
           aoAlternarMostrarEventosGoogle={setMostrarEventosGoogle}

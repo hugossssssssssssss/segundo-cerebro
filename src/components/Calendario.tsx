@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Globe,
   RefreshCw,
+  Check,
 } from "lucide-react";
 import { SeloStatus } from "@/components/SeloStatus";
 import { TagChip } from "@/components/TagChip";
@@ -32,7 +33,11 @@ import { urgencia, extrairIntervaloTarefa, type Tarefa } from "@/lib/tarefas";
 import { CORES_NOTION, lerConfigPropriedadesGlobais } from "@/components/PropriedadesNotion";
 import { MenuAcoesTarefa } from "@/components/MenuAcoesTarefa";
 import { Circle, Plus, ExternalLink } from "lucide-react";
-import type { EventoGoogle } from "@/lib/googleCalendar";
+import {
+  obterEstiloEventoGoogle,
+  type EventoGoogle,
+  type AgendaGoogle,
+} from "@/lib/googleCalendar";
 
 type FiltroStatusCalendario = "todas" | "pendentes" | "atrasadas" | "concluidas";
 
@@ -105,6 +110,8 @@ export function Calendario({
   aoExcluir,
   aoFiltrarTag,
   eventosGoogle = [],
+  agendasGoogle = [],
+  aoAlternarAgendaGoogle,
   aoImportarEventoGoogle,
   mostrarEventosGoogle = true,
   aoAlternarMostrarEventosGoogle,
@@ -121,6 +128,8 @@ export function Calendario({
   aoExcluir?: (t: Tarefa) => void;
   aoFiltrarTag?: (tag: string) => void;
   eventosGoogle?: EventoGoogle[];
+  agendasGoogle?: AgendaGoogle[];
+  aoAlternarAgendaGoogle?: (agendaId: string) => void;
   aoImportarEventoGoogle?: (ev: EventoGoogle) => void;
   mostrarEventosGoogle?: boolean;
   aoAlternarMostrarEventosGoogle?: (mostrar: boolean) => void;
@@ -413,6 +422,42 @@ export function Calendario({
         </div>
       </div>
 
+      {/* ── Seletor de Agendas do Google ("Outras Agendas" e Compartilhadas) ─────── */}
+      {mostrarEventosGoogle && agendasGoogle.length > 1 && (
+        <div className="flex items-center gap-2 flex-wrap bg-card/60 p-2.5 px-3.5 rounded-xl border border-border/60 text-xs">
+          <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Globe size={12} className="text-blue-500" /> Agendas Google:
+          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {agendasGoogle.map((ag) => {
+              const ativa = ag.selecionada !== false;
+              const corAgenda = ag.corFundo || "#3b82f6";
+              return (
+                <button
+                  key={ag.id}
+                  type="button"
+                  onClick={() => aoAlternarAgendaGoogle && aoAlternarAgendaGoogle(ag.id)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 border transition-all cursor-pointer",
+                    ativa
+                      ? "bg-card border-border shadow-2xs text-foreground font-semibold"
+                      : "opacity-50 bg-secondary/30 border-transparent text-muted-foreground hover:opacity-80"
+                  )}
+                  title={`${ag.nome} ${ag.principal ? "(Principal)" : "(Outras Agendas)"}`}
+                >
+                  <span
+                    className="h-2 w-2 rounded-full shrink-0"
+                    style={{ backgroundColor: corAgenda }}
+                  />
+                  <span>{ag.nome}</span>
+                  {ativa && <Check size={11} className="text-primary opacity-80" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Grade Principal e Painel Lateral ─────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 w-full min-w-0 max-w-full">
         {/* Grade do Calendário */}
@@ -476,21 +521,44 @@ export function Calendario({
                   <div className="space-y-1 mt-1">
                     {/* Exibe barra unificada contínua em telas médias/grandes */}
                     <div className="hidden sm:block space-y-1">
-                      {/* Eventos do Google Calendar */}
-                      {eventosDia.slice(0, 2).map((ev) => (
-                        <Tooltip key={ev.id} conteudo={`Google Agenda: ${ev.titulo}${ev.local ? ` (${ev.local})` : ""}`}>
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelecionado(d);
-                            }}
-                            className="min-h-[20px] h-auto py-0.5 px-1.5 rounded-md flex items-center gap-1 text-[10px] font-medium border bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/25 leading-snug cursor-pointer break-words"
+                      {/* Eventos do Google Calendar com Cores Reais */}
+                      {eventosDia.slice(0, 2).map((ev) => {
+                        const estiloEv = obterEstiloEventoGoogle(ev);
+                        return (
+                          <Tooltip
+                            key={ev.id}
+                            conteudo={`${ev.agendaNome ? `[${ev.agendaNome}] ` : ""}${ev.titulo}${ev.local ? ` (${ev.local})` : ""}`}
                           >
-                            <Globe size={10} className="shrink-0 text-blue-500" />
-                            <span className="truncate">{ev.titulo}</span>
-                          </div>
-                        </Tooltip>
-                      ))}
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelecionado(d);
+                              }}
+                              className={cn(
+                                "min-h-[20px] h-auto py-0.5 px-1.5 rounded-md flex items-center gap-1 text-[10px] font-medium border leading-snug cursor-pointer break-words",
+                                estiloEv.bg,
+                                estiloEv.text,
+                                estiloEv.border
+                              )}
+                              style={
+                                estiloEv.corHex && !ev.corId
+                                  ? {
+                                      backgroundColor: `${estiloEv.corHex}20`,
+                                      borderColor: `${estiloEv.corHex}40`,
+                                    }
+                                  : undefined
+                              }
+                            >
+                              <Globe
+                                size={10}
+                                className="shrink-0"
+                                style={{ color: estiloEv.corHex || "#3b82f6" }}
+                              />
+                              <span className="truncate">{ev.titulo}</span>
+                            </div>
+                          </Tooltip>
+                        );
+                      })}
 
                       {/* Tarefas do Klaus */}
                       {tarefasDia.slice(0, Math.max(1, 3 - eventosDia.length)).map((t) => {
@@ -564,17 +632,24 @@ export function Calendario({
 
                     {/* Indicador por pontos coloridos no celular */}
                     <div className="sm:hidden flex items-center gap-1 justify-center pt-1 flex-wrap">
-                      {eventosDia.slice(0, 2).map((ev) => (
-                        <Tooltip key={ev.id} conteudo={`Google Agenda: ${ev.titulo}`}>
-                          <span
-                            className="h-1.5 w-1.5 rounded-full shrink-0 bg-blue-500 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelecionado(d);
-                            }}
-                          />
-                        </Tooltip>
-                      ))}
+                      {eventosDia.slice(0, 2).map((ev) => {
+                        const estiloEv = obterEstiloEventoGoogle(ev);
+                        return (
+                          <Tooltip
+                            key={ev.id}
+                            conteudo={`${ev.agendaNome ? `[${ev.agendaNome}] ` : ""}${ev.titulo}`}
+                          >
+                            <span
+                              className="h-1.5 w-1.5 rounded-full shrink-0 cursor-pointer"
+                              style={{ backgroundColor: estiloEv.corHex || "#3b82f6" }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelecionado(d);
+                              }}
+                            />
+                          </Tooltip>
+                        );
+                      })}
                       {tarefasDia.slice(0, 4).map((t) => {
                         const estilo = obterEstiloTagCalendario(t);
                         const ehFeito = t.status === "feito";
@@ -630,6 +705,7 @@ export function Calendario({
                 </div>
                 <div className="grid gap-2">
                   {eventosGoogleDoDia.map((ev) => {
+                    const estiloEv = obterEstiloEventoGoogle(ev);
                     const horaFormatada = ev.oDiaTodo
                       ? "Dia inteiro"
                       : ev.inicio
@@ -639,15 +715,44 @@ export function Calendario({
                     return (
                       <div
                         key={ev.id}
-                        className="p-3 rounded-xl border border-blue-500/25 bg-blue-500/5 hover:bg-blue-500/10 transition-colors space-y-2 text-xs"
+                        className={cn(
+                          "p-3 rounded-xl border transition-colors space-y-2 text-xs",
+                          estiloEv.bg,
+                          estiloEv.border
+                        )}
+                        style={
+                          estiloEv.corHex && !ev.corId
+                            ? {
+                                backgroundColor: `${estiloEv.corHex}15`,
+                                borderColor: `${estiloEv.corHex}35`,
+                              }
+                            : undefined
+                        }
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="space-y-0.5 flex-1 min-w-0">
-                            <p className="font-bold text-foreground leading-snug break-words">
-                              {ev.titulo}
-                            </p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {ev.agendaNome && (
+                                <span
+                                  className="text-[9px] font-bold px-1.5 py-0.2 rounded-md border flex items-center gap-1"
+                                  style={{
+                                    backgroundColor: `${estiloEv.corHex || "#3b82f6"}20`,
+                                    borderColor: `${estiloEv.corHex || "#3b82f6"}40`,
+                                    color: estiloEv.corHex || "#3b82f6",
+                                  }}
+                                >
+                                  {ev.agendaNome}
+                                </span>
+                              )}
+                              <p className="font-bold text-foreground leading-snug break-words flex-1 min-w-0">
+                                {ev.titulo}
+                              </p>
+                            </div>
                             <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                              <Clock size={11} className="text-blue-500" />
+                              <Clock
+                                size={11}
+                                style={{ color: estiloEv.corHex || "#3b82f6" }}
+                              />
                               {horaFormatada}
                               {ev.local && <span className="truncate"> • 📍 {ev.local}</span>}
                             </p>

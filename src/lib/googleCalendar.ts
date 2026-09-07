@@ -1,6 +1,7 @@
 /**
  * Integração com Google Calendar via Google Identity Services (OAuth 2.0)
  * e Google Calendar API v3 — 100% Client-Side no navegador (Zero Backend).
+ * Suporte a múltiplas agendas ("Outras Agendas") e sincronização bidirecional de cores.
  */
 
 import { lerConfig, salvarConfig, type Settings } from "./settings";
@@ -37,6 +38,18 @@ export interface TokenClientGoogle {
   requestAccessToken: (overrideConfig?: { prompt?: string }) => void;
 }
 
+export interface AgendaGoogle {
+  id: string;
+  nome: string;
+  descricao?: string;
+  principal: boolean;
+  selecionada: boolean;
+  corFundo?: string; // Hex do Google Calendar, ex: "#039be5"
+  corTexto?: string;
+  corId?: string;
+  somenteLeitura: boolean;
+}
+
 export interface EventoGoogle {
   id: string;
   titulo: string;
@@ -47,10 +60,108 @@ export interface EventoGoogle {
   link?: string;
   local?: string;
   corId?: string;
+  agendaId?: string;
+  agendaNome?: string;
+  agendaCor?: string;
 }
 
 const CHAVE_TOKEN = "klaus:gcal:access_token";
 const CHAVE_EXPIRA = "klaus:gcal:expires_at";
+
+/**
+ * Paleta oficial de cores de eventos do Google Calendar API v3 (1 a 11)
+ */
+export const PALETA_CORES_GOOGLE: Record<
+  string,
+  { nome: string; hex: string; bg: string; text: string; border: string; dot: string }
+> = {
+  "1": { nome: "Lavanda", hex: "#7986cb", bg: "bg-[#7986cb]/15", text: "text-[#3949ab] dark:text-[#9fa8da]", border: "border-[#7986cb]/30", dot: "bg-[#7986cb]" },
+  "2": { nome: "Sálvia", hex: "#33b679", bg: "bg-[#33b679]/15", text: "text-[#2e7d32] dark:text-[#81c784]", border: "border-[#33b679]/30", dot: "bg-[#33b679]" },
+  "3": { nome: "Uva", hex: "#8e24aa", bg: "bg-[#8e24aa]/15", text: "text-[#6a1b9a] dark:text-[#ba68c8]", border: "border-[#8e24aa]/30", dot: "bg-[#8e24aa]" },
+  "4": { nome: "Flamingo", hex: "#e67c73", bg: "bg-[#e67c73]/15", text: "text-[#c2185b] dark:text-[#f48fb1]", border: "border-[#e67c73]/30", dot: "bg-[#e67c73]" },
+  "5": { nome: "Banana", hex: "#f6bf26", bg: "bg-[#f6bf26]/15", text: "text-[#f57f17] dark:text-[#fff176]", border: "border-[#f6bf26]/30", dot: "bg-[#f6bf26]" },
+  "6": { nome: "Tangerina", hex: "#f4511e", bg: "bg-[#f4511e]/15", text: "text-[#d84315] dark:text-[#ff8a65]", border: "border-[#f4511e]/30", dot: "bg-[#f4511e]" },
+  "7": { nome: "Pavão", hex: "#039be5", bg: "bg-[#039be5]/15", text: "text-[#0277bd] dark:text-[#4fc3f7]", border: "border-[#039be5]/30", dot: "bg-[#039be5]" },
+  "8": { nome: "Grafite", hex: "#616161", bg: "bg-[#616161]/15", text: "text-[#424242] dark:text-[#bdbdbd]", border: "border-[#616161]/30", dot: "bg-[#616161]" },
+  "9": { nome: "Mirtilo", hex: "#3f51b5", bg: "bg-[#3f51b5]/15", text: "text-[#283593] dark:text-[#7986cb]", border: "border-[#3f51b5]/30", dot: "bg-[#3f51b5]" },
+  "10": { nome: "Manjericão", hex: "#0b8043", bg: "bg-[#0b8043]/15", text: "text-[#1b5e20] dark:text-[#66bb6a]", border: "border-[#0b8043]/30", dot: "bg-[#0b8043]" },
+  "11": { nome: "Tomate", hex: "#d50000", bg: "bg-[#d50000]/15", text: "text-[#b71c1c] dark:text-[#ef9a9a]", border: "border-[#d50000]/30", dot: "bg-[#d50000]" },
+};
+
+/**
+ * Mapeia uma cor do Klaus / Notion (azul, verde, amarelo, vermelho, etc.) para o colorId mais próximo do Google Calendar (1 a 11).
+ */
+export function mapearCorNotionParaGoogleColorId(corNomeOuTag?: string): string | undefined {
+  if (!corNomeOuTag) return undefined;
+  const c = corNomeOuTag.toLowerCase().trim();
+
+  const mapa: Record<string, string> = {
+    vermelho: "11", // Tomate
+    rose: "11",
+    red: "11",
+    verde: "10",   // Manjericão
+    emerald: "10",
+    green: "10",
+    azul: "9",      // Mirtilo
+    blue: "9",
+    amarelo: "5",   // Banana
+    amber: "5",
+    yellow: "5",
+    laranja: "6",   // Tangerina
+    orange: "6",
+    roxo: "3",      // Uva
+    purple: "3",
+    rosa: "4",      // Flamingo
+    pink: "4",
+    cinza: "8",     // Grafite
+    gray: "8",
+    grey: "8",
+  };
+
+  return mapa[c];
+}
+
+/**
+ * Obtém os estilos visuais de um evento do Google para o Klaus.
+ * Prioriza corId individual do evento; se não houver, usa a cor de fundo da agenda correspondente.
+ */
+export function obterEstiloEventoGoogle(ev: EventoGoogle): {
+  bg: string;
+  text: string;
+  border: string;
+  dot: string;
+  corHex?: string;
+} {
+  if (ev.corId && PALETA_CORES_GOOGLE[ev.corId]) {
+    const estilo = PALETA_CORES_GOOGLE[ev.corId];
+    return {
+      bg: estilo.bg,
+      text: estilo.text,
+      border: estilo.border,
+      dot: estilo.dot,
+      corHex: estilo.hex,
+    };
+  }
+
+  if (ev.agendaCor) {
+    return {
+      bg: "bg-opacity-15",
+      text: "text-foreground",
+      border: "border-opacity-30",
+      dot: "bg-current",
+      corHex: ev.agendaCor,
+    };
+  }
+
+  // Padrão: Azul Google
+  return {
+    bg: "bg-blue-500/15",
+    text: "text-blue-700 dark:text-blue-300",
+    border: "border-blue-500/25",
+    dot: "bg-blue-500",
+    corHex: "#3b82f6",
+  };
+}
 
 /**
  * Carrega a biblioteca Google Identity Services de forma assíncrona.
@@ -145,7 +256,7 @@ export async function solicitarAutorizacaoGoogle(clientId?: string, prompt?: str
     try {
       const client = window.google!.accounts.oauth2.initTokenClient({
         client_id: cId,
-        scope: "https://www.googleapis.com/auth/calendar.events",
+        scope: "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly",
         callback: (resposta: TokenResponseGoogle) => {
           if (resposta.error) {
             reject(new Error(resposta.error_description || resposta.error));
@@ -215,15 +326,95 @@ async function obterTokenValido(): Promise<string> {
 }
 
 /**
- * Busca eventos do Google Calendar silenciosamente apenas se já houver token ativo.
- * Não dispara pop-up em segundo plano (evita bloqueio pelo navegador).
+ * Lista todas as agendas que o usuário tem acesso no Google Calendar (primária, secundárias e compartilhadas).
  */
-export async function buscarEventosGoogleSilencioso(inicio: Date, fim: Date): Promise<EventoGoogle[]> {
-  const token = obterTokenGoogleSalvo();
-  if (!token) return [];
+export async function listarAgendasGoogle(tokenParam?: string): Promise<AgendaGoogle[]> {
+  const token = tokenParam || (await obterTokenValido());
 
   try {
-    const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+    const url = "https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader";
+    const resposta = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+
+    if (resposta.status === 401) {
+      limparTokenGoogle();
+      throw new Error("Sessão do Google expirada. Por favor, conecte novamente.");
+    }
+
+    if (!resposta.ok) {
+      // Fallback para agenda primária se não conseguir ler calendarList
+      return [
+        {
+          id: "primary",
+          nome: "Minha Agenda",
+          principal: true,
+          selecionada: true,
+          corFundo: "#039be5",
+          corTexto: "#ffffff",
+          somenteLeitura: false,
+        },
+      ];
+    }
+
+    const dados = await resposta.json();
+    const itens = Array.isArray(dados.items) ? dados.items : [];
+
+    if (itens.length === 0) {
+      return [
+        {
+          id: "primary",
+          nome: "Minha Agenda",
+          principal: true,
+          selecionada: true,
+          corFundo: "#039be5",
+          corTexto: "#ffffff",
+          somenteLeitura: false,
+        },
+      ];
+    }
+
+    return itens.map((item: any): AgendaGoogle => ({
+      id: item.id,
+      nome: item.summaryOverride || item.summary || (item.primary ? "Minha Agenda" : "Agenda Compartilhada"),
+      descricao: item.description,
+      principal: Boolean(item.primary),
+      selecionada: item.selected !== false,
+      corFundo: item.backgroundColor,
+      corTexto: item.foregroundColor,
+      corId: item.colorId,
+      somenteLeitura: item.accessRole === "reader" || item.accessRole === "freeBusyReader",
+    }));
+  } catch {
+    return [
+      {
+        id: "primary",
+        nome: "Minha Agenda",
+        principal: true,
+        selecionada: true,
+        corFundo: "#039be5",
+        corTexto: "#ffffff",
+        somenteLeitura: false,
+      },
+    ];
+  }
+}
+
+/**
+ * Busca eventos de uma agenda específica.
+ */
+async function buscarEventosDeAgenda(
+  calendarId: string,
+  inicio: Date,
+  fim: Date,
+  token: string,
+  agendaInfo?: { nome: string; corFundo?: string }
+): Promise<EventoGoogle[]> {
+  try {
+    const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
     url.searchParams.set("timeMin", inicio.toISOString());
     url.searchParams.set("timeMax", fim.toISOString());
     url.searchParams.set("singleEvents", "true");
@@ -237,14 +428,7 @@ export async function buscarEventosGoogleSilencioso(inicio: Date, fim: Date): Pr
       },
     });
 
-    if (resposta.status === 401) {
-      limparTokenGoogle();
-      return [];
-    }
-
-    if (!resposta.ok) {
-      return [];
-    }
+    if (!resposta.ok) return [];
 
     const dados = await resposta.json();
     const itens = Array.isArray(dados.items) ? dados.items : [];
@@ -264,6 +448,9 @@ export async function buscarEventosGoogleSilencioso(inicio: Date, fim: Date): Pr
         link: item.htmlLink,
         local: item.location,
         corId: item.colorId,
+        agendaId: calendarId,
+        agendaNome: agendaInfo?.nome || (calendarId === "primary" ? "Minha Agenda" : undefined),
+        agendaCor: agendaInfo?.corFundo,
       };
     });
   } catch {
@@ -272,55 +459,65 @@ export async function buscarEventosGoogleSilencioso(inicio: Date, fim: Date): Pr
 }
 
 /**
- * Lista eventos do Google Calendar primário dentro de uma faixa de datas (autentica se necessário).
+ * Busca eventos do Google Calendar silenciosamente apenas se já houver token ativo.
+ * Itera por todas as agendas disponíveis/selecionadas.
  */
-export async function listarEventosGoogle(inicio: Date, fim: Date): Promise<EventoGoogle[]> {
+export async function buscarEventosGoogleSilencioso(
+  inicio: Date,
+  fim: Date,
+  agendasAlvo?: AgendaGoogle[]
+): Promise<{ eventos: EventoGoogle[]; agendas: AgendaGoogle[] }> {
+  const token = obterTokenGoogleSalvo();
+  if (!token) return { eventos: [], agendas: [] };
+
+  try {
+    const agendas = agendasAlvo && agendasAlvo.length > 0 ? agendasAlvo : await listarAgendasGoogle(token);
+    const promessas = agendas
+      .filter((ag) => ag.selecionada !== false)
+      .map((ag) => buscarEventosDeAgenda(ag.id, inicio, fim, token, { nome: ag.nome, corFundo: ag.corFundo }));
+
+    const resultados = await Promise.allSettled(promessas);
+    const todosEventos: EventoGoogle[] = [];
+
+    for (const res of resultados) {
+      if (res.status === "fulfilled" && Array.isArray(res.value)) {
+        todosEventos.push(...res.value);
+      }
+    }
+
+    todosEventos.sort((a, b) => (a.inicio || "").localeCompare(b.inicio || ""));
+    return { eventos: todosEventos, agendas };
+  } catch {
+    return { eventos: [], agendas: [] };
+  }
+}
+
+/**
+ * Lista eventos de todas as agendas do Google Calendar dentro de uma faixa de datas (autentica se necessário).
+ */
+export async function listarEventosGoogle(
+  inicio: Date,
+  fim: Date,
+  agendasAlvo?: AgendaGoogle[]
+): Promise<{ eventos: EventoGoogle[]; agendas: AgendaGoogle[] }> {
   const token = await obterTokenValido();
+  const agendas = agendasAlvo && agendasAlvo.length > 0 ? agendasAlvo : await listarAgendasGoogle(token);
 
-  const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
-  url.searchParams.set("timeMin", inicio.toISOString());
-  url.searchParams.set("timeMax", fim.toISOString());
-  url.searchParams.set("singleEvents", "true");
-  url.searchParams.set("orderBy", "startTime");
-  url.searchParams.set("maxResults", "250");
+  const promessas = agendas
+    .filter((ag) => ag.selecionada !== false)
+    .map((ag) => buscarEventosDeAgenda(ag.id, inicio, fim, token, { nome: ag.nome, corFundo: ag.corFundo }));
 
-  const resposta = await fetch(url.toString(), {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-    },
-  });
+  const resultados = await Promise.allSettled(promessas);
+  const todosEventos: EventoGoogle[] = [];
 
-  if (resposta.status === 401) {
-    limparTokenGoogle();
-    throw new Error("Sessão do Google expirada. Por favor, conecte novamente.");
+  for (const res of resultados) {
+    if (res.status === "fulfilled" && Array.isArray(res.value)) {
+      todosEventos.push(...res.value);
+    }
   }
 
-  if (!resposta.ok) {
-    const erroBody = await resposta.json().catch(() => null);
-    throw new Error(erroBody?.error?.message || `Erro ao carregar eventos do Google (${resposta.status})`);
-  }
-
-  const dados = await resposta.json();
-  const itens = Array.isArray(dados.items) ? dados.items : [];
-
-  return itens.map((item: any): EventoGoogle => {
-    const isAllDay = Boolean(item.start?.date && !item.start?.dateTime);
-    const inicioStr = item.start?.dateTime || item.start?.date || "";
-    const fimStr = item.end?.dateTime || item.end?.date || inicioStr;
-
-    return {
-      id: item.id,
-      titulo: item.summary || "(Sem título)",
-      descricao: item.description || "",
-      inicio: inicioStr,
-      fim: fimStr,
-      oDiaTodo: isAllDay,
-      link: item.htmlLink,
-      local: item.location,
-      corId: item.colorId,
-    };
-  });
+  todosEventos.sort((a, b) => (a.inicio || "").localeCompare(b.inicio || ""));
+  return { eventos: todosEventos, agendas };
 }
 
 /**
@@ -332,8 +529,11 @@ export async function criarEventoGoogle(dados: {
   dataInicio: string; // "2026-09-08" ou ISO
   dataFim?: string;
   oDiaTodo?: boolean;
+  corId?: string;
+  agendaId?: string;
 }): Promise<string> {
   const token = await obterTokenValido();
+  const calendarId = dados.agendaId || "primary";
 
   const isDiaTodo = dados.oDiaTodo ?? (dados.dataInicio.length === 10);
   
@@ -351,14 +551,18 @@ export async function criarEventoGoogle(dados: {
     endPayload = { dateTime: fimIso };
   }
 
-  const payload = {
+  const payload: any = {
     summary: dados.titulo,
     description: dados.descricao ? `${dados.descricao}\n\n— Criado via Klaus` : "Criado via Klaus (Segundo Cérebro)",
     start: startPayload,
     end: endPayload,
   };
 
-  const resposta = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+  if (dados.corId) {
+    payload.colorId = dados.corId;
+  }
+
+  const resposta = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -387,13 +591,17 @@ export async function atualizarEventoGoogle(
     dataInicio?: string;
     dataFim?: string;
     oDiaTodo?: boolean;
+    corId?: string;
+    agendaId?: string;
   }
 ): Promise<void> {
   const token = await obterTokenValido();
+  const calendarId = dados.agendaId || "primary";
 
   const payload: any = {};
   if (dados.titulo) payload.summary = dados.titulo;
   if (dados.descricao !== undefined) payload.description = dados.descricao;
+  if (dados.corId !== undefined) payload.colorId = dados.corId;
 
   if (dados.dataInicio) {
     const isDiaTodo = dados.oDiaTodo ?? (dados.dataInicio.length === 10);
@@ -410,7 +618,7 @@ export async function atualizarEventoGoogle(
     }
   }
 
-  const resposta = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventoId)}`, {
+  const resposta = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventoId)}`, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -428,10 +636,10 @@ export async function atualizarEventoGoogle(
 /**
  * Exclui um evento do Google Calendar.
  */
-export async function excluirEventoGoogle(eventoId: string): Promise<void> {
+export async function excluirEventoGoogle(eventoId: string, agendaId = "primary"): Promise<void> {
   const token = await obterTokenValido();
 
-  const resposta = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventoId)}`, {
+  const resposta = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(agendaId)}/events/${encodeURIComponent(eventoId)}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -443,3 +651,4 @@ export async function excluirEventoGoogle(eventoId: string): Promise<void> {
     throw new Error(erroBody?.error?.message || `Falha ao remover evento do Google Calendar (${resposta.status})`);
   }
 }
+
