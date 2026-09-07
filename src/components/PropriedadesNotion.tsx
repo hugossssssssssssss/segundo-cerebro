@@ -7,49 +7,34 @@ import {
   ListTodo, 
   Tags,
   Plus,
-  Trash2,
-  EyeOff,
-  Eye,
   ChevronDown,
   ChevronRight,
   User,
   Clock,
   X,
   Folder,
-  Inbox as InboxIcon,
-  Send as SendIcon,
-  Mail as MailIcon,
-  SlidersHorizontal,
   Sparkles,
   Check,
-  Layout,
-  Target,
-  Bookmark,
   Users,
-  FileText,
-  Palette,
   Pencil,
-  Search,
   Building,
   Briefcase,
-  UserPlus,
   Flag,
-  Timer,
-  Phone,
-  MessageSquareQuote,
+  Mail as MailIcon,
+  GripVertical,
+  HelpCircle,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip } from "@/components/ui/tooltip";
 import { Modal, Botao } from "@/components/ui";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link as LinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { extrairMencoesTexto, montarIndice, chave as chaveNormalizada } from "@/lib/links";
+import { montarIndice, chave as chaveNormalizada } from "@/lib/links";
 import { lerConfig, nomeExibido as nomeDoUsuario } from "@/lib/settings";
 import { cache, invalidarCache, carregarRepo } from "@/lib/repo";
 import { gravar } from "@/lib/github";
@@ -60,6 +45,8 @@ import { idDoCaminho } from "@/lib/pdi";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import { toast } from "@/lib/toast";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
+import { MenuConfiguracaoPropriedade } from "./propriedades/MenuConfiguracaoPropriedade";
+import { ICONES_MAPA, CORES_ICONE } from "./propriedades/SeletorIconePropriedade";
 
 export function obterOpcoesExcluidas(chave: string): Set<string> {
   try {
@@ -135,7 +122,7 @@ export function obterOpcoesDaPropriedade(
     setOpcoes.add(dadosValorAtual.trim());
   }
 
-  // 4. Valores em uso no repositório para ESTA chave específica, respeitando a pasta se informada
+  // 4. Valores em uso no repositório para ESTA chave específica
   if (cache && cache.itens) {
     const itensFiltrados = prefixoCaminho
       ? cache.itens.filter(i => i.caminho.startsWith(prefixoCaminho))
@@ -267,26 +254,66 @@ export const PRIORIDADES_NOTION: Record<string, { label: string; cor: string }> 
 
 const CONFIG_KEY = "segundo-cerebro-propriedades-config";
 
-export function lerConfigPropriedadesGlobais(): { rotulos: Record<string, string>; coresTags: Record<string, string> } {
+export interface ConfigPropriedadesGlobais {
+  rotulos: Record<string, string>;
+  coresTags: Record<string, string>;
+  icones: Record<string, string>;
+  coresIcones: Record<string, string>;
+  descricoes: Record<string, string>;
+  ordensPorCategoria: Record<string, string[]>;
+}
+
+export function lerConfigPropriedadesGlobais(): ConfigPropriedadesGlobais {
   try {
     const raw = localStorage.getItem(CONFIG_KEY);
-    if (!raw) return { rotulos: {}, coresTags: {} };
+    if (!raw) {
+      return {
+        rotulos: {},
+        coresTags: {},
+        icones: {},
+        coresIcones: {},
+        descricoes: {},
+        ordensPorCategoria: {},
+      };
+    }
     const parsed = JSON.parse(raw);
     return {
       rotulos: parsed?.rotulos || {},
       coresTags: parsed?.coresTags || {},
+      icones: parsed?.icones || {},
+      coresIcones: parsed?.coresIcones || {},
+      descricoes: parsed?.descricoes || {},
+      ordensPorCategoria: parsed?.ordensPorCategoria || {},
     };
   } catch {
-    return { rotulos: {}, coresTags: {} };
+    return {
+      rotulos: {},
+      coresTags: {},
+      icones: {},
+      coresIcones: {},
+      descricoes: {},
+      ordensPorCategoria: {},
+    };
   }
 }
 
-export function salvarConfigPropriedadesGlobais(novosRotulos?: Record<string, string>, novasCores?: Record<string, string>) {
+export function salvarConfigPropriedadesGlobais(
+  novosRotulos?: Record<string, string>,
+  novasCores?: Record<string, string>,
+  novosIcones?: Record<string, string>,
+  novasCoresIcones?: Record<string, string>,
+  novasDescricoes?: Record<string, string>,
+  novasOrdens?: Record<string, string[]>
+) {
   try {
     const atual = lerConfigPropriedadesGlobais();
     const proximo = {
       rotulos: { ...atual.rotulos, ...novosRotulos },
       coresTags: { ...atual.coresTags, ...novasCores },
+      icones: { ...atual.icones, ...novosIcones },
+      coresIcones: { ...atual.coresIcones, ...novasCoresIcones },
+      descricoes: { ...atual.descricoes, ...novasDescricoes },
+      ordensPorCategoria: { ...atual.ordensPorCategoria, ...novasOrdens },
     };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(proximo));
   } catch {
@@ -308,25 +335,6 @@ export function obterIniciais(nome: string) {
   if (partes.length === 0 || !partes[0]) return "?";
   if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
   return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
-}
-
-const CORES_AVATAR = [
-  "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
-  "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-  "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30",
-  "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
-  "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
-  "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30",
-  "bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30",
-];
-
-export function corDoAvatar(nome: string): string {
-  let hash = 0;
-  for (let i = 0; i < (nome || "").length; i++) {
-    hash = (hash << 5) - hash + nome.charCodeAt(i);
-    hash |= 0;
-  }
-  return CORES_AVATAR[Math.abs(hash) % CORES_AVATAR.length];
 }
 
 interface ModalEditarContatoRapidoProps {
@@ -517,7 +525,6 @@ type PropriedadesNotionProps = {
 export function PropriedadesNotion({ 
   dados, 
   onChange, 
-  corpoTexto = "",
   camposFixos = {}, 
   opcoesRelacionamento = [],
   caminhoItem,
@@ -527,8 +534,6 @@ export function PropriedadesNotion({
   aoRemover,
 }: PropriedadesNotionProps) {
   const { abrirFlutuante } = useItemFlutuante();
-
-  // Controle estrito de um ÚNICO menu aberto por vez
   const [menuAberto, setMenuAberto] = useState<string | null>(null);
 
   const aoClicarItemRel = async (itemAlvo?: { titulo: string; caminho: string }, nomePuro?: string) => {
@@ -537,7 +542,6 @@ export function PropriedadesNotion({
     const nomeBusca = (nomePuro || itemAlvo?.titulo || "").trim();
     const caminhoBusca = (itemAlvo?.caminho || "").trim();
 
-    // 1. Obter itens do cache ou carregar do repositório
     let itens = cache?.itens;
     if (!itens || itens.length === 0) {
       try {
@@ -552,7 +556,6 @@ export function PropriedadesNotion({
       return;
     }
 
-    // 2. Montar índice de links para resolução inteligente
     const indice = montarIndice(itens);
     const chaveAlvo = chaveNormalizada(caminhoBusca || nomeBusca);
     const resolvido = indice.get(chaveAlvo) || 
@@ -561,7 +564,6 @@ export function PropriedadesNotion({
 
     const caminhoFinal = resolvido?.caminho || caminhoBusca;
 
-    // 3. Localizar o item no repositório
     const itemRepo = itens.find((i) => {
       if (caminhoFinal && i.caminho.toLowerCase() === caminhoFinal.toLowerCase()) return true;
       if (caminhoBusca && i.caminho.toLowerCase() === caminhoBusca.toLowerCase()) return true;
@@ -597,8 +599,6 @@ export function PropriedadesNotion({
           cargo: { icone: <Briefcase className="h-4 w-4 opacity-70 text-blue-500" />, tipo: "texto" },
           empresa: { icone: <Building className="h-4 w-4 opacity-70 text-emerald-500" />, tipo: "texto" },
           email: { icone: <MailIcon className="h-4 w-4 opacity-70 text-indigo-500" />, tipo: "texto" },
-          telefone: { icone: <Phone className="h-4 w-4 opacity-70 text-purple-500" />, tipo: "texto" },
-          pai_id: { icone: <Users className="h-4 w-4 opacity-70 text-amber-500" />, tipo: "relation" },
           tags: { icone: <Tags className="h-4 w-4 opacity-70 text-amber-500" />, tipo: "multiselect" },
         };
       } else if (pasta === "referencias") {
@@ -611,8 +611,6 @@ export function PropriedadesNotion({
         rotulo = caminho.includes("entregas") ? "Entrega PDI" : "Meta PDI";
         camposFixosProps = {
           impacto: { icone: <Sparkles className="h-4 w-4 opacity-70 text-amber-500" />, tipo: "texto" },
-          elogio: { icone: <MessageSquareQuote className="h-4 w-4 opacity-70 text-indigo-500" />, tipo: "texto" },
-          autor_elogio: { icone: <User className="h-4 w-4 opacity-70 text-blue-500" />, tipo: "texto" },
           colaboracao: { icone: <Users className="h-4 w-4 opacity-70 text-teal-500" />, tipo: "multiselect" },
           tags: { icone: <Tags className="h-4 w-4 opacity-70 text-emerald-500" />, tipo: "multiselect" },
         };
@@ -643,7 +641,6 @@ export function PropriedadesNotion({
       return;
     }
 
-    // 4. Fallback via SPA se não encontrar no cache
     if (caminhoFinal) {
       abrirItemSpa(caminhoFinal);
     }
@@ -653,14 +650,7 @@ export function PropriedadesNotion({
   const [tipoNovoCampo, setTipoNovoCampo] = useState<TipoPropriedade>("texto");
   const [novaSubpastaInput, setNovaSubpastaInput] = useState("");
 
-  const [renomearPara, setRenomearPara] = useState("");
-  const [copiado, setCopiado] = useState<string | null>(null);
   const [mostrandoOcultas, setMostrandoOcultas] = useState(false);
-  const [buscaTag, setBuscaTag] = useState("");
-  const [editandoTag, setEditandoTag] = useState<string | null>(null);
-  const [novoNomeTag, setNovoNomeTag] = useState("");
-
-  const [buscaContato, setBuscaContato] = useState("");
   const [modalContatoAberto, setModalContatoAberto] = useState(false);
   const [contatoParaEditar, setContatoParaEditar] = useState<{ caminho?: string; sha?: string; titulo: string; cargo?: string; empresa?: string; email?: string } | null>(null);
   const [chaveAtivaContato, setChaveAtivaContato] = useState<string>("autor_elogio");
@@ -714,8 +704,7 @@ export function PropriedadesNotion({
   useEffect(() => {
     if (focoPropriedadeInicial) {
       const timer = setTimeout(() => {
-        const el = document.getElementById(`prop-input-${focoPropriedadeInicial}`) ||
-                   document.getElementById(`prop-btn-${focoPropriedadeInicial}`);
+        const el = document.getElementById(`prop-input-${focoPropriedadeInicial}`);
         if (el) {
           el.focus();
           el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -783,7 +772,6 @@ export function PropriedadesNotion({
     return Array.from(conjunto).sort((a, b) => a.localeCompare(b));
   }, [pastaRaiz]);
 
-  // Garante o fechamento imediato de qualquer menu de propriedade aberto ao clicar fora em qualquer lugar da tela
   useEffect(() => {
     if (!menuAberto) return;
     const aoClicarFora = (e: PointerEvent) => {
@@ -802,6 +790,10 @@ export function PropriedadesNotion({
   const visibilidadeMap = (dados._visibilidade as Record<string, OpcaoVisibilidade>) || {};
   const coresMap = { ...globalConfig.coresTags, ...((dados._coresTags as Record<string, string>) || {}) };
   const rotulosMap = { ...globalConfig.rotulos, ...((dados._rotulos as Record<string, string>) || {}) };
+  const iconesMap = { ...globalConfig.icones, ...((dados._icones as Record<string, string>) || {}) };
+  const coresIconesMap = { ...globalConfig.coresIcones, ...((dados._coresIcones as Record<string, string>) || {}) };
+  const descricoesMap = { ...globalConfig.descricoes, ...((dados._descricoes as Record<string, string>) || {}) };
+  const ordemCustomizada = (dados._ordem as string[]) || globalConfig.ordensPorCategoria?.[pastaRaiz] || [];
 
   const ehLembrete = rotuloTipo?.toLowerCase().includes("lembrete") || dados.tipo === "lembrete";
   const chavesLembrete = ["horario", "hora", "aviso_inbox", "notificacao_inbox", "aviso_telegram", "notificacao_telegram", "aviso_email", "notificacao_email"];
@@ -810,7 +802,7 @@ export function PropriedadesNotion({
   const todasAsChaves = Array.from(new Set([...Object.keys(camposFixos), ...Object.keys(dados)]))
     .filter(k => {
       if ([
-        "titulo", "tipo", "atualizado", "atualizado_em", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "c", "pomodoro", "pomodoros", "pomodoros_estimados", "pomodoro_estimado", "pomodoros_realizados", "pomodoro_realizado", "pomodoro_fraturado", "PomodoroFraturado", "fraturados", "estimativa", "porque", "anotacoes",
+        "titulo", "tipo", "atualizado", "atualizado_em", "criado", "autor", "criado_em", "criado_por", "ultima_edicao", "id", "esquema", "_visibilidade", "_coresTags", "_rotulos", "_icones", "_coresIcones", "_descricoes", "_ordem", "c", "pomodoro", "pomodoros", "pomodoros_estimados", "pomodoro_estimado", "pomodoros_realizados", "pomodoro_realizado", "pomodoro_fraturado", "PomodoroFraturado", "fraturados", "estimativa", "porque", "anotacoes",
         "subtipo", "fixado", "demo", "ia_sugeriu"
       ].includes(k)) return false;
       if (ehLembrete && chavesExclusivasTarefa.includes(k)) return false;
@@ -828,6 +820,18 @@ export function PropriedadesNotion({
   if (!todasAsChaves.includes("criado_por")) todasAsChaves.push("criado_por");
   if (!todasAsChaves.includes("criado_em")) todasAsChaves.push("criado_em");
   if (!todasAsChaves.includes("ultima_edicao")) todasAsChaves.push("ultima_edicao");
+
+  // Ordenação customizada persistida
+  if (ordemCustomizada.length > 0) {
+    todasAsChaves.sort((a, b) => {
+      const idxA = ordemCustomizada.indexOf(a);
+      const idxB = ordemCustomizada.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return 0;
+    });
+  }
 
   function nomeExibido(chave: string): string {
     if (chave === "Pomodoro" || chave === "pomodoro" || chave === "estimativa" || chave === "c") return "Pomodoro";
@@ -860,7 +864,6 @@ export function PropriedadesNotion({
     if (chave === "autor_elogio" || chave === "autorElogio") return "Autor do Elogio";
     if (chave === "colaboracao" || chave === "equipe") return "Colaboração & Equipe";
     
-    // Fallback limpo: transforma snake_case em Title Case
     const formatado = chave.replace(/[_-]+/g, " ").trim();
     if (!formatado) return chave;
     return formatado.charAt(0).toUpperCase() + formatado.slice(1);
@@ -887,6 +890,27 @@ export function PropriedadesNotion({
     onChange({ ...dados, _coresTags: novasCores });
   }
 
+  function atualizarDescricaoPropriedade(chave: string, desc: string) {
+    const novasDescricoes = { ...descricoesMap, [chave]: desc };
+    salvarConfigPropriedadesGlobais(undefined, undefined, undefined, undefined, { [chave]: desc });
+    setGlobalConfig(lerConfigPropriedadesGlobais());
+    onChange({ ...dados, _descricoes: novasDescricoes });
+  }
+
+  function atualizarIconePropriedade(chave: string, icone: string) {
+    const novosIcones = { ...iconesMap, [chave]: icone };
+    salvarConfigPropriedadesGlobais(undefined, undefined, { [chave]: icone });
+    setGlobalConfig(lerConfigPropriedadesGlobais());
+    onChange({ ...dados, _icones: novosIcones });
+  }
+
+  function atualizarCorIconePropriedade(chave: string, cor: string) {
+    const novasCoresIcones = { ...coresIconesMap, [chave]: cor };
+    salvarConfigPropriedadesGlobais(undefined, undefined, undefined, { [chave]: cor });
+    setGlobalConfig(lerConfigPropriedadesGlobais());
+    onChange({ ...dados, _coresIcones: novasCoresIcones });
+  }
+
   function remover(chave: string) {
     if (camposFixos[chave]) return;
     const novos: Record<string, any> = { ...dados };
@@ -894,6 +918,9 @@ export function PropriedadesNotion({
     if (novos.esquema) delete (novos.esquema as any)[chave];
     if (novos._visibilidade) delete (novos._visibilidade as any)[chave];
     if (novos._rotulos) delete (novos._rotulos as any)[chave];
+    if (novos._icones) delete (novos._icones as any)[chave];
+    if (novos._coresIcones) delete (novos._coresIcones as any)[chave];
+    if (novos._descricoes) delete (novos._descricoes as any)[chave];
     onChange(novos);
   }
 
@@ -917,6 +944,49 @@ export function PropriedadesNotion({
     }
 
     onChange(novos);
+    setMenuAberto(null);
+  }
+
+  function moverPropriedade(chave: string, direcao: "cima" | "baixo") {
+    const idx = chavesVisiveis.indexOf(chave);
+    if (idx === -1) return;
+    const novoIdx = direcao === "cima" ? idx - 1 : idx + 1;
+    if (novoIdx < 0 || novoIdx >= chavesVisiveis.length) return;
+
+    const copia = [...chavesVisiveis];
+    const [removido] = copia.splice(idx, 1);
+    copia.splice(novoIdx, 0, removido);
+
+    const novaOrdemCompleta = Array.from(new Set([...copia, ...todasAsChaves]));
+    const novosDados = { ...dados, _ordem: novaOrdemCompleta };
+    salvarConfigPropriedadesGlobais(undefined, undefined, undefined, undefined, undefined, {
+      [pastaRaiz]: novaOrdemCompleta,
+    });
+    setGlobalConfig(lerConfigPropriedadesGlobais());
+    onChange(novosDados);
+  }
+
+  function duplicarPropriedade(chave: string) {
+    if (camposFixos[chave]) return;
+    let novoNome = `${chave}_copia`;
+    let idx = 2;
+    while (dados[novoNome] !== undefined || camposFixos[novoNome] !== undefined) {
+      novoNome = `${chave}_copia_${idx}`;
+      idx++;
+    }
+
+    const valorOriginal = dados[chave];
+    const tipoOriginal = esquema[chave] || "texto";
+    const novos = {
+      ...dados,
+      [novoNome]: valorOriginal !== undefined ? JSON.parse(JSON.stringify(valorOriginal)) : "",
+      esquema: { ...esquema, [novoNome]: tipoOriginal },
+    };
+    if (rotulosMap[chave]) {
+      novos._rotulos = { ...rotulosMap, [novoNome]: `${rotulosMap[chave]} (Cópia)` };
+    }
+    onChange(novos);
+    toast(`Propriedade "${nomeExibido(chave)}" duplicada.`);
     setMenuAberto(null);
   }
 
@@ -946,7 +1016,6 @@ export function PropriedadesNotion({
     return false;
   }
 
-  // Separa propriedades visíveis das ocultas
   const chavesVisiveis: string[] = [];
   const chavesOcultas: string[] = [];
 
@@ -1122,6 +1191,7 @@ export function PropriedadesNotion({
     const tipo = 
       chave === "status" ? "status" :
       chave === "prioridade" ? "select" :
+      chave === "caminho" ? "caminho" :
       chave === "relacionamentos" || chave === "relacao" ? "relation" :
       chave === "criado_por" ? "criado_por" :
       chave === "criado_em" || chave === "criado" ? "criado_em" :
@@ -1129,7 +1199,8 @@ export function PropriedadesNotion({
       chave === "aviso_inbox" || chave === "aviso_telegram" || chave === "aviso_email" ? "checkbox" :
       chave === "data" || chave === "prazo" ? "data" :
       fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : typeof valor === "boolean" ? "checkbox" : "texto");
-    const idPopover = `val-${chave}`;
+
+    const idPopover = `prop-pop-${chave}`;
 
     if (tipo === "status" || chave === "status") {
       return renderizarBadgeStatus(valor || "a-fazer");
@@ -1139,12 +1210,72 @@ export function PropriedadesNotion({
       return renderizarBadgePrioridade(valor);
     }
 
+    if (chave === "autor_elogio" || chave === "autorElogio" || chave === "contato_pai" || chave === "pai_id") {
+      return (
+        <div className="flex items-center gap-1.5 flex-wrap py-0.5">
+          {valor ? (
+            <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-accent/60 border border-border/70 text-xs">
+              <span className="font-medium text-foreground">{valor}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setContatoParaEditar({ titulo: valor });
+                  setChaveAtivaContato(chave);
+                  setModalContatoAberto(true);
+                }}
+                className="p-0.5 text-muted-foreground hover:text-foreground rounded cursor-pointer"
+                title="Editar dados deste contato"
+              >
+                <Pencil size={11} />
+              </button>
+              <button
+                type="button"
+                onClick={() => atualizar(chave, "")}
+                className="p-0.5 text-muted-foreground hover:text-destructive rounded cursor-pointer"
+                title="Remover"
+              >
+                <X size={11} />
+              </button>
+            </div>
+          ) : (
+            <Popover open={menuAberto === `contato-${chave}`} onOpenChange={(open) => setMenuAberto(open ? `contato-${chave}` : null)}>
+              <PopoverTrigger asChild>
+                <button className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground rounded hover:bg-accent flex items-center gap-1 transition-colors">
+                  <Plus size={11} />
+                  <span>Selecionar contato</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0" align="start" onInteractOutside={() => setMenuAberto(null)}>
+                <Command>
+                  <CommandInput placeholder="Buscar contato..." />
+                  <CommandList>
+                    <CommandEmpty className="p-2 text-xs text-muted-foreground">Nenhum contato encontrado</CommandEmpty>
+                    <CommandGroup>
+                      {contatosDisponiveis.map((c) => (
+                        <CommandItem
+                          key={c.caminho}
+                          onSelect={() => {
+                            atualizar(chave, c.titulo);
+                            setMenuAberto(null);
+                          }}
+                          className="text-xs cursor-pointer flex items-center justify-between"
+                        >
+                          <span>{c.titulo}</span>
+                          {valor === c.titulo && <Check size={12} className="text-primary shrink-0" />}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
+      );
+    }
+
     if (tipo === "criado_por" || chave === "criado_por") {
-      // O valor gravado no frontmatter manda, quando existe: um item pode ter
-      // vindo de outra pessoa num repositório compartilhado. Só na ausência
-      // dele é que assumimos que foi quem está com o app aberto.
-      const autor =
-        (typeof valor === "string" && valor.trim()) || nomeDoUsuario(lerConfig());
+      const autor = (typeof valor === "string" && valor.trim()) || nomeDoUsuario(lerConfig());
       return (
         <span className="text-xs font-medium text-foreground/80 px-2 py-1 flex items-center gap-1.5">
           <User size={13} className="text-muted-foreground shrink-0" />
@@ -1161,9 +1292,7 @@ export function PropriedadesNotion({
         if (!isNaN(parsed.getTime())) dataObj = parsed;
       }
       if (!dataObj) dataObj = new Date();
-
       const formatada = format(dataObj, "dd 'de' MMM 'de' yyyy", { locale: ptBR });
-
       return (
         <span className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1.5">
           <Clock size={13} className="shrink-0" />
@@ -1180,9 +1309,7 @@ export function PropriedadesNotion({
         if (!isNaN(parsed.getTime())) dataObj = parsed;
       }
       if (!dataObj) dataObj = new Date();
-
       const formatada = format(dataObj, "dd 'de' MMM 'de' yyyy, HH:mm", { locale: ptBR });
-
       return (
         <span className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1.5">
           <Clock size={13} className="shrink-0" />
@@ -1202,566 +1329,117 @@ export function PropriedadesNotion({
       );
     }
 
-    if (tipo === "numero") {
-      if (chave === "estimativa" || chave === "Pomodoro" || chave === "pomodoro") {
-        const val = typeof valor === "number" ? Math.min(Math.max(0, valor), 5) : 0;
-        return (
-          <div className="flex items-center gap-1.5 ml-2 py-1 select-none">
-            {Array.from({ length: 5 }).map((_, idx) => {
-              const ativo = idx < val;
-              return (
-                <Tooltip key={idx} conteudo={`Definir esforço como ${idx + 1} ${idx + 1 === 1 ? "prisma" : "prismas"}`}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const novoVal = idx + 1;
-                      atualizar(chave, val === novoVal ? undefined : novoVal);
-                    }}
-                    className="focus:outline-none cursor-pointer transform active:scale-95 transition-transform"
-                    aria-label={`Definir esforço como ${idx + 1}`}
-                  >
-                    <svg
-                      width={16}
-                      height={16}
-                      viewBox="0 0 20 20"
-                      className={ativo ? "drop-shadow-[0_0_4px_rgba(99,102,241,0.4)]" : ""}
-                    >
-                      <polygon
-                        points="10,2 17,6 17,14 10,18 3,14 3,6"
-                        className={cn(
-                          "stroke-[1.5] stroke-linejoin-round transition-all duration-200",
-                          ativo 
-                            ? "fill-indigo-500/80 stroke-indigo-400" 
-                            : "fill-muted/20 stroke-muted-foreground/30 hover:stroke-muted-foreground/50"
-                        )}
-                      />
-                    </svg>
-                  </button>
-                </Tooltip>
-              );
-            })}
-            {val > 0 && (
-              <span className="text-[10px] text-muted-foreground ml-2 font-medium select-none">
-                {val} {val === 1 ? "prisma" : "prismas"}
-              </span>
-            )}
-          </div>
-        );
-      }
-      return (
-        <input
-          type="number"
-          value={valor ?? ""}
-          onChange={(e) =>
-            atualizar(
-              chave,
-              e.target.value === "" ? undefined : Number(e.target.value),
-            )
-          }
-          placeholder="Vazio"
-          className="flex-1 bg-transparent border-none outline-none h-7 px-2 text-xs text-foreground/80 placeholder:text-muted-foreground focus:ring-0"
-        />
-      );
-    }
-
-    if (chave === "autor_elogio" || chave === "autorElogio" || (tipo as string) === "contato") {
-      const contatoAtual = contatosDisponiveis.find(
-        (c) => c.titulo.toLowerCase().trim() === (valor || "").toLowerCase().trim()
-      );
-      const contatosFiltrados = contatosDisponiveis.filter((c) =>
-        c.titulo.toLowerCase().includes(buscaContato.toLowerCase()) ||
-        (c.cargo && c.cargo.toLowerCase().includes(buscaContato.toLowerCase())) ||
-        (c.empresa && c.empresa.toLowerCase().includes(buscaContato.toLowerCase()))
-      );
-      const existeContatoExato = contatosDisponiveis.some(
-        (c) => c.titulo.toLowerCase().trim() === buscaContato.toLowerCase().trim()
-      );
-
-      return (
-        <div className="flex items-center gap-1.5 flex-wrap py-1 min-h-7">
-          {valor ? (
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-card border border-border/80 shadow-2xs hover:border-primary/40 transition-colors group">
-              <div
-                className={cn(
-                  "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border shrink-0",
-                  corDoAvatar(valor)
-                )}
-              >
-                {obterIniciais(valor)}
-              </div>
-              <div
-                className="flex flex-col min-w-0 cursor-pointer"
-                onClick={() => setMenuAberto(idPopover)}
-              >
-                <span className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                  {valor}
-                </span>
-                {(contatoAtual?.cargo || contatoAtual?.empresa) && (
-                  <span className="text-[10px] text-muted-foreground truncate leading-tight">
-                    {[contatoAtual.cargo, contatoAtual.empresa].filter(Boolean).join(" • ")}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-0.5 ml-1">
-                <Tooltip conteudo="Editar dados deste contato">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setContatoParaEditar(contatoAtual || { titulo: valor, caminho: "", sha: "" });
-                      setChaveAtivaContato(chave);
-                      setModalContatoAberto(true);
-                    }}
-                    className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent transition-colors cursor-pointer"
-                  >
-                    <Pencil size={11} />
-                  </button>
-                </Tooltip>
-                <Tooltip conteudo="Remover autor">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      atualizar(chave, "");
-                    }}
-                    className="p-1 text-muted-foreground hover:text-destructive rounded hover:bg-accent transition-colors cursor-pointer"
-                  >
-                    <X size={11} />
-                  </button>
-                </Tooltip>
-              </div>
-            </div>
-          ) : null}
-
-          <Popover
-            open={menuAberto === idPopover}
-            onOpenChange={(open) => {
-              setMenuAberto(open ? idPopover : null);
-              if (!open) setBuscaContato("");
-            }}
-          >
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                id={`prop-btn-${chave}`}
-                className={cn(
-                  "h-7 px-2 text-xs font-normal text-muted-foreground hover:text-foreground flex items-center gap-1.5 border border-dashed border-border/80 rounded-lg",
-                  valor && "h-6 px-1.5 text-[11px] border-none hover:bg-accent"
-                )}
-              >
-                {!valor && <User size={13} className="text-blue-500" />}
-                <span>{valor ? "Trocar autor" : "+ Selecionar ou criar autor"}</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-[300px] sm:w-[340px] p-2.5 shadow-2xl border-border flex flex-col gap-2 rounded-xl"
-              align="start"
-              onInteractOutside={() => setMenuAberto(null)}
-            >
-              {/* Barra de busca de contato */}
-              <div className="relative">
-                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70" />
-                <input
-                  type="text"
-                  placeholder="Buscar contato..."
-                  value={buscaContato}
-                  onChange={(e) => setBuscaContato(e.target.value)}
-                  autoFocus
-                  className="w-full bg-accent/40 border border-border text-xs pl-8 pr-2.5 py-1.5 rounded-lg outline-none focus:ring-1 focus:ring-primary/50 text-foreground"
-                />
-              </div>
-
-              {/* Lista de contatos existentes */}
-              <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
-                {contatosFiltrados.map((c) => {
-                  const selecionado = (valor || "").toLowerCase().trim() === c.titulo.toLowerCase().trim();
-                  return (
-                    <div
-                      key={c.caminho || c.id || c.titulo}
-                      onClick={() => {
-                        atualizar(chave, c.titulo);
-                        setMenuAberto(null);
-                      }}
-                      className={cn(
-                        "w-full flex items-center justify-between gap-2 p-1.5 rounded-lg text-left transition-colors cursor-pointer group",
-                        selecionado ? "bg-primary/10 text-primary font-medium" : "hover:bg-accent text-foreground"
-                      )}
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <div
-                          className={cn(
-                            "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border shrink-0",
-                            corDoAvatar(c.titulo)
-                          )}
-                        >
-                          {obterIniciais(c.titulo)}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium truncate">{c.titulo}</p>
-                          {(c.cargo || c.empresa) && (
-                            <p className="text-[10px] text-muted-foreground truncate leading-tight">
-                              {[c.cargo, c.empresa].filter(Boolean).join(" • ")}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {selecionado && <Check size={13} className="text-primary" />}
-                        <Tooltip conteudo="Editar dados deste contato">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setMenuAberto(null);
-                              setContatoParaEditar(c);
-                              setChaveAtivaContato(chave);
-                              setModalContatoAberto(true);
-                            }}
-                            className="p-1 text-muted-foreground opacity-40 group-hover:opacity-100 hover:text-foreground rounded hover:bg-muted transition-all cursor-pointer"
-                          >
-                            <Pencil size={11} />
-                          </button>
-                        </Tooltip>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {contatosFiltrados.length === 0 && !buscaContato.trim() && (
-                  <div className="py-4 text-center text-xs text-muted-foreground">
-                    Nenhum contato cadastrado ainda.
-                  </div>
-                )}
-              </div>
-
-              {/* Ações de criação rápida */}
-              <div className="pt-1.5 border-t border-border/50 flex flex-col gap-1">
-                {buscaContato.trim() && !existeContatoExato && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuAberto(null);
-                      setContatoParaEditar({ titulo: buscaContato.trim() });
-                      setChaveAtivaContato(chave);
-                      setModalContatoAberto(true);
-                    }}
-                    className="w-full text-left px-2.5 py-1.5 text-xs text-primary hover:bg-primary/10 rounded-lg flex items-center gap-2 font-medium cursor-pointer transition-colors"
-                  >
-                    <Plus size={13} />
-                    <span className="truncate">Criar contato "{buscaContato.trim()}"</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuAberto(null);
-                    setContatoParaEditar(null);
-                    setChaveAtivaContato(chave);
-                    setModalContatoAberto(true);
-                  }}
-                  className="w-full text-left px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg flex items-center gap-2 cursor-pointer transition-colors font-medium"
-                >
-                  <UserPlus size={13} className="text-primary" />
-                  <span>+ Criar novo contato completo</span>
-                </button>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-      );
-    }
-
-    if (tipo === "select") {
-      const opcoes = fixo?.opcoes || (valor ? [valor] : []);
-      return (
-        <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-left justify-start font-normal text-foreground/80 hover:text-foreground">
-              {valor ? renderizarBadgeTag(valor) : <span className="text-muted-foreground text-xs">Vazio</span>}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[240px] p-2 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
-            <Command>
-              <CommandInput placeholder="Buscar ou criar opção..." onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                if (e.key === "Enter") {
-                  atualizar(chave, e.currentTarget.value.trim());
-                  setMenuAberto(null);
-                }
-              }} />
-              <CommandList className="max-h-52">
-                <CommandEmpty>Digite e aperte Enter para selecionar.</CommandEmpty>
-                <CommandGroup>
-                  {opcoes.map((opcao: string) => (
-                    <CommandItem key={opcao} onSelect={() => {
-                      atualizar(chave, opcao);
-                      setMenuAberto(null);
-                    }}>
-                      {renderizarBadgeTag(opcao)}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      );
-    }
-
     if (tipo === "data") {
-      let inicioStr = typeof valor === "string" ? valor.split("→")[0]?.trim() : valor?.inicio || "";
-      let fimStr = typeof valor === "string" && valor.includes("→") ? valor.split("→")[1]?.trim() : valor?.fim || "";
-
-      if (!fimStr && dados.endDate && typeof dados.endDate === "string") {
-        fimStr = dados.endDate.trim();
+      let dataObj: Date | undefined;
+      if (valor) {
+        const d = new Date(valor.includes("T") ? valor : `${valor}T00:00:00`);
+        if (!isNaN(d.getTime())) dataObj = d;
       }
-
-      const parseData = (str: string) => {
-        if (!str) return undefined;
-        const d = new Date(`${str}T00:00:00`);
-        return isNaN(d.getTime()) ? undefined : d;
-      };
-
-      const inicioObj = parseData(inicioStr);
-      const fimObj = parseData(fimStr);
-
-      const textoFormatado = inicioObj
-        ? fimObj
-          ? `${format(inicioObj, "dd 'de' MMM", { locale: ptBR })} → ${format(fimObj, "dd 'de' MMM 'de' yyyy", { locale: ptBR })}`
-          : format(inicioObj, "dd 'de' MMM 'de' yyyy", { locale: ptBR })
-        : null;
-
-      const temRange = !!(inicioObj && fimObj);
-
-      const aoClicarDia = (d: Date | undefined) => {
-        if (!d) return;
-        const dataClicada = format(d, "yyyy-MM-dd");
-
-        if (!inicioStr || (inicioStr && fimStr)) {
-          atualizar(chave, dataClicada);
-          if (dados.endDate) {
-            const novos = { ...dados, [chave]: dataClicada };
-            delete novos.endDate;
-            onChange(novos);
-          }
-          return;
-        }
-
-        if (inicioStr && !fimStr) {
-          if (dataClicada === inicioStr) {
-            return;
-          }
-          const [menor, maior] = [inicioStr, dataClicada].sort();
-          atualizar(chave, `${menor} → ${maior}`);
-        }
-      };
 
       return (
         <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-left justify-start font-normal text-foreground/80 hover:text-foreground">
-              {textoFormatado ? (
-                <span className="font-medium text-foreground text-xs">{textoFormatado}</span>
-              ) : (
-                <span className="text-muted-foreground text-xs">Vazio</span>
-              )}
-            </Button>
+            <button className="flex items-center gap-1.5 text-xs text-foreground/80 px-2 py-1 rounded hover:bg-accent transition-colors font-medium">
+              <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>{dataObj ? format(dataObj, "dd 'de' MMM, yyyy", { locale: ptBR }) : <span className="text-muted-foreground font-normal">Vazio</span>}</span>
+            </button>
           </PopoverTrigger>
-          <PopoverContent className="w-72 p-3 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
-                <span>{temRange ? "Intervalo selecionado" : inicioStr ? "Data selecionada" : "Definir data"}</span>
-                {(inicioStr || fimStr) && (
-                  <button 
-                    onClick={() => {
-                      atualizar(chave, undefined);
-                      if (dados.endDate) {
-                        const novos = { ...dados };
-                        delete novos[chave];
-                        delete novos.endDate;
-                        onChange(novos);
-                      }
-                    }} 
-                    className="text-destructive hover:underline text-[11px] cursor-pointer"
-                  >
-                    Limpar data
-                  </button>
-                )}
+          <PopoverContent className="w-auto p-0" align="start" onInteractOutside={() => setMenuAberto(null)}>
+            <Calendar
+              mode="single"
+              selected={dataObj}
+              onSelect={(d) => {
+                if (d) {
+                  atualizar(chave, format(d, "yyyy-MM-dd"));
+                } else {
+                  atualizar(chave, undefined);
+                }
+                setMenuAberto(null);
+              }}
+              locale={ptBR}
+            />
+            {dataObj && (
+              <div className="p-2 border-t border-border flex justify-end">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 text-xs text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    atualizar(chave, undefined);
+                    setMenuAberto(null);
+                  }}
+                >
+                  Limpar data
+                </Button>
               </div>
-
-              <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
-                {temRange
-                  ? "Clique em uma nova data para reiniciar."
-                  : inicioStr
-                    ? "Clique em outra data para formar um intervalo (range)."
-                    : "1º clique define a data. 2º clique cria o intervalo."}
-              </p>
-
-              <Calendar
-                mode="range"
-                selected={{
-                  from: inicioObj,
-                  to: fimObj || undefined,
-                }}
-                onDayClick={aoClicarDia}
-                className="w-full"
-                locale={ptBR}
-                autoFocus
-              />
-            </div>
+            )}
           </PopoverContent>
         </Popover>
       );
     }
 
-    if (tipo === "multiselect" || chave === "paleta" || chave === "tags") {
-      const tags = Array.isArray(valor) ? valor : valor ? [valor] : [];
-      const ehPaleta = chave === "paleta" || tags.every((t: string) => /^#[0-9a-fA-F]{6}$/.test(t));
-      
-      if (ehPaleta && tags.length > 0) {
-        return (
-          <div className="flex items-center gap-1.5 flex-wrap py-1">
-            {tags.map((hex: string) => {
-              const ehCopiado = copiado === hex;
-              return (
-                <Tooltip key={hex} conteudo={`Clique para copiar ${hex}`}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(hex);
-                      setCopiado(hex);
-                      setTimeout(() => setCopiado(null), 1500);
-                    }}
-                    className="group flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-mono transition-all active:scale-95 hover:opacity-90 cursor-pointer"
-                    style={{ backgroundColor: hex, color: parseInt(hex.replace('#',''), 16) > 0xffffff/2 ? '#000' : '#fff' }}
-                    aria-label={`Copiar cor ${hex}`}
-                  >
-                    <span>{ehCopiado ? "Copiado!" : hex}</span>
-                  </button>
-                </Tooltip>
-              );
-            })}
-          </div>
-        );
-      }
-
-      const tagsDisponiveis = obterOpcoesDaPropriedade(chave, tags, fixo?.opcoes, coresMap);
-      const tagsFiltradas = tagsDisponiveis.filter(t => t.toLowerCase().includes(buscaTag.toLowerCase()));
-      const existeExata = tagsDisponiveis.some(t => t.toLowerCase() === buscaTag.toLowerCase().trim());
-
-      const processarCriarTag = (nomeNovaTag: string) => {
-        const nomeLimpo = nomeNovaTag.trim().replace(/^@+/, "");
-        if (!nomeLimpo) return;
-        removerOpcaoExcluida(chave, nomeLimpo);
-        const novasTags = Array.from(new Set([...tags, nomeLimpo]));
-        atualizar(chave, novasTags);
-        
-        // Salva na lista de opções específicas desta chave
-        const todasOpcoesChave = Array.from(new Set([...tagsDisponiveis, nomeLimpo]));
-        salvarOpcoesPropriedadeLocal(chave, todasOpcoesChave);
-
-        if (chave === "tags" && !coresMap[nomeLimpo]) {
-          atualizarCorTag(nomeLimpo, "azul");
-        }
-        setBuscaTag("");
-      };
+    if (tipo === "select" || tipo === "multiselect" || chave === "tags" || chave === "colaboracao") {
+      const opcoesCadastradas = obterOpcoesDaPropriedade(
+        chave,
+        Array.isArray(valor) ? valor : valor ? [valor] : [],
+        fixo?.opcoes,
+        coresMap,
+        pastaRaiz
+      );
+      const valoresAtuais = Array.isArray(valor) ? valor : valor ? [valor] : [];
+      const ehMulti = tipo === "multiselect" || chave === "tags" || chave === "colaboracao" || Array.isArray(valor);
 
       return (
-        <div className="flex items-center gap-1.5 flex-wrap py-1 min-h-7">
-          {tags.map((t: string) => (
-            <div key={t} className="group relative flex items-center">
-              {renderizarBadgeTag(t)}
-              <Tooltip conteudo="Remover deste item">
-                <button
-                  onClick={() => atualizar(chave, tags.filter((x: string) => x !== t))}
-                  className="ml-0.5 text-muted-foreground hover:text-destructive opacity-50 hover:opacity-100 transition-all cursor-pointer"
-                  aria-label="Remover deste item"
-                >
-                  <X size={11} />
-                </button>
-              </Tooltip>
+        <div className="flex flex-wrap items-center gap-1 flex-1 min-w-0">
+          {valoresAtuais.map((item) => (
+            <div key={item} className="flex items-center">
+              {renderizarBadgeTag(item)}
             </div>
           ))}
-
-          <Popover open={menuAberto === idPopover} onOpenChange={(open) => {
-            setMenuAberto(open ? idPopover : null);
-            if (!open) {
-              setBuscaTag("");
-            }
-          }}>
+          <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
             <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                id={`prop-btn-${chave}`}
-                className="h-6 px-1.5 text-[11px] font-normal text-muted-foreground hover:text-foreground flex items-center gap-1 border border-dashed border-border/80 rounded"
-              >
+              <button className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground rounded hover:bg-accent flex items-center gap-1 transition-colors">
                 <Plus size={11} />
-                <span>{nomeExibido(chave)}</span>
-              </Button>
+                <span>{valoresAtuais.length === 0 ? "Adicionar" : ""}</span>
+              </button>
             </PopoverTrigger>
-            <PopoverContent className="w-[240px] p-2 flex flex-col gap-2 shadow-xl border-border" align="start" onInteractOutside={() => setMenuAberto(null)}>
-              <input
-                type="text"
-                placeholder="Buscar ou selecionar..."
-                value={buscaTag}
-                onChange={(e) => setBuscaTag(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && buscaTag.trim() && !existeExata) {
-                    processarCriarTag(buscaTag);
-                  }
-                }}
-                autoFocus
-                className="w-full bg-accent/40 border border-border text-xs px-2.5 py-1.5 rounded-md outline-none"
-              />
-
-              <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5">
-                {tagsFiltradas.map((tag) => {
-                  const selecionada = tags.includes(tag);
-                  return (
-                    <button
-                      key={tag}
-                      onClick={() => {
-                        if (selecionada) {
-                          atualizar(chave, tags.filter((t: string) => t !== tag));
-                        } else {
-                          atualizar(chave, [...tags, tag]);
-                        }
-                      }}
-                      className="w-full flex items-center justify-between rounded-md hover:bg-accent px-2 py-1.5 transition-colors cursor-pointer text-left"
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <input
-                          type="checkbox"
-                          checked={selecionada}
-                          readOnly
-                          className="w-3.5 h-3.5 rounded border-border text-primary focus:ring-0 cursor-pointer shrink-0"
-                        />
-                        <div className="truncate flex-1">
-                          {renderizarBadgeTag(tag)}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-
-                {buscaTag.trim() && !existeExata && (
-                  <button
-                    onClick={() => processarCriarTag(buscaTag)}
-                    className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-md flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Plus size={12} />
-                    <span>Adicionar "{buscaTag.trim()}"</span>
-                  </button>
-                )}
-
-                {tagsFiltradas.length === 0 && !buscaTag.trim() && (
-                  <span className="text-[11px] text-muted-foreground p-2 text-center">
-                    Nenhuma opção cadastrada
-                  </span>
-                )}
-              </div>
+            <PopoverContent className="w-[200px] p-0" align="start" onInteractOutside={() => setMenuAberto(null)}>
+              <Command>
+                <CommandInput placeholder="Buscar ou criar opção..." />
+                <CommandList>
+                  <CommandEmpty className="p-2 text-xs text-muted-foreground">
+                    Pressione Enter para criar nova opção
+                  </CommandEmpty>
+                  <CommandGroup>
+                    {opcoesCadastradas.map((op) => {
+                      const selecionado = valoresAtuais.includes(op);
+                      return (
+                        <CommandItem
+                          key={op}
+                          onSelect={() => {
+                            if (ehMulti) {
+                              if (selecionado) {
+                                atualizar(chave, valoresAtuais.filter((x) => x !== op));
+                              } else {
+                                atualizar(chave, [...valoresAtuais, op]);
+                              }
+                            } else {
+                              atualizar(chave, selecionado ? undefined : op);
+                              setMenuAberto(null);
+                            }
+                          }}
+                          className="text-xs flex items-center justify-between cursor-pointer"
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            {renderizarBadgeTag(op)}
+                          </div>
+                          {selecionado && <Check size={12} className="text-primary shrink-0" />}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
             </PopoverContent>
           </Popover>
         </div>
@@ -1769,131 +1447,64 @@ export function PropriedadesNotion({
     }
 
     if (tipo === "relation" || chave === "relacionamentos" || chave === "relacao") {
-      const relacoes = Array.isArray(valor) ? valor : typeof valor === "string" && valor ? [valor] : [];
-      const textoMencoes = extrairMencoesTexto(corpoTexto || "", opcoesRelacionamento.map(o => o.titulo));
-      const todasRelacoes = Array.from(new Set([...relacoes, ...textoMencoes.map(m => `@${m.replace(/^@+/, "").trim()}`)]));
-      
-      const obterEstiloRel = (rel: string) => {
-        const nomePuro = rel.replace(/^@/, "").trim();
-        const rLower = nomePuro.toLowerCase();
-
-        const itemAlvo = opcoesRelacionamento.find((o) => {
-          const t = o.titulo.toLowerCase().trim();
-          return t === rLower || o.caminho.toLowerCase().includes(rLower);
-        });
-
-        const c = itemAlvo?.caminho?.toLowerCase() || "";
-
-        if (
-          c.startsWith("pdi/metas/") ||
-          c.startsWith("metas/") ||
-          c.startsWith("pdi/entregas/") ||
-          c.startsWith("entregas/") ||
-          rLower.includes("meta") ||
-          rLower.includes("entrega") ||
-          rLower.includes("conquista") ||
-          rLower.includes("brag") ||
-          rLower.includes("pdi")
-        ) {
-          return {
-            tipo: "meta",
-            icone: <Target size={11} className="text-emerald-500 shrink-0" />,
-            classeBadge: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20",
-            itemAlvo,
-            nomePuro,
-          };
-        }
-
-        if (c.startsWith("tarefas/") || rLower.includes("tarefa")) {
-          return {
-            tipo: "tarefa",
-            icone: <CheckSquare size={11} className="text-blue-500 shrink-0" />,
-            classeBadge: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/25 hover:bg-blue-500/20",
-            itemAlvo,
-            nomePuro,
-          };
-        }
-
-        if (c.startsWith("notas/") || rLower.includes("nota")) {
-          return {
-            tipo: "nota",
-            icone: <FileText size={11} className="text-amber-500 shrink-0" />,
-            classeBadge: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25 hover:bg-amber-500/20",
-            itemAlvo,
-            nomePuro,
-          };
-        }
-
-        if (c.startsWith("contatos/") || rLower.includes("contato") || rLower.includes("pessoa")) {
-          return {
-            tipo: "contato",
-            icone: <Users size={11} className="text-teal-500 shrink-0" />,
-            classeBadge: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/25 hover:bg-teal-500/20",
-            itemAlvo,
-            nomePuro,
-          };
-        }
-
-        if (c.startsWith("referencias/") || rLower.includes("referencia")) {
-          return {
-            tipo: "referencia",
-            icone: <Bookmark size={11} className="text-rose-500 shrink-0" />,
-            classeBadge: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25 hover:bg-rose-500/20",
-            itemAlvo,
-            nomePuro,
-          };
-        }
-
-        if (c.startsWith("lousas/") || rLower.includes("lousa") || rLower.includes("mapa")) {
-          return {
-            tipo: "lousa",
-            icone: <Layout size={11} className="text-indigo-500 shrink-0" />,
-            classeBadge: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/25",
-            itemAlvo,
-            nomePuro,
-          };
-        }
-
-        return {
-          tipo: "outro",
-          icone: <LinkIcon size={10} className="text-blue-500 shrink-0" />,
-          classeBadge: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20",
-          itemAlvo,
-          nomePuro,
-        };
-      };
-
+      const rels = Array.isArray(valor) ? valor : valor ? [valor] : [];
       return (
-        <div className="flex items-center gap-1.5 flex-wrap py-1 min-h-7">
-          {todasRelacoes.length === 0 ? (
-            <span className="text-muted-foreground text-xs px-1">Vazio</span>
-          ) : (
-            todasRelacoes.map((rel: string) => {
-              const est = obterEstiloRel(rel);
-              return (
-                <span
-                  key={rel}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    aoClicarItemRel(est.itemAlvo, est.nomePuro);
-                  }}
-                  title={`Abrir "${est.nomePuro}" em pop-up`}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer hover:shadow-xs hover:opacity-90 active:scale-95 select-none",
-                    est.classeBadge
-                  )}
-                >
-                  {est.icone}
-                  <span>{est.nomePuro}</span>
-                </span>
-              );
-            })
-          )}
+        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+          {rels.map((r: any) => {
+            const tit = typeof r === "string" ? r : r?.titulo || "Item";
+            return (
+              <button
+                key={tit}
+                onClick={() => aoClicarItemRel(typeof r === "object" ? r : undefined, tit)}
+                className="px-2 py-0.5 rounded text-xs bg-accent hover:bg-accent/80 text-foreground border border-border/60 flex items-center gap-1 transition-colors cursor-pointer truncate max-w-[200px]"
+              >
+                <LinkIcon size={11} className="text-primary shrink-0" />
+                <span className="truncate">{tit}</span>
+              </button>
+            );
+          })}
+          <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
+            <PopoverTrigger asChild>
+              <button className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground rounded hover:bg-accent flex items-center gap-1 transition-colors">
+                <Plus size={11} />
+                <span>{rels.length === 0 ? "Vincular item" : ""}</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[240px] p-0" align="start" onInteractOutside={() => setMenuAberto(null)}>
+              <Command>
+                <CommandInput placeholder="Buscar item para vincular..." />
+                <CommandList>
+                  <CommandEmpty className="p-2 text-xs text-muted-foreground">Nenhum item encontrado</CommandEmpty>
+                  <CommandGroup>
+                    {opcoesRelacionamento.map((op) => {
+                      const selecionado = rels.includes(op.titulo);
+                      return (
+                        <CommandItem
+                          key={op.caminho}
+                          onSelect={() => {
+                            if (selecionado) {
+                              atualizar(chave, rels.filter((x: string) => x !== op.titulo));
+                            } else {
+                              atualizar(chave, [...rels, op.titulo]);
+                            }
+                          }}
+                          className="text-xs flex items-center justify-between cursor-pointer"
+                        >
+                          <span className="truncate">{op.titulo}</span>
+                          {selecionado && <Check size={12} className="text-primary shrink-0" />}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
       );
     }
 
-    if (chave === "caminho") {
+    if (chave === "caminho" || chave === "pasta") {
       return (
         <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
           <PopoverTrigger asChild>
@@ -2021,8 +1632,8 @@ export function PropriedadesNotion({
     );
   }
 
-  function renderizarMenuPropriedade(chave: string, fixo?: any) {
-    const tipoAtual = 
+  function renderizarMenuPropriedade(chave: string, fixo?: any, indiceVisivel: number = 0, totalVisiveis: number = 1) {
+    const tipoAtual: TipoPropriedade = 
       chave === "status" ? "status" :
       chave === "prioridade" ? "select" :
       chave === "caminho" ? "texto" :
@@ -2031,469 +1642,112 @@ export function PropriedadesNotion({
       chave === "ultima_edicao" || chave === "atualizado" || chave === "atualizado_em" ? "ultima_edicao" :
       chave === "aviso_inbox" || chave === "aviso_telegram" || chave === "aviso_email" ? "checkbox" :
       chave === "data" || chave === "prazo" ? "data" :
-      chave === "tags" || chave === "tag" ? "multi_select" :
-      chave === "paleta" || chave === "palette" || chave === "cores" ? "multi_select" :
-      chave === "relacionamentos" || chave === "relacao" ? "relacionamento" :
+      chave === "tags" || chave === "tag" ? "multiselect" :
+      chave === "paleta" || chave === "palette" || chave === "cores" ? "multiselect" :
+      chave === "relacionamentos" || chave === "relacao" ? "relation" :
       chave === "pai_id" || chave === "paiId" || chave === "pai" || chave === "contato_pai" ? "select" :
-      fixo?.tipo || esquema[chave] || "texto";
+      (fixo?.tipo as TipoPropriedade) || esquema[chave] || "texto";
 
-    const IconeAtual = 
-      chave === "prioridade" ? Flag :
-      chave === "caminho" ? Folder :
-      chave === "aviso_inbox" ? InboxIcon :
-      chave === "aviso_telegram" ? SendIcon :
-      chave === "aviso_email" || chave === "email" ? MailIcon :
-      chave === "cargo" ? Briefcase :
-      chave === "empresa" ? Building :
-      chave === "telefone" || chave === "tel" ? Phone :
-      chave === "pai_id" || chave === "paiId" || chave === "pai" || chave === "contato_pai" ? Users :
-      chave === "tags" || chave === "tag" ? Tags :
-      chave === "paleta" || chave === "palette" || chave === "cores" ? Palette :
-      chave === "horario" || chave === "hora" ? Clock :
-      chave === "data" || chave === "prazo" ? CalendarIcon :
-      chave === "relacionamentos" || chave === "relacao" ? Users :
-      fixo?.icone ? () => <>{fixo.icone}</> : 
-      ICONES_TIPO[tipoAtual as TipoPropriedade] || Type;
     const visDefault = ["criado_por", "criado_em", "criado", "ultima_edicao", "atualizado", "atualizado_em", "caminho"].includes(chave) ? "esconder" : "sempre";
     const visAtual = visibilidadeMap[chave] || visDefault;
     const rotuloAtual = nomeExibido(chave);
     const idMenu = `prop-${chave}`;
-
     const opcoesCadastradas = obterOpcoesDaPropriedade(
       chave,
       Array.isArray(dados[chave]) ? dados[chave] : dados[chave] ? [dados[chave]] : [],
       fixo?.opcoes,
       coresMap
     );
-
-    const salvarListaOpcoes = (novas: string[]) => {
-      salvarOpcoesPropriedadeLocal(chave, novas);
-    };
+    const iconePersonalizado = iconesMap[chave];
+    const corIconePersonalizada = coresIconesMap[chave] || "padrao";
+    const descricaoAtual = descricoesMap[chave] || "";
+    const IconeComponente =
+      (iconePersonalizado && ICONES_MAPA[iconePersonalizado]) ||
+      (fixo?.icone ? () => <>{fixo.icone}</> : ICONES_MAPA.Type);
+    const corIconeObj = CORES_ICONE.find((c) => c.id === corIconePersonalizada) || CORES_ICONE[0];
 
     return (
-      <Popover open={menuAberto === idMenu} onOpenChange={(open) => {
-        if (open) {
-          setMenuAberto(idMenu);
-          setRenomearPara(rotuloAtual);
-        } else {
-          setMenuAberto(null);
-          setEditandoTag(null);
-        }
-      }}>
-        <PopoverTrigger asChild>
-          <button className="w-28 sm:w-36 shrink-0 flex items-center gap-1.5 sm:gap-2 text-muted-foreground px-1.5 sm:px-2 py-1 -ml-1 sm:-ml-2 rounded hover:bg-accent/60 transition-colors text-left group/prop">
-            <IconeAtual className="h-3.5 w-3.5 sm:h-4 sm:w-4 opacity-60 shrink-0" />
-            <span className="truncate flex-1 font-medium text-xs">{rotuloAtual}</span>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[280px] p-3 flex flex-col gap-2 shadow-xl border-border max-h-[85vh] overflow-y-auto" align="start" onInteractOutside={() => setMenuAberto(null)}>
-          <div>
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Nome da Propriedade</span>
-            <input 
-              value={renomearPara}
-              onChange={(e) => setRenomearPara(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") renomear(chave, renomearPara);
-              }}
-              onBlur={() => renomear(chave, renomearPara)}
-              className="bg-accent/50 border border-border outline-none text-xs px-2.5 py-1.5 rounded-md focus:ring-2 focus:ring-primary w-full"
-            />
-          </div>
-
-          <div className="border-t border-border pt-2 mt-1">
-            <span className="text-[11px] font-semibold text-muted-foreground px-1 uppercase tracking-wider block mb-1">Visibilidade</span>
-            <div className="flex flex-col gap-0.5">
-              {[
-                { id: "sempre", label: "Sempre mostrar", icon: Eye },
-                { id: "vazia", label: "Esconder se vazia", icon: EyeOff },
-                { id: "esconder", label: "Sempre esconder", icon: EyeOff },
-              ].map((v) => (
-                <button
-                  key={v.id}
-                  onClick={() => {
-                    atualizarVisibilidade(chave, v.id as OpcaoVisibilidade);
-                    setMenuAberto(null);
-                  }}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left transition-colors hover:bg-accent",
-                    visAtual === v.id ? "bg-accent font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <v.icon className="h-4 w-4 opacity-75 shrink-0" />
-                  <span>{v.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="border-t border-border pt-2 mt-1">
-            <span className="text-[11px] font-semibold text-muted-foreground px-1 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-              <SlidersHorizontal size={12} className="text-primary" />
-              <span>Configurações da Propriedade</span>
-            </span>
-
-            {(tipoAtual === "multiselect" || tipoAtual === "select" || chave === "tags" || chave === "colaboracao" || fixo?.opcoes) && (
-              <div className="space-y-2 p-2 bg-secondary/30 rounded-lg border border-border/40 text-xs">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground font-medium">Opções Pré-cadastradas:</span>
-                  <span className="text-[10px] text-muted-foreground">{opcoesCadastradas.length} cadastradas</span>
-                </div>
-
-                <div className="max-h-40 overflow-y-auto flex flex-col gap-1.5 pt-1">
-                  {opcoesCadastradas.map((op) => {
-                    const estaEditando = editandoTag === op;
-                    const corAtual = coresMap[op] || "azul";
-                    return (
-                      <div key={op} className="flex items-center justify-between gap-1.5 p-1 rounded bg-card border border-border/60 text-xs">
-                        {estaEditando ? (
-                          <div className="flex items-center gap-1 flex-1">
-                            <input
-                              type="text"
-                              value={novoNomeTag}
-                              onChange={(e) => setNovoNomeTag(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  const nomeLimpo = novoNomeTag.trim();
-                                  if (nomeLimpo && nomeLimpo !== op) {
-                                    const novas = opcoesCadastradas.map(x => x === op ? nomeLimpo : x);
-                                    salvarListaOpcoes(novas);
-                                    if (chave === "tags") {
-                                      const novasCores = { ...globalConfig.coresTags };
-                                      delete novasCores[op];
-                                      novasCores[nomeLimpo] = corAtual;
-                                      salvarConfigPropriedadesGlobais(undefined, novasCores);
-                                      setGlobalConfig(lerConfigPropriedadesGlobais());
-                                    }
-                                  }
-                                  setEditandoTag(null);
-                                }
-                                if (e.key === "Escape") setEditandoTag(null);
-                              }}
-                              autoFocus
-                              className="flex-1 bg-accent/40 border border-border text-[11px] px-1.5 py-0.5 rounded outline-none"
-                            />
-                            <button
-                              onClick={() => {
-                                const nomeLimpo = novoNomeTag.trim();
-                                if (nomeLimpo && nomeLimpo !== op) {
-                                  const novas = opcoesCadastradas.map(x => x === op ? nomeLimpo : x);
-                                  salvarListaOpcoes(novas);
-                                  if (chave === "tags") {
-                                    const novasCores = { ...globalConfig.coresTags };
-                                    delete novasCores[op];
-                                    novasCores[nomeLimpo] = corAtual;
-                                    salvarConfigPropriedadesGlobais(undefined, novasCores);
-                                    setGlobalConfig(lerConfigPropriedadesGlobais());
-                                  }
-                                }
-                                setEditandoTag(null);
-                              }}
-                              className="text-[10px] text-primary font-semibold px-1"
-                            >
-                              OK
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                              {renderizarBadgeTag(op)}
-                            </div>
-
-                            <div className="flex items-center gap-0.5 shrink-0">
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <button
-                                    type="button"
-                                    title="Alterar cor da opção"
-                                    className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent cursor-pointer"
-                                  >
-                                    <Palette size={11} />
-                                  </button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-48 p-2" align="end">
-                                  <span className="text-[10px] font-semibold text-muted-foreground block mb-1">Escolher Cor</span>
-                                  <div className="grid grid-cols-3 gap-1">
-                                    {Object.entries(CORES_NOTION).map(([nomeCor, est]) => (
-                                      <button
-                                        key={nomeCor}
-                                        type="button"
-                                        onClick={() => atualizarCorTag(op, nomeCor)}
-                                        className={cn(
-                                          "px-1.5 py-1 rounded text-[10px] font-medium border text-center transition-colors cursor-pointer",
-                                          est.bg,
-                                          est.text,
-                                          est.border,
-                                          corAtual === nomeCor && "ring-1 ring-primary font-bold"
-                                        )}
-                                      >
-                                        {est.nome}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditandoTag(op);
-                                  setNovoNomeTag(op);
-                                }}
-                                title="Renomear opção"
-                                className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-accent cursor-pointer"
-                              >
-                                <Pencil size={11} />
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  registrarOpcaoExcluida(chave, op);
-                                  const novas = opcoesCadastradas.filter(x => x !== op);
-                                  salvarListaOpcoes(novas);
-                                  if (chave === "tags") {
-                                    const novasCores = { ...globalConfig.coresTags };
-                                    delete novasCores[op];
-                                    salvarConfigPropriedadesGlobais(undefined, novasCores);
-                                    setGlobalConfig(lerConfigPropriedadesGlobais());
-                                  }
-                                  // Se o item atual possui a tag/opção selecionada, remove do item
-                                  const valItem = dados[chave];
-                                  if (Array.isArray(valItem) && valItem.includes(op)) {
-                                    atualizar(chave, valItem.filter(x => x !== op));
-                                  } else if (valItem === op) {
-                                    atualizar(chave, undefined);
-                                  }
-                                  toast(`Opção "${op}" excluída com sucesso.`);
-                                }}
-                                title="Excluir opção"
-                                className="p-1 text-muted-foreground hover:text-destructive rounded hover:bg-destructive/10 cursor-pointer"
-                              >
-                                <Trash2 size={11} />
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="pt-2 border-t border-border/40 flex items-center gap-1">
-                  <input
-                    type="text"
-                    placeholder="Nova opção pré-cadastrada..."
-                    value={buscaTag}
-                    onChange={(e) => setBuscaTag(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && buscaTag.trim()) {
-                        const nova = buscaTag.trim();
-                        removerOpcaoExcluida(chave, nova);
-                        const novas = Array.from(new Set([...opcoesCadastradas, nova]));
-                        salvarListaOpcoes(novas);
-                        if (chave === "tags") {
-                          atualizarCorTag(nova, "azul");
-                        }
-                        setBuscaTag("");
-                        toast(`Opção "${nova}" cadastrada.`);
-                      }
-                    }}
-                    className="flex-1 bg-card border border-border text-[11px] px-2 py-1 rounded outline-none"
-                  />
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={!buscaTag.trim()}
-                    onClick={() => {
-                      if (buscaTag.trim()) {
-                        const nova = buscaTag.trim();
-                        removerOpcaoExcluida(chave, nova);
-                        const novas = Array.from(new Set([...opcoesCadastradas, nova]));
-                        salvarListaOpcoes(novas);
-                        if (chave === "tags") {
-                          atualizarCorTag(nova, "azul");
-                        }
-                        setBuscaTag("");
-                        toast(`Opção "${nova}" cadastrada.`);
-                      }
-                    }}
-                    className="h-6 text-[10px] px-2"
-                  >
-                    Adicionar
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {(chave === "Pomodoro" || chave === "pomodoro" || chave === "estimativa") && (
-              <div className="p-2.5 bg-secondary/30 rounded-lg border border-border/40 space-y-2.5 text-xs">
-                <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                  <Timer size={13} className="text-indigo-500 shrink-0" />
-                  <span>Configurações de Pomodoro</span>
-                </div>
-                
-                <div className="space-y-2 pt-1 border-t border-border/40">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-muted-foreground font-medium">Pomodoros Estimados:</span>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="0"
-                        max="99"
-                        value={dados.pomodoros_estimados ?? dados.Pomodoro ?? dados.pomodoro ?? ""}
-                        onChange={(e) => {
-                          const val = e.target.value === "" ? undefined : Number(e.target.value);
-                          const novos = { ...dados, pomodoros_estimados: val, Pomodoro: val, pomodoro: val };
-                          onChange(novos);
-                        }}
-                        placeholder="0"
-                        className="w-16 bg-card border border-border text-xs px-2 py-1 rounded text-center outline-none focus:ring-1 focus:ring-primary"
-                      />
-                      <span className="text-[10px] text-muted-foreground">pomos</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-muted-foreground font-medium">Pomodoros Realizados:</span>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="0"
-                        max="99"
-                        value={dados.pomodoros_realizados ?? dados.fraturados ?? ""}
-                        onChange={(e) => {
-                          const val = e.target.value === "" ? undefined : Number(e.target.value);
-                          const novos = { ...dados, pomodoros_realizados: val, fraturados: val };
-                          onChange(novos);
-                        }}
-                        placeholder="0"
-                        className="w-16 bg-card border border-border text-xs px-2 py-1 rounded text-center outline-none focus:ring-1 focus:ring-primary"
-                      />
-                      <span className="text-[10px] text-muted-foreground">pomos</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {tipoAtual === "numero" && chave !== "Pomodoro" && chave !== "pomodoro" && chave !== "estimativa" && (
-              <div className="p-2 bg-secondary/30 rounded-lg border border-border/40 space-y-1.5 text-xs">
-                <span className="text-[11px] text-muted-foreground block font-medium">Formato do Número:</span>
-                <div className="grid grid-cols-2 gap-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const novoEsq = { ...esquema, [chave]: "numero" as TipoPropriedade };
-                      onChange({ ...dados, esquema: novoEsq });
-                      toast("Formato: Número Simples.");
-                    }}
-                    className="py-1 px-2 text-[10px] rounded bg-card border border-border hover:bg-accent text-center cursor-pointer font-medium"
-                  >
-                    Simples
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      renomear(chave, "Pomodoro");
-                      toast("Formato: Prismas de Esforço.");
-                    }}
-                    className="py-1 px-2 text-[10px] rounded bg-card border border-border hover:bg-accent text-center cursor-pointer font-medium"
-                  >
-                    Prismas (1-5)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      toast("Formato moeda ativado.");
-                    }}
-                    className="py-1 px-2 text-[10px] rounded bg-card border border-border hover:bg-accent text-center cursor-pointer font-medium"
-                  >
-                    Moeda (R$)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      toast("Formato porcentagem ativado.");
-                    }}
-                    className="py-1 px-2 text-[10px] rounded bg-card border border-border hover:bg-accent text-center cursor-pointer font-medium"
-                  >
-                    Porcentagem (%)
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {tipoAtual === "data" && (
-              <div className="p-2 bg-secondary/30 rounded-lg border border-border/40 space-y-1.5 text-xs">
-                <span className="text-[11px] text-muted-foreground block font-medium">Formato da Data:</span>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">Padrão:</span>
-                  <span className="text-[10px] font-semibold text-primary">DD/MM/AAAA (Brasil)</span>
-                </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">Fuso horário:</span>
-                  <span className="text-[10px] text-muted-foreground font-mono">GMT-3</span>
-                </div>
-              </div>
-            )}
-
-            {tipoAtual === "texto" && (
-              <div className="p-2 bg-secondary/30 rounded-lg border border-border/40 space-y-1.5 text-xs">
-                <span className="text-[11px] text-muted-foreground block font-medium">Tipo de Entrada:</span>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">Comportamento:</span>
-                  <span className="text-[10px] font-semibold text-primary">Texto Curto Dinâmico</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {!fixo && (
-            <div className="border-t border-border pt-2 mt-1">
-              <span className="text-[11px] font-semibold text-muted-foreground px-1 uppercase tracking-wider block mb-1">Tipo de Propriedade</span>
-              <div className="flex flex-col gap-0.5 max-h-48 overflow-y-auto pr-1">
-                {(Object.entries(ICONES_TIPO) as [TipoPropriedade, React.ElementType][]).map(([t, Icon]) => (
-                  <button 
-                    key={t}
-                    onClick={() => {
-                      atualizarEsquema(chave, t);
-                      setMenuAberto(null);
-                    }}
-                    className={cn(
-                      "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left transition-colors hover:bg-accent",
-                      tipoAtual === t ? "bg-accent font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Icon className="h-4 w-4 opacity-75 shrink-0" />
-                    <span>{NOMES_TIPO[t]}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {!fixo && (
-            <div className="border-t border-border pt-2 mt-1">
-              <button
-                onClick={() => {
-                  remover(chave);
-                  setMenuAberto(null);
-                }}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-              >
-                <Trash2 className="h-4 w-4 shrink-0" />
-                <span>Excluir propriedade</span>
-              </button>
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
+      <MenuConfiguracaoPropriedade
+        chave={chave}
+        nomeAtual={rotuloAtual}
+        tipoAtual={tipoAtual}
+        visibilidadeAtual={visAtual}
+        descricaoAtual={descricaoAtual}
+        iconePersonalizado={iconePersonalizado}
+        corIconePersonalizada={corIconePersonalizada}
+        ehFixo={Boolean(fixo)}
+        podeMoverCima={indiceVisivel > 0}
+        podeMoverBaixo={indiceVisivel < totalVisiveis - 1}
+        opcoesCadastradas={opcoesCadastradas}
+        coresTagsMap={coresMap}
+        aberto={menuAberto === idMenu}
+        aoMudarAberto={(aberto) => setMenuAberto(aberto ? idMenu : null)}
+        aoRenomear={(novoNome) => renomear(chave, novoNome)}
+        aoMudarTipo={(novoTipo) => atualizarEsquema(chave, novoTipo)}
+        aoMudarVisibilidade={(novaVis) => atualizarVisibilidade(chave, novaVis)}
+        aoMudarDescricao={(novaDesc) => atualizarDescricaoPropriedade(chave, novaDesc)}
+        aoMudarIcone={(novoIcone) => atualizarIconePropriedade(chave, novoIcone)}
+        aoMudarCorIcone={(novaCor) => atualizarCorIconePropriedade(chave, novaCor)}
+        aoMover={(direcao) => moverPropriedade(chave, direcao)}
+        aoDuplicar={() => duplicarPropriedade(chave)}
+        aoExcluir={() => remover(chave)}
+        aoAtualizarOpcoes={(novas) => salvarOpcoesPropriedadeLocal(chave, novas)}
+        aoAtualizarCorTag={(tag, cor) => atualizarCorTag(tag, cor)}
+        aoRenomearTag={(antiga, nova) => {
+          const novas = opcoesCadastradas.map((x) => (x === antiga ? nova : x));
+          salvarOpcoesPropriedadeLocal(chave, novas);
+          if (chave === "tags") {
+            const novasCores = { ...globalConfig.coresTags };
+            const cAntiga = novasCores[antiga] || "azul";
+            delete novasCores[antiga];
+            novasCores[nova] = cAntiga;
+            salvarConfigPropriedadesGlobais(undefined, novasCores);
+            setGlobalConfig(lerConfigPropriedadesGlobais());
+          }
+        }}
+        aoExcluirTag={(tag) => {
+          registrarOpcaoExcluida(chave, tag);
+          const novas = opcoesCadastradas.filter((x) => x !== tag);
+          salvarOpcoesPropriedadeLocal(chave, novas);
+          if (chave === "tags") {
+            const novasCores = { ...globalConfig.coresTags };
+            delete novasCores[tag];
+            salvarConfigPropriedadesGlobais(undefined, novasCores);
+            setGlobalConfig(lerConfigPropriedadesGlobais());
+          }
+          const valItem = dados[chave];
+          if (Array.isArray(valItem) && valItem.includes(tag)) {
+            atualizar(chave, valItem.filter((x) => x !== tag));
+          } else if (valItem === tag) {
+            atualizar(chave, undefined);
+          }
+          toast(`Opção "${tag}" excluída.`);
+        }}
+        dadosPomodoro={{
+          estimados: dados.pomodoros_estimados ?? dados.Pomodoro ?? dados.pomodoro,
+          realizados: dados.pomodoros_realizados ?? dados.fraturados,
+        }}
+        aoAtualizarPomodoro={(p) => {
+          onChange({
+            ...dados,
+            pomodoros_estimados: p.estimados,
+            Pomodoro: p.estimados,
+            pomodoro: p.estimados,
+            pomodoros_realizados: p.realizados,
+            fraturados: p.realizados,
+          });
+        }}
+      >
+        <button className="w-28 sm:w-36 shrink-0 flex items-center gap-1.5 sm:gap-2 text-muted-foreground px-1.5 sm:px-2 py-1 -ml-1 sm:-ml-2 rounded hover:bg-accent/60 transition-colors text-left group/prop cursor-pointer">
+          <IconeComponente className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 transition-colors", corIconeObj.classe)} />
+          <span className="truncate flex-1 font-medium text-xs text-foreground/90">{rotuloAtual}</span>
+        </button>
+      </MenuConfiguracaoPropriedade>
     );
   }
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
-      {/* Banner de Homologação de Sugestão da IA */}
       {Boolean(dados.ia_sugeriu) && (
         <div className="mb-2 p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-between gap-2 text-xs text-purple-700 dark:text-purple-300">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -2526,12 +1780,20 @@ export function PropriedadesNotion({
         </div>
       )}
 
-      {/* Lista de Propriedades Visíveis */}
-      {chavesVisiveis.map((chave) => {
+      {chavesVisiveis.map((chave, idx) => {
         const fixo = camposFixos[chave];
+        const descricao = descricoesMap[chave];
         return (
-          <div key={chave} className="flex min-h-8 items-center gap-2 sm:gap-4 text-xs group">
-            {renderizarMenuPropriedade(chave, fixo)}
+          <div key={chave} className="flex min-h-8 items-center gap-1.5 sm:gap-3 text-xs group relative">
+            <div className="opacity-0 group-hover:opacity-40 transition-opacity cursor-grab text-muted-foreground -ml-4 pl-1 hidden sm:flex items-center">
+              <GripVertical size={12} />
+            </div>
+            {renderizarMenuPropriedade(chave, fixo, idx, chavesVisiveis.length)}
+            {descricao && (
+              <span title={descricao} className="text-muted-foreground/60 hover:text-foreground cursor-help -ml-1">
+                <HelpCircle size={11} />
+              </span>
+            )}
             <div className="flex-1 flex items-center min-h-8 min-w-0">
               {renderizarValor(chave)}
             </div>
@@ -2539,7 +1801,6 @@ export function PropriedadesNotion({
         );
       })}
 
-      {/* Botão de Adicionar Nova Propriedade perfeitamente alinhado acima das ocultas */}
       <div className="flex items-center gap-2 sm:gap-4 text-xs mt-1 pt-1 border-t border-border/30">
         <div className="w-28 sm:w-36 shrink-0">
           <Popover open={menuAberto === "novo_campo"} onOpenChange={(open) => setMenuAberto(open ? "novo_campo" : null)}>
@@ -2586,7 +1847,7 @@ export function PropriedadesNotion({
                         criarNovaPropriedade(t);
                       }}
                       className={cn(
-                        "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left transition-colors hover:bg-accent",
+                        "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left transition-colors hover:bg-accent cursor-pointer",
                         tipoNovoCampo === t ? "bg-accent font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"
                       )}
                     >
@@ -2602,12 +1863,11 @@ export function PropriedadesNotion({
         <div className="flex-1"></div>
       </div>
 
-      {/* Gaveta de Propriedades Ocultas na parte inferior */}
       {chavesOcultas.length > 0 && (
         <div className="mt-1 border-t border-border/40 pt-1">
           <button
             onClick={() => setMostrandoOcultas(!mostrandoOcultas)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 font-medium"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 font-medium cursor-pointer"
           >
             {mostrandoOcultas ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
             <span>{chavesOcultas.length} propriedade{chavesOcultas.length > 1 ? "s" : ""} oculta{chavesOcultas.length > 1 ? "s" : ""}</span>
@@ -2615,11 +1875,20 @@ export function PropriedadesNotion({
 
           {mostrandoOcultas && (
             <div className="flex flex-col gap-1.5 mt-1.5 pl-2 border-l border-border/60">
-              {chavesOcultas.map((chave) => {
+              {chavesOcultas.map((chave, idx) => {
                 const fixo = camposFixos[chave];
+                const descricao = descricoesMap[chave];
                 return (
-                  <div key={chave} className="flex min-h-8 items-center gap-2 sm:gap-4 text-xs group opacity-75 hover:opacity-100">
-                    {renderizarMenuPropriedade(chave, fixo)}
+                  <div key={chave} className="flex min-h-8 items-center gap-1.5 sm:gap-3 text-xs group opacity-75 hover:opacity-100 relative">
+                    <div className="opacity-0 group-hover:opacity-40 transition-opacity cursor-grab text-muted-foreground -ml-4 pl-1 hidden sm:flex items-center">
+                      <GripVertical size={12} />
+                    </div>
+                    {renderizarMenuPropriedade(chave, fixo, idx, chavesOcultas.length)}
+                    {descricao && (
+                      <span title={descricao} className="text-muted-foreground/60 hover:text-foreground cursor-help -ml-1">
+                        <HelpCircle size={11} />
+                      </span>
+                    )}
                     <div className="flex-1 flex items-center min-h-8 min-w-0">
                       {renderizarValor(chave)}
                     </div>
@@ -2631,7 +1900,6 @@ export function PropriedadesNotion({
         </div>
       )}
 
-      {/* Modal de Criação / Edição Rápida de Contato */}
       <ModalEditarContatoRapido
         aberto={modalContatoAberto}
         aoFechar={() => {

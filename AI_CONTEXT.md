@@ -123,6 +123,9 @@ Navegador (React SPA)
 ### Sub-componentes: src/components/pdf/
 `ScannerDocumento`
 
+### Sub-componentes: src/components/propriedades/
+`GerenciadorOpcoesSelect`, `MenuConfiguracaoPropriedade`, `SeletorIconePropriedade`
+
 ### Sub-componentes: src/components/ui/
 `badge`, `button`, `calendar`, `card`, `command`, `dialog`, `input`, `popover`, `select`, `textarea`, `tooltip`
 
