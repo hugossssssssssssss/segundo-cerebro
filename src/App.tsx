@@ -412,7 +412,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         {workspaceAberto ? (
           <WorkspaceTelaCheia />
         ) : (
-          <main className="mx-auto w-full flex-1 py-4 sm:py-6 pb-24 sm:pb-8 px-3.5 sm:px-6 lg:px-8 overflow-y-auto max-w-none flex flex-col justify-between">
+          <main className="mx-auto w-full flex-1 py-3 sm:py-6 pb-28 sm:pb-8 px-3 sm:px-6 lg:px-8 overflow-y-auto max-w-none flex flex-col justify-between">
             <div className="flex-1 w-full">
               <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
             </div>
@@ -421,23 +421,23 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-      {/* Navegação inferior no celular com visual dock moderno e frosted glass */}
+      {/* Navegação inferior no celular com visual dock moderno, safe area e touch targets de 48px+ */}
       {!workspaceAberto && (
-        <nav className="fixed bottom-0 inset-x-0 z-40 flex border-t border-border/80 bg-card/90 pb-[max(env(safe-area-inset-bottom),8px)] pt-1.5 backdrop-blur-xl sm:hidden shadow-lg">
+        <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center border-t border-border/80 bg-card/95 pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5 px-1.5 backdrop-blur-xl sm:hidden shadow-lg select-none">
           {abasMobile.map(({ para, rotulo, Icone }) => (
             <NavLink
               key={para}
               to={para}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-1 flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-medium transition-all min-w-0 truncate px-1 rounded-xl mx-0.5 relative group active:scale-95",
+                  "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium transition-all min-w-0 truncate px-1 rounded-xl mx-0.5 relative group active:scale-95 touch-manipulation min-h-[50px]",
                   isActive
-                    ? "text-primary font-bold bg-primary/10"
-                    : "text-muted-foreground hover:text-foreground",
+                    ? "text-primary font-bold bg-primary/10 shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/40",
                 )
               }
             >
-              <Icone size={19} className="shrink-0 transition-transform group-active:scale-90" />
+              <Icone size={20} className="shrink-0 transition-transform group-active:scale-90" />
               <span className="truncate max-w-full tracking-tight">{rotulo}</span>
             </NavLink>
           ))}
@@ -445,10 +445,10 @@ function Estrutura({ children }: { children: React.ReactNode }) {
           {/* Botão Mais no celular */}
           <button
             onClick={() => setGavetaAberta(true)}
-            className="flex flex-1 flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-medium text-muted-foreground transition-all min-w-0 truncate px-1 rounded-xl mx-0.5 hover:text-foreground active:scale-95 cursor-pointer"
+            className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium text-muted-foreground transition-all min-w-0 truncate px-1 rounded-xl mx-0.5 hover:text-foreground hover:bg-accent/40 active:scale-95 cursor-pointer touch-manipulation min-h-[50px]"
             aria-label="Mais opções"
           >
-            <MoreHorizontal size={19} className="shrink-0" />
+            <MoreHorizontal size={20} className="shrink-0" />
             <span className="truncate max-w-full tracking-tight">Mais</span>
           </button>
         </nav>
@@ -458,10 +458,10 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       {!workspaceAberto && !pathname.startsWith("/chat") && (
         <button
           onClick={() => setCapturando(true)}
-          className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+68px)] right-4 z-30 flex h-13 w-13 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/25 transition-transform active:scale-90 sm:hidden cursor-pointer hover:shadow-2xl"
+          className="fixed bottom-[calc(max(env(safe-area-inset-bottom),10px)+68px)] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/30 transition-transform active:scale-90 sm:hidden cursor-pointer hover:scale-105 touch-manipulation select-none"
           aria-label="Captura rápida"
         >
-          <Plus size={22} className="stroke-[2.5]" />
+          <Plus size={24} className="stroke-[2.5]" />
         </button>
       )}
 

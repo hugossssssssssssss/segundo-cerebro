@@ -23,6 +23,28 @@ interface GavetaMaisProps {
 export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
   const [tema, setTema] = useState<Tema>(lerTemaSalvo);
   const [modalInstalarAberta, setModalInstalarAberta] = useState(false);
+  const [arrastoY, setArrastoY] = useState(0);
+  const [toqueInicialY, setToqueInicialY] = useState<number | null>(null);
+
+  const lidarTouchStart = (e: React.TouchEvent) => {
+    setToqueInicialY(e.touches[0].clientY);
+  };
+
+  const lidarTouchMove = (e: React.TouchEvent) => {
+    if (toqueInicialY === null) return;
+    const deltaY = e.touches[0].clientY - toqueInicialY;
+    if (deltaY > 0) {
+      setArrastoY(deltaY);
+    }
+  };
+
+  const lidarTouchEnd = () => {
+    if (arrastoY > 75) {
+      aoFechar();
+    }
+    setArrastoY(0);
+    setToqueInicialY(null);
+  };
 
   useEffect(() => {
     const aoMudar = () => setTema(lerTemaSalvo());
@@ -65,17 +87,32 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 sm:hidden backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 sm:hidden backdrop-blur-xs animate-in fade-in duration-200 overscroll-none select-none">
         {/* Fundo clicável para fechar */}
         <div className="flex-1" onClick={aoFechar} />
 
-        {/* Conteúdo da Gaveta estilo Bottom Sheet */}
-        <div className="rounded-t-3xl border-t border-border bg-card/95 p-4 pb-[max(env(safe-area-inset-bottom),16px)] shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto backdrop-blur-xl animate-in slide-in-from-bottom duration-200">
-          {/* Puxador nativo de Bottom Sheet */}
-          <div className="w-10 h-1.5 rounded-full bg-muted-foreground/30 mx-auto -mt-1 mb-2 select-none" />
+        {/* Conteúdo da Gaveta estilo Bottom Sheet com suporte a arrastar para baixo */}
+        <div
+          style={{ transform: arrastoY > 0 ? `translateY(${arrastoY}px)` : undefined, transition: arrastoY === 0 ? "transform 0.2s ease" : "none" }}
+          className="rounded-t-3xl border-t border-border bg-card/95 p-4 pb-[max(env(safe-area-inset-bottom),16px)] shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto backdrop-blur-xl animate-in slide-in-from-bottom duration-200 touch-pan-y"
+        >
+          {/* Puxador com área de toque ampliada para puxar e fechar */}
+          <div
+            onTouchStart={lidarTouchStart}
+            onTouchMove={lidarTouchMove}
+            onTouchEnd={lidarTouchEnd}
+            className="w-full py-2 -mt-2 cursor-grab active:cursor-grabbing flex flex-col items-center justify-center touch-none"
+          >
+            <div className="w-12 h-1.5 rounded-full bg-muted-foreground/40 select-none hover:bg-muted-foreground/60 transition-colors" />
+          </div>
 
           {/* Topo da Gaveta */}
-          <div className="flex items-center justify-between pb-2 border-b border-border/80">
+          <div
+            onTouchStart={lidarTouchStart}
+            onTouchMove={lidarTouchMove}
+            onTouchEnd={lidarTouchEnd}
+            className="flex items-center justify-between pb-2 border-b border-border/80 touch-none"
+          >
             <div className="flex items-center gap-2">
               <LogoKlaus tamanho={24} />
               <span className="font-bold text-sm tracking-tight text-foreground">
@@ -84,7 +121,7 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
             </div>
             <button
               onClick={aoFechar}
-              className="rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer touch-manipulation"
               aria-label="Fechar menu"
             >
               <X size={20} />
@@ -98,11 +135,11 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
               if (itensVisiveis.length === 0) return null;
 
               return (
-                <div key={grupo.id || grupo.titulo} className="space-y-1">
+                <div key={grupo.id || grupo.titulo} className="space-y-1.5">
                   <h3 className="px-2 text-[11px] font-semibold text-muted-foreground tracking-wider uppercase truncate">
                     {grupo.titulo}
                   </h3>
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <div className="grid grid-cols-2 gap-2">
                     {itensVisiveis.map((item) => {
                       const Icone = obterIconePorNome(item.iconeNome || "HelpCircle");
                       return (
@@ -112,10 +149,10 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
                           onClick={aoFechar}
                           className={({ isActive }) =>
                             cn(
-                              "flex items-center gap-2.5 rounded-xl p-3 text-xs font-medium border transition-colors",
+                              "flex items-center gap-2.5 rounded-xl p-3 text-xs font-medium border transition-colors touch-manipulation min-h-[48px]",
                               isActive
-                                ? "bg-primary/10 border-primary/30 text-primary font-semibold"
-                                : "bg-card/50 border-border text-foreground hover:bg-accent"
+                                ? "bg-primary/10 border-primary/30 text-primary font-semibold shadow-xs"
+                                : "bg-card/60 border-border text-foreground hover:bg-accent active:bg-accent"
                             )
                           }
                         >
@@ -138,23 +175,23 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
           </div>
 
           {/* Rodapé da Gaveta: Instalar App, Personalizar Menu, Ajustes e Tema */}
-          <div className="pt-2 border-t border-border grid grid-cols-4 gap-1.5">
+          <div className="pt-2 border-t border-border grid grid-cols-4 gap-2">
             <Tooltip conteudo="Instalar Klaus no celular">
               <button
                 onClick={() => setModalInstalarAberta(true)}
-                className="flex items-center justify-center gap-1 rounded-xl p-2 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent transition-colors cursor-pointer"
+                className="flex items-center justify-center gap-1.5 rounded-xl p-2.5 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent active:bg-accent transition-colors cursor-pointer touch-manipulation min-h-[44px]"
                 aria-label="Instalar Klaus no celular"
               >
-                <Smartphone size={15} className="text-primary shrink-0" />
+                <Smartphone size={16} className="text-primary shrink-0" />
                 <span className="truncate">App</span>
               </button>
             </Tooltip>
 
             <button
               onClick={() => setModalPersonalizarAberta(true)}
-              className="flex items-center justify-center gap-1 rounded-xl p-2 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 rounded-xl p-2.5 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent active:bg-accent transition-colors cursor-pointer touch-manipulation min-h-[44px]"
             >
-              <Palette size={15} className="text-primary shrink-0" />
+              <Palette size={16} className="text-primary shrink-0" />
               <span className="truncate">Menu</span>
             </button>
 
@@ -163,22 +200,22 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
               onClick={aoFechar}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center justify-center gap-1 rounded-xl p-2 text-xs font-medium border transition-colors",
+                  "flex items-center justify-center gap-1.5 rounded-xl p-2.5 text-xs font-medium border transition-colors touch-manipulation min-h-[44px]",
                   isActive
-                    ? "bg-primary/10 border-primary/30 text-primary font-semibold"
-                    : "bg-card border-border text-foreground hover:bg-accent"
+                    ? "bg-primary/10 border-primary/30 text-primary font-semibold shadow-xs"
+                    : "bg-card border-border text-foreground hover:bg-accent active:bg-accent"
                 )
               }
             >
-              <Settings size={15} className="shrink-0" />
+              <Settings size={16} className="shrink-0" />
               <span className="truncate">Ajustes</span>
             </NavLink>
 
             <button
               onClick={toggleTema}
-              className="flex items-center justify-center gap-1 rounded-xl p-2 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 rounded-xl p-2.5 text-xs font-medium border border-border bg-card text-foreground hover:bg-accent active:bg-accent transition-colors cursor-pointer touch-manipulation min-h-[44px]"
             >
-              {escuro ? <Sun size={15} className="shrink-0" /> : <Moon size={15} className="shrink-0" />}
+              {escuro ? <Sun size={16} className="shrink-0" /> : <Moon size={16} className="shrink-0" />}
               <span className="truncate">{escuro ? "Claro" : "Escuro"}</span>
             </button>
           </div>
