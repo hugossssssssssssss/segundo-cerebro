@@ -18,6 +18,7 @@
 
 import MiniSearch from "minisearch";
 import { type ItemRepo, ehArquivoInternoOuSistema } from "./repo";
+import { ehItemLixeira } from "./lixeira";
 import { tituloProvavel, comoLista } from "./markdown";
 import { LISTA_FERRAMENTAS_APP, type FerramentaApp } from "./ferramentasApp";
 
@@ -136,7 +137,7 @@ function novoIndice(itens: ItemRepo[]): MiniSearch<Fichado> {
     },
   });
 
-  const itensValidos = itens.filter((i) => !ehArquivoInternoOuSistema(i.caminho) && !i.caminho.startsWith(".lixeira/"));
+  const itensValidos = itens.filter((i) => !ehArquivoInternoOuSistema(i.caminho) && !ehItemLixeira(i.caminho));
   mini.addAll(itensValidos.map(ficharItem));
   return mini;
 }
@@ -155,7 +156,7 @@ export function resetarIndiceBusca(): void {
  * e indexação incremental seletiva (replace/discard) quando arquivos mudam.
  */
 export function indiceDe(itens: ItemRepo[]): MiniSearch<Fichado> {
-  const itensValidos = itens.filter((i) => !ehArquivoInternoOuSistema(i.caminho) && !i.caminho.startsWith(".lixeira/"));
+  const itensValidos = itens.filter((i) => !ehArquivoInternoOuSistema(i.caminho) && !ehItemLixeira(i.caminho));
 
   if (!indiceCacheGlobal) {
     indiceCacheGlobal = novoIndice(itens);
@@ -266,6 +267,7 @@ export function buscar(itens: ItemRepo[], termo: string): Resultado[] {
   // Apenas para termos com pelo menos 3 caracteres, para evitar lentidão
   if (termoNorm.length >= 3) {
     for (const item of itens) {
+      if (ehArquivoInternoOuSistema(item.caminho) || ehItemLixeira(item.caminho)) continue;
       if (idsJaIncluidos.has(item.caminho)) continue;
 
       const titNorm = normalizar(tituloProvavel(item.doc, item.nome));

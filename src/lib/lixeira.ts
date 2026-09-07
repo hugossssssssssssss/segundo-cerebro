@@ -16,6 +16,20 @@ import { notificarOutrasAbas } from "./syncChannel";
 
 export const PASTA_LIXEIRA = ".lixeira";
 
+/**
+ * Verifica se um caminho de arquivo pertence à Lixeira Soberana (.lixeira/)
+ */
+export function ehItemLixeira(caminho?: string | null): boolean {
+  if (!caminho) return false;
+  const c = caminho.toLowerCase().trim();
+  return (
+    c.startsWith(".lixeira/") ||
+    c.startsWith("lixeira/") ||
+    c.includes("/.lixeira/") ||
+    c.includes("/lixeira/")
+  );
+}
+
 export type ItemLixeira = {
   caminho: string;
   caminhoOrigem: string;

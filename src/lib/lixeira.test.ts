@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { listarItensLixeira, PASTA_LIXEIRA } from "./lixeira";
+import { listarItensLixeira, PASTA_LIXEIRA, ehItemLixeira } from "./lixeira";
 import type { ItemRepo } from "./repo";
 import { lerMarkdown } from "./markdown";
 
@@ -29,5 +29,14 @@ describe("lixeira - Soberania e reversibilidade", () => {
     expect(lixeira[0].titulo).toBe("Projeto Secreto");
     expect(lixeira[0].caminhoOrigem).toBe("notas/projeto.md");
     expect(lixeira[0].apagadoEm).toBe("2026-08-30T10:00:00.000Z");
+  });
+
+  it("ehItemLixeira identifica corretamente caminhos da lixeira", () => {
+    expect(ehItemLixeira(".lixeira/notas/teste.md")).toBe(true);
+    expect(ehItemLixeira("lixeira/tarefas/1.md")).toBe(true);
+    expect(ehItemLixeira("subpasta/.lixeira/doc.md")).toBe(true);
+    expect(ehItemLixeira("notas/minha-nota.md")).toBe(false);
+    expect(ehItemLixeira("")).toBe(false);
+    expect(ehItemLixeira(undefined)).toBe(false);
   });
 });

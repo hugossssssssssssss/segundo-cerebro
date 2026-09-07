@@ -160,6 +160,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 
 **Exportações principais:**
 - `constante` **`PASTA_LIXEIRA`**
+- `funcao` **`ehItemLixeira`** — _Verifica se um caminho de arquivo pertence à Lixeira Soberana (.lixeira/)_
 - `tipo` **`ItemLixeira`**
 - `funcao` **`moverParaLixeira`** — _Move um arquivo para a Lixeira Soberana (.lixeira/) com metadados de reversão._
 - `funcao` **`restaurarDaLixeira`** — _Restaura um arquivo da Lixeira para sua pasta de origem._

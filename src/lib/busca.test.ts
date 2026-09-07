@@ -233,4 +233,17 @@ describe("cache quente e indexação incremental", () => {
     expect(r2.length).toBe(1);
     expect(r2[0].caminho).toBe("notas/logo.md");
   });
+
+  it("nunca retorna itens dentro da lixeira (.lixeira/)", () => {
+    resetarIndiceBusca();
+    const itemNormal = item("notas/importante.md", "# Documento Ativo\nConteudo normal");
+    const itemLixeira = item(".lixeira/notas/descartada.md", "# Documento Ativo\nConteudo descartado na lixeira");
+    
+    const res = buscar([itemNormal, itemLixeira], "Documento");
+    expect(res).toHaveLength(1);
+    expect(res[0].caminho).toBe("notas/importante.md");
+
+    const resLixeira = buscar([itemNormal, itemLixeira], "descartado");
+    expect(resLixeira).toHaveLength(0);
+  });
 });

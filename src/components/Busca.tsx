@@ -17,7 +17,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
-import { carregarRepo, type ItemRepo } from "@/lib/repo";
+import { carregarRepo, type ItemRepo, ehArquivoInternoOuSistema } from "@/lib/repo";
+import { ehItemLixeira } from "@/lib/lixeira";
 import {
   buscar,
   agrupar,
@@ -233,16 +234,19 @@ export function Busca({
 
     const favSet = new Set(favoritos);
     const favFerramentas = ferramentasPersonalizadas.filter((f) => favSet.has(f.id));
-    const favRepoItens = acervo.filter((item) => favSet.has(item.caminho));
+    const favRepoItens = acervo.filter(
+      (item) => favSet.has(item.caminho) && !ehItemLixeira(item.caminho) && !ehArquivoInternoOuSistema(item.caminho)
+    );
 
     return { ferramentas: favFerramentas, repoItens: favRepoItens };
   }, [favoritos, acervo, ferramentasPersonalizadas]);
 
-  // Lista de Documentos Recentes
+  // Lista de Documentos Recentes (ignora lixeira e arquivos de sistema)
   const documentosRecentes = useMemo(() => {
     if (!acervo || acervo.length === 0) return [];
 
     const lista = acervo.filter((i) => {
+      if (ehItemLixeira(i.caminho) || ehArquivoInternoOuSistema(i.caminho)) return false;
       if (categoria === "tudo") return true;
       if (categoria === "ferramentas" || categoria === "acoes") return false;
       const pasta = i.caminho.split("/")[0]?.toLowerCase() || "";
