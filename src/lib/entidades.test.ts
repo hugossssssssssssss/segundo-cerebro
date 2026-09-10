@@ -385,7 +385,12 @@ describe("textoPrazoTarefa", () => {
   });
 
   it("data além de 7 dias formata como dd/mm/yy", () => {
-    expect(textoPrazoTarefa(tarefaCom("2026-09-15"))).toBe("15/09/26");
+    const d = new Date();
+    d.setDate(d.getDate() + 10);
+    const ano = String(d.getFullYear()).slice(-2);
+    const mes = String(d.getMonth() + 1).padStart(2, "0");
+    const dia = String(d.getDate()).padStart(2, "0");
+    expect(textoPrazoTarefa(tarefaCom(emDias(10)))).toBe(`${dia}/${mes}/${ano}`);
   });
 });
 

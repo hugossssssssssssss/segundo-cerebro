@@ -41,6 +41,7 @@ import {
 } from "@/lib/settings";
 import { testarConexao } from "@/lib/github";
 import { criarKitInicial } from "@/lib/starterKit";
+import { sincronizarTudoComGithub } from "@/lib/preferenciasApp";
 import { Botao, Campo, Rotulo, Aviso } from "@/components/ui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { LogoKlaus } from "@/components/LogoKlaus";
@@ -176,6 +177,12 @@ export default function BoasVindas() {
         await criarKitInicial(configFinal);
       } catch {
         // Prossegue mesmo se a gravação de exemplos falhar
+      }
+    } else if (configCompleta(configFinal)) {
+      try {
+        await sincronizarTudoComGithub(configFinal);
+      } catch {
+        // Prossegue mesmo se a sincronização falhar
       }
     }
 

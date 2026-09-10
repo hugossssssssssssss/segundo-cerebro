@@ -240,11 +240,13 @@ function Estrutura({ children }: { children: React.ReactNode }) {
     };
 
     window.addEventListener("online", () => executarSincronizacao(true));
+    window.addEventListener("klaus-settings-atualizadas", () => executarSincronizacao(true));
     document.addEventListener("visibilitychange", aoMudarVisibilidade);
     executarSincronizacao(true);
 
     return () => {
       window.removeEventListener("online", () => executarSincronizacao(true));
+      window.removeEventListener("klaus-settings-atualizadas", () => executarSincronizacao(true));
       document.removeEventListener("visibilitychange", aoMudarVisibilidade);
     };
   }, []);

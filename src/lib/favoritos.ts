@@ -187,9 +187,7 @@ export async function carregarFavoritos(
 
           const listaFinal = [...remotosValidados, ...novosLocais];
 
-          try {
-            localStorage.setItem(CHAVE_STORAGE_FAVORITOS, JSON.stringify(listaFinal));
-          } catch {}
+          salvarFavoritosLocal(listaFinal);
           registrarShaFavoritos(res.sha);
 
           // Se havia itens locais não sincronizados, agenda a sincronização para o GitHub
@@ -301,6 +299,10 @@ export function agendarPersistenciaRemota(
     timerDebouncePersistencia = null;
     ultimosItensPendentes = null;
     const res = await salvarFavoritosRemoto(cfg, itens, ultimoShaFavoritos);
+    // Mantém o arquivo consolidado .klaus/preferencias.json sincronizado
+    import("./preferenciasApp")
+      .then((m) => m.agendarPersistenciaPreferenciasRemoto(cfg, null, 1000))
+      .catch(() => {});
     aoFinalizar?.(res.ok, res.erro);
   }, delayMs);
 }

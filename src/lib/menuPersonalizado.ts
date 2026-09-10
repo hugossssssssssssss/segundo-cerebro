@@ -199,6 +199,11 @@ export function agendarPersistenciaMenuRemoto(
         "config: atualizar preferências do menu personalizado",
       );
       if (novoSha) ultimoShaMenu = novoSha;
+
+      // Mantém o arquivo consolidado .klaus/preferencias.json sincronizado
+      import("./preferenciasApp")
+        .then((m) => m.agendarPersistenciaPreferenciasRemoto(cfg, null, 1000))
+        .catch(() => {});
     } catch {
       // Falha silenciosa de rede mantém localStorage íntegro
     }

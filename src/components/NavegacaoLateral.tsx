@@ -82,7 +82,13 @@ export function NavegacaoLateral({
 
   useEffect(() => {
     window.addEventListener(EVENTO_MENU_ATUALIZADO, atualizarMenu);
-    return () => window.removeEventListener(EVENTO_MENU_ATUALIZADO, atualizarMenu);
+    window.addEventListener("klaus-preferencias-atualizadas", atualizarMenu);
+    window.addEventListener("klaus-settings-atualizadas", atualizarMenu);
+    return () => {
+      window.removeEventListener(EVENTO_MENU_ATUALIZADO, atualizarMenu);
+      window.removeEventListener("klaus-preferencias-atualizadas", atualizarMenu);
+      window.removeEventListener("klaus-settings-atualizadas", atualizarMenu);
+    };
   }, [atualizarMenu]);
 
   return (

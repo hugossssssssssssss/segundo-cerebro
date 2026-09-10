@@ -97,6 +97,11 @@ export function agendarPersistenciaWidgetsRemoto(
         "config: atualizar layout de widgets da Home",
       );
       if (novoSha) ultimoShaWidgets = novoSha;
+
+      // Mantém o arquivo consolidado .klaus/preferencias.json sincronizado
+      import("./preferenciasApp")
+        .then((m) => m.agendarPersistenciaPreferenciasRemoto(cfg, null, 1000))
+        .catch(() => {});
     } catch {
       // Falha silenciosa de rede mantém localStorage íntegro
     }

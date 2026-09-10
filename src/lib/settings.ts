@@ -375,6 +375,12 @@ export function salvarConfig(s: Settings): Settings {
     }
   } catch {}
 
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("klaus-settings-atualizadas", { detail: limpo }));
+    }
+  } catch {}
+
   return limpo;
 }
 

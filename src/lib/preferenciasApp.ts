@@ -250,8 +250,11 @@ export function agendarPersistenciaPreferenciasRemoto(
 
 /**
  * Sincroniza todas as preferências com o GitHub.
- * 1. Tenta carregar o arquivo unificado .klaus/preferencias.json em 1 única requisição.
- * 2. Se for legado ou não existir, busca os arquivos legados (.klaus/favoritos.json, .klaus/menu.json, etc.) e consolida.
+ * 1. Busca em paralelo tanto o arquivo consolidado .klaus/preferencias.json
+ *    quanto os arquivos específicos (.klaus/favoritos.json, .klaus/menu.json, .klaus/widgets.json).
+ * 2. Faz uma reconciliação inteligente para NUNCA perder atalhos de favoritos, ordem de menu ou widgets customizados.
+ * 3. Aplica localmente no localStorage e notifica todos os componentes visualmente.
+ * 4. Mantém a nuvem 100% atualizada e alinhada.
  */
 export async function sincronizarTudoComGithub(
   cfg: Settings,
@@ -292,68 +295,119 @@ export async function sincronizarTudoComGithub(
       return { sucesso: true, mensagem: "Preferências locais enviadas com sucesso para o GitHub!" };
     }
 
-    // 1. Tenta carregar .klaus/preferencias.json
-    const res = await ler(cfg, CAMINHO_PREFERENCIAS, { silenciar404: true });
-    if (res?.texto) {
-      registrarShaPreferencias(res.sha);
-      const parsed = JSON.parse(res.texto);
+    // Busca remota em paralelo de todas as fontes de preferências
+    const [resPrefs, resFav, resMenu, resWid] = await Promise.all([
+      ler(cfg, CAMINHO_PREFERENCIAS, { silenciar404: true }).catch(() => null),
+      ler(cfg, CAMINHO_FAVORITOS, { silenciar404: true }).catch(() => null),
+      ler(cfg, CAMINHO_MENU, { silenciar404: true }).catch(() => null),
+      ler(cfg, CAMINHO_WIDGETS, { silenciar404: true }).catch(() => null),
+    ]);
 
-      // Se já está no formato consolidado moderno v2
-      if (parsed && typeof parsed === "object" && (parsed.versaoSchema === 2 || parsed.favoritos || parsed.menu)) {
-        aplicarTodasPreferenciasLocal(parsed);
-        const agora = new Date().toISOString();
-        salvarStatusSincronizacao({ sucesso: true, emAndamento: false, ultimaSincronizacao: agora });
-        return { sucesso: true, mensagem: "Preferências sincronizadas com sucesso!" };
-      }
+    let prefsConsolidadas: Partial<PreferenciasKlausConsolidadas> | null = null;
+    if (resPrefs?.texto) {
+      registrarShaPreferencias(resPrefs.sha);
+      try {
+        const parsed = JSON.parse(resPrefs.texto);
+        if (parsed && typeof parsed === "object") {
+          prefsConsolidadas = parsed;
+        }
+      } catch {}
     }
 
-    // 2. Fallback de migração transparente para quem tinha arquivos legados separados
+    // 1. Extrair e validar Favoritos Remotos
     let favoritosRemotos: FavoritoItem[] | undefined;
+    if (resFav?.texto) {
+      try {
+        const parsed = JSON.parse(resFav.texto);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          favoritosRemotos = parsed.filter(
+            (it) => it && typeof it === "object" && typeof it.url === "string",
+          );
+        }
+      } catch {}
+    }
+
+    // 2. Extrair e validar Menu Remoto
     let menuRemoto: GrupoMenuPersonalizado[] | undefined;
+    if (resMenu?.texto) {
+      try {
+        const parsed = JSON.parse(resMenu.texto);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          menuRemoto = parsed.filter(
+            (g) => g && typeof g === "object" && Array.isArray(g.itens),
+          );
+        }
+      } catch {}
+    }
+
+    // 3. Extrair e validar Widgets Remotos
     let widgetsRemotos: WidgetConfig[] | undefined;
+    if (resWid?.texto) {
+      try {
+        const parsed = JSON.parse(resWid.texto);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          widgetsRemotos = parsed.filter(
+            (w) => w && typeof w === "object" && typeof w.id === "string",
+          );
+        }
+      } catch {}
+    }
 
-    try {
-      const resFav = await ler(cfg, CAMINHO_FAVORITOS, { silenciar404: true });
-      if (resFav?.texto) {
-        const p = JSON.parse(resFav.texto);
-        if (Array.isArray(p)) favoritosRemotos = p;
-      }
-    } catch {}
+    // Reconciliação inteligente:
+    // Favoritos: se temos favoritos no arquivo específico .klaus/favoritos.json ou no consolidador
+    const favsDoConsolidado = Array.isArray(prefsConsolidadas?.favoritos)
+      ? prefsConsolidadas.favoritos.filter((it) => it && typeof it === "object" && typeof it.url === "string")
+      : [];
 
-    try {
-      const resMenu = await ler(cfg, CAMINHO_MENU, { silenciar404: true });
-      if (resMenu?.texto) {
-        const p = JSON.parse(resMenu.texto);
-        if (Array.isArray(p)) menuRemoto = p;
-      }
-    } catch {}
+    let favoritosFinais: FavoritoItem[] | undefined;
+    if (favoritosRemotos && favoritosRemotos.length > 0 && favsDoConsolidado.length > 0) {
+      // Mesclagem por ID para não perder nenhum favorito
+      const mapa = new Map<string, FavoritoItem>();
+      for (const f of favsDoConsolidado) mapa.set(f.id, f);
+      for (const f of favoritosRemotos) mapa.set(f.id, f);
+      favoritosFinais = Array.from(mapa.values());
+    } else if (favoritosRemotos && favoritosRemotos.length > 0) {
+      favoritosFinais = favoritosRemotos;
+    } else if (favsDoConsolidado.length > 0) {
+      favoritosFinais = favsDoConsolidado;
+    }
 
-    try {
-      const resWid = await ler(cfg, CAMINHO_WIDGETS, { silenciar404: true });
-      if (resWid?.texto) {
-        const p = JSON.parse(resWid.texto);
-        if (Array.isArray(p)) widgetsRemotos = p;
-      }
-    } catch {}
+    // Menu: escolhe a versão que contém personalizações
+    const menuDoConsolidado = Array.isArray(prefsConsolidadas?.menu) && prefsConsolidadas.menu.length > 0
+      ? prefsConsolidadas.menu
+      : undefined;
+    const menuFinal = menuRemoto || menuDoConsolidado;
+
+    // Widgets
+    const widgetsDoConsolidado = Array.isArray(prefsConsolidadas?.widgets) && prefsConsolidadas.widgets.length > 0
+      ? prefsConsolidadas.widgets
+      : undefined;
+    const widgetsFinais = widgetsRemotos || widgetsDoConsolidado;
+
+    // Gerais (tema, etc.)
+    const geraisFinais = prefsConsolidadas?.gerais;
 
     const locais = lerTodasPreferenciasLocal();
-    const consolidado: PreferenciasKlausConsolidadas = {
+    const resultadoConsolidado: PreferenciasKlausConsolidadas = {
       versaoSchema: 2,
       atualizadoEm: new Date().toISOString(),
-      favoritos: favoritosRemotos || locais.favoritos,
-      menu: menuRemoto || locais.menu,
-      widgets: widgetsRemotos || locais.widgets,
-      gerais: locais.gerais,
+      favoritos: favoritosFinais || locais.favoritos,
+      menu: menuFinal || locais.menu,
+      widgets: widgetsFinais || locais.widgets,
+      gerais: geraisFinais || locais.gerais,
     };
 
-    aplicarTodasPreferenciasLocal(consolidado);
+    // Aplica no localStorage e dispara eventos para a interface se atualizar na hora
+    aplicarTodasPreferenciasLocal(resultadoConsolidado);
 
-    // Salva a versão consolidada no GitHub
-    agendarPersistenciaPreferenciasRemoto(cfg, null, 500);
+    // Se houve dados encontrados ou reconciliação, garante persistência no arquivo unificado
+    if (favoritosFinais || menuFinal || widgetsFinais || geraisFinais) {
+      agendarPersistenciaPreferenciasRemoto(cfg, null, 1000);
+    }
 
     const agora = new Date().toISOString();
     salvarStatusSincronizacao({ sucesso: true, emAndamento: false, ultimaSincronizacao: agora });
-    return { sucesso: true, mensagem: "Preferências migradas e sincronizadas com sucesso!" };
+    return { sucesso: true, mensagem: "Preferências sincronizadas com sucesso!" };
   } catch (err: any) {
     salvarStatusSincronizacao({
       sucesso: false,

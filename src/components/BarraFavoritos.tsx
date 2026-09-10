@@ -45,7 +45,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { lerConfig, configCompleta } from "@/lib/settings";
+import { lerConfig, configCompleta, type Settings } from "@/lib/settings";
 import {
   carregarFavoritos,
   lerFavoritosLocal,
@@ -544,16 +544,17 @@ export function BarraFavoritos({ className }: { className?: string }) {
   const [larguraContainer, setLarguraContainer] = useState(0);
   const [quantidadeVisivel, setQuantidadeVisivel] = useState(favoritos.length);
 
-  const cfg = useMemo(() => lerConfig(), []);
+  const [cfg, setCfg] = useState<Settings>(() => lerConfig());
   const pronto = configCompleta(cfg);
 
   // Salvar ícone customizado selecionado
   const lidarSalvarIconeCustomizado = (id: string, iconeCustomizado?: string) => {
+    const configAtual = lerConfig();
     const novaLista = favoritos.map((f) =>
       f.id === id ? { ...f, iconeCustomizado } : f,
     );
     setFavoritos(novaLista);
-    agendarPersistenciaRemota(cfg, novaLista, 300);
+    agendarPersistenciaRemota(configAtual, novaLista, 300);
   };
 
   // Carregar favoritos iniciais e sincronizar com eventos locais
@@ -575,7 +576,7 @@ export function BarraFavoritos({ className }: { className?: string }) {
       });
     }
 
-    // Atualiza o estado quando os favoritos locais mudarem (sem refazer requisições de rede ao GitHub!)
+    // Atualiza o estado quando os favoritos locais mudarem
     const atualizarDaChave = (e: Event) => {
       if (cancelado) return;
       const custom = e as CustomEvent<FavoritoItem[]>;
@@ -586,17 +587,34 @@ export function BarraFavoritos({ className }: { className?: string }) {
       }
     };
 
+    const atualizarConfig = () => {
+      if (cancelado) return;
+      const novaCfg = lerConfig();
+      setCfg(novaCfg);
+      if (configCompleta(novaCfg)) {
+        carregarFavoritos(novaCfg).then((res) => {
+          if (!cancelado && res.itens && res.itens.length > 0) {
+            setFavoritos(res.itens);
+          }
+        });
+      }
+    };
+
     window.addEventListener(EVENTO_FAVORITOS_ATUALIZADOS, atualizarDaChave);
+    window.addEventListener("klaus-settings-atualizadas", atualizarConfig);
+    window.addEventListener("klaus-preferencias-atualizadas", atualizarConfig);
     return () => {
       cancelado = true;
       window.removeEventListener(EVENTO_FAVORITOS_ATUALIZADOS, atualizarDaChave);
+      window.removeEventListener("klaus-settings-atualizadas", atualizarConfig);
+      window.removeEventListener("klaus-preferencias-atualizadas", atualizarConfig);
     };
   }, [pronto, cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
 
   // Salva imediatamente qualquer alteração pendente se o usuário fechar a aba ou janela
   useEffect(() => {
     const aoSair = () => {
-      flushPersistenciaPendente(cfg);
+      flushPersistenciaPendente(lerConfig());
     };
     window.addEventListener("beforeunload", aoSair);
     window.addEventListener("pagehide", aoSair);
@@ -604,7 +622,7 @@ export function BarraFavoritos({ className }: { className?: string }) {
       window.removeEventListener("beforeunload", aoSair);
       window.removeEventListener("pagehide", aoSair);
     };
-  }, [cfg.repoOwner, cfg.repoName, cfg.githubToken, cfg.branch]);
+  }, []);
 
   const navegarParaUrl = useCallback(
     (url: string) => {
@@ -706,7 +724,7 @@ export function BarraFavoritos({ className }: { className?: string }) {
 
       setFavoritos(novaLista);
       salvarFavoritosLocal(novaLista);
-      agendarPersistenciaRemota(cfg, novaLista, 2000);
+      agendarPersistenciaRemota(lerConfig(), novaLista, 2000);
     }
   };
 
@@ -732,7 +750,7 @@ export function BarraFavoritos({ className }: { className?: string }) {
   const excluirFavorito = (id: string) => {
     const novaLista = favoritos.filter((f) => f.id !== id);
     setFavoritos(novaLista);
-    agendarPersistenciaRemota(cfg, novaLista, 300);
+    agendarPersistenciaRemota(lerConfig(), novaLista, 300);
   };
 
   // Submissão do formulário de salvar/adicionar
@@ -746,6 +764,7 @@ export function BarraFavoritos({ className }: { className?: string }) {
 
     const urlNormalizada = normalizarUrl(urlLimpa);
     const nomeLimpo = formNome.trim() || undefined;
+    const configAtual = lerConfig();
 
     if (itemEditando) {
       // Editar existente
@@ -753,7 +772,7 @@ export function BarraFavoritos({ className }: { className?: string }) {
         f.id === itemEditando.id ? { ...f, url: urlNormalizada, nome: nomeLimpo } : f,
       );
       setFavoritos(novaLista);
-      agendarPersistenciaRemota(cfg, novaLista, 300);
+      agendarPersistenciaRemota(configAtual, novaLista, 300);
     } else {
       // Novo item
       const novoItem: FavoritoItem = {
@@ -764,7 +783,7 @@ export function BarraFavoritos({ className }: { className?: string }) {
       };
       const novaLista = [...favoritos, novoItem];
       setFavoritos(novaLista);
-      agendarPersistenciaRemota(cfg, novaLista, 300);
+      agendarPersistenciaRemota(configAtual, novaLista, 300);
     }
 
     setModalAberto(false);

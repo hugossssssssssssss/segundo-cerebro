@@ -93,6 +93,40 @@ describe("preferenciasApp", () => {
     expect(locais.favoritos[0]?.nome).toBe("Google");
   });
 
+  it("reconcilia favoritos e menus vindos de arquivos específicos (.klaus/favoritos.json e .klaus/menu.json)", async () => {
+    vi.spyOn(github, "ler").mockImplementation(async (_cfg, caminho) => {
+      if (caminho === ".klaus/favoritos.json") {
+        return {
+          texto: JSON.stringify([
+            { id: "fav-remoto-especifico", url: "https://github.com", nome: "GitHub" },
+          ]),
+          sha: "sha_fav",
+        };
+      }
+      if (caminho === ".klaus/menu.json") {
+        return {
+          texto: JSON.stringify([
+            {
+              id: "grupo-custom",
+              titulo: "Trabalho",
+              itens: [{ id: "tarefas", para: "/tarefas", rotulo: "Minhas Tarefas", iconeNome: "CheckSquare" }],
+            },
+          ]),
+          sha: "sha_menu",
+        };
+      }
+      return null as any;
+    });
+
+    const res = await sincronizarTudoComGithub(cfg);
+    expect(res.sucesso).toBe(true);
+
+    const locais = lerTodasPreferenciasLocal();
+    expect(locais.favoritos.some((f) => f.id === "fav-remoto-especifico")).toBe(true);
+    expect(locais.menu[0]?.titulo).toBe("Trabalho");
+    expect(locais.menu[0]?.itens[0]?.rotulo).toBe("Minhas Tarefas");
+  });
+
   it("executa envio forçado local para o GitHub sem erros", async () => {
     vi.spyOn(github, "gravar").mockResolvedValue("novo_sha_456");
 
