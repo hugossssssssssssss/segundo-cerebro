@@ -44,13 +44,40 @@ describe("MenuAcoesTarefa", () => {
     const trigger = screen.getByLabelText("Opções para Criar Design System");
     await userEvent.click(trigger);
 
-    expect(screen.getByText("Marcar como feita")).toBeTruthy();
-    expect(screen.getByText("Adiar para amanhã (+1 dia)")).toBeTruthy();
+    expect(screen.getByLabelText("Marcar como feita")).toBeTruthy();
+    expect(screen.getByText("Adiar")).toBeTruthy();
     expect(screen.getByText("Registrar entrega no PDI")).toBeTruthy();
-    expect(screen.getByText("Duplicar tarefa")).toBeTruthy();
+    expect(screen.getByLabelText("Duplicar tarefa")).toBeTruthy();
     expect(screen.getByText("Excluir tarefa")).toBeTruthy();
 
-    await userEvent.click(screen.getByText("Marcar como feita"));
+    // Clica no botão de alternar status
+    await userEvent.click(screen.getByLabelText("Marcar como feita"));
     expect(aoAlternarStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it("abre o submenu de adiar e dispara aoAdiarPrazo", async () => {
+    const aoAdiarPrazo = vi.fn();
+
+    render(
+      <MenuAcoesTarefa
+        tarefa={mockTarefa}
+        triggerVisivelSempre={true}
+        aoAdiarPrazo={aoAdiarPrazo}
+      />
+    );
+
+    const trigger = screen.getByLabelText("Opções para Criar Design System");
+    await userEvent.click(trigger);
+
+    const btnAdiar = screen.getByText("Adiar");
+    await userEvent.click(btnAdiar);
+
+    expect(screen.getByText("Amanhã")).toBeTruthy();
+    expect(screen.getByText("3 dias")).toBeTruthy();
+    expect(screen.getByText("1 semana")).toBeTruthy();
+    expect(screen.getByText("1 mês")).toBeTruthy();
+
+    await userEvent.click(screen.getByText("Amanhã"));
+    expect(aoAdiarPrazo).toHaveBeenCalledWith(1);
   });
 });
