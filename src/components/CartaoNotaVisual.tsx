@@ -242,7 +242,7 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
 
               {snippet && (
                 <span className="text-xs text-muted-foreground/80 truncate hidden md:inline-block flex-1">
-                  — {snippet}
+                  — {renderizarMarkdownInline(snippet)}
                 </span>
               )}
             </div>

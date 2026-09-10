@@ -1,15 +1,26 @@
 import type { ReactNode } from "react";
 
+export interface OpcoesMarkdownInline {
+  classeNegrito?: string;
+  classeItalico?: string;
+  classeCodigo?: string;
+  classeMencao?: string;
+  classeLink?: string;
+}
+
 /**
  * Renderiza trechos de texto com formatação inline de Markdown:
- * - **negrito** e __negrito__ -> <strong>
+ * - **negrito** e __negrito__ -> <strong> com tonalidade suave de descrição
  * - *itálico* e _itálico_ -> <em>
  * - `código` -> <code>
  * - ~~tachado~~ -> <del>
  * - [link](url) -> <a>
  * - @menção -> <span className="text-primary font-semibold">
  */
-export function renderizarMarkdownInline(texto: string): ReactNode {
+export function renderizarMarkdownInline(
+  texto: string,
+  opcoes?: OpcoesMarkdownInline
+): ReactNode {
   if (!texto || typeof texto !== "string") return null;
 
   // Se não contém nenhum caractere especial de formatação, retorna o texto puro
@@ -31,23 +42,29 @@ export function renderizarMarkdownInline(texto: string): ReactNode {
     }
 
     if (match[1] && match[2]) {
-      // Negrito: **texto** ou __texto__
+      // Negrito com tonalidade suave de cinza para manter visual de descrição
       partes.push(
-        <strong key={`b-${match.index}`} className="font-bold text-foreground">
-          {renderizarMarkdownInline(match[2])}
+        <strong
+          key={`b-${match.index}`}
+          className={opcoes?.classeNegrito || "font-semibold text-inherit"}
+        >
+          {renderizarMarkdownInline(match[2], opcoes)}
         </strong>
       );
     } else if (match[3] && match[4]) {
       // Itálico: *texto* ou _texto_
       partes.push(
-        <em key={`i-${match.index}`} className="italic">
+        <em
+          key={`i-${match.index}`}
+          className={opcoes?.classeItalico || "italic text-inherit"}
+        >
           {match[4]}
         </em>
       );
     } else if (match[5] && match[6]) {
       // Tachado: ~~texto~~
       partes.push(
-        <del key={`d-${match.index}`} className="line-through opacity-80">
+        <del key={`d-${match.index}`} className="line-through opacity-70">
           {match[6]}
         </del>
       );
@@ -56,7 +73,10 @@ export function renderizarMarkdownInline(texto: string): ReactNode {
       partes.push(
         <code
           key={`c-${match.index}`}
-          className="rounded bg-muted/80 px-1 py-0.5 font-mono text-[11px] text-primary"
+          className={
+            opcoes?.classeCodigo ||
+            "rounded bg-muted/60 px-1 py-0.5 font-mono text-[11px] text-muted-foreground"
+          }
         >
           {match[8]}
         </code>
@@ -70,7 +90,7 @@ export function renderizarMarkdownInline(texto: string): ReactNode {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="text-primary hover:underline font-medium"
+          className={opcoes?.classeLink || "text-primary/90 hover:underline font-medium"}
         >
           {match[9]}
         </a>
@@ -80,7 +100,7 @@ export function renderizarMarkdownInline(texto: string): ReactNode {
       partes.push(
         <span
           key={`m-${match.index}`}
-          className="text-primary font-semibold hover:underline"
+          className={opcoes?.classeMencao || "text-primary/90 font-medium hover:underline"}
         >
           @{match[11]}
         </span>
