@@ -33,7 +33,6 @@ import { Botao, Campo, Aviso, Vazio, Carregando, ModalConfirmacao } from "@/comp
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
-import { SeloStatus } from "@/components/SeloStatus";
 import { CartaoLousaVisual } from "@/components/CartaoLousaVisual";
 import { toast } from "@/lib/toast";
 
@@ -582,12 +581,6 @@ export default function Lousas() {
         descricao="Desenhe diagramas, mapas mentais e conecte aos seus projetos, notas e metas."
         icone={<Layout size={20} />}
         corIcone="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
-        badge={
-          <SeloStatus
-            rotulo={`${visiveis.length} ${visiveis.length === 1 ? "lousa" : "lousas"}`}
-            tom="primario"
-          />
-        }
         acoes={
           <Botao variante="primario" onClick={novaLousa}>
             <Plus size={16} />

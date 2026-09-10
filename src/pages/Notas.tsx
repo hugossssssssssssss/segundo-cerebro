@@ -56,7 +56,6 @@ import {
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
-import { SeloStatus } from "@/components/SeloStatus";
 import { BarraFiltrosAvancados, filtrarItensPorRegras, type DefinicaoPropriedade, type RegraFiltro } from "@/components/BarraFiltrosAvancados";
 import { DropdownNovoViaModelo } from "@/components/DropdownNovoViaModelo";
 import { CartaoNotaVisual } from "@/components/CartaoNotaVisual";
@@ -1279,12 +1278,6 @@ export default function Notas() {
         descricao="Anotações e rascunhos em Markdown armazenados no seu repositório."
         icone={<FileText size={20} />}
         corIcone="bg-amber-500/10 text-amber-600 dark:text-amber-400"
-        badge={
-          <SeloStatus
-            rotulo={`${visiveis.length} ${visiveis.length === 1 ? "nota" : "notas"}`}
-            tom="primario"
-          />
-        }
         acoes={
           <>
             <Tooltip conteudo="Criar nova pasta de notas" posicao="bottom">
