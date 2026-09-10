@@ -238,6 +238,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 > Canal de sincronização inter-abas (BroadcastChannel). Notifica outras abas abertas no mesmo navegador quando uma gravação, exclusão ou alteração de acervo ocorre, acionando o evento "acervo-atualizado" sem precisar de nova requisição ao servidor.
 
 **Exportações principais:**
+- `tipo` **`MensagemSync`**
 - `funcao` **`notificarOutrasAbas`** — _Notifica todas as outras abas sobre mudanças no acervo_
 
 ### 2. Parser de Markdown, Frontmatter & Dados
@@ -906,5 +907,6 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 > Versão atual da aplicação Klaus. REGRA MANDATÓRIA PARA AGENTES DE IA: Sempre que implementar uma nova funcionalidade, correção ou alteração no código, você DEVE incrementar esta versão (ex: 1.1.0 -> 1.1.1 ou 1.2.0) e atualizar também o campo "version" no package.json.
 
 **Exportações principais:**
-- `constante` **`versao`** — _Versão atual da aplicação Klaus. REGRA MANDATÓRIA PARA AGENTES DE IA: Sempre que implementar uma nov..._
+- `constante` **`VERSAO_APP`** — _Versão atual da aplicação Klaus. REGRA MANDATÓRIA PARA AGENTES DE IA: Sempre que implementar uma nov..._
+- `constante` **`versao`**
 

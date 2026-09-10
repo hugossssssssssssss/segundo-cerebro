@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Botao, Campo } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { sanitizarNomePasta } from "@/lib/pastas";
 import type { Nota } from "@/lib/tipos";
 
 export type AcaoMenuContexto =
@@ -99,7 +100,7 @@ export function MenuContextoNotas({
     const posY = Math.min(y, window.innerHeight - alturaEstimada - 8);
 
     function confirmarCriarPasta() {
-        const nome = nomePasta.trim();
+        const nome = sanitizarNomePasta(nomePasta);
         if (!nome) return;
         aoAcao({ tipo: "criar_pasta", nome });
         setNomePasta("");

@@ -10,9 +10,10 @@ import { dispararAtualizacaoAcervo } from "./eventos";
 
 const CANAL_NOME = "klaus-sync-channel";
 
-type MensagemSync =
+export type MensagemSync =
   | { tipo: "ACERVO_ATUALIZADO"; caminho?: string }
-  | { tipo: "INVALIDAR_CACHE" };
+  | { tipo: "INVALIDAR_CACHE" }
+  | { tipo: "PASTAS_ATUALIZADAS"; caminho?: string };
 
 let channel: BroadcastChannel | null = null;
 
@@ -25,6 +26,8 @@ if (typeof window !== "undefined" && "BroadcastChannel" in window) {
       if (e.data.tipo === "ACERVO_ATUALIZADO" || e.data.tipo === "INVALIDAR_CACHE") {
         const caminho = "caminho" in e.data ? e.data.caminho : undefined;
         dispararAtualizacaoAcervo(caminho);
+      } else if (e.data.tipo === "PASTAS_ATUALIZADAS") {
+        window.dispatchEvent(new CustomEvent("klaus-pastas-atualizadas", { detail: e.data }));
       }
     };
   } catch {
@@ -37,7 +40,11 @@ export function notificarOutrasAbas(caminho?: string) {
   if (!channel) return;
   try {
     channel.postMessage({ tipo: "ACERVO_ATUALIZADO", caminho });
+    if (caminho && (caminho.startsWith("notas/") || caminho.startsWith("referencias/"))) {
+      channel.postMessage({ tipo: "PASTAS_ATUALIZADAS", caminho });
+    }
   } catch {
     // ignora falha de envio
   }
 }
+

@@ -66,6 +66,13 @@ import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { MenuContextoNotas, type AcaoMenuContexto } from "@/components/MenuContextoNotas";
 import { toast } from "@/lib/toast";
 import { TIPO_MIME_ITEM_KLAUS, calcularSlotPorCoordenadas, EVENTO_SOLTAR_ITEM } from "@/lib/arrastoItem";
+import {
+  sanitizarNomePasta,
+  carregarPastasCriadas,
+  salvarPastaCriada,
+  renomearPastaCriada,
+  EVENTO_PASTAS_ATUALIZADAS,
+} from "@/lib/pastas";
 
 import type { Nota } from "@/lib/tipos";
 
@@ -100,7 +107,18 @@ export default function Notas() {
   );
 
   const [pastaAtual, setPastaAtual] = useState("");
-  const [pastasCriadas, setPastasCriadas] = useState<string[]>([]);
+  const [pastasCriadas, setPastasCriadas] = useState<string[]>(() => carregarPastasCriadas("notas"));
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (!detail || detail.area === "notas" || !detail.area) {
+        setPastasCriadas(carregarPastasCriadas("notas"));
+      }
+    };
+    window.addEventListener(EVENTO_PASTAS_ATUALIZADAS, handler);
+    return () => window.removeEventListener(EVENTO_PASTAS_ATUALIZADAS, handler);
+  }, []);
   const [pastaEmEdicao, setPastaEmEdicao] = useState<{ caminhoCompleto: string; nomeAtual: string } | null>(null);
   const [textoNovoNomePasta, setTextoNovoNomePasta] = useState("");
   const [abaPasta, setAbaPasta] = useState<"documentos" | "tarefas" | "moodboard">("documentos");
@@ -897,13 +915,8 @@ export default function Notas() {
       }
 
       // Atualiza pastasCriadas
-      setPastasCriadas((atuais) => {
-        const semAntiga = atuais.filter((p) => p !== caminhoAntigo && !p.startsWith(`${caminhoAntigo}/`));
-        const novas = atuais
-          .filter((p) => p.startsWith(`${caminhoAntigo}/`))
-          .map((p) => `${caminhoNovo}${p.slice(caminhoAntigo.length)}`);
-        return [...new Set([...semAntiga, caminhoNovo, ...novas])];
-      });
+      renomearPastaCriada("notas", caminhoAntigo, caminhoNovo);
+      setPastasCriadas(carregarPastasCriadas("notas"));
 
       // Se a pasta atual aberta era esta ou descendente, atualiza a navegação
       if (pastaAtual === caminhoAntigo) {
@@ -925,10 +938,11 @@ export default function Notas() {
   async function processarAcaoMenu(acao: AcaoMenuContexto) {
     switch (acao.tipo) {
       case "criar_pasta": {
-        const nome = acao.nome.replace(/[^a-zA-Z0-9\s-]/g, "").trim().replace(/\s+/g, "-").toLowerCase();
+        const nome = sanitizarNomePasta(acao.nome);
         if (!nome) return;
         const novaPasta = pastaAtual ? `${pastaAtual}/${nome}` : nome;
-        setPastasCriadas((atual) => [...new Set([...atual, novaPasta])]);
+        salvarPastaCriada("notas", novaPasta);
+        setPastasCriadas(carregarPastasCriadas("notas"));
         setPastaAtual(novaPasta);
         toast(`Pasta "${nome}" criada`, { tipo: "sucesso" });
         break;

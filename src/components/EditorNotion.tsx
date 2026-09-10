@@ -35,6 +35,7 @@ import { montarIndice, alvosUnicos, filtrarAlvos, type Alvo } from "@/lib/links"
 import { restaurarWikilinks, nomeLivre, escreverMarkdown } from "@/lib/markdown";
 import { formatarTagLembrete } from "@/lib/inbox";
 import { converterHtmlParaMarkdownClipboard, ehHtmlFormatadoRelevante } from "@/lib/pasteHtmlParaMarkdown";
+import { aplicarAlinhamentoAoMarkdown, restaurarAlinhamentoEmBlocos } from "@/lib/alinhamentoMarkdown";
 import { tarefaParaArquivo } from "@/lib/entidades";
 import { gravar } from "@/lib/github";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
@@ -737,7 +738,8 @@ export function EditorNotion({
       try {
         const blocos = await editor.tryParseMarkdownToBlocks(markdown || "");
         if (!cancelado && Array.isArray(blocos)) {
-          editor.replaceBlocks(editor.document, blocos);
+          const blocosComAlinhamento = restaurarAlinhamentoEmBlocos(blocos, markdown || "");
+          editor.replaceBlocks(editor.document, blocosComAlinhamento);
           ultimoMd.current = markdown;
           setPronto(true);
         }
@@ -793,7 +795,8 @@ export function EditorNotion({
     try {
       const md = await editor.blocksToMarkdownLossy(editor.document);
       if (typeof md === "string") {
-        const limpo = restaurarWikilinks(md);
+        const comAlinhamento = aplicarAlinhamentoAoMarkdown(md, editor.document as any);
+        const limpo = restaurarWikilinks(comAlinhamento);
         if (limpo !== ultimoMd.current) {
           ultimoMd.current = limpo;
           onChangeRef.current(limpo);

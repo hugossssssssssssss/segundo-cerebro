@@ -65,6 +65,12 @@ import { cn } from "@/lib/utils";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { toast } from "@/lib/toast";
 import { gerarPropsArrasto } from "@/lib/arrastoItem";
+import {
+  sanitizarNomePasta,
+  carregarPastasCriadas,
+  salvarPastaCriada,
+  EVENTO_PASTAS_ATUALIZADAS,
+} from "@/lib/pastas";
 
 type ModoVisaoRef = "masonry" | "grade" | "lista";
 
@@ -134,7 +140,18 @@ export default function Referencias() {
 
   // ── Pastas ────────────────────────────────────────────────────────────────
   const [pastaAtual, setPastaAtual] = useState("");
-  const [pastasCriadas, setPastasCriadas] = useState<string[]>([]);
+  const [pastasCriadas, setPastasCriadas] = useState<string[]>(() => carregarPastasCriadas("referencias"));
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (!detail || detail.area === "referencias" || !detail.area) {
+        setPastasCriadas(carregarPastasCriadas("referencias"));
+      }
+    };
+    window.addEventListener(EVENTO_PASTAS_ATUALIZADAS, handler);
+    return () => window.removeEventListener(EVENTO_PASTAS_ATUALIZADAS, handler);
+  }, []);
 
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
 
@@ -391,11 +408,11 @@ export default function Referencias() {
   // ── Criar pasta ────────────────────────────────────────────────────────────
   function confirmarCriarPasta(nome: string) {
     setModalPastaAberto(false);
-    if (!nome) return;
-    const slug = nome.replace(/[^a-zA-Z0-9\s-]/g, "").trim().replace(/\s+/g, "-").toLowerCase();
-    if (!slug) return;
-    const novaPasta = pastaAtual ? `${pastaAtual}/${slug}` : slug;
-    setPastasCriadas((atual) => [...new Set([...atual, novaPasta])]);
+    const nomeLimpo = sanitizarNomePasta(nome);
+    if (!nomeLimpo) return;
+    const novaPasta = pastaAtual ? `${pastaAtual}/${nomeLimpo}` : nomeLimpo;
+    salvarPastaCriada("referencias", novaPasta);
+    setPastasCriadas(carregarPastasCriadas("referencias"));
     setPastaAtual(novaPasta);
   }
 
