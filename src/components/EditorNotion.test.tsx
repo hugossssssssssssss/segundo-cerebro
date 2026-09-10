@@ -103,3 +103,24 @@ describe("formatarTextoAoColar", () => {
   });
 });
 
+describe("BlockNote parse e alinhamento", () => {
+  it("restaura alinhamentos ao converter markdown para blocos do BlockNote", async () => {
+    const { BlockNoteEditor } = await import("@blocknote/core");
+    const { extrairAlinhamentoDoMarkdown, restaurarAlinhamentoEmBlocos } = await import("@/lib/alinhamentoMarkdown");
+    
+    const editor = BlockNoteEditor.create();
+    const md = "<!-- align:center -->\n# Título Centralizado\n\nTexto normal à esquerda\n\n<!-- align:right -->\nAssinatura à direita";
+    
+    const { markdownLimpo, alinhamentos } = extrairAlinhamentoDoMarkdown(md);
+    const blocos = await editor.tryParseMarkdownToBlocks(markdownLimpo);
+    const blocosComAlinhamento = restaurarAlinhamentoEmBlocos(blocos, alinhamentos);
+    editor.replaceBlocks(editor.document, blocosComAlinhamento);
+
+    expect(editor.document).toHaveLength(3);
+    expect((editor.document[0].props as any).textAlignment).toBe("center");
+    expect((editor.document[1].props as any).textAlignment).toBe("left");
+    expect((editor.document[2].props as any).textAlignment).toBe("right");
+  });
+});
+
+

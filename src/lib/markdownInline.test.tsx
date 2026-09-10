@@ -57,6 +57,14 @@ describe("renderizarMarkdownInline", () => {
     expect(links).toHaveLength(0);
     expect(screen.getByText(/suporte@exemplo\.com/)).toBeTruthy();
   });
+
+  it("diferencia e-mail de site em uma mesma frase", () => {
+    render(<div>{renderizarMarkdownInline("Envie um e-mail para contato@acme.com ou acesse figma.com")}</div>);
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(1);
+    expect(links[0].getAttribute("href")).toBe("https://figma.com");
+    expect(screen.getByText(/contato@acme\.com/)).toBeTruthy();
+  });
 });
 
 describe("prepararSnippetPreview", () => {

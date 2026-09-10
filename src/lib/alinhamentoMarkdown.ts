@@ -2,15 +2,11 @@
  * Utilitários para preservação de alinhamento de texto (esquerda, centro, direita, justificado)
  * entre o editor BlockNote e arquivos Markdown (.md).
  *
- * Como a especificação CommonMark padrão não possui sintaxe nativa para alinhamento de blocos,
- * utilizamos marcações limpas em HTML/comentários suportadas por visualizadores Markdown e GitHub:
- * Exemplo:
- * <!-- align:center -->
- * Texto centralizado
- *
- * Ou tags HTML como:
- * <div align="center">Texto centralizado</div>
- * <p align="right">Texto alinhado à direita</p>
+ * O Markdown padrão não possui sintaxe nativa para alinhamento de texto.
+ * Usamos marcações limpas `<!-- align:center -->`, `<!-- align:right -->`, etc.
+ * Antes de passar o Markdown para o parser do BlockNote, limpamos essas anotações
+ * para evitar que o BlockNote quebre os blocos, e re-aplicamos o textAlignment diretamente
+ * nas propriedades dos blocos gerados.
  */
 
 export type TipoAlinhamento = "left" | "center" | "right" | "justify";
@@ -24,7 +20,133 @@ export interface BlocoComAlinhamento {
 }
 
 /**
- * Anota o markdown com metadados de alinhamento para cada bloco que não seja "left".
+ * Analisa o markdown, extrai o alinhamento de cada seção/bloco e retorna o Markdown limpo
+ * pronto para ser parseado com segurança pelo BlockNote.
+ */
+export function extrairAlinhamentoDoMarkdown(markdown: string): {
+  markdownLimpo: string;
+  alinhamentos: TipoAlinhamento[];
+} {
+  if (!markdown || typeof markdown !== "string") {
+    return { markdownLimpo: "", alinhamentos: [] };
+  }
+
+  // Se não tem nenhuma marcação de alinhamento, retorna o markdown como está
+  if (
+    !/<!--\s*align:\s*(center|right|justify|left)\s*-->/i.test(markdown) &&
+    !/<(?:p|div)\s+align=["'](center|right|justify|left)["']/i.test(markdown) &&
+    !/<center>/i.test(markdown)
+  ) {
+    return { markdownLimpo: markdown, alinhamentos: [] };
+  }
+
+  const linhas = markdown.split("\n");
+  const linhasLimpas: string[] = [];
+  const alinhamentos: TipoAlinhamento[] = [];
+
+  let alinhamentoAtual: TipoAlinhamento = "left";
+  let temNovoBloco = false;
+
+  for (let i = 0; i < linhas.length; i++) {
+    const linha = linhas[i];
+    const linhaTrim = linha.trim();
+
+    // Linha de comentário de alinhamento
+    const matchComentario = linhaTrim.match(/^<!--\s*align:\s*(center|right|justify|left)\s*-->$/i);
+    if (matchComentario) {
+      alinhamentoAtual = matchComentario[1].toLowerCase() as TipoAlinhamento;
+      continue;
+    }
+
+    // Linha com tag HTML de alinhamento
+    const matchTag = linhaTrim.match(/^<(?:p|div)\s+align=["'](center|right|justify|left)["']>/i);
+    if (matchTag) {
+      alinhamentoAtual = matchTag[1].toLowerCase() as TipoAlinhamento;
+      const conteudoLinha = linhaTrim
+        .replace(/^<(?:p|div)\s+align=["'][^"']+["']>/i, "")
+        .replace(/<\/(?:p|div)>$/i, "");
+      if (conteudoLinha) {
+        linhasLimpas.push(conteudoLinha);
+        alinhamentos.push(alinhamentoAtual);
+        alinhamentoAtual = "left";
+      }
+      continue;
+    }
+
+    if (linhaTrim === "<center>") {
+      alinhamentoAtual = "center";
+      continue;
+    }
+    if (linhaTrim === "</center>") {
+      alinhamentoAtual = "left";
+      continue;
+    }
+
+    if (!linhaTrim) {
+      linhasLimpas.push(linha);
+      temNovoBloco = true;
+      continue;
+    }
+
+    // Primeira linha de um bloco de conteúdo
+    if (temNovoBloco || alinhamentos.length === 0) {
+      alinhamentos.push(alinhamentoAtual);
+      alinhamentoAtual = "left";
+      temNovoBloco = false;
+    }
+
+    linhasLimpas.push(linha);
+  }
+
+  // Limpa possíveis tags inline residuais
+  const mdLimpo = linhasLimpas
+    .join("\n")
+    .replace(/<!--\s*align:\s*(center|right|justify|left)\s*-->/gi, "")
+    .replace(/<\/?center>/gi, "");
+
+  return {
+    markdownLimpo: mdLimpo,
+    alinhamentos,
+  };
+}
+
+/**
+ * Restaura o textAlignment nos blocos gerados a partir do markdown limpo.
+ */
+export function restaurarAlinhamentoEmBlocos<T extends BlocoComAlinhamento>(
+  blocos: T[],
+  markdownOuAlinhamentos: string | TipoAlinhamento[]
+): T[] {
+  if (!Array.isArray(blocos) || blocos.length === 0) {
+    return blocos;
+  }
+
+  let alinhamentos: TipoAlinhamento[] = [];
+  if (Array.isArray(markdownOuAlinhamentos)) {
+    alinhamentos = markdownOuAlinhamentos;
+  } else if (typeof markdownOuAlinhamentos === "string") {
+    alinhamentos = extrairAlinhamentoDoMarkdown(markdownOuAlinhamentos).alinhamentos;
+  }
+
+  if (!alinhamentos || alinhamentos.length === 0) {
+    return blocos;
+  }
+
+  return blocos.map((bloco, idx) => {
+    const align = idx < alinhamentos.length ? alinhamentos[idx] : "left";
+    const novoBloco = {
+      ...bloco,
+      props: {
+        ...(bloco.props || {}),
+        textAlignment: align || "left",
+      },
+    };
+    return novoBloco;
+  });
+}
+
+/**
+ * Converte blocos do BlockNote em Markdown anotado com comentários de alinhamento.
  */
 export function aplicarAlinhamentoAoMarkdown(
   markdown: string,
@@ -34,112 +156,34 @@ export function aplicarAlinhamentoAoMarkdown(
     return markdown;
   }
 
-  // Verifica se há algum bloco com alinhamento especial
   const temAlinhamentoEspecial = blocos.some(
     (b) => b.props?.textAlignment && b.props.textAlignment !== "left"
   );
   if (!temAlinhamentoEspecial) return markdown;
 
-  const linhas = markdown.split("\n");
+  // Divide o markdown por blocos/parágrafos separados por linhas em branco
+  const secoes = markdown.split(/\n\n+/);
   const resultado: string[] = [];
 
-  // Mapeia texto aproximado de cada bloco para seu alinhamento
-  let indiceBloco = 0;
-  for (let i = 0; i < linhas.length; i++) {
-    const linha = linhas[i];
-    const linhaTrim = linha.trim();
-
-    // Linha vazia não recebe anotação
-    if (!linhaTrim) {
-      resultado.push(linha);
+  let idxBloco = 0;
+  for (let i = 0; i < secoes.length; i++) {
+    const secao = secoes[i].trim();
+    if (!secao) {
+      resultado.push(secoes[i]);
       continue;
     }
 
-    // Ignora linhas que já são anotações
-    if (linhaTrim.startsWith("<!-- align:") || linhaTrim.startsWith("<p align=") || linhaTrim.startsWith("<div align=")) {
-      resultado.push(linha);
-      continue;
+    const blocoAtual = blocos[idxBloco];
+    const align = blocoAtual?.props?.textAlignment as TipoAlinhamento | undefined;
+
+    if (align && align !== "left") {
+      resultado.push(`<!-- align:${align} -->\n${secao}`);
+    } else {
+      resultado.push(secao);
     }
 
-    const blocoAtual = blocos[indiceBloco];
-    if (blocoAtual) {
-      const align = blocoAtual.props?.textAlignment as TipoAlinhamento | undefined;
-      if (align && align !== "left") {
-        resultado.push(`<!-- align:${align} -->`);
-      }
-      indiceBloco++;
-    }
-
-    resultado.push(linha);
+    idxBloco++;
   }
 
-  return resultado.join("\n");
-}
-
-/**
- * Analisa o markdown e extrai os alinhamentos correspondentes para os blocos gerados pelo BlockNote.
- */
-export function restaurarAlinhamentoEmBlocos<T extends BlocoComAlinhamento>(
-  blocos: T[],
-  markdown: string
-): T[] {
-  if (!Array.isArray(blocos) || blocos.length === 0 || !markdown) {
-    return blocos;
-  }
-
-  // Divide o markdown em linhas e extrai o alinhamento de cada parágrafo/bloco
-  const linhas = markdown.split("\n");
-  const alinhamentosDosBlocos: TipoAlinhamento[] = [];
-
-  let alinhamentoPendente: TipoAlinhamento | null = null;
-
-  for (let i = 0; i < linhas.length; i++) {
-    const linha = linhas[i].trim();
-    if (!linha) continue;
-
-    const matchComentario = linha.match(/^<!--\s*align:\s*(center|right|justify|left)\s*-->$/i);
-    if (matchComentario) {
-      alinhamentoPendente = matchComentario[1].toLowerCase() as TipoAlinhamento;
-      continue;
-    }
-
-    const matchTagP = linha.match(/<p\s+align=["'](center|right|justify|left)["']/i);
-    const matchTagDiv = linha.match(/<div\s+align=["'](center|right|justify|left)["']/i);
-    if (matchTagP || matchTagDiv) {
-      alinhamentoPendente = ((matchTagP || matchTagDiv)![1]).toLowerCase() as TipoAlinhamento;
-    }
-
-    alinhamentosDosBlocos.push(alinhamentoPendente || "left");
-    alinhamentoPendente = null;
-  }
-
-  const temAlgumAlinhamento = alinhamentosDosBlocos.some((a) => a !== "left");
-  if (!temAlgumAlinhamento) {
-    return blocos;
-  }
-
-  // Percorre os blocos e atribui textAlignment correspondente 1-a-1
-  return blocos.map((bloco, idx) => {
-    const novoBloco = { ...bloco, props: { ...(bloco.props || {}) } };
-
-    // Limpa anotações residuais do conteúdo de texto se houver
-    if (Array.isArray(novoBloco.content)) {
-      novoBloco.content = novoBloco.content.map((c: any) => {
-        if (typeof c === "object" && typeof c.text === "string") {
-          let textoLimpo = c.text
-            .replace(/<!--\s*align:\s*(center|right|justify|left)\s*-->/gi, "")
-            .replace(/<\/?(p|div)\s+align=["'][^"']+["']>/gi, "")
-            .replace(/<\/(p|div)>/gi, "");
-          return { ...c, text: textoLimpo };
-        }
-        return c;
-      });
-    }
-
-    if (idx < alinhamentosDosBlocos.length) {
-      novoBloco.props.textAlignment = alinhamentosDosBlocos[idx];
-    }
-
-    return novoBloco;
-  });
+  return resultado.join("\n\n");
 }

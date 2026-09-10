@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   aplicarAlinhamentoAoMarkdown,
+  extrairAlinhamentoDoMarkdown,
   restaurarAlinhamentoEmBlocos,
   type BlocoComAlinhamento,
 } from "./alinhamentoMarkdown";
@@ -34,7 +35,12 @@ describe("alinhamentoMarkdown", () => {
     expect(mdComAlinhamento).toContain("<!-- align:center -->");
     expect(mdComAlinhamento).toContain("<!-- align:right -->");
 
-    // Simula blocos recém criados pelo parser markdown (onde o default é textAlignment left)
+    const { markdownLimpo, alinhamentos } = extrairAlinhamentoDoMarkdown(mdComAlinhamento);
+    expect(markdownLimpo).not.toContain("<!-- align:");
+    expect(markdownLimpo).toContain("# Título Centralizado");
+    expect(alinhamentos).toEqual(["center", "left", "right"]);
+
+    // Simula blocos gerados pelo BlockNote a partir do markdownLimpo
     const blocosParseados: BlocoComAlinhamento[] = [
       {
         id: "b1",
@@ -56,7 +62,7 @@ describe("alinhamentoMarkdown", () => {
       },
     ];
 
-    const blocosRestaurados = restaurarAlinhamentoEmBlocos(blocosParseados, mdComAlinhamento);
+    const blocosRestaurados = restaurarAlinhamentoEmBlocos(blocosParseados, alinhamentos);
 
     expect(blocosRestaurados[0].props?.textAlignment).toBe("center");
     expect(blocosRestaurados[1].props?.textAlignment).toBe("left");

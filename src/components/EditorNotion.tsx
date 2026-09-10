@@ -42,7 +42,8 @@ import { montarIndice, alvosUnicos, type Alvo } from "@/lib/links";
 import { restaurarWikilinks, nomeLivre, escreverMarkdown } from "@/lib/markdown";
 import { formatarTagLembrete } from "@/lib/inbox";
 import { converterHtmlParaMarkdownClipboard, ehHtmlFormatadoRelevante } from "@/lib/pasteHtmlParaMarkdown";
-import { aplicarAlinhamentoAoMarkdown, restaurarAlinhamentoEmBlocos } from "@/lib/alinhamentoMarkdown";
+import { restaurarAlinhamentoEmBlocos, extrairAlinhamentoDoMarkdown } from "@/lib/alinhamentoMarkdown";
+import { buscarEmojisBilingue } from "@/lib/emojisBilingue";
 import { tarefaParaArquivo } from "@/lib/entidades";
 import { gravar } from "@/lib/github";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
@@ -940,6 +941,24 @@ export function EditorNotion({
     [editor],
   );
 
+  /** Monta os itens de sugestão de emoji quando o usuário digita : */
+  const handleGetEmojiItems = useCallback(
+    async (query: string) => {
+      // Se o usuário digitou espaço, cancela o menu
+      if (query.includes(" ")) return [];
+      const encontrados = buscarEmojisBilingue(query, 30);
+      return encontrados.map((item) => ({
+        title: `${item.emoji} ${item.nomePt}`,
+        subtext: `:${item.nomeEn}:`,
+        icon: <span className="text-base leading-none select-none">{item.emoji}</span>,
+        onItemClick: () => {
+          editor.insertInlineContent([`${item.emoji} `]);
+        },
+      }));
+    },
+    [editor],
+  );
+
   // acompanha o botão de tema do cabeçalho
   useEffect(() => {
     const observador = new MutationObserver(() =>
@@ -963,9 +982,10 @@ export function EditorNotion({
     async function atualizarBlocos() {
       if (markdown === ultimoMd.current && prontoRef.current) return;
       try {
-        const blocos = await editor.tryParseMarkdownToBlocks(markdown || "");
+        const { markdownLimpo, alinhamentos } = extrairAlinhamentoDoMarkdown(markdown || "");
+        const blocos = await editor.tryParseMarkdownToBlocks(markdownLimpo);
         if (!cancelado && Array.isArray(blocos)) {
-          const blocosComAlinhamento = restaurarAlinhamentoEmBlocos(blocos, markdown || "");
+          const blocosComAlinhamento = restaurarAlinhamentoEmBlocos(blocos, alinhamentos);
           editor.replaceBlocks(editor.document, blocosComAlinhamento);
           ultimoMd.current = markdown;
           setPronto(true);
@@ -1073,14 +1093,21 @@ export function EditorNotion({
 
   const handleEditorChange = useCallback(async () => {
     try {
-      const md = await editor.blocksToMarkdownLossy(editor.document);
-      if (typeof md === "string") {
-        const comAlinhamento = aplicarAlinhamentoAoMarkdown(md, editor.document as any);
-        const limpo = restaurarWikilinks(comAlinhamento);
-        if (limpo !== ultimoMd.current) {
-          ultimoMd.current = limpo;
-          onChangeRef.current(limpo);
+      const partesMd: string[] = [];
+      for (const b of editor.document) {
+        const bMd = (await editor.blocksToMarkdownLossy([b])).trim();
+        const align = (b.props as any)?.textAlignment;
+        if (align && align !== "left") {
+          partesMd.push(`<!-- align:${align} -->\n${bMd}`);
+        } else {
+          partesMd.push(bMd);
         }
+      }
+      const comAlinhamento = partesMd.join("\n\n");
+      const limpo = restaurarWikilinks(comAlinhamento);
+      if (limpo !== ultimoMd.current) {
+        ultimoMd.current = limpo;
+        onChangeRef.current(limpo);
       }
     } catch (err) {
       console.error("Erro ao converter blocos para markdown:", err);
@@ -1415,6 +1442,7 @@ export function EditorNotion({
         editable={editable && !modoLeituraMobile}
         theme={escuro ? "dark" : "light"}
         slashMenu={false}
+        emojiPicker={false}
         onChange={handleEditorChange}
       >
         {/* `@` é o gatilho principal. `[` continua atendido porque quem já
@@ -1431,6 +1459,11 @@ export function EditorNotion({
         <SuggestionMenuController
           triggerCharacter="/"
           getItems={handleGetSlashItems}
+        />
+        {/* `:` é o menu de emojis com busca bilíngue (Português e Inglês) */}
+        <SuggestionMenuController
+          triggerCharacter=":"
+          getItems={handleGetEmojiItems}
         />
       </BlockNoteView>
 

@@ -36,10 +36,9 @@ export function renderizarMarkdownInline(
     return textoLimpo;
   }
 
-  // Regex para tokens inline de markdown + URLs diretas na web
-  // Nota: URLs diretas exigem início com espaço/linha/parêntese e não capturam e-mails (que possuem @ antes do domínio)
+  // Regex para tokens inline de markdown + e-mails (texto puro) + URLs diretas na web
   const regex =
-    /(\*\*|__)(.+?)\1|(?<![*_])(\*|_)([^*_]+?)\3(?![*_])|(~~)(.+?)\5|(`)(.+?)\7|\[(.+?)\]\((.+?)\)|(?<![\w.@-])@([a-zA-ZáàâãéèêíïóôõöúüçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÜÇÑ0-9_\- \t]{1,40}?)(?=[^a-zA-ZáàâãéèêíïóôõöúüçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÜÇÑ0-9_\- \t]|$)|(?<=^|[\s(])((?:https?:\/\/|www\.)[^\s<>"'{}|\\^`]+|(?:[a-zA-Z0-9-]+\.)+(?:com\.br|com|org|net|io|co|app|dev|me|ai|edu|gov|br)(?:\/[^\s<>"'{}|\\^`]*)?)(?=[.,;!?]?(?:[\s)]|$))/gi;
+    /(\*\*|__)(.+?)\1|(?<![*_])(\*|_)([^*_]+?)\3(?![*_])|(~~)(.+?)\5|(`)(.+?)\7|\[(.+?)\]\((.+?)\)|(?<![\w.@-])@([a-zA-ZáàâãéèêíïóôõöúüçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÜÇÑ0-9_\- \t]{1,40}?)(?=[^a-zA-ZáàâãéèêíïóôõöúüçñÁÀÂÃÉÈÊÍÏÓÔÕÖÚÜÇÑ0-9_\- \t]|$)|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})|(?<=^|[\s(])((?:https?:\/\/|www\.)[^\s<>"'{}|\\^`]+|(?:[a-zA-Z0-9-]+\.)+(?:com\.br|com|org|net|io|co|app|dev|me|ai|edu|gov|br)(?:\/[^\s<>"'{}|\\^`]*)?)(?=[.,;!?]?(?:[\s)]|$))/gi;
 
   const partes: ReactNode[] = [];
   let ultimoIndex = 0;
@@ -135,9 +134,12 @@ export function renderizarMarkdownInline(
         </span>
       );
     } else if (match[12]) {
+      // E-mail capturado explicitamente: sempre texto puro, NUNCA link de site
+      partes.push(match[12]);
+    } else if (match[13]) {
       // URL direta detectada no texto (https://, http://, www., .com, .br, etc.)
-      const urlTexto = match[12];
-      // Ignora se for padrão de e-mail
+      const urlTexto = match[13];
+      // Ignora e-mails ou menções com @
       if (urlTexto.includes("@")) {
         partes.push(urlTexto);
       } else {
