@@ -308,32 +308,20 @@ export function estaConectadoGoogle(cfg?: Settings): boolean {
 }
 
 /**
- * Tenta autenticar ou renovar o token do Google silenciosamente (sem popup intrusivo).
+ * Tenta obter o token do Google silenciosamente se ainda estiver válido no storage (sem popup intrusivo).
  */
-export async function autenticarOuRenovarSilencioso(clientId?: string): Promise<string | null> {
+export async function autenticarOuRenovarSilencioso(_clientId?: string): Promise<string | null> {
   const tokenSalvo = obterTokenGoogleSalvo();
   if (tokenSalvo) return tokenSalvo;
-
-  const cfg = lerConfig();
-  const cId = (clientId || cfg.googleCalendarClientId || "").trim();
-  if (!cId || !cfg.googleCalendarAtivo) return null;
-
-  try {
-    const novoToken = await solicitarAutorizacaoGoogle(cId, "");
-    return novoToken;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 /**
- * Garante que temos um token válido antes de chamar a API.
+ * Garante que temos um token válido antes de chamar a API (somente em ações explícitas do usuário).
  */
 async function obterTokenValido(): Promise<string> {
   const tokenSalvo = obterTokenGoogleSalvo();
   if (tokenSalvo) return tokenSalvo;
-  const tokenSilencioso = await autenticarOuRenovarSilencioso();
-  if (tokenSilencioso) return tokenSilencioso;
   return solicitarAutorizacaoGoogle();
 }
 
