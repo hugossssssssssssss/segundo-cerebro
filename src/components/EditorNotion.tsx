@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { BlockNoteView } from "@blocknote/mantine";
 import {
   SuggestionMenuController,
+  GridSuggestionMenuController,
+  type DefaultReactGridSuggestionItem,
   useCreateBlockNote,
   getDefaultReactSlashMenuItems,
 } from "@blocknote/react";
@@ -943,13 +945,13 @@ export function EditorNotion({
 
   /** Monta os itens de sugestão de emoji quando o usuário digita : */
   const handleGetEmojiItems = useCallback(
-    async (query: string) => {
+    async (query: string): Promise<DefaultReactGridSuggestionItem[]> => {
       // Se o usuário digitou espaço, cancela o menu
       if (query.includes(" ")) return [];
-      const encontrados = buscarEmojisBilingue(query, 25);
+      const encontrados = buscarEmojisBilingue(query, 32);
       return encontrados.map((item) => ({
-        title: item.nomePt,
-        icon: <span className="text-base leading-none select-none">{item.emoji}</span>,
+        id: item.emoji,
+        icon: <span className="text-xl leading-none select-none">{item.emoji}</span>,
         onItemClick: () => {
           editor.insertInlineContent([`${item.emoji} `]);
         },
@@ -1459,9 +1461,10 @@ export function EditorNotion({
           triggerCharacter="/"
           getItems={handleGetSlashItems}
         />
-        {/* `:` é o menu de emojis com busca bilíngue (Português e Inglês) */}
-        <SuggestionMenuController
+        {/* `:` é o menu de emojis em grade horizontal ultra minimalista (sem textos) */}
+        <GridSuggestionMenuController
           triggerCharacter=":"
+          columns={8}
           getItems={handleGetEmojiItems}
         />
       </BlockNoteView>
@@ -1690,6 +1693,19 @@ export function EditorNotion({
           opacity: 0.8;
         }
 
+        /* E-mails e contatos nunca viram links clicáveis nem recebem cor de hyperlink */
+        .notion-editor-wrapper a[href^="mailto:"],
+        .notion-editor-wrapper a[href*="@"] {
+          color: inherit !important;
+          text-decoration: none !important;
+          pointer-events: none !important;
+          cursor: text !important;
+          background-color: transparent !important;
+          border-radius: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
         /* Cores das menções, por tipo do item.
            O seletor ::highlight aceita só cor, fundo e sublinhado — nada de
            borda ou arredondamento. Por isso a menção fica com uma tarja
@@ -1717,30 +1733,29 @@ export function EditorNotion({
 
         /* No escuro o texto precisa clarear, senão some no fundo */
         .dark ::highlight(sc-mencao-tarefa) {
-          color: #a6e3a1;
-          background-color: rgba(166, 227, 161, 0.2);
+          color: #93c5fd;
+          background-color: rgba(59, 130, 246, 0.28);
         }
         .dark ::highlight(sc-mencao-meta) {
-          color: #fab387;
-          background-color: rgba(250, 179, 135, 0.2);
+          color: #6ee7b7;
+          background-color: rgba(16, 185, 129, 0.28);
         }
         .dark ::highlight(sc-mencao-nota) {
-          color: #89b4fa;
-          background-color: rgba(137, 180, 250, 0.2);
+          color: #fcd34d;
+          background-color: rgba(245, 158, 11, 0.28);
         }
         .dark ::highlight(sc-mencao-referencia) {
-          color: #cba6f7;
-          background-color: rgba(203, 166, 247, 0.2);
+          color: #c4b5fd;
+          background-color: rgba(139, 92, 246, 0.28);
         }
         .dark ::highlight(sc-mencao-lousa) {
-          color: #89dceb;
-          background-color: rgba(137, 220, 235, 0.2);
+          color: #a5b4fc;
+          background-color: rgba(99, 102, 241, 0.28);
         }
 
         /* Correção de rolagem completa do Menu Slash "/" e "@" */
         .bn-mantine .bn-suggestion-menu,
-        .bn-suggestion-menu,
-        .bn-grid-suggestion-menu {
+        .bn-suggestion-menu {
           max-height: min(320px, 50vh) !important;
           max-width: min(340px, calc(100vw - 32px)) !important;
           height: auto !important;
@@ -1750,6 +1765,46 @@ export function EditorNotion({
           padding: 6px 4px 16px 4px !important;
           scroll-behavior: smooth !important;
           box-sizing: border-box !important;
+        }
+
+        /* Grade horizontal ultra minimalista de Emojis ":" */
+        .bn-mantine .bn-grid-suggestion-menu,
+        .bn-grid-suggestion-menu {
+          display: grid !important;
+          grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+          gap: 2px !important;
+          padding: 6px !important;
+          background-color: hsl(var(--popover)) !important;
+          border: 1px solid hsl(var(--border)) !important;
+          border-radius: 12px !important;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18) !important;
+          max-width: 290px !important;
+          max-height: 220px !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+        }
+
+        .bn-mantine .bn-grid-suggestion-menu-item,
+        .bn-grid-suggestion-menu-item {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          width: 32px !important;
+          height: 32px !important;
+          font-size: 1.25rem !important;
+          border-radius: 6px !important;
+          cursor: pointer !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          transition: transform 0.1s ease, background-color 0.1s ease !important;
+        }
+
+        .bn-mantine .bn-grid-suggestion-menu-item:hover,
+        .bn-mantine .bn-grid-suggestion-menu-item[aria-selected="true"],
+        .bn-grid-suggestion-menu-item:hover,
+        .bn-grid-suggestion-menu-item[aria-selected="true"] {
+          background-color: hsl(var(--accent) / 0.7) !important;
+          transform: scale(1.18) !important;
         }
 
         .bn-mantine .bn-suggestion-menu > *:last-child,

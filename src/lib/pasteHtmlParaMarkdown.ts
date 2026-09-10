@@ -247,6 +247,18 @@ function criarTurndownService(): TurndownService {
     },
   });
 
+  // Regra para links: converte e-mails em texto puro, mantendo links web normais
+  service.addRule("linksSemEmail", {
+    filter: "a",
+    replacement: (content, node) => {
+      const href = (node as HTMLElement).getAttribute("href") || "";
+      if (href.startsWith("mailto:") || href.startsWith("tel:") || href.includes("@") || content.includes("@")) {
+        return content;
+      }
+      return `[${content}](${href})`;
+    },
+  });
+
   // Regra para tachado <del>, <s>, <strike>
   service.addRule("tachado", {
     filter: (node) => ["DEL", "S", "STRIKE"].includes(node.nodeName),

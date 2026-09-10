@@ -198,6 +198,10 @@ export function restaurarWikilinks(markdown: string): string {
     }
   );
 
+  // Remove qualquer link markdown gerado para e-mails (mailto: ou contendo @), mantendo estritamente como texto puro
+  limpo = limpo.replace(/\[([^\]\n]+)\]\((?:mailto:)?[^)\n]*@[^)\n]+\)/gi, "$1");
+  limpo = limpo.replace(/<mailto:([^>\n]+)>/gi, "$1");
+
   // Restaura os blocos de código originais intactos
   limpo = limpo.replace(/__BLOCO_CODIGO_(\d+)__/g, (_m, idx) => blocosCodigo[Number(idx)] ?? "");
 
