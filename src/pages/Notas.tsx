@@ -343,23 +343,6 @@ export default function Notas() {
   const [mostrarConfirmacaoDescarte, setMostrarConfirmacaoDescarte] = useState(false);
 
   useEffect(() => {
-    if (!aberta) return;
-    history.pushState({ editor: true }, "");
-    const aoVoltar = async () => {
-      if (mudouRef.current && abertaRef.current) {
-        try {
-          await salvar(abertaRef.current);
-        } catch (err) {
-          console.error("Erro ao salvar nota ao voltar:", err);
-        }
-      }
-      fecharNota();
-    };
-    addEventListener("popstate", aoVoltar);
-    return () => removeEventListener("popstate", aoVoltar);
-  }, [aberta !== null, fecharNota]);
-
-  useEffect(() => {
     const aoAbrirItem = async (e: Event) => {
       const detalhe = (e as CustomEvent)?.detail;
       const caminho = detalhe?.caminho;

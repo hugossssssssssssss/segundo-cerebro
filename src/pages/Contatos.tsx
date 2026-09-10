@@ -267,23 +267,6 @@ export default function Contatos() {
 
   const [mostrarConfirmacaoDescarte, setMostrarConfirmacaoDescarte] = useState(false);
 
-  useEffect(() => {
-    if (!aberto) return;
-    history.pushState({ editor: true }, "");
-    const aoVoltar = async () => {
-      if (mudouRef.current && abertoRef.current) {
-        try {
-          await salvarContato(abertoRef.current);
-        } catch (err) {
-          console.error("Erro ao salvar contato ao voltar:", err);
-        }
-      }
-      fecharContato();
-    };
-    addEventListener("popstate", aoVoltar);
-    return () => removeEventListener("popstate", aoVoltar);
-  }, [aberto !== null, fecharContato]);
-
   // Modo flutuante
   useEffect(() => {
     if (modoVisaoPanel === "flutuante" && aberto) {

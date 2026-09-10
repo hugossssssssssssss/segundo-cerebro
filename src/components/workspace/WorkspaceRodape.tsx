@@ -56,28 +56,30 @@ export function WorkspaceRodape({
       </div>
 
       {/* Controles de Navegação Sequencial no Centro */}
-      <div className="flex items-center gap-2 rounded-xl border border-border/80 bg-muted/40 px-2 py-1 shadow-2xs">
+      <div className="flex items-center gap-2">
         <Tooltip conteudo="Documento anterior" atalho="←" posicao="top" desabilitado={!infoSequencial.podeAnterior}>
           <button
+            type="button"
             onClick={irParaAnterior}
             disabled={!infoSequencial.podeAnterior}
-            className="rounded-lg p-1 text-muted-foreground hover:text-foreground hover:bg-background/80 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="rounded-lg p-1 text-muted-foreground hover:text-foreground hover:bg-accent/40 disabled:opacity-25 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors cursor-pointer"
             aria-label="Documento anterior"
           >
             <ChevronLeft size={16} />
           </button>
         </Tooltip>
 
-        <span className="text-xs font-medium text-muted-foreground px-1 select-none">
+        <span className="text-xs font-medium text-muted-foreground px-0.5 select-none">
           <span className="font-semibold text-foreground">{infoSequencial.indice}</span> de{" "}
           <span className="font-semibold text-foreground">{infoSequencial.total}</span>
         </span>
 
         <Tooltip conteudo="Próximo documento" atalho="→" posicao="top" desabilitado={!infoSequencial.podeProximo}>
           <button
+            type="button"
             onClick={irParaProximo}
             disabled={!infoSequencial.podeProximo}
-            className="rounded-lg p-1 text-muted-foreground hover:text-foreground hover:bg-background/80 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="rounded-lg p-1 text-muted-foreground hover:text-foreground hover:bg-accent/40 disabled:opacity-25 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors cursor-pointer"
             aria-label="Próximo documento"
           >
             <ChevronRight size={16} />

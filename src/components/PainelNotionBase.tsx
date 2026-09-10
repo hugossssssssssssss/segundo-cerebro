@@ -952,31 +952,34 @@ export function PainelNotionBase({
   );
 
   const rodape = infoSequencial.total > 0 ? (
-    <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-4 sm:px-5 py-2 sm:py-2.5 pb-[max(env(safe-area-inset-bottom),10px)] sm:pb-2.5 bg-card/60 backdrop-blur-xs">
-      <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-lg border border-border/60 mx-auto">
+    <div className="flex shrink-0 items-center justify-center gap-2 border-t border-border/40 px-4 sm:px-5 py-2 sm:py-2.5 pb-[max(env(safe-area-inset-bottom),10px)] sm:pb-2.5 bg-background select-none">
+      <div className="flex items-center gap-2">
         <Tooltip conteudo="Documento anterior" atalho="←" posicao="top" desabilitado={!infoSequencial.podeAnterior}>
           <button
+            type="button"
             onClick={() => navegarSequencial("anterior")}
             disabled={!infoSequencial.podeAnterior}
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/40 disabled:opacity-25 disabled:pointer-events-none transition-colors cursor-pointer"
             aria-label="Documento anterior"
           >
-            <ChevronLeft size={14} />
+            <ChevronLeft size={16} />
           </button>
         </Tooltip>
 
-        <span className="text-[11px] font-medium text-muted-foreground px-1 select-none">
-          {infoSequencial.indice || 1} de {infoSequencial.total}
+        <span className="text-xs font-medium text-muted-foreground px-0.5 select-none">
+          <span className="font-semibold text-foreground">{infoSequencial.indice || 1}</span> de{" "}
+          <span className="font-semibold text-foreground">{infoSequencial.total}</span>
         </span>
 
         <Tooltip conteudo="Próximo documento" atalho="→" posicao="top" desabilitado={!infoSequencial.podeProximo}>
           <button
+            type="button"
             onClick={() => navegarSequencial("proximo")}
             disabled={!infoSequencial.podeProximo}
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/40 disabled:opacity-25 disabled:pointer-events-none transition-colors cursor-pointer"
             aria-label="Próximo documento"
           >
-            <ChevronRight size={14} />
+            <ChevronRight size={16} />
           </button>
         </Tooltip>
       </div>
