@@ -310,11 +310,26 @@ export default function Tarefas() {
     }
   }, [location.pathname, location.search, location.hash, tarefas, focarFlutuante]);
 
+  const editandoRef = useRef(editando);
+  editandoRef.current = editando;
+  const originalRef = useRef(original);
+  originalRef.current = original;
+
   useEffect(() => {
-    const aoAbrirItem = (e: Event) => {
+    const aoAbrirItem = async (e: Event) => {
       const detalhe = (e as CustomEvent)?.detail;
       const caminho = detalhe?.caminho;
       if (!caminho || !caminho.startsWith(`${PASTAS.tarefas}/`)) return;
+      if (editandoRef.current && originalRef.current && editandoRef.current.caminho !== caminho) {
+        const mudou = JSON.stringify(editandoRef.current) !== JSON.stringify(originalRef.current);
+        if (mudou) {
+          try {
+            await salvar(editandoRef.current);
+          } catch (err) {
+            console.error("Erro ao salvar tarefa anterior ao abrir novo item:", err);
+          }
+        }
+      }
       const alvo = tarefas.find((t) => t.caminho === caminho);
       if (alvo) {
         setEditando(alvo);

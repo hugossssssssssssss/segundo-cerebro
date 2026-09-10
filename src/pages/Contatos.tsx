@@ -256,22 +256,33 @@ export default function Contatos() {
   const mudouRef = useRef(mudou);
   mudouRef.current = mudou;
 
+  const abertoRef = useRef(aberto);
+  abertoRef.current = aberto;
+
+  const fecharContato = useCallback(() => {
+    setAberta(null);
+    limparErro();
+    navegar(location.pathname, { replace: true });
+  }, [limparErro, navegar, location.pathname]);
+
   const [mostrarConfirmacaoDescarte, setMostrarConfirmacaoDescarte] = useState(false);
 
   useEffect(() => {
     if (!aberto) return;
     history.pushState({ editor: true }, "");
-    const aoVoltar = () => {
-      if (mudouRef.current) {
-        setMostrarConfirmacaoDescarte(true);
-        history.pushState({ editor: true }, "");
-        return;
+    const aoVoltar = async () => {
+      if (mudouRef.current && abertoRef.current) {
+        try {
+          await salvarContato(abertoRef.current);
+        } catch (err) {
+          console.error("Erro ao salvar contato ao voltar:", err);
+        }
       }
       fecharContato();
     };
     addEventListener("popstate", aoVoltar);
     return () => removeEventListener("popstate", aoVoltar);
-  }, [aberto !== null]);
+  }, [aberto !== null, fecharContato]);
 
   // Modo flutuante
   useEffect(() => {
@@ -327,11 +338,6 @@ export default function Contatos() {
   }, [modoVisaoPanel, aberto]);
 
   // ── Ações de Contato ──────────────────────────────────────────────────────
-  const fecharContato = useCallback(() => {
-    setAberta(null);
-    limparErro();
-    navegar(location.pathname, { replace: true });
-  }, [limparErro, navegar, location.pathname]);
 
   const { fecharFlutuante, estaAbertoFlutuante } = useItemFlutuante();
 

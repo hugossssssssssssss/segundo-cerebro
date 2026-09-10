@@ -698,10 +698,12 @@ export function PainelNotionBase({
   const navegarSequencial = async (direcao: "anterior" | "proximo") => {
     const itemAlvo = direcao === "anterior" ? infoSequencial.anterior : infoSequencial.proximo;
     if (!itemAlvo) return;
-    if (temMudancas) {
+    if (temMudancasRef.current) {
       try {
-        await aoSalvar();
-      } catch {}
+        await aoSalvarRef.current();
+      } catch (err) {
+        console.error("Erro ao salvar automaticamente antes de navegar:", err);
+      }
     }
     abrirItemSpa(itemAlvo.caminho);
   };

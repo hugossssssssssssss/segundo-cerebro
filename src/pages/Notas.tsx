@@ -337,16 +337,21 @@ export default function Notas() {
   const mudouRef = useRef(mudou);
   mudouRef.current = mudou;
 
+  const abertaRef = useRef(aberta);
+  abertaRef.current = aberta;
+
   const [mostrarConfirmacaoDescarte, setMostrarConfirmacaoDescarte] = useState(false);
 
   useEffect(() => {
     if (!aberta) return;
     history.pushState({ editor: true }, "");
-    const aoVoltar = () => {
-      if (mudouRef.current) {
-        setMostrarConfirmacaoDescarte(true);
-        history.pushState({ editor: true }, "");
-        return;
+    const aoVoltar = async () => {
+      if (mudouRef.current && abertaRef.current) {
+        try {
+          await salvar(abertaRef.current);
+        } catch (err) {
+          console.error("Erro ao salvar nota ao voltar:", err);
+        }
       }
       fecharNota();
     };
@@ -355,10 +360,17 @@ export default function Notas() {
   }, [aberta !== null, fecharNota]);
 
   useEffect(() => {
-    const aoAbrirItem = (e: Event) => {
+    const aoAbrirItem = async (e: Event) => {
       const detalhe = (e as CustomEvent)?.detail;
       const caminho = detalhe?.caminho;
       if (!caminho || !caminho.startsWith(`${PASTAS.notas}/`)) return;
+      if (mudouRef.current && abertaRef.current && abertaRef.current.caminho !== caminho) {
+        try {
+          await salvar(abertaRef.current);
+        } catch (err) {
+          console.error("Erro ao salvar nota anterior ao abrir novo item:", err);
+        }
+      }
       const alvo = acervo.find((a) => a.caminho === caminho);
       if (alvo) {
         const nota = comoNota(alvo.doc, alvo.caminho, alvo.sha, tituloProvavel(alvo.doc, alvo.nome));

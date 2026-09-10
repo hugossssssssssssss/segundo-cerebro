@@ -3,6 +3,9 @@ import { BlockNoteView } from "@blocknote/mantine";
 import {
   SuggestionMenuController,
   GridSuggestionMenuController,
+  LinkToolbarController,
+  LinkToolbar,
+  type LinkToolbarProps,
   type DefaultReactGridSuggestionItem,
   useCreateBlockNote,
   getDefaultReactSlashMenuItems,
@@ -1444,8 +1447,25 @@ export function EditorNotion({
         theme={escuro ? "dark" : "light"}
         slashMenu={false}
         emojiPicker={false}
+        linkToolbar={false}
         onChange={handleEditorChange}
       >
+        {/* Toolbar de links: ignora e-mails para nunca abrir modal/popover de edição em endereços de e-mail */}
+        <LinkToolbarController
+          linkToolbar={(props: LinkToolbarProps) => {
+            const url = props.url || "";
+            const texto = props.text || "";
+            if (
+              url.startsWith("mailto:") ||
+              url.startsWith("tel:") ||
+              url.includes("@") ||
+              texto.includes("@")
+            ) {
+              return null;
+            }
+            return <LinkToolbar {...props} />;
+          }}
+        />
         {/* `@` é o gatilho principal. `[` continua atendido porque quem já
             escrevia `[[` no app antigo tenta de novo por reflexo. */}
         <SuggestionMenuController
