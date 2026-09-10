@@ -14,6 +14,13 @@ import {
   Printer,
   Table,
   CheckSquare,
+  FileText,
+  Target,
+  Users,
+  Image as ImageIcon,
+  Layout,
+  Bell,
+  SlidersHorizontal,
   X,
   Bold,
   Italic,
@@ -688,6 +695,25 @@ export function EditorNotion({
         return [];
       }
 
+      const obterIcone = (cat: CategoriaDocumento) => {
+        switch (cat) {
+          case "notas":
+            return <FileText size={15} className="text-amber-500" />;
+          case "tarefas":
+            return <CheckSquare size={15} className="text-blue-500" />;
+          case "pdi":
+            return <Target size={15} className="text-purple-500" />;
+          case "contatos":
+            return <Users size={15} className="text-emerald-500" />;
+          case "referencias":
+            return <ImageIcon size={15} className="text-pink-500" />;
+          case "lousas":
+            return <Layout size={15} className="text-indigo-500" />;
+          default:
+            return <FileText size={15} className="text-muted-foreground" />;
+        }
+      };
+
       const q = query.toLowerCase().trim();
       const docs = cache?.itens
         ? indexarDocumentosVinculaveis(cache.itens)
@@ -695,31 +721,50 @@ export function EditorNotion({
 
       const itensRetorno: any[] = [];
 
-      // Sem busca ou no início: exibe Ação de Filtro Avançado, Lembrete e Pastas das Telas
+      // Sem busca (apenas digitou @):
+      // 1. Documentos Recentes no TOPO
+      // 2. Botão simples "Filtrar" no centro como divisor
+      // 3. Lembrete (@lembrete)
+      // 4. Menus das telas: Tarefas, Notas, Metas & PDI, Contatos, Referências, Lousas
       if (!q) {
+        // 1. Documentos Recentes
+        for (const doc of docs.slice(0, 5)) {
+          itensRetorno.push({
+            title: `@${doc.titulo}`,
+            subtext: doc.subtexto || doc.categoriaRotulo,
+            icon: obterIcone(doc.categoria),
+            onItemClick: () => {
+              editor.insertInlineContent([`@${doc.titulo} `]);
+            },
+          });
+        }
+
+        // 2. Botão simples de "Filtrar"
         itensRetorno.push({
-          title: "⚡ Filtro Avançado de Documentos...",
-          subtext: "Navegue por pastas, status (Kanban) e tags com pré-visualização",
-          group: "Ações Rápidas",
+          title: "Filtrar",
+          subtext: "Pesquisa avançada com filtros e visualização",
+          icon: <SlidersHorizontal size={15} className="text-primary" />,
           onItemClick: () => {
             setCategoriaInicialVincular("todas");
             setModalVincularAvancadoAberto(true);
           },
         });
 
+        // 3. Lembrete
         itensRetorno.push({
-          title: "⏰ @lembrete — Agendar Lembrete",
-          subtext: "Definir data, hora e notificações",
-          group: "Ações Rápidas",
+          title: "@lembrete",
+          subtext: "Agendar data, hora e notificações",
+          icon: <Bell size={15} className="text-amber-500" />,
           onItemClick: () => {
             setModalLembreteAberto(true);
           },
         });
 
+        // 4. Menus das Telas
         itensRetorno.push({
-          title: "📁 Pasta: Tarefas",
-          subtext: "Filtrar por: A Fazer, Em Andamento, Concluídas",
-          group: "Pastas por Tela",
+          title: "Tarefas",
+          subtext: "A Fazer, Em Andamento, Concluídas",
+          icon: <CheckSquare size={15} className="text-blue-500" />,
           onItemClick: () => {
             setCategoriaInicialVincular("tarefas");
             setModalVincularAvancadoAberto(true);
@@ -727,9 +772,9 @@ export function EditorNotion({
         });
 
         itensRetorno.push({
-          title: "📁 Pasta: Notas",
-          subtext: "Filtrar notas por pasta ou assunto",
-          group: "Pastas por Tela",
+          title: "Notas",
+          subtext: "Documentos e anotações",
+          icon: <FileText size={15} className="text-amber-500" />,
           onItemClick: () => {
             setCategoriaInicialVincular("notas");
             setModalVincularAvancadoAberto(true);
@@ -737,9 +782,9 @@ export function EditorNotion({
         });
 
         itensRetorno.push({
-          title: "📁 Pasta: Metas & PDI",
-          subtext: "Metas ativas, metas concluídas e entregas",
-          group: "Pastas por Tela",
+          title: "Metas & PDI",
+          subtext: "Metas ativas e entregas",
+          icon: <Target size={15} className="text-purple-500" />,
           onItemClick: () => {
             setCategoriaInicialVincular("pdi");
             setModalVincularAvancadoAberto(true);
@@ -747,9 +792,9 @@ export function EditorNotion({
         });
 
         itensRetorno.push({
-          title: "📁 Pasta: Contatos",
-          subtext: "Vincular pessoas e contatos",
-          group: "Pastas por Tela",
+          title: "Contatos",
+          subtext: "Pessoas e conexões",
+          icon: <Users size={15} className="text-emerald-500" />,
           onItemClick: () => {
             setCategoriaInicialVincular("contatos");
             setModalVincularAvancadoAberto(true);
@@ -757,9 +802,9 @@ export function EditorNotion({
         });
 
         itensRetorno.push({
-          title: "📁 Pasta: Referências Visuais",
-          subtext: "Moodboards, imagens e inspirações",
-          group: "Pastas por Tela",
+          title: "Referências",
+          subtext: "Inspirações visuais e moodboards",
+          icon: <ImageIcon size={15} className="text-pink-500" />,
           onItemClick: () => {
             setCategoriaInicialVincular("referencias");
             setModalVincularAvancadoAberto(true);
@@ -767,78 +812,125 @@ export function EditorNotion({
         });
 
         itensRetorno.push({
-          title: "📁 Pasta: Lousas & Mapas Mentais",
-          subtext: "Diagramas visuais do Excalidraw",
-          group: "Pastas por Tela",
+          title: "Lousas",
+          subtext: "Mapas mentais e diagramas",
+          icon: <Layout size={15} className="text-indigo-500" />,
           onItemClick: () => {
             setCategoriaInicialVincular("lousas");
             setModalVincularAvancadoAberto(true);
           },
         });
-      }
-
-      // Se o usuário digitou termo de lembrete
-      if (q && ("lembrete".includes(q) || "lembre".includes(q))) {
-        itensRetorno.push({
-          title: "@lembrete — Agendar Lembrete",
-          subtext: "Abrir seletor de data, hora e notificações",
-          group: "Ações",
-          onItemClick: () => {
-            setModalLembreteAberto(true);
-          },
+      } else {
+        // Quando há busca digitada (ex: @briefing ou @tarefas):
+        // Documentos filtrados pelo termo
+        const filtrados = filtrarDocumentosVinculaveis(docs, {
+          termo: q,
+          limite: 25,
         });
-      }
 
-      // Atalhos de filtro por categoria quando digita o nome da pasta
-      if (q && ("tarefa".includes(q) || "tarefas".includes(q) || "kanban".includes(q) || "a fazer".includes(q) || "andamento".includes(q))) {
+        for (const doc of filtrados) {
+          itensRetorno.push({
+            title: `@${doc.titulo}`,
+            subtext: doc.subtexto || doc.categoriaRotulo,
+            icon: obterIcone(doc.categoria),
+            onItemClick: () => {
+              editor.insertInlineContent([`@${doc.titulo} `]);
+            },
+          });
+        }
+
+        // Se o termo coincidir com os menus das telas
+        if ("tarefas".includes(q) || "tarefa".includes(q) || "a fazer".includes(q) || "andamento".includes(q)) {
+          itensRetorno.push({
+            title: "Tarefas",
+            subtext: "Filtrar no quadro de tarefas",
+            icon: <CheckSquare size={15} className="text-blue-500" />,
+            onItemClick: () => {
+              setCategoriaInicialVincular("tarefas");
+              setModalVincularAvancadoAberto(true);
+            },
+          });
+        }
+
+        if ("notas".includes(q) || "nota".includes(q)) {
+          itensRetorno.push({
+            title: "Notas",
+            subtext: "Filtrar documentos de notas",
+            icon: <FileText size={15} className="text-amber-500" />,
+            onItemClick: () => {
+              setCategoriaInicialVincular("notas");
+              setModalVincularAvancadoAberto(true);
+            },
+          });
+        }
+
+        if ("metas".includes(q) || "meta".includes(q) || "pdi".includes(q) || "entrega".includes(q)) {
+          itensRetorno.push({
+            title: "Metas & PDI",
+            subtext: "Filtrar metas e entregas",
+            icon: <Target size={15} className="text-purple-500" />,
+            onItemClick: () => {
+              setCategoriaInicialVincular("pdi");
+              setModalVincularAvancadoAberto(true);
+            },
+          });
+        }
+
+        if ("contatos".includes(q) || "contato".includes(q)) {
+          itensRetorno.push({
+            title: "Contatos",
+            subtext: "Filtrar lista de contatos",
+            icon: <Users size={15} className="text-emerald-500" />,
+            onItemClick: () => {
+              setCategoriaInicialVincular("contatos");
+              setModalVincularAvancadoAberto(true);
+            },
+          });
+        }
+
+        if ("referencias".includes(q) || "referencia".includes(q) || "moodboard".includes(q)) {
+          itensRetorno.push({
+            title: "Referências",
+            subtext: "Filtrar referências visuais",
+            icon: <ImageIcon size={15} className="text-pink-500" />,
+            onItemClick: () => {
+              setCategoriaInicialVincular("referencias");
+              setModalVincularAvancadoAberto(true);
+            },
+          });
+        }
+
+        if ("lousas".includes(q) || "lousa".includes(q) || "mapa".includes(q) || "diagrama".includes(q)) {
+          itensRetorno.push({
+            title: "Lousas",
+            subtext: "Filtrar mapas e diagramas",
+            icon: <Layout size={15} className="text-indigo-500" />,
+            onItemClick: () => {
+              setCategoriaInicialVincular("lousas");
+              setModalVincularAvancadoAberto(true);
+            },
+          });
+        }
+
+        if ("lembrete".includes(q) || "lembre".includes(q)) {
+          itensRetorno.push({
+            title: "@lembrete",
+            subtext: "Agendar data, hora e notificações",
+            icon: <Bell size={15} className="text-amber-500" />,
+            onItemClick: () => {
+              setModalLembreteAberto(true);
+            },
+          });
+        }
+
+        // Opção de filtrar avançado
         itensRetorno.push({
-          title: "📁 Abrir Pasta: Tarefas",
-          subtext: "Filtrar tarefas em A Fazer, Em Andamento e Concluídas",
-          group: "Pastas Encontradas",
+          title: "Filtrar",
+          subtext: `Abrir busca avançada por "${query}"`,
+          icon: <SlidersHorizontal size={15} className="text-primary" />,
           onItemClick: () => {
-            setCategoriaInicialVincular("tarefas");
+            setCategoriaInicialVincular("todas");
             setModalVincularAvancadoAberto(true);
-          },
-        });
-      }
-
-      if (q && ("nota".includes(q) || "notas".includes(q) || "pasta".includes(q))) {
-        itensRetorno.push({
-          title: "📁 Abrir Pasta: Notas",
-          subtext: "Explorar todas as pastas de notas",
-          group: "Pastas Encontradas",
-          onItemClick: () => {
-            setCategoriaInicialVincular("notas");
-            setModalVincularAvancadoAberto(true);
-          },
-        });
-      }
-
-      if (q && ("meta".includes(q) || "metas".includes(q) || "pdi".includes(q) || "entrega".includes(q))) {
-        itensRetorno.push({
-          title: "📁 Abrir Pasta: Metas & PDI",
-          subtext: "Explorar metas e entregas",
-          group: "Pastas Encontradas",
-          onItemClick: () => {
-            setCategoriaInicialVincular("pdi");
-            setModalVincularAvancadoAberto(true);
-          },
-        });
-      }
-
-      // Documentos correspondentes ao termo
-      const filtrados = filtrarDocumentosVinculaveis(docs, {
-        termo: q,
-        limite: q ? 30 : 8,
-      });
-
-      for (const doc of filtrados) {
-        itensRetorno.push({
-          title: `@${doc.titulo}`,
-          subtext: doc.subtexto || doc.categoriaRotulo,
-          group: q ? doc.categoriaRotulo : "Documentos Recentes",
-          onItemClick: () => {
-            editor.insertInlineContent([`@${doc.titulo} `]);
           },
         });
       }

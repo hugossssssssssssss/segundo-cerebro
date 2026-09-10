@@ -145,7 +145,7 @@ export function ModalVincularDocumentoAvancado({
     <Modal
       aberto={aberto}
       aoFechar={aoFechar}
-      titulo="Vincular Documento com @"
+      titulo="Filtrar Documentos"
       tamanho="largo"
     >
       <div className="space-y-4" onKeyDown={lidarKeyDown}>
