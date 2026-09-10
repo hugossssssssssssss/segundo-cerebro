@@ -134,10 +134,16 @@ function preProcessarHtml(html: string, urlOrigem?: string): string {
     doc.querySelectorAll(seletor).forEach((el) => el.remove());
   }
 
-  // 2. Normaliza links <a>
+  // 2. Normaliza links <a> e transforma e-mails/telefones (mailto:, tel:) em texto simples
   doc.querySelectorAll("a").forEach((link) => {
     const href = link.getAttribute("href");
     if (!href) return;
+
+    // E-mails e telefones viram texto puro sem tag de link
+    if (href.startsWith("mailto:") || href.startsWith("tel:")) {
+      link.replaceWith(document.createTextNode(link.textContent || ""));
+      return;
+    }
 
     // Remove âncoras internas ou referências numéricas vazias
     if (href.startsWith("#cite_note") || href.startsWith("#cite_ref")) {

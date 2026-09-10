@@ -1,8 +1,12 @@
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, afterEach } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
 import { renderizarMarkdownInline, prepararSnippetPreview } from "./markdownInline";
 
 describe("renderizarMarkdownInline", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("renderiza texto com negrito como elemento <strong>", () => {
     render(<div>{renderizarMarkdownInline("Este é um texto com **negrito importante** no meio.")}</div>);
     const strongEl = screen.getByText("negrito importante");
@@ -31,6 +35,27 @@ describe("renderizarMarkdownInline", () => {
     render(<div>{renderizarMarkdownInline("Nota com \\[escape\\] e \\*asterisco\\* e **negrito**.")}</div>);
     expect(screen.getByText("negrito").tagName).toBe("STRONG");
     expect(screen.getByText("asterisco").tagName).toBe("EM");
+  });
+
+  it("reconhece URLs com https, www e domínios comuns como links clicáveis", () => {
+    render(
+      <div>
+        {renderizarMarkdownInline("Visite https://google.com e www.github.com ou figma.com e site.com.br")}
+      </div>
+    );
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(4);
+    expect(links[0].getAttribute("href")).toBe("https://google.com");
+    expect(links[1].getAttribute("href")).toBe("https://www.github.com");
+    expect(links[2].getAttribute("href")).toBe("https://figma.com");
+    expect(links[3].getAttribute("href")).toBe("https://site.com.br");
+  });
+
+  it("não transforma e-mails em links clicáveis", () => {
+    render(<div>{renderizarMarkdownInline("Contato: suporte@exemplo.com ou hugo@design.com.br")}</div>);
+    const links = screen.queryAllByRole("link");
+    expect(links).toHaveLength(0);
+    expect(screen.getByText(/suporte@exemplo\.com/)).toBeTruthy();
   });
 });
 

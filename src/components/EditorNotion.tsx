@@ -1643,13 +1643,19 @@ export function EditorNotion({
           color: hsl(var(--foreground)) !important;
         }
         .notion-editor-wrapper a {
-          color: #3b82f6;
+          color: #2563eb;
           font-weight: 400;
-          text-decoration: none !important;
-          padding: 1px 6px;
-          border-radius: 6px;
+          text-decoration: underline !important;
+          text-underline-offset: 2px;
+          padding: 0 !important;
+          margin: 0 !important;
+          border-radius: 0 !important;
+          background-color: transparent !important;
           cursor: pointer;
-          transition: background-color 0.15s ease;
+          transition: opacity 0.15s ease;
+        }
+        .notion-editor-wrapper a:hover {
+          opacity: 0.8;
         }
 
         /* Cores das menções, por tipo do item.

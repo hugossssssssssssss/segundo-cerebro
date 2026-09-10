@@ -779,13 +779,12 @@ export default function Contatos() {
                         <td className="px-4 py-3 space-y-1" onClick={(e) => e.stopPropagation()}>
                           {c.email && (
                             <div className="flex items-center gap-1.5 group/link">
-                              <a
-                                href={`mailto:${c.email}`}
-                                className="flex items-center gap-1 text-primary hover:underline text-xs truncate max-w-[180px]"
+                              <span
+                                className="flex items-center gap-1 text-muted-foreground text-xs truncate max-w-[180px] font-normal"
                                 title={c.email}
                               >
-                                <Mail size={12} className="shrink-0" /> {c.email}
-                              </a>
+                                <Mail size={12} className="shrink-0 text-muted-foreground/70" /> {c.email}
+                              </span>
                               <Tooltip conteudo="Copiar e-mail">
                                 <button
                                   type="button"
@@ -1471,15 +1470,13 @@ function CardPessoaOrganograma({
           <div className="space-y-1.5 pt-2 border-t border-border/50 text-xs">
             {c.email && (
               <div className="flex items-center justify-between gap-1.5 group/card-link">
-                <a
-                  href={`mailto:${c.email}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors truncate font-medium min-w-0"
+                <span
+                  className="flex items-center gap-1.5 text-muted-foreground truncate font-normal min-w-0 select-text"
                   title={c.email}
                 >
-                  <Mail size={13} className="text-indigo-500 shrink-0" />
+                  <Mail size={13} className="text-muted-foreground/70 shrink-0" />
                   <span className="truncate">{c.email}</span>
-                </a>
+                </span>
                 <Tooltip conteudo="Copiar e-mail">
                   <button
                     type="button"
@@ -1631,15 +1628,13 @@ function CartaoContato({
         <div className="space-y-1.5 text-xs pt-1.5 border-t border-border/50">
           {c.email && (
             <div className="flex items-center justify-between gap-1.5 group/card-link">
-              <a
-                href={`mailto:${c.email}`}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors truncate font-medium min-w-0"
+              <span
+                className="flex items-center gap-1.5 text-muted-foreground truncate font-normal min-w-0 select-text"
                 title={c.email}
               >
-                <Mail size={13} className="text-indigo-500 shrink-0" />
+                <Mail size={13} className="text-muted-foreground/70 shrink-0" />
                 <span className="truncate">{c.email}</span>
-              </a>
+              </span>
               <Tooltip conteudo="Copiar e-mail">
                 <button
                   type="button"
