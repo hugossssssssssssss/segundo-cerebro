@@ -2,6 +2,7 @@ import { FileText, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { obterEstiloTagChip } from "@/components/TagChip";
 import { gerarPropsArrasto } from "@/lib/arrastoItem";
+import { renderizarMarkdownInline, prepararSnippetPreview } from "@/lib/markdownInline";
 
 export interface NotaItemHome {
   caminho: string;
@@ -38,9 +39,7 @@ export function WidgetNotasRecentes({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {recentes.map((n) => {
-            const previewCorpo = n.corpo
-              ? n.corpo.replace(/^[#>\s-]+/gm, "").slice(0, 85).trim()
-              : "";
+            const previewCorpo = n.corpo ? prepararSnippetPreview(n.corpo, 90) : "";
 
             return (
               <div
@@ -55,7 +54,7 @@ export function WidgetNotasRecentes({
                   </h4>
                   {previewCorpo && (
                     <p className="text-[11px] text-muted-foreground/80 line-clamp-2 leading-relaxed">
-                      {previewCorpo}
+                      {renderizarMarkdownInline(previewCorpo)}
                     </p>
                   )}
                 </div>

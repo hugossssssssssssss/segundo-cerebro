@@ -16,6 +16,7 @@ import {
 import { TagChip } from "@/components/TagChip";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { renderizarMarkdownInline, prepararSnippetPreview } from "@/lib/markdownInline";
 import type { Nota } from "@/lib/tipos";
 
 interface CartaoNotaVisualProps {
@@ -38,37 +39,10 @@ interface CartaoNotaVisualProps {
 }
 
 /**
- * Limpa marcações markdown para gerar um trecho (snippet) limpo e legível.
+ * Prepara trecho seguro de markdown para pré-visualização preservando formatação inline.
  */
 export function extrairSnippetMarkdown(corpo: string, tamanhoMax = 160): string {
-  if (!corpo) return "";
-  let limpo = corpo
-    // Remove blocos de código
-    .replace(/```[\s\S]*?```/g, "")
-    // Remove tags HTML
-    .replace(/<[^>]+>/g, "")
-    // Remove imagens ![](...)
-    .replace(/!\[.*?\]\(.*?\)/g, "")
-    // Converte links [texto](url) para texto
-    .replace(/\[(.*?)\]\(.*?\)/g, "$1")
-    // Remove cabeçalhos #
-    .replace(/^#{1,6}\s+/gm, "")
-    // Remove listas - * + 1.
-    .replace(/^[\s*-+]+(?:\d+\.)?\s+/gm, "")
-    // Remove citações >
-    .replace(/^>\s+/gm, "")
-    // Remove negrito e itálico
-    .replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, "$1")
-    // Remove traços horizontais
-    .replace(/^-{3,}$/gm, "")
-    // Remove quebras de linha múltiplas
-    .replace(/\n+/g, " ")
-    .trim();
-
-  if (limpo.length > tamanhoMax) {
-    limpo = limpo.slice(0, tamanhoMax).trim() + "…";
-  }
-  return limpo;
+  return prepararSnippetPreview(corpo, tamanhoMax);
 }
 
 /**
@@ -501,7 +475,7 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
                 visao === "mural" ? "line-clamp-8" : "line-clamp-3"
               )}
             >
-              {snippet}
+              {renderizarMarkdownInline(snippet)}
             </p>
           ) : (
             <p className="mt-3 text-[11px] text-muted-foreground/40 italic">
