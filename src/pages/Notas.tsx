@@ -302,6 +302,17 @@ export default function Notas() {
       );
   }, [acervo]);
 
+  // Lista inteligente de navegação: se entrou em uma pasta viaja apenas por ela; se fora, por todas as notas
+  const itensNavegacaoNotas = useMemo(() => {
+    if (pastaAtual) {
+      const prefixo = `${PASTAS.notas}/${pastaAtual}/`;
+      return todasNotas
+        .filter((n) => n.caminho.startsWith(prefixo))
+        .map((n) => ({ caminho: n.caminho, titulo: n.titulo }));
+    }
+    return todasNotas.map((n) => ({ caminho: n.caminho, titulo: n.titulo }));
+  }, [todasNotas, pastaAtual]);
+
   const processouUrlRef = useRef<string | null>(null);
   useEffect(() => {
     const urlAtual = `${location.pathname}${location.search}${location.hash}`;
@@ -2099,6 +2110,7 @@ export default function Notas() {
           erro={erroSalvar}
           mencoes={mencoesNotaAberta}
           opcoesRelacionamento={opcoesRelacionamento}
+          itensNavegacao={itensNavegacaoNotas}
         />
       )}
 

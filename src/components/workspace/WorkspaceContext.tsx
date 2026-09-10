@@ -395,12 +395,25 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const itensDoMesmoTipo = useMemo(() => {
     if (!abaAtiva || !abaAtiva.caminho || !cache || !cache.itens) return [];
 
-    const pasta = abaAtiva.caminho.split("/")[0] || "";
-    if (!pasta) return [];
+    const partes = abaAtiva.caminho.split("/");
+    const ehPdi = partes[0] === "pdi";
+    const pastaRaiz = ehPdi && partes.length > 1 ? `pdi/${partes[1]}` : partes[0];
+    const ehSubpasta = ehPdi ? partes.length > 3 : partes.length > 2;
 
-    const prefixo = `${pasta}/`;
+    // Se o documento está dentro de uma subpasta: navega apenas dentro dela.
+    // Se está na raiz (fora de pasta): viaja por todos os documentos da área (pastaRaiz).
+    const prefixoFiltro = ehSubpasta
+      ? `${partes.slice(0, partes.length - 1).join("/")}/`
+      : `${pastaRaiz}/`;
+
     return cache.itens
-      .filter((i) => i.caminho.startsWith(prefixo))
+      .filter(
+        (i) =>
+          i.caminho.startsWith(prefixoFiltro) &&
+          !i.caminho.endsWith(".excalidraw.json") &&
+          !i.caminho.endsWith(".png") &&
+          !i.caminho.endsWith(".jpg")
+      )
       .sort((a, b) => {
         // Ordenação por nome / data de criação
         return a.caminho.localeCompare(b.caminho, undefined, { numeric: true });

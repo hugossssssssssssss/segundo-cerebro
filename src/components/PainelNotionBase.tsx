@@ -84,6 +84,7 @@ export interface PainelNotionBaseProps {
   elementoAcimaCorpo?: React.ReactNode;
   campoFocoInicial?: string;
   posicaoLateral?: "esquerda" | "direita";
+  itensNavegacao?: { caminho: string; titulo: string }[];
 }
 
 export function PainelNotionBase({
@@ -109,6 +110,7 @@ export function PainelNotionBase({
   elementoAcimaCorpo,
   campoFocoInicial,
   posicaoLateral = "direita",
+  itensNavegacao,
 }: PainelNotionBaseProps) {
   const [confirmandoApagar, setConfirmandoApagar] = useState(false);
   const [minimizadoFlutuante, setMinimizadoFlutuante] = useState(false);
@@ -641,13 +643,44 @@ export function PainelNotionBase({
 
   // Informações de Navegação Sequencial no Pop-up (Ex: "3 de 100" e setas < e >)
   const infoSequencial = useMemo(() => {
+    // 1. Se uma lista explícita de navegação foi fornecida pela página pai (ex: Notas com pastaAtual selecionada ou raiz)
+    if (Array.isArray(itensNavegacao) && itensNavegacao.length > 0) {
+      const idx = itensNavegacao.findIndex((i) => i.caminho === caminhoItem);
+      if (idx === -1) {
+        return {
+          indice: 1,
+          total: Math.max(1, itensNavegacao.length),
+          podeAnterior: false,
+          podeProximo: false,
+          anterior: null,
+          proximo: null,
+        };
+      }
+      return {
+        indice: idx + 1,
+        total: itensNavegacao.length,
+        podeAnterior: idx > 0,
+        podeProximo: idx < itensNavegacao.length - 1,
+        anterior: idx > 0 ? itensNavegacao[idx - 1] : null,
+        proximo: idx < itensNavegacao.length - 1 ? itensNavegacao[idx + 1] : null,
+      };
+    }
+
+    // 2. Comportamento inteligente automático caso não tenha itensNavegacao explícito
     if (!caminhoItem) {
       return { indice: 0, total: 0, podeAnterior: false, podeProximo: false, anterior: null, proximo: null };
     }
 
-    const pasta = caminhoItem.includes("/")
-      ? caminhoItem.substring(0, caminhoItem.lastIndexOf("/"))
-      : "";
+    const partes = caminhoItem.split("/");
+    const ehPdi = partes[0] === "pdi";
+    const pastaRaiz = ehPdi && partes.length > 1 ? `pdi/${partes[1]}` : partes[0];
+    const ehSubpasta = ehPdi ? partes.length > 3 : partes.length > 2;
+
+    // Se o documento está dentro de uma subpasta: navega apenas dentro dela.
+    // Se está na raiz (fora de pasta): viaja por todos os documentos da área (pastaRaiz).
+    const prefixoFiltro = ehSubpasta
+      ? `${partes.slice(0, partes.length - 1).join("/")}/`
+      : `${pastaRaiz}/`;
 
     // Agrega todos os itens conhecidos (opções de relacionamento + cache global)
     const mapaItens = new Map<string, { caminho: string; titulo: string }>();
@@ -669,9 +702,9 @@ export function PainelNotionBase({
     }
 
     const todosItens = Array.from(mapaItens.values()).filter((i) => {
-      if (!pasta) return true;
+      if (!prefixoFiltro) return true;
       return (
-        i.caminho.startsWith(pasta + "/") &&
+        i.caminho.startsWith(prefixoFiltro) &&
         !i.caminho.endsWith(".excalidraw.json") &&
         !i.caminho.endsWith(".png") &&
         !i.caminho.endsWith(".jpg")
@@ -693,7 +726,7 @@ export function PainelNotionBase({
       anterior: idx > 0 ? ordenados[idx - 1] : null,
       proximo: idx < ordenados.length - 1 ? ordenados[idx + 1] : null,
     };
-  }, [caminhoItem, opcoesRelacionamento]);
+  }, [caminhoItem, itensNavegacao, opcoesRelacionamento]);
 
   const navegarSequencial = async (direcao: "anterior" | "proximo") => {
     const itemAlvo = direcao === "anterior" ? infoSequencial.anterior : infoSequencial.proximo;

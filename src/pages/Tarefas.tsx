@@ -936,6 +936,17 @@ export default function Tarefas() {
     return lista;
   }, [tarefas, pastaSelecionada, busca, regrasFiltro, filtroRapido]);
 
+  // Lista inteligente de navegação: se filtrou por pasta viaja apenas por ela; se fora, por todas as tarefas
+  const itensNavegacaoTarefas = useMemo(() => {
+    if (pastaSelecionada) {
+      const prefixo = `${PASTAS.tarefas}/${pastaSelecionada}/`;
+      return tarefas
+        .filter((t) => t.caminho.startsWith(prefixo))
+        .map((t) => ({ caminho: t.caminho, titulo: t.titulo }));
+    }
+    return tarefas.map((t) => ({ caminho: t.caminho, titulo: t.titulo }));
+  }, [tarefas, pastaSelecionada]);
+
   // ── Sem configuração ────────────────────────────────────────────────────────
   if (!pronto) {
     return (
@@ -1280,6 +1291,7 @@ export default function Tarefas() {
           erro={erroSalvar}
           mencoes={mencoesDaTarefa}
           opcoesRelacionamento={opcoesRelacionamento}
+          itensNavegacao={itensNavegacaoTarefas}
         />
       )}
 

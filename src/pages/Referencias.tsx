@@ -585,6 +585,17 @@ export default function Referencias() {
     return lista;
   }, [refs, pastaAtual, busca, regrasFiltro, filtroRapido]);
 
+  // Lista inteligente de navegação: se entrou em uma pasta viaja apenas por ela; se fora, por todas as referências
+  const itensNavegacaoRefs = useMemo(() => {
+    if (pastaAtual) {
+      const prefixo = `${PASTA_REFS}/${pastaAtual}/`;
+      return refs
+        .filter((r) => r.caminho.startsWith(prefixo))
+        .map((r) => ({ caminho: r.caminho, titulo: r.titulo }));
+    }
+    return refs.map((r) => ({ caminho: r.caminho, titulo: r.titulo }));
+  }, [refs, pastaAtual]);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200 w-full pb-10">
       {/* Overlay de Drag & Drop Global */}
@@ -1224,6 +1235,7 @@ export default function Referencias() {
           erro={erroSalvar}
           mencoes={mencoesDaRef}
           opcoesRelacionamento={opcoesRelacionamento}
+          itensNavegacao={itensNavegacaoRefs}
         />
       )}
 
