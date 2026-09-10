@@ -35,6 +35,7 @@ import {
   AtSign,
   Eye,
   Pencil,
+  ChevronRight,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -630,6 +631,24 @@ export function EditorNotion({
         },
       };
 
+      const itemListaExpansivel = {
+        title: "Lista expansível",
+        subtext: "Lista retrátil com botão de expandir/minimizar (Atalho: >)",
+        badge: "Retrátil",
+        aliases: ["expansivel", "expansível", "toggle", "retratil", "retrátil", "detalhes", "sanfona"],
+        icon: <ChevronRight size={16} className="text-amber-500" />,
+        onItemClick: () => {
+          const cursor = editor.getTextCursorPosition();
+          if (cursor?.block) {
+            editor.updateBlock(cursor.block, {
+              type: "toggleListItem",
+              props: {},
+              content: [],
+            });
+          }
+        },
+      };
+
       const itemTarefaKanban = {
         title: "Criar Tarefa no Kanban",
         subtext: "Gera uma nova tarefa no quadro a partir deste bloco",
@@ -688,7 +707,7 @@ export function EditorNotion({
       };
 
       const padrao = getDefaultReactSlashMenuItems(editor);
-      return filterSuggestionItems([itemIA, itemTarefaKanban, itemTabela, ...padrao], query);
+      return filterSuggestionItems([itemIA, itemListaExpansivel, itemTarefaKanban, itemTabela, ...padrao], query);
     },
     [editor],
   );
@@ -959,6 +978,108 @@ export function EditorNotion({
           editor.insertInlineContent([`${item.emoji} `]);
         },
       }));
+    },
+    [editor],
+  );
+
+  /** Intercepta atalhos do teclado para Lista Expansível (> e Enter) */
+  const handleEditorKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      // 1. Ao digitar > em um parágrafo vazio
+      if (e.key === ">") {
+        try {
+          const pos = editor.getTextCursorPosition();
+          if (pos?.block && pos.block.type === "paragraph") {
+            const texto = Array.isArray(pos.block.content)
+              ? pos.block.content.map((c: any) => (typeof c === "string" ? c : c.text || "")).join("")
+              : "";
+            if (texto === "") {
+              e.preventDefault();
+              editor.updateBlock(pos.block, {
+                type: "toggleListItem",
+                props: {},
+                content: [],
+              });
+              return;
+            }
+          }
+        } catch {}
+      }
+
+      // Ao digitar espaço após >
+      if (e.key === " ") {
+        try {
+          const pos = editor.getTextCursorPosition();
+          if (pos?.block && pos.block.type === "paragraph") {
+            const texto = Array.isArray(pos.block.content)
+              ? pos.block.content.map((c: any) => (typeof c === "string" ? c : c.text || "")).join("")
+              : "";
+            if (texto === ">") {
+              e.preventDefault();
+              editor.updateBlock(pos.block, {
+                type: "toggleListItem",
+                props: {},
+                content: [],
+              });
+              return;
+            }
+          }
+        } catch {}
+      }
+
+      // 2. Ao dar Enter no título da lista expansível (toggleListItem):
+      if (e.key === "Enter" && !e.shiftKey) {
+        try {
+          const pos = editor.getTextCursorPosition();
+          if (pos?.block && pos.block.type === "toggleListItem") {
+            const bloco = pos.block;
+            const texto = Array.isArray(bloco.content)
+              ? bloco.content.map((c: any) => (typeof c === "string" ? c : c.text || "")).join("")
+              : "";
+
+            // Se o título estiver vazio e não tiver filhos, volta para parágrafo comum
+            if (!texto.trim() && (!bloco.children || bloco.children.length === 0)) {
+              e.preventDefault();
+              editor.updateBlock(bloco, {
+                type: "paragraph",
+                props: {},
+                content: [],
+              });
+              return;
+            }
+
+            // Se o título tem texto, cria um bloco filho dentro da lista expansível e foca nele
+            e.preventDefault();
+            try {
+              window.localStorage.setItem(`toggle-${bloco.id}`, "true");
+            } catch {}
+
+            const novoFilho = {
+              type: "paragraph" as const,
+              props: {},
+              content: [] as any[],
+            };
+
+            const filhosAtuais = bloco.children || [];
+            const novosFilhos = [...filhosAtuais, novoFilho];
+
+            const blocoAtualizado = editor.updateBlock(bloco, {
+              children: novosFilhos,
+            });
+
+            if (blocoAtualizado.children && blocoAtualizado.children.length > 0) {
+              const ultimoFilho = blocoAtualizado.children[blocoAtualizado.children.length - 1];
+              setTimeout(() => {
+                try {
+                  editor.setTextCursorPosition(ultimoFilho.id, "start");
+                  editor.focus();
+                } catch {}
+              }, 10);
+            }
+            return;
+          }
+        } catch {}
+      }
     },
     [editor],
   );
@@ -1309,6 +1430,7 @@ export function EditorNotion({
           ? "fixed inset-0 z-50 bg-background overflow-y-auto px-4 sm:px-10 py-3 sm:py-4 pb-12 notion-editor-wrapper animate-in fade-in"
           : "notion-editor-wrapper min-h-[300px] relative"
       )}
+      onKeyDownCapture={handleEditorKeyDown}
       onPaste={aoColar}
       onCopy={aoCopiar}
       onDragOver={(e) => {
@@ -1384,6 +1506,18 @@ export function EditorNotion({
               aria-label="Lista de marcadores"
             >
               <ListIcon size={15} />
+            </button>
+
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                transformarBloco("toggleListItem");
+              }}
+              className="p-2 rounded-xl text-foreground hover:bg-accent active:bg-accent/80 transition-colors touch-manipulation min-w-[36px] flex items-center justify-center text-amber-500"
+              aria-label="Lista expansível retrátil"
+            >
+              <ChevronRight size={15} />
             </button>
 
             <button
@@ -1838,6 +1972,47 @@ export function EditorNotion({
           max-height: min(360px, 75vh) !important;
           max-width: min(360px, calc(100vw - 24px)) !important;
           overflow: visible !important;
+        }
+
+        /* Lista Expansível (Toggle List) */
+        .bn-toggle-wrapper {
+          display: flex;
+          align-items: flex-start;
+          width: 100%;
+          gap: 2px;
+        }
+
+        .bn-toggle-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: transparent;
+          border: none;
+          border-radius: 4px;
+          padding: 2px;
+          margin-top: 2px;
+          margin-right: 4px;
+          cursor: pointer;
+          color: hsl(var(--muted-foreground));
+          transition: transform 0.15s ease-in-out, color 0.15s ease, background-color 0.15s ease;
+          user-select: none;
+          flex-shrink: 0;
+        }
+
+        .bn-toggle-button:hover {
+          color: hsl(var(--foreground));
+          background-color: hsl(var(--accent) / 0.5);
+        }
+
+        .bn-toggle-wrapper[data-show-children="true"] .bn-toggle-button svg,
+        .bn-toggle-wrapper[data-show-children="true"] > .bn-toggle-button {
+          transform: rotate(90deg);
+        }
+
+        /* Oculta os blocos filhos quando a lista expansível está minimizada */
+        .bn-block:has(.bn-toggle-wrapper[data-show-children="false"]) > .bn-block-group,
+        [data-node-type="blockContainer"]:has(.bn-toggle-wrapper[data-show-children="false"]) > [data-node-type="blockGroup"] {
+          display: none !important;
         }
       `}</style>
     </div>
