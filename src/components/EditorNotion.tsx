@@ -999,6 +999,59 @@ export function EditorNotion({
     }
   };
 
+  const aoSoltarNoEditor = async (e: React.DragEvent) => {
+    const klausItemRaw = e.dataTransfer.getData("application/klaus-item");
+    const rawText = e.dataTransfer.getData("text/plain");
+
+    let textoParaInserir = "";
+
+    if (klausItemRaw) {
+      try {
+        const item = JSON.parse(klausItemRaw);
+        if (item.imagem) {
+          textoParaInserir = `\n\n![${item.titulo || "Referência visual"}](/${item.imagem})\n\n`;
+        } else if (item.markdown) {
+          textoParaInserir = `\n\n${item.markdown}\n\n`;
+        } else if (item.titulo) {
+          textoParaInserir = ` @${item.titulo} `;
+        }
+      } catch {}
+    }
+
+    if (!textoParaInserir && rawText) {
+      if (rawText.startsWith("![") || rawText.startsWith("@")) {
+        textoParaInserir = `\n\n${rawText}\n\n`;
+      } else if (rawText.startsWith("referencias/imagens/") || rawText.startsWith("referencias/")) {
+        textoParaInserir = `\n\n![Referência](/${rawText})\n\n`;
+      }
+    }
+
+    if (textoParaInserir && editor) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      try {
+        const blocos = await editor.tryParseMarkdownToBlocks(textoParaInserir.trim());
+        if (blocos && blocos.length > 0) {
+          const blocoAtual = editor.getTextCursorPosition()?.block || editor.document[editor.document.length - 1];
+          if (blocoAtual) {
+            editor.insertBlocks(blocos, blocoAtual, "after");
+          } else {
+            editor.insertBlocks(blocos, editor.document[0], "before");
+          }
+        } else {
+          editor.insertInlineContent([textoParaInserir]);
+        }
+      } catch {
+        try {
+          editor.insertInlineContent([textoParaInserir]);
+        } catch {
+          document.execCommand("insertText", false, textoParaInserir);
+        }
+      }
+    }
+  };
+
   const aoCopiar = (e: React.ClipboardEvent) => {
     const sel = window.getSelection()?.toString();
     if (sel) {
@@ -1227,6 +1280,11 @@ export function EditorNotion({
       )}
       onPaste={aoColar}
       onCopy={aoCopiar}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+      }}
+      onDrop={aoSoltarNoEditor}
     >
       {!pronto && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/60 backdrop-blur-xs text-xs text-muted-foreground animate-pulse">

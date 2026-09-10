@@ -19,6 +19,7 @@ import { abrirItemSpa } from "@/components/PropriedadesNotion";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { toast } from "@/lib/toast";
 import { obterReferenciasVinculadas } from "@/lib/vinculosNota";
+import { gerarPropsArrasto } from "@/lib/arrastoItem";
 
 interface PainelReferenciasNotaProps {
   tituloNota: string;
@@ -147,22 +148,30 @@ export function PainelReferenciasNota({
               {referenciasVinculadas.map((r) => (
                 <div
                   key={r.caminho}
+                  {...gerarPropsArrasto({
+                    caminho: r.caminho,
+                    titulo: r.titulo,
+                    imagem: r.imagem,
+                    markdown: r.imagem ? `![${r.titulo}](/${r.imagem})` : `@${r.titulo}`,
+                    rotuloTipo: "Referência",
+                  })}
                   onClick={() => abrirItemSpa(r.caminho)}
-                  className="group relative rounded-lg border border-border/60 overflow-hidden bg-muted/20 hover:border-primary/50 cursor-pointer transition-all aspect-video flex flex-col justify-end p-1.5"
+                  className="group relative rounded-lg border border-border/60 overflow-hidden bg-muted/20 hover:border-primary/50 cursor-grab active:cursor-grabbing transition-all aspect-video flex flex-col justify-end p-1.5 select-none"
+                  title="Clique para abrir ou arraste para soltar no texto"
                 >
                   {r.imagem ? (
                     <ImagemPrivada
                       caminho={r.imagem}
                       alt={r.titulo}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
                     />
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/40">
+                    <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/40 pointer-events-none">
                       <ImageIcon size={24} />
                     </div>
                   )}
 
-                  <div className="relative z-10 bg-black/60 backdrop-blur-xs rounded px-1.5 py-0.5 truncate text-[11px] text-white font-medium flex items-center justify-between gap-1">
+                  <div className="relative z-10 bg-black/60 backdrop-blur-xs rounded px-1.5 py-0.5 truncate text-[11px] text-white font-medium flex items-center justify-between gap-1 pointer-events-none">
                     <span className="truncate">{r.titulo}</span>
                     <ExternalLink size={10} className="shrink-0 opacity-70" />
                   </div>

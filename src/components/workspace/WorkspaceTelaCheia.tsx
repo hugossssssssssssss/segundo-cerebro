@@ -17,7 +17,7 @@ import { useSalvar } from "@/lib/useSalvar";
 import { lerConfig } from "@/lib/settings";
 import { cache, invalidarCache } from "@/lib/repo";
 import { toast } from "@/lib/toast";
-import { Eye, EyeOff, Sparkles, Play, Pause } from "lucide-react";
+import { Eye, EyeOff, Play, Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MapaMentalEmbed = lazy(() =>
@@ -300,24 +300,8 @@ export function WorkspaceTelaCheia() {
 
           {/* Conteúdo do Documento Ativo */}
           <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-3 sm:py-4 pb-10">
-            <div className="space-y-5 max-w-4xl mx-auto w-full">
+            <div className="space-y-5 max-w-6xl mx-auto w-full px-1 sm:px-2">
               {abaAtiva.erro && <Aviso tom="erro">{abaAtiva.erro}</Aviso>}
-
-              {modoFoco && (
-                <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400 select-none animate-in fade-in">
-                  <span className="flex items-center gap-1.5 font-semibold">
-                    <Sparkles size={13} />
-                    Modo Foco Ativo — Escrita limpa sem distrações
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setModoFoco(false)}
-                    className="text-[11px] underline font-medium hover:text-foreground cursor-pointer"
-                  >
-                    Sair do Foco
-                  </button>
-                </div>
-              )}
 
               {/* Título do Documento */}
               <input

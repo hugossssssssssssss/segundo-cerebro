@@ -24,7 +24,6 @@ import {
   Link as LinkIcon,
   Eye,
   EyeOff,
-  Sparkles,
   Share2,
 } from "lucide-react";
 import { Aviso, ModalConfirmacao, Tooltip } from "@/components/ui";
@@ -1173,7 +1172,12 @@ export function PainelNotionBase({
   }, [temMaisDeUmaVisao, temTarefas, tarefasVinculadas.length, temReferencias, referenciasVinculadas.length, temConexoes, mencoes.length]);
 
   const conteudo = (
-    <div className="space-y-5 max-w-4xl mx-auto w-full">
+    <div
+      className={cn(
+        "space-y-5 w-full mx-auto",
+        modoVisao === "telacheia" ? "max-w-6xl px-1 sm:px-4" : "max-w-4xl"
+      )}
+    >
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 
       <input
@@ -1184,22 +1188,6 @@ export function PainelNotionBase({
         className="w-full text-2xl sm:text-3xl font-bold border-none outline-none bg-transparent placeholder:text-muted-foreground/30 focus:ring-0 px-0 pt-1"
         autoFocus={!campoFocoInicial}
       />
-
-      {modoFoco && (
-        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400 select-none animate-in fade-in">
-          <span className="flex items-center gap-1.5 font-semibold">
-            <Sparkles size={13} />
-            Modo Foco Ativo — Escrita limpa sem distrações
-          </span>
-          <button
-            type="button"
-            onClick={() => setModoFoco(false)}
-            className="text-[11px] underline font-medium hover:text-foreground cursor-pointer"
-          >
-            Sair do Foco
-          </button>
-        </div>
-      )}
 
       {!modoFoco && (
         <>

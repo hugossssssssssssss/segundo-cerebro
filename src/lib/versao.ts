@@ -6,5 +6,5 @@
  * você DEVE incrementar esta versão (ex: 1.1.0 -> 1.1.1 ou 1.2.0) e atualizar
  * também o campo "version" no package.json.
  */
-export const VERSAO_APP = "2.29.22";
+export const VERSAO_APP = "2.29.23";
 export const versao = VERSAO_APP;

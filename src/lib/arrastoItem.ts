@@ -2,6 +2,8 @@ export interface ItemArrastavel {
   caminho: string;
   titulo?: string;
   rotuloTipo?: string;
+  imagem?: string;
+  markdown?: string;
 }
 
 export const TIPO_MIME_ITEM_KLAUS = "application/klaus-item";
@@ -37,8 +39,14 @@ export function gerarPropsArrasto(
     draggable: true,
     onDragStart: (e: React.DragEvent) => {
       try {
+        const textoArrastado =
+          item.markdown ||
+          (item.imagem
+            ? `![${item.titulo || "Referência"}](/${item.imagem})`
+            : item.caminho);
+
         e.dataTransfer.setData(TIPO_MIME_ITEM_KLAUS, JSON.stringify(item));
-        e.dataTransfer.setData("text/plain", item.caminho);
+        e.dataTransfer.setData("text/plain", textoArrastado);
         e.dataTransfer.effectAllowed = "copyMove";
       } catch {}
     },
