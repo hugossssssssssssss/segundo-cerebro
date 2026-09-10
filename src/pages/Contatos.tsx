@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Check,
   X,
+  Copy,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -66,6 +67,20 @@ type VisaoContatos = "arvore" | "cartoes" | "tabela";
 type ContatoAberto = Contato & {
   original: { titulo: string; corpo: string; bruto?: Frontmatter };
 };
+
+function copiarTextoPuro(texto: string, tipo: string, e?: React.MouseEvent) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  const limpo = (texto || "")
+    .replace(/^mailto:/i, "")
+    .replace(/^tel:/i, "")
+    .trim();
+  if (!limpo) return;
+  navigator.clipboard.writeText(limpo);
+  toast(`${tipo} copiado!`);
+}
 
 export default function Contatos() {
   const cfg = lerConfig();
@@ -761,22 +776,48 @@ export default function Contatos() {
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">{c.cargo || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground">{c.empresa || "—"}</td>
-                        <td className="px-4 py-3 space-y-0.5" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-4 py-3 space-y-1" onClick={(e) => e.stopPropagation()}>
                           {c.email && (
-                            <a
-                              href={`mailto:${c.email}`}
-                              className="flex items-center gap-1 text-primary hover:underline"
-                            >
-                              <Mail size={12} /> {c.email}
-                            </a>
+                            <div className="flex items-center gap-1.5 group/link">
+                              <a
+                                href={`mailto:${c.email}`}
+                                className="flex items-center gap-1 text-primary hover:underline text-xs truncate max-w-[180px]"
+                                title={c.email}
+                              >
+                                <Mail size={12} className="shrink-0" /> {c.email}
+                              </a>
+                              <Tooltip conteudo="Copiar e-mail">
+                                <button
+                                  type="button"
+                                  onClick={(e) => copiarTextoPuro(c.email!, "E-mail", e)}
+                                  className="opacity-0 group-hover/link:opacity-100 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+                                  aria-label="Copiar e-mail"
+                                >
+                                  <Copy size={11} />
+                                </button>
+                              </Tooltip>
+                            </div>
                           )}
                           {c.telefone && (
-                            <a
-                              href={`tel:${c.telefone}`}
-                              className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                            >
-                              <Phone size={12} /> {c.telefone}
-                            </a>
+                            <div className="flex items-center gap-1.5 group/link">
+                              <a
+                                href={`tel:${c.telefone}`}
+                                className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-xs truncate max-w-[180px]"
+                                title={c.telefone}
+                              >
+                                <Phone size={12} className="shrink-0" /> {c.telefone}
+                              </a>
+                              <Tooltip conteudo="Copiar telefone">
+                                <button
+                                  type="button"
+                                  onClick={(e) => copiarTextoPuro(c.telefone!, "Telefone", e)}
+                                  className="opacity-0 group-hover/link:opacity-100 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+                                  aria-label="Copiar telefone"
+                                >
+                                  <Copy size={11} />
+                                </button>
+                              </Tooltip>
+                            </div>
                           )}
                           {!c.email && !c.telefone && <span className="text-muted-foreground/60">—</span>}
                         </td>
@@ -1429,24 +1470,50 @@ function CardPessoaOrganograma({
         {(c.email || c.telefone) && (
           <div className="space-y-1.5 pt-2 border-t border-border/50 text-xs">
             {c.email && (
-              <a
-                href={`mailto:${c.email}`}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors truncate font-medium"
-              >
-                <Mail size={13} className="text-indigo-500 shrink-0" />
-                <span className="truncate">{c.email}</span>
-              </a>
+              <div className="flex items-center justify-between gap-1.5 group/card-link">
+                <a
+                  href={`mailto:${c.email}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors truncate font-medium min-w-0"
+                  title={c.email}
+                >
+                  <Mail size={13} className="text-indigo-500 shrink-0" />
+                  <span className="truncate">{c.email}</span>
+                </a>
+                <Tooltip conteudo="Copiar e-mail">
+                  <button
+                    type="button"
+                    onClick={(e) => copiarTextoPuro(c.email!, "E-mail", e)}
+                    className="opacity-0 group-hover/card-link:opacity-100 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer shrink-0"
+                    aria-label="Copiar e-mail"
+                  >
+                    <Copy size={11} />
+                  </button>
+                </Tooltip>
+              </div>
             )}
             {c.telefone && (
-              <a
-                href={`tel:${c.telefone}`}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors truncate font-medium"
-              >
-                <Phone size={13} className="text-purple-500 shrink-0" />
-                <span className="truncate">{c.telefone}</span>
-              </a>
+              <div className="flex items-center justify-between gap-1.5 group/card-link">
+                <a
+                  href={`tel:${c.telefone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors truncate font-medium min-w-0"
+                  title={c.telefone}
+                >
+                  <Phone size={13} className="text-purple-500 shrink-0" />
+                  <span className="truncate">{c.telefone}</span>
+                </a>
+                <Tooltip conteudo="Copiar telefone">
+                  <button
+                    type="button"
+                    onClick={(e) => copiarTextoPuro(c.telefone!, "Telefone", e)}
+                    className="opacity-0 group-hover/card-link:opacity-100 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer shrink-0"
+                    aria-label="Copiar telefone"
+                  >
+                    <Copy size={11} />
+                  </button>
+                </Tooltip>
+              </div>
             )}
           </div>
         )}
@@ -1563,24 +1630,50 @@ function CartaoContato({
 
         <div className="space-y-1.5 text-xs pt-1.5 border-t border-border/50">
           {c.email && (
-            <a
-              href={`mailto:${c.email}`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors truncate font-medium"
-            >
-              <Mail size={13} className="text-indigo-500 shrink-0" />
-              <span className="truncate">{c.email}</span>
-            </a>
+            <div className="flex items-center justify-between gap-1.5 group/card-link">
+              <a
+                href={`mailto:${c.email}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors truncate font-medium min-w-0"
+                title={c.email}
+              >
+                <Mail size={13} className="text-indigo-500 shrink-0" />
+                <span className="truncate">{c.email}</span>
+              </a>
+              <Tooltip conteudo="Copiar e-mail">
+                <button
+                  type="button"
+                  onClick={(e) => copiarTextoPuro(c.email!, "E-mail", e)}
+                  className="opacity-0 group-hover/card-link:opacity-100 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer shrink-0"
+                  aria-label="Copiar e-mail"
+                >
+                  <Copy size={11} />
+                </button>
+              </Tooltip>
+            </div>
           )}
           {c.telefone && (
-            <a
-              href={`tel:${c.telefone}`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors truncate font-medium"
-            >
-              <Phone size={13} className="text-purple-500 shrink-0" />
-              <span className="truncate">{c.telefone}</span>
-            </a>
+            <div className="flex items-center justify-between gap-1.5 group/card-link">
+              <a
+                href={`tel:${c.telefone}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors truncate font-medium min-w-0"
+                title={c.telefone}
+              >
+                <Phone size={13} className="text-purple-500 shrink-0" />
+                <span className="truncate">{c.telefone}</span>
+              </a>
+              <Tooltip conteudo="Copiar telefone">
+                <button
+                  type="button"
+                  onClick={(e) => copiarTextoPuro(c.telefone!, "Telefone", e)}
+                  className="opacity-0 group-hover/card-link:opacity-100 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer shrink-0"
+                  aria-label="Copiar telefone"
+                >
+                  <Copy size={11} />
+                </button>
+              </Tooltip>
+            </div>
           )}
         </div>
 

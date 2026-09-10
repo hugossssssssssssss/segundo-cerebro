@@ -251,6 +251,26 @@ function Estrutura({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Sanitizador global de cópia: assegura que e-mails e telefones sejam colados puramente sem prefixos mailto: ou tel:
+  useEffect(() => {
+    const aoCopiarGlobal = (e: ClipboardEvent) => {
+      const sel = window.getSelection()?.toString();
+      if (!sel) return;
+
+      if (/mailto:|tel:/i.test(sel)) {
+        let limpo = sel.replace(/mailto:([^\s>)]+)/gi, "$1");
+        limpo = limpo.replace(/tel:([^\s>)]+)/gi, "$1");
+        if (limpo !== sel) {
+          e.clipboardData?.setData("text/plain", limpo);
+          e.preventDefault();
+        }
+      }
+    };
+
+    document.addEventListener("copy", aoCopiarGlobal);
+    return () => document.removeEventListener("copy", aoCopiarGlobal);
+  }, []);
+
 
   /**
    * Badge de pendências no título da aba.

@@ -40,6 +40,7 @@ export function WorkspaceTelaCheia() {
     fecharWorkspace,
     atualizarAbaAtiva,
     fecharAba,
+    salvarAba,
   } = useWorkspace();
 
   const [confirmandoApagar, setConfirmandoApagar] = useState(false);
@@ -54,6 +55,19 @@ export function WorkspaceTelaCheia() {
     retomar: retomarFoco,
     restante: restanteFoco,
   } = useCronometro();
+
+  // Atalho de teclado Cmd+S / Ctrl+S para salvar imediatamente a aba ativa
+  useEffect(() => {
+    if (!workspaceAberto || !abaAtiva) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        salvarAba(abaAtiva.id);
+      }
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [workspaceAberto, abaAtiva, salvarAba]);
 
   // Registro de camadas para ESC fechar o workspace
   useEffect(() => {

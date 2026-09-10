@@ -101,25 +101,6 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       const aba = abasRef.current.find((a) => a.id === id);
       if (!aba) return;
 
-      // Se a aba tem uma função customizada de salvar
-      if (aba.aoSalvar) {
-        try {
-          setAbas((prev) =>
-            prev.map((a) => (a.id === id ? { ...a, salvando: true } : a))
-          );
-          await aba.aoSalvar(aba);
-          setAbas((prev) =>
-            prev.map((a) => (a.id === id ? { ...a, salvando: false, temMudancas: false } : a))
-          );
-        } catch (err: any) {
-          setAbas((prev) =>
-            prev.map((a) => (a.id === id ? { ...a, salvando: false, erro: err?.message || String(err) } : a))
-          );
-          toast(`Erro ao salvar aba: ${err?.message || err}`, { tipo: "erro" });
-        }
-        return;
-      }
-
       // Se a aba não tem caminho do GitHub, gera nome livre seguro
       let caminhoAlvo = aba.caminho;
       if (!caminhoAlvo) {
@@ -150,6 +131,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
         const novoSha = await salvarTexto(caminhoAlvo, texto, aba.sha, `atualizar ${caminhoAlvo}`);
         invalidarCache();
+        window.dispatchEvent(new CustomEvent("acervo-atualizado"));
 
         setAbas((prev) =>
           prev.map((a) =>
@@ -165,6 +147,17 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
               : a
           )
         );
+
+        if (aba.aoSalvar) {
+          try {
+            await aba.aoSalvar({
+              ...aba,
+              caminho: caminhoAlvo,
+              sha: novoSha || aba.sha,
+              temMudancas: false,
+            });
+          } catch {}
+        }
       } catch (err: any) {
         setAbas((prev) =>
           prev.map((a) => (a.id === id ? { ...a, salvando: false, erro: err?.message || String(err) } : a))

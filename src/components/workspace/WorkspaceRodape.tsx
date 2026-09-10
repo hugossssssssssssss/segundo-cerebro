@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Trash2, History as IconeHistorico, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2, History as IconeHistorico, Check, Save } from "lucide-react";
 import { Botao, Tooltip } from "@/components/ui";
 import { useWorkspace } from "./WorkspaceContext";
 
@@ -13,10 +13,16 @@ export function WorkspaceRodape({
   aoVerHistorico,
   temHistorico,
 }: WorkspaceRodapeProps) {
-  const { abaAtiva, irParaAnterior, irParaProximo, infoSequencial } = useWorkspace();
+  const { abaAtiva, salvarAba, irParaAnterior, irParaProximo, infoSequencial } = useWorkspace();
 
   const salvando = abaAtiva?.salvando;
   const temMudancas = abaAtiva?.temMudancas;
+
+  const handleSalvar = () => {
+    if (abaAtiva?.id) {
+      salvarAba(abaAtiva.id);
+    }
+  };
 
   return (
     <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-4 sm:px-6 py-2.5 bg-card/90 backdrop-blur-xs select-none">
@@ -79,29 +85,43 @@ export function WorkspaceRodape({
         </Tooltip>
       </div>
 
-      {/* Status de Sincronização em Background à direita */}
+      {/* Status de Sincronização e Botão Salvar à direita */}
       <div className="flex items-center gap-2">
         <Tooltip
           conteudo={
             salvando
               ? "Gravando alterações no repositório..."
               : temMudancas
-              ? "Modificado: alterações salvas no navegador e sincronizando"
+              ? "Alterações pendentes — clique para salvar agora (ou aguarde auto-save)"
               : "Todas as alterações estão salvas e sincronizadas"
           }
+          atalho="⌘S"
           posicao="top"
         >
-          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-accent/60 flex items-center gap-1.5 cursor-default">
+          <Botao
+            variante={temMudancas ? "primario" : "neutro"}
+            tamanho="pequeno"
+            onClick={handleSalvar}
+            disabled={salvando}
+            className="text-xs h-7 px-2.5 gap-1.5"
+          >
             {salvando ? (
-              <span className="text-blue-500 animate-pulse font-semibold">Salvando...</span>
+              <>
+                <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                <span>Salvando…</span>
+              </>
             ) : temMudancas ? (
-              <span className="text-amber-600 dark:text-amber-400 font-medium">Salva em background</span>
+              <>
+                <Save size={13} />
+                <span>Salvar</span>
+              </>
             ) : (
-              <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                <Check size={12} /> Sincronizado
-              </span>
+              <>
+                <Check size={13} className="text-emerald-500" />
+                <span>Salvo</span>
+              </>
             )}
-          </span>
+          </Botao>
         </Tooltip>
       </div>
     </div>

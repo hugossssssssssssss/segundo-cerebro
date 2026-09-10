@@ -150,7 +150,6 @@ export function PainelNotionBase({
         erro,
         mencoes,
         opcoesRelacionamento,
-        aoSalvar: async () => { await aoSalvar(); },
         aoRemover: aoRemover ? async () => { await aoRemover(); } : undefined,
       });
       aoFechar();

@@ -773,7 +773,10 @@ export function EditorNotion({
   const aoCopiar = (e: React.ClipboardEvent) => {
     const sel = window.getSelection()?.toString();
     if (sel) {
-      const limpo = sel.replace(/\\+\s*(\n|$)/g, "$1");
+      let limpo = sel.replace(/\\+\s*(\n|$)/g, "$1");
+      // Remove duplicações e prefixos mailto: e tel: indesejados ao colar fora
+      limpo = limpo.replace(/mailto:([^\s>)]+)/gi, "$1");
+      limpo = limpo.replace(/tel:([^\s>)]+)/gi, "$1");
       if (limpo !== sel) {
         e.clipboardData.setData("text/plain", limpo);
         e.preventDefault();
@@ -983,72 +986,6 @@ export function EditorNotion({
     };
   }, [aoAbrirMencao]);
 
-  const [selecaoTexto, setSelecaoTexto] = useState<{ texto: string; x: number; y: number } | null>(null);
-
-  useEffect(() => {
-    const aoMudarSelecao = () => {
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || !sel.rangeCount) {
-        setSelecaoTexto(null);
-        return;
-      }
-      const txt = sel.toString().trim();
-      if (txt.length < 3 || txt.length > 160 || txt.includes("\n\n")) {
-        setSelecaoTexto(null);
-        return;
-      }
-      const elAlvo = sel.anchorNode?.parentElement;
-      if (!wrapperRef.current?.contains(elAlvo || null)) {
-        setSelecaoTexto(null);
-        return;
-      }
-      const range = sel.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) {
-        setSelecaoTexto(null);
-        return;
-      }
-      setSelecaoTexto({
-        texto: txt,
-        x: Math.max(16, rect.left + rect.width / 2),
-        y: Math.max(10, rect.top - 36),
-      });
-    };
-
-    document.addEventListener("selectionchange", aoMudarSelecao);
-    return () => document.removeEventListener("selectionchange", aoMudarSelecao);
-  }, []);
-
-  const converterSelecaoEmTarefa = async (texto: string) => {
-    try {
-      const cfg = lerConfig();
-      const todosItens = cache?.itens || [];
-      const caminhoNovo = nomeLivre("tarefas", texto, todosItens.map((i) => i.caminho));
-
-      const novaTarefa: Tarefa = {
-        caminho: caminhoNovo,
-        sha: "",
-        bruto: {},
-        titulo: texto,
-        status: "a-fazer",
-        tags: [],
-        corpo: "",
-        relacionamentos: [],
-      };
-      const { dados, corpo: corpoTarefa } = tarefaParaArquivo(novaTarefa);
-      const md = escreverMarkdown({ dados, corpo: corpoTarefa });
-      await gravar(cfg, caminhoNovo, md, `criar tarefa: ${texto}`);
-      invalidarCache();
-      dispararAtualizacaoAcervo();
-
-      document.execCommand("insertText", false, `@${texto} `);
-      setSelecaoTexto(null);
-      toast(`Tarefa "${texto}" criada no Kanban!`);
-    } catch (e: any) {
-      toast(`Erro ao criar tarefa: ${e?.message || e}`, { tipo: "erro" });
-    }
-  };
-
   return (
     <div
       ref={wrapperRef}
@@ -1061,30 +998,6 @@ export function EditorNotion({
       onPaste={aoColar}
       onCopy={aoCopiar}
     >
-      {selecaoTexto && (
-        <div
-          style={{
-            position: "fixed",
-            left: `${selecaoTexto.x}px`,
-            top: `${selecaoTexto.y}px`,
-            transform: "translateX(-50%)",
-            zIndex: 10000,
-          }}
-          className="animate-in fade-in zoom-in-95 duration-100"
-        >
-          <button
-            type="button"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              converterSelecaoEmTarefa(selecaoTexto.texto);
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card/95 text-foreground text-xs font-semibold shadow-lg border border-border/80 backdrop-blur hover:bg-accent hover:scale-105 active:scale-95 transition-all cursor-pointer select-none"
-          >
-            <CheckSquare size={13} className="text-emerald-500 shrink-0" />
-            <span>Criar Tarefa</span>
-          </button>
-        </div>
-      )}
       {!pronto && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/60 backdrop-blur-xs text-xs text-muted-foreground animate-pulse">
           Carregando editor…
