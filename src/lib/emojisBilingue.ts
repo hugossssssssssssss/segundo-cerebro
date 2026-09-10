@@ -292,5 +292,14 @@ export function buscarEmojisBilingue(
   }
 
   pontuados.sort((a, b) => b.score - a.score);
-  return pontuados.slice(0, limite).map((p) => p.item);
+  const vistos = new Set<string>();
+  const resultado: EmojiItemBilingue[] = [];
+  for (const p of pontuados) {
+    if (!vistos.has(p.item.emoji)) {
+      vistos.add(p.item.emoji);
+      resultado.push(p.item);
+      if (resultado.length >= limite) break;
+    }
+  }
+  return resultado;
 }

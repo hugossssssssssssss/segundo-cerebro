@@ -177,29 +177,51 @@ export function renderizarMarkdownInline(
 }
 
 /**
- * Prepara e extrai um snippet seguro de markdown para pré-visualização.
+ * Prepara e extrai um snippet seguro e limpo de texto puro para pré-visualização.
+ * Remove quaisquer símbolos de formatação (asteriscos, barras, crases, comentários HTML, etc.)
+ * para que os cartões e listas exibam texto legível e agradável sem ruído técnico.
  */
 export function prepararSnippetPreview(corpo: string, tamanhoMax = 180): string {
   if (!corpo || typeof corpo !== "string") return "";
 
   let limpo = corpo
+    // Remove blocos de código
     .replace(/```[\s\S]*?```/g, "")
+    // Remove comentários HTML como <!-- align:... -->
+    .replace(/<!--[\s\S]*?-->/g, "")
+    // Remove tags HTML
     .replace(/<[^>]+>/g, "")
-    .replace(/!\[.*?\]\(.*?\)/g, "")
-    .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+    // Remove imagens markdown
+    .replace(/!\[[\s\S]*?\]\([\s\S]*?\)/g, "")
+    .replace(/!\[.*?\]/g, "")
+    // Converte links markdown [texto](url) em apenas texto
+    .replace(/\[([\s\S]*?)\]\([\s\S]*?\)/g, "$1")
+    // Remove wikilinks [[alvo]]
+    .replace(/\[\[(.*?)\]\]/g, "$1")
+    // Remove títulos markdown #
     .replace(/^#{1,6}\s+/gm, "")
+    // Remove marcadores de lista e checkboxes
     .replace(/^[ \t]*[-*+](?: \[[ xX]\])?\s+/gm, "")
     .replace(/^[ \t]*\d+\.\s+/gm, "")
     .replace(/(^|\s)[*•\-+](?=\s)/g, "$1")
+    // Remove citações > e divisores ---
     .replace(/^[ \t]*>\s+/gm, "")
     .replace(/^-{3,}$/gm, "")
-    .replace(/<!--[\s\S]*?-->/g, "")
+    // Remove marcadores inline como **, __, *, _, ~~, `
+    .replace(/(\*\*|__)(.*?)\1/g, "$2")
+    .replace(/(\*|_)(.*?)\1/g, "$2")
+    .replace(/~~(.*?)~~/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    // Remove escapes \
     .replace(/\\([*_[\]()#`~\\'-])/g, "$1")
-    .replace(/\n+/g, " ")
+    // Limpa asteriscos, crases, til e barras soltas residuais
+    .replace(/[*`~]/g, "")
+    // Normaliza quebras de linha e múltiplos espaços
+    .replace(/\s+/g, " ")
     .trim();
 
   if (limpo.length <= tamanhoMax) {
-    return balancearFormatacaoSnippet(limpo);
+    return limpo;
   }
 
   let cortado = limpo.slice(0, tamanhoMax);
@@ -208,26 +230,5 @@ export function prepararSnippetPreview(corpo: string, tamanhoMax = 180): string 
     cortado = cortado.slice(0, ultimoEspaco);
   }
 
-  return balancearFormatacaoSnippet(cortado) + "…";
-}
-
-function balancearFormatacaoSnippet(texto: string): string {
-  let res = texto.trim();
-
-  const contagemNegrito = (res.match(/\*\*/g) || []).length;
-  if (contagemNegrito % 2 !== 0) {
-    res += "**";
-  }
-
-  const asteriscosSoltos = (res.replace(/\*\*/g, "").match(/\*/g) || []).length;
-  if (asteriscosSoltos % 2 !== 0) {
-    res += "*";
-  }
-
-  const crases = (res.match(/`/g) || []).length;
-  if (crases % 2 !== 0) {
-    res += "`";
-  }
-
-  return res;
+  return cortado.trim() + "…";
 }

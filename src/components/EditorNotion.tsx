@@ -946,10 +946,9 @@ export function EditorNotion({
     async (query: string) => {
       // Se o usuário digitou espaço, cancela o menu
       if (query.includes(" ")) return [];
-      const encontrados = buscarEmojisBilingue(query, 30);
+      const encontrados = buscarEmojisBilingue(query, 25);
       return encontrados.map((item) => ({
-        title: `${item.emoji} ${item.nomePt}`,
-        subtext: `:${item.nomeEn}:`,
+        title: item.nomePt,
         icon: <span className="text-base leading-none select-none">{item.emoji}</span>,
         onItemClick: () => {
           editor.insertInlineContent([`${item.emoji} `]);

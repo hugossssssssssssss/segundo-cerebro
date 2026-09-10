@@ -22,10 +22,23 @@ export async function carregarModeloVosk(
 
   const { createModel } = await import("vosk-browser");
 
-  aoProgresso?.(30, "Carregando modelo acústico em Português do Brasil (~31MB)...");
+  aoProgresso?.(30, "Carregando modelo em Português do Brasil...");
 
-  modeloVoskInstancia = await createModel(VOSK_MODELO_PT_URL);
-  aoProgresso?.(100, "Modelo Vosk carregado com sucesso!");
+  const promessaModelo = createModel(VOSK_MODELO_PT_URL);
+  const timeout = new Promise((_, reject) =>
+    setTimeout(
+      () =>
+        reject(
+          new Error(
+            "Tempo limite ao baixar modelo Vosk (servidor indisponível ou bloqueado por CORS)."
+          )
+        ),
+      8000
+    )
+  );
+
+  modeloVoskInstancia = await Promise.race([promessaModelo, timeout]);
+  aoProgresso?.(100, "Modelo Vosk pronto!");
 
   return modeloVoskInstancia;
 }

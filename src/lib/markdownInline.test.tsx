@@ -68,10 +68,12 @@ describe("renderizarMarkdownInline", () => {
 });
 
 describe("prepararSnippetPreview", () => {
-  it("preserva negrito e fecha pares abertos no corte", () => {
+  it("limpa formatação markdown e gera texto limpo", () => {
     const texto = "Esta é uma nota sobre **Reuniões Nitro** com foco em design e entrega rápida.";
     const snippet = prepararSnippetPreview(texto, 45);
-    expect(snippet).toContain("**Reuniões Nitro**");
+    expect(snippet).toContain("Reuniões Nitro");
+    expect(snippet).not.toContain("**");
+    expect(snippet).not.toContain("*");
   });
 
   it("limpa cabeçalhos e marcadores desnecessários", () => {
@@ -79,14 +81,19 @@ describe("prepararSnippetPreview", () => {
     const snippet = prepararSnippetPreview(texto, 100);
     expect(snippet).not.toContain("#");
     expect(snippet).not.toContain("- Item");
-    expect(snippet).toContain("**destaque**");
+    expect(snippet).toContain("destaque");
+    expect(snippet).not.toContain("**");
   });
 
-  it("limpa escapes e marcadores de lista no meio do texto", () => {
-    const texto = "Itens: * primeiro * segundo com **negrito**";
+  it("limpa escapes, comentários html de alinhamento e marcadores", () => {
+    const texto = "<!-- align:center -->\n# Título\n\nItens: * primeiro * segundo com **negrito** e [link](https://site.com)";
     const snippet = prepararSnippetPreview(texto, 100);
-    expect(snippet).not.toContain("* primeiro");
+    expect(snippet).not.toContain("<!--");
+    expect(snippet).not.toContain("align:center");
+    expect(snippet).not.toContain("#");
     expect(snippet).toContain("primeiro");
-    expect(snippet).toContain("**negrito**");
+    expect(snippet).toContain("segundo com negrito");
+    expect(snippet).toContain("e link");
+    expect(snippet).not.toContain("https://");
   });
 });

@@ -41,7 +41,7 @@ export default function Transcritor() {
   const pronto = configCompleta(cfg);
 
   // Estados de Configuração da Sessão
-  const [motor, setMotor] = useState<MotorTranscricao>("vosk");
+  const [motor, setMotor] = useState<MotorTranscricao>("nativo");
   const [fonte, setFonte] = useState<FonteAudio>("microfone");
   const [status, setStatus] = useState<StatusGravador>("inativo");
   const [nivelVolume, setNivelVolume] = useState<number>(0);
