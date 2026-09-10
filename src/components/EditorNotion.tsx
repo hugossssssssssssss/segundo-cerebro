@@ -31,7 +31,7 @@ import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { lerConfig } from "@/lib/settings";
 import { carregarRepo, cache, invalidarCache, type ItemRepo } from "@/lib/repo";
-import { montarIndice, alvosUnicos, filtrarAlvos, type Alvo } from "@/lib/links";
+import { montarIndice, alvosUnicos, type Alvo } from "@/lib/links";
 import { restaurarWikilinks, nomeLivre, escreverMarkdown } from "@/lib/markdown";
 import { formatarTagLembrete } from "@/lib/inbox";
 import { converterHtmlParaMarkdownClipboard, ehHtmlFormatadoRelevante } from "@/lib/pasteHtmlParaMarkdown";
@@ -43,6 +43,13 @@ import { toast } from "@/lib/toast";
 import type { Tarefa } from "@/lib/tipos";
 import { ModalLembrete } from "./ModalLembrete";
 import { ModalIADocumento } from "./ModalIADocumento";
+import { ModalVincularDocumentoAvancado } from "./ModalVincularDocumentoAvancado";
+import {
+  type CategoriaDocumento,
+  indexarDocumentosVinculaveis,
+  alvosParaDocumentosVinculaveis,
+  filtrarDocumentosVinculaveis,
+} from "@/lib/vincularDocumentos";
 import { abrirItemSpa } from "./PropriedadesNotion";
 
 /**
@@ -474,6 +481,8 @@ export function EditorNotion({
 
   const [modalLembreteAberto, setModalLembreteAberto] = useState(false);
   const [modalIAAberto, setModalIAAberto] = useState(false);
+  const [modalVincularAvancadoAberto, setModalVincularAvancadoAberto] = useState(false);
+  const [categoriaInicialVincular, setCategoriaInicialVincular] = useState<CategoriaDocumento | "todas">("todas");
   const [posicaoIA, setPosicaoIA] = useState<{ x: number; y: number } | null>(null);
 
   const alvosRef = useRef(alvos);
@@ -674,41 +683,167 @@ export function EditorNotion({
   /** Monta os itens do menu com callback estável de getItems para a SuggestionMenuController */
   const handleGetItems = useCallback(
     async (query: string) => {
-      const itens = filtrarAlvos(alvosRef.current, query, 35).map((s) => {
-        const ehLousa = s.tipo === "lousa" || s.caminho.startsWith("lousas/");
-        const categoria = ehLousa
-          ? "Mapa Mental Excalidraw"
-          : s.caminho.startsWith("tarefas/")
-          ? "Tarefa"
-          : s.caminho.startsWith("notas/")
-          ? "Nota"
-          : s.caminho.startsWith("pdi/")
-          ? "Meta / Entrega PDI"
-          : s.caminho.startsWith("referencias/")
-          ? "Referência Visual"
-          : "Documento";
-
-        return {
-          title: `@${s.titulo}`,
-          subtext: categoria,
-          onItemClick: () => {
-            editor.insertInlineContent([`@${s.titulo} `]);
-          },
-        };
-      });
+      // Se o usuário digitou espaço, respeita e fecha o modal imediatamente
+      if (query === " " || query.startsWith(" ") || query.endsWith(" ")) {
+        return [];
+      }
 
       const q = query.toLowerCase().trim();
-      if (!q || "lembrete".includes(q) || "lembre".includes(q)) {
-        itens.unshift({
+      const docs = cache?.itens
+        ? indexarDocumentosVinculaveis(cache.itens)
+        : alvosParaDocumentosVinculaveis(alvosRef.current);
+
+      const itensRetorno: any[] = [];
+
+      // Sem busca ou no início: exibe Ação de Filtro Avançado, Lembrete e Pastas das Telas
+      if (!q) {
+        itensRetorno.push({
+          title: "⚡ Filtro Avançado de Documentos...",
+          subtext: "Navegue por pastas, status (Kanban) e tags com pré-visualização",
+          group: "Ações Rápidas",
+          onItemClick: () => {
+            setCategoriaInicialVincular("todas");
+            setModalVincularAvancadoAberto(true);
+          },
+        });
+
+        itensRetorno.push({
+          title: "⏰ @lembrete — Agendar Lembrete",
+          subtext: "Definir data, hora e notificações",
+          group: "Ações Rápidas",
+          onItemClick: () => {
+            setModalLembreteAberto(true);
+          },
+        });
+
+        itensRetorno.push({
+          title: "📁 Pasta: Tarefas",
+          subtext: "Filtrar por: A Fazer, Em Andamento, Concluídas",
+          group: "Pastas por Tela",
+          onItemClick: () => {
+            setCategoriaInicialVincular("tarefas");
+            setModalVincularAvancadoAberto(true);
+          },
+        });
+
+        itensRetorno.push({
+          title: "📁 Pasta: Notas",
+          subtext: "Filtrar notas por pasta ou assunto",
+          group: "Pastas por Tela",
+          onItemClick: () => {
+            setCategoriaInicialVincular("notas");
+            setModalVincularAvancadoAberto(true);
+          },
+        });
+
+        itensRetorno.push({
+          title: "📁 Pasta: Metas & PDI",
+          subtext: "Metas ativas, metas concluídas e entregas",
+          group: "Pastas por Tela",
+          onItemClick: () => {
+            setCategoriaInicialVincular("pdi");
+            setModalVincularAvancadoAberto(true);
+          },
+        });
+
+        itensRetorno.push({
+          title: "📁 Pasta: Contatos",
+          subtext: "Vincular pessoas e contatos",
+          group: "Pastas por Tela",
+          onItemClick: () => {
+            setCategoriaInicialVincular("contatos");
+            setModalVincularAvancadoAberto(true);
+          },
+        });
+
+        itensRetorno.push({
+          title: "📁 Pasta: Referências Visuais",
+          subtext: "Moodboards, imagens e inspirações",
+          group: "Pastas por Tela",
+          onItemClick: () => {
+            setCategoriaInicialVincular("referencias");
+            setModalVincularAvancadoAberto(true);
+          },
+        });
+
+        itensRetorno.push({
+          title: "📁 Pasta: Lousas & Mapas Mentais",
+          subtext: "Diagramas visuais do Excalidraw",
+          group: "Pastas por Tela",
+          onItemClick: () => {
+            setCategoriaInicialVincular("lousas");
+            setModalVincularAvancadoAberto(true);
+          },
+        });
+      }
+
+      // Se o usuário digitou termo de lembrete
+      if (q && ("lembrete".includes(q) || "lembre".includes(q))) {
+        itensRetorno.push({
           title: "@lembrete — Agendar Lembrete",
           subtext: "Abrir seletor de data, hora e notificações",
+          group: "Ações",
           onItemClick: () => {
             setModalLembreteAberto(true);
           },
         });
       }
 
-      return itens;
+      // Atalhos de filtro por categoria quando digita o nome da pasta
+      if (q && ("tarefa".includes(q) || "tarefas".includes(q) || "kanban".includes(q) || "a fazer".includes(q) || "andamento".includes(q))) {
+        itensRetorno.push({
+          title: "📁 Abrir Pasta: Tarefas",
+          subtext: "Filtrar tarefas em A Fazer, Em Andamento e Concluídas",
+          group: "Pastas Encontradas",
+          onItemClick: () => {
+            setCategoriaInicialVincular("tarefas");
+            setModalVincularAvancadoAberto(true);
+          },
+        });
+      }
+
+      if (q && ("nota".includes(q) || "notas".includes(q) || "pasta".includes(q))) {
+        itensRetorno.push({
+          title: "📁 Abrir Pasta: Notas",
+          subtext: "Explorar todas as pastas de notas",
+          group: "Pastas Encontradas",
+          onItemClick: () => {
+            setCategoriaInicialVincular("notas");
+            setModalVincularAvancadoAberto(true);
+          },
+        });
+      }
+
+      if (q && ("meta".includes(q) || "metas".includes(q) || "pdi".includes(q) || "entrega".includes(q))) {
+        itensRetorno.push({
+          title: "📁 Abrir Pasta: Metas & PDI",
+          subtext: "Explorar metas e entregas",
+          group: "Pastas Encontradas",
+          onItemClick: () => {
+            setCategoriaInicialVincular("pdi");
+            setModalVincularAvancadoAberto(true);
+          },
+        });
+      }
+
+      // Documentos correspondentes ao termo
+      const filtrados = filtrarDocumentosVinculaveis(docs, {
+        termo: q,
+        limite: q ? 30 : 8,
+      });
+
+      for (const doc of filtrados) {
+        itensRetorno.push({
+          title: `@${doc.titulo}`,
+          subtext: doc.subtexto || doc.categoriaRotulo,
+          group: q ? doc.categoriaRotulo : "Documentos Recentes",
+          onItemClick: () => {
+            editor.insertInlineContent([`@${doc.titulo} `]);
+          },
+        });
+      }
+
+      return itensRetorno;
     },
     [editor],
   );
@@ -1247,6 +1382,20 @@ export function EditorNotion({
         aoFechar={() => setModalIAAberto(false)}
         aoColarNoDocumento={colarTextoIA}
       />
+
+      <ModalVincularDocumentoAvancado
+        aberto={modalVincularAvancadoAberto}
+        aoFechar={() => setModalVincularAvancadoAberto(false)}
+        categoriaInicial={categoriaInicialVincular}
+        documentos={
+          cache?.itens
+            ? indexarDocumentosVinculaveis(cache.itens)
+            : alvosParaDocumentosVinculaveis(alvosRef.current)
+        }
+        aoSelecionar={(doc) => {
+          editor.insertInlineContent([`@${doc.titulo} `]);
+        }}
+      />
       <style>{`
         .notion-editor-wrapper .bn-container { font-family: inherit; }
         .notion-editor-wrapper .bn-editor { 
@@ -1345,7 +1494,7 @@ export function EditorNotion({
         }
         .notion-editor-wrapper a {
           color: #3b82f6;
-          font-weight: 600;
+          font-weight: 400;
           text-decoration: none !important;
           padding: 1px 6px;
           border-radius: 6px;

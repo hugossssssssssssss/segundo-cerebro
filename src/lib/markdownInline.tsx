@@ -90,7 +90,7 @@ export function renderizarMarkdownInline(
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className={opcoes?.classeLink || "text-primary/90 hover:underline font-medium"}
+          className={opcoes?.classeLink || "text-primary/90 hover:underline font-normal"}
         >
           {match[9]}
         </a>
@@ -100,7 +100,7 @@ export function renderizarMarkdownInline(
       partes.push(
         <span
           key={`m-${match.index}`}
-          className={opcoes?.classeMencao || "text-primary/90 font-medium hover:underline"}
+          className={opcoes?.classeMencao || "text-primary/90 font-normal hover:underline"}
         >
           @{match[11]}
         </span>
