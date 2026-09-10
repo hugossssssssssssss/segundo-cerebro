@@ -9,17 +9,22 @@ import {
   Image as ImageIcon,
   Layout,
   Folder,
-  Tag,
   ArrowRight,
+  Calendar,
 } from "lucide-react";
-import { Modal } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import {
   type DocumentoVinculavel,
   type CategoriaDocumento,
+  DEFINICOES_FILTRO_DOCUMENTOS,
   filtrarDocumentosVinculaveis,
   montarEstruturaPastas,
 } from "@/lib/vincularDocumentos";
+import {
+  BarraFiltrosAvancados,
+  type RegraFiltro,
+} from "@/components/BarraFiltrosAvancados";
+import { renderizarMarkdownInline } from "@/lib/markdownInline";
 
 interface ModalVincularDocumentoAvancadoProps {
   aberto: boolean;
@@ -39,24 +44,41 @@ export function ModalVincularDocumentoAvancado({
   const [busca, setBusca] = useState("");
   const [categoriaAtiva, setCategoriaAtiva] = useState<CategoriaDocumento | "todas">(categoriaInicial);
   const [subpastaAtiva, setSubpastaAtiva] = useState<string>("todos");
-  const [tagAtiva, setTagAtiva] = useState<string>("");
+  const [regrasFiltro, setRegrasFiltro] = useState<RegraFiltro[]>([]);
   const [indiceSelecionado, setIndiceSelecionado] = useState(0);
 
   const inputBuscaRef = useRef<HTMLInputElement>(null);
+  const painelRef = useRef<HTMLDivElement>(null);
 
-  // Reseta estados quando o modal abre
+  // Reseta estados quando abre
   useEffect(() => {
     if (aberto) {
       setBusca("");
       setCategoriaAtiva(categoriaInicial);
       setSubpastaAtiva("todos");
-      setTagAtiva("");
+      setRegrasFiltro([]);
       setIndiceSelecionado(0);
       setTimeout(() => {
         inputBuscaRef.current?.focus();
-      }, 50);
+      }, 30);
     }
   }, [aberto, categoriaInicial]);
+
+  // Fecha ao clicar fora
+  useEffect(() => {
+    if (!aberto) return;
+    const lidarCliqueFora = (e: MouseEvent) => {
+      if (painelRef.current && !painelRef.current.contains(e.target as Node)) {
+        // Se não clicou dentro de um popover aberto (como o de filtros)
+        const ehPopover = (e.target as HTMLElement).closest("[data-radix-popper-content-wrapper]");
+        if (!ehPopover) {
+          aoFechar();
+        }
+      }
+    };
+    document.addEventListener("mousedown", lidarCliqueFora);
+    return () => document.removeEventListener("mousedown", lidarCliqueFora);
+  }, [aberto, aoFechar]);
 
   // Estrutura de pastas e contagens
   const pastas = useMemo(() => montarEstruturaPastas(documentos), [documentos]);
@@ -68,38 +90,23 @@ export function ModalVincularDocumentoAvancado({
     return pastaCat?.subpastas || [];
   }, [pastas, categoriaAtiva]);
 
-  // Todas as tags únicas
-  const todasTags = useMemo(() => {
-    const conjunto = new Set<string>();
-    for (const doc of documentos) {
-      if (categoriaAtiva !== "todas" && doc.categoria !== categoriaAtiva) continue;
-      doc.tags.forEach((t) => conjunto.add(t));
-    }
-    return Array.from(conjunto);
-  }, [documentos, categoriaAtiva]);
-
   // Filtragem dos documentos
   const documentosFiltrados = useMemo(() => {
-    let resultado = filtrarDocumentosVinculaveis(documentos, {
+    return filtrarDocumentosVinculaveis(documentos, {
       categoria: categoriaAtiva,
       subpastaOuStatus: subpastaAtiva,
       termo: busca,
+      regras: regrasFiltro,
       limite: 100,
     });
-
-    if (tagAtiva) {
-      resultado = resultado.filter((d) => d.tags.includes(tagAtiva));
-    }
-
-    return resultado;
-  }, [documentos, categoriaAtiva, subpastaAtiva, busca, tagAtiva]);
+  }, [documentos, categoriaAtiva, subpastaAtiva, busca, regrasFiltro]);
 
   // Ajusta índice selecionado
   useEffect(() => {
     setIndiceSelecionado(0);
   }, [documentosFiltrados.length, categoriaAtiva, subpastaAtiva]);
 
-  // Atalhos de teclado no modal
+  // Atalhos de teclado
   const lidarKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -116,6 +123,7 @@ export function ModalVincularDocumentoAvancado({
         aoFechar();
       }
     } else if (e.key === "Escape") {
+      e.preventDefault();
       aoFechar();
     }
   };
@@ -142,40 +150,61 @@ export function ModalVincularDocumentoAvancado({
   };
 
   return (
-    <Modal
-      aberto={aberto}
-      aoFechar={aoFechar}
-      titulo="Filtrar Documentos"
-      tamanho="largo"
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-12 sm:pt-20 p-3 sm:p-4 bg-background/20 backdrop-blur-xs animate-in fade-in duration-150"
+      onKeyDown={lidarKeyDown}
     >
-      <div className="space-y-4" onKeyDown={lidarKeyDown}>
-        {/* Campo de Busca Principal */}
-        <div className="relative">
-          <Search
-            size={18}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-          />
-          <input
-            ref={inputBuscaRef}
-            type="text"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Pesquisar por título, pasta, status ou tags..."
-            className="w-full pl-10 pr-10 py-2.5 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all placeholder:text-muted-foreground/60"
-          />
-          {busca && (
-            <button
-              type="button"
-              onClick={() => setBusca("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-md"
-            >
-              <X size={14} />
-            </button>
-          )}
+      <div
+        ref={painelRef}
+        className="w-full max-w-2xl bg-card border border-border shadow-2xl rounded-2xl overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[82vh]"
+      >
+        {/* Barra Superior: Campo Buscar + Filtro Avançado + Fechar */}
+        <div className="p-3 sm:p-4 border-b border-border/70 flex items-center gap-2 bg-card/90">
+          <div className="relative flex-1">
+            <Search
+              size={17}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
+            <input
+              ref={inputBuscaRef}
+              type="text"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar documento para vincular..."
+              className="w-full pl-10 pr-9 py-2 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all placeholder:text-muted-foreground/60"
+            />
+            {busca && (
+              <button
+                type="button"
+                onClick={() => setBusca("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-md"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Filtro Avançado com Sistema por Propriedades */}
+          <div className="shrink-0">
+            <BarraFiltrosAvancados
+              propriedadesDisponiveis={DEFINICOES_FILTRO_DOCUMENTOS}
+              regras={regrasFiltro}
+              aoMudarRegras={setRegrasFiltro}
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={aoFechar}
+            aria-label="Fechar busca"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors cursor-pointer"
+          >
+            <X size={17} />
+          </button>
         </div>
 
-        {/* Categorias Principais (Pastas Macro) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {/* Barra de Localização / Telas */}
+        <div className="px-3 sm:px-4 py-2 border-b border-border/40 flex items-center gap-1.5 overflow-x-auto scrollbar-none bg-muted/20">
           <button
             type="button"
             onClick={() => {
@@ -183,10 +212,10 @@ export function ModalVincularDocumentoAvancado({
               setSubpastaAtiva("todos");
             }}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition-colors cursor-pointer flex items-center gap-1.5 border",
+              "px-2.5 py-1 rounded-lg text-xs font-medium shrink-0 transition-colors cursor-pointer flex items-center gap-1.5 border",
               categoriaAtiva === "todas"
                 ? "bg-primary text-primary-foreground border-primary"
-                : "bg-muted/60 hover:bg-muted text-muted-foreground border-border/60 hover:text-foreground"
+                : "bg-background/80 hover:bg-muted text-muted-foreground border-border/60 hover:text-foreground"
             )}
           >
             <span>Todas</span>
@@ -202,10 +231,10 @@ export function ModalVincularDocumentoAvancado({
                 setSubpastaAtiva("todos");
               }}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition-colors cursor-pointer flex items-center gap-1.5 border",
+                "px-2.5 py-1 rounded-lg text-xs font-medium shrink-0 transition-colors cursor-pointer flex items-center gap-1.5 border",
                 categoriaAtiva === pasta.categoria
                   ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-muted/60 hover:bg-muted text-muted-foreground border-border/60 hover:text-foreground"
+                  : "bg-background/80 hover:bg-muted text-muted-foreground border-border/60 hover:text-foreground"
               )}
             >
               {obterIconeCategoria(pasta.categoria)}
@@ -215,24 +244,24 @@ export function ModalVincularDocumentoAvancado({
           ))}
         </div>
 
-        {/* Subpastas / Status específicos da Categoria */}
+        {/* Subpastas / Status específicos */}
         {subpastasDisponiveis.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 border-t border-border/40">
-            <span className="text-[11px] text-muted-foreground font-medium shrink-0 mr-1 flex items-center gap-1">
-              <Folder size={12} /> Filtro:
+          <div className="px-3 sm:px-4 py-1.5 border-b border-border/40 flex items-center gap-1.5 overflow-x-auto scrollbar-none bg-muted/10">
+            <span className="text-[10px] text-muted-foreground font-medium shrink-0 flex items-center gap-1">
+              <Folder size={11} /> Filtro:
             </span>
 
             <button
               type="button"
               onClick={() => setSubpastaAtiva("todos")}
               className={cn(
-                "px-2.5 py-1 rounded-md text-[11px] font-medium shrink-0 transition-colors cursor-pointer border",
+                "px-2 py-0.5 rounded-md text-[11px] font-medium shrink-0 transition-colors cursor-pointer border",
                 subpastaAtiva === "todos"
-                  ? "bg-secondary text-foreground border-border font-semibold shadow-2xs"
+                  ? "bg-secondary text-foreground border-border font-semibold"
                   : "bg-transparent hover:bg-muted/40 text-muted-foreground border-transparent hover:text-foreground"
               )}
             >
-              Todas as subpastas
+              Todas
             </button>
 
             {subpastasDisponiveis.map((sub) => (
@@ -241,9 +270,9 @@ export function ModalVincularDocumentoAvancado({
                 type="button"
                 onClick={() => setSubpastaAtiva(sub.valorFiltro)}
                 className={cn(
-                  "px-2.5 py-1 rounded-md text-[11px] font-medium shrink-0 transition-colors cursor-pointer border",
+                  "px-2 py-0.5 rounded-md text-[11px] font-medium shrink-0 transition-colors cursor-pointer border",
                   subpastaAtiva === sub.valorFiltro
-                    ? "bg-secondary text-foreground border-border font-semibold shadow-2xs"
+                    ? "bg-secondary text-foreground border-border font-semibold"
                     : "bg-transparent hover:bg-muted/40 text-muted-foreground border-transparent hover:text-foreground"
                 )}
               >
@@ -253,44 +282,11 @@ export function ModalVincularDocumentoAvancado({
           </div>
         )}
 
-        {/* Tags Filtro (se houver) */}
-        {todasTags.length > 0 && (
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[10px]">
-            <span className="text-muted-foreground/70 flex items-center gap-0.5 shrink-0 mr-1">
-              <Tag size={10} /> Tags:
-            </span>
-            {todasTags.slice(0, 8).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTagAtiva(tagAtiva === t ? "" : t)}
-                className={cn(
-                  "px-2 py-0.5 rounded-full font-medium transition-colors border",
-                  tagAtiva === t
-                    ? "bg-primary/20 text-primary border-primary/40 font-semibold"
-                    : "bg-muted/40 text-muted-foreground border-border/40 hover:bg-muted hover:text-foreground"
-                )}
-              >
-                #{t}
-              </button>
-            ))}
-            {tagAtiva && (
-              <button
-                type="button"
-                onClick={() => setTagAtiva("")}
-                className="text-muted-foreground hover:text-foreground underline ml-1"
-              >
-                Limpar tag
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Lista de Resultados */}
-        <div className="border border-border/80 rounded-xl overflow-hidden bg-card divide-y divide-border/40 max-h-[340px] overflow-y-auto">
+        {/* Lista de Documentos Encontrados */}
+        <div className="flex-1 overflow-y-auto divide-y divide-border/40 min-h-[140px]">
           {documentosFiltrados.length === 0 ? (
-            <div className="py-10 text-center text-muted-foreground text-xs">
-              <p>Nenhum documento encontrado com os filtros selecionados.</p>
+            <div className="py-12 text-center text-muted-foreground text-xs">
+              <p>Nenhum documento encontrado com os filtros atuais.</p>
             </div>
           ) : (
             documentosFiltrados.map((doc, idx) => {
@@ -316,18 +312,23 @@ export function ModalVincularDocumentoAvancado({
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-semibold truncate text-foreground">
                           @{doc.titulo}
                         </span>
                         <span className="text-[10px] px-1.5 py-0.2 rounded bg-muted text-muted-foreground shrink-0">
                           {doc.subpastaOuStatusRotulo || doc.categoriaRotulo}
                         </span>
+                        {doc.data && (
+                          <span className="text-[10px] text-muted-foreground/70 flex items-center gap-0.5 shrink-0">
+                            <Calendar size={10} /> {doc.data}
+                          </span>
+                        )}
                       </div>
 
                       {doc.snippet && (
                         <p className="text-[11px] text-muted-foreground/80 truncate mt-0.5">
-                          {doc.snippet}
+                          {renderizarMarkdownInline(doc.snippet)}
                         </p>
                       )}
                     </div>
@@ -339,7 +340,7 @@ export function ModalVincularDocumentoAvancado({
                         {doc.tags.slice(0, 2).map((t) => (
                           <span
                             key={t}
-                            className="text-[9px] px-1.5 py-0.2 rounded-md bg-secondary text-muted-foreground"
+                            className="text-[9px] px-1.5 py-0.2 rounded-md bg-secondary text-muted-foreground font-medium"
                           >
                             #{t}
                           </span>
@@ -362,17 +363,17 @@ export function ModalVincularDocumentoAvancado({
           )}
         </div>
 
-        {/* Rodapé informativo */}
-        <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 px-1">
+        {/* Rodapé Minimalista */}
+        <div className="px-4 py-2 border-t border-border/50 flex items-center justify-between text-[11px] text-muted-foreground bg-card">
           <span>
             {documentosFiltrados.length}{" "}
             {documentosFiltrados.length === 1 ? "documento disponível" : "documentos disponíveis"}
           </span>
           <span>
-            Use as setas <kbd className="px-1 py-0.5 bg-muted rounded border text-[10px]">↑</kbd> <kbd className="px-1 py-0.5 bg-muted rounded border text-[10px]">↓</kbd> e <kbd className="px-1 py-0.5 bg-muted rounded border text-[10px]">Enter</kbd> para selecionar
+            Navegue com <kbd className="px-1 py-0.5 bg-muted rounded border text-[10px]">↑</kbd> <kbd className="px-1 py-0.5 bg-muted rounded border text-[10px]">↓</kbd> e vincule com <kbd className="px-1 py-0.5 bg-muted rounded border text-[10px]">Enter</kbd>
           </span>
         </div>
       </div>
-    </Modal>
+    </div>
   );
 }

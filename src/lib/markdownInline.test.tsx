@@ -26,6 +26,12 @@ describe("renderizarMarkdownInline", () => {
     const codeEl = screen.getByText("npm test");
     expect(codeEl.tagName).toBe("CODE");
   });
+
+  it("limpa escapes e não vaza asteriscos soltos", () => {
+    render(<div>{renderizarMarkdownInline("Nota com \\[escape\\] e \\*asterisco\\* e **negrito**.")}</div>);
+    expect(screen.getByText("negrito").tagName).toBe("STRONG");
+    expect(screen.getByText("asterisco").tagName).toBe("EM");
+  });
 });
 
 describe("prepararSnippetPreview", () => {
@@ -39,7 +45,15 @@ describe("prepararSnippetPreview", () => {
     const texto = "# Título Principal\n\n- Item 1\n- Item 2\n\nTexto com **destaque** real.";
     const snippet = prepararSnippetPreview(texto, 100);
     expect(snippet).not.toContain("#");
-    expect(snippet).not.toContain("-");
+    expect(snippet).not.toContain("- Item");
     expect(snippet).toContain("**destaque**");
+  });
+
+  it("limpa escapes e marcadores de lista no meio do texto", () => {
+    const texto = "Itens: * primeiro * segundo com **negrito**";
+    const snippet = prepararSnippetPreview(texto, 100);
+    expect(snippet).not.toContain("* primeiro");
+    expect(snippet).toContain("primeiro");
+    expect(snippet).toContain("**negrito**");
   });
 });

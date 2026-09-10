@@ -15,7 +15,7 @@ export interface OpcoesMarkdownInline {
  * - `código` -> <code>
  * - ~~tachado~~ -> <del>
  * - [link](url) -> <a>
- * - @menção -> <span className="text-primary font-semibold">
+ * - @menção -> <span className="text-primary font-normal">
  */
 export function renderizarMarkdownInline(
   texto: string,
@@ -23,9 +23,12 @@ export function renderizarMarkdownInline(
 ): ReactNode {
   if (!texto || typeof texto !== "string") return null;
 
+  // Limpa escapes comuns de markdown (como \*, \[, \], \', \")
+  const textoLimpo = texto.replace(/\\([*_[\]()#`~\\'-])/g, "$1");
+
   // Se não contém nenhum caractere especial de formatação, retorna o texto puro
-  if (!/[*_~`@\[]/.test(texto)) {
-    return texto;
+  if (!/[*_~`@\[]/.test(textoLimpo)) {
+    return textoLimpo;
   }
 
   // Regex para tokens inline de markdown
@@ -36,19 +39,22 @@ export function renderizarMarkdownInline(
   let ultimoIndex = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = regex.exec(texto)) !== null) {
+  while ((match = regex.exec(textoLimpo)) !== null) {
     if (match.index > ultimoIndex) {
-      partes.push(texto.slice(ultimoIndex, match.index));
+      const trechoTexto = textoLimpo.slice(ultimoIndex, match.index);
+      // Remove eventuais asteriscos ou crases soltas que não fecharam
+      partes.push(trechoTexto.replace(/[*`~]/g, ""));
     }
 
     if (match[1] && match[2]) {
       // Negrito com tonalidade suave de cinza para manter visual de descrição
+      const conteudoNegrito = match[2].trim();
       partes.push(
         <strong
           key={`b-${match.index}`}
           className={opcoes?.classeNegrito || "font-semibold text-inherit"}
         >
-          {renderizarMarkdownInline(match[2], opcoes)}
+          {renderizarMarkdownInline(conteudoNegrito, opcoes)}
         </strong>
       );
     } else if (match[3] && match[4]) {
@@ -58,7 +64,7 @@ export function renderizarMarkdownInline(
           key={`i-${match.index}`}
           className={opcoes?.classeItalico || "italic text-inherit"}
         >
-          {match[4]}
+          {match[4].trim()}
         </em>
       );
     } else if (match[5] && match[6]) {
@@ -110,8 +116,9 @@ export function renderizarMarkdownInline(
     ultimoIndex = regex.lastIndex;
   }
 
-  if (ultimoIndex < texto.length) {
-    partes.push(texto.slice(ultimoIndex));
+  if (ultimoIndex < textoLimpo.length) {
+    const restante = textoLimpo.slice(ultimoIndex);
+    partes.push(restante.replace(/[*`~]/g, ""));
   }
 
   return partes.length === 1 ? partes[0] : partes;
@@ -119,7 +126,8 @@ export function renderizarMarkdownInline(
 
 /**
  * Prepara e extrai um snippet seguro de markdown para pré-visualização,
- * garantindo que tags e formatações como **negrito** não fiquem quebradas ao cortar.
+ * garantindo que tags e formatações como **negrito** não fiquem quebradas ao cortar
+ * e removendo vazamento de asteriscos, aspas escapadas ou marcadores soltos.
  */
 export function prepararSnippetPreview(corpo: string, tamanhoMax = 180): string {
   if (!corpo || typeof corpo !== "string") return "";
@@ -138,18 +146,23 @@ export function prepararSnippetPreview(corpo: string, tamanhoMax = 180): string 
     // Remove marcadores de lista (- [ ], - [x], -, *, +, 1.)
     .replace(/^[ \t]*[-*+](?: \[[ xX]\])?\s+/gm, "")
     .replace(/^[ \t]*\d+\.\s+/gm, "")
+    // Remove marcadores soltos no meio do texto
+    .replace(/(^|\s)[*•\-+](?=\s)/g, "$1")
     // Remove citações >
     .replace(/^[ \t]*>\s+/gm, "")
     // Remove divisórias horizontais
     .replace(/^-{3,}$/gm, "")
     // Remove comentários HTML como <!-- align:center -->
     .replace(/<!--[\s\S]*?-->/g, "")
+    // Remove escapes de caracteres especiais
+    .replace(/\\([*_[\]()#`~\\'-])/g, "$1")
     // Normaliza quebras de linha
     .replace(/\n+/g, " ")
     .trim();
 
   if (limpo.length <= tamanhoMax) {
-    return limpo;
+    // Se tiver asterisco ímpar ou não fechado, fecha ou limpa
+    return balancearFormatacaoSnippet(limpo);
   }
 
   // Corta de forma segura evitando quebrar palavras no meio
@@ -159,17 +172,29 @@ export function prepararSnippetPreview(corpo: string, tamanhoMax = 180): string 
     cortado = cortado.slice(0, ultimoEspaco);
   }
 
+  return balancearFormatacaoSnippet(cortado) + "…";
+}
+
+function balancearFormatacaoSnippet(texto: string): string {
+  let res = texto.trim();
+
   // Fecha formatação de negrito ** se tiver número ímpar de pares **
-  const contagemNegrito = (cortado.match(/\*\*/g) || []).length;
+  const contagemNegrito = (res.match(/\*\*/g) || []).length;
   if (contagemNegrito % 2 !== 0) {
-    cortado += "**";
+    res += "**";
   }
 
   // Fecha formatação de itálico * se tiver número ímpar
-  const asteriscosSoltos = (cortado.replace(/\*\*/g, "").match(/\*/g) || []).length;
+  const asteriscosSoltos = (res.replace(/\*\*/g, "").match(/\*/g) || []).length;
   if (asteriscosSoltos % 2 !== 0) {
-    cortado += "*";
+    res += "*";
   }
 
-  return cortado.trim() + "…";
+  // Se restou crase solta
+  const crases = (res.match(/`/g) || []).length;
+  if (crases % 2 !== 0) {
+    res += "`";
+  }
+
+  return res;
 }

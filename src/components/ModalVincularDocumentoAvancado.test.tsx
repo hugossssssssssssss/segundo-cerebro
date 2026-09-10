@@ -65,7 +65,7 @@ describe("ModalVincularDocumentoAvancado", () => {
       />
     );
 
-    const input = screen.getByPlaceholderText("Pesquisar por título, pasta, status ou tags...");
+    const input = screen.getByPlaceholderText("Buscar documento para vincular...");
     fireEvent.change(input, { target: { value: "briefing" } });
 
     expect(screen.getByText("@Entregar Briefing")).toBeDefined();

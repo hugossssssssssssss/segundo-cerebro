@@ -1,6 +1,8 @@
 import { type ItemRepo } from "./repo";
 import { type Alvo } from "./links";
 import { tituloProvavel } from "./markdown";
+import { prepararSnippetPreview } from "./markdownInline";
+import { type DefinicaoPropriedade, type RegraFiltro, filtrarItensPorRegras } from "@/components/BarraFiltrosAvancados";
 
 export type CategoriaDocumento =
   | "notas"
@@ -18,8 +20,10 @@ export interface DocumentoVinculavel {
   subpastaOuStatus: string;
   subpastaOuStatusRotulo: string;
   tags: string[];
+  data?: string;
   subtexto?: string;
   snippet?: string;
+  corpo?: string;
 }
 
 export interface PastaNavegacao {
@@ -35,6 +39,31 @@ export interface PastaNavegacao {
   }[];
 }
 
+export const DEFINICOES_FILTRO_DOCUMENTOS: DefinicaoPropriedade[] = [
+  {
+    id: "categoria",
+    rotulo: "Localização",
+    tipo: "status",
+    opcoes: ["tarefas", "notas", "pdi", "contatos", "referencias", "lousas"],
+  },
+  {
+    id: "status",
+    rotulo: "Status",
+    tipo: "status",
+    opcoes: ["a_fazer", "fazendo", "concluida", "metas_ativas", "metas_concluidas", "entregas"],
+  },
+  {
+    id: "tags",
+    rotulo: "Tags",
+    tipo: "tags",
+  },
+  {
+    id: "data",
+    rotulo: "Data",
+    tipo: "data",
+  },
+];
+
 /**
  * Normaliza e categoriza um conjunto de itens do repositório em documentos vinculáveis
  */
@@ -49,6 +78,8 @@ export function indexarDocumentosVinculaveis(itens: ItemRepo[] = []): DocumentoV
     const doc = item.doc || { dados: {}, corpo: "" };
     const dados = (doc.dados || {}) as Record<string, any>;
     const titulo = String(dados.titulo || tituloProvavel(doc, item.nome) || item.nome.replace(/\.md$/, ""));
+    const dataDoc = (dados.data as string) || (dados.prazo as string) || (dados.criado_em as string) || undefined;
+    const snippetFormatado = doc.corpo ? prepararSnippetPreview(doc.corpo, 120) : undefined;
 
     if (caminho.startsWith("tarefas/")) {
       const statusRaw = String(dados.status || "a_fazer").toLowerCase();
@@ -71,8 +102,10 @@ export function indexarDocumentosVinculaveis(itens: ItemRepo[] = []): DocumentoV
         subpastaOuStatus: statusKey,
         subpastaOuStatusRotulo: statusRotulo,
         tags: Array.isArray(dados.tags) ? (dados.tags as string[]) : [],
+        data: dataDoc,
         subtexto: `Tarefa • ${statusRotulo}`,
-        snippet: doc.corpo ? doc.corpo.slice(0, 100) : undefined,
+        snippet: snippetFormatado,
+        corpo: doc.corpo,
       });
     } else if (caminho.startsWith("notas/")) {
       const partes = caminho.split("/");
@@ -87,8 +120,10 @@ export function indexarDocumentosVinculaveis(itens: ItemRepo[] = []): DocumentoV
         subpastaOuStatus: String(pasta),
         subpastaOuStatusRotulo: String(pasta),
         tags: Array.isArray(dados.tags) ? (dados.tags as string[]) : [],
+        data: dataDoc,
         subtexto: `Nota • ${pasta}`,
-        snippet: doc.corpo ? doc.corpo.slice(0, 100) : undefined,
+        snippet: snippetFormatado,
+        corpo: doc.corpo,
       });
     } else if (caminho.startsWith("pdi/")) {
       const ehMeta = caminho.startsWith("pdi/metas/");
@@ -104,8 +139,10 @@ export function indexarDocumentosVinculaveis(itens: ItemRepo[] = []): DocumentoV
         subpastaOuStatus: String(statusKey),
         subpastaOuStatusRotulo: String(statusRotulo),
         tags: Array.isArray(dados.tags) ? (dados.tags as string[]) : [],
+        data: dataDoc,
         subtexto: `PDI • ${statusRotulo}`,
-        snippet: doc.corpo ? doc.corpo.slice(0, 100) : undefined,
+        snippet: snippetFormatado,
+        corpo: doc.corpo,
       });
     } else if (caminho.startsWith("contatos/")) {
       const cargo = typeof dados.cargo === "string" ? dados.cargo : typeof dados.empresa === "string" ? dados.empresa : "Contato";
@@ -117,8 +154,10 @@ export function indexarDocumentosVinculaveis(itens: ItemRepo[] = []): DocumentoV
         subpastaOuStatus: "todos",
         subpastaOuStatusRotulo: "Contatos",
         tags: Array.isArray(dados.tags) ? (dados.tags as string[]) : [],
+        data: dataDoc,
         subtexto: `Contato • ${cargo}`,
-        snippet: doc.corpo ? doc.corpo.slice(0, 100) : undefined,
+        snippet: snippetFormatado,
+        corpo: doc.corpo,
       });
     } else if (caminho.startsWith("referencias/")) {
       const partes = caminho.split("/");
@@ -131,8 +170,10 @@ export function indexarDocumentosVinculaveis(itens: ItemRepo[] = []): DocumentoV
         subpastaOuStatus: String(pasta),
         subpastaOuStatusRotulo: String(pasta),
         tags: Array.isArray(dados.tags) ? (dados.tags as string[]) : [],
+        data: dataDoc,
         subtexto: `Referência • ${pasta}`,
-        snippet: doc.corpo ? doc.corpo.slice(0, 100) : undefined,
+        snippet: snippetFormatado,
+        corpo: doc.corpo,
       });
     } else if (caminho.startsWith("lousas/") || caminho.endsWith(".excalidraw")) {
       lista.push({
@@ -143,7 +184,9 @@ export function indexarDocumentosVinculaveis(itens: ItemRepo[] = []): DocumentoV
         subpastaOuStatus: "todos",
         subpastaOuStatusRotulo: "Lousas",
         tags: Array.isArray(dados.tags) ? (dados.tags as string[]) : [],
+        data: dataDoc,
         subtexto: "Lousa Visual",
+        corpo: doc.corpo,
       });
     }
   }
@@ -293,7 +336,7 @@ export function montarEstruturaPastas(documentos: DocumentoVinculavel[]): PastaN
     },
     {
       id: "referencias",
-      titulo: "Referências Visuais",
+      titulo: "Referências",
       categoria: "referencias",
       total: contagens.referencias,
       subpastas: Array.from(subpastasPorCategoria.referencias.entries()).map(([k, v]) => ({
@@ -305,7 +348,7 @@ export function montarEstruturaPastas(documentos: DocumentoVinculavel[]): PastaN
     },
     {
       id: "lousas",
-      titulo: "Lousas & Mapas",
+      titulo: "Lousas",
       categoria: "lousas",
       total: contagens.lousas,
     },
@@ -315,7 +358,7 @@ export function montarEstruturaPastas(documentos: DocumentoVinculavel[]): PastaN
 }
 
 /**
- * Filtra documentos por categoria, subpasta e termo de busca
+ * Filtra documentos por categoria, subpasta, termo de busca e regras avançadas
  */
 export function filtrarDocumentosVinculaveis(
   documentos: DocumentoVinculavel[],
@@ -323,10 +366,11 @@ export function filtrarDocumentosVinculaveis(
     categoria?: CategoriaDocumento | "todas";
     subpastaOuStatus?: string;
     termo?: string;
+    regras?: RegraFiltro[];
     limite?: number;
   }
 ): DocumentoVinculavel[] {
-  const { categoria = "todas", subpastaOuStatus, termo = "", limite = 50 } = opcoes;
+  const { categoria = "todas", subpastaOuStatus, termo = "", regras = [], limite = 50 } = opcoes;
   const termoNorm = termo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
   let filtrados = documentos;
@@ -339,6 +383,23 @@ export function filtrarDocumentosVinculaveis(
     filtrados = filtrados.filter(
       (d) => d.subpastaOuStatus.toLowerCase() === subpastaOuStatus.toLowerCase()
     );
+  }
+
+  if (regras.length > 0) {
+    filtrados = filtrarItensPorRegras(filtrados, regras, (doc, propId) => {
+      switch (propId) {
+        case "categoria":
+          return doc.categoria;
+        case "status":
+          return doc.subpastaOuStatus;
+        case "tags":
+          return doc.tags;
+        case "data":
+          return doc.data;
+        default:
+          return (doc as any)[propId];
+      }
+    });
   }
 
   if (termoNorm) {
