@@ -299,7 +299,7 @@ export function WorkspaceTelaCheia() {
           </div>
 
           {/* Conteúdo do Documento Ativo */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 sm:px-12 py-6">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-3 sm:py-4 pb-10">
             <div className="space-y-5 max-w-4xl mx-auto w-full">
               {abaAtiva.erro && <Aviso tom="erro">{abaAtiva.erro}</Aviso>}
 

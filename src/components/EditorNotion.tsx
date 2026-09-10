@@ -1222,7 +1222,7 @@ export function EditorNotion({
       id="conteudo-nota-pdf"
       className={cn(
         modoZen
-          ? "fixed inset-0 z-50 bg-background overflow-y-auto p-4 sm:p-12 notion-editor-wrapper animate-in fade-in"
+          ? "fixed inset-0 z-50 bg-background overflow-y-auto px-4 sm:px-10 py-3 sm:py-4 pb-12 notion-editor-wrapper animate-in fade-in"
           : "notion-editor-wrapper min-h-[300px] relative"
       )}
       onPaste={aoColar}

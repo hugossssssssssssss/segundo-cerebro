@@ -1,7 +1,7 @@
 {
   "name": "segundo-cere-bro",
   "private": true,
-  "version": "2.29.21",
+  "version": "2.29.22",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"

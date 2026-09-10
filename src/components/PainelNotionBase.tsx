@@ -1530,7 +1530,7 @@ export function PainelNotionBase({
           onClick={(e) => e.stopPropagation()}
         >
           {cabecalho}
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-12 py-5 sm:py-8">{conteudo}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-10 py-3 sm:py-4 pb-10">{conteudo}</div>
           {rodape}
         </div>
         {modaisConfirmacao}
