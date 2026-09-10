@@ -10,6 +10,7 @@ import {
 describe("sanitizarNomePasta", () => {
   it("preserva caracteres acentuados, cedilhas e pontuações válidas", () => {
     expect(sanitizarNomePasta("Reuniões de Gestão 2026")).toBe("Reuniões de Gestão 2026");
+    expect(sanitizarNomePasta("Reuniões Nitro")).toBe("Reuniões Nitro");
     expect(sanitizarNomePasta("Ações & Estratégia")).toBe("Ações & Estratégia");
     expect(sanitizarNomePasta("  Design Gráfico - Identidade  ")).toBe("Design Gráfico - Identidade");
   });

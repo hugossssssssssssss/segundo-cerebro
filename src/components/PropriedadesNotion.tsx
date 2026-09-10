@@ -42,6 +42,7 @@ import { comoContato, contatoParaArquivo } from "@/lib/entidades";
 import { nomeLivre, escreverMarkdown, tituloProvavel, nomeDeArquivo } from "@/lib/markdown";
 import { idDoCaminho } from "@/lib/pdi";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
+import { sanitizarNomePasta } from "@/lib/pastas";
 import { toast } from "@/lib/toast";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { MenuConfiguracaoPropriedade } from "./propriedades/MenuConfiguracaoPropriedade";
@@ -1644,7 +1645,7 @@ export function PropriedadesNotion({
                   onChange={(e) => setNovaSubpastaInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && novaSubpastaInput.trim()) {
-                      const normalizado = novaSubpastaInput.trim().replace(/[^a-zA-Z0-9\s-_/]/g, "").toLowerCase();
+                      const normalizado = sanitizarNomePasta(novaSubpastaInput);
                       if (normalizado && aoMoverPasta) {
                         aoMoverPasta(normalizado);
                         setNovaSubpastaInput("");
@@ -1659,7 +1660,7 @@ export function PropriedadesNotion({
                   variant="secondary"
                   disabled={!novaSubpastaInput.trim()}
                   onClick={() => {
-                    const normalizado = novaSubpastaInput.trim().replace(/[^a-zA-Z0-9\s-_/]/g, "").toLowerCase();
+                    const normalizado = sanitizarNomePasta(novaSubpastaInput);
                     if (normalizado && aoMoverPasta) {
                       aoMoverPasta(normalizado);
                       setNovaSubpastaInput("");

@@ -851,11 +851,7 @@ export default function Notas() {
   }
 
   async function executarRenomearPasta(caminhoAntigo: string, novoNome: string) {
-    const nomeLimpo = novoNome
-      .replace(/[^a-zA-Z0-9\s-_]/g, "")
-      .trim()
-      .replace(/\s+/g, "-")
-      .toLowerCase();
+    const nomeLimpo = sanitizarNomePasta(novoNome);
 
     setPastaEmEdicao(null);
 
