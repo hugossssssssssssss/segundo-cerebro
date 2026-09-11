@@ -37,6 +37,7 @@ import { HeaderAcoesOrdenaveis } from "@/components/HeaderAcoesOrdenaveis";
 import { BarraFavoritos } from "@/components/BarraFavoritos";
 import { Rodape } from "@/components/Rodape";
 import { Tooltip } from "@/components/ui/tooltip";
+import { FundoLiquidGlass } from "@/components/FundoLiquidGlass";
 import { cn } from "@/lib/utils";
 import { lerConfig, configCompleta, precisaOnboarding } from "@/lib/settings";
 import { carregarRepo } from "@/lib/repo";
@@ -371,15 +372,18 @@ function Estrutura({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-dvh flex bg-background text-foreground overflow-hidden h-dvh">
+    <div className="min-h-dvh flex bg-background text-foreground overflow-hidden h-dvh relative">
+      {/* Atmosfera Óptica de Vidro Líquido */}
+      <FundoLiquidGlass />
+
       {/* Navegação Lateral (Desktop) */}
       <NavegacaoLateral
         colapsada={workspaceAberto ? true : colapsada}
         setColapsada={setColapsada}
-        className="hidden sm:flex sticky top-0 h-dvh shrink-0"
+        className="hidden sm:flex sticky top-0 h-dvh shrink-0 z-30"
       />
 
-      <div className="flex-1 flex flex-col min-w-0 h-dvh overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-dvh overflow-hidden relative z-10">
         {/* Banner discreto de modo offline */}
         {!online && (
           <div className="bg-amber-500/15 border-b border-amber-500/30 px-3 py-1 text-center text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center justify-center gap-1.5 shrink-0 z-50 animate-in fade-in">
@@ -389,7 +393,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Cabeçalho Principal (Topbar Limpa / Integrada com Abas no Workspace) */}
-        <header className="sticky top-0 z-40 border-b border-border/30 bg-background/70 dark:bg-background/60 backdrop-blur-2xl shrink-0 transition-fluid">
+        <header className="sticky top-0 z-40 liquid-glass-header shrink-0 transition-fluid">
           <div
             className={cn(
               "flex items-center justify-between transition-all duration-300",
@@ -465,7 +469,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
 
       {/* Navegação inferior no celular com visual dock moderno, safe area e touch targets de 48px+ */}
       {!workspaceAberto && (
-        <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center border-t border-border/30 bg-card/80 dark:bg-card/70 pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5 px-3 backdrop-blur-2xl sm:hidden shadow-2xl select-none">
+        <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center liquid-glass-header pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5 px-3 sm:hidden shadow-2xl select-none border-t border-border/30">
           {abasMobile.map(({ para, rotulo, Icone }) => (
             <NavLink
               key={para}

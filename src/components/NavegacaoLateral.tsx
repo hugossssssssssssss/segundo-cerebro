@@ -104,7 +104,7 @@ export function NavegacaoLateral({
         }}
         onMouseLeave={() => setHoverExpandida(false)}
         className={cn(
-          "flex flex-col border-r border-border/30 bg-card/75 dark:bg-card/65 backdrop-blur-2xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none shrink-0 z-30",
+          "flex flex-col liquid-glass-sidebar transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none shrink-0 z-30",
           visualmenteExpandida ? "w-60 shadow-xl sm:shadow-none" : "w-16",
           hoverExpandida && colapsada && "absolute left-0 top-0 h-dvh shadow-2xl bg-card/90 dark:bg-card/85 backdrop-blur-2xl",
           className

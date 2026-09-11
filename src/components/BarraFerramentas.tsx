@@ -26,7 +26,7 @@ export function BarraFerramentas({
   return (
     <div
       className={cn(
-        "flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 bg-card/75 dark:bg-card/50 p-2 sm:p-2.5 rounded-2xl border border-border/35 shadow-minimal backdrop-blur-md",
+        "flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 liquid-glass-card p-2 sm:p-2.5 rounded-2xl",
         className
       )}
     >

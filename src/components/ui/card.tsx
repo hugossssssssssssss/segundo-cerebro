@@ -9,7 +9,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-2xl border border-border/40 bg-card text-card-foreground shadow-minimal transition-fluid",
+      "rounded-2xl liquid-glass-card text-card-foreground transition-fluid",
       className
     )}
     {...props}
@@ -81,7 +81,7 @@ function Cartao({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border/40 bg-card text-card-foreground shadow-minimal transition-fluid",
+        "rounded-2xl liquid-glass-card text-card-foreground transition-fluid",
         className
       )}
       {...props}

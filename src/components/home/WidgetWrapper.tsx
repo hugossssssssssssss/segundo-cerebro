@@ -114,7 +114,7 @@ export function WidgetWrapper({
         minHeight: typeof window !== "undefined" && window.innerWidth < 640 ? "auto" : `${alturaLocal}px`,
       }}
       className={cn(
-        "group relative flex flex-col justify-between rounded-2xl border border-border/35 bg-card/90 dark:bg-card/75 p-3.5 sm:p-4.5 transition-fluid shadow-minimal hover:border-border/60 hover:shadow-minimal-hover overflow-hidden backdrop-blur-md",
+        "group relative flex flex-col justify-between rounded-2xl liquid-glass-card p-3.5 sm:p-4.5 transition-fluid overflow-hidden",
         classeGrid,
         modoEdicao && "ring-1 ring-primary/40",
         redimensionando && "select-none ring-1 ring-primary shadow-xl opacity-95",

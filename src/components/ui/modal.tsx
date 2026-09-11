@@ -99,7 +99,7 @@ export function Modal({
           transition: arrastoY === 0 ? "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)" : "none",
         }}
         className={cn(
-          "flex max-h-[90dvh] sm:max-h-[92dvh] w-full flex-col rounded-t-3xl border-t border-border/40 sm:border bg-card/90 dark:bg-card/85 backdrop-blur-xl shadow-2xl sm:rounded-3xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-250",
+          "flex max-h-[90dvh] sm:max-h-[92dvh] w-full flex-col rounded-t-3xl sm:rounded-3xl liquid-glass-modal overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-250",
           maxLargura
         )}
         onClick={(e) => e.stopPropagation()}

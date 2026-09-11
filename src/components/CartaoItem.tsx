@@ -55,11 +55,11 @@ export function CartaoItem({
       onContextMenu={onContextMenu}
       {...propsArrasto}
       className={cn(
-        "p-4 sm:p-5 transition-fluid group relative flex flex-col justify-between border-border/35 bg-card/95 hover:border-border/70 hover:bg-accent/25 hover:shadow-minimal-hover rounded-2xl shadow-minimal",
+        "p-4 sm:p-5 transition-fluid group relative flex flex-col justify-between rounded-2xl liquid-glass-card",
         onClick && "cursor-pointer",
-        ativo && "border-foreground/30 bg-accent/35 ring-1 ring-foreground/20",
+        ativo && "border-primary/50 bg-primary/10 ring-1 ring-primary/30",
         selecionado &&
-        "border-primary bg-primary/5 ring-1 ring-primary/30",
+        "border-primary bg-primary/10 ring-1 ring-primary/40",
         className
       )}
     >
