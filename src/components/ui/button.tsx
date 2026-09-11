@@ -5,18 +5,18 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl font-medium transition-fluid-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl font-medium liquid-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-xs hover:opacity-90",
+          "bg-primary text-primary-foreground shadow-xs hover:opacity-95 hover:shadow-md",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-xs hover:opacity-90",
+          "bg-destructive text-destructive-foreground shadow-xs hover:opacity-95",
         outline:
-          "border border-border/40 bg-background shadow-2xs hover:bg-accent/60 hover:text-accent-foreground hover:border-border/70",
+          "border border-border/40 bg-card/60 backdrop-blur-md shadow-2xs hover:bg-card/90 hover:border-border/70",
         secondary:
-          "bg-secondary/80 text-secondary-foreground border border-border/30 hover:bg-accent/70 hover:border-border/60 shadow-2xs",
+          "liquid-glass-pill text-secondary-foreground hover:bg-accent/80 shadow-2xs",
         ghost: "hover:bg-accent/60 hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },

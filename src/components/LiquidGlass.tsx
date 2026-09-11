@@ -8,14 +8,27 @@ interface LiquidGlassProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   variante?: "padrao" | "elevado" | "painel" | "pill";
   spotlight?: boolean;
+  viscoso?: boolean;
 }
 
 /**
- * Componente Container Liquid Glass
- * Aplica o sistema de refração óptica e brilho especular dinâmico (spotlight sob o cursor no desktop).
+ * Componente Container Liquid Glass Estilo Apple
+ * Aplica física de refração óptica, brilho especular e elasticidade viscosa ao toque.
  */
 export const LiquidGlass = React.forwardRef<HTMLDivElement, LiquidGlassProps>(
-  ({ children, className, variante = "padrao", spotlight = true, onMouseMove, onMouseLeave, ...props }, ref) => {
+  (
+    {
+      children,
+      className,
+      variante = "padrao",
+      spotlight = true,
+      viscoso = false,
+      onMouseMove,
+      onMouseLeave,
+      ...props
+    },
+    ref
+  ) => {
     const localRef = useRef<HTMLDivElement>(null);
     const resolvedRef = (ref || localRef) as React.RefObject<HTMLDivElement>;
 
@@ -54,6 +67,7 @@ export const LiquidGlass = React.forwardRef<HTMLDivElement, LiquidGlassProps>(
         onMouseLeave={lidarMouseLeave}
         className={cn(
           varianteClasse,
+          viscoso && "liquid-press",
           spotlight && "relative overflow-hidden group/liquid",
           className
         )}
@@ -65,7 +79,7 @@ export const LiquidGlass = React.forwardRef<HTMLDivElement, LiquidGlassProps>(
             aria-hidden="true"
             className="pointer-events-none absolute -inset-px opacity-0 group-hover/liquid:opacity-100 transition-opacity duration-300 rounded-[inherit] hidden sm:block z-0"
             style={{
-              background: `radial-gradient(400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.12), transparent 80%)`,
+              background: `radial-gradient(350px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.15), transparent 75%)`,
             }}
           />
         )}
