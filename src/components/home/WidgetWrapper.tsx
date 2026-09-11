@@ -114,10 +114,10 @@ export function WidgetWrapper({
         minHeight: typeof window !== "undefined" && window.innerWidth < 640 ? "auto" : `${alturaLocal}px`,
       }}
       className={cn(
-        "group relative flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-3.5 sm:p-4 transition-all duration-150 overflow-hidden",
+        "group relative flex flex-col justify-between rounded-xl border border-border/40 bg-card/80 p-3.5 sm:p-4 transition-all duration-150 overflow-hidden backdrop-blur-xs",
         classeGrid,
         modoEdicao && "ring-1 ring-primary/40",
-        redimensionando && "select-none ring-2 ring-primary shadow-2xl opacity-95",
+        redimensionando && "select-none ring-1 ring-primary shadow-xl opacity-95",
         className
       )}
     >

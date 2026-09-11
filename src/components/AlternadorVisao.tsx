@@ -28,7 +28,7 @@ export function AlternadorVisao<T extends string = string>({
   return (
     <div
       className={cn(
-        "flex items-center rounded-xl border border-border bg-card/80 p-0.5 sm:p-1 shadow-2xs backdrop-blur-xs max-w-full overflow-x-auto select-none",
+        "flex items-center rounded-lg border border-border/40 bg-muted/40 p-0.5 shadow-2xs backdrop-blur-xs max-w-full overflow-x-auto select-none",
         className
       )}
     >
@@ -43,10 +43,10 @@ export function AlternadorVisao<T extends string = string>({
               type="button"
               onClick={() => aoAlternar(opcao.id)}
               className={cn(
-                "flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer select-none whitespace-nowrap shrink-0",
+                "flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-150 cursor-pointer select-none whitespace-nowrap shrink-0",
                 ativa
-                  ? "bg-primary text-primary-foreground shadow-xs font-bold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+                  ? "bg-background text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/40"
               )}
             >
               {opcao.icone}

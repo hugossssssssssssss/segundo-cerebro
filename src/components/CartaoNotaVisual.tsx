@@ -340,11 +340,11 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
         onClick={onClick}
         onContextMenu={onContextMenu}
         className={cn(
-          "group relative flex flex-col justify-between rounded-2xl border transition-colors duration-150 select-none cursor-pointer overflow-hidden p-4",
-          "bg-card hover:bg-accent/20 border-border/80 hover:border-border",
+          "group relative flex flex-col justify-between rounded-xl border transition-all duration-150 select-none cursor-pointer overflow-hidden p-3.5 sm:p-4",
+          "bg-card hover:bg-accent/20 border-border/40 hover:border-border/80",
           selecionado &&
-            "border-primary bg-primary/5 ring-2 ring-primary/30",
-          visao === "grade" && "min-h-[170px]",
+            "border-primary bg-primary/5 ring-1 ring-primary/30",
+          visao === "grade" && "min-h-[160px]",
           visao === "mural" && "mb-3",
           className
         )}

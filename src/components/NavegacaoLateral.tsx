@@ -95,30 +95,30 @@ export function NavegacaoLateral({
     <>
       <aside
         className={cn(
-          "flex flex-col border-r border-border bg-card transition-all duration-300 ease-in-out select-none shrink-0",
+          "flex flex-col border-r border-border/40 bg-card/70 dark:bg-card/40 backdrop-blur-xs transition-all duration-300 ease-in-out select-none shrink-0",
           colapsada ? "w-16" : "w-60",
           className
         )}
       >
         {/* Topo da Sidebar: Marca e Toggle */}
-        <div className="flex h-14 items-center justify-between px-3 border-b border-border/60">
+        <div className="flex h-14 items-center justify-between px-3.5 border-b border-border/40">
           {!colapsada ? (
             <>
               <NavLink
                 to="/home"
                 onClick={lidarCliqueItem}
-                className="flex items-center gap-2 font-semibold tracking-tight text-foreground truncate min-w-0"
+                className="flex items-center gap-2 font-semibold tracking-tight text-foreground truncate min-w-0 group"
               >
-                <LogoKlaus tamanho={28} />
-                <span className="truncate text-base font-bold tracking-tight">Klaus</span>
+                <LogoKlaus tamanho={26} />
+                <span className="truncate text-sm font-bold tracking-tight">Klaus</span>
               </NavLink>
               <button
                 onClick={() => setColapsada(true)}
-                className="hidden sm:flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+                className="hidden sm:flex items-center justify-center rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
                 title="Recolher barra lateral (⌘B)"
                 aria-label="Recolher barra lateral"
               >
-                <ChevronLeft size={18} />
+                <ChevronLeft size={16} />
               </button>
             </>
           ) : (
@@ -140,9 +140,9 @@ export function NavegacaoLateral({
             if (itensVisiveis.length === 0) return null;
 
             return (
-              <div key={grupo.id || grupo.titulo} className="space-y-1">
+              <div key={grupo.id || grupo.titulo} className="space-y-0.5">
                 {!colapsada && (
-                  <h3 className="px-2 text-[11px] font-semibold text-muted-foreground tracking-wider uppercase truncate">
+                  <h3 className="px-2.5 pb-1 text-[10px] font-semibold text-muted-foreground/70 tracking-wider uppercase truncate">
                     {grupo.titulo}
                   </h3>
                 )}
@@ -156,17 +156,17 @@ export function NavegacaoLateral({
                         onClick={lidarCliqueItem}
                         className={({ isActive }) =>
                           cn(
-                            "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors relative group cursor-pointer",
+                            "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 relative group cursor-pointer",
                             isActive
-                              ? "bg-primary/10 text-primary font-semibold"
-                              : "text-muted-foreground hover:bg-accent/80 hover:text-foreground",
-                            colapsada && "justify-center px-0"
+                              ? "bg-accent text-accent-foreground font-semibold shadow-2xs"
+                              : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                            colapsada && "justify-center px-0 py-2"
                           )
                         }
                         title={colapsada ? item.rotulo : undefined}
                       >
                         <Icone
-                          size={18}
+                          size={16}
                           style={{ color: item.cor }}
                           className="shrink-0 transition-transform group-hover:scale-105"
                         />
@@ -174,7 +174,7 @@ export function NavegacaoLateral({
                           <span className="truncate flex-1">{item.rotulo || "Item"}</span>
                         )}
                         {!colapsada && item.destaque && (
-                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold">
+                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold">
                             <Sparkles size={10} />
                             IA
                           </span>
@@ -189,17 +189,17 @@ export function NavegacaoLateral({
         </div>
 
         {/* Rodapé da Sidebar */}
-        <div className="border-t border-border/60 p-2 space-y-1">
+        <div className="border-t border-border/40 p-2 space-y-0.5">
           {/* Botão para Personalizar Menu */}
           <button
             onClick={() => setModalPersonalizarAberta(true)}
             className={cn(
-              "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors group cursor-pointer",
-              colapsada && "justify-center px-0"
+              "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors group cursor-pointer",
+              colapsada && "justify-center px-0 py-2"
             )}
             title={colapsada ? "Personalizar Menu" : undefined}
           >
-            <Palette size={18} className="shrink-0 group-hover:rotate-12 transition-transform" />
+            <Palette size={16} className="shrink-0 opacity-70 group-hover:rotate-12 transition-transform" />
             {!colapsada && <span className="truncate">Personalizar Menu</span>}
           </button>
 
@@ -208,28 +208,28 @@ export function NavegacaoLateral({
             onClick={lidarCliqueItem}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors cursor-pointer",
+                "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer",
                 isActive
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-muted-foreground hover:bg-accent/80 hover:text-foreground",
-                colapsada && "justify-center px-0"
+                  ? "bg-accent text-accent-foreground font-semibold"
+                  : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                colapsada && "justify-center px-0 py-2"
               )
             }
             title={colapsada ? "Configurações" : undefined}
           >
-            <Settings size={18} className="shrink-0" />
+            <Settings size={16} className="shrink-0 opacity-70" />
             {!colapsada && <span>Configurações</span>}
           </NavLink>
 
           <button
             onClick={toggleTema}
             className={cn(
-              "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground transition-colors cursor-pointer",
-              colapsada && "justify-center px-0"
+              "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors cursor-pointer",
+              colapsada && "justify-center px-0 py-2"
             )}
             title={colapsada ? (escuro ? "Modo claro" : "Modo escuro") : undefined}
           >
-            {escuro ? <Sun size={18} className="shrink-0" /> : <Moon size={18} className="shrink-0" />}
+            {escuro ? <Sun size={16} className="shrink-0 opacity-70" /> : <Moon size={16} className="shrink-0 opacity-70" />}
             {!colapsada && <span>{escuro ? "Modo Claro" : "Modo Escuro"}</span>}
           </button>
         </div>

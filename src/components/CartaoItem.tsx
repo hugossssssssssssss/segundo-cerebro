@@ -55,13 +55,11 @@ export function CartaoItem({
       onContextMenu={onContextMenu}
       {...propsArrasto}
       className={cn(
-        "p-4 transition-all duration-200 group relative flex flex-col justify-between border-border/80 bg-card",
-        onClick && "cursor-pointer hover:border-border hover:bg-accent/30",
-        ativo && "border-primary bg-primary/5 ring-1 ring-primary/20",
+        "p-3.5 sm:p-4 transition-all duration-150 group relative flex flex-col justify-between border-border/40 bg-card hover:border-border/80 hover:bg-accent/20 rounded-xl",
+        onClick && "cursor-pointer",
+        ativo && "border-foreground/30 bg-accent/30 ring-1 ring-foreground/20",
         selecionado &&
-        "border-primary bg-primary/10 ring-2 ring-primary/30",
-        temTags &&
-        "border-l-4 border-l-amber-400/70",
+        "border-primary bg-primary/5 ring-1 ring-primary/30",
         className
       )}
     >
@@ -88,8 +86,7 @@ export function CartaoItem({
           {icone && (
             <div
               className={cn(
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/60 text-muted-foreground transition-colors",
-                temTags && "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors group-hover:text-foreground",
               )}
             >
               {icone}

@@ -26,22 +26,22 @@ export function BarraFerramentas({
   return (
     <div
       className={cn(
-        "flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-card p-3 rounded-xl border border-border/80 shadow-2xs",
+        "flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 bg-card/60 dark:bg-card/40 p-2.5 sm:p-3 rounded-xl border border-border/40 backdrop-blur-xs",
         className
       )}
     >
-      <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2.5 min-w-0">
+      <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0">
         {aoMudarBusca !== undefined && (
-          <div className="relative w-full sm:w-80 md:w-96 min-w-0 sm:min-w-[340px] shrink-0">
+          <div className="relative w-full sm:w-80 md:w-96 min-w-0 sm:min-w-[320px] shrink-0">
             <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/80 pointer-events-none"
             />
             <Campo
               value={busca || ""}
               onChange={(e) => aoMudarBusca(e.target.value)}
               placeholder={placeholderBusca}
-              className="pl-9 pr-8 text-xs sm:text-sm"
+              className="pl-9 pr-8 text-xs sm:text-sm bg-background/80 border-border/50 focus:border-foreground/30 focus:ring-1 focus:ring-foreground/10"
             />
             {busca && (
               <Tooltip conteudo="Limpar busca">

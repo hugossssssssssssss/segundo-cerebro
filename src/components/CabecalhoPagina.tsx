@@ -30,7 +30,7 @@ export function CabecalhoPagina({
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 border-b border-border/60 pb-3.5 sm:pb-5",
+        "flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 border-b border-border/40 pb-3.5 sm:pb-4.5",
         className
       )}
     >
@@ -38,7 +38,7 @@ export function CabecalhoPagina({
         {icone && (
           <div
             className={cn(
-              "flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl shadow-xs transition-colors",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors",
               corIcone
             )}
           >
@@ -47,11 +47,11 @@ export function CabecalhoPagina({
         )}
         <div className="min-w-0 flex-1">
           {trilha && trilha.length > 0 && (
-            <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-1 font-medium">
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-0.5 font-medium">
               {trilha.map((item, idx) => (
                 <React.Fragment key={idx}>
-                  {idx > 0 && <ChevronRight size={12} className="opacity-60 shrink-0" />}
-                  <span className={cn(idx === trilha.length - 1 ? "text-foreground font-semibold" : "")}>
+                  {idx > 0 && <ChevronRight size={11} className="opacity-50 shrink-0" />}
+                  <span className={cn(idx === trilha.length - 1 ? "text-foreground font-medium" : "")}>
                     {item}
                   </span>
                 </React.Fragment>
@@ -65,7 +65,7 @@ export function CabecalhoPagina({
             {badge}
           </div>
           {descricao && (
-            <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground leading-normal">
+            <p className="mt-0.5 text-xs text-muted-foreground leading-normal font-normal">
               {descricao}
             </p>
           )}
