@@ -459,7 +459,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
           <WorkspaceTelaCheia />
         ) : (
           <main className="mx-auto w-full flex-1 py-6 sm:py-9 lg:py-11 pb-32 sm:pb-16 px-4 sm:px-8 lg:px-14 overflow-y-auto max-w-none flex flex-col justify-between">
-            <div key={pathname} className="flex-1 w-full max-w-7xl mx-auto space-y-6 animate-liquid-in">
+            <div key={pathname} className="flex-1 w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-200">
               <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
             </div>
             {!pathname.startsWith("/jogos") && <Rodape />}
