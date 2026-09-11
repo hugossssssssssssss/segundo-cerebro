@@ -1451,7 +1451,7 @@ export function EditorNotion({
       id="conteudo-nota-pdf"
       className={cn(
         modoZen
-          ? "fixed inset-0 z-50 bg-background overflow-y-auto px-4 sm:px-10 py-3 sm:py-4 pb-12 notion-editor-wrapper animate-in fade-in"
+          ? "fixed inset-0 z-50 bg-card overflow-y-auto px-4 sm:px-10 py-3 sm:py-4 pb-12 notion-editor-wrapper animate-in fade-in"
           : "notion-editor-wrapper min-h-[300px] relative"
       )}
       onKeyDownCapture={handleEditorKeyDown}
@@ -1470,7 +1470,7 @@ export function EditorNotion({
       )}
       {/* Barra Rápida de Formatação no Mobile (Dock de Ações Acima do Editor) */}
       {editable && (
-        <div className="flex sm:hidden items-center justify-between gap-1 p-1.5 mb-2 bg-card/90 border border-border/80 rounded-2xl shadow-xs backdrop-blur-md overflow-x-auto no-scrollbar select-none sticky top-0 z-30">
+        <div className="flex sm:hidden items-center justify-between gap-1 p-1.5 mb-2 bg-card border border-border/80 rounded-2xl shadow-xs backdrop-blur-md overflow-x-auto no-scrollbar select-none sticky top-0 z-30">
           <div className="flex items-center gap-1">
             <button
               type="button"

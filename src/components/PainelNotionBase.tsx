@@ -994,7 +994,7 @@ export function PainelNotionBase({
   );
 
   const rodape = infoSequencial.total > 0 ? (
-    <div className="flex shrink-0 items-center justify-center gap-2 border-t border-border/40 px-4 sm:px-5 py-2 sm:py-2.5 pb-[max(env(safe-area-inset-bottom),10px)] sm:pb-2.5 bg-background select-none">
+    <div className="flex shrink-0 items-center justify-center gap-2 border-t border-border/40 px-4 sm:px-5 py-2 sm:py-2.5 pb-[max(env(safe-area-inset-bottom),10px)] sm:pb-2.5 bg-card select-none">
       <div className="flex items-center gap-2">
         <Tooltip conteudo="Documento anterior" atalho="←" posicao="top" desabilitado={!infoSequencial.podeAnterior}>
           <button
@@ -1507,7 +1507,7 @@ export function PainelNotionBase({
           height: `${tamanhoFlutuante.altura}px`,
           zIndex: 9999,
         }}
-        className="fixed flex flex-col rounded-2xl border border-border/40 bg-card/95 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.25)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden animate-in zoom-in-95 duration-150"
+        className="fixed flex flex-col rounded-2xl border border-border/40 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.25)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden animate-in zoom-in-95 duration-150"
       >
         {/* Cabeçalho arrastável */}
         <div className="shrink-0">{cabecalho}</div>
@@ -1583,7 +1583,7 @@ export function PainelNotionBase({
     return (
       <div
         className={cn(
-          "fixed z-50 flex flex-col rounded-none sm:rounded-3xl border-0 sm:border border-border/35 bg-card/90 dark:bg-card/80 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in duration-200 pointer-events-auto",
+          "fixed z-50 flex flex-col rounded-none sm:rounded-3xl border-0 sm:border border-border/35 bg-card shadow-2xl overflow-hidden animate-in duration-200 pointer-events-auto",
           "top-0 bottom-0 sm:top-3 sm:bottom-3",
           ehEsquerda
             ? "left-0 sm:left-3 slide-in-from-left w-full sm:w-[560px] md:w-[640px] lg:w-[calc(50vw-24px)]"
@@ -1602,11 +1602,11 @@ export function PainelNotionBase({
   if (modoVisao === "telacheia") {
     return (
       <div
-        className="fixed inset-0 z-[200] flex flex-col w-screen h-screen bg-background animate-in fade-in duration-150 overflow-hidden"
+        className="fixed inset-0 z-[200] flex flex-col w-screen h-screen bg-card animate-in fade-in duration-150 overflow-hidden"
         onClick={tentarFechar}
       >
         <div
-          className="flex h-full w-full flex-col bg-background/95 backdrop-blur-md overflow-hidden"
+          className="flex h-full w-full flex-col bg-card overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {cabecalho}
@@ -1621,11 +1621,11 @@ export function PainelNotionBase({
   // MODO 1: POP-UP CENTRALIZADO (Padrão) - no mobile vira tela cheia imersiva
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background sm:bg-black/40 backdrop-blur-none sm:backdrop-blur-md p-0 sm:p-6 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-card sm:bg-black/40 backdrop-blur-none sm:backdrop-blur-md p-0 sm:p-6 animate-in fade-in duration-150"
       onClick={tentarFechar}
     >
       <div
-        className="flex h-full sm:h-auto sm:max-h-[88vh] w-full max-w-4xl flex-col rounded-none sm:rounded-3xl border-0 sm:border border-border/35 bg-card/95 dark:bg-card/85 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+        className="flex h-full sm:h-auto sm:max-h-[88vh] w-full max-w-4xl flex-col rounded-none sm:rounded-3xl border-0 sm:border border-border/35 bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {cabecalho}

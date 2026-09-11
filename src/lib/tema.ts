@@ -14,7 +14,7 @@ export function lerTemaSalvo(): Tema {
   try {
     const salvo = localStorage.getItem(CHAVE_TEMA);
     if (salvo === "escuro" || salvo === "claro") return salvo;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "escuro" : "claro";
+    return "claro";
   } catch {
     return "claro";
   }
@@ -40,3 +40,4 @@ export function alternarTema(): Tema {
   window.dispatchEvent(new CustomEvent("tema-alterado", { detail: novo }));
   return novo;
 }
+

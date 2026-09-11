@@ -221,7 +221,7 @@ export function WorkspaceTelaCheia() {
       ) : (
         <div key={abaAtiva.id} className="flex-1 min-h-0 flex flex-col overflow-hidden animate-in fade-in duration-150 ease-out">
           {/* Cabeçalho Interativo com Breadcrumbs, Foco e Ações */}
-          <div className="flex items-center justify-between border-b border-border/80 px-4 sm:px-6 py-2 bg-card/60 shrink-0 gap-2">
+          <div className="flex items-center justify-between border-b border-border/80 px-4 sm:px-6 py-2 bg-card shrink-0 gap-2">
             <WorkspaceBreadcrumbs caminho={abaAtiva.caminho} titulo={abaAtiva.titulo} />
 
             <div className="flex items-center gap-1.5 shrink-0">

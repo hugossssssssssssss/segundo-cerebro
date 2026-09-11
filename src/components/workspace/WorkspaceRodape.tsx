@@ -25,7 +25,7 @@ export function WorkspaceRodape({
   };
 
   return (
-    <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-4 sm:px-6 py-2.5 bg-card/90 backdrop-blur-xs select-none">
+    <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-4 sm:px-6 py-2.5 bg-card select-none">
       {/* Ações à esquerda */}
       <div className="flex items-center gap-1.5">
         {aoRemover && (

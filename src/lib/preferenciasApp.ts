@@ -385,16 +385,31 @@ export async function sincronizarTudoComGithub(
     const widgetsFinais = widgetsRemotos || widgetsDoConsolidado;
 
     // Gerais (tema, etc.)
-    const geraisFinais = prefsConsolidadas?.gerais;
-
     const locais = lerTodasPreferenciasLocal();
+    const temaSalvoLocal = localStorage.getItem("tema") as Tema | null;
+    
+    // Mescla preferências gerais garantindo que o tema local ativo do usuário não seja sobrescrito
+    const geraisFinais: PreferenciasGerais = {
+      ...(prefsConsolidadas?.gerais || {}),
+      ...(locais.gerais || {}),
+      atualizadoEm: new Date().toISOString(),
+    };
+
+    if (temaSalvoLocal === "claro" || temaSalvoLocal === "escuro") {
+      geraisFinais.tema = temaSalvoLocal;
+    } else if (prefsConsolidadas?.gerais?.tema) {
+      geraisFinais.tema = prefsConsolidadas.gerais.tema;
+    } else {
+      geraisFinais.tema = "claro";
+    }
+
     const resultadoConsolidado: PreferenciasKlausConsolidadas = {
       versaoSchema: 2,
       atualizadoEm: new Date().toISOString(),
       favoritos: favoritosFinais || locais.favoritos,
       menu: menuFinal || locais.menu,
       widgets: widgetsFinais || locais.widgets,
-      gerais: geraisFinais || locais.gerais,
+      gerais: geraisFinais,
     };
 
     // Aplica no localStorage e dispara eventos para a interface se atualizar na hora
@@ -419,3 +434,22 @@ export async function sincronizarTudoComGithub(
     sincronizacaoEmAndamento = false;
   }
 }
+
+// Listener para sincronizar tema no GitHub assim que for alterado pelo usuário
+if (typeof window !== "undefined") {
+  window.addEventListener("tema-alterado", () => {
+    try {
+      const cfg = lerPreferenciasGeraisLocal();
+      const prefsLocal = lerTodasPreferenciasLocal();
+      prefsLocal.gerais.tema = cfg.tema;
+      prefsLocal.gerais.atualizadoEm = new Date().toISOString();
+      const configUsuario = (window as any).__klaus_settings_cache || undefined;
+      // Salva localmente
+      localStorage.setItem(CHAVE_STORAGE_PREFERENCIAS, JSON.stringify(prefsLocal.gerais));
+      if (configUsuario) {
+        agendarPersistenciaPreferenciasRemoto(configUsuario, null, 1500);
+      }
+    } catch {}
+  });
+}
+
