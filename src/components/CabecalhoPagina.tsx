@@ -30,15 +30,15 @@ export function CabecalhoPagina({
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 border-b border-border/40 pb-3.5 sm:pb-4.5",
+        "flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 border-b border-border/30 pb-4 sm:pb-6 pt-1 sm:pt-2",
         className
       )}
     >
-      <div className="flex items-start sm:items-center gap-3 min-w-0">
+      <div className="flex items-start sm:items-center gap-3.5 min-w-0">
         {icone && (
           <div
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors",
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition-fluid shadow-2xs",
               corIcone
             )}
           >

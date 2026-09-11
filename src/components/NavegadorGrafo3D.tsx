@@ -169,7 +169,7 @@ export function NavegadorGrafo3D({
 
       const mapaNos = new Map(nos.map((n) => [n.id, n]));
 
-      // 1. Desenha as Arestas de Conexão (Linhas Nítidas e Conectadas)
+      // 1. Desenha as Arestas de Conexão (Linhas Finas, Nítidas e Minimalistas)
       for (const a of arestas) {
         const n1 = mapaNos.get(a.origem);
         const n2 = mapaNos.get(a.destino);
@@ -193,14 +193,14 @@ export function NavegadorGrafo3D({
         ctx.lineTo(x2, y2);
 
         if (estaConectadoAoFoco) {
-          ctx.strokeStyle = escuro ? "#a5b4fc" : "#6366f1";
-          ctx.lineWidth = Math.max(1.8, 1.8 * zoom);
+          ctx.strokeStyle = escuro ? "#818cf8" : "#4f46e5";
+          ctx.lineWidth = Math.max(1.5, 1.6 * zoom);
           ctx.globalAlpha = 1.0;
         } else {
-          // Linhas estruturais minimalistas e suaves
-          ctx.strokeStyle = escuro ? "rgba(148, 163, 184, 0.22)" : "rgba(100, 116, 139, 0.18)";
-          ctx.lineWidth = Math.max(0.8, 0.9 * zoom);
-          ctx.globalAlpha = focoAtivo ? 0.08 : 0.75;
+          // Linhas estruturais minimalistas e ultra suaves
+          ctx.strokeStyle = escuro ? "rgba(148, 163, 184, 0.16)" : "rgba(100, 116, 139, 0.14)";
+          ctx.lineWidth = Math.max(0.65, 0.75 * zoom);
+          ctx.globalAlpha = focoAtivo ? 0.06 : 0.65;
         }
         ctx.stroke();
         ctx.globalAlpha = 1.0;
@@ -520,8 +520,8 @@ export function NavegadorGrafo3D({
 
       {/* Barra Minimalista de Nó Selecionado x Conexões */}
       {noSelecionado && (
-        <div className="absolute bottom-16 left-3 right-3 bg-card/90 dark:bg-card/80 backdrop-blur-2xl border border-border/40 rounded-2xl p-3 shadow-2xl animate-in slide-in-from-bottom-2 duration-200 pointer-events-auto z-10">
-          <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border/30 text-xs">
+        <div className="absolute bottom-16 left-3 right-3 sm:left-6 sm:right-6 bg-card/85 dark:bg-card/75 backdrop-blur-2xl border border-border/30 rounded-3xl p-3.5 sm:p-4 shadow-2xl animate-in slide-in-from-bottom-2 duration-200 pointer-events-auto z-10">
+          <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/25 text-xs">
             <div className="flex items-center gap-2 min-w-0">
               <span
                 className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -545,10 +545,10 @@ export function NavegadorGrafo3D({
               className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-accent/60 cursor-pointer transition-colors"
               title="Fechar seleção"
             >
-              <X size={13} />
+              <X size={14} />
             </button>
           </div>
-          <div className="flex items-center gap-2 overflow-x-auto pt-2 pb-0.5 scrollbar-none">
+          <div className="flex items-center gap-2 overflow-x-auto pt-2.5 pb-0.5 scrollbar-none">
             {nosConectados.length === 0 ? (
               <span className="text-xs text-muted-foreground italic py-1">
                 Nenhum documento conectado a este nó.
@@ -564,7 +564,7 @@ export function NavegadorGrafo3D({
                       setNoSelecionado(item);
                     }
                   }}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-secondary/50 hover:bg-primary/10 hover:border-primary/40 border border-border/40 transition-all text-xs font-medium text-foreground cursor-pointer shrink-0 max-w-xs group text-left"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary/40 hover:bg-primary/10 hover:border-primary/40 border border-border/30 transition-fluid text-xs font-medium text-foreground cursor-pointer shrink-0 max-w-xs group text-left"
                 >
                   <span
                     className="w-2 h-2 rounded-full shrink-0 group-hover:scale-110 transition-transform"
@@ -587,14 +587,14 @@ export function NavegadorGrafo3D({
       )}
 
       {/* Controles de Câmera e Status no Rodapé */}
-      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
-        <div className="hidden sm:flex items-center gap-2 bg-card/85 dark:bg-card/75 backdrop-blur-xl px-3.5 py-1.5 rounded-full border border-border/40 text-[11px] font-medium text-muted-foreground pointer-events-auto shadow-md">
+      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-2 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
+        <div className="hidden sm:flex items-center gap-2 bg-card/80 dark:bg-card/70 backdrop-blur-2xl px-4 py-2 rounded-full border border-border/30 text-[11px] font-medium text-muted-foreground pointer-events-auto shadow-lg">
           <span>{grafoRef.current.nos.length} nós</span>
           <span>•</span>
           <span>{grafoRef.current.arestas.length} conexões</span>
         </div>
 
-        <div className="flex items-center gap-1 bg-card/85 dark:bg-card/75 backdrop-blur-xl p-1.5 rounded-2xl border border-border/40 shadow-xl pointer-events-auto ml-auto sm:ml-0">
+        <div className="flex items-center gap-1 bg-card/80 dark:bg-card/70 backdrop-blur-2xl p-1.5 rounded-2xl border border-border/30 shadow-2xl pointer-events-auto ml-auto sm:ml-0">
           <Tooltip conteudo={simulando ? "Pausar física" : "Ativar física"}>
             <button
               onClick={() => {

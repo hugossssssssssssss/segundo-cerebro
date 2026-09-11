@@ -389,13 +389,13 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Cabeçalho Principal (Topbar Limpa / Integrada com Abas no Workspace) */}
-        <header className="sticky top-0 z-40 border-b border-border/30 bg-background/80 backdrop-blur-xl shrink-0 transition-fluid">
+        <header className="sticky top-0 z-40 border-b border-border/30 bg-background/70 dark:bg-background/60 backdrop-blur-2xl shrink-0 transition-fluid">
           <div
             className={cn(
               "flex items-center justify-between transition-all duration-300",
               workspaceAberto
                 ? "w-full px-3 sm:px-4 h-12"
-                : "w-full px-4 sm:px-8 h-14"
+                : "w-full px-4 sm:px-8 lg:px-12 h-14"
             )}
           >
             {/* Lado Esquerdo: Logo no Mobile + Barra de Favoritos */}
@@ -454,8 +454,8 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         {workspaceAberto ? (
           <WorkspaceTelaCheia />
         ) : (
-          <main className="mx-auto w-full flex-1 py-5 sm:py-8 pb-32 sm:pb-12 px-4 sm:px-8 lg:px-12 overflow-y-auto max-w-none flex flex-col justify-between">
-            <div className="flex-1 w-full max-w-7xl mx-auto">
+          <main className="mx-auto w-full flex-1 py-6 sm:py-9 lg:py-11 pb-32 sm:pb-16 px-4 sm:px-8 lg:px-14 overflow-y-auto max-w-none flex flex-col justify-between">
+            <div className="flex-1 w-full max-w-7xl mx-auto space-y-6">
               <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
             </div>
             {!pathname.startsWith("/jogos") && <Rodape />}
@@ -465,7 +465,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
 
       {/* Navegação inferior no celular com visual dock moderno, safe area e touch targets de 48px+ */}
       {!workspaceAberto && (
-        <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center border-t border-border/40 bg-card/85 pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5 px-2 backdrop-blur-2xl sm:hidden shadow-2xl select-none">
+        <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center border-t border-border/30 bg-card/80 dark:bg-card/70 pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5 px-3 backdrop-blur-2xl sm:hidden shadow-2xl select-none">
           {abasMobile.map(({ para, rotulo, Icone }) => (
             <NavLink
               key={para}
@@ -500,7 +500,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       {!workspaceAberto && !pathname.startsWith("/chat") && (
         <button
           onClick={() => setCapturando(true)}
-          className="fixed bottom-[calc(max(env(safe-area-inset-bottom),10px)+68px)] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/30 transition-transform active:scale-90 sm:hidden cursor-pointer hover:scale-105 touch-manipulation select-none"
+          className="fixed bottom-[calc(max(env(safe-area-inset-bottom),10px)+68px)] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/25 transition-transform active:scale-90 sm:hidden cursor-pointer hover:scale-105 touch-manipulation select-none"
           aria-label="Captura rápida"
         >
           <Plus size={24} className="stroke-[2.5]" />

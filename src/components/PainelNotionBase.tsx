@@ -1583,15 +1583,15 @@ export function PainelNotionBase({
     return (
       <div
         className={cn(
-          "fixed z-50 flex flex-col rounded-none sm:rounded-2xl border-0 sm:border border-border bg-card shadow-2xl overflow-hidden animate-in duration-200 pointer-events-auto",
-          "top-0 bottom-0 sm:top-2 sm:bottom-2",
+          "fixed z-50 flex flex-col rounded-none sm:rounded-3xl border-0 sm:border border-border/30 bg-card/85 dark:bg-card/75 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in duration-200 pointer-events-auto",
+          "top-0 bottom-0 sm:top-3 sm:bottom-3",
           ehEsquerda
-            ? "left-0 sm:left-2 slide-in-from-left w-full sm:w-[540px] md:w-[620px] lg:w-[calc(50vw-16px)]"
-            : "right-0 sm:right-2 slide-in-from-right w-full sm:w-[540px] md:w-[620px] lg:w-[calc(50vw-16px)]"
+            ? "left-0 sm:left-3 slide-in-from-left w-full sm:w-[560px] md:w-[640px] lg:w-[calc(50vw-24px)]"
+            : "right-0 sm:right-3 slide-in-from-right w-full sm:w-[560px] md:w-[640px] lg:w-[calc(50vw-24px)]"
         )}
       >
         {cabecalho}
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6">{conteudo}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 sm:px-10 py-5 sm:py-8 space-y-6">{conteudo}</div>
         {rodape}
         {modaisConfirmacao}
       </div>
@@ -1606,11 +1606,11 @@ export function PainelNotionBase({
         onClick={tentarFechar}
       >
         <div
-          className="flex h-full w-full flex-col bg-card overflow-hidden"
+          className="flex h-full w-full flex-col bg-background/95 backdrop-blur-md overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {cabecalho}
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-10 py-3 sm:py-4 pb-10">{conteudo}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 sm:px-12 lg:px-20 py-6 sm:py-10 pb-16 space-y-6">{conteudo}</div>
           {rodape}
         </div>
         {modaisConfirmacao}
@@ -1621,15 +1621,15 @@ export function PainelNotionBase({
   // MODO 1: POP-UP CENTRALIZADO (Padrão) - no mobile vira tela cheia imersiva
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background sm:bg-black/30 backdrop-blur-none sm:backdrop-blur-[2px] p-0 sm:p-6 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background sm:bg-black/40 backdrop-blur-none sm:backdrop-blur-md p-0 sm:p-6 animate-in fade-in duration-150"
       onClick={tentarFechar}
     >
       <div
-        className="flex h-full sm:h-auto sm:max-h-[90vh] w-full max-w-3xl flex-col rounded-none sm:rounded-2xl border-0 sm:border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+        className="flex h-full sm:h-auto sm:max-h-[88vh] w-full max-w-4xl flex-col rounded-none sm:rounded-3xl border-0 sm:border border-border/30 bg-card/90 dark:bg-card/80 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {cabecalho}
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6">{conteudo}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 sm:px-10 py-5 sm:py-8 space-y-6">{conteudo}</div>
         {rodape}
       </div>
       {modaisConfirmacao}

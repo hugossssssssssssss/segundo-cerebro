@@ -96,12 +96,12 @@ export const PainelPropriedadesNota: React.FC<PainelPropriedadesNotaProps> = ({
   };
 
   return (
-    <div className="mb-4 rounded-xl border border-border/70 bg-card/60 backdrop-blur-sm transition-all shadow-sm">
+    <div className="mb-5 rounded-2xl border border-border/35 bg-card/65 dark:bg-card/50 backdrop-blur-xl transition-fluid shadow-sm">
       {/* Barra compacta superior */}
       <div className="flex items-center justify-between px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-2">
           {/* Seletor de subtipo */}
-          <div className="flex items-center rounded-lg bg-muted/60 p-0.5 text-xs font-medium">
+          <div className="flex items-center rounded-xl bg-muted/50 p-0.5 text-xs font-medium">
             {SUBTIPOS.map((st) => {
               const ativo = subtipoAtual === st.id;
               return (
@@ -109,10 +109,10 @@ export const PainelPropriedadesNota: React.FC<PainelPropriedadesNotaProps> = ({
                   key={st.id}
                   type="button"
                   onClick={() => handleSubtipoChange(st.id as Nota["subtipo"])}
-                  className={`rounded-md px-2.5 py-1 transition-all ${
+                  className={`rounded-lg px-2.5 py-1 transition-all cursor-pointer ${
                     ativo
                       ? "bg-primary text-primary-foreground shadow-xs font-semibold"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
                   }`}
                 >
                   {st.rotulo}
@@ -141,10 +141,10 @@ export const PainelPropriedadesNota: React.FC<PainelPropriedadesNotaProps> = ({
           <button
             type="button"
             onClick={() => setExpandido(!expandido)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium px-2 py-1 rounded-md hover:bg-accent transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium px-2.5 py-1 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
             aria-label={expandido ? "Ocultar metadados" : "Ver propriedades e metadados"}
           >
-            <Sliders className="w-3.5 h-3.5" />
+            <Sliders className="w-3.5 h-3.5 opacity-70" />
             <span>{expandido ? "Ocultar" : "Propriedades"}</span>
             {expandido ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
@@ -153,7 +153,7 @@ export const PainelPropriedadesNota: React.FC<PainelPropriedadesNotaProps> = ({
 
       {/* Painel expandido de propriedades */}
       {expandido && (
-        <div className="border-t border-border/50 px-4 py-3 space-y-3.5 bg-muted/20 animate-in fade-in-50 duration-150">
+        <div className="border-t border-border/30 px-4 py-3.5 space-y-4 bg-muted/15 animate-in fade-in-50 duration-200">
           {/* Seção de Tags */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">

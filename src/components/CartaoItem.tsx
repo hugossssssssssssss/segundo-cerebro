@@ -55,7 +55,7 @@ export function CartaoItem({
       onContextMenu={onContextMenu}
       {...propsArrasto}
       className={cn(
-        "p-4 sm:p-5 transition-fluid-fast group relative flex flex-col justify-between border-border/40 bg-card hover:border-border/80 hover:bg-accent/15 hover:shadow-md rounded-2xl",
+        "p-5 sm:p-6 transition-fluid group relative flex flex-col justify-between border-border/30 bg-card hover:border-border/60 hover:bg-accent/20 hover:shadow-lg rounded-2xl sm:rounded-3xl",
         onClick && "cursor-pointer",
         ativo && "border-foreground/30 bg-accent/30 ring-1 ring-foreground/20",
         selecionado &&
