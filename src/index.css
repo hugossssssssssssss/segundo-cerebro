@@ -10,7 +10,7 @@
  * do template). Trocar o tema = mexer só nestes dois blocos.
  */
 :root {
-  --background: 0 0% 100%;
+  --background: 0 0% 99.2%;
   --foreground: 240 10% 3.9%;
   --card: 0 0% 100%;
   --card-foreground: 240 10% 3.9%;
@@ -21,40 +21,40 @@
   --secondary: 240 5% 96%;
   --secondary-foreground: 240 6% 10%;
   --muted: 240 5% 96%;
-  --muted-foreground: 240 4% 46%;
-  --accent: 240 5% 96%;
+  --muted-foreground: 240 4% 44%;
+  --accent: 240 5% 95.5%;
   --accent-foreground: 240 6% 10%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
   --success: hsl(142 60% 40%);
   --warning: hsl(38 92% 45%);
-  --border: 240 6% 91%;
-  --input: 240 6% 91%;
+  --border: 240 6% 90%;
+  --input: 240 6% 90%;
   --ring: 240 6% 10%;
   --radius: 0.75rem;
 }
 
 .dark {
-  --background: 240 6% 9%;
-  --foreground: 0 0% 95%;
-  --card: 240 5% 12%;
-  --card-foreground: 0 0% 95%;
-  --popover: 240 5% 13%;
-  --popover-foreground: 0 0% 95%;
+  --background: 240 6% 8%;
+  --foreground: 0 0% 96%;
+  --card: 240 5% 10.5%;
+  --card-foreground: 0 0% 96%;
+  --popover: 240 5% 11.5%;
+  --popover-foreground: 0 0% 96%;
   --primary: 0 0% 98%;
   --primary-foreground: 240 6% 10%;
-  --secondary: 240 5% 16%;
-  --secondary-foreground: 0 0% 95%;
-  --muted: 240 5% 16%;
-  --muted-foreground: 240 5% 65%;
-  --accent: 240 5% 16%;
-  --accent-foreground: 0 0% 95%;
+  --secondary: 240 5% 14.5%;
+  --secondary-foreground: 0 0% 96%;
+  --muted: 240 5% 14.5%;
+  --muted-foreground: 240 5% 62%;
+  --accent: 240 5% 14.5%;
+  --accent-foreground: 0 0% 96%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
   --success: hsl(142 60% 45%);
   --warning: hsl(38 92% 50%);
-  --border: 240 5% 18%;
-  --input: 240 5% 18%;
+  --border: 240 5% 16%;
+  --input: 240 5% 16%;
   --ring: 240 5% 85%;
 }
 
@@ -112,6 +112,9 @@
       BlinkMacSystemFont,
       "Segoe UI",
       sans-serif;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+    letter-spacing: -0.011em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     /* Transição suave ao trocar de tema */
@@ -327,11 +330,11 @@
 
 /* ── Utilitários de Glassmorphism & Elevação Minimalista ──────────────── */
 .glass-panel {
-  background-color: hsl(var(--card) / 0.72);
+  background-color: hsl(var(--card) / 0.75);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid hsl(var(--border) / 0.35);
-  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.06), 0 4px 12px -2px rgba(0, 0, 0, 0.02);
+  border: 1px solid hsl(var(--border) / 0.4);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05), 0 2px 8px -2px rgba(0, 0, 0, 0.02);
 }
 
 .dark .glass-panel {
@@ -344,7 +347,7 @@
   background-color: hsl(var(--background) / 0.75);
   backdrop-filter: blur(18px) saturate(180%);
   -webkit-backdrop-filter: blur(18px) saturate(180%);
-  border: 1px solid hsl(var(--border) / 0.3);
+  border: 1px solid hsl(var(--border) / 0.35);
 }
 
 .dark .glass-surface {
@@ -353,11 +356,11 @@
 }
 
 .glass-float {
-  background-color: hsl(var(--popover) / 0.82);
+  background-color: hsl(var(--popover) / 0.85);
   backdrop-filter: blur(24px) saturate(190%);
   -webkit-backdrop-filter: blur(24px) saturate(190%);
-  border: 1px solid hsl(var(--border) / 0.4);
-  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.1), 0 8px 20px -6px rgba(0, 0, 0, 0.04);
+  border: 1px solid hsl(var(--border) / 0.45);
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.08), 0 6px 16px -4px rgba(0, 0, 0, 0.03);
 }
 
 .dark .glass-float {
@@ -367,14 +370,14 @@
 }
 
 .glass-pill {
-  background-color: hsl(var(--secondary) / 0.65);
+  background-color: hsl(var(--secondary) / 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid hsl(var(--border) / 0.4);
 }
 
 .glass-card {
-  background-color: hsl(var(--card) / 0.6);
+  background-color: hsl(var(--card) / 0.65);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid hsl(var(--border) / 0.35);
@@ -382,14 +385,31 @@
 }
 
 .glass-card:hover {
-  background-color: hsl(var(--card) / 0.85);
+  background-color: hsl(var(--card) / 0.9);
   border-color: hsl(var(--border) / 0.6);
   transform: translateY(-1px);
-  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.07);
 }
 
 .dark .glass-card:hover {
   box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.35);
+}
+
+/* Sombras ambientais minimalistas multi-camada */
+.shadow-minimal {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+.shadow-minimal-hover {
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+.dark .shadow-minimal {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.25), 0 2px 8px -2px rgba(0, 0, 0, 0.35);
+}
+
+.dark .shadow-minimal-hover {
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.45), 0 2px 8px -2px rgba(0, 0, 0, 0.3);
 }
 
 /* Transições fluidas e orgânicas para reveal, hover e expansões */
