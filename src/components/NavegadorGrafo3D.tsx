@@ -193,14 +193,14 @@ export function NavegadorGrafo3D({
         ctx.lineTo(x2, y2);
 
         if (estaConectadoAoFoco) {
-          ctx.strokeStyle = escuro ? "#818cf8" : "#4f46e5";
-          ctx.lineWidth = Math.max(2.4, 2.4 * zoom);
+          ctx.strokeStyle = escuro ? "#a5b4fc" : "#6366f1";
+          ctx.lineWidth = Math.max(1.8, 1.8 * zoom);
           ctx.globalAlpha = 1.0;
         } else {
-          // Linhas estruturais
-          ctx.strokeStyle = escuro ? "rgba(165, 180, 252, 0.4)" : "rgba(99, 102, 241, 0.35)";
-          ctx.lineWidth = Math.max(1.4, 1.4 * zoom);
-          ctx.globalAlpha = focoAtivo ? 0.12 : 0.85;
+          // Linhas estruturais minimalistas e suaves
+          ctx.strokeStyle = escuro ? "rgba(148, 163, 184, 0.22)" : "rgba(100, 116, 139, 0.18)";
+          ctx.lineWidth = Math.max(0.8, 0.9 * zoom);
+          ctx.globalAlpha = focoAtivo ? 0.08 : 0.75;
         }
         ctx.stroke();
         ctx.globalAlpha = 1.0;
@@ -221,11 +221,11 @@ export function NavegadorGrafo3D({
         const ehConectadoAoFoco = conexoesFoco.has(no.id);
 
         let alpha = 1.0;
-        if (pesquisa && !coincidePesquisa) alpha = 0.15;
+        if (pesquisa && !coincidePesquisa) alpha = 0.12;
         else if (focoAtivo && !ehConectadoAoFoco) alpha = 0.15;
 
-        const raioBase = Math.max(5, Math.min(no.raio * 0.75, 18));
-        const raioFinal = (ehFocoPrincipal ? raioBase * 1.35 : ehConectadoAoFoco && focoAtivo ? raioBase * 1.15 : raioBase) * zoom;
+        const raioBase = Math.max(4.5, Math.min(no.raio * 0.7, 16));
+        const raioFinal = (ehFocoPrincipal ? raioBase * 1.3 : ehConectadoAoFoco && focoAtivo ? raioBase * 1.15 : raioBase) * zoom;
 
         ctx.save();
         ctx.globalAlpha = alpha;
@@ -235,15 +235,15 @@ export function NavegadorGrafo3D({
         // Anel Externo de Destaque
         if (ehFocoPrincipal) {
           ctx.beginPath();
-          ctx.arc(x, y, raioFinal + 5, 0, Math.PI * 2);
+          ctx.arc(x, y, raioFinal + 4, 0, Math.PI * 2);
           ctx.strokeStyle = no.cor;
-          ctx.lineWidth = 2.8;
+          ctx.lineWidth = 2.2;
           ctx.stroke();
         } else if (ehConectadoAoFoco && focoAtivo) {
           ctx.beginPath();
-          ctx.arc(x, y, raioFinal + 3, 0, Math.PI * 2);
-          ctx.strokeStyle = escuro ? "rgba(255, 255, 255, 0.55)" : "rgba(15, 23, 42, 0.45)";
-          ctx.lineWidth = 1.6;
+          ctx.arc(x, y, raioFinal + 2.5, 0, Math.PI * 2);
+          ctx.strokeStyle = escuro ? "rgba(255, 255, 255, 0.45)" : "rgba(15, 23, 42, 0.35)";
+          ctx.lineWidth = 1.4;
           ctx.stroke();
         }
 
@@ -251,17 +251,17 @@ export function NavegadorGrafo3D({
           // --- NÓ DO TIPO TAG: DESENHO DE HASHTAG (#) ---
           ctx.beginPath();
           ctx.arc(x, y, raioFinal, 0, Math.PI * 2);
-          ctx.fillStyle = escuro ? "rgba(205, 214, 244, 0.22)" : "rgba(100, 116, 139, 0.18)";
+          ctx.fillStyle = escuro ? "rgba(205, 214, 244, 0.18)" : "rgba(100, 116, 139, 0.14)";
           ctx.fill();
           ctx.strokeStyle = no.cor;
-          ctx.lineWidth = ehFocoPrincipal ? 2.2 : 1.5;
+          ctx.lineWidth = ehFocoPrincipal ? 1.8 : 1.2;
           ctx.stroke();
 
           // Desenho do símbolo '#' no centro do nó
-          const tam = Math.max(5, raioFinal * 0.58);
+          const tam = Math.max(4, raioFinal * 0.55);
           ctx.beginPath();
           ctx.strokeStyle = no.cor;
-          ctx.lineWidth = Math.max(1.6, 2.2 * Math.min(zoom, 1.8));
+          ctx.lineWidth = Math.max(1.4, 1.8 * Math.min(zoom, 1.6));
           ctx.lineCap = "round";
 
           // Barra horizontal superior
@@ -285,28 +285,30 @@ export function NavegadorGrafo3D({
           ctx.fill();
 
           // Borda sutil
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = escuro ? "rgba(255, 255, 255, 0.35)" : "rgba(0, 0, 0, 0.12)";
+          ctx.lineWidth = 1.0;
           ctx.stroke();
         }
 
-        // Rótulo do Título (aparece no foco, nós conectados ao foco, no zoom próximo ou na busca)
+        // Rótulo do Título (visível por padrão para clareza e descoberta direta)
         const deveMostrarRotulo =
           ehFocoPrincipal ||
           (focoAtivo && ehConectadoAoFoco) ||
-          zoom > 1.1 ||
-          (pesquisa && coincidePesquisa);
+          zoom >= 0.75 ||
+          (pesquisa && coincidePesquisa) ||
+          nos.length <= 40;
 
         if (deveMostrarRotulo) {
-          ctx.font = `${ehFocoPrincipal ? "bold 12px" : ehConectadoAoFoco && focoAtivo ? "600 11px" : "11px"} sans-serif`;
+          ctx.font = `${ehFocoPrincipal ? "bold 11px" : ehConectadoAoFoco && focoAtivo ? "600 10.5px" : "10px"} -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif`;
           ctx.fillStyle = ehFocoPrincipal
             ? (escuro ? "#ffffff" : "#0f172a")
             : ehConectadoAoFoco && focoAtivo
             ? (escuro ? "#f1f5f9" : "#0f172a")
-            : (escuro ? "rgba(226, 232, 240, 0.95)" : "rgba(15, 23, 42, 0.95)");
+            : (escuro ? "rgba(226, 232, 240, 0.85)" : "rgba(30, 41, 59, 0.85)");
           ctx.textAlign = "center";
           const prefixo = ehTag && !no.titulo.startsWith("#") ? "#" : "";
-          ctx.fillText(`${prefixo}${no.titulo}`, x, y + raioFinal + 13);
+          const rotuloTruncado = no.titulo.length > 24 && !ehFocoPrincipal ? `${no.titulo.slice(0, 22)}…` : no.titulo;
+          ctx.fillText(`${prefixo}${rotuloTruncado}`, x, y + raioFinal + 12);
         }
 
         ctx.restore();
@@ -441,7 +443,7 @@ export function NavegadorGrafo3D({
 
       {/* Barra de Filtros Minimalista no Topo */}
       <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2.5 pointer-events-none">
-        <div className="flex items-center gap-2 bg-card/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-border/80 shadow-md pointer-events-auto max-w-xs w-full">
+        <div className="flex items-center gap-2 bg-card/85 dark:bg-card/75 backdrop-blur-xl px-3.5 py-2 rounded-2xl border border-border/40 shadow-xl pointer-events-auto max-w-xs w-full transition-fluid">
           <Search size={15} className="text-muted-foreground shrink-0" />
           <input
             type="text"
@@ -453,16 +455,16 @@ export function NavegadorGrafo3D({
         </div>
 
         {/* Chips de Categoria Minimalistas */}
-        <div className="flex items-center gap-1 bg-card/90 backdrop-blur-md p-1 rounded-xl border border-border/80 shadow-md pointer-events-auto overflow-x-auto">
+        <div className="flex items-center gap-1 bg-card/85 dark:bg-card/75 backdrop-blur-xl p-1.5 rounded-2xl border border-border/40 shadow-xl pointer-events-auto overflow-x-auto">
           {(["todos", "nota", "tarefa", "meta", "referencia", "lousa", "contato", "tag"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setFiltroTipo(t)}
               className={cn(
-                "px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all capitalize shrink-0 flex items-center gap-1.5 cursor-pointer",
+                "px-2.5 py-1 rounded-xl text-[11px] font-medium transition-fluid-fast capitalize shrink-0 flex items-center gap-1.5 cursor-pointer",
                 filtroTipo === t
                   ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
               )}
             >
               {t !== "todos" && (
@@ -479,9 +481,9 @@ export function NavegadorGrafo3D({
 
       {/* Cartão Informativo de Hover no Nó Sob o Cursor */}
       {noHover && (
-        <div className="absolute top-16 left-3 pointer-events-none bg-card/95 border border-border rounded-2xl p-3 shadow-2xl backdrop-blur-md animate-in fade-in duration-100 max-w-xs overflow-hidden">
+        <div className="absolute top-16 left-3 pointer-events-none bg-card/90 dark:bg-card/80 border border-border/40 rounded-3xl p-3.5 shadow-2xl backdrop-blur-2xl animate-in fade-in duration-150 max-w-xs overflow-hidden">
           {noHover.imagem && (
-            <div className="mb-2.5 rounded-xl overflow-hidden border border-border/70 max-h-32 bg-black/5 dark:bg-black/20">
+            <div className="mb-2.5 rounded-2xl overflow-hidden border border-border/40 max-h-32 bg-black/5 dark:bg-black/20">
               <ImagemPrivada
                 caminho={noHover.imagem}
                 alt={noHover.titulo}
@@ -504,13 +506,13 @@ export function NavegadorGrafo3D({
           {noHover.tags && noHover.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {noHover.tags.map((tg) => (
-                <span key={tg} className="text-[9px] px-1.5 py-0.5 rounded-md bg-accent text-muted-foreground font-mono">
+                <span key={tg} className="text-[9px] px-1.5 py-0.5 rounded-md bg-accent/60 text-muted-foreground font-mono">
                   #{tg}
                 </span>
               ))}
             </div>
           )}
-          <div className="mt-2 pt-1.5 border-t border-border/50 text-[10px] text-primary/90 font-medium">
+          <div className="mt-2 pt-1.5 border-t border-border/40 text-[10px] text-primary font-medium">
             {noHover.tipo === "tag" ? "Clique para fixar seleção e destacar conexões" : "Clique para fixar conexões (2 cliques para abrir)"}
           </div>
         </div>
@@ -518,8 +520,8 @@ export function NavegadorGrafo3D({
 
       {/* Barra Minimalista de Nó Selecionado x Conexões */}
       {noSelecionado && (
-        <div className="absolute bottom-14 left-3 right-3 bg-card/95 backdrop-blur-md border border-border/90 rounded-xl p-2.5 shadow-2xl animate-in slide-in-from-bottom-2 duration-200 pointer-events-auto z-10">
-          <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border/50 text-xs">
+        <div className="absolute bottom-16 left-3 right-3 bg-card/90 dark:bg-card/80 backdrop-blur-2xl border border-border/40 rounded-2xl p-3 shadow-2xl animate-in slide-in-from-bottom-2 duration-200 pointer-events-auto z-10">
+          <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border/30 text-xs">
             <div className="flex items-center gap-2 min-w-0">
               <span
                 className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -540,7 +542,7 @@ export function NavegadorGrafo3D({
             </div>
             <button
               onClick={() => setNoSelecionado(null)}
-              className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-accent cursor-pointer transition-colors"
+              className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-accent/60 cursor-pointer transition-colors"
               title="Fechar seleção"
             >
               <X size={13} />
@@ -562,7 +564,7 @@ export function NavegadorGrafo3D({
                       setNoSelecionado(item);
                     }
                   }}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-secondary/60 hover:bg-primary/10 hover:border-primary/40 border border-border/60 transition-all text-xs font-medium text-foreground cursor-pointer shrink-0 max-w-xs group text-left"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-secondary/50 hover:bg-primary/10 hover:border-primary/40 border border-border/40 transition-all text-xs font-medium text-foreground cursor-pointer shrink-0 max-w-xs group text-left"
                 >
                   <span
                     className="w-2 h-2 rounded-full shrink-0 group-hover:scale-110 transition-transform"
@@ -586,13 +588,13 @@ export function NavegadorGrafo3D({
 
       {/* Controles de Câmera e Status no Rodapé */}
       <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
-        <div className="hidden sm:flex items-center gap-2 bg-card/85 backdrop-blur-md px-3 py-1 rounded-full border border-border/60 text-[11px] font-medium text-muted-foreground pointer-events-auto">
+        <div className="hidden sm:flex items-center gap-2 bg-card/85 dark:bg-card/75 backdrop-blur-xl px-3.5 py-1.5 rounded-full border border-border/40 text-[11px] font-medium text-muted-foreground pointer-events-auto shadow-md">
           <span>{grafoRef.current.nos.length} nós</span>
           <span>•</span>
           <span>{grafoRef.current.arestas.length} conexões</span>
         </div>
 
-        <div className="flex items-center gap-1 bg-card/90 backdrop-blur-md p-1.5 rounded-2xl border border-border/80 shadow-md pointer-events-auto ml-auto sm:ml-0">
+        <div className="flex items-center gap-1 bg-card/85 dark:bg-card/75 backdrop-blur-xl p-1.5 rounded-2xl border border-border/40 shadow-xl pointer-events-auto ml-auto sm:ml-0">
           <Tooltip conteudo={simulando ? "Pausar física" : "Ativar física"}>
             <button
               onClick={() => {
@@ -604,7 +606,7 @@ export function NavegadorGrafo3D({
               }}
               className={cn(
                 "min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-xs font-medium transition-colors cursor-pointer",
-                simulando ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground hover:bg-accent"
+                simulando ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground hover:bg-accent/60"
               )}
               aria-label={simulando ? "Pausar física" : "Ativar física"}
             >
@@ -615,7 +617,7 @@ export function NavegadorGrafo3D({
           <Tooltip conteudo="Reorganizar Layout">
             <button
               onClick={reorganizarGrafo}
-              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors cursor-pointer"
               aria-label="Reorganizar Layout"
             >
               <RotateCcw size={16} />
@@ -627,7 +629,7 @@ export function NavegadorGrafo3D({
               onClick={() => {
                 cameraRef.current.zoom = Math.min(cameraRef.current.zoom * 1.25, 3.5);
               }}
-              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors cursor-pointer"
               aria-label="Aumentar Zoom"
             >
               <ZoomIn size={16} />
@@ -639,7 +641,7 @@ export function NavegadorGrafo3D({
               onClick={() => {
                 cameraRef.current.zoom = Math.max(cameraRef.current.zoom * 0.8, 0.4);
               }}
-              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors cursor-pointer"
               aria-label="Diminuir Zoom"
             >
               <ZoomOut size={16} />
@@ -649,7 +651,7 @@ export function NavegadorGrafo3D({
           <Tooltip conteudo="Centralizar Câmera">
             <button
               onClick={reajustarCentralizacao}
-              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors cursor-pointer"
               aria-label="Centralizar Câmera"
             >
               <Crosshair size={16} />

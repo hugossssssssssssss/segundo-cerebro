@@ -324,3 +324,54 @@
 .animate-flip {
   animation: termoFlip 0.5s ease-in-out forwards;
 }
+
+/* ── Utilitários de Glassmorphism & Elevação Minimalista ──────────────── */
+.glass-panel {
+  background-color: hsl(var(--card) / 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08), 0 4px 12px -4px rgba(0, 0, 0, 0.03);
+}
+
+.dark .glass-panel {
+  background-color: hsl(var(--card) / 0.65);
+  border-color: hsl(var(--border) / 0.4);
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.35), 0 4px 14px -4px rgba(0, 0, 0, 0.2);
+}
+
+.glass-surface {
+  background-color: hsl(var(--background) / 0.8);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid hsl(var(--border) / 0.4);
+}
+
+.glass-float {
+  background-color: hsl(var(--popover) / 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid hsl(var(--border) / 0.45);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.12), 0 8px 16px -6px rgba(0, 0, 0, 0.04);
+}
+
+.dark .glass-float {
+  background-color: hsl(var(--popover) / 0.75);
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.45), 0 8px 20px -6px rgba(0, 0, 0, 0.25);
+}
+
+.glass-pill {
+  background-color: hsl(var(--secondary) / 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+
+/* Transições fluidas e orgânicas para reveal e expansões */
+.transition-fluid {
+  transition: all 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.transition-fluid-fast {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}

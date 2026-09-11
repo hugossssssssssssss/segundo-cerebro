@@ -87,7 +87,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150 overscroll-none select-none sm:select-auto"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 dark:bg-black/60 p-0 sm:p-4 backdrop-blur-md animate-in fade-in duration-200 overscroll-none select-none sm:select-auto"
       onClick={tentarFechar}
       role="dialog"
       aria-modal="true"
@@ -96,10 +96,10 @@ export function Modal({
       <div
         style={{
           transform: arrastoY > 0 ? `translateY(${arrastoY}px)` : undefined,
-          transition: arrastoY === 0 ? "transform 0.2s ease" : "none",
+          transition: arrastoY === 0 ? "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)" : "none",
         }}
         className={cn(
-          "flex max-h-[90dvh] sm:max-h-[92dvh] w-full flex-col rounded-t-3xl border-t border-border sm:border bg-card shadow-2xl sm:rounded-2xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200",
+          "flex max-h-[90dvh] sm:max-h-[92dvh] w-full flex-col rounded-t-3xl border-t border-border/40 sm:border bg-card/90 dark:bg-card/85 backdrop-blur-xl shadow-2xl sm:rounded-3xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-250",
           maxLargura
         )}
         onClick={(e) => e.stopPropagation()}
@@ -118,7 +118,7 @@ export function Modal({
           onTouchStart={lidarTouchStart}
           onTouchMove={lidarTouchMove}
           onTouchEnd={lidarTouchEnd}
-          className="flex shrink-0 items-center justify-between border-b border-border px-5 py-3.5 sm:py-4 touch-none"
+          className="flex shrink-0 items-center justify-between border-b border-border/40 px-6 py-4 sm:py-4.5 touch-none"
         >
           <h2 className="text-lg font-semibold text-foreground tracking-tight">{titulo}</h2>
           <Botao
@@ -126,16 +126,16 @@ export function Modal({
             tamanho="icone"
             onClick={tentarFechar}
             aria-label="Fechar"
-            className="touch-manipulation"
+            className="touch-manipulation rounded-full hover:bg-accent/60"
           >
             <X size={18} />
           </Botao>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 overscroll-contain select-text">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 overscroll-contain select-text">{children}</div>
 
         {rodape && (
-          <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border px-5 py-3.5 sm:py-4 pb-[max(env(safe-area-inset-bottom),14px)] bg-muted/20">
+          <div className="flex shrink-0 flex-wrap justify-end gap-2.5 border-t border-border/40 px-6 py-4 pb-[max(env(safe-area-inset-bottom),16px)] bg-muted/10 backdrop-blur-xs">
             {rodape}
           </div>
         )}
@@ -195,26 +195,26 @@ export function ModalConfirmacao({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150 overscroll-none"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-200 overscroll-none"
       onClick={aoCancelar}
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-confirmacao-titulo"
     >
       <div
-        className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl border-t border-border sm:border bg-card p-5 pb-[max(env(safe-area-inset-bottom),20px)] sm:pb-5 shadow-2xl space-y-4 animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+        className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl border-t border-border/40 sm:border bg-card/90 dark:bg-card/85 backdrop-blur-xl p-6 pb-[max(env(safe-area-inset-bottom),20px)] sm:pb-6 shadow-2xl space-y-4 animate-in slide-in-from-bottom sm:zoom-in-95 duration-250"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-10 h-1.5 rounded-full bg-muted-foreground/30 mx-auto -mt-1 mb-2 sm:hidden select-none" />
         <div className="space-y-1.5">
-          <h3 id="modal-confirmacao-titulo" className="text-base font-semibold text-foreground">{titulo}</h3>
+          <h3 id="modal-confirmacao-titulo" className="text-base font-semibold text-foreground tracking-tight">{titulo}</h3>
           <p className="text-xs text-muted-foreground leading-relaxed">{descricao}</p>
         </div>
-        <div className="flex items-center justify-end gap-2 pt-2">
-          <Botao variante="neutro" tamanho="pequeno" onClick={aoCancelar} className="touch-manipulation min-h-[40px] px-4">
+        <div className="flex items-center justify-end gap-2.5 pt-2">
+          <Botao variante="neutro" tamanho="pequeno" onClick={aoCancelar} className="touch-manipulation min-h-[40px] px-4 rounded-xl">
             {textoCancelar}
           </Botao>
-          <Botao variante={varianteConfirmar} tamanho="pequeno" onClick={aoConfirmar} className="touch-manipulation min-h-[40px] px-4">
+          <Botao variante={varianteConfirmar} tamanho="pequeno" onClick={aoConfirmar} className="touch-manipulation min-h-[40px] px-4 rounded-xl">
             {textoConfirmar}
           </Botao>
         </div>

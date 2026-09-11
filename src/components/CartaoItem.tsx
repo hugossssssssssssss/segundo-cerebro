@@ -55,7 +55,7 @@ export function CartaoItem({
       onContextMenu={onContextMenu}
       {...propsArrasto}
       className={cn(
-        "p-3.5 sm:p-4 transition-all duration-150 group relative flex flex-col justify-between border-border/40 bg-card hover:border-border/80 hover:bg-accent/20 rounded-xl",
+        "p-4 sm:p-5 transition-fluid-fast group relative flex flex-col justify-between border-border/40 bg-card hover:border-border/80 hover:bg-accent/15 hover:shadow-md rounded-2xl",
         onClick && "cursor-pointer",
         ativo && "border-foreground/30 bg-accent/30 ring-1 ring-foreground/20",
         selecionado &&
@@ -65,7 +65,7 @@ export function CartaoItem({
     >
       {/* Indicador de seleção */}
       {selecionado && (
-        <div className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+        <div className="absolute top-2.5 right-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
           <svg
             width="10"
             height="10"
@@ -86,7 +86,7 @@ export function CartaoItem({
           {icone && (
             <div
               className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-colors group-hover:text-foreground",
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground transition-colors group-hover:text-foreground",
               )}
             >
               {icone}
@@ -110,7 +110,7 @@ export function CartaoItem({
         {acoes && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1.5 shrink-0"
+            className="flex items-center gap-1.5 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200"
           >
             {acoes}
           </div>

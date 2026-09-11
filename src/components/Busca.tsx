@@ -399,15 +399,15 @@ export function Busca({
 
   return (
     <div
-      className="fixed inset-0 z-[600] flex items-end sm:items-start justify-center bg-black/50 p-0 sm:p-4 sm:pt-20 backdrop-blur-md animate-in fade-in duration-150 overscroll-none select-none sm:select-auto"
+      className="fixed inset-0 z-[600] flex items-end sm:items-start justify-center bg-black/40 dark:bg-black/60 p-0 sm:p-4 sm:pt-20 backdrop-blur-md animate-in fade-in duration-200 overscroll-none select-none sm:select-auto"
       onClick={aoFechar}
     >
       <div
         style={{
           transform: arrastoY > 0 ? `translateY(${arrastoY}px)` : undefined,
-          transition: arrastoY === 0 ? "transform 0.2s ease" : "none",
+          transition: arrastoY === 0 ? "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)" : "none",
         }}
-        className="flex h-[92dvh] max-h-[92dvh] sm:h-auto sm:max-h-[85dvh] w-full flex-col rounded-t-3xl sm:rounded-2xl border-t border-border/40 sm:border sm:border-border/60 bg-card/95 shadow-2xl sm:max-w-3xl lg:max-w-4xl overflow-hidden overflow-x-hidden pt-1 sm:pt-0 pb-[max(env(safe-area-inset-bottom),8px)] backdrop-blur-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+        className="flex h-[92dvh] max-h-[92dvh] sm:h-auto sm:max-h-[85dvh] w-full flex-col rounded-t-3xl sm:rounded-3xl border-t border-border/40 sm:border sm:border-border/40 bg-card/90 dark:bg-card/85 shadow-2xl sm:max-w-3xl lg:max-w-4xl overflow-hidden overflow-x-hidden pt-1 sm:pt-0 pb-[max(env(safe-area-inset-bottom),8px)] backdrop-blur-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-250"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Puxador nativo de Bottom Sheet no mobile */}

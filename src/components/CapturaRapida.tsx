@@ -353,15 +353,15 @@ export function CapturaRapida({
 
   return (
     <div
-      className="fixed inset-0 z-[600] flex items-end justify-center bg-black/50 p-0 sm:items-start sm:p-4 sm:pt-28 backdrop-blur-xs animate-in fade-in duration-150 overscroll-none select-none sm:select-auto"
+      className="fixed inset-0 z-[600] flex items-end justify-center bg-black/40 dark:bg-black/60 p-0 sm:items-start sm:p-4 sm:pt-28 backdrop-blur-md animate-in fade-in duration-200 overscroll-none select-none sm:select-auto"
       onClick={aoFechar}
     >
       <Cartao
         style={{
           transform: arrastoY > 0 ? `translateY(${arrastoY}px)` : undefined,
-          transition: arrastoY === 0 ? "transform 0.2s ease" : "none",
+          transition: arrastoY === 0 ? "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)" : "none",
         }}
-        className="w-full rounded-t-3xl rounded-b-none p-4 pb-[max(env(safe-area-inset-bottom),16px)] sm:max-w-lg sm:rounded-2xl border-t border-border shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+        className="w-full rounded-t-3xl rounded-b-none p-5 pb-[max(env(safe-area-inset-bottom),16px)] sm:max-w-lg sm:rounded-3xl border-t border-border/40 sm:border-border/40 bg-card/90 dark:bg-card/85 backdrop-blur-2xl shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-250"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Puxador com gesto de arrasto no mobile */}

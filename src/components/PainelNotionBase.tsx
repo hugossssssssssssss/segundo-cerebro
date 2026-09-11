@@ -17,6 +17,8 @@ import {
   ArrowRightLeft,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  SlidersHorizontal,
   Layout,
   FileText,
   ListTodo,
@@ -134,6 +136,13 @@ export function PainelNotionBase({
   } catch {}
 
   const [modoFoco, setModoFoco] = useState(false);
+  const [metadadosAbertos, setMetadadosAbertos] = useState(() => Boolean(campoFocoInicial));
+
+  useEffect(() => {
+    if (campoFocoInicial) {
+      setMetadadosAbertos(true);
+    }
+  }, [campoFocoInicial]);
 
   const abrirEmTelaCheiaComAbas = () => {
     if (workspace?.abrirNoWorkspace) {
@@ -1228,24 +1237,69 @@ export function PainelNotionBase({
       />
 
       {!modoFoco && (
-        <>
-          <div className="flex flex-col gap-2">
-            <PropriedadesNotion
-              dados={dadosProps}
-              corpoTexto={corpo}
-              onChange={onChangeProps}
-              camposFixos={camposFixosProps}
-              opcoesRelacionamento={opcoesRelacionamento}
-              caminhoItem={caminhoItem}
-              rotuloTipo={rotuloTipo}
-              focoPropriedadeInicial={campoFocoInicial}
-              aoMoverPasta={moverParaPasta}
-              aoRemover={aoRemover ? () => setConfirmandoApagar(true) : undefined}
-            />
+        <div className="space-y-3">
+          {/* Barra de Alternância de Metadados (Colapsável por Padrão) */}
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setMetadadosAbertos(!metadadosAbertos)}
+              className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-fluid cursor-pointer select-none"
+            >
+              {metadadosAbertos ? (
+                <ChevronDown size={14} className="shrink-0 text-muted-foreground" />
+              ) : (
+                <ChevronRight size={14} className="shrink-0 text-muted-foreground" />
+              )}
+              <SlidersHorizontal size={13} className="shrink-0 opacity-70" />
+              <span>Propriedades</span>
+
+              {/* Badges de Resumo quando colapsado */}
+              {!metadadosAbertos && (
+                <div className="flex items-center gap-1.5 ml-1">
+                  {dadosProps.status && (
+                    <span className="px-2 py-0.5 rounded-md bg-secondary text-[11px] text-secondary-foreground font-medium truncate max-w-[120px]">
+                      {String(dadosProps.status)}
+                    </span>
+                  )}
+                  {Array.isArray(dadosProps.tags) && dadosProps.tags.length > 0 && (
+                    <span className="px-2 py-0.5 rounded-md bg-secondary/80 text-[11px] text-muted-foreground font-medium">
+                      {dadosProps.tags.length} tag{dadosProps.tags.length > 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+              )}
+            </button>
+
+            {metadadosAbertos && (
+              <button
+                type="button"
+                onClick={() => setMetadadosAbertos(false)}
+                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-accent/40 cursor-pointer"
+              >
+                Ocultar
+              </button>
+            )}
           </div>
 
-          <hr className="border-border" />
-        </>
+          {metadadosAbertos && (
+            <div className="flex flex-col gap-2 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+              <PropriedadesNotion
+                dados={dadosProps}
+                corpoTexto={corpo}
+                onChange={onChangeProps}
+                camposFixos={camposFixosProps}
+                opcoesRelacionamento={opcoesRelacionamento}
+                caminhoItem={caminhoItem}
+                rotuloTipo={rotuloTipo}
+                focoPropriedadeInicial={campoFocoInicial}
+                aoMoverPasta={moverParaPasta}
+                aoRemover={aoRemover ? () => setConfirmandoApagar(true) : undefined}
+              />
+            </div>
+          )}
+
+          <hr className="border-border/30" />
+        </div>
       )}
 
       {elementoAcimaCorpo ? (

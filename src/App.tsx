@@ -389,13 +389,13 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Cabeçalho Principal (Topbar Limpa / Integrada com Abas no Workspace) */}
-        <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur shrink-0">
+        <header className="sticky top-0 z-40 border-b border-border/30 bg-background/80 backdrop-blur-xl shrink-0 transition-fluid">
           <div
             className={cn(
-              "flex items-center justify-between transition-all",
+              "flex items-center justify-between transition-all duration-300",
               workspaceAberto
-                ? "w-full px-2 sm:px-3 h-12"
-                : "w-full px-3.5 sm:px-6 h-14"
+                ? "w-full px-3 sm:px-4 h-12"
+                : "w-full px-4 sm:px-8 h-14"
             )}
           >
             {/* Lado Esquerdo: Logo no Mobile + Barra de Favoritos */}
@@ -454,8 +454,8 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         {workspaceAberto ? (
           <WorkspaceTelaCheia />
         ) : (
-          <main className="mx-auto w-full flex-1 py-3 sm:py-6 pb-28 sm:pb-8 px-3 sm:px-6 lg:px-8 overflow-y-auto max-w-none flex flex-col justify-between">
-            <div className="flex-1 w-full">
+          <main className="mx-auto w-full flex-1 py-5 sm:py-8 pb-32 sm:pb-12 px-4 sm:px-8 lg:px-12 overflow-y-auto max-w-none flex flex-col justify-between">
+            <div className="flex-1 w-full max-w-7xl mx-auto">
               <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
             </div>
             {!pathname.startsWith("/jogos") && <Rodape />}
@@ -465,14 +465,14 @@ function Estrutura({ children }: { children: React.ReactNode }) {
 
       {/* Navegação inferior no celular com visual dock moderno, safe area e touch targets de 48px+ */}
       {!workspaceAberto && (
-        <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center border-t border-border/80 bg-card/95 pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5 px-1.5 backdrop-blur-xl sm:hidden shadow-lg select-none">
+        <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center border-t border-border/40 bg-card/85 pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5 px-2 backdrop-blur-2xl sm:hidden shadow-2xl select-none">
           {abasMobile.map(({ para, rotulo, Icone }) => (
             <NavLink
               key={para}
               to={para}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium transition-all min-w-0 truncate px-1 rounded-xl mx-0.5 relative group active:scale-95 touch-manipulation min-h-[50px]",
+                  "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium transition-fluid-fast min-w-0 truncate px-1 rounded-2xl mx-0.5 relative group active:scale-95 touch-manipulation min-h-[50px]",
                   isActive
                     ? "text-primary font-bold bg-primary/10 shadow-xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent/40",
