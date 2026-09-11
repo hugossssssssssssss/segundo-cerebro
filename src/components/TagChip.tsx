@@ -69,15 +69,15 @@ export function TagChip({
       }}
       style={estiloCustomizado}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-0.5 text-[11px] font-medium border transition-fluid-fast select-none shrink-0",
-        aoClicar && "cursor-pointer active:scale-95",
+        "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-0.5 text-[11px] font-medium border select-none shrink-0",
+        aoClicar && "cursor-pointer liquid-press",
         ativa
           ? "bg-primary text-primary-foreground border-primary shadow-2xs font-semibold"
           : estiloCor && !estiloCor.customHex
           ? cn(estiloCor.bg, estiloCor.text, estiloCor.border, "hover:opacity-90")
           : estiloCor?.customHex
           ? "hover:opacity-90"
-          : "bg-muted/40 text-muted-foreground border-border/40 hover:border-border/70 hover:text-foreground hover:bg-accent/70",
+          : "liquid-glass-pill text-muted-foreground hover:border-border/70 hover:text-foreground",
         className
       )}
     >
