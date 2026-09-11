@@ -788,13 +788,13 @@ export function PainelNotionBase({
         </Tooltip>
 
         {/* Alternador direto e instantâneo de modos de visualização */}
-        <div className="flex items-center bg-secondary/60 rounded-xl p-0.5 border border-border/60 shrink-0">
+        <div className="flex items-center bg-secondary/70 rounded-xl p-0.5 border border-border/40 shrink-0 shadow-2xs">
           <Tooltip conteudo="Pop-up Central">
             <button
               type="button"
               onClick={() => { setModoVisao("popup"); setMinimizadoFlutuante(false); }}
               className={cn(
-                "p-1.5 rounded-lg transition-colors cursor-pointer",
+                "p-1.5 rounded-lg transition-fluid-fast cursor-pointer active:scale-95",
                 modoVisao === "popup" 
                   ? "bg-primary text-primary-foreground shadow-2xs font-semibold" 
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
@@ -810,7 +810,7 @@ export function PainelNotionBase({
               type="button"
               onClick={() => { setModoVisao("lado"); setMinimizadoFlutuante(false); }}
               className={cn(
-                "p-1.5 rounded-lg transition-colors cursor-pointer",
+                "p-1.5 rounded-lg transition-fluid-fast cursor-pointer active:scale-95",
                 modoVisao === "lado" 
                   ? "bg-primary text-primary-foreground shadow-2xs font-semibold" 
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
@@ -826,7 +826,7 @@ export function PainelNotionBase({
               type="button"
               onClick={abrirEmTelaCheiaComAbas}
               className={cn(
-                "p-1.5 rounded-lg transition-colors cursor-pointer",
+                "p-1.5 rounded-lg transition-fluid-fast cursor-pointer active:scale-95",
                 modoVisao === "telacheia" 
                   ? "bg-primary text-primary-foreground shadow-2xs font-semibold" 
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
@@ -842,7 +842,7 @@ export function PainelNotionBase({
               type="button"
               onClick={() => { setModoVisao("flutuante"); setMinimizadoFlutuante(false); }}
               className={cn(
-                "p-1.5 rounded-lg transition-colors cursor-pointer",
+                "p-1.5 rounded-lg transition-fluid-fast cursor-pointer active:scale-95",
                 modoVisao === "flutuante" 
                   ? "bg-primary text-primary-foreground shadow-2xs font-semibold" 
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
@@ -1507,7 +1507,7 @@ export function PainelNotionBase({
           height: `${tamanhoFlutuante.altura}px`,
           zIndex: 9999,
         }}
-        className="fixed flex flex-col rounded-2xl border border-border/80 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.35)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.7)] overflow-hidden animate-in zoom-in-95 duration-150"
+        className="fixed flex flex-col rounded-2xl border border-border/40 bg-card/95 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.25)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden animate-in zoom-in-95 duration-150"
       >
         {/* Cabeçalho arrastável */}
         <div className="shrink-0">{cabecalho}</div>
@@ -1583,7 +1583,7 @@ export function PainelNotionBase({
     return (
       <div
         className={cn(
-          "fixed z-50 flex flex-col rounded-none sm:rounded-3xl border-0 sm:border border-border/30 bg-card/85 dark:bg-card/75 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in duration-200 pointer-events-auto",
+          "fixed z-50 flex flex-col rounded-none sm:rounded-3xl border-0 sm:border border-border/35 bg-card/90 dark:bg-card/80 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in duration-200 pointer-events-auto",
           "top-0 bottom-0 sm:top-3 sm:bottom-3",
           ehEsquerda
             ? "left-0 sm:left-3 slide-in-from-left w-full sm:w-[560px] md:w-[640px] lg:w-[calc(50vw-24px)]"
@@ -1625,7 +1625,7 @@ export function PainelNotionBase({
       onClick={tentarFechar}
     >
       <div
-        className="flex h-full sm:h-auto sm:max-h-[88vh] w-full max-w-4xl flex-col rounded-none sm:rounded-3xl border-0 sm:border border-border/30 bg-card/90 dark:bg-card/80 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+        className="flex h-full sm:h-auto sm:max-h-[88vh] w-full max-w-4xl flex-col rounded-none sm:rounded-3xl border-0 sm:border border-border/35 bg-card/95 dark:bg-card/85 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {cabecalho}

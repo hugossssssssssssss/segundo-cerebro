@@ -96,7 +96,7 @@ export function Rodape() {
     <>
       <footer
         data-testid="rodape-klaus"
-        className="mt-32 sm:mt-40 w-[calc(100%+1.75rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] -mx-3.5 sm:-mx-6 lg:-mx-8 -mb-24 sm:-mb-8 bg-card/60 dark:bg-card/40 border-t border-border/40 pt-10 pb-14 text-foreground select-none backdrop-blur-xs"
+        className="mt-32 sm:mt-40 w-[calc(100%+1.75rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] -mx-3.5 sm:-mx-6 lg:-mx-8 -mb-24 sm:-mb-8 bg-card/45 dark:bg-card/25 border-t border-border/30 pt-10 pb-14 text-foreground select-none backdrop-blur-md"
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-8">
           {/* Grade de Informações */}
@@ -106,7 +106,7 @@ export function Rodape() {
               <div className="flex items-center gap-2">
                 <LogoKlaus tamanho={22} />
                 <span className="text-sm font-semibold tracking-tight text-foreground">Klaus</span>
-                <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground border border-border/40">
+                <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground border border-border/35">
                   v{versao}
                 </span>
               </div>
@@ -302,7 +302,7 @@ export function Rodape() {
           </div>
 
           {/* Linha Inferior */}
-          <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-border/40 pt-5 sm:flex-row text-xs text-muted-foreground">
+          <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-border/30 pt-5 sm:flex-row text-xs text-muted-foreground">
             <p className="italic text-center sm:text-left font-normal text-muted-foreground/80">
               "{frase}"
             </p>

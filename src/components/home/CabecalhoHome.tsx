@@ -37,13 +37,13 @@ export function CabecalhoHome({
   }, [agora]);
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-border/40">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-border/30">
       {/* Saudação e Data sem emojis */}
       <div className="space-y-0.5">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
           {saudacao}, {nomeUsuario}.
         </h1>
-        <p className="text-xs text-muted-foreground font-normal">
+        <p className="text-xs text-muted-foreground/85 font-normal">
           {dataFormatada}
         </p>
       </div>
@@ -56,7 +56,7 @@ export function CabecalhoHome({
               variant="ghost"
               size="icon"
               onClick={aoRestaurarPadrao}
-              className="text-muted-foreground hover:text-foreground h-8 w-8 rounded-lg"
+              className="text-muted-foreground hover:text-foreground h-8 w-8 rounded-xl"
               aria-label="Restaurar grade padrão"
             >
               <RotateCcw size={13} />
@@ -69,8 +69,8 @@ export function CabecalhoHome({
           size="sm"
           onClick={aoAlternarModoEdicao}
           className={cn(
-            "text-xs font-medium rounded-lg h-8 transition-all",
-            !modoEdicao && "bg-card border-border/80 text-muted-foreground hover:text-foreground"
+            "text-xs font-medium rounded-xl h-8 transition-fluid-fast",
+            !modoEdicao && "bg-card/80 border-border/40 text-muted-foreground hover:text-foreground hover:bg-accent/60"
           )}
         >
           <SlidersHorizontal size={13} className="mr-1.5" />
@@ -80,7 +80,7 @@ export function CabecalhoHome({
         <Button
           size="sm"
           onClick={aoAbrirCatalogo}
-          className="text-xs font-semibold rounded-lg h-8 gap-1.5 shadow-2xs cursor-pointer"
+          className="text-xs font-semibold rounded-xl h-8 gap-1.5 shadow-2xs cursor-pointer active:scale-[0.98]"
         >
           <Plus size={14} />
           <span className="hidden sm:inline">Adicionar Widget</span>

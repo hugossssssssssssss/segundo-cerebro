@@ -226,7 +226,7 @@ function CartaoArrastavel({
       ref={setNodeRef}
       style={estilo}
       className={cn(
-        "group relative flex flex-col gap-1.5 p-3 text-xs select-none cursor-pointer transition-colors hover:bg-accent/30",
+        "group relative flex flex-col gap-1.5 p-3 sm:p-3.5 text-xs select-none cursor-pointer rounded-xl border border-border/35 bg-card/95 transition-fluid hover:border-border/65 hover:bg-accent/25 hover:shadow-minimal-hover shadow-minimal",
         isDragging && "opacity-30",
         gravando && "animate-pulse border-primary",
         isAtivo && "border-primary/60 bg-primary/5",
@@ -427,7 +427,7 @@ function Coluna({
           ref={setNodeRef}
           onClick={aoAlternarColapso}
           className={cn(
-            "flex w-12 shrink-0 flex-col items-center justify-between rounded-2xl border border-border bg-secondary/30 py-4 transition-all cursor-pointer hover:bg-accent/60 select-none",
+            "flex w-12 shrink-0 flex-col items-center justify-between rounded-2xl border border-border/35 bg-secondary/30 py-4 transition-all cursor-pointer hover:bg-accent/60 select-none shadow-minimal",
             isOver && "border-primary/50 bg-primary/10",
           )}
           aria-label={`Expandir coluna ${ROTULO_STATUS[status]}`}
@@ -453,8 +453,8 @@ function Coluna({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex min-w-[84vw] sm:min-w-[280px] flex-1 flex-col rounded-2xl border border-border bg-secondary/40 p-2.5 transition-colors snap-center",
-        isOver && "border-primary/40 bg-accent",
+        "flex min-w-[84vw] sm:min-w-[280px] flex-1 flex-col rounded-2xl border border-border/35 bg-secondary/35 dark:bg-card/40 p-2.5 sm:p-3 transition-colors shadow-minimal snap-center",
+        isOver && "border-primary/40 bg-accent/60",
       )}
     >
       <div className="mb-2.5 flex items-center justify-between gap-2 px-1">

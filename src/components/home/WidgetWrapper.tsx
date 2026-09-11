@@ -114,7 +114,7 @@ export function WidgetWrapper({
         minHeight: typeof window !== "undefined" && window.innerWidth < 640 ? "auto" : `${alturaLocal}px`,
       }}
       className={cn(
-        "group relative flex flex-col justify-between rounded-xl border border-border/40 bg-card/80 p-3.5 sm:p-4 transition-all duration-150 overflow-hidden backdrop-blur-xs",
+        "group relative flex flex-col justify-between rounded-2xl border border-border/35 bg-card/90 dark:bg-card/75 p-3.5 sm:p-4.5 transition-fluid shadow-minimal hover:border-border/60 hover:shadow-minimal-hover overflow-hidden backdrop-blur-md",
         classeGrid,
         modoEdicao && "ring-1 ring-primary/40",
         redimensionando && "select-none ring-1 ring-primary shadow-xl opacity-95",
@@ -130,7 +130,7 @@ export function WidgetWrapper({
 
       {/* Controles de Edição no Modo Grade */}
       {modoEdicao && (
-        <div className="absolute top-2 right-2 z-20 flex items-center gap-1 bg-background/95 border border-border p-1 rounded-lg shadow-md">
+        <div className="absolute top-2 right-2 z-20 flex items-center gap-1 bg-background/95 border border-border/60 p-1 rounded-xl shadow-md">
           <span className="text-[10px] text-muted-foreground font-mono px-1 font-semibold">
             {colunasLocal}/12 col
           </span>
@@ -142,7 +142,7 @@ export function WidgetWrapper({
               <button
                 type="button"
                 onClick={aoRemover}
-                className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                className="p-1 rounded-lg text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
                 aria-label="Remover widget"
               >
                 <X size={12} />
@@ -153,7 +153,7 @@ export function WidgetWrapper({
       )}
 
       {/* Cabeçalho do Widget */}
-      <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-border/40">
+      <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-border/30">
         <div className="flex items-center gap-2 min-w-0">
           <div className="text-muted-foreground shrink-0" style={corIcone ? { color: corIcone } : undefined}>
             <Icone size={15} />
