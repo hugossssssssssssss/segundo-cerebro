@@ -12,40 +12,40 @@ interface SeloStatusProps {
 
 const TONS_CLASSES: Record<TomSelo, { bg: string; text: string; dot: string; border: string }> = {
   neutro: {
-    bg: "bg-muted/80",
+    bg: "bg-muted/70",
     text: "text-muted-foreground",
     dot: "bg-muted-foreground/60",
-    border: "border-border/60",
+    border: "border-border/50",
   },
   sucesso: {
-    bg: "bg-emerald-500/15",
-    text: "text-emerald-700 dark:text-emerald-400",
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-700 dark:text-emerald-300",
     dot: "bg-emerald-500",
-    border: "border-emerald-500/30",
+    border: "border-emerald-500/25",
   },
   aviso: {
-    bg: "bg-amber-500/15",
-    text: "text-amber-700 dark:text-amber-400",
+    bg: "bg-amber-500/10",
+    text: "text-amber-700 dark:text-amber-300",
     dot: "bg-amber-500",
-    border: "border-amber-500/30",
+    border: "border-amber-500/25",
   },
   perigo: {
-    bg: "bg-rose-500/15",
-    text: "text-rose-700 dark:text-rose-400",
+    bg: "bg-rose-500/10",
+    text: "text-rose-700 dark:text-rose-300",
     dot: "bg-rose-500",
-    border: "border-rose-500/30",
+    border: "border-rose-500/25",
   },
   primario: {
-    bg: "bg-primary/15",
+    bg: "bg-primary/10",
     text: "text-primary",
     dot: "bg-primary",
-    border: "border-primary/30",
+    border: "border-primary/20",
   },
   info: {
-    bg: "bg-sky-500/15",
-    text: "text-sky-700 dark:text-sky-400",
+    bg: "bg-sky-500/10",
+    text: "text-sky-700 dark:text-sky-300",
     dot: "bg-sky-500",
-    border: "border-sky-500/30",
+    border: "border-sky-500/25",
   },
 };
 

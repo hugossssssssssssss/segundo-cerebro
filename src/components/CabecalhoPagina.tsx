@@ -30,7 +30,7 @@ export function CabecalhoPagina({
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 border-b border-border/30 pb-4 sm:pb-6 pt-1 sm:pt-2",
+        "flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 border-b border-border/30 pb-4 sm:pb-5 pt-1 sm:pt-2",
         className
       )}
     >
@@ -38,7 +38,7 @@ export function CabecalhoPagina({
         {icone && (
           <div
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition-fluid shadow-2xs",
+              "flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl transition-fluid shadow-minimal",
               corIcone
             )}
           >
@@ -47,7 +47,7 @@ export function CabecalhoPagina({
         )}
         <div className="min-w-0 flex-1">
           {trilha && trilha.length > 0 && (
-            <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-0.5 font-medium">
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground/70 mb-1 font-medium">
               {trilha.map((item, idx) => (
                 <React.Fragment key={idx}>
                   {idx > 0 && <ChevronRight size={11} className="opacity-50 shrink-0" />}
@@ -65,7 +65,7 @@ export function CabecalhoPagina({
             {badge}
           </div>
           {descricao && (
-            <p className="mt-0.5 text-xs text-muted-foreground leading-normal font-normal">
+            <p className="mt-1 text-xs sm:text-[13px] text-muted-foreground/85 leading-relaxed font-normal">
               {descricao}
             </p>
           )}

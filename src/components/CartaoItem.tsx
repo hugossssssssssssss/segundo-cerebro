@@ -55,9 +55,9 @@ export function CartaoItem({
       onContextMenu={onContextMenu}
       {...propsArrasto}
       className={cn(
-        "p-5 sm:p-6 transition-fluid group relative flex flex-col justify-between border-border/30 bg-card hover:border-border/60 hover:bg-accent/20 hover:shadow-lg rounded-2xl sm:rounded-3xl",
+        "p-4 sm:p-5 transition-fluid group relative flex flex-col justify-between border-border/35 bg-card/95 hover:border-border/70 hover:bg-accent/25 hover:shadow-minimal-hover rounded-2xl shadow-minimal",
         onClick && "cursor-pointer",
-        ativo && "border-foreground/30 bg-accent/30 ring-1 ring-foreground/20",
+        ativo && "border-foreground/30 bg-accent/35 ring-1 ring-foreground/20",
         selecionado &&
         "border-primary bg-primary/5 ring-1 ring-primary/30",
         className
@@ -86,7 +86,7 @@ export function CartaoItem({
           {icone && (
             <div
               className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground transition-colors group-hover:text-foreground",
+                "flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground transition-all duration-200 group-hover:bg-muted group-hover:text-foreground",
               )}
             >
               {icone}
@@ -100,7 +100,7 @@ export function CartaoItem({
               {badge}
             </div>
             {subtitulo && (
-              <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+              <p className="mt-1 text-xs text-muted-foreground/80 line-clamp-2 leading-relaxed">
                 {subtitulo}
               </p>
             )}

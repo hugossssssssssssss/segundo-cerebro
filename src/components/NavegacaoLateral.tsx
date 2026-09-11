@@ -169,9 +169,9 @@ export function NavegacaoLateral({
                         onClick={lidarCliqueItem}
                         className={({ isActive }) =>
                           cn(
-                            "flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition-fluid-fast relative group cursor-pointer",
+                            "flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition-fluid-fast relative group cursor-pointer active:scale-[0.98]",
                             isActive
-                              ? "bg-accent text-accent-foreground font-semibold shadow-2xs"
+                              ? "bg-accent/80 text-foreground font-semibold shadow-2xs"
                               : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                             !visualmenteExpandida && "justify-center px-0 py-2"
                           )
