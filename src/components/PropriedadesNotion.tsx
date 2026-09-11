@@ -8,6 +8,7 @@ import {
   Tags,
   Plus,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   User,
   Clock,
@@ -1113,6 +1114,8 @@ export function PropriedadesNotion({
     setMenuAberto(null);
   }
 
+  const [mostrarOcultas, setMostrarOcultas] = useState(false);
+
   function ehVazia(chave: string): boolean {
     const v = dados[chave];
     if (v === undefined || v === null || v === "") return true;
@@ -1890,6 +1893,55 @@ export function PropriedadesNotion({
           </div>
         );
       })}
+
+      {/* Propriedades Ocultas / Vazias Recolhidas com Animação */}
+      {chavesOcultas.length > 0 && mostrarOcultas && (
+        <div className="flex flex-col gap-1.5 pt-1 border-t border-border/20 animate-in fade-in duration-150">
+          {chavesOcultas.map((chave, idx) => {
+            const fixo = todosCamposFixos[chave];
+            const descricao = descricoesMap[chave];
+            return (
+              <div key={chave} className="flex min-h-8 items-center gap-1.5 sm:gap-3 text-xs group relative opacity-85 hover:opacity-100 transition-opacity">
+                <div className="opacity-0 group-hover:opacity-40 transition-opacity cursor-grab text-muted-foreground -ml-4 pl-1 hidden sm:flex items-center">
+                  <GripVertical size={12} />
+                </div>
+                {renderizarMenuPropriedade(chave, fixo, idx, chavesOcultas.length)}
+                {descricao && (
+                  <span title={descricao} className="text-muted-foreground/60 hover:text-foreground cursor-help -ml-1">
+                    <HelpCircle size={11} />
+                  </span>
+                )}
+                <div className="flex-1 flex items-center min-h-8 min-w-0">
+                  {renderizarValor(chave)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Botão de Alternar Propriedades Ocultas */}
+      {chavesOcultas.length > 0 && (
+        <div className="pt-0.5">
+          <button
+            type="button"
+            onClick={() => setMostrarOcultas(!mostrarOcultas)}
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground py-1 px-1.5 rounded-md hover:bg-accent/40 transition-colors cursor-pointer"
+          >
+            {mostrarOcultas ? (
+              <>
+                <ChevronUp size={12} />
+                <span>Ocultar {chavesOcultas.length} {chavesOcultas.length === 1 ? "propriedade" : "propriedades"}</span>
+              </>
+            ) : (
+              <>
+                <ChevronDown size={12} />
+                <span>+ {chavesOcultas.length} {chavesOcultas.length === 1 ? "propriedade oculta" : "propriedades ocultas"}</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center gap-2 sm:gap-4 text-xs mt-1 pt-1 border-t border-border/30">
         <div className="w-28 sm:w-36 shrink-0">

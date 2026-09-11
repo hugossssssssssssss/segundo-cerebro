@@ -58,6 +58,7 @@ import type { Tarefa } from "@/lib/tipos";
 import { ModalLembrete } from "./ModalLembrete";
 import { ModalIADocumento } from "./ModalIADocumento";
 import { ModalVincularDocumentoAvancado } from "./ModalVincularDocumentoAvancado";
+import { HoverPreviewMencao } from "./HoverPreviewMencao";
 import {
   type CategoriaDocumento,
   indexarDocumentosVinculaveis,
@@ -1366,9 +1367,13 @@ export function EditorNotion({
     };
   }, [pronto, alvos]);
 
+  const [previewMencao, setPreviewMencao] = useState<Alvo | null>(null);
+  const [previewPosicao, setPreviewPosicao] = useState<{ x: number; y: number } | null>(null);
+  const hoverTimerRef = useRef<any>(null);
+
   /**
-   * Listener para cliques em menções (@ e [[alvo]]) dentro do editor.
-   * Direciona o usuário para o documento / nota / tarefa correspondente.
+   * Listener para cliques e hover em menções (@ e [[alvo]]) dentro do editor.
+   * Direciona o usuário para o documento ou exibe cartão flutuante de prévia.
    */
   useEffect(() => {
     const container = wrapperRef.current;
@@ -1388,6 +1393,7 @@ export function EditorNotion({
       if (mencao) {
         e.preventDefault();
         e.stopPropagation();
+        setPreviewMencao(null);
 
         if (aoAbrirMencao) {
           aoAbrirMencao(mencao);
@@ -1402,20 +1408,38 @@ export function EditorNotion({
       if (mencao) {
         container.style.cursor = "pointer";
         container.setAttribute("title", `Abrir @${mencao.titulo} (${mencao.tipo})`);
+
+        if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = setTimeout(() => {
+          setPreviewMencao(mencao);
+          setPreviewPosicao({ x: e.clientX, y: e.clientY });
+        }, 350);
       } else {
         if (container.style.cursor === "pointer") {
           container.style.cursor = "";
           container.removeAttribute("title");
         }
+        if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = setTimeout(() => {
+          setPreviewMencao(null);
+        }, 200);
       }
+    };
+
+    const lidarMouseLeave = () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+      setPreviewMencao(null);
     };
 
     container.addEventListener("click", lidarClique, true);
     container.addEventListener("mousemove", lidarMouseMove);
+    container.addEventListener("mouseleave", lidarMouseLeave);
 
     return () => {
       container.removeEventListener("click", lidarClique, true);
       container.removeEventListener("mousemove", lidarMouseMove);
+      container.removeEventListener("mouseleave", lidarMouseLeave);
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
       container.style.cursor = "";
       container.removeAttribute("title");
     };
@@ -2015,6 +2039,20 @@ export function EditorNotion({
           display: none !important;
         }
       `}</style>
+
+      {/* Pré-visualização Flutuante de Menções ao passar o cursor */}
+      <HoverPreviewMencao
+        mencao={previewMencao}
+        posicao={previewPosicao}
+        aoAbrir={(cam) => {
+          setPreviewMencao(null);
+          if (aoAbrirMencao && previewMencao) {
+            aoAbrirMencao(previewMencao);
+          } else {
+            abrirItemSpa(cam);
+          }
+        }}
+      />
     </div>
   );
 }

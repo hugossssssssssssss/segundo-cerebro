@@ -399,7 +399,7 @@ export function Busca({
 
   return (
     <div
-      className="fixed inset-0 z-[600] flex items-end sm:items-start justify-center bg-black/60 p-0 sm:p-4 sm:pt-20 backdrop-blur-xs animate-in fade-in duration-150 overscroll-none select-none sm:select-auto"
+      className="fixed inset-0 z-[600] flex items-end sm:items-start justify-center bg-black/50 p-0 sm:p-4 sm:pt-20 backdrop-blur-md animate-in fade-in duration-150 overscroll-none select-none sm:select-auto"
       onClick={aoFechar}
     >
       <div
@@ -407,7 +407,7 @@ export function Busca({
           transform: arrastoY > 0 ? `translateY(${arrastoY}px)` : undefined,
           transition: arrastoY === 0 ? "transform 0.2s ease" : "none",
         }}
-        className="flex h-[92dvh] max-h-[92dvh] sm:h-auto sm:max-h-[85dvh] w-full flex-col rounded-t-3xl sm:rounded-2xl border-t border-border sm:border bg-card shadow-2xl sm:max-w-3xl lg:max-w-4xl overflow-hidden overflow-x-hidden pt-1 sm:pt-0 pb-[max(env(safe-area-inset-bottom),8px)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+        className="flex h-[92dvh] max-h-[92dvh] sm:h-auto sm:max-h-[85dvh] w-full flex-col rounded-t-3xl sm:rounded-2xl border-t border-border/40 sm:border sm:border-border/60 bg-card/95 shadow-2xl sm:max-w-3xl lg:max-w-4xl overflow-hidden overflow-x-hidden pt-1 sm:pt-0 pb-[max(env(safe-area-inset-bottom),8px)] backdrop-blur-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Puxador nativo de Bottom Sheet no mobile */}
@@ -425,15 +425,15 @@ export function Busca({
           onTouchStart={lidarTouchStart}
           onTouchMove={lidarTouchMove}
           onTouchEnd={lidarTouchEnd}
-          className="flex shrink-0 items-center gap-2 border-b border-border p-3 sm:p-3.5"
+          className="flex shrink-0 items-center gap-2 border-b border-border/40 p-3 sm:p-3.5"
         >
-          <Search size={19} className="shrink-0 text-muted-foreground ml-1" />
+          <Search size={18} className="shrink-0 text-muted-foreground ml-1" />
           <Campo
             ref={entrada}
             value={termo}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTermo(e.target.value)}
-            placeholder="Buscar notas, tarefas, ferramentas..."
-            className="border-0 bg-transparent focus-visible:ring-0 text-base touch-manipulation flex-1"
+            placeholder="Buscar notas, tarefas, comandos..."
+            className="border-0 bg-transparent focus-visible:ring-0 text-sm sm:text-base touch-manipulation flex-1 placeholder:text-muted-foreground/60"
             autoFocus
           />
           {termo && (
@@ -443,32 +443,32 @@ export function Busca({
                 className="p-1.5 rounded-md text-muted-foreground hover:text-foreground cursor-pointer touch-manipulation"
                 aria-label="Limpar busca"
               >
-                <X size={17} />
+                <X size={16} />
               </button>
             </Tooltip>
           )}
           <Tooltip conteudo="Fechar busca" atalho="Esc" posicao="bottom">
             <button
               onClick={aoFechar}
-              className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer touch-manipulation"
+              className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer touch-manipulation"
               aria-label="Fechar busca"
             >
-              <X size={18} />
+              <X size={17} />
             </button>
           </Tooltip>
         </div>
 
-        {/* Filtros por Categoria com carrossel horizontal suave no mobile */}
-        <div className="flex items-center gap-1.5 px-3.5 py-2.5 border-b border-border/60 bg-card/50 shrink-0 select-none overflow-x-auto no-scrollbar scroll-smooth">
+        {/* Filtros por Categoria com estilo minimalista de pílulas */}
+        <div className="flex items-center gap-1 px-3.5 py-2 border-b border-border/40 bg-muted/20 shrink-0 select-none overflow-x-auto no-scrollbar scroll-smooth">
           {OPCOES_FILTRO.map((f) => (
             <button
               key={f.id}
               onClick={() => setCategoria(f.id)}
               className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 select-none cursor-pointer touch-manipulation min-h-[34px]",
+                "px-2.5 py-1 rounded-lg text-xs font-medium transition-all shrink-0 select-none cursor-pointer touch-manipulation min-h-[30px]",
                 categoria === f.id
-                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "bg-secondary/70 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? "bg-foreground text-background font-semibold shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
               )}
             >
               {f.rotulo}
