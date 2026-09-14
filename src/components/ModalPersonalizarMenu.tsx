@@ -14,6 +14,7 @@ import {
   Trash2,
   GripVertical,
   MoveHorizontal,
+  Type,
 } from "lucide-react";
 import {
   carregarMenuPersonalizado,
@@ -24,6 +25,12 @@ import {
   type GrupoMenuPersonalizado,
   type ItemMenuPersonalizado,
 } from "@/lib/menuPersonalizado";
+import {
+  lerTamanhoFonteMenuSalvo,
+  salvarTamanhoFonteMenu,
+  TAMANHOS_FONTE_MENU,
+  type TamanhoFonteMenu,
+} from "@/lib/tema";
 import { obterIconePorNome } from "@/lib/icones";
 import { GaleriaIconesModal } from "./GaleriaIconesModal";
 import { ModalConfirmacao } from "./ui";
@@ -51,6 +58,13 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
   const [dragOverCategory, setDragOverCategory] = useState<number | null>(null);
   const [confirmarReset, setConfirmarReset] = useState(false);
   const [categoriaParaRemoverIdx, setCategoriaParaRemoverIdx] = useState<number | null>(null);
+  const [tamanhoFonteMenu, setTamanhoFonteMenu] = useState<TamanhoFonteMenu>(lerTamanhoFonteMenuSalvo);
+
+  const lidarMudarTamanhoFonte = (novo: TamanhoFonteMenu) => {
+    setTamanhoFonteMenu(novo);
+    salvarTamanhoFonteMenu(novo);
+    toast(`Tamanho da fonte do menu: ${TAMANHOS_FONTE_MENU.find((t) => t.id === novo)?.rotulo}`, { tipo: "sucesso" });
+  };
 
   useEffect(() => {
     if (aberta) {
@@ -303,19 +317,46 @@ export function ModalPersonalizarMenu({ aberta, aoFechar }: ModalPersonalizarMen
           </div>
         )}
 
-        {/* Barra superior de ações */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-2.5 bg-accent/30 border-b border-border text-xs">
-          <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
-            <GripVertical size={14} className="text-primary" />
-            <span>Dica: Arraste os itens pelo ícone para mover entre categorias</span>
-          </span>
-          <button
-            onClick={adicionarCategoria}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-all shadow-xs"
-          >
-            <Plus size={14} />
-            Nova Categoria
-          </button>
+        {/* Barra superior de ações e tamanho de fonte */}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-2.5 bg-accent/30 border-b border-border text-xs">
+          {/* Seletor de tamanho de fonte do menu */}
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+              <Type size={14} className="text-primary" />
+              <span>Tamanho da fonte:</span>
+            </span>
+            <div className="flex items-center gap-1 bg-background/80 p-0.5 rounded-lg border border-border/60">
+              {TAMANHOS_FONTE_MENU.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => lidarMudarTamanhoFonte(t.id)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md font-medium text-[11px] transition-all cursor-pointer",
+                    tamanhoFonteMenu === t.id
+                      ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  )}
+                  title={`Fonte ${t.rotulo} (${t.pixel})`}
+                >
+                  {t.rotulo}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 ml-auto">
+            <span className="hidden md:flex text-muted-foreground items-center gap-1.5 font-medium text-[11px]">
+              <GripVertical size={13} className="text-primary" />
+              <span>Arraste pelo ícone para organizar</span>
+            </span>
+            <button
+              onClick={adicionarCategoria}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-all shadow-xs cursor-pointer text-xs"
+            >
+              <Plus size={14} />
+              Nova Categoria
+            </button>
+          </div>
         </div>
 
         {/* Conteúdo scrollável com grupos */}

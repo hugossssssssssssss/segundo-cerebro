@@ -3,11 +3,12 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-import { aplicarTema, lerTemaSalvo } from "@/lib/tema";
+import { aplicarTema, lerTemaSalvo, inicializarPersonalizacaoGlobal } from "@/lib/tema";
 import { registrarServiceWorker } from "@/lib/pwa";
 
-// Aplica o tema antes da primeira pintura para não piscar branco no modo escuro.
+// Aplica o tema, variação de escuro, paleta e escala de fonte antes da primeira pintura
 aplicarTema(lerTemaSalvo());
+inicializarPersonalizacaoGlobal();
 
 // Registra o Service Worker do PWA para suporte offline completo
 registrarServiceWorker();

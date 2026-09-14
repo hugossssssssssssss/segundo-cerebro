@@ -866,13 +866,25 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`inscreverMetricas`**
 
 #### 📄 `src/lib/tema.ts`
-> Gerenciamento centralizado do tema do Klaus (claro/escuro). Utiliza exclusivamente a chave "tema" no localStorage e os valores "escuro" ou "claro", garantindo sincronia entre a busca global, a barra lateral, a gaveta mobile e a inicialização do app.
+> Gerenciamento centralizado do tema e personalização visual do Klaus. Suporta: - Modo Claro / Escuro - Variações do Modo Escuro (Padrão, OLED Preto Puro, Meia-noite, Grafite Neutro, Sépia Quente) - Paletas de Cor de Destaque / Acento (Âmbar Klaus, Safira, Esmeralda, Violeta, Rosé, Grafite) - Escala de Fonte Global de todo o Klaus - Tamanho de Fonte do Menu Lateral
 
 **Exportações principais:**
-- `tipo` **`Tema`** — _Gerenciamento centralizado do tema do Klaus (claro/escuro). Utiliza exclusivamente a chave "tema" no..._
+- `tipo` **`Tema`** — _Gerenciamento centralizado do tema e personalização visual do Klaus. Suporta: - Modo Claro / Escuro ..._
+- `tipo` **`VariacaoEscuro`**
+- `tipo` **`PaletaAcento`**
+- `tipo` **`EscalaFonteGlobal`**
+- `tipo` **`TamanhoFonteMenu`**
+- `constante` **`EVENTO_TEMA_ALTERADO`**
+- `constante` **`EVENTO_PERSONALIZACAO_ALTERADA`**
 - `funcao` **`lerTemaSalvo`**
 - `funcao` **`aplicarTema`**
 - `funcao` **`alternarTema`**
+- `constante` **`VARIACOES_ESCURO`**
+- `funcao` **`lerVariacaoEscuroSalva`**
+- `funcao` **`aplicarVariacaoEscuro`**
+- `constante` **`PALETAS_ACENTO`**
+- `funcao` **`lerPaletaAcentoSalva`**
+- _...e mais 8 exportações secundárias._
 
 #### 📄 `src/lib/toast.ts`
 > Gerenciador de Toasts flutuantes nativo e leve.

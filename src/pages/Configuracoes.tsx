@@ -32,6 +32,9 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
+  Sun,
+  Moon,
+  Type,
 } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
@@ -43,6 +46,23 @@ import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { AlternadorVisao, type OpcaoVisao } from "@/components/AlternadorVisao";
 import { ModalPersonalizarMenu } from "@/components/ModalPersonalizarMenu";
 import { ModalTourGuiado } from "@/components/ModalTourGuiado";
+import {
+  lerTemaSalvo,
+  aplicarTema,
+  lerVariacaoEscuroSalva,
+  aplicarVariacaoEscuro,
+  VARIACOES_ESCURO,
+  lerPaletaAcentoSalva,
+  aplicarPaletaAcento,
+  PALETAS_ACENTO,
+  lerEscalaFonteGlobalSalva,
+  aplicarEscalaFonteGlobal,
+  ESCALAS_FONTE_GLOBAL,
+  type Tema,
+  type VariacaoEscuro,
+  type PaletaAcento,
+  type EscalaFonteGlobal,
+} from "@/lib/tema";
 import { nomeLivre } from "@/lib/markdown";
 import { PASTAS } from "@/lib/tipos";
 import { analisarAcervoParaMigracao, executarMigracaoEmLote, type RelatorioAnaliseAcervo } from "@/lib/migracaoLote";
@@ -69,10 +89,11 @@ import {
 } from "@/lib/preferenciasApp";
 import JSZip from "jszip";
 
-type AbaConfig = "geral" | "github" | "ia" | "notificacoes" | "integracoes" | "dados";
+type AbaConfig = "geral" | "personalizacao" | "github" | "ia" | "notificacoes" | "integracoes" | "dados";
 
 const OPCOES_ABAS: OpcaoVisao<AbaConfig>[] = [
   { id: "geral", rotulo: "Geral & Perfil", icone: <User size={15} /> },
+  { id: "personalizacao", rotulo: "Aparência & Cores", icone: <Palette size={15} /> },
   { id: "github", rotulo: "GitHub & Sincronização", icone: <GitBranch size={15} /> },
   { id: "ia", rotulo: "Inteligência Artificial", icone: <Bot size={15} /> },
   { id: "notificacoes", rotulo: "Notificações & Automações", icone: <Bell size={15} /> },
@@ -100,6 +121,36 @@ export default function Configuracoes() {
   const [rascunhosComErro, setRascunhosComErro] = useState<number>(() => {
     return obterRascunhosLocais().filter((r) => r.status === "erro" || r.status === "conflito").length;
   });
+
+  // Estados de Personalização Visual Global
+  const [temaAtual, setTemaAtual] = useState<Tema>(lerTemaSalvo);
+  const [variacaoEscuro, setVariacaoEscuro] = useState<VariacaoEscuro>(lerVariacaoEscuroSalva);
+  const [paletaAcento, setPaletaAcento] = useState<PaletaAcento>(lerPaletaAcentoSalva);
+  const [escalaFonte, setEscalaFonte] = useState<EscalaFonteGlobal>(lerEscalaFonteGlobalSalva);
+
+  const lidarMudarTema = (novo: Tema) => {
+    setTemaAtual(novo);
+    aplicarTema(novo);
+    toast(`Modo ${novo === "escuro" ? "Escuro" : "Claro"} ativado!`, { tipo: "sucesso" });
+  };
+
+  const lidarMudarVariacaoEscuro = (v: VariacaoEscuro) => {
+    setVariacaoEscuro(v);
+    aplicarVariacaoEscuro(v);
+    toast(`Variação do modo escuro: ${VARIACOES_ESCURO.find((item) => item.id === v)?.rotulo}`, { tipo: "sucesso" });
+  };
+
+  const lidarMudarPaletaAcento = (p: PaletaAcento) => {
+    setPaletaAcento(p);
+    aplicarPaletaAcento(p);
+    toast(`Paleta de cor: ${PALETAS_ACENTO.find((item) => item.id === p)?.rotulo}`, { tipo: "sucesso" });
+  };
+
+  const lidarMudarEscalaFonte = (e: EscalaFonteGlobal) => {
+    setEscalaFonte(e);
+    aplicarEscalaFonteGlobal(e);
+    toast(`Tamanho de fonte global: ${ESCALAS_FONTE_GLOBAL.find((item) => item.id === e)?.rotulo}`, { tipo: "sucesso" });
+  };
 
   // Estados dos Dados de Demonstração / Teste
   const [populandoDemo, setPopulandoDemo] = useState(false);
@@ -749,7 +800,228 @@ export default function Configuracoes() {
       )}
 
       {/* ========================================================= */}
-      {/* ABA 2: GITHUB & SINCRONIZAÇÃO */}
+      {/* ABA: APARÊNCIA & CORES (PERSONALIZAÇÃO GLOBAL DO KLAUS) */}
+      {/* ========================================================= */}
+      {abaAtiva === "personalizacao" && (
+        <div className="space-y-6 animate-in fade-in duration-150">
+          {/* Cartão de Tema e Variações Noturnas */}
+          <Cartao className="p-5 space-y-6">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-border/60">
+              <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                <Palette size={18} />
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground text-sm sm:text-base">Esquema de Cores & Modo Noturno</h2>
+                <p className="text-xs text-muted-foreground">
+                  Alterne entre modo claro ou escuro e personalize tons de contraste e variações escuras para a sua tela.
+                </p>
+              </div>
+            </div>
+
+            {/* Alternador Claro / Escuro */}
+            <div className="space-y-3">
+              <Rotulo dica="Define a base de luminosidade de toda a aplicação.">Modo Geral de Luminosidade</Rotulo>
+              <div className="grid grid-cols-2 max-w-sm gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => lidarMudarTema("claro")}
+                  className={cn(
+                    "flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-xs font-semibold transition-all cursor-pointer",
+                    temaAtual === "claro"
+                      ? "border-primary bg-primary/10 text-primary shadow-xs"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent/40"
+                  )}
+                >
+                  <Sun size={16} />
+                  Modo Claro
+                </button>
+                <button
+                  type="button"
+                  onClick={() => lidarMudarTema("escuro")}
+                  className={cn(
+                    "flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-xs font-semibold transition-all cursor-pointer",
+                    temaAtual === "escuro"
+                      ? "border-primary bg-primary/10 text-primary shadow-xs"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent/40"
+                  )}
+                >
+                  <Moon size={16} />
+                  Modo Escuro
+                </button>
+              </div>
+            </div>
+
+            {/* Variações do Modo Escuro */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <Rotulo dica="Variações do fundo escuro adaptadas para telas OLED, ambientes com pouca luz ou leitura noturna prolongada.">
+                  Variações de Fundo do Modo Escuro
+                </Rotulo>
+                {temaAtual !== "escuro" && (
+                  <span className="text-[11px] text-amber-500 font-medium">
+                    (Ative o Modo Escuro acima para visualizar a variação aplicada)
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {VARIACOES_ESCURO.map((v) => {
+                  const ativa = variacaoEscuro === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => lidarMudarVariacaoEscuro(v.id)}
+                      className={cn(
+                        "flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer group",
+                        ativa
+                          ? "border-primary ring-2 ring-primary/20 bg-accent/40"
+                          : "border-border bg-card hover:bg-accent/30"
+                      )}
+                    >
+                      {/* Amostra visual de cor */}
+                      <div
+                        className="w-8 h-8 rounded-lg shrink-0 border border-white/10 shadow-xs flex items-center justify-center"
+                        style={{ backgroundColor: v.corPreview }}
+                      >
+                        {ativa && <Check size={14} className="text-white" />}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-xs font-semibold text-foreground">{v.rotulo}</span>
+                          {ativa && (
+                            <span className="text-[10px] uppercase font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10">
+                              Ativo
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                          {v.descricao}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Paletas de Cor de Destaque / Acento */}
+            <div className="space-y-3 pt-2">
+              <Rotulo dica="Cor principal aplicada a botões primários, seleções, tags ativas e destaques do Klaus.">
+                Paleta de Cores de Destaque (Acento)
+              </Rotulo>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                {PALETAS_ACENTO.map((p) => {
+                  const ativa = paletaAcento === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => lidarMudarPaletaAcento(p.id)}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer gap-2",
+                        ativa
+                          ? "border-primary ring-2 ring-primary/20 bg-accent/40 font-semibold"
+                          : "border-border bg-card hover:bg-accent/30 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <div
+                        className="w-7 h-7 rounded-full shadow-xs flex items-center justify-center border border-white/20 transition-transform group-hover:scale-110"
+                        style={{ backgroundColor: p.hex }}
+                      >
+                        {ativa && <Check size={14} className="text-white" />}
+                      </div>
+                      <span className="text-[11px] font-medium truncate w-full">
+                        {p.rotulo}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </Cartao>
+
+          {/* Cartão de Tipografia e Tamanho de Fonte Global */}
+          <Cartao className="p-5 space-y-5">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-border/60">
+              <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                <Type size={18} />
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground text-sm sm:text-base">Tamanho de Fonte Global do Klaus</h2>
+                <p className="text-xs text-muted-foreground">
+                  Ajuste a escala tipográfica de todo o aplicativo de acordo com a sua preferência de leitura e o tamanho do seu monitor.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Rotulo dica="Redimensiona proporcionalmente todos os textos, títulos, cartões e notas do aplicativo.">
+                Escala de Visualização
+              </Rotulo>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {ESCALAS_FONTE_GLOBAL.map((e) => {
+                  const ativa = escalaFonte === e.id;
+                  return (
+                    <button
+                      key={e.id}
+                      type="button"
+                      onClick={() => lidarMudarEscalaFonte(e.id)}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-3.5 rounded-xl border text-center transition-all cursor-pointer gap-1.5",
+                        ativa
+                          ? "border-primary ring-2 ring-primary/20 bg-primary/10 text-primary font-semibold shadow-xs"
+                          : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent/30"
+                      )}
+                    >
+                      <span className="text-sm font-bold">{e.rotulo}</span>
+                      <span className="text-[11px] text-muted-foreground font-mono">
+                        {e.porcentagem} ({e.remBase})
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Caixa de Prévia em Tempo Real */}
+            <div className="p-4 rounded-xl border border-border/80 bg-muted/20 space-y-2">
+              <span className="text-[11px] font-bold text-muted-foreground tracking-wider uppercase">
+                Prévia da Legibilidade
+              </span>
+              <h3 className="text-base font-bold text-foreground">
+                Klaus: Seu Segundo Cérebro Digital
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Este é um exemplo de como suas notas, ideias, entregas de PDI e tarefas serão exibidas na tela com a escala de fonte selecionada. O ajuste se propaga instantaneamente para todo o sistema.
+              </p>
+            </div>
+          </Cartao>
+
+          {/* Cartão de Atalho para o Personalizador de Menu */}
+          <Cartao className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Palette size={16} className="text-primary" />
+                Personalizar Menu Lateral & Categorias
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Reordene atalhos, defina ícones exclusivos e ajuste o tamanho específico da fonte da barra lateral.
+              </p>
+            </div>
+            <Botao onClick={() => setModalPersonalizarAberta(true)} variante="primario" className="shrink-0">
+              <Palette size={15} />
+              Personalizar Menu
+            </Botao>
+          </Cartao>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* ABA: GITHUB & SINCRONIZAÇÃO */}
       {/* ========================================================= */}
       {abaAtiva === "github" && (
         <div className="space-y-5 animate-in fade-in duration-150">

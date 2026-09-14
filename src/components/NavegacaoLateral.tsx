@@ -18,7 +18,14 @@ import {
 import { obterIconePorNome } from "@/lib/icones";
 import { ModalPersonalizarMenu } from "./ModalPersonalizarMenu";
 import { useWorkspace } from "@/components/workspace/WorkspaceContext";
-import { alternarTema, lerTemaSalvo, type Tema } from "@/lib/tema";
+import {
+  alternarTema,
+  lerTemaSalvo,
+  lerTamanhoFonteMenuSalvo,
+  EVENTO_PERSONALIZACAO_ALTERADA,
+  type Tema,
+  type TamanhoFonteMenu,
+} from "@/lib/tema";
 import { VERSAO_APP } from "@/lib/versao";
 
 interface NavegacaoLateralProps {
@@ -36,6 +43,7 @@ export function NavegacaoLateral({
 }: NavegacaoLateralProps) {
   const [tema, setTema] = useState<Tema>(lerTemaSalvo);
   const [hoverExpandida, setHoverExpandida] = useState(false);
+  const [tamanhoFonteMenu, setTamanhoFonteMenu] = useState<TamanhoFonteMenu>(lerTamanhoFonteMenuSalvo);
   const timeoutHoverRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   let workspace: any = null;
@@ -65,7 +73,7 @@ export function NavegacaoLateral({
     }
     timeoutHoverRef.current = setTimeout(() => {
       setHoverExpandida(false);
-    }, 150);
+    }, 160);
   };
 
   const lidarCliqueItem = () => {
@@ -79,9 +87,16 @@ export function NavegacaoLateral({
   };
 
   useEffect(() => {
-    const aoMudar = () => setTema(lerTemaSalvo());
-    window.addEventListener("tema-alterado", aoMudar);
-    return () => window.removeEventListener("tema-alterado", aoMudar);
+    const aoMudarTema = () => setTema(lerTemaSalvo());
+    const aoMudarPersonalizacao = () => setTamanhoFonteMenu(lerTamanhoFonteMenuSalvo());
+
+    window.addEventListener("tema-alterado", aoMudarTema);
+    window.addEventListener(EVENTO_PERSONALIZACAO_ALTERADA, aoMudarPersonalizacao);
+
+    return () => {
+      window.removeEventListener("tema-alterado", aoMudarTema);
+      window.removeEventListener(EVENTO_PERSONALIZACAO_ALTERADA, aoMudarPersonalizacao);
+    };
   }, []);
 
   const escuro = tema === "escuro";
@@ -120,6 +135,16 @@ export function NavegacaoLateral({
     };
   }, []);
 
+  // Mapeamento do tamanho de fonte escolhido pelo usuário
+  const classeFonteItem =
+    tamanhoFonteMenu === "compacta"
+      ? "text-[11px]"
+      : tamanhoFonteMenu === "media"
+        ? "text-[13px]"
+        : tamanhoFonteMenu === "grande"
+          ? "text-sm"
+          : "text-xs";
+
   return (
     <>
       <aside
@@ -131,76 +156,68 @@ export function NavegacaoLateral({
           className
         )}
       >
-        {/* Topo da Sidebar: Marca e Botão de Recolher/Expandir */}
-        <div className="flex h-14 items-center px-2 border-b border-border/30 shrink-0 overflow-hidden relative">
-          <div
-            className={cn(
-              "flex items-center min-w-0 transition-all duration-200",
-              visualmenteExpandida ? "justify-between w-full px-1" : "justify-center w-full"
-            )}
+        {/* Topo da Sidebar: Coluna de 64px fixa para o logo + texto expansível */}
+        <div className="h-14 flex items-center w-60 border-b border-border/30 shrink-0 overflow-hidden relative">
+          <NavLink
+            to="/home"
+            onClick={lidarCliqueItem}
+            className="flex items-center w-full h-full min-w-0 group hover:opacity-90 transition-opacity"
+            title={!visualmenteExpandida ? "Klaus Início" : undefined}
           >
-            <NavLink
-              to="/home"
-              onClick={lidarCliqueItem}
-              className={cn(
-                "flex items-center rounded-xl transition-colors duration-150 group cursor-pointer",
-                visualmenteExpandida
-                  ? "gap-2.5 min-w-0 hover:opacity-90 pl-1"
-                  : "w-10 h-10 justify-center hover:bg-accent/60"
-              )}
-              title={!visualmenteExpandida ? "Klaus Início" : undefined}
-            >
-              <div className="w-8 h-8 flex items-center justify-center shrink-0">
+            {/* Coluna fixa de 64px (w-16): logo rigorosamente centrado sempre */}
+            <div className="w-16 h-14 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 flex items-center justify-center rounded-xl group-hover:bg-accent/40 transition-colors">
                 <LogoKlaus tamanho={24} />
               </div>
+            </div>
 
-              <div
-                className={cn(
-                  "overflow-hidden whitespace-nowrap transition-sidebar-content flex items-baseline gap-1.5 min-w-0",
-                  !visualmenteExpandida
-                    ? "w-0 max-w-0 opacity-0 -translate-x-3 pointer-events-none"
-                    : "flex-1 max-w-[130px] opacity-100 translate-x-0"
-                )}
-              >
-                <span className="truncate text-sm font-bold tracking-tight text-foreground group-hover:opacity-80 transition-opacity">
-                  Klaus
-                </span>
-                <span className="text-[10px] font-mono text-muted-foreground/60 font-medium select-none">
-                  v{VERSAO_APP}
-                </span>
-              </div>
-            </NavLink>
-
-            {/* Botão de fixar/recolher visível quando expandida */}
+            {/* Texto da Marca Klaus + Versão */}
             <div
               className={cn(
-                "transition-sidebar-content shrink-0",
+                "flex-1 min-w-0 flex items-baseline gap-1.5 overflow-hidden whitespace-nowrap transition-sidebar-content",
                 !visualmenteExpandida
-                  ? "w-0 max-w-0 opacity-0 scale-75 overflow-hidden pointer-events-none"
-                  : "max-w-[36px] opacity-100 scale-100"
+                  ? "opacity-0 -translate-x-3 pointer-events-none"
+                  : "opacity-100 translate-x-0"
               )}
             >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setColapsada((v) => !v);
-                  setHoverExpandida(false);
-                }}
-                className="hidden sm:flex items-center justify-center rounded-xl p-1.5 text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors cursor-pointer"
-                title={colapsada ? "Fixar barra lateral aberta" : "Recolher barra lateral (⌘B)"}
-                aria-label="Alternar fixação da barra lateral"
-              >
-                <ChevronLeft
-                  size={16}
-                  className={cn("transition-transform duration-200", colapsada && "rotate-180")}
-                />
-              </button>
+              <span className="truncate text-sm font-bold tracking-tight text-foreground">
+                Klaus
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground/60 font-medium select-none">
+                v{VERSAO_APP}
+              </span>
             </div>
+          </NavLink>
+
+          {/* Botão de recolher/fixar à direita quando expandida */}
+          <div
+            className={cn(
+              "absolute right-3 top-1/2 -translate-y-1/2 transition-sidebar-content shrink-0",
+              !visualmenteExpandida
+                ? "opacity-0 scale-75 pointer-events-none"
+                : "opacity-100 scale-100"
+            )}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setColapsada((v) => !v);
+                setHoverExpandida(false);
+              }}
+              className="hidden sm:flex items-center justify-center rounded-xl p-1.5 text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors cursor-pointer"
+              title={colapsada ? "Fixar barra lateral aberta" : "Recolher barra lateral (⌘B)"}
+              aria-label="Alternar fixação da barra lateral"
+            >
+              <ChevronLeft
+                size={16}
+                className={cn("transition-transform duration-200", colapsada && "rotate-180")}
+              />
+            </button>
           </div>
         </div>
 
         {/* Corpo da Navegação */}
-        <div className="flex-1 overflow-y-auto no-scrollbar py-3 px-2 space-y-3">
+        <div className="flex-1 overflow-y-auto no-scrollbar py-3 w-60 space-y-3">
           {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo, idx) => {
             const itensVisiveis = (grupo.itens || []).filter((item) => item && typeof item === "object" && !item.oculto);
             if (itensVisiveis.length === 0) return null;
@@ -216,14 +233,14 @@ export function NavegacaoLateral({
                       : "max-h-6 opacity-100 translate-y-0 mb-1"
                   )}
                 >
-                  <h3 className="px-2.5 text-[10px] font-semibold text-muted-foreground/60 tracking-wider uppercase truncate">
+                  <h3 className="px-4 text-[10px] font-semibold text-muted-foreground/60 tracking-wider uppercase truncate">
                     {grupo.titulo}
                   </h3>
                 </div>
 
                 {/* Divisor sutil entre grupos quando minimizada */}
                 {!visualmenteExpandida && idx > 0 && (
-                  <div className="my-1.5 mx-auto w-5 border-t border-border/30 transition-opacity duration-200" />
+                  <div className="my-1.5 w-8 mx-4 border-t border-border/30 transition-opacity duration-200" />
                 )}
 
                 <nav className="space-y-0.5">
@@ -237,40 +254,53 @@ export function NavegacaoLateral({
                         title={!visualmenteExpandida ? item.rotulo : undefined}
                         className={({ isActive }) =>
                           cn(
-                            "flex items-center rounded-xl text-xs font-medium relative group cursor-pointer transition-colors duration-150 h-10",
-                            !visualmenteExpandida
-                              ? "w-10 h-10 mx-auto justify-center p-0"
-                              : "w-full px-2.5 gap-2.5",
+                            "flex items-center w-60 h-10 font-medium relative group cursor-pointer transition-colors duration-150",
+                            classeFonteItem,
                             isActive
-                              ? "liquid-glass-pill text-foreground font-semibold shadow-2xs bg-accent/70 dark:bg-accent/40"
-                              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                              ? "text-foreground font-semibold"
+                              : "text-muted-foreground hover:text-foreground"
                           )
                         }
                       >
-                        <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                          <Icone
-                            size={18}
-                            style={{ color: item.cor }}
-                            className="shrink-0 transition-transform duration-200 group-hover:scale-110"
-                          />
-                        </div>
+                        {({ isActive }) => (
+                          <>
+                            {/* Coluna fixa de 64px (w-16): ícone centralizado com precisão matemática */}
+                            <div className="w-16 h-10 flex items-center justify-center shrink-0">
+                              <div
+                                className={cn(
+                                  "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-150",
+                                  isActive
+                                    ? "liquid-glass-pill shadow-2xs bg-accent/70 dark:bg-accent/40 text-foreground"
+                                    : "group-hover:bg-accent/40"
+                                )}
+                              >
+                                <Icone
+                                  size={18}
+                                  style={{ color: item.cor }}
+                                  className="shrink-0 transition-transform duration-200 group-hover:scale-110"
+                                />
+                              </div>
+                            </div>
 
-                        <div
-                          className={cn(
-                            "overflow-hidden whitespace-nowrap transition-sidebar-content flex items-center gap-1.5 min-w-0",
-                            !visualmenteExpandida
-                              ? "w-0 max-w-0 opacity-0 -translate-x-2 pointer-events-none"
-                              : "flex-1 max-w-[160px] opacity-100 translate-x-0"
-                          )}
-                        >
-                          <span className="truncate flex-1">{item.rotulo || "Item"}</span>
-                          {item.destaque && (
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold shrink-0">
-                              <Sparkles size={10} />
-                              IA
-                            </span>
-                          )}
-                        </div>
+                            {/* Coluna do texto com máscara e fade */}
+                            <div
+                              className={cn(
+                                "flex-1 min-w-0 pr-4 flex items-center justify-between gap-1.5 overflow-hidden whitespace-nowrap transition-sidebar-content",
+                                !visualmenteExpandida
+                                  ? "opacity-0 -translate-x-2 pointer-events-none"
+                                  : "opacity-100 translate-x-0"
+                              )}
+                            >
+                              <span className="truncate flex-1">{item.rotulo || "Item"}</span>
+                              {item.destaque && (
+                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold shrink-0">
+                                  <Sparkles size={10} />
+                                  IA
+                                </span>
+                              )}
+                            </div>
+                          </>
+                        )}
                       </NavLink>
                     );
                   })}
@@ -280,26 +310,28 @@ export function NavegacaoLateral({
           })}
         </div>
 
-        {/* Rodapé da Sidebar */}
-        <div className="border-t border-border/30 p-2 space-y-1 shrink-0">
+        {/* Rodapé da Sidebar: mesma coluna de 64px para alinhamento 100% simétrico */}
+        <div className="border-t border-border/30 py-2 space-y-0.5 shrink-0 w-60 overflow-hidden">
           {/* Botão para Personalizar Menu */}
           <button
             onClick={() => setModalPersonalizarAberta(true)}
             title={!visualmenteExpandida ? "Personalizar Menu" : undefined}
             className={cn(
-              "flex items-center rounded-xl text-xs font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors duration-150 group cursor-pointer h-10",
-              !visualmenteExpandida ? "w-10 h-10 mx-auto justify-center p-0" : "w-full px-2.5 gap-2.5"
+              "flex items-center w-60 h-10 font-medium text-muted-foreground hover:text-foreground transition-colors duration-150 group cursor-pointer",
+              classeFonteItem
             )}
           >
-            <div className="w-5 h-5 flex items-center justify-center shrink-0">
-              <Palette size={18} className="shrink-0 opacity-70 group-hover:rotate-12 transition-transform duration-200" />
+            <div className="w-16 h-10 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 flex items-center justify-center rounded-xl group-hover:bg-accent/40 transition-colors">
+                <Palette size={18} className="shrink-0 opacity-70 group-hover:rotate-12 transition-transform duration-200" />
+              </div>
             </div>
             <div
               className={cn(
-                "overflow-hidden whitespace-nowrap transition-sidebar-content min-w-0",
+                "flex-1 min-w-0 pr-4 overflow-hidden whitespace-nowrap transition-sidebar-content text-left",
                 !visualmenteExpandida
-                  ? "w-0 max-w-0 opacity-0 -translate-x-2 pointer-events-none"
-                  : "flex-1 max-w-[160px] opacity-100 translate-x-0"
+                  ? "opacity-0 -translate-x-2 pointer-events-none"
+                  : "opacity-100 translate-x-0"
               )}
             >
               <span className="truncate">Personalizar Menu</span>
@@ -313,27 +345,40 @@ export function NavegacaoLateral({
             title={!visualmenteExpandida ? "Configurações" : undefined}
             className={({ isActive }) =>
               cn(
-                "flex items-center rounded-xl text-xs font-medium transition-colors duration-150 group cursor-pointer h-10",
-                !visualmenteExpandida ? "w-10 h-10 mx-auto justify-center p-0" : "w-full px-2.5 gap-2.5",
+                "flex items-center w-60 h-10 font-medium transition-colors duration-150 group cursor-pointer",
+                classeFonteItem,
                 isActive
-                  ? "bg-accent text-accent-foreground font-semibold"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                  ? "text-accent-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
               )
             }
           >
-            <div className="w-5 h-5 flex items-center justify-center shrink-0">
-              <Settings size={18} className="shrink-0 opacity-70 group-hover:rotate-45 transition-transform duration-200" />
-            </div>
-            <div
-              className={cn(
-                "overflow-hidden whitespace-nowrap transition-sidebar-content min-w-0",
-                !visualmenteExpandida
-                  ? "w-0 max-w-0 opacity-0 -translate-x-2 pointer-events-none"
-                  : "flex-1 max-w-[160px] opacity-100 translate-x-0"
-              )}
-            >
-              <span className="truncate">Configurações</span>
-            </div>
+            {({ isActive }) => (
+              <>
+                <div className="w-16 h-10 flex items-center justify-center shrink-0">
+                  <div
+                    className={cn(
+                      "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-150",
+                      isActive
+                        ? "bg-accent text-accent-foreground"
+                        : "group-hover:bg-accent/40"
+                    )}
+                  >
+                    <Settings size={18} className="shrink-0 opacity-70 group-hover:rotate-45 transition-transform duration-200" />
+                  </div>
+                </div>
+                <div
+                  className={cn(
+                    "flex-1 min-w-0 pr-4 overflow-hidden whitespace-nowrap transition-sidebar-content text-left",
+                    !visualmenteExpandida
+                      ? "opacity-0 -translate-x-2 pointer-events-none"
+                      : "opacity-100 translate-x-0"
+                  )}
+                >
+                  <span className="truncate">Configurações</span>
+                </div>
+              </>
+            )}
           </NavLink>
 
           {/* Modo Claro / Escuro */}
@@ -341,23 +386,25 @@ export function NavegacaoLateral({
             onClick={toggleTema}
             title={!visualmenteExpandida ? (escuro ? "Modo Claro (⇧⌘L)" : "Modo Escuro (⇧⌘L)") : undefined}
             className={cn(
-              "flex items-center rounded-xl text-xs font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors duration-150 group cursor-pointer h-10",
-              !visualmenteExpandida ? "w-10 h-10 mx-auto justify-center p-0" : "w-full px-2.5 gap-2.5"
+              "flex items-center w-60 h-10 font-medium text-muted-foreground hover:text-foreground transition-colors duration-150 group cursor-pointer",
+              classeFonteItem
             )}
           >
-            <div className="w-5 h-5 flex items-center justify-center shrink-0">
-              {escuro ? (
-                <Sun size={18} className="shrink-0 opacity-70 group-hover:rotate-45 transition-transform duration-200" />
-              ) : (
-                <Moon size={18} className="shrink-0 opacity-70 group-hover:-rotate-12 transition-transform duration-200" />
-              )}
+            <div className="w-16 h-10 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 flex items-center justify-center rounded-xl group-hover:bg-accent/40 transition-colors">
+                {escuro ? (
+                  <Sun size={18} className="shrink-0 opacity-70 group-hover:rotate-45 transition-transform duration-200" />
+                ) : (
+                  <Moon size={18} className="shrink-0 opacity-70 group-hover:-rotate-12 transition-transform duration-200" />
+                )}
+              </div>
             </div>
             <div
               className={cn(
-                "overflow-hidden whitespace-nowrap transition-sidebar-content min-w-0",
+                "flex-1 min-w-0 pr-4 overflow-hidden whitespace-nowrap transition-sidebar-content text-left",
                 !visualmenteExpandida
-                  ? "w-0 max-w-0 opacity-0 -translate-x-2 pointer-events-none"
-                  : "flex-1 max-w-[160px] opacity-100 translate-x-0"
+                  ? "opacity-0 -translate-x-2 pointer-events-none"
+                  : "opacity-100 translate-x-0"
               )}
             >
               <span className="truncate">{escuro ? "Modo Claro" : "Modo Escuro"}</span>
