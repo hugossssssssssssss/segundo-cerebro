@@ -334,6 +334,7 @@ export function compilarItensInbox(
               notificadoTelegram: estado?.notificadoTelegram,
               notificadoEmail: estado?.notificadoEmail,
               tags: tagsDoc,
+              responsaveis: t.responsaveis,
             });
           }
         }
@@ -723,6 +724,32 @@ export async function gravarEstadoInbox(
   }
 }
 
+const CHAVE_DISPAROS_RECENTES = "segundo-cerebro:inbox-disparos-recentes";
+
+/**
+ * Registra e verifica se uma notificação já foi enviada recentemente
+ * para evitar que múltiplas abas ou computadores conectados disparem o mesmo webhook simultaneamente.
+ */
+export function travarDisparoDuplicado(idItem: string, canal: "telegram" | "email"): boolean {
+  try {
+    const raw = localStorage.getItem(CHAVE_DISPAROS_RECENTES);
+    const disparos: Record<string, number> = raw ? JSON.parse(raw) : {};
+    const chave = `${idItem}:${canal}`;
+    const agora = Date.now();
+
+    // Se já disparou nas últimas 12 horas, bloqueia disparo duplicado
+    if (disparos[chave] && agora - disparos[chave] < 12 * 60 * 60 * 1000) {
+      return false; // bloqueado
+    }
+
+    disparos[chave] = agora;
+    localStorage.setItem(CHAVE_DISPAROS_RECENTES, JSON.stringify(disparos));
+    return true; // permitido
+  } catch {
+    return true;
+  }
+}
+
 /**
  * Envia notificação para o Telegram via Telegram Bot API.
  */
@@ -730,8 +757,10 @@ export async function enviarNotificacaoTelegram(
   botToken: string,
   chatId: string,
   mensagem: string,
+  idItem?: string,
 ): Promise<boolean> {
   if (!botToken || !chatId) return false;
+  if (idItem && !travarDisparoDuplicado(idItem, "telegram")) return false;
 
   try {
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
@@ -758,8 +787,10 @@ export async function enviarNotificacaoEmailGoogle(
   scriptUrl: string,
   assunto: string,
   mensagem: string,
+  idItem?: string,
 ): Promise<boolean> {
   if (!scriptUrl) return false;
+  if (idItem && !travarDisparoDuplicado(idItem, "email")) return false;
 
   try {
     const res = await fetch(scriptUrl, {

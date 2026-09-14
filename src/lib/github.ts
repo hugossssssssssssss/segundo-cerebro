@@ -226,6 +226,7 @@ export async function gravar(
   texto: string,
   sha?: string,
   mensagem?: string,
+  textoBase?: string,
 ): Promise<string> {
   // Se já houver um salvamento em andamento para este arquivo, aguarda o commit anterior concluir
   const gravacaoAnterior = gravaçõesAtivas.get(caminho);
@@ -274,9 +275,10 @@ export async function gravar(
             return shaDestino;
           }
 
-          // 1. Tenta Auto-Merge Semântico 3-Way entre a versão remota e a versão local
+          // 1. Tenta Auto-Merge Semântico 3-Way entre a base original, a versão local e a versão remota
           // (Garante que edições feitas por outros membros da equipe não sejam apagadas cegamente)
-          const merge = autoMergeDocumentoMarkdown(textoDestino, texto, textoDestino);
+          const baseReal = textoBase !== undefined ? textoBase : textoDestino;
+          const merge = autoMergeDocumentoMarkdown(baseReal, texto, textoDestino);
           if (merge.sucesso && !merge.teveConflito) {
             const putRes = await fazerPut(shaDestino, merge.textoMesclado);
             if (putRes.ok) {
@@ -309,7 +311,8 @@ export async function gravar(
           }
 
           // Tenta Auto-Merge Semântico 3-Way entre o arquivo remoto e a nova versão
-          const merge = autoMergeDocumentoMarkdown("", texto, textoDestino);
+          const baseReal422 = textoBase !== undefined ? textoBase : "";
+          const merge = autoMergeDocumentoMarkdown(baseReal422, texto, textoDestino);
           if (merge.sucesso && !merge.teveConflito) {
             const putRes = await fazerPut(shaDestino, merge.textoMesclado);
             if (putRes.ok) {

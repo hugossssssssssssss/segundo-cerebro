@@ -16,6 +16,7 @@
 import type { Documento, Frontmatter } from "./markdown";
 import { comoLista, mesclarFrontmatter } from "./markdown";
 import { diasAte, formatarDataPtBR } from "./utils";
+import { lerPerfilLocal } from "./usuario";
 import {
   PASTAS,
   STATUS_TAREFA,
@@ -119,6 +120,7 @@ export function comoNota(
 export function notaParaArquivo(n: Nota): { dados: Frontmatter; corpo: string } {
   const agora = new Date().toISOString();
   const criadoEm = n.criadoEm || n.bruto.criado_em || n.bruto.criado || agora;
+  const autorAtivo = lerPerfilLocal()?.login;
   const tagsParaSalvar = n.bruto?.tags !== undefined ? comoLista(n.bruto.tags) : (n.tags || []);
   return {
     dados: mesclarFrontmatter(n.bruto, {
@@ -129,9 +131,9 @@ export function notaParaArquivo(n: Nota): { dados: Frontmatter; corpo: string } 
       tags:          tagsParaSalvar && tagsParaSalvar.length ? tagsParaSalvar : undefined,
       fixado:        n.fixado ? true : undefined,
       criado_em:     criadoEm,
-      criado_por:    n.criadoPor || (n.bruto?.criado_por as string) || undefined,
+      criado_por:    n.criadoPor || (n.bruto?.criado_por as string) || autorAtivo || undefined,
       atualizado_em: agora,
-      atualizado_por: n.atualizadoPor || (n.bruto?.atualizado_por as string) || undefined,
+      atualizado_por: n.atualizadoPor || autorAtivo || (n.bruto?.atualizado_por as string) || undefined,
       responsaveis:  n.responsaveis && n.responsaveis.length ? n.responsaveis : undefined,
       data_reuniao:  n.dataReuniao || undefined,
       participantes: n.participantes && n.participantes.length ? n.participantes : undefined,
@@ -217,6 +219,7 @@ export function comoTarefa(
 export function tarefaParaArquivo(t: Tarefa): { dados: Frontmatter; corpo: string } {
   const agora = new Date().toISOString();
   const criadoEm = t.criadoEm || t.bruto.criado_em || t.bruto.criado || agora.slice(0, 10);
+  const autorAtivo = lerPerfilLocal()?.login;
   const estimativa = t.pomodorosEstimados ?? t.pomodoro ?? t.Pomodoro;
   const realizados = t.pomodorosRealizados ?? t.fraturados;
   const tagsParaSalvar = t.bruto?.tags !== undefined ? comoLista(t.bruto.tags) : (t.tags || []);
@@ -235,9 +238,9 @@ export function tarefaParaArquivo(t: Tarefa): { dados: Frontmatter; corpo: strin
       google_calendar_id:   t.googleCalendarId || undefined,
       responsaveis:         t.responsaveis && t.responsaveis.length ? t.responsaveis : undefined,
       criado_em:            criadoEm,
-      criado_por:           t.criadoPor || (t.bruto?.criado_por as string) || undefined,
+      criado_por:           t.criadoPor || (t.bruto?.criado_por as string) || autorAtivo || undefined,
       atualizado_em:        agora,
-      atualizado_por:       t.atualizadoPor || (t.bruto?.atualizado_por as string) || undefined,
+      atualizado_por:       t.atualizadoPor || autorAtivo || (t.bruto?.atualizado_por as string) || undefined,
       // Remove campos legados do frontmatter para limpeza
       googleCalendarId:     undefined,
       Pomodoro:             undefined,

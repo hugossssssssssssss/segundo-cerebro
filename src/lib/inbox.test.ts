@@ -387,5 +387,15 @@ apagado_em: 2026-08-15T10:00:00.000Z
     expect(obterCaminhoEstadoInbox("Beatriz-Design")).toBe("caixa-entrada/estados/beatriz-design.json");
     expect(obterCaminhoEstadoInbox("   ")).toBe(CAMINHO_ESTADO_INBOX);
   });
+
+  it("travarDisparoDuplicado bloqueia múltiplos envios simultâneos para o mesmo item", async () => {
+    const { travarDisparoDuplicado } = await import("./inbox");
+    expect(travarDisparoDuplicado("tarefa-123", "telegram")).toBe(true);
+    // Segundo disparo imediato do mesmo item deve ser bloqueado
+    expect(travarDisparoDuplicado("tarefa-123", "telegram")).toBe(false);
+    // Canal diferente é permitido
+    expect(travarDisparoDuplicado("tarefa-123", "email")).toBe(true);
+  });
 });
+
 

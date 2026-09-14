@@ -123,4 +123,33 @@ describe("equipe.ts - Gestão e Permissões de Equipe", () => {
       expect.stringContaining("atualiza equipe.json"),
     );
   });
+
+  it("mesclarMembrosEquipe combina listas sem apagar membros de outros admins", async () => {
+    const { mesclarMembrosEquipe } = await import("./equipe");
+    const locais = [
+      { login: "hugosilva", nome: "Hugo", papel: "dono" as const, ativo: true },
+      { login: "beatriz", nome: "Beatriz", papel: "admin" as const, ativo: true },
+    ];
+    const remotos = [
+      { login: "hugosilva", nome: "Hugo", papel: "dono" as const, ativo: true },
+      { login: "lucas", nome: "Lucas", papel: "membro" as const, ativo: true },
+    ];
+
+    const mesclados = mesclarMembrosEquipe(locais, remotos);
+    expect(mesclados).toHaveLength(3);
+    const logins = mesclados.map((m) => m.login);
+    expect(logins).toContain("hugosilva");
+    expect(logins).toContain("beatriz");
+    expect(logins).toContain("lucas");
+  });
+
+  it("carregarEquipe lança erro explicativo se equipe.json estiver corrompido", async () => {
+    vi.spyOn(github, "ler").mockResolvedValue({
+      texto: "{ json quebrado com virgula faltando: ",
+      sha: "sha_corrompido",
+    });
+
+    await expect(carregarEquipe(cfg)).rejects.toThrow(/erros de formatação JSON/);
+  });
 });
+

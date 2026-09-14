@@ -217,6 +217,7 @@ export interface ItemInbox {
   link?: string;
   corHex?: string;
   agendaNome?: string;
+  responsaveis?: string[];
 }
 
 /** Um contato ou pessoa vinculada em `contatos/`. */

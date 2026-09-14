@@ -101,3 +101,100 @@ export async function obterPerfilUsuario(
     return lerPerfilLocal();
   }
 }
+
+export interface PermissaoRepositorio {
+  temAcesso: boolean;
+  podeLer: boolean;
+  podeGravar: boolean;
+  ehAdmin: boolean;
+  papel: string;
+  erro?: string;
+}
+
+/**
+ * Verifica se o token autenticado tem permissão real de leitura e escrita
+ * no repositório de dados especificado.
+ */
+export async function verificarPermissaoRepositorio(
+  cfg: Pick<Settings, "githubToken" | "repoOwner" | "repoName">,
+): Promise<PermissaoRepositorio> {
+  const token = cfg.githubToken?.trim();
+  const owner = cfg.repoOwner?.trim();
+  const repo = cfg.repoName?.trim();
+
+  if (!token || !owner || !repo) {
+    return {
+      temAcesso: false,
+      podeLer: false,
+      podeGravar: false,
+      ehAdmin: false,
+      papel: "nenhum",
+      erro: "Configuração do repositório ou token ausente.",
+    };
+  }
+
+  try {
+    const resposta = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      cache: "no-store",
+    });
+
+    if (!resposta.ok) {
+      if (resposta.status === 404) {
+        return {
+          temAcesso: false,
+          podeLer: false,
+          podeGravar: false,
+          ehAdmin: false,
+          papel: "nenhum",
+          erro: "Repositório não encontrado ou seu token não tem permissão para vê-lo.",
+        };
+      }
+      if (resposta.status === 401) {
+        return {
+          temAcesso: false,
+          podeLer: false,
+          podeGravar: false,
+          ehAdmin: false,
+          papel: "nenhum",
+          erro: "Token inválido ou expirado.",
+        };
+      }
+      return {
+        temAcesso: false,
+        podeLer: false,
+        podeGravar: false,
+        ehAdmin: false,
+        papel: "nenhum",
+        erro: `Erro do GitHub: HTTP ${resposta.status}`,
+      };
+    }
+
+    const dados = await resposta.json();
+    const permissions = dados.permissions || {};
+    const podeGravar = Boolean(permissions.push || permissions.admin);
+    const podeLer = Boolean(permissions.pull || podeGravar);
+    const ehAdmin = Boolean(permissions.admin);
+
+    return {
+      temAcesso: true,
+      podeLer,
+      podeGravar,
+      ehAdmin,
+      papel: ehAdmin ? "admin" : podeGravar ? "write" : "read",
+    };
+  } catch (e: any) {
+    return {
+      temAcesso: false,
+      podeLer: false,
+      podeGravar: false,
+      ehAdmin: false,
+      papel: "desconhecido",
+      erro: e?.message || "Sem conexão com o GitHub",
+    };
+  }
+}

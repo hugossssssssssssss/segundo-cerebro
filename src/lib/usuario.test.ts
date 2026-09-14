@@ -84,4 +84,56 @@ describe("usuario.ts - Identidade e Perfil", () => {
     );
     expect(res).toEqual(perfilSalvo);
   });
+
+  it("verificarPermissaoRepositorio identifica acesso e permissão de push", async () => {
+    const { verificarPermissaoRepositorio } = await import("./usuario");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          permissions: {
+            admin: true,
+            push: true,
+            pull: true,
+          },
+        }),
+      }),
+    );
+
+    const res = await verificarPermissaoRepositorio({
+      githubToken: "tok",
+      repoOwner: "hugo",
+      repoName: "dados",
+    });
+
+    expect(res.temAcesso).toBe(true);
+    expect(res.podeGravar).toBe(true);
+    expect(res.ehAdmin).toBe(true);
+    expect(res.papel).toBe("admin");
+  });
+
+  it("verificarPermissaoRepositorio reporta erro amigável se repo der 404", async () => {
+    const { verificarPermissaoRepositorio } = await import("./usuario");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+      }),
+    );
+
+    const res = await verificarPermissaoRepositorio({
+      githubToken: "tok",
+      repoOwner: "hugo",
+      repoName: "repo_inexistente",
+    });
+
+    expect(res.temAcesso).toBe(false);
+    expect(res.podeGravar).toBe(false);
+    expect(res.erro).toMatch(/não encontrado/);
+  });
 });
+

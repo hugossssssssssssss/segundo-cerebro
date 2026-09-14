@@ -27,6 +27,7 @@ import {
   type TamanhoFonteMenu,
 } from "@/lib/tema";
 import { VERSAO_APP } from "@/lib/versao";
+import { SeletorWorkspace } from "./SeletorWorkspace";
 
 interface NavegacaoLateralProps {
   colapsada: boolean;
@@ -216,8 +217,18 @@ export function NavegacaoLateral({
           </div>
         </div>
 
+        {/* Seletor de Espaço na Sidebar (quando expandida) */}
+        <div
+          className={cn(
+            "px-3 pt-2 pb-0.5 transition-sidebar-content shrink-0",
+            !visualmenteExpandida ? "opacity-0 pointer-events-none h-0 p-0 overflow-hidden" : "opacity-100"
+          )}
+        >
+          <SeletorWorkspace className="w-full [&>button]:w-full [&>button]:justify-between" />
+        </div>
+
         {/* Corpo da Navegação */}
-        <div className="flex-1 overflow-y-auto no-scrollbar py-3 w-60 space-y-3">
+        <div className="flex-1 overflow-y-auto no-scrollbar py-2 w-60 space-y-3">
           {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo, idx) => {
             const itensVisiveis = (grupo.itens || []).filter((item) => item && typeof item === "object" && !item.oculto);
             if (itensVisiveis.length === 0) return null;
