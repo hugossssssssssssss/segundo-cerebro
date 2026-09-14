@@ -8,7 +8,7 @@ import {
   Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { LogoKlaus } from "./LogoKlaus";
 import {
   carregarMenuPersonalizado,
@@ -20,7 +20,6 @@ import { ModalPersonalizarMenu } from "./ModalPersonalizarMenu";
 import { useWorkspace } from "@/components/workspace/WorkspaceContext";
 import { alternarTema, lerTemaSalvo, type Tema } from "@/lib/tema";
 import { VERSAO_APP } from "@/lib/versao";
-import { Tooltip } from "@/components/ui/tooltip";
 
 interface NavegacaoLateralProps {
   colapsada: boolean;
@@ -36,6 +35,9 @@ export function NavegacaoLateral({
   className,
 }: NavegacaoLateralProps) {
   const [tema, setTema] = useState<Tema>(lerTemaSalvo);
+  const [hoverExpandida, setHoverExpandida] = useState(false);
+  const timeoutHoverRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   let workspace: any = null;
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -44,11 +46,26 @@ export function NavegacaoLateral({
 
   const workspaceAberto = !!workspace?.workspaceAberto;
 
-  const lidarToggleColapsada = () => {
-    if (colapsada && workspaceAberto) {
-      return;
+  // Expande no hover se estiver colapsada (e não em modo workspace)
+  const visualmenteExpandida = !colapsada || (hoverExpandida && !workspaceAberto);
+
+  const lidarMouseEnter = () => {
+    if (timeoutHoverRef.current) {
+      clearTimeout(timeoutHoverRef.current);
+      timeoutHoverRef.current = null;
     }
-    setColapsada((v) => !v);
+    if (colapsada && !workspaceAberto) {
+      setHoverExpandida(true);
+    }
+  };
+
+  const lidarMouseLeave = () => {
+    if (timeoutHoverRef.current) {
+      clearTimeout(timeoutHoverRef.current);
+    }
+    timeoutHoverRef.current = setTimeout(() => {
+      setHoverExpandida(false);
+    }, 150);
   };
 
   const lidarCliqueItem = () => {
@@ -56,6 +73,9 @@ export function NavegacaoLateral({
       workspace.fecharWorkspace();
     }
     if (aoNavegar) aoNavegar();
+    if (colapsada) {
+      setHoverExpandida(false);
+    }
   };
 
   useEffect(() => {
@@ -92,59 +112,54 @@ export function NavegacaoLateral({
     };
   }, [atualizarMenu]);
 
+  useEffect(() => {
+    return () => {
+      if (timeoutHoverRef.current) {
+        clearTimeout(timeoutHoverRef.current);
+      }
+    };
+  }, []);
+
   return (
     <>
       <aside
+        onMouseEnter={lidarMouseEnter}
+        onMouseLeave={lidarMouseLeave}
         className={cn(
           "flex flex-col liquid-glass-sidebar transition-sidebar select-none shrink-0 z-30 overflow-hidden",
-          colapsada ? "w-16" : "w-60",
+          visualmenteExpandida ? "w-60 shadow-xl sm:shadow-none" : "w-16",
           className
         )}
       >
         {/* Topo da Sidebar: Marca e Botão de Recolher/Expandir */}
-        <div className="flex h-14 items-center justify-between px-2.5 border-b border-border/30 shrink-0 overflow-hidden relative">
-          <Tooltip
-            conteudo="Expandir barra lateral"
-            atalho="⌘B"
-            desabilitado={!colapsada}
-            side="right"
-            sideOffset={14}
+        <div className="flex h-14 items-center px-2 border-b border-border/30 shrink-0 overflow-hidden relative">
+          <div
+            className={cn(
+              "flex items-center min-w-0 transition-all duration-200",
+              visualmenteExpandida ? "justify-between w-full px-1" : "justify-center w-full"
+            )}
           >
-            <div
-              onClick={() => {
-                if (colapsada) lidarToggleColapsada();
-              }}
+            <NavLink
+              to="/home"
+              onClick={lidarCliqueItem}
               className={cn(
-                "flex items-center min-w-0 rounded-xl transition-colors duration-150",
-                colapsada
-                  ? "cursor-pointer justify-center w-full h-10 hover:bg-accent/60"
-                  : "justify-start pl-1 gap-2.5 cursor-default"
+                "flex items-center rounded-xl transition-colors duration-150 group cursor-pointer",
+                visualmenteExpandida
+                  ? "gap-2.5 min-w-0 hover:opacity-90 pl-1"
+                  : "w-10 h-10 justify-center hover:bg-accent/60"
               )}
+              title={!visualmenteExpandida ? "Klaus Início" : undefined}
             >
-              <NavLink
-                to="/home"
-                onClick={(e) => {
-                  if (colapsada) {
-                    e.preventDefault();
-                    lidarToggleColapsada();
-                  } else {
-                    lidarCliqueItem();
-                  }
-                }}
-                className="w-8 h-8 flex items-center justify-center shrink-0 rounded-lg hover:opacity-85 transition-opacity cursor-pointer"
-                aria-label="Klaus Home"
-              >
+              <div className="w-8 h-8 flex items-center justify-center shrink-0">
                 <LogoKlaus tamanho={24} />
-              </NavLink>
+              </div>
 
-              <NavLink
-                to="/home"
-                onClick={lidarCliqueItem}
+              <div
                 className={cn(
-                  "overflow-hidden whitespace-nowrap transition-sidebar-content flex items-baseline gap-1.5 group min-w-0",
-                  colapsada
-                    ? "max-w-0 opacity-0 -translate-x-3 pointer-events-none"
-                    : "max-w-[140px] opacity-100 translate-x-0"
+                  "overflow-hidden whitespace-nowrap transition-sidebar-content flex items-baseline gap-1.5 min-w-0",
+                  !visualmenteExpandida
+                    ? "w-0 max-w-0 opacity-0 -translate-x-3 pointer-events-none"
+                    : "flex-1 max-w-[130px] opacity-100 translate-x-0"
                 )}
               >
                 <span className="truncate text-sm font-bold tracking-tight text-foreground group-hover:opacity-80 transition-opacity">
@@ -153,28 +168,34 @@ export function NavegacaoLateral({
                 <span className="text-[10px] font-mono text-muted-foreground/60 font-medium select-none">
                   v{VERSAO_APP}
                 </span>
-              </NavLink>
-            </div>
-          </Tooltip>
+              </div>
+            </NavLink>
 
-          {/* Botão para recolher quando expandida */}
-          <div
-            className={cn(
-              "transition-sidebar-content shrink-0",
-              colapsada
-                ? "max-w-0 opacity-0 scale-75 overflow-hidden pointer-events-none"
-                : "max-w-[36px] opacity-100 scale-100"
-            )}
-          >
-            <Tooltip conteudo="Recolher barra lateral" atalho="⌘B" side="bottom">
+            {/* Botão de fixar/recolher visível quando expandida */}
+            <div
+              className={cn(
+                "transition-sidebar-content shrink-0",
+                !visualmenteExpandida
+                  ? "w-0 max-w-0 opacity-0 scale-75 overflow-hidden pointer-events-none"
+                  : "max-w-[36px] opacity-100 scale-100"
+              )}
+            >
               <button
-                onClick={lidarToggleColapsada}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setColapsada((v) => !v);
+                  setHoverExpandida(false);
+                }}
                 className="hidden sm:flex items-center justify-center rounded-xl p-1.5 text-muted-foreground hover:bg-accent/60 hover:text-foreground transition-colors cursor-pointer"
-                aria-label="Recolher barra lateral"
+                title={colapsada ? "Fixar barra lateral aberta" : "Recolher barra lateral (⌘B)"}
+                aria-label="Alternar fixação da barra lateral"
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft
+                  size={16}
+                  className={cn("transition-transform duration-200", colapsada && "rotate-180")}
+                />
               </button>
-            </Tooltip>
+            </div>
           </div>
         </div>
 
@@ -186,11 +207,11 @@ export function NavegacaoLateral({
 
             return (
               <div key={grupo.id || grupo.titulo} className="space-y-0.5">
-                {/* Título de seção que encolhe suavemente */}
+                {/* Título de seção com fade suave */}
                 <div
                   className={cn(
                     "overflow-hidden transition-all duration-200 ease-[cubic-bezier(0.2,0,0,1)] select-none",
-                    colapsada
+                    !visualmenteExpandida
                       ? "max-h-0 opacity-0 -translate-y-1 mb-0 pointer-events-none"
                       : "max-h-6 opacity-100 translate-y-0 mb-1"
                   )}
@@ -200,8 +221,8 @@ export function NavegacaoLateral({
                   </h3>
                 </div>
 
-                {/* Divisor sutil quando colapsada entre seções */}
-                {colapsada && idx > 0 && (
+                {/* Divisor sutil entre grupos quando minimizada */}
+                {!visualmenteExpandida && idx > 0 && (
                   <div className="my-1.5 mx-auto w-5 border-t border-border/30 transition-opacity duration-200" />
                 )}
 
@@ -209,52 +230,48 @@ export function NavegacaoLateral({
                   {itensVisiveis.map((item) => {
                     const Icone = obterIconePorNome(item.iconeNome || "HelpCircle");
                     return (
-                      <Tooltip
+                      <NavLink
                         key={item.id || item.para}
-                        conteudo={item.rotulo}
-                        desabilitado={!colapsada}
-                        side="right"
-                        sideOffset={14}
+                        to={item.para || "/home"}
+                        onClick={lidarCliqueItem}
+                        title={!visualmenteExpandida ? item.rotulo : undefined}
+                        className={({ isActive }) =>
+                          cn(
+                            "flex items-center rounded-xl text-xs font-medium relative group cursor-pointer transition-colors duration-150 h-10",
+                            !visualmenteExpandida
+                              ? "w-10 h-10 mx-auto justify-center p-0"
+                              : "w-full px-2.5 gap-2.5",
+                            isActive
+                              ? "liquid-glass-pill text-foreground font-semibold shadow-2xs bg-accent/70 dark:bg-accent/40"
+                              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                          )
+                        }
                       >
-                        <NavLink
-                          to={item.para || "/home"}
-                          onClick={lidarCliqueItem}
-                          className={({ isActive }) =>
-                            cn(
-                              "flex items-center rounded-xl text-xs font-medium relative group cursor-pointer transition-colors duration-150 h-9",
-                              colapsada ? "justify-center px-0 w-full" : "px-2.5 gap-2.5 w-full",
-                              isActive
-                                ? "liquid-glass-pill text-foreground font-semibold shadow-2xs bg-accent/70 dark:bg-accent/40"
-                                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                            )
-                          }
-                        >
-                          <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                            <Icone
-                              size={16}
-                              style={{ color: item.cor }}
-                              className="shrink-0 transition-transform duration-200 group-hover:scale-110"
-                            />
-                          </div>
+                        <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                          <Icone
+                            size={18}
+                            style={{ color: item.cor }}
+                            className="shrink-0 transition-transform duration-200 group-hover:scale-110"
+                          />
+                        </div>
 
-                          <div
-                            className={cn(
-                              "flex items-center gap-1.5 flex-1 min-w-0 overflow-hidden whitespace-nowrap transition-sidebar-content",
-                              colapsada
-                                ? "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
-                                : "max-w-[160px] opacity-100 translate-x-0"
-                            )}
-                          >
-                            <span className="truncate flex-1">{item.rotulo || "Item"}</span>
-                            {item.destaque && (
-                              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold shrink-0">
-                                <Sparkles size={10} />
-                                IA
-                              </span>
-                            )}
-                          </div>
-                        </NavLink>
-                      </Tooltip>
+                        <div
+                          className={cn(
+                            "overflow-hidden whitespace-nowrap transition-sidebar-content flex items-center gap-1.5 min-w-0",
+                            !visualmenteExpandida
+                              ? "w-0 max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+                              : "flex-1 max-w-[160px] opacity-100 translate-x-0"
+                          )}
+                        >
+                          <span className="truncate flex-1">{item.rotulo || "Item"}</span>
+                          {item.destaque && (
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold shrink-0">
+                              <Sparkles size={10} />
+                              IA
+                            </span>
+                          )}
+                        </div>
+                      </NavLink>
                     );
                   })}
                 </nav>
@@ -264,97 +281,88 @@ export function NavegacaoLateral({
         </div>
 
         {/* Rodapé da Sidebar */}
-        <div className="border-t border-border/30 p-2 space-y-0.5 shrink-0">
+        <div className="border-t border-border/30 p-2 space-y-1 shrink-0">
           {/* Botão para Personalizar Menu */}
-          <Tooltip conteudo="Personalizar Menu" desabilitado={!colapsada} side="right" sideOffset={14}>
-            <button
-              onClick={() => setModalPersonalizarAberta(true)}
+          <button
+            onClick={() => setModalPersonalizarAberta(true)}
+            title={!visualmenteExpandida ? "Personalizar Menu" : undefined}
+            className={cn(
+              "flex items-center rounded-xl text-xs font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors duration-150 group cursor-pointer h-10",
+              !visualmenteExpandida ? "w-10 h-10 mx-auto justify-center p-0" : "w-full px-2.5 gap-2.5"
+            )}
+          >
+            <div className="w-5 h-5 flex items-center justify-center shrink-0">
+              <Palette size={18} className="shrink-0 opacity-70 group-hover:rotate-12 transition-transform duration-200" />
+            </div>
+            <div
               className={cn(
-                "flex w-full items-center rounded-xl text-xs font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors duration-150 group cursor-pointer h-9",
-                colapsada ? "justify-center px-0" : "px-2.5 gap-2.5"
+                "overflow-hidden whitespace-nowrap transition-sidebar-content min-w-0",
+                !visualmenteExpandida
+                  ? "w-0 max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+                  : "flex-1 max-w-[160px] opacity-100 translate-x-0"
               )}
             >
-              <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                <Palette size={16} className="shrink-0 opacity-70 group-hover:rotate-12 transition-transform duration-200" />
-              </div>
-              <div
-                className={cn(
-                  "overflow-hidden whitespace-nowrap transition-sidebar-content",
-                  colapsada
-                    ? "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
-                    : "max-w-[160px] opacity-100 translate-x-0"
-                )}
-              >
-                <span className="truncate">Personalizar Menu</span>
-              </div>
-            </button>
-          </Tooltip>
+              <span className="truncate">Personalizar Menu</span>
+            </div>
+          </button>
 
           {/* Configurações */}
-          <Tooltip conteudo="Configurações" desabilitado={!colapsada} side="right" sideOffset={14}>
-            <NavLink
-              to="/config"
-              onClick={lidarCliqueItem}
-              className={({ isActive }) =>
-                cn(
-                  "flex w-full items-center rounded-xl text-xs font-medium transition-colors duration-150 group cursor-pointer h-9",
-                  colapsada ? "justify-center px-0" : "px-2.5 gap-2.5",
-                  isActive
-                    ? "bg-accent text-accent-foreground font-semibold"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                )
-              }
-            >
-              <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                <Settings size={16} className="shrink-0 opacity-70 group-hover:rotate-45 transition-transform duration-200" />
-              </div>
-              <div
-                className={cn(
-                  "overflow-hidden whitespace-nowrap transition-sidebar-content",
-                  colapsada
-                    ? "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
-                    : "max-w-[160px] opacity-100 translate-x-0"
-                )}
-              >
-                <span className="truncate">Configurações</span>
-              </div>
-            </NavLink>
-          </Tooltip>
-
-          {/* Modo Claro / Escuro */}
-          <Tooltip
-            conteudo={escuro ? "Modo Claro" : "Modo Escuro"}
-            atalho="⇧⌘L"
-            desabilitado={!colapsada}
-            side="right"
-            sideOffset={14}
+          <NavLink
+            to="/config"
+            onClick={lidarCliqueItem}
+            title={!visualmenteExpandida ? "Configurações" : undefined}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center rounded-xl text-xs font-medium transition-colors duration-150 group cursor-pointer h-10",
+                !visualmenteExpandida ? "w-10 h-10 mx-auto justify-center p-0" : "w-full px-2.5 gap-2.5",
+                isActive
+                  ? "bg-accent text-accent-foreground font-semibold"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              )
+            }
           >
-            <button
-              onClick={toggleTema}
+            <div className="w-5 h-5 flex items-center justify-center shrink-0">
+              <Settings size={18} className="shrink-0 opacity-70 group-hover:rotate-45 transition-transform duration-200" />
+            </div>
+            <div
               className={cn(
-                "flex w-full items-center rounded-xl text-xs font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors duration-150 group cursor-pointer h-9",
-                colapsada ? "justify-center px-0" : "px-2.5 gap-2.5"
+                "overflow-hidden whitespace-nowrap transition-sidebar-content min-w-0",
+                !visualmenteExpandida
+                  ? "w-0 max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+                  : "flex-1 max-w-[160px] opacity-100 translate-x-0"
               )}
             >
-              <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                {escuro ? (
-                  <Sun size={16} className="shrink-0 opacity-70 group-hover:rotate-45 transition-transform duration-200" />
-                ) : (
-                  <Moon size={16} className="shrink-0 opacity-70 group-hover:-rotate-12 transition-transform duration-200" />
-                )}
-              </div>
-              <div
-                className={cn(
-                  "overflow-hidden whitespace-nowrap transition-sidebar-content",
-                  colapsada
-                    ? "max-w-0 opacity-0 -translate-x-2 pointer-events-none"
-                    : "max-w-[160px] opacity-100 translate-x-0"
-                )}
-              >
-                <span className="truncate">{escuro ? "Modo Claro" : "Modo Escuro"}</span>
-              </div>
-            </button>
-          </Tooltip>
+              <span className="truncate">Configurações</span>
+            </div>
+          </NavLink>
+
+          {/* Modo Claro / Escuro */}
+          <button
+            onClick={toggleTema}
+            title={!visualmenteExpandida ? (escuro ? "Modo Claro (⇧⌘L)" : "Modo Escuro (⇧⌘L)") : undefined}
+            className={cn(
+              "flex items-center rounded-xl text-xs font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors duration-150 group cursor-pointer h-10",
+              !visualmenteExpandida ? "w-10 h-10 mx-auto justify-center p-0" : "w-full px-2.5 gap-2.5"
+            )}
+          >
+            <div className="w-5 h-5 flex items-center justify-center shrink-0">
+              {escuro ? (
+                <Sun size={18} className="shrink-0 opacity-70 group-hover:rotate-45 transition-transform duration-200" />
+              ) : (
+                <Moon size={18} className="shrink-0 opacity-70 group-hover:-rotate-12 transition-transform duration-200" />
+              )}
+            </div>
+            <div
+              className={cn(
+                "overflow-hidden whitespace-nowrap transition-sidebar-content min-w-0",
+                !visualmenteExpandida
+                  ? "w-0 max-w-0 opacity-0 -translate-x-2 pointer-events-none"
+                  : "flex-1 max-w-[160px] opacity-100 translate-x-0"
+              )}
+            >
+              <span className="truncate">{escuro ? "Modo Claro" : "Modo Escuro"}</span>
+            </div>
+          </button>
         </div>
       </aside>
 
