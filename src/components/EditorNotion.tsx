@@ -983,24 +983,29 @@ export function EditorNotion({
     [editor],
   );
 
-  /** Intercepta atalhos do teclado para Lista Expansível (> e Enter) */
+  /** Intercepta atalhos do teclado para Lista Expansível (> e Enter, Tab) */
   const handleEditorKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      // 1. Ao digitar > em um parágrafo vazio
+      // 1. Ao digitar > em um parágrafo vazio ou recém-criado
       if (e.key === ">") {
         try {
           const pos = editor.getTextCursorPosition();
-          if (pos?.block && pos.block.type === "paragraph") {
+          if (pos?.block && (pos.block.type === "paragraph" || pos.block.type === "quote")) {
             const texto = Array.isArray(pos.block.content)
               ? pos.block.content.map((c: any) => (typeof c === "string" ? c : c.text || "")).join("")
               : "";
-            if (texto === "") {
+            const textoLimpo = texto.replace(/[\u200B\uFEFF]/g, "").trim();
+            if (textoLimpo === "") {
               e.preventDefault();
+              e.stopPropagation();
               editor.updateBlock(pos.block, {
                 type: "toggleListItem",
                 props: {},
                 content: [],
               });
+              try {
+                window.localStorage.setItem(`toggle-${pos.block.id}`, "true");
+              } catch {}
               return;
             }
           }
@@ -1011,24 +1016,48 @@ export function EditorNotion({
       if (e.key === " ") {
         try {
           const pos = editor.getTextCursorPosition();
-          if (pos?.block && pos.block.type === "paragraph") {
+          if (pos?.block && (pos.block.type === "paragraph" || pos.block.type === "quote")) {
             const texto = Array.isArray(pos.block.content)
               ? pos.block.content.map((c: any) => (typeof c === "string" ? c : c.text || "")).join("")
               : "";
-            if (texto === ">") {
+            const textoLimpo = texto.replace(/[\u200B\uFEFF]/g, "").trim();
+            if (textoLimpo === ">") {
               e.preventDefault();
+              e.stopPropagation();
               editor.updateBlock(pos.block, {
                 type: "toggleListItem",
                 props: {},
                 content: [],
               });
+              try {
+                window.localStorage.setItem(`toggle-${pos.block.id}`, "true");
+              } catch {}
               return;
             }
           }
         } catch {}
       }
 
-      // 2. Ao dar Enter no título da lista expansível (toggleListItem):
+      // 2. Ao pressionar Tab / Shift+Tab para aninhar ou desaninhar no toggle acima
+      if (e.key === "Tab") {
+        try {
+          if (e.shiftKey) {
+            if (editor.canUnnestBlock()) {
+              e.preventDefault();
+              editor.unnestBlock();
+              return;
+            }
+          } else {
+            if (editor.canNestBlock()) {
+              e.preventDefault();
+              editor.nestBlock();
+              return;
+            }
+          }
+        } catch {}
+      }
+
+      // 3. Ao dar Enter no título da lista expansível (toggleListItem):
       if (e.key === "Enter" && !e.shiftKey) {
         try {
           const pos = editor.getTextCursorPosition();
@@ -1145,7 +1174,56 @@ export function EditorNotion({
     }
   };
 
+  const toggleAlvoRef = useRef<HTMLElement | null>(null);
+
+  const aoArrastarSobreEditor = (e: React.DragEvent) => {
+    e.preventDefault();
+
+    const target = e.target as HTMLElement | null;
+    const toggleWrapper = target?.closest(".bn-toggle-wrapper") as HTMLElement | null;
+    const blockEl = (target?.closest(".bn-block") || target?.closest('[data-node-type="blockContainer"]')) as HTMLElement | null;
+
+    if (toggleWrapper) {
+      if (toggleWrapper.getAttribute("data-show-children") !== "true") {
+        toggleWrapper.setAttribute("data-show-children", "true");
+        const id = blockEl?.getAttribute("data-id");
+        if (id) {
+          try {
+            window.localStorage.setItem(`toggle-${id}`, "true");
+          } catch {}
+        }
+      }
+      if (toggleAlvoRef.current !== toggleWrapper) {
+        toggleAlvoRef.current?.classList.remove("bn-toggle-drop-active");
+        toggleWrapper.classList.add("bn-toggle-drop-active");
+        toggleAlvoRef.current = toggleWrapper;
+      }
+    } else {
+      if (toggleAlvoRef.current) {
+        toggleAlvoRef.current.classList.remove("bn-toggle-drop-active");
+        toggleAlvoRef.current = null;
+      }
+    }
+  };
+
+  const aoSairArrastoEditor = () => {
+    if (toggleAlvoRef.current) {
+      toggleAlvoRef.current.classList.remove("bn-toggle-drop-active");
+      toggleAlvoRef.current = null;
+    }
+  };
+
   const aoSoltarNoEditor = async (e: React.DragEvent) => {
+    if (toggleAlvoRef.current) {
+      toggleAlvoRef.current.classList.remove("bn-toggle-drop-active");
+      toggleAlvoRef.current = null;
+    }
+
+    const target = e.target as HTMLElement | null;
+    const toggleBlockEl = (target?.closest(".bn-block") || target?.closest('[data-node-type="blockContainer"]')) as HTMLElement | null;
+    const toggleId = toggleBlockEl?.getAttribute("data-id");
+    const toggleBlock = toggleId ? editor.getBlock(toggleId) : null;
+
     const klausItemRaw = e.dataTransfer.getData("application/klaus-item");
     const rawText = e.dataTransfer.getData("text/plain");
 
@@ -1169,6 +1247,52 @@ export function EditorNotion({
         textoParaInserir = `\n\n${rawText}\n\n`;
       } else if (rawText.startsWith("referencias/imagens/") || rawText.startsWith("referencias/")) {
         textoParaInserir = `\n\n![Referência](/${rawText})\n\n`;
+      }
+    }
+
+    // Se soltou sobre um toggleListItem
+    if (toggleBlock && toggleBlock.type === "toggleListItem") {
+      // 1. Se soltou um bloco do próprio editor (arrastando pela alça)
+      const blocoAtual = editor.getTextCursorPosition()?.block;
+      const selecaoBlocos = editor.getSelection()?.blocks || [blocoAtual].filter(Boolean);
+      const blocoParaMover = selecaoBlocos.find((b) => b && b.id !== toggleBlock.id);
+
+      if (blocoParaMover && !blocoParaMover.children?.some((c) => c.id === toggleBlock.id)) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+          editor.removeBlocks([blocoParaMover.id]);
+          const filhosAtuais = toggleBlock.children || [];
+          editor.updateBlock(toggleBlock, {
+            children: [...filhosAtuais, blocoParaMover],
+          });
+          try {
+            window.localStorage.setItem(`toggle-${toggleBlock.id}`, "true");
+          } catch {}
+          toast("Item movido para dentro da lista expansível");
+          return;
+        } catch {}
+      }
+
+      // 2. Se soltou conteúdo externo/texto no toggle
+      if (textoParaInserir) {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          const blocosNovos = await editor.tryParseMarkdownToBlocks(textoParaInserir.trim());
+          if (blocosNovos && blocosNovos.length > 0) {
+            const filhosAtuais = toggleBlock.children || [];
+            editor.updateBlock(toggleBlock, {
+              children: [...filhosAtuais, ...blocosNovos],
+            });
+            try {
+              window.localStorage.setItem(`toggle-${toggleBlock.id}`, "true");
+            } catch {}
+            toast("Conteúdo adicionado dentro da lista expansível");
+            return;
+          }
+        } catch {}
       }
     }
 
@@ -1457,10 +1581,8 @@ export function EditorNotion({
       onKeyDownCapture={handleEditorKeyDown}
       onPaste={aoColar}
       onCopy={aoCopiar}
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "copy";
-      }}
+      onDragOver={aoArrastarSobreEditor}
+      onDragLeave={aoSairArrastoEditor}
       onDrop={aoSoltarNoEditor}
     >
       {!pronto && (
@@ -2037,6 +2159,14 @@ export function EditorNotion({
         .bn-block:has(.bn-toggle-wrapper[data-show-children="false"]) > .bn-block-group,
         [data-node-type="blockContainer"]:has(.bn-toggle-wrapper[data-show-children="false"]) > [data-node-type="blockGroup"] {
           display: none !important;
+        }
+
+        /* Destaque visual ao arrastar elementos para dentro da lista expansível */
+        .bn-toggle-wrapper.bn-toggle-drop-active {
+          background-color: hsl(var(--primary) / 0.12);
+          border-radius: 6px;
+          outline: 2px dashed hsl(var(--primary) / 0.7);
+          outline-offset: 2px;
         }
       `}</style>
 

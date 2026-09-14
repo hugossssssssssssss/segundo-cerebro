@@ -130,7 +130,7 @@ export default function GrafoNeural() {
       return {
         status: { icone: <CheckCircle2 className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" as const },
         prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" as const },
-        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "multiselect" as const },
+        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "tags" as const },
         Pomodoro: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" as const },
         relacionamentos: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" as const },
       };
@@ -144,14 +144,14 @@ export default function GrafoNeural() {
         elogio: { icone: <MessageSquareQuote className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" as const },
         autor_elogio: { icone: <User className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "texto" as const },
         colaboracao: { icone: <Users className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "multiselect" as const },
-        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" as const },
+        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "tags" as const },
       };
     }
     if (caminho.startsWith("pdi/metas") || tipoRotulo === "PDI Meta") {
       return {
         status: { icone: <CheckCircle2 className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" as const },
         prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" as const },
-        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" as const },
+        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "tags" as const },
         relacionamentos: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" as const },
       };
     }
@@ -162,18 +162,18 @@ export default function GrafoNeural() {
         email: { icone: <Mail className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "texto" as const },
         telefone: { icone: <Phone className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" as const },
         pai_id: { icone: <User className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "relation" as const },
-        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" as const },
+        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "tags" as const },
       };
     }
     if (caminho.startsWith("referencias/") || tipoRotulo === "Referência") {
       return {
         porque: { icone: <Sparkles className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" as const },
         fonte: { icone: <LinkIcon className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "link" as const },
-        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" as const },
+        tags: { icone: <Tag className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "tags" as const },
       };
     }
     return {
-      tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "multiselect" as const },
+      tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "tags" as const },
       relacionamentos: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" as const },
     };
   };

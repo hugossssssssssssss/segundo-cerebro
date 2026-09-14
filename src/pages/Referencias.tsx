@@ -1093,7 +1093,7 @@ export default function Referencias() {
           camposFixosProps={{
             porque: { icone: <Sparkles className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" },
             fonte: { icone: <LinkIcon className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "link" },
-            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" },
+            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "tags" },
             paleta: { icone: <Palette className="h-4 w-4 opacity-50 text-pink-500" />, tipo: "multiselect" },
           }}
           elementoAcimaCorpo={

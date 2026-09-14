@@ -611,7 +611,7 @@ export default function PDI() {
         camposFixosProps: {
           status: { icone: <CheckCircle2 className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
           prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
-          tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "multiselect" },
+          tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "tags" },
         },
         caminho: tarefaOriginal.caminho,
         sha: tarefaOriginal.sha,
@@ -2179,7 +2179,7 @@ export default function PDI() {
             status: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
             prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
             indicador: { icone: <CheckSquare className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" },
-            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "multiselect" },
+            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "tags" },
           }}
           salvando={salvando}
           temMudancas={origMeta !== null && JSON.stringify(editandoMeta) !== JSON.stringify(origMeta)}
@@ -2258,7 +2258,7 @@ export default function PDI() {
             },
             tags: {
               icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />,
-              tipo: "multiselect",
+              tipo: "tags",
             },
           }}
           salvando={salvando}
@@ -2305,7 +2305,7 @@ export default function PDI() {
           camposFixosProps={{
             status: { icone: <CheckCircle2 className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "status" },
             prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
-            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "multiselect" },
+            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "tags" },
             relacionamentos: { icone: <Target className="h-4 w-4 opacity-50 text-emerald-500" />, tipo: "multiselect" },
           }}
           salvando={salvando}

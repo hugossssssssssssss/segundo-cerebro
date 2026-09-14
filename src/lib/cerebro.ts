@@ -27,6 +27,7 @@ export type TipoPropriedade =
   | "numero"
   | "select"
   | "multiselect"
+  | "tags"
   | "data"
   | "checkbox"
   | "url"

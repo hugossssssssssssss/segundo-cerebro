@@ -392,7 +392,7 @@ export default function Notas() {
         dadosProps: notaOriginal.bruto,
         camposFixosProps: {
           tipo: { icone: <FileText className="h-4 w-4 opacity-50 text-orange-500" />, tipo: "select", opcoes: ["nota", "referencia", "rascunho"] },
-          tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
+          tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "tags" },
         },
         caminho: notaOriginal.caminho,
         sha: notaOriginal.sha,
@@ -2093,7 +2093,7 @@ export default function Notas() {
           }
           camposFixosProps={{
             tipo: { icone: <FileText className="h-4 w-4 opacity-50 text-orange-500" />, tipo: "select", opcoes: ["nota", "referencia", "rascunho"] },
-            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
+            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "tags" },
           }}
           salvando={salvando}
           temMudancas={mudou}

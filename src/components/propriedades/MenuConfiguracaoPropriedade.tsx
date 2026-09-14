@@ -6,6 +6,7 @@ import {
   CheckSquare,
   ListTodo,
   Tags,
+  Layers,
   Link as LinkIcon,
   User,
   Clock,
@@ -39,7 +40,8 @@ export const ICONES_TIPO_PADRAO: Record<TipoPropriedade, React.ElementType> = {
   data: CalendarIcon,
   checkbox: CheckSquare,
   select: ListTodo,
-  multiselect: Tags,
+  multiselect: Layers,
+  tags: Tags,
   relation: LinkIcon,
   status: ListTodo,
   criado_por: User,
@@ -53,7 +55,8 @@ export const NOMES_TIPO_PADRAO: Record<TipoPropriedade, string> = {
   data: "Data",
   checkbox: "Checkbox",
   select: "Seleção Única",
-  multiselect: "Múltipla Seleção (Tags)",
+  multiselect: "Múltipla Seleção",
+  tags: "Tags",
   relation: "Relacionamento",
   status: "Status",
   criado_por: "Criado por",
@@ -298,8 +301,8 @@ export function MenuConfiguracaoPropriedade({
           </div>
         </div>
 
-        {/* Gestão de Opções para Select / Multiselect */}
-        {(tipoAtual === "multiselect" || tipoAtual === "select" || chave === "tags" || chave === "colaboracao") && (
+        {/* Gestão de Opções para Select / Multiselect / Tags */}
+        {(tipoAtual === "multiselect" || tipoAtual === "tags" || tipoAtual === "select" || chave === "tags" || chave === "colaboracao") && (
           <div className="border-t border-border/50 pt-2">
             <GerenciadorOpcoesSelect
               opcoes={opcoesCadastradas}

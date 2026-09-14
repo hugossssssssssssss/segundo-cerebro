@@ -364,7 +364,7 @@ export default function Tarefas() {
           status: { icone: <ListTodo className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "status" },
           prioridade: { icone: <Flag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "select", opcoes: ["baixa", "media", "alta", "urgente"] },
           prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
-          tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
+          tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "tags" },
           Pomodoro: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
         },
         caminho: tarefaOriginal.caminho,
@@ -1280,7 +1280,7 @@ export default function Tarefas() {
             status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
             prioridade: { icone: <Flag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "select", opcoes: ["baixa", "media", "alta", "urgente"] },
             prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
-            tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "multiselect" },
+            tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "tags" },
             Pomodoro: { icone: <Timer className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "numero" },
           }}
           salvando={salvando}

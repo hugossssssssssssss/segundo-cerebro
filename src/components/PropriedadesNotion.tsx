@@ -6,6 +6,7 @@ import {
   CheckSquare, 
   ListTodo, 
   Tags,
+  Layers,
   Plus,
   ChevronDown,
   ChevronUp,
@@ -99,7 +100,8 @@ export function obterOpcoesDaPropriedade(
   dadosValorAtual: any,
   fixas?: string[],
   _coresTagsGlobais: Record<string, string> = {},
-  prefixoCaminho?: string
+  prefixoCaminho?: string,
+  tipoPropriedade?: TipoPropriedade
 ): string[] {
   const setOpcoes = new Set<string>();
   const excluidas = obterOpcoesExcluidas(chave);
@@ -137,8 +139,10 @@ export function obterOpcoesDaPropriedade(
   }
 
   if (cache && cache.itens) {
-    // Se for tags, busca as tags oficiais do catálogo do Cérebro
-    if (chave === "tags" || chave === "tag") {
+    const ehCampoTags = chave === "tags" || chave === "tag" || tipoPropriedade === "tags";
+
+    // Se for especificamente tags, busca as tags oficiais do catálogo do Cérebro
+    if (ehCampoTags) {
       const cerebro = carregarCerebro(cache.itens);
       for (const t of Object.keys(cerebro.tags)) {
         if (t.trim() && !excluidas.has(t.trim().toLowerCase())) {
@@ -154,15 +158,28 @@ export function obterOpcoesDaPropriedade(
     });
 
     itensFiltrados.forEach(item => {
-      const val = item.doc?.dados?.[chave];
-      if (Array.isArray(val)) {
-        val.forEach(t => {
-          if (typeof t === "string" && t.trim() && !excluidas.has(t.trim().toLowerCase())) {
-            setOpcoes.add(t.trim());
-          }
-        });
-      } else if (typeof val === "string" && val.trim() && !excluidas.has(val.trim().toLowerCase())) {
-        setOpcoes.add(val.trim());
+      if (ehCampoTags) {
+        // Se for campo de tags, busca apenas tags/tag dos itens
+        const tagsDoc = item.doc?.dados?.tags ?? item.doc?.dados?.tag;
+        if (Array.isArray(tagsDoc)) {
+          tagsDoc.forEach(t => {
+            if (typeof t === "string" && t.trim() && !excluidas.has(t.trim().toLowerCase())) {
+              setOpcoes.add(t.trim());
+            }
+          });
+        }
+      } else {
+        // Se for múltipla seleção ou qualquer outra propriedade, busca exclusivamente os valores dessa chave!
+        const val = item.doc?.dados?.[chave];
+        if (Array.isArray(val)) {
+          val.forEach(t => {
+            if (typeof t === "string" && t.trim() && !excluidas.has(t.trim().toLowerCase())) {
+              setOpcoes.add(t.trim());
+            }
+          });
+        } else if (typeof val === "string" && val.trim() && !excluidas.has(val.trim().toLowerCase())) {
+          setOpcoes.add(val.trim());
+        }
       }
     });
   }
@@ -177,7 +194,7 @@ export function salvarOpcoesPropriedadeLocal(chave: string, opcoes: string[]) {
 }
 
 export function obterTagsDisponiveis(dadosTagsAtuais: string[], coresTagsGlobais: Record<string, string>): string[] {
-  return obterOpcoesDaPropriedade("tags", dadosTagsAtuais, undefined, coresTagsGlobais);
+  return obterOpcoesDaPropriedade("tags", dadosTagsAtuais, undefined, coresTagsGlobais, undefined, "tags");
 }
 
 export function abrirItemSpa(caminho: string) {
@@ -203,6 +220,7 @@ export type TipoPropriedade =
   | "checkbox" 
   | "select" 
   | "multiselect" 
+  | "tags"
   | "relation"
   | "status"
   | "criado_por"
@@ -217,7 +235,8 @@ const ICONES_TIPO: Record<TipoPropriedade, React.ElementType> = {
   data: CalendarIcon,
   checkbox: CheckSquare,
   select: ListTodo,
-  multiselect: Tags,
+  multiselect: Layers,
+  tags: Tags,
   relation: LinkIcon,
   status: ListTodo,
   criado_por: User,
@@ -232,6 +251,7 @@ const NOMES_TIPO: Record<TipoPropriedade, string> = {
   checkbox: "Checkbox",
   select: "Seleção",
   multiselect: "Múltipla Seleção",
+  tags: "Tags",
   relation: "Relacionamento",
   status: "Status",
   criado_por: "Criado por",
@@ -245,7 +265,8 @@ const NOMES_PADRAO_TIPO: Record<TipoPropriedade, string> = {
   data: "Data",
   checkbox: "Checkbox",
   select: "Seleção",
-  multiselect: "Tags",
+  multiselect: "Múltipla Seleção",
+  tags: "Tags",
   relation: "Relacionamento",
   status: "Status",
   criado_por: "Criado por",
@@ -553,6 +574,149 @@ type PropriedadesNotionProps = {
   aoRemover?: () => Promise<void> | void;
 };
 
+interface SeletorOpcoesPropriedadeProps {
+  chave: string;
+  tipo: TipoPropriedade;
+  valor: any;
+  ehMulti: boolean;
+  opcoesCadastradas: string[];
+  aberto: boolean;
+  aoMudarAberto: (aberto: boolean) => void;
+  aoAtualizar: (chave: string, novoValor: any) => void;
+  renderizarBadgeTag: (item: string) => React.ReactNode;
+}
+
+function SeletorOpcoesPropriedade({
+  chave,
+  tipo,
+  valor,
+  ehMulti,
+  opcoesCadastradas,
+  aberto,
+  aoMudarAberto,
+  aoAtualizar,
+  renderizarBadgeTag,
+}: SeletorOpcoesPropriedadeProps) {
+  const [busca, setBusca] = useState("");
+  const valoresAtuais = Array.isArray(valor) ? valor : valor ? [valor] : [];
+
+  const handleCriarOuAlternar = (opcao: string) => {
+    const limpa = opcao.trim().replace(/^#+/, "");
+    if (!limpa) return;
+
+    if (ehMulti) {
+      const existe = valoresAtuais.includes(limpa);
+      const novos = existe
+        ? valoresAtuais.filter((x) => x !== limpa)
+        : [...valoresAtuais, limpa];
+      aoAtualizar(chave, novos);
+    } else {
+      aoAtualizar(chave, valoresAtuais.includes(limpa) ? undefined : limpa);
+      aoMudarAberto(false);
+    }
+
+    if (tipo !== "tags" && chave !== "tags" && chave !== "tag") {
+      salvarOpcoesPropriedadeLocal(chave, [...opcoesCadastradas, limpa]);
+    }
+    setBusca("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      const limpa = busca.trim().replace(/^#+/, "");
+      if (limpa) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleCriarOuAlternar(limpa);
+      }
+    }
+  };
+
+  const termoLimpo = busca.trim().replace(/^#+/, "");
+  const termoExiste = opcoesCadastradas.some(
+    (o) => o.toLowerCase() === termoLimpo.toLowerCase()
+  );
+
+  return (
+    <div className="flex flex-wrap items-center gap-1 flex-1 min-w-0">
+      {valoresAtuais.map((item) => (
+        <div key={item} className="flex items-center">
+          {renderizarBadgeTag(item)}
+        </div>
+      ))}
+      <Popover open={aberto} onOpenChange={aoMudarAberto}>
+        <PopoverTrigger asChild>
+          <button className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground rounded hover:bg-accent flex items-center gap-1 transition-colors cursor-pointer">
+            <Plus size={11} />
+            <span>{valoresAtuais.length === 0 ? "Adicionar" : ""}</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-[220px] p-0"
+          align="start"
+          onInteractOutside={() => {
+            aoMudarAberto(false);
+            setBusca("");
+          }}
+        >
+          <Command>
+            <CommandInput
+              placeholder={tipo === "tags" || chave === "tags" ? "Buscar ou criar tag..." : "Buscar ou criar opção..."}
+              value={busca}
+              onValueChange={setBusca}
+              onKeyDown={handleKeyDown}
+            />
+            <CommandList>
+              {termoLimpo && !termoExiste && (
+                <CommandGroup heading="Criar novo">
+                  <CommandItem
+                    onSelect={() => handleCriarOuAlternar(termoLimpo)}
+                    className="text-xs flex items-center gap-1.5 cursor-pointer font-medium text-primary hover:bg-accent"
+                  >
+                    <Plus size={13} className="shrink-0 text-primary" />
+                    <span>Criar "<strong>{termoLimpo}</strong>" <span className="opacity-60 text-[10px]">(Enter)</span></span>
+                  </CommandItem>
+                </CommandGroup>
+              )}
+              <CommandEmpty className="p-2 text-xs text-muted-foreground">
+                {termoLimpo ? (
+                  <button
+                    type="button"
+                    onClick={() => handleCriarOuAlternar(termoLimpo)}
+                    className="w-full text-left flex items-center gap-1.5 p-1.5 rounded hover:bg-accent text-primary font-medium cursor-pointer"
+                  >
+                    <Plus size={12} />
+                    <span>Criar "<strong>{termoLimpo}</strong>" (Enter)</span>
+                  </button>
+                ) : (
+                  "Nenhuma opção disponível"
+                )}
+              </CommandEmpty>
+              <CommandGroup>
+                {opcoesCadastradas.map((op) => {
+                  const selecionado = valoresAtuais.includes(op);
+                  return (
+                    <CommandItem
+                      key={op}
+                      onSelect={() => handleCriarOuAlternar(op)}
+                      className="text-xs flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-1.5 truncate">
+                        {renderizarBadgeTag(op)}
+                      </div>
+                      {selecionado && <Check size={12} className="text-primary shrink-0" />}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 export function PropriedadesNotion({ 
   dados, 
   onChange, 
@@ -620,7 +784,7 @@ export function PropriedadesNotion({
           status: { icone: <ListTodo className="h-4 w-4 opacity-70 text-blue-500" />, tipo: "status" },
           prioridade: { icone: <Flag className="h-4 w-4 opacity-70 text-amber-500" />, tipo: "select", opcoes: ["Urgente", "Alta", "Média", "Baixa"] },
           prazo: { icone: <CalendarIcon className="h-4 w-4 opacity-70 text-rose-500" />, tipo: "data" },
-          tags: { icone: <Tags className="h-4 w-4 opacity-70 text-emerald-500" />, tipo: "multiselect" },
+          tags: { icone: <Tags className="h-4 w-4 opacity-70 text-emerald-500" />, tipo: "tags" },
         };
       } else if (pasta === "notas") {
         rotulo = "Nota";
@@ -630,12 +794,12 @@ export function PropriedadesNotion({
           cargo: { icone: <Briefcase className="h-4 w-4 opacity-70 text-blue-500" />, tipo: "texto" },
           empresa: { icone: <Building className="h-4 w-4 opacity-70 text-emerald-500" />, tipo: "texto" },
           email: { icone: <MailIcon className="h-4 w-4 opacity-70 text-indigo-500" />, tipo: "texto" },
-          tags: { icone: <Tags className="h-4 w-4 opacity-70 text-amber-500" />, tipo: "multiselect" },
+          tags: { icone: <Tags className="h-4 w-4 opacity-70 text-amber-500" />, tipo: "tags" },
         };
       } else if (pasta === "referencias") {
         rotulo = "Referência";
         camposFixosProps = {
-          tags: { icone: <Tags className="h-4 w-4 opacity-70 text-rose-500" />, tipo: "multiselect" },
+          tags: { icone: <Tags className="h-4 w-4 opacity-70 text-rose-500" />, tipo: "tags" },
           fonte: { icone: <LinkIcon className="h-4 w-4 opacity-70 text-blue-500" />, tipo: "texto" },
         };
       } else if (pasta === "pdi" || pasta === "metas") {
@@ -643,7 +807,7 @@ export function PropriedadesNotion({
         camposFixosProps = {
           impacto: { icone: <Sparkles className="h-4 w-4 opacity-70 text-amber-500" />, tipo: "texto" },
           colaboracao: { icone: <Users className="h-4 w-4 opacity-70 text-teal-500" />, tipo: "multiselect" },
-          tags: { icone: <Tags className="h-4 w-4 opacity-70 text-emerald-500" />, tipo: "multiselect" },
+          tags: { icone: <Tags className="h-4 w-4 opacity-70 text-emerald-500" />, tipo: "tags" },
         };
       } else if (pasta === "lousas") {
         rotulo = "Lousa";
@@ -1254,7 +1418,7 @@ export function PropriedadesNotion({
       chave === "ultima_edicao" || chave === "atualizado" || chave === "atualizado_em" ? "ultima_edicao" :
       chave === "aviso_inbox" || chave === "aviso_telegram" || chave === "aviso_email" ? "checkbox" :
       chave === "data" || chave === "prazo" ? "data" :
-      fixo?.tipo || esquema[chave] || (Array.isArray(valor) ? "multiselect" : typeof valor === "boolean" ? "checkbox" : typeof valor === "number" ? "numero" : "texto");
+      fixo?.tipo || esquema[chave] || (chave === "tags" || chave === "tag" ? "tags" : Array.isArray(valor) ? "multiselect" : typeof valor === "boolean" ? "checkbox" : typeof valor === "number" ? "numero" : "texto");
 
     const idPopover = `prop-pop-${chave}`;
 
@@ -1453,71 +1617,29 @@ export function PropriedadesNotion({
       );
     }
 
-    if (tipo === "select" || tipo === "multiselect" || chave === "tags" || chave === "colaboracao") {
+    if (tipo === "select" || tipo === "multiselect" || tipo === "tags" || chave === "tags" || chave === "colaboracao") {
       const opcoesCadastradas = obterOpcoesDaPropriedade(
         chave,
         Array.isArray(valor) ? valor : valor ? [valor] : [],
         fixo?.opcoes,
         coresMap,
-        pastaRaiz
+        pastaRaiz,
+        tipo as TipoPropriedade
       );
-      const valoresAtuais = Array.isArray(valor) ? valor : valor ? [valor] : [];
-      const ehMulti = tipo === "multiselect" || chave === "tags" || chave === "colaboracao" || Array.isArray(valor);
+      const ehMulti = tipo === "multiselect" || tipo === "tags" || chave === "tags" || chave === "colaboracao" || Array.isArray(valor);
 
       return (
-        <div className="flex flex-wrap items-center gap-1 flex-1 min-w-0">
-          {valoresAtuais.map((item) => (
-            <div key={item} className="flex items-center">
-              {renderizarBadgeTag(item)}
-            </div>
-          ))}
-          <Popover open={menuAberto === idPopover} onOpenChange={(open) => setMenuAberto(open ? idPopover : null)}>
-            <PopoverTrigger asChild>
-              <button className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground rounded hover:bg-accent flex items-center gap-1 transition-colors">
-                <Plus size={11} />
-                <span>{valoresAtuais.length === 0 ? "Adicionar" : ""}</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[200px] p-0" align="start" onInteractOutside={() => setMenuAberto(null)}>
-              <Command>
-                <CommandInput placeholder="Buscar ou criar opção..." />
-                <CommandList>
-                  <CommandEmpty className="p-2 text-xs text-muted-foreground">
-                    Pressione Enter para criar nova opção
-                  </CommandEmpty>
-                  <CommandGroup>
-                    {opcoesCadastradas.map((op) => {
-                      const selecionado = valoresAtuais.includes(op);
-                      return (
-                        <CommandItem
-                          key={op}
-                          onSelect={() => {
-                            if (ehMulti) {
-                              if (selecionado) {
-                                atualizar(chave, valoresAtuais.filter((x) => x !== op));
-                              } else {
-                                atualizar(chave, [...valoresAtuais, op]);
-                              }
-                            } else {
-                              atualizar(chave, selecionado ? undefined : op);
-                              setMenuAberto(null);
-                            }
-                          }}
-                          className="text-xs flex items-center justify-between cursor-pointer"
-                        >
-                          <div className="flex items-center gap-1.5 truncate">
-                            {renderizarBadgeTag(op)}
-                          </div>
-                          {selecionado && <Check size={12} className="text-primary shrink-0" />}
-                        </CommandItem>
-                      );
-                    })}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
+        <SeletorOpcoesPropriedade
+          chave={chave}
+          tipo={tipo as TipoPropriedade}
+          valor={valor}
+          ehMulti={ehMulti}
+          opcoesCadastradas={opcoesCadastradas}
+          aberto={menuAberto === idPopover}
+          aoMudarAberto={(aberto) => setMenuAberto(aberto ? idPopover : null)}
+          aoAtualizar={atualizar}
+          renderizarBadgeTag={renderizarBadgeTag}
+        />
       );
     }
 
@@ -1708,7 +1830,7 @@ export function PropriedadesNotion({
       chave === "ultima_edicao" || chave === "atualizado" || chave === "atualizado_em" ? "ultima_edicao" :
       chave === "aviso_inbox" || chave === "aviso_telegram" || chave === "aviso_email" ? "checkbox" :
       chave === "data" || chave === "prazo" ? "data" :
-      chave === "tags" || chave === "tag" ? "multiselect" :
+      chave === "tags" || chave === "tag" ? "tags" :
       chave === "paleta" || chave === "palette" || chave === "cores" ? "multiselect" :
       chave === "relacionamentos" || chave === "relacao" ? "relation" :
       chave === "pai_id" || chave === "paiId" || chave === "pai" || chave === "contato_pai" ? "select" :
@@ -1722,7 +1844,9 @@ export function PropriedadesNotion({
       chave,
       Array.isArray(dados[chave]) ? dados[chave] : dados[chave] ? [dados[chave]] : [],
       fixo?.opcoes,
-      coresMap
+      coresMap,
+      pastaRaiz,
+      tipoAtual as TipoPropriedade
     );
     const iconePersonalizado = iconesMap[chave];
     const iconeNomePadrao = obterIconePadraoPropriedade(chave, tipoAtual);

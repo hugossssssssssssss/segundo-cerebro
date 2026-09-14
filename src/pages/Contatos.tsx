@@ -283,7 +283,7 @@ export default function Contatos() {
           email: { icone: <Mail className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "texto" },
           telefone: { icone: <Phone className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" },
           pai_id: { icone: <User className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "relation" },
-          tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
+          tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "tags" },
         },
         caminho: contatoOriginal.caminho,
         sha: contatoOriginal.sha,
@@ -877,7 +877,7 @@ export default function Contatos() {
             email: { icone: <Mail className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "texto" },
             telefone: { icone: <Phone className="h-4 w-4 opacity-50 text-purple-500" />, tipo: "texto" },
             pai_id: { icone: <User className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "relation" },
-            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "multiselect" },
+            tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "tags" },
           }}
           caminhoItem={aberto.caminho}
           mencoes={mencoesDoContato}

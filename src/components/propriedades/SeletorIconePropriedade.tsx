@@ -119,13 +119,13 @@ export function obterIconePadraoPropriedade(chave: string, tipo?: string): strin
   if (c.includes("feito") || c.includes("concluido") || c.includes("marcado") || c.includes("aprovado") || c.includes("check")) return "CheckSquare";
   if (c.includes("qtd") || c.includes("quantidade") || c.includes("total") || c.includes("numero") || c.includes("num") || c.includes("ranking") || c.includes("ordem") || c.includes("id")) return "Hash";
 
-  // Mapeamentos de fallback por tipo de propriedade
   if (tipo === "data") return "Calendar";
   if (tipo === "numero") return "Hash";
   if (tipo === "status") return "ListTodo";
   if (tipo === "checkbox") return "CheckSquare";
   if (tipo === "select") return "ListTodo";
-  if (tipo === "multiselect") return "Tags";
+  if (tipo === "tags") return "Tags";
+  if (tipo === "multiselect") return "Layers";
   if (tipo === "relation") return "Link";
   if (tipo === "criado_por") return "User";
   if (tipo === "criado_em" || tipo === "ultima_edicao") return "Clock";
@@ -150,7 +150,8 @@ export function obterCorPadraoPropriedade(chave: string, tipo?: string): string 
 
   if (tipo === "data") return "azul";
   if (tipo === "status") return "azul";
-  if (tipo === "multiselect") return "verde";
+  if (tipo === "tags") return "verde";
+  if (tipo === "multiselect") return "amarelo";
   if (tipo === "relation") return "roxo";
 
   return "padrao";
