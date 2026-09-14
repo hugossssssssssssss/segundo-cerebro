@@ -587,6 +587,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 
 **Exportações principais:**
 - `constante` **`CAMINHO_ESTADO_INBOX`**
+- `funcao` **`obterCaminhoEstadoInbox`** — _Retorna o caminho do arquivo de estado da Inbox no repositório. Se houver um usuário identificado, p..._
 - `interface` **`EstadoItemInbox`**
 - `tipo` **`MapaEstadoInbox`**
 - `funcao` **`formatarTagLembrete`** — _Formata um lembrete como a tag padronizada inserida no documento. Exemplo: [⏰ Lembrete: Comprar mate..._
@@ -600,8 +601,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`marcarItemComoVistoLocal`** — _Marca um documento específico como visto localmente no mapa da inbox_
 - `funcao` **`mesclarEstadosInbox`**
 - `funcao` **`carregarEstadoInbox`** — _Carrega o estado da Inbox sincronizado do repositório GitHub (com fallback pro local)._
-- `interface` **`ResultadoGravarEstadoInbox`**
-- _...e mais 6 exportações secundárias._
+- _...e mais 7 exportações secundárias._
 
 ### 7. Entidades Especializadas & Regras de Negócio
 

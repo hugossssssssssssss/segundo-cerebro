@@ -379,5 +379,13 @@ apagado_em: 2026-08-15T10:00:00.000Z
     expect(passado?.dataFimIso).toBe("2026-08-04");
     expect(passado?.tags).toEqual(["Google Calendar"]);
   });
+
+  it("obterCaminhoEstadoInbox particiona por usuário e faz fallback seguro", async () => {
+    const { obterCaminhoEstadoInbox, CAMINHO_ESTADO_INBOX } = await import("./inbox");
+    expect(obterCaminhoEstadoInbox()).toBe(CAMINHO_ESTADO_INBOX);
+    expect(obterCaminhoEstadoInbox("hugosilva")).toBe("caixa-entrada/estados/hugosilva.json");
+    expect(obterCaminhoEstadoInbox("Beatriz-Design")).toBe("caixa-entrada/estados/beatriz-design.json");
+    expect(obterCaminhoEstadoInbox("   ")).toBe(CAMINHO_ESTADO_INBOX);
+  });
 });
 

@@ -1,6 +1,6 @@
 # Arquitetura do Klaus
 
-> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-09-07.**
+> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-09-14.**
 > Não edite este arquivo à mão — ele é reescrito a cada `npm run build`.
 > Para mudar o que está aqui, mude `src/lib/tipos.ts` e `src/lib/entidades.ts`.
 
@@ -46,7 +46,10 @@ Uma nota ou rascunho em `notas/`.
 | `titulo` | `string` | sim | _(de ItemBase)_ |
 | `corpo` | `string` | sim | _(de ItemBase)_ |
 | `criadoEm` | `string` | não | _(de ItemBase)_ |
+| `criadoPor` | `string` | não | _(de ItemBase)_ |
 | `atualizadoEm` | `string` | não | _(de ItemBase)_ |
+| `atualizadoPor` | `string` | não | _(de ItemBase)_ |
+| `responsaveis` | `string[]` | não | _(de ItemBase)_ |
 | `relacionamentos` | `string[]` | não | _(de ItemBase)_ |
 | `tipo` | `"nota" \| "referencia" \| "rascunho"` | sim | — |
 | `subtipo` | `"nota" \| "reuniao" \| "briefing" \| "rascunho"` | não | — |
@@ -69,7 +72,10 @@ Uma tarefa em `tarefas/`.
 | `titulo` | `string` | sim | _(de ItemBase)_ |
 | `corpo` | `string` | sim | _(de ItemBase)_ |
 | `criadoEm` | `string` | não | _(de ItemBase)_ |
+| `criadoPor` | `string` | não | _(de ItemBase)_ |
 | `atualizadoEm` | `string` | não | _(de ItemBase)_ |
+| `atualizadoPor` | `string` | não | _(de ItemBase)_ |
+| `responsaveis` | `string[]` | não | _(de ItemBase)_ |
 | `relacionamentos` | `string[]` | não | _(de ItemBase)_ |
 | `status` | `StatusTarefa` | sim | — |
 | `prazo` | `string` | não | — |
@@ -95,7 +101,10 @@ Uma meta do PDI em `pdi/metas/`.
 | `titulo` | `string` | sim | _(de ItemBase)_ |
 | `corpo` | `string` | sim | _(de ItemBase)_ |
 | `criadoEm` | `string` | não | _(de ItemBase)_ |
+| `criadoPor` | `string` | não | _(de ItemBase)_ |
 | `atualizadoEm` | `string` | não | _(de ItemBase)_ |
+| `atualizadoPor` | `string` | não | _(de ItemBase)_ |
+| `responsaveis` | `string[]` | não | _(de ItemBase)_ |
 | `relacionamentos` | `string[]` | não | _(de ItemBase)_ |
 | `id` | `string` | sim | Nome do arquivo sem .md — é a chave usada pelas entregas para referenciar. |
 | `status` | `StatusMeta` | sim | — |
@@ -116,7 +125,10 @@ Uma entrega do PDI em `pdi/entregas/`.
 | `titulo` | `string` | sim | _(de ItemBase)_ |
 | `corpo` | `string` | sim | _(de ItemBase)_ |
 | `criadoEm` | `string` | não | _(de ItemBase)_ |
+| `criadoPor` | `string` | não | _(de ItemBase)_ |
 | `atualizadoEm` | `string` | não | _(de ItemBase)_ |
+| `atualizadoPor` | `string` | não | _(de ItemBase)_ |
+| `responsaveis` | `string[]` | não | _(de ItemBase)_ |
 | `relacionamentos` | `string[]` | não | _(de ItemBase)_ |
 | `id` | `string` | sim | — |
 | `data` | `string` | sim | Data AAAA-MM-DD da entrega. |
@@ -142,7 +154,10 @@ Uma referência visual em `referencias/`.
 | `titulo` | `string` | sim | _(de ItemBase)_ |
 | `corpo` | `string` | sim | _(de ItemBase)_ |
 | `criadoEm` | `string` | não | _(de ItemBase)_ |
+| `criadoPor` | `string` | não | _(de ItemBase)_ |
 | `atualizadoEm` | `string` | não | _(de ItemBase)_ |
+| `atualizadoPor` | `string` | não | _(de ItemBase)_ |
+| `responsaveis` | `string[]` | não | _(de ItemBase)_ |
 | `relacionamentos` | `string[]` | não | _(de ItemBase)_ |
 | `id` | `string` | sim | — |
 | `imagem` | `string` | não | Caminho da imagem dentro do repositório, se houver. |
@@ -176,7 +191,10 @@ Um contato ou pessoa vinculada em `contatos/`.
 | `titulo` | `string` | sim | _(de ItemBase)_ |
 | `corpo` | `string` | sim | _(de ItemBase)_ |
 | `criadoEm` | `string` | não | _(de ItemBase)_ |
+| `criadoPor` | `string` | não | _(de ItemBase)_ |
 | `atualizadoEm` | `string` | não | _(de ItemBase)_ |
+| `atualizadoPor` | `string` | não | _(de ItemBase)_ |
+| `responsaveis` | `string[]` | não | _(de ItemBase)_ |
 | `relacionamentos` | `string[]` | não | _(de ItemBase)_ |
 | `id` | `string` | sim | — |
 | `cargo` | `string` | não | — |

@@ -159,6 +159,23 @@ describe("comoTarefa", () => {
     expect(t.status).toBe("a-fazer");
   });
 
+  it("lê campos de colaboração e equipe (responsaveis, criado_por)", () => {
+    const t = comoTarefa(
+      doc("---\ntitulo: Projeto\nresponsaveis: [hugosilva, beatriz]\ncriado_por: hugosilva\natualizado_por: beatriz\n---\n"),
+      "tarefas/a.md",
+      "s",
+      "t",
+    );
+    expect(t.responsaveis).toEqual(["hugosilva", "beatriz"]);
+    expect(t.criadoPor).toBe("hugosilva");
+    expect(t.atualizadoPor).toBe("beatriz");
+
+    const arq = tarefaParaArquivo(t);
+    expect(arq.dados.responsaveis).toEqual(["hugosilva", "beatriz"]);
+    expect(arq.dados.criado_por).toBe("hugosilva");
+    expect(arq.dados.atualizado_por).toBe("beatriz");
+  });
+
   it("normaliza status ausente para 'a-fazer'", () => {
     const t = comoTarefa(doc("Sem frontmatter"), "tarefas/a.md", "s", "t");
     expect(t.status).toBe("a-fazer");

@@ -56,7 +56,10 @@ export interface ItemBase {
   titulo: string;
   corpo: string;
   criadoEm?: string;
+  criadoPor?: string;
   atualizadoEm?: string;
+  atualizadoPor?: string;
+  responsaveis?: string[];
   relacionamentos?: string[];
 }
 

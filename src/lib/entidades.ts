@@ -87,6 +87,9 @@ export function comoNota(
 
   const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
   const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
+  const criadoPor = typeof d.criado_por === "string" ? d.criado_por : typeof d.autor === "string" ? d.autor : undefined;
+  const atualizadoPor = typeof d.atualizado_por === "string" ? d.atualizado_por : undefined;
+  const responsaveis = comoLista(d.responsaveis ?? d.responsavel);
 
   return {
     bruto: doc.dados,
@@ -103,7 +106,10 @@ export function comoNota(
     fixado: Boolean(d.fixado || d.pinado || d.destaque),
     corpo: doc.corpo,
     criadoEm,
+    criadoPor,
     atualizadoEm,
+    atualizadoPor,
+    responsaveis: responsaveis.length > 0 ? responsaveis : undefined,
     atualizado: atualizadoEm,
     dataReuniao: typeof d.data_reuniao === "string" ? d.data_reuniao : undefined,
     participantes: Array.isArray(d.participantes) ? d.participantes.map(String) : undefined,
@@ -123,7 +129,10 @@ export function notaParaArquivo(n: Nota): { dados: Frontmatter; corpo: string } 
       tags:          tagsParaSalvar && tagsParaSalvar.length ? tagsParaSalvar : undefined,
       fixado:        n.fixado ? true : undefined,
       criado_em:     criadoEm,
+      criado_por:    n.criadoPor || (n.bruto?.criado_por as string) || undefined,
       atualizado_em: agora,
+      atualizado_por: n.atualizadoPor || (n.bruto?.atualizado_por as string) || undefined,
+      responsaveis:  n.responsaveis && n.responsaveis.length ? n.responsaveis : undefined,
       data_reuniao:  n.dataReuniao || undefined,
       participantes: n.participantes && n.participantes.length ? n.participantes : undefined,
       // Limpeza de campos legados
@@ -166,6 +175,9 @@ export function comoTarefa(
 
   const criadoEm = typeof d.criado_em === "string" ? d.criado_em : typeof d.criado === "string" ? d.criado : undefined;
   const atualizadoEm = typeof d.atualizado_em === "string" ? d.atualizado_em : typeof d.atualizado === "string" ? d.atualizado : undefined;
+  const criadoPor = typeof d.criado_por === "string" ? d.criado_por : typeof d.autor === "string" ? d.autor : undefined;
+  const atualizadoPor = typeof d.atualizado_por === "string" ? d.atualizado_por : undefined;
+  const responsaveis = comoLista(d.responsaveis ?? d.responsavel ?? d.atribuido_a ?? d.membros);
 
   const googleCalendarId =
     typeof d.google_calendar_id === "string" && d.google_calendar_id.trim()
@@ -194,7 +206,10 @@ export function comoTarefa(
     fraturados: pomodorosRealizados,
     googleCalendarId,
     criadoEm,
+    criadoPor,
     atualizadoEm,
+    atualizadoPor,
+    responsaveis: responsaveis.length > 0 ? responsaveis : undefined,
     corpo: doc.corpo,
   };
 }
@@ -218,8 +233,11 @@ export function tarefaParaArquivo(t: Tarefa): { dados: Frontmatter; corpo: strin
       pomodoros_estimados:  estimativa,
       pomodoros_realizados: realizados,
       google_calendar_id:   t.googleCalendarId || undefined,
+      responsaveis:         t.responsaveis && t.responsaveis.length ? t.responsaveis : undefined,
       criado_em:            criadoEm,
+      criado_por:           t.criadoPor || (t.bruto?.criado_por as string) || undefined,
       atualizado_em:        agora,
+      atualizado_por:       t.atualizadoPor || (t.bruto?.atualizado_por as string) || undefined,
       // Remove campos legados do frontmatter para limpeza
       googleCalendarId:     undefined,
       Pomodoro:             undefined,

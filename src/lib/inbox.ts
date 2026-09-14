@@ -19,9 +19,24 @@ import { extrairIntervaloTarefa } from "./tarefas";
 import { ler } from "./github";
 import { formatarDataPtBR, rotuloStatusAmigavel, normalizarDataISO } from "./utils";
 import { obterEstiloEventoGoogle, extrairIntervaloEventoGoogle, type EventoGoogle } from "./googleCalendar";
+import { lerPerfilLocal } from "./usuario";
 
 export const CAMINHO_ESTADO_INBOX = "caixa-entrada/estado.json";
 const CHAVE_LOCAL_INBOX = "segundo-cerebro:inbox-estado";
+
+/**
+ * Retorna o caminho do arquivo de estado da Inbox no repositório.
+ * Se houver um usuário identificado, particiona em `caixa-entrada/estados/{usuario}.json`
+ * para evitar que ações de um membro da equipe colidam com outro.
+ */
+export function obterCaminhoEstadoInbox(loginUsuario?: string): string {
+  const login = (loginUsuario || lerPerfilLocal()?.login || "").trim().toLowerCase();
+  const limpo = login.replace(/[^a-z0-9_-]/g, "");
+  if (limpo) {
+    return `caixa-entrada/estados/${limpo}.json`;
+  }
+  return CAMINHO_ESTADO_INBOX;
+}
 
 export interface EstadoItemInbox {
   visto: boolean;
@@ -612,15 +627,23 @@ export function mesclarEstadosInbox(local: MapaEstadoInbox, remoto: MapaEstadoIn
 export async function carregarEstadoInbox(
   cfg: Settings,
   itensRepo?: ItemRepo[],
+  loginUsuario?: string,
 ): Promise<{ mapa: MapaEstadoInbox; sha?: string }> {
   const local = lerEstadoInboxLocal();
   if (!cfg.githubToken || !cfg.repoOwner || !cfg.repoName) {
     return { mapa: local };
   }
 
+  const caminhoParticionado = obterCaminhoEstadoInbox(loginUsuario);
+
   // Se tivermos a lista de itens do repositório em mãos, tentamos encontrar o arquivo de estado lá
   if (itensRepo) {
-    const itemEstado = itensRepo.find((i) => i.caminho === CAMINHO_ESTADO_INBOX);
+    const itemEstado =
+      itensRepo.find((i) => i.caminho === caminhoParticionado) ||
+      (caminhoParticionado !== CAMINHO_ESTADO_INBOX
+        ? itensRepo.find((i) => i.caminho === CAMINHO_ESTADO_INBOX)
+        : undefined);
+
     if (itemEstado) {
       try {
         const remoto: MapaEstadoInbox = JSON.parse(itemEstado.texto);
@@ -635,7 +658,7 @@ export async function carregarEstadoInbox(
   }
 
   try {
-    const res = await ler(cfg, CAMINHO_ESTADO_INBOX, { silenciar404: true });
+    const res = await ler(cfg, caminhoParticionado, { silenciar404: true });
     if (res?.texto) {
       const remoto: MapaEstadoInbox = JSON.parse(res.texto);
       const mesclado = mesclarEstadosInbox(local, remoto);
@@ -643,7 +666,18 @@ export async function carregarEstadoInbox(
       return { mapa: mesclado, sha: res.sha };
     }
   } catch {
-    // Arquivo ainda não existe no repo
+    // Arquivo particionado ainda não existe; tenta o legado
+    if (caminhoParticionado !== CAMINHO_ESTADO_INBOX) {
+      try {
+        const resLegado = await ler(cfg, CAMINHO_ESTADO_INBOX, { silenciar404: true });
+        if (resLegado?.texto) {
+          const remoto: MapaEstadoInbox = JSON.parse(resLegado.texto);
+          const mesclado = mesclarEstadosInbox(local, remoto);
+          salvarEstadoInboxLocal(mesclado);
+          return { mapa: mesclado, sha: resLegado.sha };
+        }
+      } catch {}
+    }
   }
 
   return { mapa: local };
@@ -662,24 +696,27 @@ export async function gravarEstadoInbox(
   cfg: Settings,
   mapa: MapaEstadoInbox,
   shaAntigo?: string,
+  loginUsuario?: string,
 ): Promise<ResultadoGravarEstadoInbox> {
   salvarEstadoInboxLocal(mapa);
   if (!cfg.githubToken || !cfg.repoOwner || !cfg.repoName) {
     return { ok: false, erro: "Configuração do GitHub incompleta." };
   }
 
+  const caminhoFinal = obterCaminhoEstadoInbox(loginUsuario);
+
   try {
     const conteudo = JSON.stringify(mapa, null, 2);
     let shaFinal = shaAntigo;
     if (!shaFinal) {
       try {
-        const res = await ler(cfg, CAMINHO_ESTADO_INBOX, { silenciar404: true });
+        const res = await ler(cfg, caminhoFinal, { silenciar404: true });
         if (res?.sha) shaFinal = res.sha;
       } catch {}
     }
 
-    salvarRascunhoLocal(CAMINHO_ESTADO_INBOX, conteudo, shaFinal, "atualizar estado da caixa de entrada");
-    atualizarCacheLocal(CAMINHO_ESTADO_INBOX, conteudo, lerMarkdown(conteudo), shaFinal || `temp_${Math.random().toString(36).substring(7)}`);
+    salvarRascunhoLocal(caminhoFinal, conteudo, shaFinal, `atualizar estado da caixa de entrada (${caminhoFinal})`);
+    atualizarCacheLocal(caminhoFinal, conteudo, lerMarkdown(conteudo), shaFinal || `temp_${Math.random().toString(36).substring(7)}`);
     return { ok: true, sha: shaFinal };
   } catch (err: any) {
     return { ok: false, erro: err?.message || "Falha ao gravar estado no GitHub." };

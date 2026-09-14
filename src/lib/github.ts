@@ -274,16 +274,10 @@ export async function gravar(
             return shaDestino;
           }
 
-          // 1. Tenta gravar diretamente com o shaDestino fresco (edição local mais recente do mesmo autor)
-          const putDireto = await fazerPut(shaDestino, texto);
-          if (putDireto.ok) {
-            const dadosDireto = await putDireto.json();
-            return dadosDireto.content.sha as string;
-          }
-
-          // 2. Se falhar, tenta Auto-Merge Semântico 3-Way entre a versão remota e a versão local
+          // 1. Tenta Auto-Merge Semântico 3-Way entre a versão remota e a versão local
+          // (Garante que edições feitas por outros membros da equipe não sejam apagadas cegamente)
           const merge = autoMergeDocumentoMarkdown(textoDestino, texto, textoDestino);
-          if (merge.sucesso) {
+          if (merge.sucesso && !merge.teveConflito) {
             const putRes = await fazerPut(shaDestino, merge.textoMesclado);
             if (putRes.ok) {
               const dadosMerge = await putRes.json();
