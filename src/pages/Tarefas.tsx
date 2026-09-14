@@ -21,10 +21,13 @@ import {
   Folder,
   Flag,
   Globe,
+  User,
+  Users,
 } from "lucide-react";
 import { BarraAcoesLote, BotaoAcaoLote } from "@/components/BarraAcoesLote";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { lerConfig, configCompleta } from "@/lib/settings";
+import { lerPerfilLocal } from "@/lib/usuario";
 import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
@@ -107,7 +110,15 @@ export default function Tarefas() {
   const [original, setOriginal] = useState<Tarefa | null>(null);
   const { iniciar } = useCronometro();
   const [regrasFiltro, setRegrasFiltro] = useState<RegraFiltro[]>([]);
-  type FiltroRapidoTarefa = "todas" | "urgentes" | "hoje" | "atrasadas" | "sem_prazo";
+  type FiltroRapidoTarefa =
+    | "todas"
+    | "minhas"
+    | "equipe"
+    | "sem_responsavel"
+    | "urgentes"
+    | "hoje"
+    | "atrasadas"
+    | "sem_prazo";
   const [filtroRapido, setFiltroRapido] = useState<FiltroRapidoTarefa>("todas");
   const [tarefaParaPDI, setTarefaParaPDI] = useState<Tarefa | null>(null);
   const [tarefaParaExcluir, setTarefaParaExcluir] = useState<Tarefa | null>(null);
@@ -362,6 +373,7 @@ export default function Tarefas() {
         dadosProps: dados,
         camposFixosProps: {
           status: { icone: <ListTodo className="h-4 w-4 opacity-50 text-blue-500" />, tipo: "status" },
+          responsaveis: { icone: <Users className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "membros" },
           prioridade: { icone: <Flag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "select", opcoes: ["baixa", "media", "alta", "urgente"] },
           prazo: { icone: <Calendar className="h-4 w-4 opacity-50 text-rose-500" />, tipo: "data" },
           tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "tags" },
@@ -382,6 +394,9 @@ export default function Tarefas() {
             bruto: itemFlutuanteAtual.dadosProps || {},
             titulo,
             status: (itemFlutuanteAtual.dadosProps.status as Status) || "a-fazer",
+            responsaveis: Array.isArray(itemFlutuanteAtual.dadosProps.responsaveis)
+              ? itemFlutuanteAtual.dadosProps.responsaveis
+              : (itemFlutuanteAtual.dadosProps.responsaveis ? [String(itemFlutuanteAtual.dadosProps.responsaveis)] : undefined),
             prioridade: itemFlutuanteAtual.dadosProps.prioridade as Tarefa["prioridade"],
             prazo: itemFlutuanteAtual.dadosProps.prazo,
             tags: itemFlutuanteAtual.dadosProps.tags || [],
@@ -886,6 +901,7 @@ export default function Tarefas() {
     return [
       { id: "titulo", rotulo: "Título / Nome", tipo: "texto" },
       { id: "status", rotulo: "Status", tipo: "status", opcoes: ["a-fazer", "fazendo", "feito"] },
+      { id: "responsaveis", rotulo: "Responsáveis", tipo: "tags" },
       { id: "tags", rotulo: "Tags", tipo: "tags", opcoes: todasTags },
       { id: "prazo", rotulo: "Prazo", tipo: "data" },
       { id: "criado_em", rotulo: "Criado em", tipo: "data" },
@@ -895,6 +911,9 @@ export default function Tarefas() {
   }, [todasTags]);
 
   const tarefasExibidas = useMemo(() => {
+    const perfilUsuario = lerPerfilLocal();
+    const usuarioAtual = (perfilUsuario?.login || cfg.repoOwner || "").toLowerCase().trim();
+
     let lista = tarefas.filter((t) => {
       if (pastaSelecionada) {
         const prefixo = `${PASTAS.tarefas}/${pastaSelecionada}/`;
@@ -907,7 +926,19 @@ export default function Tarefas() {
           t.tags.some((tag) => correspondeBusca(tag, busca));
         if (!atendeBusca) return false;
       }
-      if (filtroRapido === "hoje") {
+      if (filtroRapido === "minhas") {
+        const ehMinha = (t.responsaveis || []).some(
+          (r) => r.toLowerCase().trim() === usuarioAtual
+        );
+        if (!ehMinha) return false;
+      } else if (filtroRapido === "equipe") {
+        const ehOutros = (t.responsaveis || []).some(
+          (r) => r.toLowerCase().trim() !== usuarioAtual
+        );
+        if (!ehOutros) return false;
+      } else if (filtroRapido === "sem_responsavel") {
+        if (t.responsaveis && t.responsaveis.length > 0) return false;
+      } else if (filtroRapido === "hoje") {
         const u = urgencia(t);
         if (u !== "hoje") return false;
       } else if (filtroRapido === "atrasadas") {
@@ -925,6 +956,7 @@ export default function Tarefas() {
     lista = filtrarItensPorRegras(lista, regrasFiltro, (item, propId) => {
       if (propId === "titulo" || propId === "nome") return item.titulo;
       if (propId === "status") return item.status;
+      if (propId === "responsaveis") return item.responsaveis || [];
       if (propId === "tags") return item.tags || [];
       if (propId === "prazo") return item.prazo;
       if (propId === "criado_em") return item.bruto?.criado || item.bruto?.criado_em;
@@ -1058,6 +1090,9 @@ export default function Tarefas() {
               {(
                 [
                   { id: "todas", rotulo: "Todas", icone: null },
+                  { id: "minhas", rotulo: "Minhas", icone: <User size={12} className="shrink-0 text-indigo-500" /> },
+                  { id: "equipe", rotulo: "Equipe", icone: <Users size={12} className="shrink-0 text-sky-500" /> },
+                  { id: "sem_responsavel", rotulo: "Sem Resp.", icone: null },
                   { id: "hoje", rotulo: "Hoje", icone: <Calendar size={12} className="shrink-0" /> },
                   { id: "urgentes", rotulo: "Urgentes", icone: <Flame size={12} className="shrink-0 text-rose-500" /> },
                   { id: "atrasadas", rotulo: "Atrasadas", icone: <AlertTriangle size={12} className="shrink-0 text-amber-500" /> },
@@ -1248,6 +1283,7 @@ export default function Tarefas() {
             ...editando.bruto,
             titulo: editando.titulo,
             status: editando.status,
+            responsaveis: editando.responsaveis,
             prioridade: editando.prioridade || "media",
             prazo: editando.prazo,
             tags: editando.tags,
@@ -1261,6 +1297,9 @@ export default function Tarefas() {
               ...editando,
               bruto: nProps,
               status: (nProps.status as Status) || editando.status,
+              responsaveis: Array.isArray(nProps.responsaveis)
+                ? nProps.responsaveis
+                : (nProps.responsaveis ? [String(nProps.responsaveis)] : undefined),
               prioridade: nProps.prioridade as Tarefa["prioridade"],
               prazo: nProps.prazo as string | undefined,
               googleCalendarId: (nProps.google_calendar_id as string) || editando.googleCalendarId,
@@ -1278,6 +1317,7 @@ export default function Tarefas() {
           }}
           camposFixosProps={{
             status: { icone: <ListTodo className="h-4 w-4 opacity-50" />, tipo: "status" },
+            responsaveis: { icone: <Users className="h-4 w-4 opacity-50 text-indigo-500" />, tipo: "membros" },
             prioridade: { icone: <Flag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "select", opcoes: ["baixa", "media", "alta", "urgente"] },
             prazo: { icone: <Calendar className="h-4 w-4 opacity-50" />, tipo: "data" },
             tags: { icone: <Tag className="h-4 w-4 opacity-50" />, tipo: "tags" },

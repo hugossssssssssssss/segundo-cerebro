@@ -58,6 +58,7 @@ import {
 } from "./propriedades/GerenciadorStatusNotion";
 import { SeletorRelacaoNotion, type ItemRelacionavel } from "./propriedades/SeletorRelacaoNotion";
 import { ResumoRelacaoRollup, type ItemVinculadoDetalhe } from "./propriedades/ResumoRelacaoRollup";
+import { SeletorMembrosPropriedade } from "./propriedades/SeletorMembrosPropriedade";
 import {
   carregarCerebro,
   ehItemAtivo,
@@ -223,6 +224,7 @@ export type TipoPropriedade =
   | "tags"
   | "relation"
   | "status"
+  | "membros"
   | "criado_por"
   | "criado_em"
   | "ultima_edicao";
@@ -239,6 +241,7 @@ const ICONES_TIPO: Record<TipoPropriedade, React.ElementType> = {
   tags: Tags,
   relation: LinkIcon,
   status: ListTodo,
+  membros: Users,
   criado_por: User,
   criado_em: Clock,
   ultima_edicao: Clock,
@@ -254,6 +257,7 @@ const NOMES_TIPO: Record<TipoPropriedade, string> = {
   tags: "Tags",
   relation: "Relacionamento",
   status: "Status",
+  membros: "Responsáveis / Membros",
   criado_por: "Criado por",
   criado_em: "Criado em",
   ultima_edicao: "Última edição em",
@@ -269,6 +273,7 @@ const NOMES_PADRAO_TIPO: Record<TipoPropriedade, string> = {
   tags: "Tags",
   relation: "Relacionamento",
   status: "Status",
+  membros: "Responsáveis",
   criado_por: "Criado por",
   criado_em: "Criado em",
   ultima_edicao: "Última edição em",
@@ -1090,6 +1095,7 @@ export function PropriedadesNotion({
 
   function nomeExibido(chave: string): string {
     if (chave === "Pomodoro" || chave === "pomodoro" || chave === "estimativa" || chave === "c") return "Pomodoro";
+    if (chave === "responsaveis" || chave === "responsavel") return "Responsáveis";
     if (chave === "prioridade") return "Prioridade";
     if (chave === "indicador") return "Indicador";
     if (chave === "metas") return "Metas Vinculadas";
@@ -1410,6 +1416,7 @@ export function PropriedadesNotion({
     const valor = dados[chave];
     const tipo = 
       chave === "status" ? "status" :
+      chave === "responsaveis" || chave === "responsavel" ? "membros" :
       chave === "prioridade" ? "select" :
       chave === "caminho" ? "caminho" :
       chave === "relacionamentos" || chave === "relacao" ? "relation" :
@@ -1421,6 +1428,16 @@ export function PropriedadesNotion({
       fixo?.tipo || esquema[chave] || (chave === "tags" || chave === "tag" ? "tags" : Array.isArray(valor) ? "multiselect" : typeof valor === "boolean" ? "checkbox" : typeof valor === "number" ? "numero" : "texto");
 
     const idPopover = `prop-pop-${chave}`;
+
+    // 0. Membros / Responsáveis
+    if (tipo === "membros" || chave === "responsaveis" || chave === "responsavel") {
+      return (
+        <SeletorMembrosPropriedade
+          valor={valor}
+          onChange={(novos) => atualizar(chave, novos)}
+        />
+      );
+    }
 
     // 1. Status Avançado Agrupado
     if (tipo === "status" || chave === "status") {

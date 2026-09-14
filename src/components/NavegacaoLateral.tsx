@@ -28,6 +28,7 @@ import {
 } from "@/lib/tema";
 import { VERSAO_APP } from "@/lib/versao";
 import { SeletorWorkspace } from "./SeletorWorkspace";
+import { obterWorkspaceAtivo, EVENTO_WORKSPACE_ALTERADO } from "@/lib/workspaces";
 
 interface NavegacaoLateralProps {
   colapsada: boolean;
@@ -117,11 +118,19 @@ export function NavegacaoLateral({
     }
   }, []);
 
+  const [workspaceAtivo, setWorkspaceAtivo] = useState(obterWorkspaceAtivo);
+
   useEffect(() => {
+    const aoMudarWorkspace = () => {
+      setWorkspaceAtivo(obterWorkspaceAtivo());
+      atualizarMenu();
+    };
+    window.addEventListener(EVENTO_WORKSPACE_ALTERADO, aoMudarWorkspace);
     window.addEventListener(EVENTO_MENU_ATUALIZADO, atualizarMenu);
     window.addEventListener("klaus-preferencias-atualizadas", atualizarMenu);
     window.addEventListener("klaus-settings-atualizadas", atualizarMenu);
     return () => {
+      window.removeEventListener(EVENTO_WORKSPACE_ALTERADO, aoMudarWorkspace);
       window.removeEventListener(EVENTO_MENU_ATUALIZADO, atualizarMenu);
       window.removeEventListener("klaus-preferencias-atualizadas", atualizarMenu);
       window.removeEventListener("klaus-settings-atualizadas", atualizarMenu);
@@ -230,7 +239,13 @@ export function NavegacaoLateral({
         {/* Corpo da Navegação */}
         <div className="flex-1 overflow-y-auto no-scrollbar py-2 w-60 space-y-3">
           {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo, idx) => {
-            const itensVisiveis = (grupo.itens || []).filter((item) => item && typeof item === "object" && !item.oculto);
+            const itensVisiveis = (grupo.itens || []).filter((item) => {
+              if (!item || typeof item !== "object" || item.oculto) return false;
+              if (workspaceAtivo.tipo === "equipe" && (item.id === "pdi" || item.para === "/pdi")) {
+                return false;
+              }
+              return true;
+            });
             if (itensVisiveis.length === 0) return null;
 
             return (

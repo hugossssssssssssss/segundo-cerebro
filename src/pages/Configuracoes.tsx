@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   CheckCircle2,
@@ -35,9 +35,12 @@ import {
   Sun,
   Moon,
   Type,
+  Users,
 } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
+import { obterWorkspaceAtivo } from "@/lib/workspaces";
+import { PainelGestaoEquipe } from "@/components/PainelGestaoEquipe";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
 import { Botao, Campo, Cartao, Rotulo, Aviso, ModalConfirmacao } from "@/components/ui";
@@ -89,21 +92,35 @@ import {
 } from "@/lib/preferenciasApp";
 import JSZip from "jszip";
 
-type AbaConfig = "geral" | "personalizacao" | "github" | "ia" | "notificacoes" | "integracoes" | "dados";
-
-const OPCOES_ABAS: OpcaoVisao<AbaConfig>[] = [
-  { id: "geral", rotulo: "Geral & Perfil", icone: <User size={15} /> },
-  { id: "personalizacao", rotulo: "Aparência & Cores", icone: <Palette size={15} /> },
-  { id: "github", rotulo: "GitHub & Sincronização", icone: <GitBranch size={15} /> },
-  { id: "ia", rotulo: "Inteligência Artificial", icone: <Bot size={15} /> },
-  { id: "notificacoes", rotulo: "Notificações & Automações", icone: <Bell size={15} /> },
-  { id: "integracoes", rotulo: "Integrações & Google", icone: <Calendar size={15} /> },
-  { id: "dados", rotulo: "Dados & Manutenção", icone: <Database size={15} /> },
-];
+type AbaConfig = "geral" | "personalizacao" | "github" | "equipe" | "ia" | "notificacoes" | "integracoes" | "dados";
 
 export default function Configuracoes() {
   const [abaAtiva, setAbaAtiva] = useState<AbaConfig>("geral");
   const [cfg, setCfg] = useState<Settings>(lerConfig);
+
+  const workspaceAtivo = obterWorkspaceAtivo();
+  const ehEquipe = workspaceAtivo.tipo === "equipe";
+
+  const opcoesAbas = useMemo<OpcaoVisao<AbaConfig>[]>(() => {
+    const abas: OpcaoVisao<AbaConfig>[] = [
+      { id: "geral", rotulo: "Geral & Perfil", icone: <User size={15} /> },
+      { id: "personalizacao", rotulo: "Aparência & Cores", icone: <Palette size={15} /> },
+      { id: "github", rotulo: "GitHub & Sincronização", icone: <GitBranch size={15} /> },
+    ];
+
+    if (ehEquipe) {
+      abas.push({ id: "equipe", rotulo: "Equipe & Membros", icone: <Users size={15} /> });
+    }
+
+    abas.push(
+      { id: "ia", rotulo: "Inteligência Artificial", icone: <Bot size={15} /> },
+      { id: "notificacoes", rotulo: "Notificações & Automações", icone: <Bell size={15} /> },
+      { id: "integracoes", rotulo: "Integrações & Google", icone: <Calendar size={15} /> },
+      { id: "dados", rotulo: "Dados & Manutenção", icone: <Database size={15} /> }
+    );
+
+    return abas;
+  }, [ehEquipe]);
   const [testando, setTestando] = useState(false);
   const [resultado, setResultado] = useState<{ ok: boolean; texto: string } | null>(null);
   const [etapas, setEtapas] = useState<Etapa[] | null>(null);
@@ -573,7 +590,7 @@ export default function Configuracoes() {
       {/* Navegação por Abas Temáticas */}
       <div className="w-full">
         <AlternadorVisao
-          opcoes={OPCOES_ABAS}
+          opcoes={opcoesAbas}
           valorAtivo={abaAtiva}
           aoAlternar={setAbaAtiva}
           className="w-full sm:w-auto"
@@ -1216,6 +1233,13 @@ export default function Configuracoes() {
             </p>
           </div>
         </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* ABA: EQUIPE & MEMBROS */}
+      {/* ========================================================= */}
+      {abaAtiva === "equipe" && ehEquipe && (
+        <PainelGestaoEquipe />
       )}
 
       {/* ========================================================= */}

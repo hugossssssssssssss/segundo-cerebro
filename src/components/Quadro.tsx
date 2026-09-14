@@ -51,6 +51,7 @@ import { TagChip } from "@/components/TagChip";
 import { cn } from "@/lib/utils";
 import { PrismasFoco } from "@/components/PrismasFoco";
 import { MenuAcoesTarefa } from "@/components/MenuAcoesTarefa";
+import { AvatarUsuario } from "@/components/AvatarUsuario";
 
 /**
  * Quadro de tarefas em colunas — a fazer, fazendo, feito.
@@ -115,7 +116,7 @@ function ConteudoDoCartao({ t, aoFiltrarTag }: { t: Tarefa; aoFiltrarTag?: (tag:
         tamanho={13}
       />
 
-      {(u !== "nenhuma" || min > 0 || passos.total > 0 || t.tags.length > 0 || subpasta || Boolean(t.bruto?.ia_sugeriu) || Boolean((t.bruto?.metas as any)?.length)) && (
+      {(u !== "nenhuma" || min > 0 || passos.total > 0 || t.tags.length > 0 || subpasta || Boolean(t.bruto?.ia_sugeriu) || Boolean((t.bruto?.metas as any)?.length) || (t.responsaveis && t.responsaveis.length > 0)) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {Boolean(t.bruto?.ia_sugeriu) && (
             <Selo tom="aviso" className="flex items-center gap-1 text-[10px] bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-medium">
@@ -152,6 +153,28 @@ function ConteudoDoCartao({ t, aoFiltrarTag }: { t: Tarefa; aoFiltrarTag?: (tag:
               aoClicar={aoFiltrarTag ? () => aoFiltrarTag(tag) : undefined}
             />
           ))}
+
+          {/* Avatares dos Responsáveis */}
+          {t.responsaveis && t.responsaveis.length > 0 && (
+            <div
+              className="flex items-center -space-x-1 ml-auto shrink-0 py-0.5"
+              title={`Responsáveis: ${t.responsaveis.join(", ")}`}
+            >
+              {t.responsaveis.slice(0, 3).map((r) => (
+                <AvatarUsuario
+                  key={r}
+                  login={r}
+                  tamanho="xs"
+                  className="ring-1 ring-card"
+                />
+              ))}
+              {t.responsaveis.length > 3 && (
+                <span className="text-[9px] font-semibold text-muted-foreground pl-1">
+                  +{t.responsaveis.length - 3}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
     </>

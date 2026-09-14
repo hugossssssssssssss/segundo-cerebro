@@ -23,8 +23,11 @@ import {
   Edit3,
   Copy,
   Globe,
+  User,
+  CheckCircle2,
 } from "lucide-react";
 import { lerConfig, configCompleta } from "@/lib/settings";
+import { lerPerfilLocal } from "@/lib/usuario";
 import { carregarRepo, type ItemRepo, invalidarCache } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
 import { lerMarkdown, escreverMarkdown, tituloProvavel, nomeLivre } from "@/lib/markdown";
@@ -73,7 +76,7 @@ export interface CompromissoSemana {
   corHex?: string;
 }
 
-type AbaInbox = "agenda" | "rascunhos";
+type AbaInbox = "agenda" | "para_mim" | "rascunhos";
 
 const ESTILOS_TIPO: Record<string, { border: string; bg: string; text: string; badgeBg: string; rotulo: string }> = {
   tarefa: {
@@ -917,6 +920,36 @@ export default function Inbox() {
 
   const hoje = new Date();
   const [diaSelecionadoMobile, setDiaSelecionadoMobile] = useState<string | "todos">("todos");
+  const [filtroParaMim, setFiltroParaMim] = useState<"pendentes" | "concluidos" | "todos">("pendentes");
+
+  const loginUsuario = useMemo(() => {
+    const perfil = lerPerfilLocal();
+    return (perfil?.login || cfg.repoOwner || "").toLowerCase().trim();
+  }, [cfg.repoOwner]);
+
+  const itensParaMim = useMemo(() => {
+    if (!loginUsuario) return [];
+    return todosCompromissos.filter((c: CompromissoSemana) => {
+      const responsaveis = Array.isArray(c.dados?.responsaveis)
+        ? c.dados.responsaveis.map((r: any) => String(r).toLowerCase().trim().replace(/^@/, ""))
+        : typeof c.dados?.responsaveis === "string"
+          ? [c.dados.responsaveis.toLowerCase().trim().replace(/^@/, "")]
+          : [];
+
+      const responsavelUnico = String(c.dados?.responsavel || "").toLowerCase().trim().replace(/^@/, "");
+      const autor = String(c.dados?.autor || c.dados?.criado_por || "").toLowerCase().trim().replace(/^@/, "");
+
+      const ehResponsavel = responsaveis.includes(loginUsuario) || responsavelUnico === loginUsuario;
+      const ehMencionado = c.corpo ? c.corpo.toLowerCase().includes(`@${loginUsuario}`) : false;
+      const ehAutor = autor === loginUsuario;
+
+      return ehResponsavel || ehMencionado || ehAutor;
+    });
+  }, [todosCompromissos, loginUsuario]);
+
+  const totalParaMim = useMemo(() => {
+    return itensParaMim.filter((c: CompromissoSemana) => !c.concluido).length;
+  }, [itensParaMim]);
 
   // Dividindo os dias em dias úteis (Seg-Qui) e fim da semana (Sex-Dom) para grade ampla balanceada
   const diasLinha1 = diasDaSemana.slice(0, 4); // Seg, Ter, Qua, Qui
@@ -927,7 +960,7 @@ export default function Inbox() {
       {/* 1. Cabeçalho Minimalista da Agenda Semanal & Rascunhos */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2.5 pb-3 border-b border-border/40">
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Seletor de Abas: Agenda Semanal vs Rascunhos Offline */}
+          {/* Seletor de Abas: Agenda Semanal vs Para Mim vs Rascunhos Offline */}
           <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 shadow-2xs">
             <button
               type="button"
@@ -941,6 +974,32 @@ export default function Inbox() {
             >
               <Calendar size={13} />
               <span>Agenda da Semana</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAbaAtiva("para_mim")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer",
+                abaAtiva === "para_mim"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <User size={13} />
+              <span>Para Mim</span>
+              {totalParaMim > 0 && (
+                <span
+                  className={cn(
+                    "px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono",
+                    abaAtiva === "para_mim"
+                      ? "bg-primary-foreground text-primary"
+                      : "bg-primary/15 text-primary"
+                  )}
+                >
+                  {totalParaMim}
+                </span>
+              )}
             </button>
 
             <button
@@ -1621,6 +1680,149 @@ export default function Inbox() {
             </div>
           </div>
         )
+      )}
+
+      {/* ABA: Para Mim (Itens atribuídos ao usuário ou que o mencionam) */}
+      {abaAtiva === "para_mim" && (
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl border border-border/70 bg-card/60 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div>
+                <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <User size={16} className="text-primary" />
+                  <span>Pendências & Tarefas Atribuídas a Você</span>
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Itens em que você é responsável direto, autor ou foi mencionado (@{loginUsuario}).
+                </p>
+              </div>
+
+              {/* Filtro simples: Pendentes vs Concluídos vs Todos */}
+              <div className="flex items-center gap-1 bg-secondary/50 p-0.5 rounded-xl border border-border/60 self-start sm:self-auto">
+                {(
+                  [
+                    { id: "pendentes", rotulo: `Pendentes (${itensParaMim.filter((c: CompromissoSemana) => !c.concluido).length})` },
+                    { id: "concluidos", rotulo: "Concluídos" },
+                    { id: "todos", rotulo: `Todos (${itensParaMim.length})` },
+                  ] as const
+                ).map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setFiltroParaMim(f.id)}
+                    className={cn(
+                      "text-xs px-2.5 py-1 rounded-lg transition-all font-medium cursor-pointer",
+                      filtroParaMim === f.id
+                        ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+                    )}
+                  >
+                    {f.rotulo}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {(() => {
+              const filtrados = itensParaMim.filter((item: CompromissoSemana) => {
+                if (filtroParaMim === "pendentes") return !item.concluido;
+                if (filtroParaMim === "concluidos") return item.concluido;
+                return true;
+              });
+
+              if (filtrados.length === 0) {
+                return (
+                  <div className="text-center py-12 space-y-2">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 text-primary mx-auto flex items-center justify-center">
+                      <CheckCircle2 size={20} />
+                    </div>
+                    <p className="text-xs font-bold text-foreground">Tudo em dia!</p>
+                    <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
+                      {filtroParaMim === "pendentes"
+                        ? "Você não possui nenhuma pendência ou tarefa pendente atribuída no momento."
+                        : "Nenhum item encontrado para este filtro."}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+                  {filtrados.map((item: CompromissoSemana) => {
+                    const estilo = ESTILOS_TIPO[item.tipo] || ESTILOS_TIPO.tarefa;
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => abrirDocumento(item)}
+                        className={cn(
+                          "p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2 text-xs shadow-2xs hover:shadow-minimal-hover group",
+                          estilo.bg,
+                          estilo.border,
+                          item.concluido && "opacity-60"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2 min-w-0 flex-1">
+                            {item.tipo === "tarefa" && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  alternarConclusaoTarefa(item);
+                                }}
+                                className="mt-0.5 text-muted-foreground hover:text-emerald-500 cursor-pointer shrink-0 transition-colors"
+                                title={item.concluido ? "Reabrir tarefa" : "Concluir tarefa"}
+                              >
+                                {item.concluido ? (
+                                  <CheckCircle2 size={16} className="text-emerald-500" />
+                                ) : (
+                                  <div className="w-4 h-4 rounded-full border border-muted-foreground/50 hover:border-emerald-500" />
+                                )}
+                              </button>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={cn(
+                                  "font-semibold text-foreground truncate",
+                                  item.concluido && "line-through text-muted-foreground"
+                                )}
+                              >
+                                {item.titulo}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <span className={cn("px-1.5 py-0.2 rounded text-[10px] font-medium", estilo.badgeBg)}>
+                                  {estilo.rotulo}
+                                </span>
+                                {item.dataBr && (
+                                  <span
+                                    className={cn(
+                                      "text-[10px]",
+                                      item.atrasado
+                                        ? "text-rose-500 font-semibold"
+                                        : "text-muted-foreground"
+                                    )}
+                                  >
+                                    Prazo: {item.dataBr}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <MenuAcoesCompromisso
+                            onEditar={() => abrirDocumento(item)}
+                            onDuplicar={() => duplicarDocumento(item)}
+                            onExcluir={() => setItemParaExcluir(item)}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
       )}
 
       {/* 4. ABA 2: Rascunhos Offline & Fila de Sincronização */}

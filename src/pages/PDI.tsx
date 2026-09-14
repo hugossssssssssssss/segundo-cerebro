@@ -40,6 +40,7 @@ import { carregarRepo, invalidarCache } from "@/lib/repo";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import { toast } from "@/lib/toast";
 import { ModalDossieCarreira } from "@/components/ModalDossieCarreira";
+import { obterWorkspaceAtivo, alternarWorkspace } from "@/lib/workspaces";
 import { TagChip } from "@/components/TagChip";
 import type { Tarefa } from "@/lib/tarefas";
 import { CheckCircle2, Circle } from "lucide-react";
@@ -990,6 +991,35 @@ export default function PDI() {
           </Link>
         }
       />
+    );
+  }
+
+  const workspaceAtivo = obterWorkspaceAtivo();
+  if (workspaceAtivo.tipo === "equipe") {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-200">
+        <CabecalhoPagina
+          titulo="Plano de Desenvolvimento Individual (PDI)"
+          descricao="O PDI é uma ferramenta pessoal de carreira e evolução profissional."
+          icone={<Target size={20} />}
+          corIcone="bg-teal-500/10 text-teal-600 dark:text-teal-400"
+        />
+        <Vazio
+          icone={<Target size={32} className="text-teal-500" />}
+          titulo="O PDI é reservado ao seu Espaço Pessoal"
+          descricao="O Plano de Desenvolvimento Individual guarda suas metas de carreira, feedbacks e conquistas pessoais. No espaço compartilhado da equipe, ele fica oculto para preservar sua privacidade."
+          acao={
+            <Botao
+              variante="primario"
+              onClick={() => {
+                alternarWorkspace("pessoal");
+              }}
+            >
+              Alternar para Espaço Pessoal
+            </Botao>
+          }
+        />
+      </div>
     );
   }
 
