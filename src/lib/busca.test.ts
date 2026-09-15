@@ -126,6 +126,19 @@ describe("buscar", () => {
     expect(buscar(outro, "assunto")[0].titulo).toBe("Assunto Novo");
     expect(buscar(acervo, "acme")[0].titulo).toBe("Briefing Acme");
   });
+
+  it("encontra itens pelo autor criadoPor ou responsável", () => {
+    const acervoEquipe = [
+      item("notas/diretriz.md", "---\ntitulo: Guia de Marca\ncriado_por: mariadesign\nresponsaveis: [hugosilva, carlos]\n---\n\nDiretrizes visuais."),
+    ];
+    const rAutor = buscar(acervoEquipe, "mariadesign");
+    expect(rAutor).toHaveLength(1);
+    expect(rAutor[0].titulo).toBe("Guia de Marca");
+
+    const rResp = buscar(acervoEquipe, "carlos");
+    expect(rResp).toHaveLength(1);
+    expect(rResp[0].titulo).toBe("Guia de Marca");
+  });
 });
 
 describe("buscarFerramentas", () => {

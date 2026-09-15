@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { TagChip } from "@/components/TagChip";
 import { Tooltip } from "@/components/ui/tooltip";
+import { AvatarUsuario } from "@/components/AvatarUsuario";
 import { cn } from "@/lib/utils";
 import { renderizarMarkdownInline, prepararSnippetPreview } from "@/lib/markdownInline";
 import type { Nota } from "@/lib/tipos";
@@ -248,8 +249,43 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
             </div>
           </div>
 
-          {/* Lado Direito: Tags + Data + Ações */}
+          {/* Lado Direito: Membros + Tags + Data + Ações */}
           <div className="flex items-center gap-3 shrink-0">
+            {((nota.responsaveis && nota.responsaveis.length > 0) || nota.criadoPor) && (
+              <div
+                className="flex items-center -space-x-1 shrink-0"
+                title={
+                  nota.responsaveis && nota.responsaveis.length > 0
+                    ? `Responsáveis: ${nota.responsaveis.join(", ")}`
+                    : `Criado por: ${nota.criadoPor}`
+                }
+              >
+                {nota.responsaveis && nota.responsaveis.length > 0 ? (
+                  nota.responsaveis.slice(0, 2).map((r) => (
+                    <AvatarUsuario
+                      key={r}
+                      login={r}
+                      tamanho="xs"
+                      className="ring-1 ring-background"
+                    />
+                  ))
+                ) : (
+                  nota.criadoPor && (
+                    <AvatarUsuario
+                      login={nota.criadoPor}
+                      tamanho="xs"
+                      className="ring-1 ring-background"
+                    />
+                  )
+                )}
+                {nota.responsaveis && nota.responsaveis.length > 2 && (
+                  <span className="text-[9px] font-semibold text-muted-foreground pl-1">
+                    +{nota.responsaveis.length - 2}
+                  </span>
+                )}
+              </div>
+            )}
+
             {temTags && (
               <div className="hidden lg:flex items-center gap-1">
                 {nota.tags.slice(0, 2).map((t) => (
@@ -486,20 +522,59 @@ export const CartaoNotaVisual = React.forwardRef<HTMLDivElement, CartaoNotaVisua
 
         {/* Rodapé do Cartão */}
         <div className="mt-4 pt-3 border-t border-border/40 flex flex-col gap-2">
-          {/* Tags */}
-          {temTags && (
-            <div className="flex items-center gap-1 flex-wrap">
-              {nota.tags.slice(0, 3).map((t) => (
-                <TagChip
-                  key={t}
-                  tag={t}
-                  aoClicar={aoFiltrarTag ? () => aoFiltrarTag(t) : undefined}
-                />
-              ))}
-              {nota.tags.length > 3 && (
-                <span className="text-[9px] text-muted-foreground font-semibold px-1 py-0.5 rounded bg-secondary">
-                  +{nota.tags.length - 3}
-                </span>
+          {/* Tags e Membros */}
+          {(temTags || (nota.responsaveis && nota.responsaveis.length > 0) || nota.criadoPor) && (
+            <div className="flex items-center justify-between gap-1 flex-wrap">
+              {temTags && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {nota.tags.slice(0, 3).map((t) => (
+                    <TagChip
+                      key={t}
+                      tag={t}
+                      aoClicar={aoFiltrarTag ? () => aoFiltrarTag(t) : undefined}
+                    />
+                  ))}
+                  {nota.tags.length > 3 && (
+                    <span className="text-[9px] text-muted-foreground font-semibold px-1 py-0.5 rounded bg-secondary">
+                      +{nota.tags.length - 3}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {((nota.responsaveis && nota.responsaveis.length > 0) || nota.criadoPor) && (
+                <div
+                  className="flex items-center -space-x-1 ml-auto shrink-0 py-0.5"
+                  title={
+                    nota.responsaveis && nota.responsaveis.length > 0
+                      ? `Responsáveis: ${nota.responsaveis.join(", ")}`
+                      : `Criado por: ${nota.criadoPor}`
+                  }
+                >
+                  {nota.responsaveis && nota.responsaveis.length > 0 ? (
+                    nota.responsaveis.slice(0, 3).map((r) => (
+                      <AvatarUsuario
+                        key={r}
+                        login={r}
+                        tamanho="xs"
+                        className="ring-1 ring-card"
+                      />
+                    ))
+                  ) : (
+                    nota.criadoPor && (
+                      <AvatarUsuario
+                        login={nota.criadoPor}
+                        tamanho="xs"
+                        className="ring-1 ring-card"
+                      />
+                    )
+                  )}
+                  {nota.responsaveis && nota.responsaveis.length > 3 && (
+                    <span className="text-[9px] font-semibold text-muted-foreground pl-1">
+                      +{nota.responsaveis.length - 3}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           )}

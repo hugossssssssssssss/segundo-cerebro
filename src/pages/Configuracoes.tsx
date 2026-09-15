@@ -41,6 +41,7 @@ import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
 import { obterWorkspaceAtivo } from "@/lib/workspaces";
 import { PainelGestaoEquipe } from "@/components/PainelGestaoEquipe";
+import { GerenciadorWorkspaces } from "@/components/GerenciadorWorkspaces";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
 import { Botao, Campo, Cartao, Rotulo, Aviso, ModalConfirmacao } from "@/components/ui";
@@ -1042,6 +1043,9 @@ export default function Configuracoes() {
       {/* ========================================================= */}
       {abaAtiva === "github" && (
         <div className="space-y-5 animate-in fade-in duration-150">
+          {/* Gerenciador de Múltiplos Workspaces */}
+          <GerenciadorWorkspaces aoAlterarWorkspace={() => setCfg(lerConfig())} />
+
           {/* Cartão Credenciais e Conexão do GitHub */}
           <Cartao className="p-5 space-y-4">
             <div className="flex items-center justify-between gap-3 pb-2 border-b border-border/60">

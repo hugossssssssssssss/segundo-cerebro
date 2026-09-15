@@ -113,6 +113,10 @@ export function ficharItem(item: ItemRepo): Fichado {
     typeof d.descricao === "string" ? d.descricao : "",
     typeof d.indicador === "string" ? d.indicador : "",
     typeof d.porque === "string" ? d.porque : "",
+    typeof d.criado_por === "string" ? d.criado_por : typeof d.criadoPor === "string" ? d.criadoPor : "",
+    typeof d.atualizado_por === "string" ? d.atualizado_por : typeof d.atualizadoPor === "string" ? d.atualizadoPor : "",
+    ...comoLista(d.responsaveis || d.responsavel || d.membros).flatMap((r) => [r, r.replace(/^@/, "")]),
+    ...comoLista(d.participantes).flatMap((p) => [p, p.replace(/^@/, "")]),
   ]
     .filter(Boolean)
     .join(" ");

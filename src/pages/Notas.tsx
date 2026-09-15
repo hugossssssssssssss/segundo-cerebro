@@ -18,6 +18,8 @@ import {
   FolderInput,
   Tags,
   Pencil,
+  User,
+  Users,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { BarraAcoesLote, BotaoAcaoLote } from "@/components/BarraAcoesLote";
@@ -28,6 +30,8 @@ import {
   type TemplateItem,
 } from "@/lib/templates";
 import { lerConfig, configCompleta } from "@/lib/settings";
+import { lerPerfilLocal } from "@/lib/usuario";
+import { obterWorkspaceAtivo } from "@/lib/workspaces";
 import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
@@ -1119,9 +1123,27 @@ export default function Notas() {
       { id: "criado_em", rotulo: "Criado em", tipo: "data" },
       { id: "atualizado_em", rotulo: "Última edição em", tipo: "data" },
       { id: "criado_por", rotulo: "Criado por", tipo: "texto" },
+      { id: "responsaveis", rotulo: "Responsáveis", tipo: "tags" },
       { id: "caminho", rotulo: "Pasta / Caminho", tipo: "texto" },
     ];
   }, [todasTags]);
+
+  type FiltroEquipeNotas = "todas" | "minhas" | "equipe";
+  const [filtroEquipe, setFiltroEquipe] = useState<FiltroEquipeNotas>("todas");
+  const perfilUsuario = useMemo(() => lerPerfilLocal(), []);
+  const workspaceAtivo = useMemo(() => obterWorkspaceAtivo(), []);
+  const usuarioAtual = useMemo(() => {
+    return (perfilUsuario?.login || cfg.repoOwner || "").toLowerCase().trim().replace(/^@/, "");
+  }, [perfilUsuario, cfg.repoOwner]);
+
+  const temColaboracaoNotas = useMemo(() => {
+    if (workspaceAtivo.tipo === "equipe") return true;
+    return todasNotas.some((n) => {
+      const resp = n.responsaveis || [];
+      const criador = n.criadoPor ? n.criadoPor.toLowerCase().replace(/^@/, "") : "";
+      return resp.length > 0 || (criador && criador !== usuarioAtual);
+    });
+  }, [workspaceAtivo.tipo, todasNotas, usuarioAtual]);
 
   const visiveis = useMemo(() => {
     let lista = naPasta.filter((a) => {
@@ -1129,12 +1151,29 @@ export default function Notas() {
       return correspondeBusca(titulo, busca) || correspondeBusca(a.corpo, busca);
     });
 
+    if (filtroEquipe === "minhas") {
+      lista = lista.filter((n) => {
+        const criador = (n.criadoPor || (n.bruto?.criado_por as string) || "").toLowerCase().replace(/^@/, "");
+        const ehAutor = criador === usuarioAtual;
+        const ehResp = (n.responsaveis || []).some((r) => r.toLowerCase().replace(/^@/, "") === usuarioAtual);
+        return ehAutor || ehResp;
+      });
+    } else if (filtroEquipe === "equipe") {
+      lista = lista.filter((n) => {
+        const criador = (n.criadoPor || (n.bruto?.criado_por as string) || "").toLowerCase().replace(/^@/, "");
+        const autorOutro = criador && criador !== usuarioAtual;
+        const respOutro = (n.responsaveis || []).some((r) => r.toLowerCase().replace(/^@/, "") !== usuarioAtual);
+        return autorOutro || respOutro;
+      });
+    }
+
     lista = filtrarItensPorRegras(lista, regrasFiltro, (item, propId) => {
       if (propId === "titulo" || propId === "nome") return titulos[item.caminho] ?? item.titulo ?? item.caminho;
       if (propId === "tags") return item.tags || [];
       if (propId === "criado_em") return item.bruto?.criado || item.bruto?.criado_em || dataDoNome(item.caminho);
       if (propId === "atualizado_em") return item.atualizado || item.bruto?.atualizado;
       if (propId === "criado_por") return item.bruto?.autor || item.bruto?.criado_por;
+      if (propId === "responsaveis") return item.responsaveis || item.bruto?.responsaveis || [];
       if (propId === "caminho") return item.caminho;
       return (item as any)[propId] || item.bruto?.[propId];
     });
@@ -1154,7 +1193,7 @@ export default function Notas() {
     });
 
     return lista;
-  }, [naPasta, titulos, busca, regrasFiltro]);
+  }, [naPasta, titulos, busca, regrasFiltro, filtroEquipe, usuarioAtual]);
 
   const aplicarFiltroTag = useCallback((tag: string) => {
     const nomeLimpo = tag.startsWith("#") ? tag.slice(1).trim() : tag.trim();
@@ -1452,11 +1491,39 @@ export default function Notas() {
           aoMudarBusca={setBusca}
           placeholderBusca="Buscar nota por título ou conteúdo..."
           filtros={
-            <BarraFiltrosAvancados
-              propriedadesDisponiveis={propriedadesDisponiveis}
-              regras={regrasFiltro}
-              aoMudarRegras={setRegrasFiltro}
-            />
+            <div className="flex items-center gap-2 flex-wrap">
+              {temColaboracaoNotas && (
+                <div className="flex items-center gap-1 bg-secondary/50 p-0.5 rounded-xl border border-border/60 shrink-0">
+                  {(
+                    [
+                      { id: "todas", rotulo: "Todas", icone: null },
+                      { id: "minhas", rotulo: "Minhas", icone: <User size={12} className="shrink-0 text-indigo-500" /> },
+                      { id: "equipe", rotulo: "Equipe", icone: <Users size={12} className="shrink-0 text-sky-500" /> },
+                    ] as const
+                  ).map((op) => (
+                    <button
+                      key={op.id}
+                      type="button"
+                      onClick={() => setFiltroEquipe(op.id)}
+                      className={cn(
+                        "text-xs px-2.5 py-1 rounded-lg transition-all font-medium cursor-pointer flex items-center gap-1.5",
+                        filtroEquipe === op.id
+                          ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+                      )}
+                    >
+                      {op.icone}
+                      <span>{op.rotulo}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <BarraFiltrosAvancados
+                propriedadesDisponiveis={propriedadesDisponiveis}
+                regras={regrasFiltro}
+                aoMudarRegras={setRegrasFiltro}
+              />
+            </div>
           }
           acoes={
             <AlternadorVisao<ModoLayoutNotas>
@@ -2082,18 +2149,24 @@ export default function Notas() {
           corpo={aberta.corpo}
           setCorpo={(c) => setAberta({ ...aberta, corpo: c })}
           caminhoItem={aberta.caminho}
-          dadosProps={{ ...aberta.bruto, titulo: aberta.titulo }}
+          dadosProps={{
+            ...aberta.bruto,
+            titulo: aberta.titulo,
+            responsaveis: aberta.responsaveis || (aberta.bruto?.responsaveis as string[]) || [],
+          }}
           onChangeProps={(novosDados) =>
             setAberta({
               ...aberta,
               bruto: novosDados,
               tags: comoLista(novosDados.tags),
               tipo: (novosDados.tipo as any) || aberta.tipo,
+              responsaveis: comoLista(novosDados.responsaveis || novosDados.membros),
             })
           }
           camposFixosProps={{
             tipo: { icone: <FileText className="h-4 w-4 opacity-50 text-orange-500" />, tipo: "select", opcoes: ["nota", "referencia", "rascunho"] },
             tags: { icone: <Tag className="h-4 w-4 opacity-50 text-amber-500" />, tipo: "tags" },
+            responsaveis: { icone: <Users className="h-4 w-4 opacity-50 text-sky-500" />, tipo: "membros" },
           }}
           salvando={salvando}
           temMudancas={mudou}
