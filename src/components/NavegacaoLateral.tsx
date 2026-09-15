@@ -226,14 +226,15 @@ export function NavegacaoLateral({
           </div>
         </div>
 
-        {/* Seletor de Espaço na Sidebar (quando expandida) */}
-        <div
-          className={cn(
-            "px-3 pt-2 pb-0.5 transition-sidebar-content shrink-0",
-            !visualmenteExpandida ? "opacity-0 pointer-events-none h-0 p-0 overflow-hidden" : "opacity-100"
-          )}
-        >
-          <SeletorWorkspace className="w-full [&>button]:w-full [&>button]:justify-between" />
+        {/* Seletor de Espaço na Sidebar (expandida ou compacta quando recolhida) */}
+        <div className="px-2 pt-2 pb-0.5 shrink-0 flex items-center justify-center">
+          <SeletorWorkspace
+            compacto={!visualmenteExpandida}
+            className={cn(
+              "transition-all duration-200",
+              visualmenteExpandida ? "w-full [&>button]:w-full [&>button]:justify-between" : ""
+            )}
+          />
         </div>
 
         {/* Corpo da Navegação */}

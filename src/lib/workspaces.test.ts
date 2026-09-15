@@ -74,4 +74,35 @@ describe("workspaces.ts - Gestão de Múltiplos Espaços", () => {
     expect(removido).toBe(true);
     expect(obterWorkspaceAtivo().id).toBe("pessoal");
   });
+
+  it("ofusca tokens de workspaces e restaura token global base ao alternar de volta", async () => {
+    // Configura token global pessoal base
+    const { salvarConfig, lerConfig, PADRAO } = await import("./settings");
+    salvarConfig({ ...PADRAO, githubToken: "ghp_token_pessoal_hugo", repoOwner: "hugo", repoName: "dados" });
+
+    // Cria workspace de equipe com token específico da organização
+    const wsEquipe: WorkspaceConfig = {
+      id: "organizacao",
+      nome: "Equipe Org",
+      tipo: "equipe",
+      repoOwner: "empresa-acme",
+      repoName: "dados-equipe",
+      branch: "main",
+      githubToken: "ghp_token_especifico_equipe",
+    };
+    salvarWorkspace(wsEquipe);
+
+    // Verifica se não salvou o token em texto puro no localStorage
+    const rawWorkspaces = localStorage.getItem("segundo-cerebro:workspaces");
+    expect(rawWorkspaces).not.toContain("ghp_token_especifico_equipe");
+    expect(rawWorkspaces).toContain("enc_");
+
+    // Alterna para o workspace da organização
+    alternarWorkspace("organizacao");
+    expect(lerConfig().githubToken).toBe("ghp_token_especifico_equipe");
+
+    // Alterna de volta para o workspace pessoal (que herda o token global base)
+    alternarWorkspace("pessoal");
+    expect(lerConfig().githubToken).toBe("ghp_token_pessoal_hugo");
+  });
 });

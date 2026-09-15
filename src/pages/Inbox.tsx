@@ -1898,6 +1898,9 @@ export default function Inbox() {
 
                         <p className="text-[11px] text-muted-foreground">
                           Salvo em: {dataCriacaoBr} • Ação: {r.acao === "apagar" ? "Exclusão" : "Gravação"}
+                          {r.repoOwner && r.repoName && (
+                            <span> • Destino: <strong className="font-mono text-[10px] text-foreground">{r.repoOwner}/{r.repoName}</strong></span>
+                          )}
                         </p>
 
                         {r.ultimoErro && (

@@ -100,6 +100,55 @@ describe("offlineQueue", () => {
     spyGravar.mockRestore();
     spyLer.mockRestore();
   });
+
+  it("garante que a sincronização envie o rascunho para o repositório de origem, mesmo se o workspace ativo mudou", async () => {
+    const { sincronizarFilaOffline } = await import("./offlineQueue");
+    const github = await import("./github");
+
+    const spyGravar = vi.spyOn(github, "gravar").mockResolvedValue("sha-novo-gravado");
+
+    // Salva rascunho pessoal
+    salvarRascunhoLocal(
+      "notas/ideia-pessoal.md",
+      "# Minha Ideia Secreta",
+      undefined,
+      undefined,
+      false,
+      "gravar",
+      { repoOwner: "hugo-pessoal", repoName: "dados-pessoais", branch: "main", textoBase: "# Base Inicial" },
+    );
+
+    // Configuração ATIVA mudou para o repositório da equipe
+    const cfgAtivoEquipe = {
+      githubToken: "token-equipe",
+      repoOwner: "empresa-alfa",
+      repoName: "dados-equipe",
+      branch: "main",
+      nomeUsuario: "",
+      profissaoUsuario: "",
+      onboardingConcluido: true,
+      geminiKey: "",
+      geminiModel: "",
+    };
+
+    const res = await sincronizarFilaOffline(cfgAtivoEquipe);
+    expect(res.concluidos).toBe(1);
+
+    // O spyGravar DEVE ter sido chamado com repoOwner e repoName do rascunho pessoal (NÃO da equipe!)
+    expect(spyGravar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repoOwner: "hugo-pessoal",
+        repoName: "dados-pessoais",
+      }),
+      "notas/ideia-pessoal.md",
+      "# Minha Ideia Secreta",
+      undefined,
+      undefined,
+      "# Base Inicial",
+    );
+
+    spyGravar.mockRestore();
+  });
 });
 
 

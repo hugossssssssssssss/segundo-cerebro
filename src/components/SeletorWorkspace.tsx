@@ -42,6 +42,7 @@ export function SeletorWorkspace({ className, compacto = false }: SeletorWorkspa
   const [novoOwner, setNovoOwner] = useState("");
   const [novoRepo, setNovoRepo] = useState("");
   const [novaBranch, setNovaBranch] = useState("main");
+  const [novoToken, setNovoToken] = useState("");
   const [erroForm, setErroForm] = useState("");
 
   const sincronizar = () => {
@@ -95,6 +96,7 @@ export function SeletorWorkspace({ className, compacto = false }: SeletorWorkspa
       repoOwner: novoOwner.trim(),
       repoName: novoRepo.trim(),
       branch: novaBranch.trim() || "main",
+      githubToken: novoToken.trim() || undefined,
       cor: novoTipo === "equipe" ? "#10b981" : "#6366f1",
     };
 
@@ -105,6 +107,7 @@ export function SeletorWorkspace({ className, compacto = false }: SeletorWorkspa
     setNovoOwner("");
     setNovoRepo("");
     setNovaBranch("main");
+    setNovoToken("");
     setErroForm("");
   };
 
@@ -303,6 +306,22 @@ export function SeletorWorkspace({ className, compacto = false }: SeletorWorkspa
                     required
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                  Token do GitHub (opcional)
+                </label>
+                <input
+                  type="password"
+                  placeholder="Deixe em branco para usar seu token padrão do Klaus"
+                  value={novoToken}
+                  onChange={(e) => setNovoToken(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-background border border-border/70 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40 font-mono text-xs"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Recomendado caso este repositório pertença a outra conta ou organização que exija token específico.
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3">

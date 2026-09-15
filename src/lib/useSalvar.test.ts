@@ -33,7 +33,6 @@ vi.mock("./lixeira", () => ({
 
 import { atualizarCacheLocal, removerDoCacheLocal } from "./repo";
 import { salvarRascunhoLocal, obterRascunhosLocais } from "./offlineQueue";
-import { moverParaLixeira } from "./lixeira";
 
 const cfg: Settings = {
   githubToken: "tok",
@@ -66,7 +65,15 @@ describe("useSalvar — salvarTexto", () => {
     });
 
     expect(devolvido).toBe("sha-antigo");
-    expect(salvarRascunhoLocal).toHaveBeenCalledWith("notas/a.md", "texto", "sha-antigo", undefined, false, "gravar");
+    expect(salvarRascunhoLocal).toHaveBeenCalledWith(
+      "notas/a.md",
+      "texto",
+      "sha-antigo",
+      undefined,
+      false,
+      "gravar",
+      expect.objectContaining({ repoOwner: "hugo", repoName: "dados" })
+    );
     expect(atualizarCacheLocal).toHaveBeenCalledWith("notas/a.md", "texto", expect.any(Object), "sha-antigo");
   });
 
@@ -79,7 +86,15 @@ describe("useSalvar — salvarTexto", () => {
     });
 
     expect(devolvido).toContain("temp_");
-    expect(salvarRascunhoLocal).toHaveBeenCalledWith("notas/a.md", "texto", undefined, undefined, false, "gravar");
+    expect(salvarRascunhoLocal).toHaveBeenCalledWith(
+      "notas/a.md",
+      "texto",
+      undefined,
+      undefined,
+      false,
+      "gravar",
+      expect.objectContaining({ repoOwner: "hugo", repoName: "dados" })
+    );
     expect(atualizarCacheLocal).toHaveBeenCalledWith("notas/a.md", "texto", expect.any(Object), devolvido);
   });
 
@@ -89,10 +104,23 @@ describe("useSalvar — salvarTexto", () => {
 
     const { result } = renderHook(() => useSalvar(cfg));
     await act(async () => {
-      await result.current.salvarTexto("notas/a.md", "texto", "sha");
+      await result.current.salvarTexto("notas/a.md", "texto", undefined, undefined, false);
     });
 
     expect(ouvinte).toHaveBeenCalledTimes(1);
+    window.removeEventListener("acervo-atualizado", ouvinte);
+  });
+
+  it("não dispara 'acervo-atualizado' se silencioso for true", async () => {
+    const ouvinte = vi.fn();
+    window.addEventListener("acervo-atualizado", ouvinte);
+
+    const { result } = renderHook(() => useSalvar(cfg));
+    await act(async () => {
+      await result.current.salvarTexto("notas/a.md", "texto", undefined, undefined, true);
+    });
+
+    expect(ouvinte).not.toHaveBeenCalled();
     window.removeEventListener("acervo-atualizado", ouvinte);
   });
 
@@ -124,14 +152,18 @@ describe("useSalvar — salvarTexto", () => {
 });
 
 describe("useSalvar — apagarItem e Lixeira", () => {
-  it("move para a lixeira por padrão se o arquivo não estiver nela", async () => {
+  it("apaga um arquivo movendo para .lixeira/ se ainda não estiver na lixeira", async () => {
+    const ouvinte = vi.fn();
+    window.addEventListener("acervo-atualizado", ouvinte);
+
     const { result } = renderHook(() => useSalvar(cfg));
     await act(async () => {
       await result.current.apagarItem("notas/a.md", "sha");
     });
 
-    expect(moverParaLixeira).toHaveBeenCalledWith(cfg, "notas/a.md", "sha");
     expect(removerDoCacheLocal).toHaveBeenCalledWith("notas/a.md");
+    expect(ouvinte).toHaveBeenCalledTimes(1);
+    window.removeEventListener("acervo-atualizado", ouvinte);
   });
 
   it("exclui definitivamente se o arquivo já estiver em .lixeira/", async () => {
@@ -143,7 +175,15 @@ describe("useSalvar — apagarItem e Lixeira", () => {
       await result.current.apagarItem(".lixeira/notas/a.md", "sha");
     });
 
-    expect(salvarRascunhoLocal).toHaveBeenCalledWith(".lixeira/notas/a.md", "", "sha", undefined, false, "apagar");
+    expect(salvarRascunhoLocal).toHaveBeenCalledWith(
+      ".lixeira/notas/a.md",
+      "",
+      "sha",
+      undefined,
+      false,
+      "apagar",
+      expect.objectContaining({ repoOwner: "hugo", repoName: "dados" })
+    );
     expect(removerDoCacheLocal).toHaveBeenCalledWith(".lixeira/notas/a.md");
     expect(ouvinte).toHaveBeenCalledTimes(1);
     window.removeEventListener("acervo-atualizado", ouvinte);
@@ -155,7 +195,15 @@ describe("useSalvar — apagarItem e Lixeira", () => {
       await result.current.apagarDefinitivoItem("tarefas/t.md", "sha");
     });
 
-    expect(salvarRascunhoLocal).toHaveBeenCalledWith("tarefas/t.md", "", "sha", undefined, false, "apagar");
+    expect(salvarRascunhoLocal).toHaveBeenCalledWith(
+      "tarefas/t.md",
+      "",
+      "sha",
+      undefined,
+      false,
+      "apagar",
+      expect.objectContaining({ repoOwner: "hugo", repoName: "dados" })
+    );
     expect(removerDoCacheLocal).toHaveBeenCalledWith("tarefas/t.md");
   });
 });

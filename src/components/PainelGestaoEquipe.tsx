@@ -6,6 +6,8 @@ import {
   Trash2,
   UserCheck,
   UserX,
+  ExternalLink,
+  ShieldCheck,
 } from "lucide-react";
 import { Botao, Campo, Cartao, Rotulo, Aviso, Selo, Carregando, ModalConfirmacao } from "@/components/ui";
 import { AvatarUsuario } from "@/components/AvatarUsuario";
@@ -264,6 +266,29 @@ export function PainelGestaoEquipe() {
               <RefreshCw size={13} className={salvando ? "animate-spin" : ""} />
             </Botao>
           </div>
+        </div>
+
+        {/* Banner Informativo de Transparência e Permissões Técnicas */}
+        <div className="p-3 rounded-xl bg-secondary/40 border border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-start gap-2.5">
+            <ShieldCheck size={16} className="text-primary shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <span className="font-semibold text-foreground">Como funcionam as permissões no Klaus</span>
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                O Klaus opera sem backend, comunicando-se diretamente do seu navegador com a API do GitHub. Os papéis organizam as atribuições e fluxos na interface, enquanto o acesso técnico real de leitura e escrita é configurado nas permissões do repositório no GitHub.
+              </p>
+            </div>
+          </div>
+
+          <a
+            href={`https://github.com/${cfg.repoOwner}/${cfg.repoName}/settings/access`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/70 bg-card hover:bg-accent/70 text-foreground font-medium transition-colors shrink-0 text-xs shadow-2xs"
+          >
+            <span>Colaboradores no GitHub</span>
+            <ExternalLink size={12} className="opacity-70" />
+          </a>
         </div>
 
         {/* Lista de Membros da Equipe */}

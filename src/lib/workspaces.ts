@@ -5,8 +5,9 @@
  * com isolamento de cache e migração transparente das configurações legadas.
  */
 
-import { lerConfig, salvarConfig, type Settings } from "./settings";
+import { lerConfig, salvarConfig, codificarTexto, decodificarTexto, type Settings } from "./settings";
 import { invalidarCache } from "./repo";
+import { dispararAtualizacaoAcervo } from "./eventos";
 
 export interface WorkspaceConfig {
   id: string;
@@ -22,12 +23,40 @@ export interface WorkspaceConfig {
 
 const CHAVE_WORKSPACES = "segundo-cerebro:workspaces";
 const CHAVE_WORKSPACE_ATIVO = "segundo-cerebro:workspace-ativo";
+const CHAVE_TOKEN_GLOBAL_BASE = "segundo-cerebro:token-global-base";
 export const EVENTO_WORKSPACE_ALTERADO = "klaus-workspace-alterado";
+
+/**
+ * Lê o token global base do usuário (definido nas Configurações principais).
+ */
+export function obterTokenGlobalBase(): string {
+  try {
+    const enc = localStorage.getItem(CHAVE_TOKEN_GLOBAL_BASE);
+    if (enc) {
+      const dec = decodificarTexto(enc);
+      if (dec) return dec.trim();
+    }
+  } catch {}
+  return "";
+}
+
+/**
+ * Salva o token global base do usuário de forma ofuscada.
+ */
+export function salvarTokenGlobalBase(token: string): void {
+  if (!token) return;
+  try {
+    localStorage.setItem(CHAVE_TOKEN_GLOBAL_BASE, codificarTexto(token.trim()));
+  } catch {}
+}
 
 /**
  * Cria a configuração padrão a partir do Settings atual.
  */
 function criarWorkspacePessoalPadrao(cfg: Settings): WorkspaceConfig {
+  if (cfg.githubToken) {
+    salvarTokenGlobalBase(cfg.githubToken);
+  }
   return {
     id: "pessoal",
     nome: "Meu Klaus Pessoal",
@@ -48,9 +77,14 @@ export function listarWorkspaces(): WorkspaceConfig[] {
   try {
     const salvo = localStorage.getItem(CHAVE_WORKSPACES);
     if (salvo) {
-      const lista = JSON.parse(salvo);
+      const lista: WorkspaceConfig[] = JSON.parse(salvo);
       if (Array.isArray(lista) && lista.length > 0) {
-        return lista;
+        return lista.map((ws) => {
+          if (ws.githubToken && ws.githubToken.startsWith("enc_")) {
+            return { ...ws, githubToken: decodificarTexto(ws.githubToken.slice(4)) };
+          }
+          return ws;
+        });
       }
     }
   } catch {}
@@ -64,11 +98,22 @@ export function listarWorkspaces(): WorkspaceConfig[] {
 }
 
 /**
- * Salva a lista de workspaces no localStorage.
+ * Salva a lista de workspaces no localStorage, protegendo tokens individuais.
  */
 export function salvarWorkspaces(workspaces: WorkspaceConfig[]): void {
   try {
-    localStorage.setItem(CHAVE_WORKSPACES, JSON.stringify(workspaces));
+    const paraSalvar = workspaces.map((ws) => {
+      if (ws.githubToken) {
+        return {
+          ...ws,
+          githubToken: ws.githubToken.startsWith("enc_")
+            ? ws.githubToken
+            : `enc_${codificarTexto(ws.githubToken)}`,
+        };
+      }
+      return ws;
+    });
+    localStorage.setItem(CHAVE_WORKSPACES, JSON.stringify(paraSalvar));
   } catch {}
 }
 
@@ -115,17 +160,27 @@ export function alternarWorkspace(id: string): boolean {
 
   // Sincroniza as variáveis de repositório nas Settings globais
   const cfg = lerConfig();
+  if (cfg.githubToken && !obterTokenGlobalBase()) {
+    salvarTokenGlobalBase(cfg.githubToken);
+  }
+
+  // Se o workspace de destino não tem token próprio, restaura o token global base
+  const tokenParaUsar = destino.githubToken?.trim() || obterTokenGlobalBase() || cfg.githubToken;
+
   const novaCfg: Settings = {
     ...cfg,
     repoOwner: destino.repoOwner,
     repoName: destino.repoName,
     branch: destino.branch,
-    ...(destino.githubToken ? { githubToken: destino.githubToken } : {}),
+    githubToken: tokenParaUsar,
   };
   salvarConfig(novaCfg);
 
   // Invalida cache de repo para não misturar conteúdos entre repositórios diferentes
   invalidarCache();
+
+  // Dispara atualização reativa do acervo (sem filtro de pasta, atinge todas as telas abertas)
+  dispararAtualizacaoAcervo();
 
   // Dispara evento reativo para recarregar telas e componentes
   if (typeof window !== "undefined") {
@@ -157,14 +212,16 @@ export function salvarWorkspace(ws: WorkspaceConfig): void {
   // Se o workspace salvo for o ativo, sincroniza as Settings
   if (ws.id === obterIdWorkspaceAtivo()) {
     const cfg = lerConfig();
+    const tokenParaUsar = ws.githubToken?.trim() || obterTokenGlobalBase() || cfg.githubToken;
     salvarConfig({
       ...cfg,
       repoOwner: ws.repoOwner,
       repoName: ws.repoName,
       branch: ws.branch,
-      ...(ws.githubToken ? { githubToken: ws.githubToken } : {}),
+      githubToken: tokenParaUsar,
     });
     invalidarCache();
+    dispararAtualizacaoAcervo();
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent(EVENTO_WORKSPACE_ALTERADO, { detail: { workspace: ws } }),

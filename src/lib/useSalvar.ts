@@ -39,6 +39,7 @@ export type EstadoSalvar = {
     sha?: string,
     mensagemCommit?: string,
     silencioso?: boolean,
+    textoBase?: string,
   ) => Promise<string>;
 
   /**
@@ -98,14 +99,21 @@ export function useSalvar(cfgProp?: Settings): EstadoSalvar {
     sha?: string,
     mensagemCommit?: string,
     silencioso = false,
+    textoBase?: string,
   ): Promise<string> {
     setErro("");
     try {
+      const cfg = obterConfigAtual();
       // Se não houver sha (criação), gera um temporário para a Optimistic UI
       const shaFinal = sha || `temp_${Math.random().toString(36).substring(7)}`;
 
-      // 1. Enfileira na Sync Queue local
-      salvarRascunhoLocal(caminho, texto, sha, mensagemCommit, false, "gravar");
+      // 1. Enfileira na Sync Queue local com metadados do workspace de origem
+      salvarRascunhoLocal(caminho, texto, sha, mensagemCommit, false, "gravar", {
+        repoOwner: cfg.repoOwner,
+        repoName: cfg.repoName,
+        branch: cfg.branch,
+        textoBase,
+      });
 
       // 2. Atualiza o cache local em memória imediatamente
       const doc = lerMarkdown(texto);
@@ -121,7 +129,6 @@ export function useSalvar(cfgProp?: Settings): EstadoSalvar {
       }
 
       // 4. Dispara a sincronização real com o GitHub em background
-      const cfg = lerConfig();
       if (configCompleta(cfg) && navigator.onLine) {
         sincronizarFilaOffline(cfg).catch(() => {});
       }
@@ -137,8 +144,13 @@ export function useSalvar(cfgProp?: Settings): EstadoSalvar {
   async function apagarDefinitivoItem(caminho: string, sha: string, silencioso = false): Promise<void> {
     setErro("");
     try {
-      // 1. Enfileira a exclusão na Sync Queue local
-      salvarRascunhoLocal(caminho, "", sha, undefined, false, "apagar");
+      const cfg = obterConfigAtual();
+      // 1. Enfileira a exclusão na Sync Queue local com metadados do repositório
+      salvarRascunhoLocal(caminho, "", sha, undefined, false, "apagar", {
+        repoOwner: cfg.repoOwner,
+        repoName: cfg.repoName,
+        branch: cfg.branch,
+      });
 
       // 2. Remove do cache local em memória imediatamente
       removerDoCacheLocal(caminho);
@@ -153,7 +165,6 @@ export function useSalvar(cfgProp?: Settings): EstadoSalvar {
       }
 
       // 4. Dispara a sincronização real com o GitHub em background
-      const cfg = obterConfigAtual();
       if (configCompleta(cfg) && navigator.onLine) {
         sincronizarFilaOffline(cfg).catch(() => {});
       }
@@ -189,8 +200,12 @@ export function useSalvar(cfgProp?: Settings): EstadoSalvar {
       // 2. Remove imediatamente do cache local ativo original
       removerDoCacheLocal(caminho);
 
-      // 3. Registra na fila de sincronização como exclusão
-      salvarRascunhoLocal(caminho, "", sha, undefined, false, "apagar");
+      // 3. Registra na fila de sincronização como exclusão no repositório correto
+      salvarRascunhoLocal(caminho, "", sha, undefined, false, "apagar", {
+        repoOwner: cfg.repoOwner,
+        repoName: cfg.repoName,
+        branch: cfg.branch,
+      });
 
       if (!silencioso) {
         dispararAtualizacaoAcervo(caminho);

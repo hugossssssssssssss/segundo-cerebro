@@ -35,6 +35,11 @@ export type RascunhoOffline = {
   status?: StatusRascunho;
   ultimoErro?: string;
   acao?: "gravar" | "apagar";
+  repoOwner?: string;
+  repoName?: string;
+  branch?: string;
+  workspaceId?: string;
+  textoBase?: string;
 };
 
 const CHAVE_RASCUNHOS = "klaus:rascunhos_offline";
@@ -114,10 +119,22 @@ export function salvarRascunhoLocal(
   sha?: string,
   mensagemCommit?: string,
   notificarEvent = true,
-  acao: "gravar" | "apagar" = "gravar"
+  acao: "gravar" | "apagar" = "gravar",
+  metadados?: {
+    repoOwner?: string;
+    repoName?: string;
+    branch?: string;
+    workspaceId?: string;
+    textoBase?: string;
+  }
 ): { ok: boolean; rascunho: RascunhoOffline } {
   const rascunhos = obterRascunhosLocais();
   const id = `draft_${caminho.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}`;
+
+  const cfgAtual = lerConfig();
+  const repoOwner = metadados?.repoOwner || cfgAtual.repoOwner || "";
+  const repoName = metadados?.repoName || cfgAtual.repoName || "";
+  const branch = metadados?.branch || cfgAtual.branch || "main";
 
   const novo: RascunhoOffline = {
     id,
@@ -129,6 +146,11 @@ export function salvarRascunhoLocal(
     tentativas: 0,
     status: "pendente",
     acao,
+    repoOwner,
+    repoName,
+    branch,
+    workspaceId: metadados?.workspaceId,
+    textoBase: metadados?.textoBase,
   };
 
   // Coalescing: Substitui qualquer rascunho pendente do mesmo arquivo pelo mais recente
@@ -273,10 +295,18 @@ export async function sincronizarFilaOffline(cfgProp?: Settings, forcar = false)
       atualizarRascunhoLocal({ ...item, status: "sincronizando", ultimoErro: undefined });
       const acao = item.acao || "gravar";
 
+      // Constrói a configuração isolada e garantida para o repositório deste rascunho
+      const cfgItem: Settings = {
+        ...cfg,
+        repoOwner: item.repoOwner || cfg.repoOwner,
+        repoName: item.repoName || cfg.repoName,
+        branch: item.branch || cfg.branch,
+      };
+
       try {
         // Tenta obter o SHA mais recente do cache local em memória
         let shaParaEnviar = item.sha;
-        const cacheExistente = cache || obterCacheExistente(cfg);
+        const cacheExistente = cache || obterCacheExistente(cfgItem);
         const itemCache = cacheExistente?.itens.find((i) => i.caminho === item.caminho);
         if (itemCache && itemCache.sha && !itemCache.sha.startsWith("temp_")) {
           shaParaEnviar = itemCache.sha;
@@ -285,16 +315,23 @@ export async function sincronizarFilaOffline(cfgProp?: Settings, forcar = false)
         if (acao === "apagar") {
           if (!shaParaEnviar || shaParaEnviar.startsWith("temp_")) {
             try {
-              const remoto = await ler(cfg, item.caminho, { silenciar404: true });
+              const remoto = await ler(cfgItem, item.caminho, { silenciar404: true });
               shaParaEnviar = remoto.sha;
             } catch {}
           }
-          await apagar(cfg, item.caminho, shaParaEnviar || "");
+          await apagar(cfgItem, item.caminho, shaParaEnviar || "");
           removerRascunhoLocal(item.id);
           removerDoCacheLocal(item.caminho);
           concluidos++;
         } else {
-          const novoSha = await gravar(cfg, item.caminho, item.texto, shaParaEnviar, item.mensagemCommit);
+          const novoSha = await gravar(
+            cfgItem,
+            item.caminho,
+            item.texto,
+            shaParaEnviar,
+            item.mensagemCommit,
+            item.textoBase,
+          );
           removerRascunhoLocal(item.id);
           
           // Sincroniza o cache em memória com os dados finais reais
@@ -334,10 +371,10 @@ export async function sincronizarFilaOffline(cfgProp?: Settings, forcar = false)
         if (status === 409 || status === 422 || msg.includes("409") || msg.includes("conflito") || msg.includes("does not match")) {
           let resolvidoSemConflito = false;
           try {
-            const remoto = await ler(cfg, item.caminho);
+            const remoto = await ler(cfgItem, item.caminho);
             if (remoto && remoto.sha) {
               if (acao === "apagar") {
-                await apagar(cfg, item.caminho, remoto.sha);
+                await apagar(cfgItem, item.caminho, remoto.sha);
                 removerRascunhoLocal(item.id);
                 removerDoCacheLocal(item.caminho);
                 concluidos++;
@@ -350,11 +387,19 @@ export async function sincronizarFilaOffline(cfgProp?: Settings, forcar = false)
                 concluidos++;
                 resolvidoSemConflito = true;
               } else {
-                // Tenta resolver divergências automaticamente via Auto-Merge 3-Way
+                // Tenta resolver divergências automaticamente via Auto-Merge 3-Way com a base real
                 const { autoMergeDocumentoMarkdown } = await import("./autoMergeMarkdown");
-                const merge = autoMergeDocumentoMarkdown(remoto.texto, item.texto, remoto.texto);
+                const baseReal = item.textoBase !== undefined ? item.textoBase : remoto.texto;
+                const merge = autoMergeDocumentoMarkdown(baseReal, item.texto, remoto.texto);
                 if (merge.sucesso && !merge.teveConflito) {
-                  const novoSha = await gravar(cfg, item.caminho, merge.textoMesclado, remoto.sha, "Auto-merge em segundo plano");
+                  const novoSha = await gravar(
+                    cfgItem,
+                    item.caminho,
+                    merge.textoMesclado,
+                    remoto.sha,
+                    "Auto-merge em segundo plano",
+                    baseReal,
+                  );
                   removerRascunhoLocal(item.id);
                   const doc = lerMarkdown(merge.textoMesclado);
                   atualizarCacheLocal(item.caminho, merge.textoMesclado, doc, novoSha);

@@ -175,7 +175,7 @@ export async function derivarChaveWebCrypto(senha: string, salt: Uint8Array): Pr
   );
 }
 
-function codificarTexto(texto: string): string {
+export function codificarTexto(texto: string): string {
   if (!texto) return "";
   try {
     const bytes = new TextEncoder().encode(texto);
@@ -189,14 +189,17 @@ function codificarTexto(texto: string): string {
   }
 }
 
-function decodificarTexto(b64: string): string {
+export function decodificarTexto(b64: string): string {
   if (!b64) return "";
   try {
     const binario = atob(b64);
-    const bytes = Uint8Array.from(binario, (c) => c.charCodeAt(0));
+    const bytes = new Uint8Array(binario.length);
+    for (let i = 0; i < binario.length; i++) {
+      bytes[i] = binario.charCodeAt(i);
+    }
     const saltBytes = obterSaltSessao();
-    const xorBytes = bytes.map((b, i) => b ^ saltBytes[i % saltBytes.length]);
-    return new TextDecoder().decode(xorBytes);
+    const decBytes = bytes.map((b, i) => b ^ saltBytes[i % saltBytes.length]);
+    return new TextDecoder().decode(decBytes);
   } catch {
     return b64;
   }

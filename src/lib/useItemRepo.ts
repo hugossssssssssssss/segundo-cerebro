@@ -18,6 +18,7 @@ import { carregarRepo, daPasta, arquivosIlegiveis, obterCacheExistente, type Ite
 import { tituloProvavel, lerMarkdown } from "./markdown";
 import { obterRascunhosLocais } from "./offlineQueue";
 import { useAoAtualizarAcervo } from "./eventos";
+import { EVENTO_WORKSPACE_ALTERADO } from "./workspaces";
 import type { Settings } from "./settings";
 import type { Pasta } from "./tipos";
 
@@ -250,6 +251,15 @@ export function useItemRepo<T>(
   // Escuta atualizações do acervo de forma inteligente (com filtro por pasta para eliminar re-renders desnecessários)
   useAoAtualizarAcervo(() => carregar(true), pasta);
 
+  // Recarrega instantaneamente ao alternar entre espaços de trabalho (workspaces)
+  useEffect(() => {
+    const aoMudarWorkspace = () => {
+      carregar(true, true);
+    };
+    window.addEventListener(EVENTO_WORKSPACE_ALTERADO, aoMudarWorkspace);
+    return () => window.removeEventListener(EVENTO_WORKSPACE_ALTERADO, aoMudarWorkspace);
+  }, [carregar]);
+
   const recarregar = useCallback(() => carregar(true, true), [carregar]);
 
   return { itens, acervo, titulos, carregando, erro, ilegiveis, recarregar };
@@ -387,6 +397,15 @@ export function useAcervoRepo(cfg: Settings): EstadoAcervoRepo {
   }, [carregar]);
 
   useAoAtualizarAcervo(() => carregar(true));
+
+  // Recarrega instantaneamente ao alternar entre espaços de trabalho (workspaces)
+  useEffect(() => {
+    const aoMudarWorkspace = () => {
+      carregar(true, true);
+    };
+    window.addEventListener(EVENTO_WORKSPACE_ALTERADO, aoMudarWorkspace);
+    return () => window.removeEventListener(EVENTO_WORKSPACE_ALTERADO, aoMudarWorkspace);
+  }, [carregar]);
 
   const recarregar = useCallback(() => carregar(true, true), [carregar]);
 
