@@ -20,7 +20,10 @@ export default defineConfig({
   resolve: {
     // fileURLToPath e não .pathname: o caminho tem espaço e acento,
     // que .pathname devolveria percent-encoded ("Segundo%20Cere%CC%81bro").
-    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "jepub": fileURLToPath(new URL("./node_modules/jepub/dist/jepub.es.js", import.meta.url)),
+    },
   },
   build: {
     minify: "oxc",

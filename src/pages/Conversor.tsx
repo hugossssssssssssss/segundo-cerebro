@@ -292,8 +292,9 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
       const buffer = await arquivoPdf.arrayBuffer();
       const loadingTask = pdfjsLib.getDocument({
         data: new Uint8Array(buffer),
-        cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+        cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/cmaps/",
         cMapPacked: true,
+        standardFontDataUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/standard_fonts/",
       });
       const pdf = await loadingTask.promise;
       const totalPaginas = pdf.numPages;
@@ -382,8 +383,9 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
       const buffer = await pdfEpubArquivo.arrayBuffer();
       const loadingTask = pdfjsLib.getDocument({
         data: new Uint8Array(buffer),
-        cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+        cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/cmaps/",
         cMapPacked: true,
+        standardFontDataUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/standard_fonts/",
       });
       const pdf = await loadingTask.promise;
       const totalPaginas = pdf.numPages;
@@ -391,8 +393,10 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
       const titulo = pdfEpubTitulo.trim() || pdfEpubArquivo.name.replace(/\.pdf$/i, "");
       const autor = pdfEpubAutor.trim() || "Autor Desconhecido";
 
-      const jepubObj = new jEpub();
+      const JEpubClass = (jEpub as any)?.default || jEpub;
+      const jepubObj = new JEpubClass();
       jepubObj.init({
+        i18n: "pt",
         title: titulo,
         author: autor,
         publisher: "Klaus",
@@ -425,17 +429,19 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
           const paragrafos = textoLimpo
             .split("\n")
             .map((linha) => linha.trim())
-            .filter((linha) => linha.length > 0)
-            .map((linha) => `<p>${escaparHtml(linha)}</p>`)
-            .join("");
+            .filter((linha) => linha.length > 0);
 
-          jepubObj.add(`Página ${i}`, `<h2>Página ${i}</h2>\n${paragrafos}`);
-          paginasValidas++;
+          if (paragrafos.length > 0) {
+            jepubObj.add(`Página ${i}`, paragrafos);
+            paginasValidas++;
+          }
         }
       }
 
       if (paginasValidas === 0) {
-        throw new Error("Nenhum texto legível pôde ser extraído do PDF.");
+        throw new Error(
+          "Nenhum texto legível pôde ser extraído do PDF. Se o documento contiver apenas fotos ou páginas escaneadas, use primeiro a ferramenta de OCR / Reconhecimento de Texto."
+        );
       }
 
       const epubBlob = (await jepubObj.generate("blob")) as Blob;
@@ -459,15 +465,6 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
     } finally {
       setProcessando(false);
     }
-  }
-
-  function escaparHtml(texto: string) {
-    return texto
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
   }
 
   // TROCAR CAPA DE EPUB
