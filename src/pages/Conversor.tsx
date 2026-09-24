@@ -9,6 +9,8 @@ import type { ImagemReferenciada } from "@/lib/epub";
 import {
   reconstruirTextoEParagrafosPdf,
   extrairBlobDeObjetoPdf,
+  agruparPaginasEmCapitulos,
+  type PaginaProcessadaPdf,
 } from "@/lib/conversorPdfTexto";
 import {
   RefreshCw,
@@ -429,13 +431,14 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
 
       let paginasProcessadas = 0;
       let imagensExtraidasTotal = 0;
+      const paginasProcessadasPdf: PaginaProcessadaPdf[] = [];
 
       // 2. Itera sobre cada página do PDF extraindo texto fluido e imagens
       for (let i = 1; i <= totalPaginas; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
 
-        // Reconstrói parágrafos reais, juntando linhas contínuas e eliminando espaços indevidos entre letras
+        // Reconstrói parágrafos reais, ordenando visualmente travessões e reconciliando capitulares
         const paragrafos = reconstruirTextoEParagrafosPdf(textContent.items as any);
 
         // Extrai imagens embutidas nesta página do PDF
@@ -503,10 +506,9 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
         }
 
         if (paragrafos.length > 0 || imagensCapitulo.length > 0) {
-          // ocultarTitulo: true garante que "Página X" NÃO polua o topo do texto no Kindle,
-          // preservando o índice de navegação do e-reader.
-          jepubObj.add(`Página ${i}`, paragrafos, {
-            ocultarTitulo: true,
+          paginasProcessadasPdf.push({
+            numPagina: i,
+            paragrafos,
             imagens: imagensCapitulo,
           });
           paginasProcessadas++;
@@ -517,6 +519,18 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
         throw new Error(
           "Nenhum texto ou conteúdo visual pôde ser extraído do PDF."
         );
+      }
+
+      // 3. Agrupa o fluxo de texto em capítulos reais do livro.
+      // O texto flui continuamente página a página (sem espaço em branco forçado a cada página).
+      // A quebra de página e o espaço em branco só acontecem no final do capítulo.
+      const capitulosDoLivro = agruparPaginasEmCapitulos(paginasProcessadasPdf);
+
+      for (const cap of capitulosDoLivro) {
+        jepubObj.add(cap.titulo, cap.paragrafos, {
+          ocultarTitulo: cap.ocultarTitulo ?? false,
+          imagens: cap.imagens,
+        });
       }
 
       const epubBlob = (await jepubObj.generate("blob")) as Blob;
@@ -534,8 +548,9 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
       await adicionarAoHistorico(nomeFinal, "PDF para EPUB", epubBlob);
       await recarregarHistorico();
 
-      const msgImagens = imagensExtraidasTotal > 0 ? `, com ${imagensExtraidasTotal} imagem(ns) incluída(s)` : "";
-      setMensagemSucesso(`EPUB "${titulo}" gerado com sucesso! ${paginasProcessadas} página(s) processada(s)${msgImagens}.`);
+      const msgCaps = capitulosDoLivro.length > 1 ? ` organizadas em ${capitulosDoLivro.length} capítulos` : "";
+      const msgImagens = imagensExtraidasTotal > 0 ? `, com ${imagensExtraidasTotal} imagem(ns)` : "";
+      setMensagemSucesso(`EPUB "${titulo}" gerado com sucesso! ${paginasProcessadas} página(s) processada(s)${msgCaps}${msgImagens}.`);
     } catch (err: any) {
       setErro(`Erro ao converter PDF para EPUB: ${err.message || "Arquivo inválido ou corrompido"}`);
     } finally {

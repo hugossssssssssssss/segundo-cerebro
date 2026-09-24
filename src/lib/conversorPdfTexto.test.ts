@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { reconstruirTextoEParagrafosPdf } from "./conversorPdfTexto";
-import type { ItemTextoPdf } from "./conversorPdfTexto";
+import {
+  reconstruirTextoEParagrafosPdf,
+  detectarTituloCapitulo,
+  agruparPaginasEmCapitulos,
+} from "./conversorPdfTexto";
+import type { ItemTextoPdf, PaginaProcessadaPdf } from "./conversorPdfTexto";
 
 describe("Reconstrução de parágrafos e espaçamento do PDF", () => {
   it("não adiciona espaços indevidos entre letras ou trechos da mesma palavra", () => {
@@ -39,6 +43,30 @@ describe("Reconstrução de parágrafos e espaçamento do PDF", () => {
     expect(res[0]).toBe("Esta é uma arquitetura moderna.");
   });
 
+  it("reordena travessão emitido fora de ordem no stream do PDF", () => {
+    // No PDF, o texto da fala veio antes na lista, e o travessão veio depois,
+    // mas geometricamente o travessão está à esquerda (x=30 vs x=50).
+    const items: ItemTextoPdf[] = [
+      { str: "Como você se chama? — perguntou ele.", transform: [12, 0, 0, 12, 50, 700], width: 200, height: 12 },
+      { str: "—", transform: [12, 0, 0, 12, 30, 700], width: 10, height: 12 },
+    ];
+
+    const res = reconstruirTextoEParagrafosPdf(items);
+    expect(res[0]).toBe("— Como você se chama? — perguntou ele.");
+  });
+
+  it("reconcilia letra capitular (Drop Cap) inicial separada do parágrafo", () => {
+    // Capitular "O" com fontSize 32pt e Y na linha de base,
+    // seguida do resto da palavra "utro dia acordei cedo"
+    const items: ItemTextoPdf[] = [
+      { str: "O", transform: [32, 0, 0, 32, 40, 700], width: 25, height: 32 },
+      { str: "utro dia acordei cedo e saí para caminhar.", transform: [12, 0, 0, 12, 70, 700], width: 250, height: 12 },
+    ];
+
+    const res = reconstruirTextoEParagrafosPdf(items);
+    expect(res[0]).toBe("Outro dia acordei cedo e saí para caminhar.");
+  });
+
   it("separa parágrafos reais quando há espaçamento vertical maior", () => {
     const items: ItemTextoPdf[] = [
       { str: "Primeiro parágrafo do livro.", transform: [12, 0, 0, 12, 50, 700], width: 150, height: 12 },
@@ -50,5 +78,72 @@ describe("Reconstrução de parágrafos e espaçamento do PDF", () => {
     expect(res.length).toBe(2);
     expect(res[0]).toBe("Primeiro parágrafo do livro.");
     expect(res[1]).toBe("Segundo parágrafo independente.");
+  });
+});
+
+describe("Detecção de capítulos", () => {
+  it("detecta títulos com palavra 'Capítulo' ou 'Chapter'", () => {
+    expect(detectarTituloCapitulo("Capítulo 1: O Início").ehTitulo).toBe(true);
+    expect(detectarTituloCapitulo("CAPÍTULO II").ehTitulo).toBe(true);
+    expect(detectarTituloCapitulo("Chapter 5 - The Journey").ehTitulo).toBe(true);
+    expect(detectarTituloCapitulo("PARTE PRIMEIRA").ehTitulo).toBe(true);
+  });
+
+  it("detecta seções clássicas de livros", () => {
+    expect(detectarTituloCapitulo("Prólogo").ehTitulo).toBe(true);
+    expect(detectarTituloCapitulo("Epílogo").ehTitulo).toBe(true);
+    expect(detectarTituloCapitulo("Introdução").ehTitulo).toBe(true);
+    expect(detectarTituloCapitulo("Prefácio").ehTitulo).toBe(true);
+  });
+
+  it("detecta algarismos romanos isolados como capítulos", () => {
+    const det = detectarTituloCapitulo("IV");
+    expect(det.ehTitulo).toBe(true);
+    expect(det.tituloNormalizado).toBe("Capítulo IV");
+  });
+
+  it("não marca parágrafos normais de texto como capítulos", () => {
+    expect(detectarTituloCapitulo("Ele caminhou até a esquina e olhou para trás com cautela.").ehTitulo).toBe(false);
+  });
+});
+
+describe("Agrupamento contínuo em capítulos", () => {
+  it("agrupa texto de múltiplas páginas dentro do mesmo capítulo sem quebra forçada", () => {
+    const paginas: PaginaProcessadaPdf[] = [
+      {
+        numPagina: 1,
+        paragrafos: ["Capítulo 1", "Primeiro parágrafo do capítulo 1."],
+        imagens: [],
+      },
+      {
+        numPagina: 2,
+        paragrafos: ["Continuação do capítulo 1 na página seguinte."],
+        imagens: [],
+      },
+      {
+        numPagina: 3,
+        paragrafos: ["Capítulo 2", "Início do capítulo 2."],
+        imagens: [],
+      },
+    ];
+
+    const caps = agruparPaginasEmCapitulos(paginas);
+    expect(caps.length).toBe(2);
+    expect(caps[0].titulo).toContain("Capítulo 1");
+    // O texto da página 2 foi agregado no Capítulo 1
+    expect(caps[0].paragrafos).toContain("Continuação do capítulo 1 na página seguinte.");
+    expect(caps[1].titulo).toContain("Capítulo 2");
+  });
+
+  it("mantém fluxo contínuo quando não há títulos explícitos de capítulos", () => {
+    const paginas: PaginaProcessadaPdf[] = [
+      { numPagina: 1, paragrafos: ["Texto da página 1."], imagens: [] },
+      { numPagina: 2, paragrafos: ["Texto da página 2."], imagens: [] },
+    ];
+
+    const caps = agruparPaginasEmCapitulos(paginas);
+    expect(caps.length).toBe(1);
+    expect(caps[0].paragrafos).toEqual(["Texto da página 1.", "Texto da página 2."]);
+    expect(caps[0].ocultarTitulo).toBe(true);
   });
 });
