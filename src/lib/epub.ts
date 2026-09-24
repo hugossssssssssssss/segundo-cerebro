@@ -214,6 +214,14 @@ p.estrofe {
   text-align: left;
   font-style: italic;
 }
+p.separador-cena {
+  text-align: center;
+  margin: 1.8em auto;
+  letter-spacing: 0.4em;
+  font-size: 1.1em;
+  text-indent: 0;
+  color: #555;
+}
 .chapter-title {
   border-bottom: 1px solid #ccc;
   padding-bottom: 0.3em;
@@ -321,10 +329,13 @@ p.estrofe {
         })
         .join("\n    ");
 
-      // Monta parágrafos com suporte a diálogos e versos de estrofes
+      // Monta parágrafos com suporte a diálogos, versos de estrofes e separadores de cena
       const paragrafosHtml = cap.paragrafos
         .map((p) => {
           const pLimpo = p.trim();
+          if (/^(\*\s*){2,}\*?$|^[*•·~—–-]{2,}$/.test(pLimpo)) {
+            return `<p class="separador-cena">${escaparXml(pLimpo)}</p>`;
+          }
           if (pLimpo.includes("\n")) {
             const versos = pLimpo
               .split("\n")

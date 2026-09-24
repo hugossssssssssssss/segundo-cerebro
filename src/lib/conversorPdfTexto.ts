@@ -55,7 +55,8 @@ const TRAVESSAO_CHAR = "—";
 export function getTopY(item: ItemTextoPdf): number {
   const y = item.transform[5];
   const fontSize = Math.abs(item.transform[0]) || Math.abs(item.transform[3]) || item.height || 12;
-  return y + fontSize * 0.85;
+  const fator = fontSize > 20 ? 0.95 : 0.85;
+  return y + fontSize * fator;
 }
 
 /**
@@ -65,15 +66,17 @@ export function ordenarItensVisualmente(items: ItemTextoPdf[]): ItemTextoPdf[] {
   return [...items].sort((a, b) => {
     const topA = getTopY(a);
     const topB = getTopY(b);
-    const xA = a.transform[4];
-    const xB = b.transform[4];
+    const fsA = Math.abs(a.transform[0]) || 12;
+    const fsB = Math.abs(b.transform[0]) || 12;
+    const fsMax = Math.max(fsA, fsB);
+    const tol = fsMax > 25 ? 9.0 : 5.5;
 
-    // Se estiverem em alturas de linha distintas (diferença maior que ~5.5 pontos)
-    if (Math.abs(topA - topB) > 5.5) {
+    // Se estiverem em alturas de linha distintas
+    if (Math.abs(topA - topB) > tol) {
       return topB - topA; // Topo mais alto na página vem primeiro
     }
     // Na mesma linha visual de topo, o menor X (mais à esquerda) vem primeiro
-    return xA - xB;
+    return a.transform[4] - b.transform[4];
   });
 }
 
@@ -134,9 +137,20 @@ export function agruparEmLinhasFisicas(items: ItemTextoPdf[]): LinhaFisica[] {
     const fontSize = Math.abs(item.transform[0]) || Math.abs(item.transform[3]) || 12;
     const largura = item.width || 0;
 
-    const tolTop = Math.max(5.0, fontSize * 0.4);
+    const tolTop = Math.min(6.5, Math.max(4.0, fontSize * 0.35));
+    const ehSeparadorCenaItem = /^[*•·~—–-]{2,}$|^(\*\s*){2,}\*?$/.test(str.trim());
+    const linhaAtualEhSeparador =
+      linhaAtual &&
+      /^[*•·~—–-]{2,}$|^(\*\s*){2,}\*?$/.test(
+        linhaAtual.fragmentos.map((f) => f.str).join("").trim()
+      );
 
-    if (!linhaAtual || Math.abs(topY - linhaAtual.topY) > tolTop) {
+    if (
+      !linhaAtual ||
+      ehSeparadorCenaItem ||
+      linhaAtualEhSeparador ||
+      Math.abs(topY - linhaAtual.topY) > tolTop
+    ) {
       if (linhaAtual && linhaAtual.fragmentos.length > 0) {
         linhas.push(montarLinhaDeFragmentos(linhaAtual));
       }
@@ -382,9 +396,12 @@ export function restaurarPrimeiraLetraSeTruncada(paragrafo: string): string {
 
 /**
  * Lista de números por extenso em português para identificar títulos explícitos como "Capítulo Um"
+ * ou números compostos como "Capítulo Vinte e Um", "Capítulo Sessenta e Seis".
  */
-const NUMEROS_EXTENSO =
-  "um|dois|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|primeiro|segundo|terceiro|quarto|quinto|sexto|s[eé]timo|oitavo|nono|d[eé]cimo|one|two|three|four|five";
+const NUMEROS_BASE =
+  "um|dois|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|primeiro|segundo|terceiro|quarto|quinto|sexto|s[eé]timo|oitavo|nono|d[eé]cimo|one|two|three|four|five|six|seven|eight|nine|ten";
+
+const NUMEROS_EXTENSO = `(?:${NUMEROS_BASE})(?:\\s+e\\s+(?:${NUMEROS_BASE}))?`;
 
 /**
  * Reconcilia travessões órfãos e falas com quebra acidental em linhas físicas separadas
@@ -444,6 +461,11 @@ export function detectarTituloCapitulo(
 
   // 1. Falas com travessão ou aspas de diálogo NUNCA são títulos de capítulo
   if (TRAVESSAO_REGEX.test(limpo) || /^["'«\u201C\u2018]/.test(limpo)) {
+    return { ehTitulo: false };
+  }
+
+  // 1b. Separadores de cena e quebras decorativas com asteriscos NUNCA são títulos
+  if (/\*/.test(limpo) || /^[*•·~—–-]{2,}$|^(\*\s*){2,}\*?$/.test(limpo)) {
     return { ehTitulo: false };
   }
 
@@ -530,8 +552,16 @@ export function detectarTituloCapitulo(
     };
   }
 
-  // 6. Numerais romanos isolados em maiúsculas (I, II, III, IV, etc.)
-  if (/^[IVXLCDM]{1,6}\.?$/.test(limpo)) {
+  // 6. Numerais romanos isolados em maiúsculas (I, II, III, IV, V, X, etc.)
+  // IMPORTANTE: 1 caractere só pode ser I, V ou X. NUNCA aceita 'C' (100) ou 'M' (1000) isolados,
+  // pois em livros de ficção letras C e M isoladas são capitulares ou abreviações soltas.
+  const ehRomanoIsolado =
+    /^(?:I|V|X)\.?$/.test(limpo) ||
+    /^(?:II|III|IV|VI|VII|VIII|IX|X[IVXLCDM]*|L[IVX]*|XL|XLI|XLII|XLIII|XLIV|XLV|XLVI|XLVII|XLVIII|XLIX)\.?$/.test(
+      limpo
+    );
+
+  if (ehRomanoIsolado) {
     // Se estiver em fonte normal do texto, só é capítulo se tiver evidência de destaque
     if (fontSizeLinha && fontSizeLinha < fontSizeMedio * 1.1) {
       return { ehTitulo: false };
@@ -652,6 +682,18 @@ export function reconstruirTextoEParagrafosPdf(items: ItemTextoPdf[]): string[] 
   for (let i = 0; i < linhas.length; i++) {
     const linha = linhas[i];
     const proximaLinha = linhas[i + 1];
+
+    // Linha física que é um separador de cena decorativo (ex: "***", "* * *", "• • •")
+    const ehSeparadorCenaLinha = /^[*•·~—–-]{2,}$|^(\*\s*){2,}\*?$/.test(linha.texto.trim());
+    if (ehSeparadorCenaLinha) {
+      if (paragrafoAtual.trim()) {
+        paragrafos.push(restaurarPrimeiraLetraSeTruncada(paragrafoAtual));
+        paragrafoAtual = "";
+        emEstrofe = false;
+      }
+      paragrafos.push("* * *");
+      continue;
+    }
 
     const ehTituloAtual = detectarTituloCapitulo(linha.texto, linha.fontSize, fontSizeMedio).ehTitulo;
 

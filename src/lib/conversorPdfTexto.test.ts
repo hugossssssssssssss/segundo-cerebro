@@ -377,5 +377,24 @@ describe("Reconstrução de diálogos com travessão e estrofes de poesia", () =
     expect(res.join(" ")).toContain("O gosto da revolução é doce.");
     expect(res.join(" ")).toContain("Encaro meu irmão mais velho.");
   });
+
+  it("reconhece capítulos com numerais compostos em português (Vinte e Um até Sessenta e Seis)", () => {
+    expect(detectarTituloCapitulo("CAPÍTULO VINTE E UM").ehTitulo).toBe(true);
+    expect(detectarTituloCapitulo("Capítulo Trinta e Cinco").ehTitulo).toBe(true);
+    expect(detectarTituloCapitulo("CAPÍTULO SESSENTA E SEIS").ehTitulo).toBe(true);
+  });
+
+  it("não confunde separadores de cena com asteriscos como títulos de capítulos", () => {
+    expect(detectarTituloCapitulo("***").ehTitulo).toBe(false);
+    expect(detectarTituloCapitulo("* * *").ehTitulo).toBe(false);
+    expect(detectarTituloCapitulo("U ***").ehTitulo).toBe(false);
+    expect(detectarTituloCapitulo("E ***").ehTitulo).toBe(false);
+  });
+
+  it("não confunde letras isoladas de capitular (C, M, X) como capítulos em numerais romanos", () => {
+    expect(detectarTituloCapitulo("C").ehTitulo).toBe(false);
+    expect(detectarTituloCapitulo("M").ehTitulo).toBe(false);
+  });
 });
+
 
