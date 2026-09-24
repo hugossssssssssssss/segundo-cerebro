@@ -218,6 +218,7 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
   const [pdfEpubArquivo, setPdfEpubArquivo] = useState<File | null>(null);
   const [pdfEpubTitulo, setPdfEpubTitulo] = useState("");
   const [pdfEpubAutor, setPdfEpubAutor] = useState("");
+  const [modoLeituraPdf, setModoLeituraPdf] = useState<"continuo" | "capitulos">("continuo");
 
   // Estados de Trocar Capa de EPUB
   const [epubArquivo, setEpubArquivo] = useState<File | null>(null);
@@ -521,10 +522,10 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
         );
       }
 
-      // 3. Agrupa o fluxo de texto em capítulos reais do livro.
-      // O texto flui continuamente página a página (sem espaço em branco forçado a cada página).
-      // A quebra de página e o espaço em branco só acontecem no final do capítulo.
-      const capitulosDoLivro = agruparPaginasEmCapitulos(paginasProcessadasPdf);
+      // 3. Agrupa o fluxo de texto conforme o modo de leitura escolhido pelo usuário
+      const capitulosDoLivro = agruparPaginasEmCapitulos(paginasProcessadasPdf, {
+        modo: modoLeituraPdf,
+      });
 
       for (const cap of capitulosDoLivro) {
         jepubObj.add(cap.titulo, cap.paragrafos, {
@@ -1254,6 +1255,49 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
                     placeholder="Autor Desconhecido"
                     className="w-full rounded-xl border border-border bg-card px-3.5 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/20"
                   />
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-border/60">
+                <label className="text-xs font-semibold text-foreground">
+                  Modo de Leitura (Estrutura do EPUB)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setModoLeituraPdf("continuo")}
+                    className={cn(
+                      "flex flex-col text-left p-3 rounded-xl border transition-all text-xs",
+                      modoLeituraPdf === "continuo"
+                        ? "bg-primary/10 border-primary text-foreground ring-1 ring-primary/30"
+                        : "bg-card/40 border-border hover:bg-card/80 text-muted-foreground"
+                    )}
+                  >
+                    <span className="font-semibold text-foreground flex items-center gap-1.5">
+                      📖 Fluxo Contínuo (Recomendado)
+                    </span>
+                    <span className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                      Texto fluido sem cortes de páginas em branco. Ideal para leitura direta no Kindle ou Kobo.
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModoLeituraPdf("capitulos")}
+                    className={cn(
+                      "flex flex-col text-left p-3 rounded-xl border transition-all text-xs",
+                      modoLeituraPdf === "capitulos"
+                        ? "bg-primary/10 border-primary text-foreground ring-1 ring-primary/30"
+                        : "bg-card/40 border-border hover:bg-card/80 text-muted-foreground"
+                    )}
+                  >
+                    <span className="font-semibold text-foreground flex items-center gap-1.5">
+                      📑 Dividir por Capítulos
+                    </span>
+                    <span className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                      Cria seções e capítulos no sumário quando houver termos explícitos como "Capítulo 1".
+                    </span>
+                  </button>
                 </div>
               </div>
 

@@ -780,12 +780,34 @@ export async function extrairBlobDeObjetoPdf(imgObj: any): Promise<Blob | null> 
   return null;
 }
 
+export interface OpcoesAgrupamentoCapitulos {
+  modo?: "capitulos" | "continuo";
+}
+
 /**
  * Agrupa as páginas contínuas do PDF em capítulos reais do livro.
  * Elimina quebras forçadas no meio da leitura e NUNCA divide arbitrariamente em "Parte 1", "Parte 2".
  */
-export function agruparPaginasEmCapitulos(paginas: PaginaProcessadaPdf[]): CapituloMontado[] {
+export function agruparPaginasEmCapitulos(
+  paginas: PaginaProcessadaPdf[],
+  opcoes?: OpcoesAgrupamentoCapitulos
+): CapituloMontado[] {
   if (!paginas || paginas.length === 0) return [];
+
+  // Se o modo for estritamente contínuo, mantém como fluxo único de leitura sem quebras artificiais
+  if (opcoes?.modo === "continuo") {
+    const todosParagrafos = paginas.flatMap((p) => p.paragrafos);
+    const todasImagens = paginas.flatMap((p) => p.imagens);
+
+    return [
+      {
+        titulo: "Leitura",
+        paragrafos: todosParagrafos,
+        imagens: todasImagens,
+        ocultarTitulo: true,
+      },
+    ];
+  }
 
   const capitulos: CapituloMontado[] = [];
   let capituloAtual: CapituloMontado = {

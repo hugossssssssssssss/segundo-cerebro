@@ -233,6 +233,17 @@ describe("Blindagem contra falsos capítulos (falas com números e palavra Concl
       "Conclusão do raciocínio anterior nos leva a crer que a tese se sustenta."
     );
     expect(caps[0].paragrafos).toContain("— Oito.");
+
+    // No modo estritamente contínuo, mesmo com capítulos explícitos, mantém fluxo único sem cortes
+    const paginasComCapitulo: PaginaProcessadaPdf[] = [
+      { numPagina: 1, paragrafos: ["CAPÍTULO 1", "Texto do capítulo 1."], imagens: [] },
+      { numPagina: 2, paragrafos: ["CAPÍTULO 2", "Texto do capítulo 2."], imagens: [] },
+    ];
+    const capsContinuo = agruparPaginasEmCapitulos(paginasComCapitulo, { modo: "continuo" });
+    expect(capsContinuo.length).toBe(1);
+    expect(capsContinuo[0].titulo).toBe("Leitura");
+    expect(capsContinuo[0].ocultarTitulo).toBe(true);
+    expect(capsContinuo[0].paragrafos.length).toBe(4);
   });
 });
 
