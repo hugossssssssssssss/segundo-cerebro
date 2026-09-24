@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
 import {
   Mic,
   Monitor,
@@ -17,7 +16,8 @@ import {
   Layers,
   Radio,
 } from "lucide-react";
-import { Botao, Cartao, Aviso, Vazio } from "@/components/ui";
+import { Botao, Cartao, Aviso } from "@/components/ui";
+import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
 import { lerConfig, configCompleta } from "@/lib/settings";
@@ -241,24 +241,13 @@ export default function Transcritor() {
     }
   }
 
-  if (!pronto) {
-    return (
-      <div className="mx-auto max-w-5xl px-4 py-6">
-        <Vazio
-          titulo="Falta conectar sua conta"
-          descricao="Para utilizar o Transcritor de Áudio e salvar suas notas no GitHub, preencha sua conta e token na aba de Ajustes."
-          acao={
-            <Link to="/config">
-              <Botao>Ir para Ajustes</Botao>
-            </Link>
-          }
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200">
+      {!pronto && (
+        <AvisoSemConexaoGithub
+          mensagem="Repositório não conectado — você pode gravar e transcrever normalmente, mas precisará conectar o GitHub para salvar notas."
+        />
+      )}
       <CabecalhoPagina
         titulo="Transcrição de Reuniões & Voz"
         descricao="Transcreva reuniões do Google Meet/Zoom ou grave suas ideias com motores 100% gratuitos e livres de Whisper."

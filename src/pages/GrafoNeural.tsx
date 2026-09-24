@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
 import {
   Network,
   Sparkles,
@@ -26,8 +25,9 @@ import { invalidarCache } from "@/lib/repo";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import { escreverMarkdown, tituloProvavel, mesclarFrontmatter } from "@/lib/markdown";
 import { montarIndice, alvosUnicos, mencoesA } from "@/lib/links";
-import { Botao, Vazio, Carregando, Aviso } from "@/components/ui";
+import { Carregando, Aviso } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
 import { NavegadorGrafo3D } from "@/components/NavegadorGrafo3D";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 
@@ -178,20 +178,6 @@ export default function GrafoNeural() {
     };
   };
 
-  if (!pronto) {
-    return (
-      <Vazio
-        titulo="Grafo Neural 3D"
-        descricao="Conecte sua conta do GitHub em Ajustes para visualizar seu mapa neural de conexões."
-        acao={
-          <Link to="/config">
-            <Botao variante="primario">Ir para Ajustes</Botao>
-          </Link>
-        }
-      />
-    );
-  }
-
   if (carregando) {
     return <Carregando texto="Mapeando conexões neurais do seu segundo cérebro em 3D..." />;
   }
@@ -204,6 +190,10 @@ export default function GrafoNeural() {
         icone={<Network size={20} />}
         corIcone="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
       />
+
+      {!pronto && (
+        <AvisoSemConexaoGithub mensagem="Repositório não configurado — adicione seu token e repositório do GitHub em Ajustes para carregar o mapa de conexões." />
+      )}
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 

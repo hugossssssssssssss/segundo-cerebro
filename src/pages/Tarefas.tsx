@@ -67,12 +67,12 @@ import { lerConfigPropriedadesGlobais, salvarConfigPropriedadesGlobais } from "@
 import {
   Botao,
   Aviso,
-  Vazio,
   Carregando,
   ModalConfirmacao,
   Modal,
 } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { cn, lerParametroAbrir, correspondeBusca, formatarDataPtBR } from "@/lib/utils";
@@ -979,21 +979,6 @@ export default function Tarefas() {
     return tarefas.map((t) => ({ caminho: t.caminho, titulo: t.titulo }));
   }, [tarefas, pastaSelecionada]);
 
-  // ── Sem configuração ────────────────────────────────────────────────────────
-  if (!pronto) {
-    return (
-      <Vazio
-        icone={<ListTodo size={24} />}
-        titulo="Tarefas do seu repositório"
-        descricao="Conecte seu repositório do GitHub em Ajustes para ver e gerenciar suas tarefas aqui."
-        acao={
-          <Botao variante="primario" onClick={() => navegar("/configuracoes")}>
-            Ir para Ajustes
-          </Botao>
-        }
-      />
-    );
-  }
 
   /** Ações em Lote para tarefas selecionadas */
   async function concluirSelecionadas() {
@@ -1079,6 +1064,10 @@ export default function Tarefas() {
           />
         }
       />
+
+      {!pronto && (
+        <AvisoSemConexaoGithub mensagem="Repositório não configurado — adicione seu token e repositório do GitHub em Ajustes para sincronizar suas tarefas e prazos." />
+      )}
 
       <BarraFerramentas
         busca={busca}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
   Tag,
@@ -58,6 +58,7 @@ import {
   ModalConfirmacao,
 } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { BarraFiltrosAvancados, filtrarItensPorRegras, type DefinicaoPropriedade, type RegraFiltro } from "@/components/BarraFiltrosAvancados";
@@ -1296,20 +1297,6 @@ export default function Notas() {
     return () => window.removeEventListener("keydown", aoTeclar);
   }, [aberta, menuContexto, visiveis, selecionadas]);
 
-  if (!pronto) {
-    return (
-      <Vazio
-        titulo="Falta conectar sua conta"
-        descricao="Para guardar suas anotações, preencha sua conta do GitHub e o token na aba de Ajustes."
-        acao={
-          <Link to="/config">
-            <Botao>Ir para Ajustes</Botao>
-          </Link>
-        }
-      />
-    );
-  }
-
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       <CabecalhoPagina
@@ -1356,6 +1343,10 @@ export default function Notas() {
           </>
         }
       />
+
+      {!pronto && (
+        <AvisoSemConexaoGithub mensagem="Repositório não configurado — adicione seu token e repositório do GitHub em Ajustes para carregar e salvar suas notas." />
+      )}
 
       {pastaAtual && (
         <div className="flex items-center gap-1.5 flex-wrap text-xs bg-card/60 p-2 px-3 rounded-2xl border border-border/60 shadow-2xs">

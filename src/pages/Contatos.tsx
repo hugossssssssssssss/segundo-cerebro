@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   FolderTree,
   Plus,
@@ -56,6 +56,7 @@ import { BarraFiltrosAvancados, filtrarItensPorRegras, type DefinicaoPropriedade
 import { propagarRenomeacaoId, montarIndice, mencoesA } from "@/lib/links";
 import { carregarRepo } from "@/lib/repo";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
@@ -579,20 +580,6 @@ export default function Contatos() {
     document.body.removeChild(link);
   };
 
-  if (!pronto) {
-    return (
-      <Vazio
-        titulo="Falta conectar sua conta"
-        descricao="Para acessar a Árvore de Contatos, preencha sua conta do GitHub e o token na aba de Ajustes."
-        acao={
-          <Link to="/config">
-            <Botao>Ir para Ajustes</Botao>
-          </Link>
-        }
-      />
-    );
-  }
-
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Topo / Cabeçalho no layout padrão Klaus */}
@@ -644,6 +631,10 @@ export default function Contatos() {
           </div>
         }
       />
+
+      {!pronto && (
+        <AvisoSemConexaoGithub mensagem="Repositório não configurado — adicione seu token e repositório do GitHub em Ajustes para carregar seus contatos." />
+      )}
 
       {/* Filtros e Alternador de Visão */}
       <BarraFerramentas

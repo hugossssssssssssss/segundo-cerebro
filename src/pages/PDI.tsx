@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Target,
   Calendar,
@@ -79,6 +79,7 @@ import {
 } from "@/components/ui";
 import { hojeISO, dataCurta, lerParametroAbrir, lerParametroCriar, correspondeBusca } from "@/lib/utils";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
 import { CabecalhoSecao } from "@/components/CabecalhoSecao";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
 import {
@@ -980,19 +981,6 @@ export default function PDI() {
     setOrigEntrega(vazia);
   };
 
-  if (!pronto) {
-    return (
-      <Vazio
-        titulo="Falta conectar sua conta"
-        descricao="Preencha sua conta do GitHub e o token na aba de Ajustes."
-        acao={
-          <Link to="/config">
-            <Botao>Ir para Ajustes</Botao>
-          </Link>
-        }
-      />
-    );
-  }
 
   const workspaceAtivo = obterWorkspaceAtivo();
   if (workspaceAtivo.tipo === "equipe") {
@@ -1047,6 +1035,10 @@ export default function PDI() {
           </>
         }
       />
+
+      {!pronto && (
+        <AvisoSemConexaoGithub mensagem="Repositório não configurado — adicione seu token e repositório do GitHub em Ajustes para carregar suas metas e conquistas." />
+      )}
 
       {/* Filtro por Pastas / Ciclos de Metas */}
       {pastasMetasExistentes.length > 0 && (

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   FileText,
   Tag,
@@ -20,7 +20,8 @@ import { hojeISO } from "@/lib/utils";
 import { useFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 
-import { Vazio, Aviso } from "@/components/ui";
+import { Aviso } from "@/components/ui";
+import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
 
 // Suíte Modular Bento Home
 import {
@@ -509,29 +510,18 @@ export default function Home() {
     );
   };
 
-  // ── Sem Configuração ──────────────────────────────────────────────────────
-  if (!pronto) {
-    return (
-      <Vazio
-        titulo="Falta conectar seu repositório"
-        descricao="Configure o GitHub Token e o Repositório de dados em Ajustes para carregar sua tela inicial."
-        acao={
-          <Link
-            to="/config"
-            className="px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-xl text-xs shadow-md hover:bg-primary/95 transition-all"
-          >
-            Configurar Conexão
-          </Link>
-        }
-      />
-    );
-  }
-
   // Nome do usuário inserido no Onboarding
   const nomeExibicao = cfg.nomeUsuario?.trim() || "Hugo";
 
   return (
     <div className="space-y-4 animate-in fade-in duration-150 w-full max-w-none">
+      {!pronto && (
+        <AvisoSemConexaoGithub
+          mensagem="Repositório não conectado — adicione seu token em Ajustes para sincronizar suas notas e tarefas."
+          className="mb-2"
+        />
+      )}
+
       {/* 1. Cockpit de Saudação Minimalista */}
       <CabecalhoHome
         nomeUsuario={nomeExibicao}

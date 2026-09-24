@@ -3,7 +3,6 @@ import {
   Trash2,
   RotateCcw,
   FileText,
-  AlertCircle,
   ListTodo,
   Users,
   Image as ImageIcon,
@@ -17,6 +16,7 @@ import { lerConfig, configCompleta } from "@/lib/settings";
 import { useAcervoRepo } from "@/lib/useItemRepo";
 import { listarItensLixeira, restaurarDaLixeira, type ItemLixeira } from "@/lib/lixeira";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
 import { Botao, Cartao, Vazio, Carregando, Aviso, Modal, ModalConfirmacao, Selo } from "@/components/ui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { toast } from "@/lib/toast";
@@ -86,18 +86,6 @@ export default function Lixeira() {
     }
   }
 
-  if (!pronto) {
-    return (
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        <Vazio
-          icone={<AlertCircle size={32} className="text-muted-foreground" />}
-          titulo="Configuração necessária"
-          descricao="Configure seu token do GitHub nos Ajustes para acessar a lixeira."
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 space-y-6">
       <CabecalhoPagina
@@ -106,6 +94,10 @@ export default function Lixeira() {
         icone={<Trash2 size={20} />}
         corIcone="bg-rose-500/10 text-rose-600 dark:text-rose-400"
       />
+
+      {!pronto && (
+        <AvisoSemConexaoGithub mensagem="Repositório não configurado — adicione seu token e repositório do GitHub em Ajustes para acessar a lixeira soberana." />
+      )}
 
       {erroAcao && <Aviso tom="erro">{erroAcao}</Aviso>}
       {erro && <Aviso tom="erro">{erro}</Aviso>}

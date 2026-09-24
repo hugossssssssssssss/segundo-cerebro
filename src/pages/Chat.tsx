@@ -6,7 +6,8 @@ import { useAcervoRepo } from "@/lib/useItemRepo";
 import { conversar, PROMPTS, type Mensagem, type PromptSalvo } from "@/lib/gemini";
 import { acoesDeChamadas, executar, type Acao } from "@/lib/acoes";
 import { CartaoAcao } from "@/components/CartaoAcao";
-import { Botao, Cartao, Campo, Rotulo, AreaTexto, Aviso, Vazio, Selo } from "@/components/ui";
+import { Botao, Cartao, Campo, Rotulo, AreaTexto, Aviso, Selo } from "@/components/ui";
+import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { cn } from "@/lib/utils";
@@ -207,20 +208,6 @@ export default function Chat({ modoFlutuante, mensagemInicial, aoFechar: _aoFech
 
   /* ------------------------------------------------------- pré-requisitos */
 
-  if (!pronto) {
-    return (
-      <Vazio
-        titulo="Falta conectar sua conta"
-        descricao="Preencha sua conta do GitHub e o token na aba de Ajustes."
-        acao={
-          <Link to="/config">
-            <Botao>Ir para Ajustes</Botao>
-          </Link>
-        }
-      />
-    );
-  }
-
   if (!cfg.geminiKey) {
     return (
       <div className="max-w-xl mx-auto py-6 sm:py-12 animate-in fade-in duration-300">
@@ -317,6 +304,11 @@ export default function Chat({ modoFlutuante, mensagemInicial, aoFechar: _aoFech
 
   return (
     <div className={cn("flex flex-col gap-5 animate-in fade-in duration-200", modoFlutuante && "gap-3 pb-2")}>
+      {!pronto && (
+        <AvisoSemConexaoGithub
+          mensagem="Repositório não conectado — você pode conversar normalmente com o Gemini, mas sincronizar notas exige conexão em Ajustes."
+        />
+      )}
       {!modoFlutuante && (
         <CabecalhoPagina
           titulo="Conversar com a IA"

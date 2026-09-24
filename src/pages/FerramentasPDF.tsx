@@ -486,11 +486,12 @@ export default function FerramentasPDF({ modoFocado, abaInicial }: FerramentasPD
             corIcone="bg-red-500/10 text-red-600 dark:text-red-400"
           />
 
-          {/* Grade de Ferramentas com Visual Unificado do Conversor e Carrossel Mobile */}
-          <div className="flex sm:grid sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 snap-x snap-mandatory scrollbar-none">
-            {abasFerramentas.map((f) => {
+          {/* Grade de Ferramentas PDF 100% Responsiva (todas visíveis no mobile sem ter que arrastar no escuro) */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+            {abasFerramentas.map((f, idx) => {
               const ativa = abaAtiva === f.id;
               const IconeComp = f.Icone;
+              const ehUltimoImpar = idx === abasFerramentas.length - 1 && abasFerramentas.length % 2 !== 0;
 
               return (
                 <div
@@ -502,18 +503,26 @@ export default function FerramentasPDF({ modoFocado, abaInicial }: FerramentasPD
                     setMensagemSucesso("");
                   }}
                   className={cn(
-                    "group relative flex flex-col justify-between p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer shadow-xs shrink-0 w-[240px] sm:w-auto snap-start select-none",
+                    "group relative flex flex-col justify-between p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all cursor-pointer shadow-xs select-none active:scale-[0.98] touch-manipulation",
+                    ehUltimoImpar ? "col-span-2 sm:col-span-1" : "col-span-1",
                     ativa
-                      ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                      ? "border-primary bg-primary/10 ring-2 ring-primary/30 shadow-sm"
                       : "border-border/80 bg-card hover:bg-accent/50 hover:border-primary/40"
                   )}
                 >
-                  <div className="space-y-2.5">
-                    <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl transition-transform group-hover:scale-105", f.cor)}>
-                      <IconeComp size={18} />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className={cn("flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl transition-transform group-hover:scale-105", f.cor)}>
+                        <IconeComp size={18} />
+                      </div>
+                      {ativa && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-primary text-primary-foreground">
+                          Ativo
+                        </span>
+                      )}
                     </div>
                     <div className="space-y-0.5">
-                      <h3 className="font-bold text-xs text-foreground group-hover:text-primary transition-colors">
+                      <h3 className="font-bold text-xs sm:text-sm text-foreground group-hover:text-primary transition-colors leading-tight">
                         {f.label}
                       </h3>
                       <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">

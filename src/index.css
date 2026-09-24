@@ -607,3 +607,25 @@
     transform: none;
   }
 }
+
+/* Scrollbar sutil, visível e elegante para elementos roláveis no mobile */
+.scroll-horizontal-suave {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(160, 160, 160, 0.4) transparent;
+}
+
+.scroll-horizontal-suave::-webkit-scrollbar {
+  height: 4px;
+}
+
+.scroll-horizontal-suave::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-horizontal-suave::-webkit-scrollbar-thumb {
+  background-color: rgba(160, 160, 160, 0.4);
+  border-radius: 9999px;
+}
+

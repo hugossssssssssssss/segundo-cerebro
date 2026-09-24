@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useMemo, lazy, Suspense } from "react";
 import type { ExcalidrawInitialDataState } from "@excalidraw/excalidraw/types";
-import { Link } from "react-router-dom";
 import {
   Plus,
   Layout,
@@ -31,6 +30,7 @@ import { propagarRenomeacao } from "@/lib/links";
 import { correspondeBusca, lerParametroAbrir, safeStringify } from "@/lib/utils";
 import { Botao, Campo, Aviso, Vazio, Carregando, ModalConfirmacao } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
+import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { CartaoLousaVisual } from "@/components/CartaoLousaVisual";
@@ -367,20 +367,6 @@ export default function Lousas() {
     });
   }, [lousas, busca]);
 
-  // ── Sem configuração ────────────────────────────────────────────────────────
-  if (!pronto) {
-    return (
-      <Vazio
-        titulo="Falta conectar sua conta"
-        descricao="Preencha sua conta do GitHub e o token na aba de Ajustes."
-        acao={
-          <Link to="/config">
-            <Botao>Ir para Ajustes</Botao>
-          </Link>
-        }
-      />
-    );
-  }
 
   const ehModoEscuro = document.documentElement.classList.contains("dark");
 
@@ -588,6 +574,10 @@ export default function Lousas() {
           </Botao>
         }
       />
+
+      {!pronto && (
+        <AvisoSemConexaoGithub mensagem="Repositório não configurado — adicione seu token e repositório do GitHub em Ajustes para salvar seus mapas mentais e lousas." />
+      )}
 
       {lousas.length > 0 && (
         <BarraFerramentas
