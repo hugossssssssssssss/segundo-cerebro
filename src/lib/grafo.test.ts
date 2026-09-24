@@ -68,26 +68,6 @@ describe("grafo 3D", () => {
     expect(arestaRel).toBeDefined();
   });
 
-  it("ignora arquivos internos de jogos como jogos/termo.json e títulos como '{'", () => {
-    const itensComJogos: ItemRepo[] = [
-      ...mockItens,
-      {
-        caminho: "jogos/termo.json",
-        nome: "termo.json",
-        sha: "sha-termo",
-        tamanho: 500,
-        texto: '{\n  "tipo": "termo"\n}',
-        doc: {
-          dados: { titulo: "{" },
-          corpo: '{\n  "tipo": "termo"\n}',
-        },
-      },
-    ];
-
-    const dados = construirGrafo3D(itensComJogos);
-    const noTermo = dados.nos.find((n) => n.caminho.startsWith("jogos/") || n.titulo === "{");
-    expect(noTermo).toBeUndefined();
-  });
 
   it("ignora explicitamente arquivos da pasta .klaus/templates", () => {
     const itensComTemplates: ItemRepo[] = [

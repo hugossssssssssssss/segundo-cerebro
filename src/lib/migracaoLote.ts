@@ -55,7 +55,6 @@ export function normalizarDocumento(item: ItemRepo): string | null {
     ehArquivoInternoOuSistema(item.caminho) ||
     item.caminho.startsWith(".klaus/") ||
     item.caminho.includes("/.klaus/") ||
-    item.caminho.startsWith("processos/") ||
     item.caminho.startsWith("referencias/imagens/") ||
     item.caminho.endsWith(".json") ||
     item.caminho.endsWith(".excalidraw")

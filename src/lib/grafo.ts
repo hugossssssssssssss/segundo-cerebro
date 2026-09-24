@@ -172,8 +172,6 @@ export function construirGrafo3D(
       item.caminho.startsWith(".klaus/") ||
       item.caminho.includes("/.klaus/") ||
       item.caminho.includes("templates/") ||
-      item.caminho.startsWith("jogos/") ||
-      item.caminho.includes("/jogos/") ||
       item.caminho.startsWith("referencias/imagens/")
     ) {
       continue;

@@ -59,6 +59,13 @@ export const FAVORITOS_PADRAO_KLAUS: FavoritoItem[] = [
   { id: "fav-chat", nome: "Chat", url: "https://hugossssssssssssss.github.io/segundo-cerebro/#/chat" },
 ];
 
+function ehFavoritoValido(it: any): boolean {
+  if (!it || typeof it !== "object" || typeof it.url !== "string") return false;
+  const urlMin = it.url.toLowerCase();
+  const banidos = ["#/livros", "#/noticias", "#/processos", "#/jogos", "/livros", "/noticias", "/processos", "/jogos"];
+  return !banidos.some((b) => urlMin.includes(b));
+}
+
 /**
  * Lê os favoritos salvos no localStorage ou chrome.storage.
  */
@@ -68,7 +75,11 @@ export function lerFavoritosLocal(opcoes: { comPadrao?: boolean } = {}): Favorit
     if (salvo) {
       const parsed = JSON.parse(salvo);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter((it) => it && typeof it === "object" && typeof it.url === "string");
+        const filtrados = parsed.filter(ehFavoritoValido);
+        if (filtrados.length !== parsed.length) {
+          localStorage.setItem(CHAVE_STORAGE_FAVORITOS, JSON.stringify(filtrados));
+        }
+        return filtrados;
       }
     }
   } catch {}

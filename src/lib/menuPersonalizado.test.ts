@@ -148,4 +148,33 @@ describe("menuPersonalizado", () => {
 
     spyLer.mockRestore();
   });
+
+  it("deve purgar e ignorar itens banidos e obsoletos (livros, noticias, processos, jogos) mesmo se presentes no localStorage", () => {
+    const dadosAntigosComExcluidos = [
+      {
+        id: "dia-a-dia",
+        titulo: "Dia a Dia",
+        itens: [
+          { id: "home", para: "/home", rotulo: "Início", iconeNome: "Home" },
+          { id: "noticias", para: "/noticias", rotulo: "Notícias", iconeNome: "Newspaper" },
+          { id: "jogos", para: "/jogos", rotulo: "Jogos", iconeNome: "Gamepad2" },
+          { id: "livros", para: "/livros", rotulo: "Pesquisar Livros", iconeNome: "BookOpen" },
+          { id: "processos", para: "/processos", rotulo: "Processos", iconeNome: "GitMerge" },
+          { id: "tarefas", para: "/tarefas", rotulo: "Tarefas", iconeNome: "CheckSquare" },
+        ],
+      },
+    ];
+
+    localStorage.setItem(CHAVE_STORAGE_MENU, JSON.stringify(dadosAntigosComExcluidos));
+
+    const carregados = carregarMenuPersonalizado();
+    const rotas = carregados.flatMap((g) => g.itens.map((it) => it.para));
+
+    expect(rotas).not.toContain("/noticias");
+    expect(rotas).not.toContain("/jogos");
+    expect(rotas).not.toContain("/livros");
+    expect(rotas).not.toContain("/processos");
+    expect(rotas).toContain("/home");
+    expect(rotas).toContain("/tarefas");
+  });
 });

@@ -38,6 +38,47 @@ export const CAMINHO_MENU = ".klaus/menu.json";
 export const CHAVE_STORAGE_MENU = "klaus_menu_customizado";
 export const EVENTO_MENU_ATUALIZADO = "menu-personalizado-atualizado";
 
+/**
+ * Itens e rotas permanentemente excluídos do Klaus.
+ * NUNCA devem ser carregados ou exibidos no menu, mesmo que existam em caches antigos.
+ */
+export const ITENS_BANIDOS_MENU = new Set([
+  "livros",
+  "pesquisa-livros",
+  "noticias",
+  "processos",
+  "jogos",
+]);
+
+export const ROTAS_BANIDAS_MENU = new Set([
+  "/livros",
+  "/pesquisa-livros",
+  "/noticias",
+  "/processos",
+  "/jogos",
+]);
+
+/**
+ * Verifica se um item de menu é válido e não pertence a ferramentas excluídas.
+ */
+export function ehItemMenuValido(item: any): boolean {
+  if (!item || typeof item !== "object") return false;
+  const id = String(item.id || "").toLowerCase().trim();
+  const para = String(item.para || "").toLowerCase().trim();
+  if (!para) return false;
+  if (ITENS_BANIDOS_MENU.has(id)) return false;
+  if (ROTAS_BANIDAS_MENU.has(para)) return false;
+  if (
+    para.startsWith("/livros") ||
+    para.startsWith("/noticias") ||
+    para.startsWith("/processos") ||
+    para.startsWith("/jogos")
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
   {
     id: "dia-a-dia",
@@ -79,6 +120,7 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
 
 /**
  * Carrega a configuração do menu salva no localStorage com tolerância total a dados corrompidos.
+ * Purga automaticamente qualquer item obsoleto/excluído do cache local.
  */
 export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
   try {
@@ -97,17 +139,23 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
       return GRUPOS_MENU_PADRAO;
     }
 
+    let precisouLimpar = false;
+
     // Garantir que todos os itens das rotas padrões existam
     const mapaItensSalvos = new Map<string, ItemMenuPersonalizado>();
     for (const g of gruposValidos) {
       for (const item of g.itens) {
         if (item && typeof item === "object" && typeof item.para === "string" && item.para) {
-          mapaItensSalvos.set(item.para, item);
+          if (ehItemMenuValido(item)) {
+            mapaItensSalvos.set(item.para, item);
+          } else {
+            precisouLimpar = true;
+          }
         }
       }
     }
 
-    // Recriar ou atualizar os grupos salvos
+    // Recriar ou atualizar os grupos salvos, filtrando itens excluídos
     const gruposResultantes: GrupoMenuPersonalizado[] = gruposValidos.map((g: any, idxGrupo: number) => {
       const padraoEquiv = GRUPOS_MENU_PADRAO[idxGrupo] || GRUPOS_MENU_PADRAO[0];
       const itensArray = Array.isArray(g.itens) ? g.itens : [];
@@ -115,7 +163,11 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
         id: typeof g.id === "string" && g.id ? g.id : `grupo-${idxGrupo}`,
         titulo: typeof g.titulo === "string" && g.titulo.trim() ? g.titulo.trim() : padraoEquiv.titulo,
         itens: itensArray
-          .filter((it: any) => it && typeof it === "object" && typeof it.para === "string" && it.para)
+          .filter((it: any) => {
+            const valido = ehItemMenuValido(it);
+            if (!valido) precisouLimpar = true;
+            return valido;
+          })
           .map((it: any) => ({
             id: typeof it.id === "string" && it.id ? it.id : String(it.para).replace("/", ""),
             para: String(it.para),
@@ -133,13 +185,20 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
     // Se houver algum item do padrão que não está nos salvos, adiciona no final do primeiro grupo
     for (const gPadrao of GRUPOS_MENU_PADRAO) {
       for (const itemPadrao of gPadrao.itens) {
-        if (!mapaItensSalvos.has(itemPadrao.para)) {
+        if (!mapaItensSalvos.has(itemPadrao.para) && ehItemMenuValido(itemPadrao)) {
           if (!Array.isArray(gruposResultantes[0].itens)) {
             gruposResultantes[0].itens = [];
           }
           gruposResultantes[0].itens.push({ ...itemPadrao });
         }
       }
+    }
+
+    // Se encontramos e removemos itens obsoletos do localStorage, salva a versão purificada
+    if (precisouLimpar) {
+      try {
+        localStorage.setItem(CHAVE_STORAGE_MENU, JSON.stringify(gruposResultantes));
+      } catch {}
     }
 
     return gruposResultantes;
@@ -224,9 +283,23 @@ export async function sincronizarMenuComGithub(
       registrarShaMenu(res.sha);
       const parsed = JSON.parse(res.texto);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        localStorage.setItem(CHAVE_STORAGE_MENU, JSON.stringify(parsed));
+        let precisouLimpar = false;
+        const gruposHigienizados = parsed
+          .filter((g: any) => g && typeof g === "object" && Array.isArray(g.itens))
+          .map((g: any) => ({
+            ...g,
+            itens: (g.itens || []).filter((it: any) => {
+              const ok = ehItemMenuValido(it);
+              if (!ok) precisouLimpar = true;
+              return ok;
+            }),
+          }));
+        localStorage.setItem(CHAVE_STORAGE_MENU, JSON.stringify(gruposHigienizados));
         window.dispatchEvent(new CustomEvent(EVENTO_MENU_ATUALIZADO));
-        return { sincronizado: true, grupos: parsed };
+        if (precisouLimpar) {
+          agendarPersistenciaMenuRemoto(cfg, gruposHigienizados, 500);
+        }
+        return { sincronizado: true, grupos: gruposHigienizados };
       }
     } else if (locais && locais.length > 0) {
       // Se não existe remoto mas temos personalização local, envia para o GitHub
@@ -252,7 +325,7 @@ export function salvarMenuPersonalizado(
       .filter((g) => g && typeof g === "object")
       .map((g) => ({
         ...g,
-        itens: (g.itens || []).filter((it) => it && typeof it === "object" && it.para),
+        itens: (g.itens || []).filter((it) => it && typeof it === "object" && it.para && ehItemMenuValido(it)),
       }));
 
     localStorage.setItem(CHAVE_STORAGE_MENU, JSON.stringify(gruposLimpos));

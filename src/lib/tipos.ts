@@ -33,7 +33,6 @@ export const PASTAS = {
   lousas:    "lousas",
   caixaEntrada: "caixa-entrada",
   contatos:  "contatos",
-  jogos:     "jogos",
 } as const;
 
 export type Pasta = (typeof PASTAS)[keyof typeof PASTAS];

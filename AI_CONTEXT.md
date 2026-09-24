@@ -620,15 +620,15 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `constante` **`CAMINHO_MENU`**
 - `constante` **`CHAVE_STORAGE_MENU`**
 - `constante` **`EVENTO_MENU_ATUALIZADO`**
+- `constante` **`ITENS_BANIDOS_MENU`** — _Itens e rotas permanentemente excluídos do Klaus. NUNCA devem ser carregados ou exibidos no menu, me..._
+- `constante` **`ROTAS_BANIDAS_MENU`**
+- `funcao` **`ehItemMenuValido`** — _Verifica se um item de menu é válido e não pertence a ferramentas excluídas._
 - `constante` **`GRUPOS_MENU_PADRAO`**
-- `funcao` **`carregarMenuPersonalizado`** — _Carrega a configuração do menu salva no localStorage com tolerância total a dados corrompidos._
+- `funcao` **`carregarMenuPersonalizado`** — _Carrega a configuração do menu salva no localStorage com tolerância total a dados corrompidos. Purga..._
 - `funcao` **`registrarShaMenu`**
 - `funcao` **`obterShaMenu`**
 - `funcao` **`agendarPersistenciaMenuRemoto`** — _Enfileira a persistência assíncrona do menu no repositório GitHub com debounce suave._
-- `funcao` **`sincronizarMenuComGithub`** — _Carrega a configuração do menu salva no repositório GitHub e mescla com a local._
-- `funcao` **`salvarMenuPersonalizado`** — _Salva a nova configuração do menu no localStorage e dispara o evento de atualização. Se houver confi..._
-- `funcao` **`restaurarMenuPadrao`** — _Restaura o menu lateral para as configurações originais de fábrica._
-- _...e mais 1 exportações secundárias._
+- _...e mais 4 exportações secundárias._
 
 #### 📄 `src/lib/migracaoLote.ts`
 > Analisador e Migrador em Lote de Entidades do Klaus. Varre todo o acervo de arquivos Markdown no repositório, identifica documentos que ainda utilizam convenções legadas e permite a padronização unificada em lote direto no GitHub.

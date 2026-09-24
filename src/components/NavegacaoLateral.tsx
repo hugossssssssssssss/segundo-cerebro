@@ -13,6 +13,7 @@ import { LogoKlaus } from "./LogoKlaus";
 import {
   carregarMenuPersonalizado,
   EVENTO_MENU_ATUALIZADO,
+  ehItemMenuValido,
   type GrupoMenuPersonalizado,
 } from "@/lib/menuPersonalizado";
 import { obterIconePorNome } from "@/lib/icones";
@@ -230,6 +231,7 @@ export function NavegacaoLateral({
           {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo, idx) => {
             const itensVisiveis = (grupo.itens || []).filter((item) => {
               if (!item || typeof item !== "object" || item.oculto) return false;
+              if (!ehItemMenuValido(item)) return false;
               if (workspaceAtivo.tipo === "equipe" && (item.id === "pdi" || item.para === "/pdi")) {
                 return false;
               }

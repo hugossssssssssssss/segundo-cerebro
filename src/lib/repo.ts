@@ -215,8 +215,6 @@ export function ehArquivoInternoOuSistema(caminho: string): boolean {
     c.startsWith("templates/") ||
     c.startsWith(".templates/") ||
     c.includes("/templates/") ||
-    c.startsWith("jogos/") ||
-    c.includes("/jogos/") ||
     c.startsWith("extensao/") ||
     c.includes("/extensao/") ||
     c.startsWith("scripts/") ||

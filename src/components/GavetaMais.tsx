@@ -3,6 +3,7 @@ import { X, Sparkles, Settings, Moon, Sun, Palette, Smartphone } from "lucide-re
 import {
   carregarMenuPersonalizado,
   EVENTO_MENU_ATUALIZADO,
+  ehItemMenuValido,
   type GrupoMenuPersonalizado,
 } from "@/lib/menuPersonalizado";
 import { obterIconePorNome } from "@/lib/icones";
@@ -131,7 +132,9 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
           {/* Grupos de Links */}
           <div className="space-y-4">
             {(grupos || []).filter((g) => g && Array.isArray(g.itens)).map((grupo) => {
-              const itensVisiveis = (grupo.itens || []).filter((item) => item && typeof item === "object" && !item.oculto);
+              const itensVisiveis = (grupo.itens || []).filter(
+                (item) => item && typeof item === "object" && !item.oculto && ehItemMenuValido(item)
+              );
               if (itensVisiveis.length === 0) return null;
 
               return (
