@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   CheckCircle2,
@@ -36,10 +36,11 @@ import {
   Moon,
   Type,
   Users,
+  FolderGit2,
 } from "lucide-react";
 import { lerConfig, salvarConfig, type Settings } from "@/lib/settings";
 import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
-import { obterWorkspaceAtivo } from "@/lib/workspaces";
+import { obterWorkspaceAtivo, EVENTO_WORKSPACE_ALTERADO } from "@/lib/workspaces";
 import { PainelGestaoEquipe } from "@/components/PainelGestaoEquipe";
 import { GerenciadorWorkspaces } from "@/components/GerenciadorWorkspaces";
 import { carregarRepo, type ItemRepo } from "@/lib/repo";
@@ -93,7 +94,7 @@ import {
 } from "@/lib/preferenciasApp";
 import JSZip from "jszip";
 
-type AbaConfig = "geral" | "personalizacao" | "github" | "equipe" | "ia" | "notificacoes" | "integracoes" | "dados";
+type AbaConfig = "geral" | "workspaces" | "personalizacao" | "github" | "equipe" | "ia" | "notificacoes" | "integracoes" | "dados";
 
 export default function Configuracoes() {
   const [abaAtiva, setAbaAtiva] = useState<AbaConfig>("geral");
@@ -102,9 +103,18 @@ export default function Configuracoes() {
   const workspaceAtivo = obterWorkspaceAtivo();
   const ehEquipe = workspaceAtivo.tipo === "equipe";
 
+  useEffect(() => {
+    const sincronizarWorkspace = () => {
+      setCfg(lerConfig());
+    };
+    window.addEventListener(EVENTO_WORKSPACE_ALTERADO, sincronizarWorkspace);
+    return () => window.removeEventListener(EVENTO_WORKSPACE_ALTERADO, sincronizarWorkspace);
+  }, []);
+
   const opcoesAbas = useMemo<OpcaoVisao<AbaConfig>[]>(() => {
     const abas: OpcaoVisao<AbaConfig>[] = [
       { id: "geral", rotulo: "Geral & Perfil", icone: <User size={15} /> },
+      { id: "workspaces", rotulo: "Espaços de Trabalho", icone: <FolderGit2 size={15} /> },
       { id: "personalizacao", rotulo: "Aparência & Cores", icone: <Palette size={15} /> },
       { id: "github", rotulo: "GitHub & Sincronização", icone: <GitBranch size={15} /> },
     ];
@@ -814,6 +824,15 @@ export default function Configuracoes() {
               </label>
             </div>
           </Cartao>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* ABA: ESPAÇOS DE TRABALHO */}
+      {/* ========================================================= */}
+      {abaAtiva === "workspaces" && (
+        <div className="space-y-5 animate-in fade-in duration-150">
+          <GerenciadorWorkspaces aoAlterarWorkspace={() => setCfg(lerConfig())} />
         </div>
       )}
 

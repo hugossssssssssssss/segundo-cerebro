@@ -35,7 +35,6 @@ import { LogoKlaus } from "@/components/LogoKlaus";
 import { Carregando } from "@/components/ui";
 import { HeaderAcoesOrdenaveis } from "@/components/HeaderAcoesOrdenaveis";
 import { BarraFavoritos } from "@/components/BarraFavoritos";
-import { SeletorWorkspace } from "@/components/SeletorWorkspace";
 import { Rodape } from "@/components/Rodape";
 import { Tooltip } from "@/components/ui/tooltip";
 import { FundoLiquidGlass } from "@/components/FundoLiquidGlass";
@@ -415,8 +414,6 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                 <LogoKlaus tamanho={24} />
                 <span>Klaus</span>
               </NavLink>
-
-              <SeletorWorkspace className="shrink-0" />
 
               <BarraFavoritos className="flex-1 min-w-0" />
             </div>

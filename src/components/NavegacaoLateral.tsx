@@ -27,7 +27,6 @@ import {
   type TamanhoFonteMenu,
 } from "@/lib/tema";
 import { VERSAO_APP } from "@/lib/versao";
-import { SeletorWorkspace } from "./SeletorWorkspace";
 import { obterWorkspaceAtivo, EVENTO_WORKSPACE_ALTERADO } from "@/lib/workspaces";
 
 interface NavegacaoLateralProps {
@@ -224,17 +223,6 @@ export function NavegacaoLateral({
               />
             </button>
           </div>
-        </div>
-
-        {/* Seletor de Espaço na Sidebar (expandida ou compacta quando recolhida) */}
-        <div className="px-2 pt-2 pb-0.5 shrink-0 flex items-center justify-center">
-          <SeletorWorkspace
-            compacto={!visualmenteExpandida}
-            className={cn(
-              "transition-all duration-200",
-              visualmenteExpandida ? "w-full [&>button]:w-full [&>button]:justify-between" : ""
-            )}
-          />
         </div>
 
         {/* Corpo da Navegação */}
