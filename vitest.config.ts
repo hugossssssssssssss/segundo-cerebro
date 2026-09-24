@@ -13,10 +13,7 @@ process.env.TZ = "America/Sao_Paulo";
 
 export default defineConfig({
   resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-      "jepub": fileURLToPath(new URL("./node_modules/jepub/dist/jepub.es.js", import.meta.url)),
-    },
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   test: {
     // jsdom para os testes de componente. Três das quatro perdas de dados

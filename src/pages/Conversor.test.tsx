@@ -2,7 +2,7 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { describe, it, expect, afterEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import Conversor from "./Conversor";
-import jEpub from "jepub";
+import { GeradorEpub } from "@/lib/epub";
 
 describe("Página Conversor", () => {
   afterEach(() => {
@@ -51,11 +51,10 @@ describe("Página Conversor", () => {
     ).toBeDefined();
   });
 
-  it("valida instanciação e criação de documento com jEpub", async () => {
-    const JEpubClass = (jEpub as any)?.default || jEpub;
-    expect(typeof JEpubClass).toBe("function");
+  it("valida instanciação e criação de documento com GeradorEpub nativo", async () => {
+    expect(typeof GeradorEpub).toBe("function");
 
-    const inst = new JEpubClass();
+    const inst = new GeradorEpub();
     inst.init({
       i18n: "pt",
       title: "Livro de Teste",
@@ -63,9 +62,17 @@ describe("Página Conversor", () => {
       publisher: "Klaus",
     });
 
-    inst.add("Página 1", ["Primeiro parágrafo do livro.", "Segundo parágrafo com caracteres especiais: 100% & <teste>."]);
+    inst.add("Página 1", [
+      "Primeiro parágrafo do livro.",
+      "Segundo parágrafo com caracteres especiais: 100% & <teste> e tags <%= algo %>.",
+    ]);
     const epubData = await inst.generate("uint8array");
     expect(epubData).toBeDefined();
     expect((epubData as Uint8Array).length).toBeGreaterThan(500);
+
+    // Valida também geração em formato Blob
+    const blob = (await inst.generate("blob")) as Blob;
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.size).toBeGreaterThan(500);
   });
 });

@@ -4,7 +4,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import JSZip from "jszip";
 import TurndownService from "turndown";
 import { PDFDocument } from "pdf-lib";
-import jEpub from "jepub";
+import { GeradorEpub } from "@/lib/epub";
 import {
   RefreshCw,
   FileText,
@@ -393,8 +393,7 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
       const titulo = pdfEpubTitulo.trim() || pdfEpubArquivo.name.replace(/\.pdf$/i, "");
       const autor = pdfEpubAutor.trim() || "Autor Desconhecido";
 
-      const JEpubClass = (jEpub as any)?.default || jEpub;
-      const jepubObj = new JEpubClass();
+      const jepubObj = new GeradorEpub();
       jepubObj.init({
         i18n: "pt",
         title: titulo,
