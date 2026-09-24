@@ -13,7 +13,6 @@ const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 const Chat = lazy(() => import("@/pages/Chat"));
 const TestadorHardware = lazy(() => import("@/pages/TestadorHardware"));
 const FerramentasPDF = lazy(() => import("@/pages/FerramentasPDF"));
-const PesquisaLivros = lazy(() => import("@/pages/PesquisaLivros"));
 const Sons = lazy(() => import("@/pages/Sons"));
 const ITTools = lazy(() => import("@/pages/ITTools"));
 const BaixadorMidia = lazy(() => import("@/pages/BaixadorMidia"));
@@ -194,8 +193,6 @@ export function ProvedorFerramentasFlutuantes({ children }: { children: ReactNod
                     mensagemInicial={opcoesAtivas?.mensagemInicial}
                     aoFechar={fecharFerramentaFlutuante}
                   />
-                ) : ferramentaAtiva === "pesquisa_livros" ? (
-                  <PesquisaLivros />
                 ) : ferramentaAtiva === "sons" ? (
                   <Sons />
                 ) : ferramentaAtiva === "transcritor" ? (

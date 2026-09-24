@@ -94,13 +94,10 @@ Navegador (React SPA)
 | **Home** | `src/pages/Home.tsx` | Interface e fluxo da tela de Home |
 | **ITTools** | `src/pages/ITTools.tsx` | Interface e fluxo da tela de ITTools |
 | **Inbox** | `src/pages/Inbox.tsx` | Interface e fluxo da tela de Inbox |
-| **Jogos** | `src/pages/Jogos.tsx` | Interface e fluxo da tela de Jogos |
 | **Lixeira** | `src/pages/Lixeira.tsx` | Interface e fluxo da tela de Lixeira |
 | **Lousas** | `src/pages/Lousas.tsx` | Interface e fluxo da tela de Lousas |
 | **Notas** | `src/pages/Notas.tsx` | Interface e fluxo da tela de Notas |
-| **Noticias** | `src/pages/Noticias.tsx` | Interface e fluxo da tela de Noticias |
 | **PDI** | `src/pages/PDI.tsx` | Interface e fluxo da tela de PDI |
-| **PesquisaLivros** | `src/pages/PesquisaLivros.tsx` | Interface e fluxo da tela de PesquisaLivros |
 | **Referencias** | `src/pages/Referencias.tsx` | Interface e fluxo da tela de Referencias |
 | **Sons** | `src/pages/Sons.tsx` | Interface e fluxo da tela de Sons |
 | **Tarefas** | `src/pages/Tarefas.tsx` | Interface e fluxo da tela de Tarefas |
@@ -116,9 +113,6 @@ Navegador (React SPA)
 
 ### Sub-componentes: src/components/home/
 `CabecalhoHome`, `ModalCatalogoWidgets`, `WidgetBaixadorRapido`, `WidgetBuscaWeb`, `WidgetChatIA`, `WidgetConversorRapido`, `WidgetFocoHoje`, `WidgetHubFerramentas`, `WidgetITToolsRapido`, `WidgetLousasRecentes`, `WidgetMetasPDI`, `WidgetNotasRecentes`, `WidgetPDFRapido`, `WidgetReferenciasMural`, `WidgetScratchpad`, `WidgetSonsFoco`, `WidgetTranscritorVoz`, `WidgetWrapper`, `types`
-
-### Sub-componentes: src/components/jogos/
-`GradeTermo`, `JogoTermo`, `ModalComoJogarTermo`, `ModalEstatisticasTermo`, `TecladoTermo`
 
 ### Sub-componentes: src/components/pdf/
 `ScannerDocumento`
@@ -647,27 +641,6 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `interface` **`ResultadoMigracaoLote`**
 - `funcao` **`executarMigracaoEmLote`** — _Executa a gravação sequencial dos arquivos normalizados no GitHub._
 
-#### 📄 `src/lib/noticias.ts`
-> Módulo de Notícias & Revista Digital para o Klaus. Adota a arquitetura comprovada de leitura dos leitores de feed open-source do GitHub (georapbox/rss-feed-reader + rss-parser). Consome os campos `content` (HTML integral da matéria) e `body` (TabNews) para exibir matérias completas e organizadas instantaneamente, com capas HD, 3 modos visuais e integrações com o repositório.
-
-**Exportações principais:**
-- `tipo` **`CategoriaNoticia`**
-- `tipo` **`ModoExibicao`**
-- `interface` **`ItemNoticia`**
-- `interface` **`FeedCustomizado`**
-- `interface` **`CategoriaConfig`**
-- `constante` **`CATEGORIAS_NOTICIAS`**
-- `funcao` **`obterImagemIlustrativa`** — _Seleciona uma imagem de alta definição temática_
-- `funcao` **`limparTexto`** — _Limpa marcas de formatação mantendo o texto sem quebras_
-- `funcao` **`formatarHtmlEditorial`** — _Sanitiza e formata o HTML recebido do campo `content` do RSS, mantendo parágrafos (<p>), subtítulos ..._
-- `funcao` **`calcularTempoLeitura`** — _Calcula o tempo estimado de leitura (média de 180 palavras por minuto)_
-- `funcao` **`obterModoExibicao`**
-- `funcao` **`salvarModoExibicao`**
-- `funcao` **`obterCategoriasAtivas`**
-- `funcao` **`salvarCategoriasAtivas`**
-- `funcao` **`obterIdsCurtidos`**
-- _...e mais 10 exportações secundárias._
-
 #### 📄 `src/lib/pdi.ts`
 > Plano de Desenvolvimento Individual. Duas coisas, guardadas como arquivos .md: pdi/metas/*.md     — onde você quer chegar pdi/entregas/*.md  — o que você já fez A ligação entre elas é o campo `metas` no frontmatter da entrega, que aponta para o NOME DO ARQUIVO da meta (sem .md). Usar o nome do arquivo e não o título permite renomear o título sem quebrar a ligação. Os tipos e funções de conversão vivem agora em `tipos.ts` e `entidades.ts`. Este arquivo re-exporta tudo com os nomes legados.
 
@@ -815,13 +788,6 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `constante` **`CAMINHO_WORKFLOW_LEMBRETES`**
 - `funcao` **`gerarYamlWorkflowLembretes`**
 - `funcao` **`instalarWorkflowLembretes`** — _Instala o workflow de lembretes no repositório de dados do usuário via GitHub Contents API._
-
-#### 📄 `src/lib/limpezaProcessos.ts`
-> Limpeza e Exclusão em Lote de Arquivos Residuais de Processos / CRM. Permite varrer o repositório de dados, identificar arquivos criados anteriormente na pasta `processos/` e excluí-los em lote do GitHub.
-
-**Exportações principais:**
-- `funcao` **`identificarArquivosProcessos`** — _Identifica todos os arquivos markdown ou dados na pasta processos/ e suas subpastas._
-- `funcao` **`apagarArquivosProcessosEmLote`** — _Exclui todos os arquivos de processos informados do GitHub. Utiliza commit em lote atômico ou fallba..._
 
 #### 📄 `src/lib/logger.ts`
 **Exportações principais:**

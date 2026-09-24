@@ -36,7 +36,6 @@ describe("preferenciasApp", () => {
     const novas: PreferenciasGerais = {
       tema: "escuro",
       modoEdicaoHome: true,
-      noticiasModoExibicao: "grade",
       favoritosBusca: ["teste 1", "teste 2"],
     };
 
@@ -45,7 +44,6 @@ describe("preferenciasApp", () => {
     const salvas = lerPreferenciasGeraisLocal();
     expect(salvas.tema).toBe("escuro");
     expect(salvas.modoEdicaoHome).toBe(true);
-    expect(salvas.noticiasModoExibicao).toBe("grade");
     expect(salvas.favoritosBusca).toEqual(["teste 1", "teste 2"]);
   });
 

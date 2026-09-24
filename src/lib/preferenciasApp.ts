@@ -29,9 +29,6 @@ export const EVENTO_PREFERENCIAS_ATUALIZADAS = "klaus-preferencias-atualizadas";
 export interface PreferenciasGerais {
   tema?: Tema;
   modoEdicaoHome?: boolean;
-  noticiasModoExibicao?: string;
-  noticiasCategoriasAtivas?: string[];
-  noticiasFeedsCustom?: any[];
   favoritosBusca?: string[];
   atualizadoEm?: string;
 }
@@ -72,20 +69,6 @@ export function lerPreferenciasGeraisLocal(): PreferenciasGerais {
   try {
     const tema = lerTemaSalvo();
     const modoEdicaoHome = localStorage.getItem("klaus_home_modo_edicao") === "true";
-    const noticiasModoExibicao = localStorage.getItem("klaus_noticias_modo_exibicao") || undefined;
-    
-    let noticiasCategoriasAtivas: string[] | undefined;
-    try {
-      const cat = localStorage.getItem("klaus_noticias_categorias_ativas");
-      if (cat) noticiasCategoriasAtivas = JSON.parse(cat);
-    } catch {}
-
-    let noticiasFeedsCustom: any[] | undefined;
-    try {
-      const feeds = localStorage.getItem("klaus_noticias_feeds_custom");
-      if (feeds) noticiasFeedsCustom = JSON.parse(feeds);
-    } catch {}
-
     let favoritosBusca: string[] | undefined;
     try {
       const favB = localStorage.getItem("klaus_favoritos_busca");
@@ -95,9 +78,6 @@ export function lerPreferenciasGeraisLocal(): PreferenciasGerais {
     return {
       tema,
       modoEdicaoHome,
-      noticiasModoExibicao,
-      noticiasCategoriasAtivas,
-      noticiasFeedsCustom,
       favoritosBusca,
       atualizadoEm: new Date().toISOString(),
     };
@@ -132,15 +112,6 @@ export function aplicarPreferenciasGerais(prefs: PreferenciasGerais): void {
     }
     if (typeof prefs.modoEdicaoHome === "boolean") {
       localStorage.setItem("klaus_home_modo_edicao", String(prefs.modoEdicaoHome));
-    }
-    if (prefs.noticiasModoExibicao) {
-      localStorage.setItem("klaus_noticias_modo_exibicao", prefs.noticiasModoExibicao);
-    }
-    if (Array.isArray(prefs.noticiasCategoriasAtivas)) {
-      localStorage.setItem("klaus_noticias_categorias_ativas", JSON.stringify(prefs.noticiasCategoriasAtivas));
-    }
-    if (Array.isArray(prefs.noticiasFeedsCustom)) {
-      localStorage.setItem("klaus_noticias_feeds_custom", JSON.stringify(prefs.noticiasFeedsCustom));
     }
     if (Array.isArray(prefs.favoritosBusca)) {
       localStorage.setItem("klaus_favoritos_busca", JSON.stringify(prefs.favoritosBusca));

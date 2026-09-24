@@ -24,9 +24,7 @@ import {
   BellPlus,
   SunMoon,
   Timer,
-  BookOpen,
   Video,
-  Newspaper,
   Headphones,
   Network,
   RefreshCw,
@@ -439,15 +437,6 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
 
   // --- MÓDULOS E FERRAMENTAS DO KLAUS ---
   {
-    id: "pesquisa_livros",
-    titulo: "Pesquisar e Baixar Livros",
-    descricao: "Busque e baixe livros e PDFs de domínio público/abertos de forma rápida e direta",
-    categoria: "ferramenta",
-    rota: "/livros",
-    icone: BookOpen,
-    palavrasChave: ["livros", "pesquisar livros", "pdf", "epub", "baixar", "gutenberg", "open library", "gutenberg", "biblioteca"],
-  },
-  {
     id: "contatos",
     titulo: "Árvore de Contatos & Pessoas",
     descricao: "Gerencie contatos, rede de relacionamentos, hierarquias (chefe/equipe) e propriedades editáveis",
@@ -545,15 +534,6 @@ export const LISTA_FERRAMENTAS_APP: FerramentaApp[] = [
     rota: "/sons",
     icone: Headphones,
     palavrasChave: ["sons", "foco", "ruído branco", "chuva", "cafeteria", "áudio", "ambiente", "concentração", "música"],
-  },
-  {
-    id: "noticias",
-    titulo: "Radar de Notícias & Feed RSS",
-    descricao: "Acompanhe novidades, tendências e feeds RSS em tempo real",
-    categoria: "modulo",
-    rota: "/noticias",
-    icone: Newspaper,
-    palavrasChave: ["notícias", "radar", "feed", "rss", "novidades", "artigos", "design"],
   },
   {
     id: "grafo",
@@ -674,7 +654,6 @@ export function obterFerramentasPersonalizadas(
       mapaCustomPorId.get(f.id.toLowerCase()) ||
       (f.id === "chat_ia" ? mapaCustomPorId.get("chat") : undefined) ||
       (f.id === "ferramentas_pdf" ? (mapaCustomPorId.get("pdf") || mapaCustomPorRota.get("/pdf")) : undefined) ||
-      (f.id === "pesquisa_livros" ? (mapaCustomPorId.get("livros") || mapaCustomPorRota.get("/livros")) : undefined) ||
       (f.id === "testador_hardware" ? (mapaCustomPorId.get("testador_hardware") || mapaCustomPorRota.get("/testador")) : undefined);
 
     if (!custom) {

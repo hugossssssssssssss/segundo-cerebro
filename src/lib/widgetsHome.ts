@@ -158,9 +158,7 @@ export const MAPA_WIDGET_MENU: Record<string, { rota?: string; idMenu?: string }
   transcritor_voz: { rota: "/transcritor", idMenu: "transcritor" },
   sons_foco: { rota: "/sons", idMenu: "sons" },
   hardware_test: { rota: "/testador", idMenu: "testador_hardware" },
-  pesquisa_livros: { rota: "/livros", idMenu: "livros" },
   grafo_neural: { rota: "/grafo", idMenu: "grafo" },
-  noticias_feed: { rota: "/noticias", idMenu: "noticias" },
   chat_ia: { rota: "/chat", idMenu: "chat" },
   calendario_home: { rota: "/tarefas", idMenu: "tarefas" },
 };

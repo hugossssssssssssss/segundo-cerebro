@@ -43,7 +43,7 @@ import { testarConexao, diagnosticar, type Etapa } from "@/lib/github";
 import { obterWorkspaceAtivo, EVENTO_WORKSPACE_ALTERADO } from "@/lib/workspaces";
 import { PainelGestaoEquipe } from "@/components/PainelGestaoEquipe";
 import { GerenciadorWorkspaces } from "@/components/GerenciadorWorkspaces";
-import { carregarRepo, type ItemRepo } from "@/lib/repo";
+import { carregarRepo } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
 import { Botao, Campo, Cartao, Rotulo, Aviso, ModalConfirmacao } from "@/components/ui";
 import { toast } from "@/lib/toast";
@@ -71,7 +71,6 @@ import {
 import { nomeLivre } from "@/lib/markdown";
 import { PASTAS } from "@/lib/tipos";
 import { analisarAcervoParaMigracao, executarMigracaoEmLote, type RelatorioAnaliseAcervo } from "@/lib/migracaoLote";
-import { identificarArquivosProcessos, apagarArquivosProcessosEmLote } from "@/lib/limpezaProcessos";
 import { popularKlausComDadosDemo, apagarTodosDadosDemo } from "@/lib/dadosDemo";
 import { CardConsumoGitHub } from "@/components/CardConsumoGitHub";
 import { instalarWorkflowLembretes } from "@/lib/instaladorWorkflow";
@@ -194,11 +193,6 @@ export default function Configuracoes() {
   const [progressoMigracao, setProgressoMigracao] = useState<{ atual: number; total: number; caminho: string } | null>(null);
   const [msgMigracao, setMsgMigracao] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
 
-  // Estados da Limpeza de Processos Residuais
-  const [arquivosProcessos, setArquivosProcessos] = useState<ItemRepo[]>([]);
-  const [excluindoProcessos, setExcluindoProcessos] = useState(false);
-  const [progressoProcessos, setProgressoProcessos] = useState<{ atual: number; total: number; msg: string } | null>(null);
-  const [msgProcessos, setMsgProcessos] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
   // Estados do Agendador Autônomo GitHub Actions
   const [instalandoWorkflow, setInstalandoWorkflow] = useState(false);
   const [msgWorkflow, setMsgWorkflow] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
@@ -347,15 +341,12 @@ export default function Configuracoes() {
   const analisarPadronizacao = async () => {
     setAnalisandoAcervo(true);
     setMsgMigracao(null);
-    setMsgProcessos(null);
     try {
       const itens = await carregarRepo(cfg);
       const rel = analisarAcervoParaMigracao(itens);
       setRelatorioMigracao(rel);
-      const procs = identificarArquivosProcessos(itens);
-      setArquivosProcessos(procs);
 
-      if (rel.arquivosPendentes === 0 && procs.length === 0) {
+      if (rel.arquivosPendentes === 0) {
         setMsgMigracao({
           tom: "sucesso",
           texto: `Perfeito! Todos os ${rel.totalArquivos} arquivos do seu repositório já estão padronizados e limpos.`,
@@ -365,41 +356,6 @@ export default function Configuracoes() {
       setMsgMigracao({ tom: "erro", texto: `Erro ao analisar repositório: ${e?.message || e}` });
     } finally {
       setAnalisandoAcervo(false);
-    }
-  };
-
-  const executarExclusaoProcessos = async () => {
-    if (arquivosProcessos.length === 0) return;
-    setExcluindoProcessos(true);
-    setMsgProcessos(null);
-    try {
-      const res = await apagarArquivosProcessosEmLote(
-        cfg,
-        arquivosProcessos.map((i) => ({ caminho: i.caminho, sha: i.sha })),
-        (atual, total, msg) => setProgressoProcessos({ atual, total, msg }),
-      );
-
-      if (res.falhas.length === 0) {
-        setMsgProcessos({
-          tom: "sucesso",
-          texto: `Sucesso! Todos os ${res.sucessos} arquivo(s) de processos/CRM foram excluídos do GitHub.`,
-        });
-        setArquivosProcessos([]);
-      } else {
-        setMsgProcessos({
-          tom: "erro",
-          texto: `${res.sucessos} arquivo(s) excluídos, mas ${res.falhas.length} falharam ao excluir.`,
-        });
-      }
-
-      const itensNovos = await carregarRepo(cfg);
-      setArquivosProcessos(identificarArquivosProcessos(itensNovos));
-      setRelatorioMigracao(analisarAcervoParaMigracao(itensNovos));
-    } catch (e: any) {
-      setMsgProcessos({ tom: "erro", texto: `Erro durante a exclusão: ${e?.message || e}` });
-    } finally {
-      setExcluindoProcessos(false);
-      setProgressoProcessos(null);
     }
   };
 
@@ -1948,53 +1904,7 @@ export default function Configuracoes() {
             </div>
           </Cartao>
 
-          {/* Limpeza de Processos Residuais (se houver) */}
-          {arquivosProcessos.length > 0 && (
-            <Cartao className="p-5 space-y-4 border-rose-500/40 bg-rose-500/5">
-              <div>
-                <h2 className="font-medium text-foreground flex items-center gap-2 text-rose-600 dark:text-rose-400">
-                  <Trash2 size={18} />
-                  Arquivos Residuais de Processos / CRM ({arquivosProcessos.length})
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Foram identificados <strong className="text-foreground">{arquivosProcessos.length}</strong> arquivos legados na pasta <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">processos/</code> no GitHub. Você pode excluí-los em 1 clique.
-                </p>
-              </div>
 
-              {msgProcessos && <Aviso tom={msgProcessos.tom}>{msgProcessos.texto}</Aviso>}
-
-              {progressoProcessos && (
-                <div className="space-y-2 rounded-xl bg-muted/40 p-3 border border-border">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-foreground">Excluindo processos do GitHub...</span>
-                    <span className="text-rose-500">{progressoProcessos.atual} de {progressoProcessos.total}</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full bg-rose-500 transition-all duration-200"
-                      style={{ width: `${(progressoProcessos.atual / progressoProcessos.total) * 100}%` }}
-                    />
-                  </div>
-                  <p className="text-[11px] text-muted-foreground truncate font-mono">
-                    {progressoProcessos.msg}
-                  </p>
-                </div>
-              )}
-
-              <div className="flex items-center gap-3 pt-2">
-                <Botao
-                  variante="perigo"
-                  onClick={executarExclusaoProcessos}
-                  disabled={excluindoProcessos}
-                >
-                  <Trash2 size={15} />
-                  {excluindoProcessos
-                    ? "Excluindo arquivos..."
-                    : `Excluir ${arquivosProcessos.length} arquivos de processos`}
-                </Botao>
-              </div>
-            </Cartao>
-          )}
 
           {/* Dados de Demonstração / Testes */}
           <Cartao className="p-5 space-y-4 border-dashed border-primary/40 bg-primary/5">

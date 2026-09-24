@@ -77,13 +77,10 @@ const ITTools = lazy(() => import("@/pages/ITTools"));
 const Transcritor = lazy(() => import("@/pages/Transcritor"));
 const GrafoNeural = lazy(() => import("@/pages/GrafoNeural"));
 const Contatos = lazy(() => import("@/pages/Contatos"));
-const Noticias = lazy(() => import("@/pages/Noticias"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 const BoasVindas = lazy(() => import("@/pages/BoasVindas"));
-const PesquisaLivros = lazy(() => import("@/pages/PesquisaLivros"));
 const TestadorHardware = lazy(() => import("@/pages/TestadorHardware"));
 const Sons = lazy(() => import("@/pages/Sons"));
-const Jogos = lazy(() => import("@/pages/Jogos"));
 const Lixeira = lazy(() => import("@/pages/Lixeira"));
 
 
@@ -462,7 +459,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
             <div key={pathname} className="flex-1 w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-200">
               <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
             </div>
-            {!pathname.startsWith("/jogos") && <Rodape />}
+            <Rodape />
           </main>
         )}
       </div>
@@ -595,14 +592,11 @@ function AppInterno() {
             <Route path="/conversor" element={<Conversor />} />
             <Route path="/baixador" element={<BaixadorMidia />} />
             <Route path="/it-tools" element={<ITTools />} />
-            <Route path="/livros" element={<PesquisaLivros />} />
             <Route path="/transcritor" element={<Transcritor />} />
             <Route path="/testador" element={<TestadorHardware />} />
             <Route path="/contatos" element={<Contatos />} />
-            <Route path="/noticias" element={<Noticias />} />
             <Route path="/config" element={<Configuracoes />} />
             <Route path="/sons" element={<Sons />} />
-            <Route path="/jogos" element={<Jogos />} />
             <Route path="/lixeira" element={<Lixeira />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>

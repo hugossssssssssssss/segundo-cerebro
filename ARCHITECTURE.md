@@ -258,14 +258,10 @@ direto · `não usa` = não toca no repositório de dados.
 | `src/pages/ITTools.test.tsx` | não usa | não usa |
 | `src/pages/ITTools.tsx` | não usa | não usa |
 | `src/pages/Inbox.tsx` | na mão | hook |
-| `src/pages/Jogos.test.tsx` | não usa | não usa |
-| `src/pages/Jogos.tsx` | não usa | não usa |
 | `src/pages/Lixeira.tsx` | não usa | na mão |
 | `src/pages/Lousas.tsx` | hook | hook |
 | `src/pages/Notas.tsx` | hook | hook |
-| `src/pages/Noticias.tsx` | não usa | não usa |
 | `src/pages/PDI.tsx` | hook | hook |
-| `src/pages/PesquisaLivros.tsx` | não usa | não usa |
 | `src/pages/Referencias.tsx` | hook | hook |
 | `src/pages/Sons.tsx` | não usa | não usa |
 | `src/pages/Tarefas.tsx` | hook | hook |
