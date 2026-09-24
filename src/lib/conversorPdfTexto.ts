@@ -272,25 +272,45 @@ export function reconciliarCapitulares(linhas: LinhaFisica[]): LinhaFisica[] {
     }
 
     const textoAtual = atual.texto.trim();
-    // É uma capitular se tem 1 ou 2 caracteres e está isolada em uma linha
-    const ehCapitular = /^[A-ZÀ-Ú«"'\u201C\u2018]?[A-ZÀ-Ú]$/.test(textoAtual);
+    // É uma capitular se tem estritamente 1 caractere alfabético (podendo ter aspas antes) e fonte destacada
+    const ehCapitular =
+      /^[«"'\u201C\u2018]?[A-ZÀ-Ú]$/.test(textoAtual) &&
+      (atual.fontSize >= 18 || atual.fontSize >= proxima.fontSize * 1.3);
 
     if (ehCapitular) {
       const textoProxima = proxima.texto.trim();
-      // Se a próxima linha começa com letra minúscula (continuação da mesma palavra, ex: "utro dia")
+      // Se a próxima linha começa com letra minúscula (continuação do parágrafo)
       if (/^[a-zà-ú]/.test(textoProxima)) {
+        const letraBase = textoAtual.replace(/^[«"'\u201C\u2018]/, "");
+        const primeiraPalavra = textoProxima.split(/\s+/)[0].replace(/[.,;:?!—]$/, "").toLowerCase();
+
+        // Se for uma das poucas letras que existem como palavras isoladas em português (A, O, E, É)
+        let precisaEspaco = false;
+        if (/^[AOEÉ]$/i.test(letraBase)) {
+          // Se o início for um sufixo truncado típico (ex: "ra" de "Era", "utro" de "Outro", "ntão" de "Então")
+          const ehSufixoTruncado =
+            /^(?:ra|utr[oa]s?|ss[ea]s?|st[ea]s?|nt[aã]o|quel[ea]s?|mbaixo|nquanto|ntre|xatamente|les|las|inda|avia)\b/i.test(
+              primeiraPalavra
+            );
+          precisaEspaco = !ehSufixoTruncado;
+        } else {
+          // Letras que nunca são palavras sozinhas (B, C, D, H, N, Q, S, T, etc.) sempre juntam sem espaço
+          precisaEspaco = false;
+        }
+
         resultado.push({
           y: atual.y,
           topY: atual.topY,
           x: atual.x,
           fontSize: proxima.fontSize,
           largura: atual.largura + proxima.largura,
-          texto: `${textoAtual}${textoProxima}`,
+          texto: precisaEspaco ? `${textoAtual} ${textoProxima}` : `${textoAtual}${textoProxima}`,
         });
         i++; // Pula a próxima linha pois foi incorporada
         continue;
       }
-      // Se a próxima linha começa com letra maiúscula (a capitular era uma palavra inteira, ex: "E" + "a noite...")
+
+      // Se a próxima linha começa com letra maiúscula (a capitular é palavra isolada, ex: "E" + "A noite...")
       if (/^[A-ZÀ-Ú]/.test(textoProxima)) {
         resultado.push({
           y: atual.y,
@@ -427,23 +447,51 @@ export function detectarTituloCapitulo(
     return { ehTitulo: false };
   }
 
-  // 2. Linhas que terminam com pontuação de frase contínua ou diálogo NUNCA são títulos
+  // 2. Linhas que começam com letra minúscula NUNCA são títulos de capítulo
+  if (/^[a-zà-ú]/.test(limpo)) {
+    return { ehTitulo: false };
+  }
+
+  // 3. Linhas que terminam com pontuação de frase contínua ou diálogo NUNCA são títulos
   if (/[,;:—]$/.test(limpo) || /\.{3,}$/.test(limpo) || /…$/.test(limpo)) {
     return { ehTitulo: false };
   }
 
-  // 3. Verbos de diálogo e narração no meio da frase indicam texto corrido/diálogo
+  // 4. Linhas contendo ponto final intermediário seguido de espaço e maiúscula ("frase. Outra frase") são texto corrido
+  if (/\.\s+[A-ZÀ-Ú]/.test(limpo)) {
+    return { ehTitulo: false };
+  }
+
+  // 5. Verbos de diálogo e narração no meio da frase indicam texto corrido/diálogo
   if (/\b(?:disse|falou|perguntou|respondeu|exclamou|gritou|murmurou|pensou|afirmou)\b/i.test(limpo)) {
     return { ehTitulo: false };
   }
 
-  // 4. Padrões explícitos com palavra-chave de divisão editorial ("Capítulo", "Capitulo", "Chapter", "Livro", "Parte")
+  // 6. Capítulos explícitos ("Capítulo", "Capitulo", "Chapter")
   // Ex: "Capítulo 1", "Capítulo I", "Capítulo Um", "Capítulo 1: O Início", "Chapter 5 - The Journey"
-  const regexExplicit = new RegExp(
-    `^(?:cap[ií]tulo|chapter|livro|parte)\\b(?:\\s+(?:[0-9ivxlcdm]+|${NUMEROS_EXTENSO}))?(?:\\s*[:.\\-–—]\\s*.{1,45})?$`,
+  const regexCapitulo = new RegExp(
+    `^(?:cap[ií]tulo|chapter)(?:\\s+(?:[0-9ivxlcdm]+|${NUMEROS_EXTENSO}))?(?:\\s*[:\\-–—]\\s*.{1,45})?$`,
     "i"
   );
-  if (regexExplicit.test(limpo)) {
+  if (regexCapitulo.test(limpo)) {
+    // Se for apenas "Capítulo." com ponto no final sem número nem subtítulo, é fim de oração de texto corrido
+    if (/^cap[ií]tulo\.$/i.test(limpo)) {
+      return { ehTitulo: false };
+    }
+    return {
+      ehTitulo: true,
+      tituloNormalizado: formatarTituloBonito(limpo),
+    };
+  }
+
+  // 7. Divisões por "Livro" ou "Parte" DEVEM OBRIGATORIAMENTE vir acompanhadas de número ou numeral
+  // Ex: "Livro 1", "Livro I", "Livro Um", "Parte 2", "Parte Dois".
+  // NUNCA aceita frases como "livro. O que você escreveu..." ou "parte de algo"
+  const regexLivroParte = new RegExp(
+    `^(?:livro|parte)\\s+(?:[0-9ivxlcdm]+|${NUMEROS_EXTENSO})(?:\\s*[:\\-–—]\\s*.{1,45})?$`,
+    "i"
+  );
+  if (regexLivroParte.test(limpo)) {
     return {
       ehTitulo: true,
       tituloNormalizado: formatarTituloBonito(limpo),
@@ -617,15 +665,23 @@ export function reconstruirTextoEParagrafosPdf(items: ItemTextoPdf[]): string[] 
       }
 
       // Se a próxima linha for o número ou complemento do título (ex: Linha 1 = "Capítulo", Linha 2 = "Um"):
-      if (proximaLinha) {
-        const detProx = detectarTituloCapitulo(proximaLinha.texto, proximaLinha.fontSize, fontSizeMedio);
+      if (proximaLinha && proximaLinha.texto.trim().length > 1) {
+        const textoProxTrim = proximaLinha.texto.trim();
+        const detProx = detectarTituloCapitulo(textoProxTrim, proximaLinha.fontSize, fontSizeMedio);
+        const ehNumeroExtensoOuRomano = new RegExp(`^(?:${NUMEROS_EXTENSO}|\\d{1,3}|[IVXLCDM]+)$`, "i").test(textoProxTrim);
+        const ehSubtituloValido =
+          proximaLinha.fontSize >= fontSizeMedio * 1.15 &&
+          !/[.,;:?!—]$/.test(textoProxTrim) &&
+          !TRAVESSAO_REGEX.test(textoProxTrim) &&
+          textoProxTrim.length <= 45;
+
         const ehComplementoTitulo =
-          detProx.ehTitulo ||
-          proximaLinha.fontSize >= fontSizeMedio * 1.15 ||
-          new RegExp(`^(?:${NUMEROS_EXTENSO}|\\d{1,3}|[IVXLCDM]+)$`, "i").test(proximaLinha.texto.trim());
+          ehNumeroExtensoOuRomano ||
+          (detProx.ehTitulo && !TRAVESSAO_REGEX.test(textoProxTrim)) ||
+          ehSubtituloValido;
 
         if (ehComplementoTitulo) {
-          paragrafos.push(`${linha.texto.trim()} ${proximaLinha.texto.trim()}`);
+          paragrafos.push(`${linha.texto.trim()} ${textoProxTrim}`);
           i++; // Avança a linha incorporada
           continue;
         }

@@ -322,4 +322,60 @@ describe("Reconstrução de diálogos com travessão e estrofes de poesia", () =
     expect(versos[0]).toBe("Amor é fogo que arde sem se ver,");
     expect(versos[1]).toBe("É ferida que dói e não se sente;");
   });
+
+  it("não confunde frases com 'livro.' ou que começam com minúscula como capítulos", () => {
+    // Caso real do livro Chama de Ferro pág. 37
+    const fraseLivro = "livro. O que você escreveu pra ela.";
+    expect(detectarTituloCapitulo(fraseLivro).ehTitulo).toBe(false);
+
+    // Diálogo quebrado com a palavra 'livro.' na linha seguinte
+    const items: ItemTextoPdf[] = [
+      {
+        str: "— Foi ela que mandou fazer. Ela também me deu seu",
+        transform: [12, 0, 0, 12, 50, 700],
+        width: 320,
+        height: 12,
+      },
+      {
+        str: "livro. O que você escreveu pra ela.",
+        transform: [12, 0, 0, 12, 50, 686],
+        width: 250,
+        height: 12,
+      },
+    ];
+
+    const res = reconstruirTextoEParagrafosPdf(items);
+    expect(res.length).toBe(1);
+    expect(res[0]).toBe(
+      "— Foi ela que mandou fazer. Ela também me deu seu livro. O que você escreveu pra ela."
+    );
+  });
+
+  it("reconcilia Drop Cap (capitular) com parágrafo e não gruda no título do capítulo anterior", () => {
+    // Caso real do livro Chama de Ferro pág. 13 (Capítulo Um + Letra capitular 'O')
+    const items: ItemTextoPdf[] = [
+      { str: "CAPÍTULO", transform: [30, 0, 0, 30, 200, 750], width: 140, height: 30 },
+      { str: "UM", transform: [30, 0, 0, 30, 200, 715], width: 40, height: 30 },
+      { str: "O", transform: [51, 0, 0, 51, 50, 630], width: 35, height: 51 },
+      {
+        str: "gosto da revolução é doce.",
+        transform: [15, 0, 0, 15, 90, 650],
+        width: 380,
+        height: 15,
+      },
+      {
+        str: "Encaro meu irmão mais velho.",
+        transform: [15, 0, 0, 15, 50, 630],
+        width: 370,
+        height: 15,
+      },
+    ];
+
+    const res = reconstruirTextoEParagrafosPdf(items);
+    expect(res).toContain("CAPÍTULO UM");
+    expect(res).not.toContain("CAPÍTULO UM O");
+    expect(res.join(" ")).toContain("O gosto da revolução é doce.");
+    expect(res.join(" ")).toContain("Encaro meu irmão mais velho.");
+  });
 });
+
