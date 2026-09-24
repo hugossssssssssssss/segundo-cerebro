@@ -361,13 +361,58 @@ export function restaurarPrimeiraLetraSeTruncada(paragrafo: string): string {
 }
 
 /**
- * Lista de números por extenso em português para identificar títulos como "Capítulo Um" ou "Um"
+ * Lista de números por extenso em português para identificar títulos explícitos como "Capítulo Um"
  */
 const NUMEROS_EXTENSO =
   "um|dois|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|primeiro|segundo|terceiro|quarto|quinto|sexto|s[eé]timo|oitavo|nono|d[eé]cimo|one|two|three|four|five";
 
 /**
- * Verifica se um texto representa o título de um novo capítulo
+ * Reconcilia travessões órfãos e falas com quebra acidental em linhas físicas separadas
+ */
+export function reconciliarTravessoesELinhas(linhas: LinhaFisica[]): LinhaFisica[] {
+  if (linhas.length <= 1) return linhas;
+
+  const resultado: LinhaFisica[] = [];
+
+  for (let i = 0; i < linhas.length; i++) {
+    const atual = linhas[i];
+    const proxima = linhas[i + 1];
+
+    if (!proxima) {
+      resultado.push(atual);
+      break;
+    }
+
+    const textoAtual = atual.texto.trim();
+
+    // Se a linha atual tiver apenas um caractere de travessão ou traço isolado
+    if (/^[\u2014\u2013\u2015\-]$/.test(textoAtual)) {
+      const textoProxLimpo = proxima.texto.replace(/^[\u2014\u2013\u2015\-]\s*/, "");
+      resultado.push({
+        y: proxima.y,
+        topY: atual.topY,
+        x: atual.x,
+        fontSize: proxima.fontSize,
+        largura: atual.largura + proxima.largura,
+        texto: `${TRAVESSAO_CHAR} ${textoProxLimpo}`,
+      });
+      i++; // Incorporou a próxima linha
+      continue;
+    }
+
+    resultado.push(atual);
+  }
+
+  return resultado;
+}
+
+/**
+ * Verifica se um texto representa o título de um novo capítulo ou seção estrutural do livro.
+ *
+ * Previne rigorosamente:
+ * 1. Falsos positivos com falas/diálogos que contenham números ("— Sete.", "— Oito.") ou palavras isoladas.
+ * 2. Falsos positivos com a palavra "Conclusão" no início ou meio de frases de texto corrido.
+ * 3. Criação de capítulos espúrios que cortam a página ao meio gerando páginas em branco e títulos H1 forçados.
  */
 export function detectarTituloCapitulo(
   texto: string,
@@ -375,11 +420,27 @@ export function detectarTituloCapitulo(
   fontSizeMedio: number = 12
 ): { ehTitulo: boolean; tituloNormalizado?: string } {
   const limpo = texto.trim();
-  if (!limpo || limpo.length > 80) return { ehTitulo: false };
+  if (!limpo || limpo.length > 70) return { ehTitulo: false };
 
-  // 1. Padrões explícitos com palavra-chave ("Capítulo", "Capitulo", "Chapter", etc.)
+  // 1. Falas com travessão ou aspas de diálogo NUNCA são títulos de capítulo
+  if (TRAVESSAO_REGEX.test(limpo) || /^["'«\u201C\u2018]/.test(limpo)) {
+    return { ehTitulo: false };
+  }
+
+  // 2. Linhas que terminam com pontuação de frase contínua ou diálogo NUNCA são títulos
+  if (/[,;:—]$/.test(limpo) || /\.{3,}$/.test(limpo) || /…$/.test(limpo)) {
+    return { ehTitulo: false };
+  }
+
+  // 3. Verbos de diálogo e narração no meio da frase indicam texto corrido/diálogo
+  if (/\b(?:disse|falou|perguntou|respondeu|exclamou|gritou|murmurou|pensou|afirmou)\b/i.test(limpo)) {
+    return { ehTitulo: false };
+  }
+
+  // 4. Padrões explícitos com palavra-chave de divisão editorial ("Capítulo", "Capitulo", "Chapter", "Livro", "Parte")
+  // Ex: "Capítulo 1", "Capítulo I", "Capítulo Um", "Capítulo 1: O Início", "Chapter 5 - The Journey"
   const regexExplicit = new RegExp(
-    `^(?:cap[ií]tulo|chapter|se[çc][aã]o|livro)\\b(?:\\s+(?:[0-9ivxlcdm]+|${NUMEROS_EXTENSO}|[a-zà-ú]+))?(?:\\s*[:.\\-–—]\\s*.*)?$`,
+    `^(?:cap[ií]tulo|chapter|livro|parte)\\b(?:\\s+(?:[0-9ivxlcdm]+|${NUMEROS_EXTENSO}))?(?:\\s*[:.\\-–—]\\s*.{1,45})?$`,
     "i"
   );
   if (regexExplicit.test(limpo)) {
@@ -389,37 +450,85 @@ export function detectarTituloCapitulo(
     };
   }
 
-  // 2. Seções clássicas de livros
+  // 5. Seções clássicas de livros ("Prólogo", "Epílogo", "Introdução", "Prefácio", "Posfácio", "Conclusão", etc.)
+  // IMPORTANTE: DEVE ser estritamente o título da seção isolado ou com subtítulo curto delimitado.
+  // NUNCA aceita orações de texto corrido como "Conclusão da pesquisa...", "Conclusão que chegamos...", "Notas sobre..."
   const regexSecoes =
-    /^(?:pr[oó]logo|prologo|ep[ií]logo|epilogo|introdu[çc][aã]o|introducao|pref[aá]cio|prefacio|posf[aá]cio|posfacio|conclus[aã]o|conclusao|agradecimentos|sum[aá]rio|sumario|[ií]ndice|indice|notas)\b.*$/i;
+    /^(?:pr[oó]logo|ep[ií]logo|introdu[çc][aã]o|pref[aá]cio|posf[aá]cio|conclus[aã]o|agradecimentos|sum[aá]rio|[ií]ndice)(?:\s*[:\-–—]\s*[\w\sÀ-ú]{1,30})?\.?$/i;
+
   if (regexSecoes.test(limpo)) {
+    // Se estiver em fonte normal do corpo do texto (sem destaque tipográfico):
+    if (fontSizeLinha && fontSizeLinha <= fontSizeMedio * 1.05) {
+      // Para ser considerado título em fonte normal, precisa ser estritamente a palavra isolada
+      // e estar em caixa alta ou capitalizada, nunca oração em minúsculas
+      const apenasPalavraIsolada =
+        /^(?:pr[oó]logo|ep[ií]logo|introdu[çc][aã]o|pref[aá]cio|posf[aá]cio|conclus[aã]o|agradecimentos|sum[aá]rio|[ií]ndice)\.?$/i.test(
+          limpo
+        );
+      const estaCapitalizadaOuAlta =
+        limpo === limpo.toUpperCase() || /^[A-ZÀ-Ú][a-zà-ú]+/.test(limpo);
+      if (apenasPalavraIsolada && estaCapitalizadaOuAlta) {
+        return {
+          ehTitulo: true,
+          tituloNormalizado: formatarTituloBonito(limpo.replace(/\.$/, "")),
+        };
+      }
+      return { ehTitulo: false };
+    }
+
     return {
       ehTitulo: true,
-      tituloNormalizado: formatarTituloBonito(limpo),
+      tituloNormalizado: formatarTituloBonito(limpo.replace(/\.$/, "")),
     };
   }
 
-  // 3. Numerais romanos isolados (I, II, III, IV, etc.)
-  if (/^[IVXLCDM]{1,8}\.?$/i.test(limpo)) {
+  // 6. Numerais romanos isolados em maiúsculas (I, II, III, IV, etc.)
+  if (/^[IVXLCDM]{1,6}\.?$/.test(limpo)) {
+    // Se estiver em fonte normal do texto, só é capítulo se tiver evidência de destaque
+    if (fontSizeLinha && fontSizeLinha < fontSizeMedio * 1.1) {
+      return { ehTitulo: false };
+    }
     return {
       ehTitulo: true,
       tituloNormalizado: `Capítulo ${limpo.replace(/\./g, "").toUpperCase()}`,
     };
   }
 
-  // 4. Números por extenso isolados ("Um", "Dois", "Primeiro", etc.)
+  // 7. Números por extenso isolados ("Um", "Dois", "Primeiro", etc.)
   const regexExtensoIsolado = new RegExp(`^(?:${NUMEROS_EXTENSO})\\.?$`, "i");
   if (regexExtensoIsolado.test(limpo)) {
-    return {
-      ehTitulo: true,
-      tituloNormalizado: `Capítulo ${limpo.charAt(0).toUpperCase() + limpo.slice(1).toLowerCase()}`,
-    };
+    // NUNCA considera capítulo se for todo em minúsculas (ex: "oito", "sete", "um")
+    if (limpo === limpo.toLowerCase()) {
+      return { ehTitulo: false };
+    }
+
+    // Se temos informação de fonte: SÓ é capítulo se tiver destaque tipográfico evidente (fonte maior)
+    if (fontSizeLinha) {
+      if (fontSizeLinha >= fontSizeMedio * 1.18) {
+        return {
+          ehTitulo: true,
+          tituloNormalizado: `Capítulo ${limpo.charAt(0).toUpperCase() + limpo.slice(1).toLowerCase().replace(/\.$/, "")}`,
+        };
+      }
+      return { ehTitulo: false };
+    }
+
+    // Se não temos fontSizeLinha (fallback): apenas números ordinais/cardinais muito específicos e curtos (ex: "Um", "Primeiro")
+    // E NUNCA palavras comuns do meio do texto como "oito", "sete", "cinco"
+    if (/^(?:Um|Dois|Três|Primeiro|Segundo)\.?$/.test(limpo)) {
+      return {
+        ehTitulo: true,
+        tituloNormalizado: `Capítulo ${limpo.replace(/\.$/, "")}`,
+      };
+    }
+
+    return { ehTitulo: false };
   }
 
-  // 5. Linha curta em destaque tipográfico (fonte maior e sem pontuação corrida de parágrafo)
+  // 8. Linha curta em destaque tipográfico significativo (fonte maior e sem pontuação corrida de parágrafo)
   if (fontSizeLinha && fontSizeLinha >= fontSizeMedio * 1.25) {
     const naoEhFraseCorrida = !/[.,;:?!—]$/.test(limpo);
-    const temTamanhoTitulo = limpo.length >= 2 && limpo.length <= 50;
+    const temTamanhoTitulo = limpo.length >= 2 && limpo.length <= 45;
 
     if (naoEhFraseCorrida && temTamanhoTitulo) {
       return {
@@ -446,7 +555,8 @@ function formatarTituloBonito(titulo: string): string {
 }
 
 /**
- * Reconstrói texto e parágrafos a partir dos itens brutos da página do PDF
+ * Reconstrói texto, diálogos, estrofes e parágrafos a partir dos itens brutos da página do PDF.
+ * Respeita o leading real do livro e preserva a continuidade de diálogos com travessão e estrofes.
  */
 export function reconstruirTextoEParagrafosPdf(items: ItemTextoPdf[]): string[] {
   if (!items || items.length === 0) return [];
@@ -458,6 +568,9 @@ export function reconstruirTextoEParagrafosPdf(items: ItemTextoPdf[]): string[] 
   // 2. Reconcilia Letras Capitulares (Drop Caps)
   linhas = reconciliarCapitulares(linhas);
 
+  // 3. Reconcilia travessões órfãos e falas quebradas
+  linhas = reconciliarTravessoesELinhas(linhas);
+
   // Calcula fontSize médio do corpo do texto
   const fontesValidas = linhas.map((l) => l.fontSize).filter((f) => f > 0);
   const fontSizeMedio =
@@ -465,9 +578,28 @@ export function reconstruirTextoEParagrafosPdf(items: ItemTextoPdf[]): string[] 
       ? fontesValidas.reduce((a, b) => a + b, 0) / fontesValidas.length
       : 12;
 
-  // 3. Agrupa linhas em parágrafos contínuos, isolando títulos de capítulos
+  // Calcula o leading médio (entrelinha real do documento) filtrando saltos anômalos
+  const distanciasVerticais: number[] = [];
+  for (let i = 0; i < linhas.length - 1; i++) {
+    const dist = linhas[i].y - linhas[i + 1].y;
+    if (dist >= fontSizeMedio * 0.8 && dist <= fontSizeMedio * 1.7) {
+      distanciasVerticais.push(dist);
+    }
+  }
+  distanciasVerticais.sort((a, b) => a - b);
+  const leadingMedio =
+    distanciasVerticais.length > 0
+      ? distanciasVerticais[Math.floor(distanciasVerticais.length / 2)]
+      : fontSizeMedio * 1.35;
+
+  // Largura máxima de linha encontrada na página para detecção de estrofes/versos
+  const larguras = linhas.map((l) => l.largura).filter((w) => w > 0);
+  const larguraMax = larguras.length > 0 ? Math.max(...larguras) : 400;
+
+  // 4. Agrupa linhas em parágrafos contínuos, diálogos e estrofes
   const paragrafos: string[] = [];
   let paragrafoAtual = "";
+  let emEstrofe = false;
 
   for (let i = 0; i < linhas.length; i++) {
     const linha = linhas[i];
@@ -481,6 +613,7 @@ export function reconstruirTextoEParagrafosPdf(items: ItemTextoPdf[]): string[] 
       if (paragrafoAtual.trim()) {
         paragrafos.push(restaurarPrimeiraLetraSeTruncada(paragrafoAtual));
         paragrafoAtual = "";
+        emEstrofe = false;
       }
 
       // Se a próxima linha for o número ou complemento do título (ex: Linha 1 = "Capítulo", Linha 2 = "Um"):
@@ -502,14 +635,31 @@ export function reconstruirTextoEParagrafosPdf(items: ItemTextoPdf[]): string[] 
       continue;
     }
 
+    // Detecção de verso / estrofe: linhas curtas consecutivas com entrelinha normal
+    const ehLinhaCurta =
+      linha.texto.trim().length < 52 &&
+      !linha.texto.endsWith("-") &&
+      (larguraMax < 250 || linha.largura < larguraMax * 0.75);
+
+    const proximaLinhaEhCurta =
+      proximaLinha &&
+      proximaLinha.texto.trim().length < 52 &&
+      (larguraMax < 250 || proximaLinha.largura < larguraMax * 0.75);
+
     if (!paragrafoAtual) {
       paragrafoAtual = linha.texto;
+      emEstrofe = ehLinhaCurta && Boolean(proximaLinhaEhCurta);
     } else {
-      // Trata hifenização no final da linha (ex: "desenvolvi-", "cons-")
-      if (paragrafoAtual.endsWith("-") && !paragrafoAtual.endsWith(" -")) {
-        paragrafoAtual = paragrafoAtual.slice(0, -1) + linha.texto;
+      if (emEstrofe) {
+        // Na estrofe, cada verso é preservado em sua linha com quebra \n
+        paragrafoAtual += "\n" + linha.texto;
       } else {
-        paragrafoAtual += " " + linha.texto;
+        // Trata hifenização no final da linha (ex: "desenvolvi-", "cons-")
+        if (paragrafoAtual.endsWith("-") && !paragrafoAtual.endsWith(" -")) {
+          paragrafoAtual = paragrafoAtual.slice(0, -1) + linha.texto;
+        } else {
+          paragrafoAtual += " " + linha.texto;
+        }
       }
     }
 
@@ -521,33 +671,41 @@ export function reconstruirTextoEParagrafosPdf(items: ItemTextoPdf[]): string[] 
     }
 
     const gapVertical = Math.abs(linha.y - proximaLinha.y);
-    const alturaLinhaRef = Math.max(linha.fontSize, proximaLinha.fontSize);
 
-    // Se o salto vertical for maior que 1.75x a altura normal de linha
-    const quebraVisualGrande = gapVertical > alturaLinhaRef * 1.75;
+    // Salto vertical significativo: precisa superar a entrelinha padrão ou a altura da linha de corte
+    const saltoVerticalGrande =
+      gapVertical >= Math.min(leadingMedio * 1.48, Math.max(16, fontSizeMedio * 1.75));
 
-    // Se a próxima linha tem recuo à esquerda e a anterior termina com pontuação
-    const terminaComPontuacao = /[.!?:"»]$/.test(linha.texto);
-    const recuoProximaLinha = proximaLinha.x > linha.x + 8;
+    const proximaComecaComTravessao = TRAVESSAO_REGEX.test(proximaLinha.texto.trim());
+    const atualTerminaComInciso = /[\u2014\u2013\u2015,\-]$/.test(linha.texto.trim());
+    const terminaComPontuacaoConclusiva = /[.!?:"»]$/.test(linha.texto.trim());
+    const recuoProximaLinha = proximaLinha.x > linha.x + 12;
+
+    // Se estamos em diálogo e a próxima linha continua o inciso do narrador ou da mesma fala
+    const ehContinuacaoDeInciso = atualTerminaComInciso && proximaComecaComTravessao && !saltoVerticalGrande;
+
+    // Novo diálogo: próxima linha começa com travessão e a linha atual concluiu fala/oração
+    const ehNovoDialogo =
+      proximaComecaComTravessao && !ehContinuacaoDeInciso && (terminaComPontuacaoConclusiva || saltoVerticalGrande);
 
     // Se a próxima linha for um título de capítulo
     const proximaEhTitulo =
       detectarTituloCapitulo(proximaLinha.texto, proximaLinha.fontSize, fontSizeMedio).ehTitulo ||
       proximaLinha.fontSize > linha.fontSize * 1.25;
 
-    // Se a próxima linha for um diálogo com travessão ("— ")
-    const proximaComecaComTravessao = TRAVESSAO_REGEX.test(proximaLinha.texto);
+    // Quebra de parágrafo normal em prosa: salto vertical ou pontuação conclusiva com recuo
+    const quebraParagrafoNormal =
+      !emEstrofe && (saltoVerticalGrande || (terminaComPontuacaoConclusiva && recuoProximaLinha));
 
-    if (
-      quebraVisualGrande ||
-      (terminaComPontuacao && recuoProximaLinha) ||
-      proximaEhTitulo ||
-      proximaComecaComTravessao
-    ) {
+    // Quebra de estrofe: salto vertical entre estrofes ou volta para prosa longa
+    const quebraEstrofe = emEstrofe && (saltoVerticalGrande || !proximaLinhaEhCurta);
+
+    if (ehNovoDialogo || proximaEhTitulo || quebraParagrafoNormal || quebraEstrofe) {
       if (paragrafoAtual.trim()) {
         paragrafos.push(restaurarPrimeiraLetraSeTruncada(paragrafoAtual));
       }
       paragrafoAtual = "";
+      emEstrofe = false;
     }
   }
 
@@ -644,7 +802,40 @@ export function agruparPaginasEmCapitulos(paginas: PaginaProcessadaPdf[]): Capit
     }
 
     for (const paragrafo of pag.paragrafos) {
-      const det = detectarTituloCapitulo(paragrafo);
+      const pLimpo = paragrafo.trim();
+
+      // Blindagem estrita contra falsos capítulos durante o agrupamento:
+      // 1. Falas com travessão de diálogo NUNCA são capítulos
+      // 2. Parágrafos com quebras de linha (estrofes/versos) NUNCA são capítulos
+      // 3. Parágrafos longos (> 55 caracteres) ou com pontuação contínua NUNCA são capítulos
+      // 4. Frases como "Conclusão da história..." NUNCA são capítulos
+      const ehDialogoOuTextoLongo =
+        TRAVESSAO_REGEX.test(pLimpo) ||
+        pLimpo.length > 55 ||
+        pLimpo.includes("\n") ||
+        /[,;:—]$/.test(pLimpo) ||
+        /\.{3,}$/.test(pLimpo) ||
+        /…$/.test(pLimpo);
+
+      let det: { ehTitulo: boolean; tituloNormalizado?: string } = { ehTitulo: false };
+      if (!ehDialogoOuTextoLongo) {
+        det = detectarTituloCapitulo(pLimpo);
+
+        // Se for apenas uma palavra de número por extenso ("Oito", "Sete", etc.) sem a palavra "Capítulo":
+        // No agrupamento de páginas em texto puro, NUNCA promove palavra avulsa a capítulo!
+        if (
+          det.ehTitulo &&
+          new RegExp(`^(?:${NUMEROS_EXTENSO})\\.?$`, "i").test(pLimpo) &&
+          !/cap[ií]tulo/i.test(pLimpo)
+        ) {
+          // Apenas aceita "Um", "Primeiro" se for no início do livro (primeiro capítulo detectado)
+          if (!detectouAlgumCapitulo && /^(?:Um|Primeiro)\.?$/i.test(pLimpo)) {
+            det.ehTitulo = true;
+          } else {
+            det.ehTitulo = false;
+          }
+        }
+      }
 
       if (det.ehTitulo) {
         // Se já acumulamos conteúdo no capítulo atual, fecha o anterior
@@ -652,7 +843,7 @@ export function agruparPaginasEmCapitulos(paginas: PaginaProcessadaPdf[]): Capit
           capitulos.push(capituloAtual);
         }
 
-        const tituloFinal = det.tituloNormalizado || paragrafo;
+        const tituloFinal = det.tituloNormalizado || pLimpo;
         capituloAtual = {
           titulo: tituloFinal,
           paragrafos: [],

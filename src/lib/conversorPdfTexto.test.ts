@@ -161,3 +161,154 @@ describe("Agrupamento contínuo em capítulos", () => {
     expect(caps[0].paragrafos.length).toBe(30);
   });
 });
+
+describe("Blindagem contra falsos capítulos (falas com números e palavra Conclusão)", () => {
+  it("NUNCA transforma falas com números ou palavras isoladas em capítulos", () => {
+    // Falas com travessão
+    expect(detectarTituloCapitulo("— Sete.").ehTitulo).toBe(false);
+    expect(detectarTituloCapitulo("— Oito.").ehTitulo).toBe(false);
+    expect(detectarTituloCapitulo("— Três, disse ele.").ehTitulo).toBe(false);
+    expect(detectarTituloCapitulo("— Quatro pessoas estavam na sala.").ehTitulo).toBe(false);
+
+    // Palavras com números em minúsculas
+    expect(detectarTituloCapitulo("oito").ehTitulo).toBe(false);
+    expect(detectarTituloCapitulo("sete").ehTitulo).toBe(false);
+    expect(detectarTituloCapitulo("cinco").ehTitulo).toBe(false);
+
+    // Palavras com números em fonte de corpo comum (12pt)
+    expect(detectarTituloCapitulo("Sete", 12, 12).ehTitulo).toBe(false);
+    expect(detectarTituloCapitulo("Oito", 12, 12).ehTitulo).toBe(false);
+
+    // Mas com destaque tipográfico real de título (ex: 20pt) deve ser aceito
+    expect(detectarTituloCapitulo("Sete", 20, 12).ehTitulo).toBe(true);
+    expect(detectarTituloCapitulo("Capítulo Sete", 12, 12).ehTitulo).toBe(true);
+  });
+
+  it("NUNCA transforma texto corrido iniciado por 'Conclusão' em capítulo", () => {
+    expect(
+      detectarTituloCapitulo("Conclusão do raciocínio anterior nos leva a crer que tudo foi feito.").ehTitulo
+    ).toBe(false);
+    expect(
+      detectarTituloCapitulo("Conclusão que podemos tirar deste caso é evidente.").ehTitulo
+    ).toBe(false);
+    expect(
+      detectarTituloCapitulo("Conclusão da análise mostra que os dados estão corretos.").ehTitulo
+    ).toBe(false);
+
+    // Mas a palavra isolada como seção do livro deve ser aceita
+    expect(detectarTituloCapitulo("Conclusão").ehTitulo).toBe(true);
+    expect(detectarTituloCapitulo("CONCLUSÃO").ehTitulo).toBe(true);
+    expect(detectarTituloCapitulo("Conclusão: Considerações Finais").ehTitulo).toBe(true);
+  });
+
+  it("agruparPaginasEmCapitulos não quebra a página anterior por frase com 'Conclusão' nem por falas com números", () => {
+    const paginas: PaginaProcessadaPdf[] = [
+      {
+        numPagina: 1,
+        paragrafos: [
+          "Texto da página 1.",
+          "Conclusão do raciocínio anterior nos leva a crer que a tese se sustenta.",
+          "Texto final da página 1.",
+        ],
+        imagens: [],
+      },
+      {
+        numPagina: 2,
+        paragrafos: [
+          "— Quantos eram?",
+          "— Oito.",
+          "— Tem certeza?",
+          "— Sim, eram sete ou oito pessoas ao todo.",
+        ],
+        imagens: [],
+      },
+    ];
+
+    const caps = agruparPaginasEmCapitulos(paginas);
+    // Deve manter como um único fluxo de leitura sem capítulos falsos
+    expect(caps.length).toBe(1);
+    expect(caps[0].titulo).toBe("Leitura");
+    expect(caps[0].ocultarTitulo).toBe(true);
+    expect(caps[0].paragrafos).toContain(
+      "Conclusão do raciocínio anterior nos leva a crer que a tese se sustenta."
+    );
+    expect(caps[0].paragrafos).toContain("— Oito.");
+  });
+});
+
+describe("Reconstrução de diálogos com travessão e estrofes de poesia", () => {
+  it("reconcilia linha física com travessão órfão no início da fala", () => {
+    const items: ItemTextoPdf[] = [
+      // Travessão emitido isolado em uma linha física (y=700)
+      { str: "—", transform: [12, 0, 0, 12, 40, 700], width: 8, height: 12 },
+      // Texto da fala na mesma altura ou ligeiramente deslocado
+      { str: "Você tem certeza de que quer fazer isso?", transform: [12, 0, 0, 12, 52, 698], width: 220, height: 12 },
+    ];
+
+    const res = reconstruirTextoEParagrafosPdf(items);
+    expect(res.length).toBe(1);
+    expect(res[0]).toBe("— Você tem certeza de que quer fazer isso?");
+  });
+
+  it("não quebra parágrafo no meio de uma fala longa dividida em múltiplas linhas do PDF", () => {
+    const items: ItemTextoPdf[] = [
+      {
+        str: "— Eu estive pensando bastante sobre tudo o que aconteceu durante",
+        transform: [12, 0, 0, 12, 50, 700],
+        width: 320,
+        height: 12,
+      },
+      {
+        str: "aquela tarde e cheguei à conclusão de que devemos esperar.",
+        transform: [12, 0, 0, 12, 50, 686],
+        width: 300,
+        height: 12,
+      },
+    ];
+
+    const res = reconstruirTextoEParagrafosPdf(items);
+    expect(res.length).toBe(1);
+    expect(res[0]).toBe(
+      "— Eu estive pensando bastante sobre tudo o que aconteceu durante aquela tarde e cheguei à conclusão de que devemos esperar."
+    );
+  });
+
+  it("mantém fala unida mesmo com inciso do narrador que fecha com travessão na linha seguinte", () => {
+    const items: ItemTextoPdf[] = [
+      {
+        str: "— Não posso aceitar essa proposta — disse ele com firmeza —",
+        transform: [12, 0, 0, 12, 50, 700],
+        width: 310,
+        height: 12,
+      },
+      {
+        str: "— enquanto não tivermos todas as garantias necessárias.",
+        transform: [12, 0, 0, 12, 50, 686],
+        width: 290,
+        height: 12,
+      },
+    ];
+
+    const res = reconstruirTextoEParagrafosPdf(items);
+    expect(res.length).toBe(1);
+    expect(res[0]).toContain("— Não posso aceitar essa proposta — disse ele com firmeza");
+    expect(res[0]).toContain("enquanto não tivermos todas as garantias necessárias.");
+  });
+
+  it("preserva estrofes de versos mantendo cada verso em sua linha com quebra", () => {
+    const items: ItemTextoPdf[] = [
+      { str: "Amor é fogo que arde sem se ver,", transform: [12, 0, 0, 12, 100, 700], width: 170, height: 12 },
+      { str: "É ferida que dói e não se sente;", transform: [12, 0, 0, 12, 100, 686], width: 165, height: 12 },
+      { str: "É um contentamento descontente;", transform: [12, 0, 0, 12, 100, 672], width: 168, height: 12 },
+      { str: "É dor que desatina sem doer.", transform: [12, 0, 0, 12, 100, 658], width: 155, height: 12 },
+    ];
+
+    const res = reconstruirTextoEParagrafosPdf(items);
+    expect(res.length).toBe(1);
+    expect(res[0]).toContain("\n");
+    const versos = res[0].split("\n");
+    expect(versos.length).toBe(4);
+    expect(versos[0]).toBe("Amor é fogo que arde sem se ver,");
+    expect(versos[1]).toBe("É ferida que dói e não se sente;");
+  });
+});

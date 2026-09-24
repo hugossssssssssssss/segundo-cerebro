@@ -203,6 +203,17 @@ p {
   text-align: justify;
   text-justify: inter-word;
 }
+p.dialogo {
+  text-indent: 0;
+  margin-bottom: 0.7em;
+  text-align: justify;
+}
+p.estrofe {
+  margin: 1.2em 0 1.2em 1.5em;
+  line-height: 1.45;
+  text-align: left;
+  font-style: italic;
+}
 .chapter-title {
   border-bottom: 1px solid #ccc;
   padding-bottom: 0.3em;
@@ -310,9 +321,23 @@ p {
         })
         .join("\n    ");
 
-      // Monta parágrafos
+      // Monta parágrafos com suporte a diálogos e versos de estrofes
       const paragrafosHtml = cap.paragrafos
-        .map((p) => `<p>${escaparXml(p)}</p>`)
+        .map((p) => {
+          const pLimpo = p.trim();
+          if (pLimpo.includes("\n")) {
+            const versos = pLimpo
+              .split("\n")
+              .map((v) => escaparXml(v.trim()))
+              .join("<br/>\n      ");
+            return `<p class="estrofe">${versos}</p>`;
+          }
+          const ehDialogo = /^[\u2014\u2013\u2015\-]/.test(pLimpo);
+          if (ehDialogo) {
+            return `<p class="dialogo">${escaparXml(pLimpo)}</p>`;
+          }
+          return `<p>${escaparXml(pLimpo)}</p>`;
+        })
         .join("\n    ");
 
       // Monta blocos de imagens no fim
