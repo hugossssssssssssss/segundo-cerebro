@@ -5,6 +5,11 @@ import JSZip from "jszip";
 import TurndownService from "turndown";
 import { PDFDocument } from "pdf-lib";
 import { GeradorEpub } from "@/lib/epub";
+import type { ImagemReferenciada } from "@/lib/epub";
+import {
+  reconstruirTextoEParagrafosPdf,
+  extrairBlobDeObjetoPdf,
+} from "@/lib/conversorPdfTexto";
 import {
   RefreshCw,
   FileText,
@@ -403,49 +408,120 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
         tags: ["pdf", "epub", "klaus"],
       });
 
-      let paginasValidas = 0;
+      // 1. Gera automaticamente a capa do livro a partir da primeira página
+      try {
+        const page1 = await pdf.getPage(1);
+        const viewportCapa = page1.getViewport({ scale: 1.6 });
+        const canvasCapa = document.createElement("canvas");
+        canvasCapa.width = Math.floor(viewportCapa.width);
+        canvasCapa.height = Math.floor(viewportCapa.height);
+        const ctxCapa = canvasCapa.getContext("2d");
+        if (ctxCapa) {
+          await page1.render({ canvasContext: ctxCapa, viewport: viewportCapa, canvas: canvasCapa }).promise;
+          const blobCapa = await new Promise<Blob | null>((resolve) => canvasCapa.toBlob(resolve, "image/jpeg", 0.9));
+          if (blobCapa) {
+            jepubObj.definirCapa(blobCapa, "image/jpeg");
+          }
+        }
+      } catch (eCapa) {
+        console.warn("[Conversor] Não foi possível extrair capa da página 1:", eCapa);
+      }
 
+      let paginasProcessadas = 0;
+      let imagensExtraidasTotal = 0;
+
+      // 2. Itera sobre cada página do PDF extraindo texto fluido e imagens
       for (let i = 1; i <= totalPaginas; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
-        
-        let textoPagina = "";
-        let ultimaY = -1;
 
-        for (const item of textContent.items) {
-          if ("str" in item) {
-            const y = item.transform[5];
-            if (ultimaY !== -1 && Math.abs(y - ultimaY) > 6) {
-              textoPagina += "\n";
+        // Reconstrói parágrafos reais, juntando linhas contínuas e eliminando espaços indevidos entre letras
+        const paragrafos = reconstruirTextoEParagrafosPdf(textContent.items as any);
+
+        // Extrai imagens embutidas nesta página do PDF
+        const imagensCapitulo: ImagemReferenciada[] = [];
+        try {
+          const ops = await page.getOperatorList();
+          const imgIds: string[] = [];
+          const paintImageOp = (pdfjsLib as unknown as Record<string, any>)["OPS"]?.paintImageXObject ?? 82;
+          for (let opIdx = 0; opIdx < ops.fnArray.length; opIdx++) {
+            if (ops.fnArray[opIdx] === paintImageOp) {
+              const arg = ops.argsArray[opIdx]?.[0];
+              if (arg && typeof arg === "string" && !imgIds.includes(arg)) {
+                imgIds.push(arg);
+              }
             }
-            textoPagina += item.str + " ";
-            ultimaY = y;
+          }
+
+          // Processa até 6 imagens por página
+          const idsSelecionados = imgIds.slice(0, 6);
+          for (let imgIdx = 0; imgIdx < idsSelecionados.length; imgIdx++) {
+            const imgId = idsSelecionados[imgIdx];
+            const imgObj = await new Promise<any>((resolve) => {
+              page.objs.get(imgId, (data: any) => resolve(data));
+            });
+
+            const blobImg = await extrairBlobDeObjetoPdf(imgObj);
+            if (blobImg) {
+              const idRef = `p${i}_img${imgIdx + 1}`;
+              jepubObj.adicionarImagem(idRef, blobImg, blobImg.type || "image/jpeg");
+              imagensCapitulo.push({
+                id: idRef,
+                posicao: paragrafos.length > 0 ? "fim" : "inicio",
+              });
+              imagensExtraidasTotal++;
+            }
+          }
+        } catch (eImg) {
+          console.warn(`[Conversor] Aviso ao extrair imagens da página ${i}:`, eImg);
+        }
+
+        // Se a página não tiver nenhum texto legível (ex: diagrama visual, infográfico, scanner),
+        // renderiza a página inteira como uma imagem de alta resolução para nada ser perdido
+        if (paragrafos.length === 0 && imagensCapitulo.length === 0) {
+          try {
+            const vp = page.getViewport({ scale: 1.5 });
+            const cv = document.createElement("canvas");
+            cv.width = Math.floor(vp.width);
+            cv.height = Math.floor(vp.height);
+            const ctx = cv.getContext("2d");
+            if (ctx) {
+              await page.render({ canvasContext: ctx, viewport: vp, canvas: cv }).promise;
+              const blobPagina = await new Promise<Blob | null>((resolve) =>
+                cv.toBlob(resolve, "image/jpeg", 0.88)
+              );
+              if (blobPagina) {
+                const idRef = `p${i}_visual`;
+                jepubObj.adicionarImagem(idRef, blobPagina, "image/jpeg");
+                imagensCapitulo.push({ id: idRef, legenda: `Página ${i}` });
+                imagensExtraidasTotal++;
+              }
+            }
+          } catch (ePagina) {
+            console.warn(`[Conversor] Falha ao renderizar página visual ${i}:`, ePagina);
           }
         }
 
-        const textoLimpo = textoPagina.trim();
-        if (textoLimpo.length > 0) {
-          const paragrafos = textoLimpo
-            .split("\n")
-            .map((linha) => linha.trim())
-            .filter((linha) => linha.length > 0);
-
-          if (paragrafos.length > 0) {
-            jepubObj.add(`Página ${i}`, paragrafos);
-            paginasValidas++;
-          }
+        if (paragrafos.length > 0 || imagensCapitulo.length > 0) {
+          // ocultarTitulo: true garante que "Página X" NÃO polua o topo do texto no Kindle,
+          // preservando o índice de navegação do e-reader.
+          jepubObj.add(`Página ${i}`, paragrafos, {
+            ocultarTitulo: true,
+            imagens: imagensCapitulo,
+          });
+          paginasProcessadas++;
         }
       }
 
-      if (paginasValidas === 0) {
+      if (paginasProcessadas === 0) {
         throw new Error(
-          "Nenhum texto legível pôde ser extraído do PDF. Se o documento contiver apenas fotos ou páginas escaneadas, use primeiro a ferramenta de OCR / Reconhecimento de Texto."
+          "Nenhum texto ou conteúdo visual pôde ser extraído do PDF."
         );
       }
 
       const epubBlob = (await jepubObj.generate("blob")) as Blob;
       const nomeFinal = `${titulo.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.epub`;
-      
+
       const url = URL.createObjectURL(epubBlob);
       const a = document.createElement("a");
       a.href = url;
@@ -458,7 +534,8 @@ export default function Conversor({ modoFocado, ferramentaInicial }: ConversorPr
       await adicionarAoHistorico(nomeFinal, "PDF para EPUB", epubBlob);
       await recarregarHistorico();
 
-      setMensagemSucesso(`EPUB "${titulo}" gerado com sucesso! ${paginasValidas} página(s) convertida(s).`);
+      const msgImagens = imagensExtraidasTotal > 0 ? `, com ${imagensExtraidasTotal} imagem(ns) incluída(s)` : "";
+      setMensagemSucesso(`EPUB "${titulo}" gerado com sucesso! ${paginasProcessadas} página(s) processada(s)${msgImagens}.`);
     } catch (err: any) {
       setErro(`Erro ao converter PDF para EPUB: ${err.message || "Arquivo inválido ou corrompido"}`);
     } finally {

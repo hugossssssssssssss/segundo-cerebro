@@ -3,7 +3,7 @@ import JSZip from "jszip";
 /**
  * Escapa caracteres reservados de XML/HTML
  */
-function escaparXml(texto: string): string {
+export function escaparXml(texto: string): string {
   return texto
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -22,10 +22,25 @@ export interface MetadadosEpub {
   dataCriacao: string;
 }
 
+export interface ImagemReferenciada {
+  id: string;
+  legenda?: string;
+  posicao?: "inicio" | "fim";
+}
+
 export interface CapituloEpub {
   id: string;
   titulo: string;
   paragrafos: string[];
+  imagens?: ImagemReferenciada[];
+  ocultarTitulo?: boolean;
+}
+
+export interface ImagemArmazenada {
+  id: string;
+  arquivoNome: string;
+  dados: Blob | Uint8Array;
+  mimeType: string;
 }
 
 /**
@@ -35,6 +50,8 @@ export interface CapituloEpub {
 export class GeradorEpub {
   private metadados: MetadadosEpub;
   private capitulos: CapituloEpub[] = [];
+  private imagens: Map<string, ImagemArmazenada> = new Map();
+  private capaDados: { dados: Blob | Uint8Array; mimeType: string } | null = null;
   private uuid: string;
 
   constructor() {
@@ -75,9 +92,34 @@ export class GeradorEpub {
   }
 
   /**
+   * Define a imagem da capa do livro (exibida na biblioteca do Kindle)
+   */
+  definirCapa(dados: Blob | Uint8Array, mimeType: string = "image/jpeg"): this {
+    this.capaDados = { dados, mimeType };
+    return this;
+  }
+
+  /**
+   * Armazena uma imagem no pacote EPUB
+   */
+  adicionarImagem(id: string, dados: Blob | Uint8Array, mimeType: string = "image/jpeg"): string {
+    const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
+    const arquivoNome = `${id}.${ext}`;
+    this.imagens.set(id, { id, arquivoNome, dados, mimeType });
+    return arquivoNome;
+  }
+
+  /**
    * Adiciona um capítulo ou página ao livro
    */
-  add(titulo: string, conteudo: string | string[]): this {
+  add(
+    titulo: string,
+    conteudo: string | string[],
+    opcoes?: {
+      ocultarTitulo?: boolean;
+      imagens?: ImagemReferenciada[];
+    }
+  ): this {
     const id = `capitulo_${this.capitulos.length + 1}`;
     let paragrafos: string[] = [];
 
@@ -99,6 +141,8 @@ export class GeradorEpub {
       id,
       titulo: titulo.trim() || `Capítulo ${this.capitulos.length + 1}`,
       paragrafos,
+      imagens: opcoes?.imagens,
+      ocultarTitulo: opcoes?.ocultarTitulo ?? false,
     });
 
     return this;
@@ -124,22 +168,23 @@ export class GeradorEpub {
 </container>`;
     zip.file("META-INF/container.xml", containerXml);
 
-    // 3. Estilos CSS limpos e compatíveis com tema claro/escuro
+    // 3. Estilos CSS otimizados para leitura fluida no Kindle (Kindle Paperwhite, Oasis, Scribe e App)
     const cssContent = `
 @charset "utf-8";
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  line-height: 1.6;
-  margin: 5% 8%;
+  font-family: serif;
+  line-height: 1.55;
+  margin: 0;
   padding: 0;
   text-align: justify;
 }
-h1, h2, h3 {
+h1, h2, h3, h4 {
   text-align: left;
   line-height: 1.25;
-  margin-top: 1.5em;
-  margin-bottom: 0.5em;
+  margin-top: 1.4em;
+  margin-bottom: 0.6em;
   font-weight: 700;
+  page-break-after: avoid;
 }
 h1.title {
   text-align: center;
@@ -150,24 +195,91 @@ p.meta {
   text-align: center;
   color: #666;
   font-size: 0.9em;
-  margin: 0.25em 0;
+  margin: 0.3em 0;
 }
 p {
-  margin: 0 0 1em 0;
-  text-indent: 1.2em;
-}
-p.first {
-  text-indent: 0;
+  margin: 0 0 0.85em 0;
+  line-height: 1.55;
+  text-align: justify;
+  text-justify: inter-word;
 }
 .chapter-title {
   border-bottom: 1px solid #ccc;
   padding-bottom: 0.3em;
-  margin-bottom: 1.2em;
+  margin-bottom: 1em;
+}
+.figura {
+  text-align: center;
+  margin: 1.5em auto;
+  page-break-inside: avoid;
+}
+.figura img {
+  max-width: 100%;
+  max-height: 85vh;
+  height: auto;
+  width: auto;
+  margin: 0 auto;
+  display: block;
+}
+.figura-legenda {
+  font-size: 0.85em;
+  color: #666;
+  text-align: center;
+  margin-top: 0.4em;
+  font-style: italic;
 }
 `;
     zip.file("OEBPS/estilo.css", cssContent);
 
-    // 4. Página de rosto (Title Page)
+    // 4. Salva a Capa (se houver)
+    let capaItemXml = "";
+    let capaMetaXml = "";
+    let capaSpineXml = "";
+    let capaNavXml = "";
+    let capaTocXml = "";
+
+    if (this.capaDados) {
+      const extCapa = this.capaDados.mimeType.includes("png") ? "png" : "jpg";
+      const nomeCapa = `cover.${extCapa}`;
+      zip.file(`OEBPS/${nomeCapa}`, this.capaDados.dados);
+
+      capaItemXml = `    <item id="cover-image" href="${nomeCapa}" media-type="${this.capaDados.mimeType}" properties="cover-image"/>
+    <item id="cover-page" href="cover.xhtml" media-type="application/xhtml+xml"/>`;
+      capaMetaXml = `    <meta name="cover" content="cover-image"/>`;
+      capaSpineXml = `    <itemref idref="cover-page" linear="no"/>`;
+      capaNavXml = `      <li><a href="cover.xhtml">Capa</a></li>`;
+      capaTocXml = `    <navPoint id="navPoint-cover" playOrder="1">
+      <navLabel><text>Capa</text></navLabel>
+      <content src="cover.xhtml"/>
+    </navPoint>`;
+
+      const coverPageHtml = `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Capa</title>
+  <style type="text/css">
+    @page { margin: 0; }
+    body { margin: 0; padding: 0; text-align: center; background-color: #ffffff; }
+    .cover-container { height: 100vh; display: flex; align-items: center; justify-content: center; }
+    img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+  </style>
+</head>
+<body>
+  <div class="cover-container">
+    <img src="${nomeCapa}" alt="Capa do Livro"/>
+  </div>
+</body>
+</html>`;
+      zip.file("OEBPS/cover.xhtml", coverPageHtml);
+    }
+
+    // 5. Salva as imagens internas
+    for (const img of this.imagens.values()) {
+      zip.file(`OEBPS/images/${img.arquivoNome}`, img.dados);
+    }
+
+    // 6. Página de rosto (Title Page)
     const titlePageHtml = `<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="${escaparXml(this.metadados.idioma)}">
@@ -176,7 +288,7 @@ p.first {
   <link rel="stylesheet" type="text/css" href="estilo.css"/>
 </head>
 <body>
-  <div style="text-align: center; margin-top: 20%;">
+  <div style="text-align: center; margin-top: 15%;">
     <h1 class="title">${escaparXml(this.metadados.titulo)}</h1>
     <p class="meta"><strong>Autor:</strong> ${escaparXml(this.metadados.autor)}</p>
     <p class="meta"><strong>Publicador:</strong> ${escaparXml(this.metadados.editora)}</p>
@@ -186,11 +298,37 @@ p.first {
 </html>`;
     zip.file("OEBPS/title.xhtml", titlePageHtml);
 
-    // 5. Capítulos / Páginas de conteúdo
+    // 7. Capítulos / Páginas de conteúdo
     this.capitulos.forEach((cap) => {
-      const paragrafosHtml = cap.paragrafos
-        .map((p, pIdx) => `<p${pIdx === 0 ? ' class="first"' : ""}>${escaparXml(p)}</p>`)
+      // Monta blocos de imagens no início
+      const imagensInicioHtml = (cap.imagens || [])
+        .filter((img) => img.posicao !== "fim")
+        .map((img) => {
+          const dadosImg = this.imagens.get(img.id);
+          if (!dadosImg) return "";
+          return `<div class="figura"><img src="images/${dadosImg.arquivoNome}" alt="Ilustração"/>${img.legenda ? `<p class="figura-legenda">${escaparXml(img.legenda)}</p>` : ""}</div>`;
+        })
         .join("\n    ");
+
+      // Monta parágrafos
+      const paragrafosHtml = cap.paragrafos
+        .map((p) => `<p>${escaparXml(p)}</p>`)
+        .join("\n    ");
+
+      // Monta blocos de imagens no fim
+      const imagensFimHtml = (cap.imagens || [])
+        .filter((img) => img.posicao === "fim")
+        .map((img) => {
+          const dadosImg = this.imagens.get(img.id);
+          if (!dadosImg) return "";
+          return `<div class="figura"><img src="images/${dadosImg.arquivoNome}" alt="Ilustração"/>${img.legenda ? `<p class="figura-legenda">${escaparXml(img.legenda)}</p>` : ""}</div>`;
+        })
+        .join("\n    ");
+
+      // IMPORTANTE: se ocultarTitulo for true, NÃO renderiza o <h2> no topo do texto!
+      const tituloHtml = cap.ocultarTitulo
+        ? ""
+        : `<h2 class="chapter-title">${escaparXml(cap.titulo)}</h2>\n    `;
 
       const capituloHtml = `<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
@@ -201,15 +339,16 @@ p.first {
 </head>
 <body>
   <section>
-    <h2 class="chapter-title">${escaparXml(cap.titulo)}</h2>
-    ${paragrafosHtml || '<p class="first"><em>Página sem conteúdo de texto legível.</em></p>'}
+    ${tituloHtml}${imagensInicioHtml}
+    ${paragrafosHtml}
+    ${imagensFimHtml}
   </section>
 </body>
 </html>`;
       zip.file(`OEBPS/${cap.id}.xhtml`, capituloHtml);
     });
 
-    // 6. Tabela de Conteúdos EPUB 3 (nav.xhtml)
+    // 8. Tabela de Conteúdos EPUB 3 (nav.xhtml)
     const navItemsHtml = this.capitulos
       .map((cap) => `      <li><a href="${cap.id}.xhtml">${escaparXml(cap.titulo)}</a></li>`)
       .join("\n");
@@ -225,6 +364,7 @@ p.first {
   <nav epub:type="toc" id="toc">
     <h2>Índice</h2>
     <ol>
+${capaNavXml}
       <li><a href="title.xhtml">Início</a></li>
 ${navItemsHtml}
     </ol>
@@ -233,12 +373,16 @@ ${navItemsHtml}
 </html>`;
     zip.file("OEBPS/nav.xhtml", navXhtml);
 
-    // 7. Tabela de Conteúdos Legada EPUB 2 (toc.ncx para compatibilidade máxima)
+    // 9. Tabela de Conteúdos Legada EPUB 2 (toc.ncx para compatibilidade máxima Kindle/Mobi)
+    let ordemPlay = this.capaDados ? 2 : 1;
     const navPointsXml = this.capitulos
-      .map((cap, idx) => `    <navPoint id="navPoint-${idx + 2}" playOrder="${idx + 2}">
+      .map((cap) => {
+        ordemPlay++;
+        return `    <navPoint id="navPoint-${ordemPlay}" playOrder="${ordemPlay}">
       <navLabel><text>${escaparXml(cap.titulo)}</text></navLabel>
       <content src="${cap.id}.xhtml"/>
-    </navPoint>`)
+    </navPoint>`;
+      })
       .join("\n");
 
     const tocNcx = `<?xml version="1.0" encoding="UTF-8"?>
@@ -252,7 +396,8 @@ ${navItemsHtml}
   <docTitle><text>${escaparXml(this.metadados.titulo)}</text></docTitle>
   <docAuthor><text>${escaparXml(this.metadados.autor)}</text></docAuthor>
   <navMap>
-    <navPoint id="navPoint-1" playOrder="1">
+${capaTocXml}
+    <navPoint id="navPoint-title" playOrder="${this.capaDados ? 2 : 1}">
       <navLabel><text>Início</text></navLabel>
       <content src="title.xhtml"/>
     </navPoint>
@@ -261,9 +406,13 @@ ${navPointsXml}
 </ncx>`;
     zip.file("OEBPS/toc.ncx", tocNcx);
 
-    // 8. Manifesto content.opf (central do EPUB)
-    const manifestItems = this.capitulos
+    // 10. Manifesto content.opf
+    const manifestItemsCapitulos = this.capitulos
       .map((cap) => `    <item id="${cap.id}" href="${cap.id}.xhtml" media-type="application/xhtml+xml"/>`)
+      .join("\n");
+
+    const manifestItemsImagens = Array.from(this.imagens.values())
+      .map((img) => `    <item id="img-${img.id}" href="images/${img.arquivoNome}" media-type="${img.mimeType}"/>`)
       .join("\n");
 
     const spineItems = this.capitulos
@@ -285,6 +434,7 @@ ${navPointsXml}
     <dc:date>${escaparXml(this.metadados.dataCriacao)}</dc:date>
     ${this.metadados.descricao ? `<dc:description>${escaparXml(this.metadados.descricao)}</dc:description>` : ""}
 ${tagsXml}
+${capaMetaXml}
     <meta property="dcterms:modified">${new Date().toISOString().replace(/\.[0-9]+Z$/, "Z")}</meta>
   </metadata>
   <manifest>
@@ -292,16 +442,19 @@ ${tagsXml}
     <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
     <item id="style" href="estilo.css" media-type="text/css"/>
     <item id="title" href="title.xhtml" media-type="application/xhtml+xml"/>
-${manifestItems}
+${capaItemXml}
+${manifestItemsCapitulos}
+${manifestItemsImagens}
   </manifest>
   <spine toc="ncx">
+${capaSpineXml}
     <itemref idref="title"/>
 ${spineItems}
   </spine>
 </package>`;
     zip.file("OEBPS/content.opf", contentOpf);
 
-    // Gera o pacote final com compressão
+    // 11. Gera o pacote final com compressão
     if (formato === "uint8array") {
       return await zip.generateAsync({
         type: "uint8array",
@@ -320,5 +473,4 @@ ${spineItems}
   }
 }
 
-// Compatibilidade de interface com jEpub
 export default GeradorEpub;
