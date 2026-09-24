@@ -8,7 +8,7 @@
  * 4. Desordem em frases com travessões de diálogo (reordenação geométrica precisa).
  * 5. Letras capitulares (Drop Caps) isoladas ou fora de posição no início de parágrafos.
  * 6. Eliminação de cabeçalhos e números de página repetitivos (running headers & footers).
- * 7. Agrupamento contínuo em capítulos reais (eliminando telas em branco a cada 2 páginas).
+ * 7. Agrupamento contínuo em capítulos reais (eliminando telas em branco e títulos forçados).
  */
 
 export interface ItemTextoPdf {
@@ -21,22 +21,24 @@ export interface ItemTextoPdf {
 
 export interface LinhaFisica {
   y: number;
+  topY: number;
   x: number;
   fontSize: number;
   largura: number;
   texto: string;
 }
 
-export interface BlocoParagrafo {
-  texto: string;
-  ehTitulo?: boolean;
-  tituloCapitulo?: string;
+export interface PaginaProcessadaPdf {
+  numPagina: number;
+  paragrafos: string[];
+  imagens: { id: string; legenda?: string; posicao?: "inicio" | "fim" }[];
 }
 
-export interface CapituloDetectado {
+export interface CapituloMontado {
   titulo: string;
   paragrafos: string[];
-  imagens: any[];
+  imagens: { id: string; legenda?: string; posicao?: "inicio" | "fim" }[];
+  ocultarTitulo?: boolean;
 }
 
 /**
@@ -46,21 +48,31 @@ const TRAVESSAO_REGEX = /^[\u2014\u2013\u2015\-]\s*/;
 const TRAVESSAO_CHAR = "—";
 
 /**
- * Ordena os itens do PDF na ordem visual correta de leitura (de cima para baixo, da esquerda para a direita).
- * No PDF, Y=0 fica no rodapé e Y cresce em direção ao topo. Logo, Y maior vem primeiro.
+ * Calcula o topo vertical (yTop) de leitura de um item no PDF.
+ * Como o PDF usa a linha de base (baseline) para o Y, uma letra capitular grande
+ * tem a linha de base rebaixada, mas o topo dela coincide com a 1ª linha do parágrafo.
+ */
+export function getTopY(item: ItemTextoPdf): number {
+  const y = item.transform[5];
+  const fontSize = Math.abs(item.transform[0]) || Math.abs(item.transform[3]) || item.height || 12;
+  return y + fontSize * 0.85;
+}
+
+/**
+ * Ordena os itens do PDF na ordem visual correta de leitura pelo topo visual e coordenada X.
  */
 export function ordenarItensVisualmente(items: ItemTextoPdf[]): ItemTextoPdf[] {
   return [...items].sort((a, b) => {
-    const yA = a.transform[5];
-    const yB = b.transform[5];
+    const topA = getTopY(a);
+    const topB = getTopY(b);
     const xA = a.transform[4];
     const xB = b.transform[4];
 
-    // Se estiverem em linhas distintas (diferença maior que ~4 pontos)
-    if (Math.abs(yA - yB) > 4) {
-      return yB - yA; // Y maior (mais alto na página) vem primeiro
+    // Se estiverem em alturas de linha distintas (diferença maior que ~5.5 pontos)
+    if (Math.abs(topA - topB) > 5.5) {
+      return topB - topA; // Topo mais alto na página vem primeiro
     }
-    // Na mesma linha física, o menor X (mais à esquerda) vem primeiro
+    // Na mesma linha visual de topo, o menor X (mais à esquerda) vem primeiro
     return xA - xB;
   });
 }
@@ -85,12 +97,12 @@ function ehCabecalhoOuRodapeDescartavel(linha: LinhaFisica, yMin: number, yMax: 
 }
 
 /**
- * Reúne itens brutos do PDF em linhas horizontais ordenadas e reconcilia travessões
+ * Reúne itens brutos do PDF em linhas horizontais ordenadas e reconcilia travessões e capitulares
  */
 export function agruparEmLinhasFisicas(items: ItemTextoPdf[]): LinhaFisica[] {
   if (!items || items.length === 0) return [];
 
-  // 1. Pré-ordena itens geometricamente
+  // 1. Pré-ordena itens geometricamente pelo topo visual
   const itensOrdenados = ordenarItensVisualmente(items);
 
   let yMin = Infinity;
@@ -101,10 +113,11 @@ export function agruparEmLinhasFisicas(items: ItemTextoPdf[]): LinhaFisica[] {
     if (y > yMax) yMax = y;
   }
 
-  // 2. Agrupa em linhas horizontais com tolerância adaptativa
+  // 2. Agrupa em linhas horizontais com tolerância adaptativa baseada no topo visual
   const linhas: LinhaFisica[] = [];
   let linhaAtual: {
     y: number;
+    topY: number;
     x: number;
     fontSize: number;
     ultimoXFim: number;
@@ -117,17 +130,19 @@ export function agruparEmLinhasFisicas(items: ItemTextoPdf[]): LinhaFisica[] {
 
     const x = item.transform[4];
     const y = item.transform[5];
+    const topY = getTopY(item);
     const fontSize = Math.abs(item.transform[0]) || Math.abs(item.transform[3]) || 12;
     const largura = item.width || 0;
 
-    const tolY = Math.max(3.5, fontSize * 0.35);
+    const tolTop = Math.max(5.0, fontSize * 0.4);
 
-    if (!linhaAtual || Math.abs(y - linhaAtual.y) > tolY) {
+    if (!linhaAtual || Math.abs(topY - linhaAtual.topY) > tolTop) {
       if (linhaAtual && linhaAtual.fragmentos.length > 0) {
         linhas.push(montarLinhaDeFragmentos(linhaAtual));
       }
       linhaAtual = {
         y,
+        topY,
         x,
         fontSize,
         ultimoXFim: x + largura,
@@ -153,11 +168,11 @@ export function agruparEmLinhasFisicas(items: ItemTextoPdf[]): LinhaFisica[] {
  */
 function montarLinhaDeFragmentos(linhaInfo: {
   y: number;
+  topY: number;
   x: number;
   fontSize: number;
   fragmentos: { x: number; str: string; largura: number; fontSize: number }[];
 }): LinhaFisica {
-  // Ordena fragmentos da linha estritamente da esquerda para a direita
   const frags = [...linhaInfo.fragmentos].sort((a, b) => a.x - b.x);
 
   let textoMontado = "";
@@ -187,7 +202,6 @@ function montarLinhaDeFragmentos(linhaInfo: {
       primeiroFrag.fontSize >= f.fontSize * 1.25;
     const atualComecaComMinuscula = /^[a-zà-ú]/.test(str);
 
-    // Se for travessão após uma palavra, assegura espaço antes: "fala —"
     let precisaEspaco = false;
     if (ehCapitularComFonteMaior && atualComecaComMinuscula) {
       precisaEspaco = false;
@@ -215,6 +229,7 @@ function montarLinhaDeFragmentos(linhaInfo: {
 
   return {
     y: linhaInfo.y,
+    topY: linhaInfo.topY,
     x: xInicial,
     fontSize: linhaInfo.fontSize,
     largura: ultimoXFim - xInicial,
@@ -228,14 +243,11 @@ function montarLinhaDeFragmentos(linhaInfo: {
 export function normalizarEspacamentoTravessoes(texto: string): string {
   if (!texto) return "";
 
-  // Se a linha começa com travessão de diálogo, garante: "— " seguido da frase
   if (TRAVESSAO_REGEX.test(texto)) {
     const resto = texto.replace(TRAVESSAO_REGEX, "").trim();
     texto = `${TRAVESSAO_CHAR} ${resto}`;
   }
 
-  // Se há travessão no meio da frase com oração incisa ("palavra—palavra" ou "palavra —palavra"),
-  // padroniza para "palavra — palavra"
   texto = texto.replace(/([a-zA-Z0-9à-úÀ-Ú.,!?])\s*[\u2014\u2013\u2015]\s*([a-zA-Z0-9à-úÀ-Ú])/g, "$1 — $2");
 
   return texto;
@@ -243,9 +255,7 @@ export function normalizarEspacamentoTravessoes(texto: string): string {
 
 /**
  * Reconcilia Letras Capitulares (Drop Caps) no início de parágrafos/páginas.
- *
- * Em livros, a primeira letra de um capítulo é frequentemente uma letra gigante (ex: "O", "E", "A"),
- * cuja linha de base no PDF fica em coordenada Y diferente ou forma uma "linha" com apenas 1 letra.
+ * Unifica capitulares isoladas com a linha seguinte.
  */
 export function reconciliarCapitulares(linhas: LinhaFisica[]): LinhaFisica[] {
   if (linhas.length <= 1) return linhas;
@@ -262,10 +272,8 @@ export function reconciliarCapitulares(linhas: LinhaFisica[]): LinhaFisica[] {
     }
 
     const textoAtual = atual.texto.trim();
-    // É uma capitular se tem 1 ou 2 caracteres (ex: "O", "A", "E", "À", "«A") e a próxima linha está logo abaixo
-    const ehCapitular =
-      /^[A-ZÀ-Ú«"'\u201C\u2018]?[A-ZÀ-Ú]$/.test(textoAtual) &&
-      atual.fontSize >= proxima.fontSize * 1.2;
+    // É uma capitular se tem 1 ou 2 caracteres e está isolada em uma linha
+    const ehCapitular = /^[A-ZÀ-Ú«"'\u201C\u2018]?[A-ZÀ-Ú]$/.test(textoAtual);
 
     if (ehCapitular) {
       const textoProxima = proxima.texto.trim();
@@ -273,6 +281,7 @@ export function reconciliarCapitulares(linhas: LinhaFisica[]): LinhaFisica[] {
       if (/^[a-zà-ú]/.test(textoProxima)) {
         resultado.push({
           y: atual.y,
+          topY: atual.topY,
           x: atual.x,
           fontSize: proxima.fontSize,
           largura: atual.largura + proxima.largura,
@@ -285,6 +294,7 @@ export function reconciliarCapitulares(linhas: LinhaFisica[]): LinhaFisica[] {
       if (/^[A-ZÀ-Ú]/.test(textoProxima)) {
         resultado.push({
           y: atual.y,
+          topY: atual.topY,
           x: atual.x,
           fontSize: proxima.fontSize,
           largura: atual.largura + proxima.largura,
@@ -302,6 +312,61 @@ export function reconciliarCapitulares(linhas: LinhaFisica[]): LinhaFisica[] {
 }
 
 /**
+ * Dicionário contextual de inícios de parágrafos clássicos da língua portuguesa
+ * para recuperação se uma letra capitular não foi emitida como texto pelo PDF.
+ */
+const RECUPERACAO_INICIO_PARAGRAFO: [RegExp, string][] = [
+  [/^ra uma vez\b/i, "Era uma vez"],
+  [/^uando\b/i, "Quando"],
+  [/^aquele\b/i, "Naquele"],
+  [/^aquela\b/i, "Naquela"],
+  [/^m dia\b/i, "Um dia"],
+  [/^epois\b/i, "Depois"],
+  [/^avia\b/i, "Havia"],
+  [/^omo\b/i, "Como"],
+  [/^ntão\b/i, "Então"],
+  [/^inda\b/i, "Ainda"],
+  [/^odos\b/i, "Todos"],
+  [/^odas\b/i, "Todas"],
+  [/^ada\b/i, "Nada"],
+  [/^les\b/i, "Eles"],
+  [/^las\b/i, "Elas"],
+  [/^sse\b/i, "Esse"],
+  [/^ssa\b/i, "Essa"],
+  [/^ste\b/i, "Este"],
+  [/^sta\b/i, "Esta"],
+  [/^rimeiro\b/i, "Primeiro"],
+  [/^inalmente\b/i, "Finalmente"],
+];
+
+/**
+ * Restaura a primeira letra caso um parágrafo tenha iniciado com letra minúscula órfã
+ */
+export function restaurarPrimeiraLetraSeTruncada(paragrafo: string): string {
+  let p = paragrafo.trim();
+  if (!p) return "";
+
+  // Se o parágrafo começa com letra minúscula (o que nunca ocorre em livros de verdade)
+  if (/^[a-zà-ú]/.test(p)) {
+    for (const [regex, substituicao] of RECUPERACAO_INICIO_PARAGRAFO) {
+      if (regex.test(p)) {
+        return p.replace(regex, substituicao);
+      }
+    }
+    // Caso geral: capitaliza a primeira letra que estava truncada
+    return p.charAt(0).toUpperCase() + p.slice(1);
+  }
+
+  return p;
+}
+
+/**
+ * Lista de números por extenso em português para identificar títulos como "Capítulo Um" ou "Um"
+ */
+const NUMEROS_EXTENSO =
+  "um|dois|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|primeiro|segundo|terceiro|quarto|quinto|sexto|s[eé]timo|oitavo|nono|d[eé]cimo|one|two|three|four|five";
+
+/**
  * Verifica se um texto representa o título de um novo capítulo
  */
 export function detectarTituloCapitulo(
@@ -310,11 +375,13 @@ export function detectarTituloCapitulo(
   fontSizeMedio: number = 12
 ): { ehTitulo: boolean; tituloNormalizado?: string } {
   const limpo = texto.trim();
-  if (!limpo || limpo.length > 70) return { ehTitulo: false };
+  if (!limpo || limpo.length > 80) return { ehTitulo: false };
 
-  // 1. Padrões explícitos com palavra-chave ("Capítulo", "Parte", etc.)
-  const regexExplicit =
-    /^(?:cap[ií]tulo|chapter|parte|se[çc][aã]o)\s*(?:[0-9ivxlcdm]+|[a-zà-ú]+)?(?:\s*[:.\-–—]\s*.*)?$/i;
+  // 1. Padrões explícitos com palavra-chave ("Capítulo", "Capitulo", "Chapter", etc.)
+  const regexExplicit = new RegExp(
+    `^(?:cap[ií]tulo|chapter|se[çc][aã]o|livro)\\b(?:\\s+(?:[0-9ivxlcdm]+|${NUMEROS_EXTENSO}|[a-zà-ú]+))?(?:\\s*[:.\\-–—]\\s*.*)?$`,
+    "i"
+  );
   if (regexExplicit.test(limpo)) {
     return {
       ehTitulo: true,
@@ -322,7 +389,7 @@ export function detectarTituloCapitulo(
     };
   }
 
-  // 2. Seções canônicas de livros
+  // 2. Seções clássicas de livros
   const regexSecoes =
     /^(?:pr[oó]logo|prologo|ep[ií]logo|epilogo|introdu[çc][aã]o|introducao|pref[aá]cio|prefacio|posf[aá]cio|posfacio|conclus[aã]o|conclusao|agradecimentos|sum[aá]rio|sumario|[ií]ndice|indice|notas)\b.*$/i;
   if (regexSecoes.test(limpo)) {
@@ -332,7 +399,7 @@ export function detectarTituloCapitulo(
     };
   }
 
-  // 3. Numerais romanos isolados que atuam como número de capítulo (I, II, III, IV, etc.)
+  // 3. Numerais romanos isolados (I, II, III, IV, etc.)
   if (/^[IVXLCDM]{1,8}\.?$/i.test(limpo)) {
     return {
       ehTitulo: true,
@@ -340,10 +407,19 @@ export function detectarTituloCapitulo(
     };
   }
 
-  // 4. Linha curta em destaque tipográfico (fonte maior e sem pontuação corrida de parágrafo)
-  if (fontSizeLinha && fontSizeLinha >= fontSizeMedio * 1.28) {
+  // 4. Números por extenso isolados ("Um", "Dois", "Primeiro", etc.)
+  const regexExtensoIsolado = new RegExp(`^(?:${NUMEROS_EXTENSO})\\.?$`, "i");
+  if (regexExtensoIsolado.test(limpo)) {
+    return {
+      ehTitulo: true,
+      tituloNormalizado: `Capítulo ${limpo.charAt(0).toUpperCase() + limpo.slice(1).toLowerCase()}`,
+    };
+  }
+
+  // 5. Linha curta em destaque tipográfico (fonte maior e sem pontuação corrida de parágrafo)
+  if (fontSizeLinha && fontSizeLinha >= fontSizeMedio * 1.25) {
     const naoEhFraseCorrida = !/[.,;:?!—]$/.test(limpo);
-    const temTamanhoTitulo = limpo.length >= 3 && limpo.length <= 50;
+    const temTamanhoTitulo = limpo.length >= 2 && limpo.length <= 50;
 
     if (naoEhFraseCorrida && temTamanhoTitulo) {
       return {
@@ -360,7 +436,11 @@ function formatarTituloBonito(titulo: string): string {
   const t = titulo.trim();
   // Se for todo em maiúsculas, capitaliza para formato editorial agradável
   if (t === t.toUpperCase() && t.length > 3) {
-    return t.charAt(0) + t.slice(1).toLowerCase();
+    return t
+      .toLowerCase()
+      .split(" ")
+      .map((palavra) => palavra.charAt(0).toUpperCase() + palavra.slice(1))
+      .join(" ");
   }
   return t;
 }
@@ -371,7 +451,7 @@ function formatarTituloBonito(titulo: string): string {
 export function reconstruirTextoEParagrafosPdf(items: ItemTextoPdf[]): string[] {
   if (!items || items.length === 0) return [];
 
-  // 1. Agrupa fragmentos nas linhas físicas ordenadas
+  // 1. Agrupa fragmentos nas linhas físicas ordenadas pelo topo visual
   let linhas = agruparEmLinhasFisicas(items);
   if (linhas.length === 0) return [];
 
@@ -385,13 +465,42 @@ export function reconstruirTextoEParagrafosPdf(items: ItemTextoPdf[]): string[] 
       ? fontesValidas.reduce((a, b) => a + b, 0) / fontesValidas.length
       : 12;
 
-  // 3. Agrupa linhas em parágrafos contínuos
+  // 3. Agrupa linhas em parágrafos contínuos, isolando títulos de capítulos
   const paragrafos: string[] = [];
   let paragrafoAtual = "";
 
   for (let i = 0; i < linhas.length; i++) {
     const linha = linhas[i];
     const proximaLinha = linhas[i + 1];
+
+    const ehTituloAtual = detectarTituloCapitulo(linha.texto, linha.fontSize, fontSizeMedio).ehTitulo;
+
+    // Se a linha atual for um título de capítulo (ex: "CAPÍTULO UM" ou "CAPÍTULO"):
+    if (ehTituloAtual) {
+      // Encerra qualquer parágrafo anterior
+      if (paragrafoAtual.trim()) {
+        paragrafos.push(restaurarPrimeiraLetraSeTruncada(paragrafoAtual));
+        paragrafoAtual = "";
+      }
+
+      // Se a próxima linha for o número ou complemento do título (ex: Linha 1 = "Capítulo", Linha 2 = "Um"):
+      if (proximaLinha) {
+        const detProx = detectarTituloCapitulo(proximaLinha.texto, proximaLinha.fontSize, fontSizeMedio);
+        const ehComplementoTitulo =
+          detProx.ehTitulo ||
+          proximaLinha.fontSize >= fontSizeMedio * 1.15 ||
+          new RegExp(`^(?:${NUMEROS_EXTENSO}|\\d{1,3}|[IVXLCDM]+)$`, "i").test(proximaLinha.texto.trim());
+
+        if (ehComplementoTitulo) {
+          paragrafos.push(`${linha.texto.trim()} ${proximaLinha.texto.trim()}`);
+          i++; // Avança a linha incorporada
+          continue;
+        }
+      }
+
+      paragrafos.push(linha.texto.trim());
+      continue;
+    }
 
     if (!paragrafoAtual) {
       paragrafoAtual = linha.texto;
@@ -405,7 +514,9 @@ export function reconstruirTextoEParagrafosPdf(items: ItemTextoPdf[]): string[] 
     }
 
     if (!proximaLinha) {
-      if (paragrafoAtual.trim()) paragrafos.push(paragrafoAtual.trim());
+      if (paragrafoAtual.trim()) {
+        paragrafos.push(restaurarPrimeiraLetraSeTruncada(paragrafoAtual));
+      }
       break;
     }
 
@@ -415,16 +526,16 @@ export function reconstruirTextoEParagrafosPdf(items: ItemTextoPdf[]): string[] 
     // Se o salto vertical for maior que 1.75x a altura normal de linha
     const quebraVisualGrande = gapVertical > alturaLinhaRef * 1.75;
 
-    // Se a próxima linha tem recuo à esquerda (identação de parágrafo) e a anterior termina com pontuação
+    // Se a próxima linha tem recuo à esquerda e a anterior termina com pontuação
     const terminaComPontuacao = /[.!?:"»]$/.test(linha.texto);
     const recuoProximaLinha = proximaLinha.x > linha.x + 8;
 
-    // Se a próxima linha for um título de capítulo ou destaque tipográfico
+    // Se a próxima linha for um título de capítulo
     const proximaEhTitulo =
       detectarTituloCapitulo(proximaLinha.texto, proximaLinha.fontSize, fontSizeMedio).ehTitulo ||
       proximaLinha.fontSize > linha.fontSize * 1.25;
 
-    // Se a linha atual ou a próxima linha for um diálogo com travessão ("— "), deve ser um novo parágrafo
+    // Se a próxima linha for um diálogo com travessão ("— ")
     const proximaComecaComTravessao = TRAVESSAO_REGEX.test(proximaLinha.texto);
 
     if (
@@ -434,7 +545,7 @@ export function reconstruirTextoEParagrafosPdf(items: ItemTextoPdf[]): string[] 
       proximaComecaComTravessao
     ) {
       if (paragrafoAtual.trim()) {
-        paragrafos.push(paragrafoAtual.trim());
+        paragrafos.push(restaurarPrimeiraLetraSeTruncada(paragrafoAtual));
       }
       paragrafoAtual = "";
     }
@@ -450,7 +561,6 @@ export async function extrairBlobDeObjetoPdf(imgObj: any): Promise<Blob | null> 
   if (!imgObj || typeof document === "undefined") return null;
 
   try {
-    // 1. Caso seja ImageBitmap, HTMLImageElement ou HTMLCanvasElement
     if (
       (typeof ImageBitmap !== "undefined" && imgObj instanceof ImageBitmap) ||
       (typeof HTMLCanvasElement !== "undefined" && imgObj instanceof HTMLCanvasElement) ||
@@ -465,9 +575,7 @@ export async function extrairBlobDeObjetoPdf(imgObj: any): Promise<Blob | null> 
       return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
     }
 
-    // 2. Caso seja buffer com dados brutos de pixels (RGBA, RGB ou Gray)
     if (imgObj.data && imgObj.width > 0 && imgObj.height > 0) {
-      // Ignora imagens insignificantes (marcadores ou máscaras menores que 12x12)
       if (imgObj.width < 12 && imgObj.height < 12) return null;
 
       const canvas = document.createElement("canvas");
@@ -483,7 +591,6 @@ export async function extrairBlobDeObjetoPdf(imgObj: any): Promise<Blob | null> 
 
       let imgData: ImageData;
       if (imgObj.kind === 1) {
-        // Escala de cinza (1 canal -> 4 canais RGBA)
         const rgba = new Uint8ClampedArray(imgObj.width * imgObj.height * 4);
         for (let i = 0, j = 0; i < clamped.length; i++, j += 4) {
           rgba[j] = clamped[i];
@@ -493,7 +600,6 @@ export async function extrairBlobDeObjetoPdf(imgObj: any): Promise<Blob | null> 
         }
         imgData = new ImageData(rgba, imgObj.width, imgObj.height);
       } else if (imgObj.kind === 2) {
-        // RGB (3 canais -> 4 canais RGBA)
         const rgba = new Uint8ClampedArray(imgObj.width * imgObj.height * 4);
         for (let i = 0, j = 0; i < clamped.length; i += 3, j += 4) {
           rgba[j] = clamped[i];
@@ -503,7 +609,6 @@ export async function extrairBlobDeObjetoPdf(imgObj: any): Promise<Blob | null> 
         }
         imgData = new ImageData(rgba, imgObj.width, imgObj.height);
       } else {
-        // RGBA (4 canais padrão)
         imgData = new ImageData(clamped, imgObj.width, imgObj.height);
       }
 
@@ -517,23 +622,9 @@ export async function extrairBlobDeObjetoPdf(imgObj: any): Promise<Blob | null> 
   return null;
 }
 
-export interface PaginaProcessadaPdf {
-  numPagina: number;
-  paragrafos: string[];
-  imagens: { id: string; legenda?: string; posicao?: "inicio" | "fim" }[];
-}
-
-export interface CapituloMontado {
-  titulo: string;
-  paragrafos: string[];
-  imagens: { id: string; legenda?: string; posicao?: "inicio" | "fim" }[];
-  ocultarTitulo?: boolean;
-}
-
 /**
  * Agrupa as páginas contínuas do PDF em capítulos reais do livro.
- * Elimina o problema de espaçamento em branco forçado a cada página no Kindle,
- * fazendo com que o texto flua naturalmente e quebrando apenas no final de cada capítulo.
+ * Elimina quebras forçadas no meio da leitura e NUNCA divide arbitrariamente em "Parte 1", "Parte 2".
  */
 export function agruparPaginasEmCapitulos(paginas: PaginaProcessadaPdf[]): CapituloMontado[] {
   if (!paginas || paginas.length === 0) return [];
@@ -548,7 +639,6 @@ export function agruparPaginasEmCapitulos(paginas: PaginaProcessadaPdf[]): Capit
   let detectouAlgumCapitulo = false;
 
   for (const pag of paginas) {
-    // Adiciona imagens da página ao capítulo atual
     if (pag.imagens && pag.imagens.length > 0) {
       capituloAtual.imagens.push(...pag.imagens);
     }
@@ -562,7 +652,6 @@ export function agruparPaginasEmCapitulos(paginas: PaginaProcessadaPdf[]): Capit
           capitulos.push(capituloAtual);
         }
 
-        // Abre novo capítulo com o título detectado
         const tituloFinal = det.tituloNormalizado || paragrafo;
         capituloAtual = {
           titulo: tituloFinal,
@@ -583,38 +672,25 @@ export function agruparPaginasEmCapitulos(paginas: PaginaProcessadaPdf[]): Capit
   }
 
   // Se nenhum capítulo explícito foi detectado no documento inteiro:
+  // NUNCA divide em "Parte 1", "Parte 2"! Mantém como um único fluxo contínuo.
   if (!detectouAlgumCapitulo) {
-    // Agrupa todas as páginas em um fluxo contínuo
     const todosParagrafos = paginas.flatMap((p) => p.paragrafos);
     const todasImagens = paginas.flatMap((p) => p.imagens);
 
-    if (paginas.length <= 20) {
-      return [
-        {
-          titulo: "Leitura",
-          paragrafos: todosParagrafos,
-          imagens: todasImagens,
-          ocultarTitulo: true,
-        },
-      ];
-    }
+    return [
+      {
+        titulo: "Leitura",
+        paragrafos: todosParagrafos,
+        imagens: todasImagens,
+        ocultarTitulo: true,
+      },
+    ];
+  }
 
-    // Para livros longos sem marcação de capítulos, divide a cada ~15 páginas para não gerar arquivo único excessivo
-    const capitulosFatiados: CapituloMontado[] = [];
-    const PAGINAS_POR_BLOCO = 15;
-    for (let i = 0; i < paginas.length; i += PAGINAS_POR_BLOCO) {
-      const bloco = paginas.slice(i, i + PAGINAS_POR_BLOCO);
-      const blocoNum = Math.floor(i / PAGINAS_POR_BLOCO) + 1;
-      capitulosFatiados.push({
-        titulo: `Parte ${blocoNum}`,
-        paragrafos: bloco.flatMap((p) => p.paragrafos),
-        imagens: bloco.flatMap((p) => p.imagens),
-        ocultarTitulo: false,
-      });
-    }
-    return capitulosFatiados;
+  // Remove o capítulo preliminar "Início" caso tenha ficado vazio
+  if (capitulos.length > 1 && capitulos[0].titulo === "Início" && capitulos[0].paragrafos.length === 0) {
+    capitulos.shift();
   }
 
   return capitulos;
 }
-

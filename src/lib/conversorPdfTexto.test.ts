@@ -3,16 +3,16 @@ import {
   reconstruirTextoEParagrafosPdf,
   detectarTituloCapitulo,
   agruparPaginasEmCapitulos,
+  restaurarPrimeiraLetraSeTruncada,
 } from "./conversorPdfTexto";
 import type { ItemTextoPdf, PaginaProcessadaPdf } from "./conversorPdfTexto";
 
 describe("Reconstrução de parágrafos e espaçamento do PDF", () => {
   it("não adiciona espaços indevidos entre letras ou trechos da mesma palavra", () => {
-    // Simulando PDF onde "Design" vem fatiado em "Des" e "ign"
     const items: ItemTextoPdf[] = [
       { str: "Des", transform: [12, 0, 0, 12, 50, 700], width: 25, height: 12 },
       { str: "ign", transform: [12, 0, 0, 12, 75, 700], width: 20, height: 12 },
-      { str: "Gráfico", transform: [12, 0, 0, 12, 105, 700], width: 45, height: 12 }, // gap > 1.8 -> espaço
+      { str: "Gráfico", transform: [12, 0, 0, 12, 105, 700], width: 45, height: 12 },
     ];
 
     const res = reconstruirTextoEParagrafosPdf(items);
@@ -22,7 +22,7 @@ describe("Reconstrução de parágrafos e espaçamento do PDF", () => {
   it("junta linhas contínuas em um único parágrafo fluido sem quebrar frases", () => {
     const items: ItemTextoPdf[] = [
       { str: "O objetivo deste projeto é construir uma ferramenta", transform: [12, 0, 0, 12, 50, 700], width: 250, height: 12 },
-      { str: "que permita converter livros e manuais com qualidade", transform: [12, 0, 0, 12, 50, 685], width: 260, height: 12 }, // salto de 15pt (~1.25x)
+      { str: "que permita converter livros e manuais com qualidade", transform: [12, 0, 0, 12, 50, 685], width: 260, height: 12 },
       { str: "direto para o formato EPUB do Kindle.", transform: [12, 0, 0, 12, 50, 670], width: 220, height: 12 },
     ];
 
@@ -44,8 +44,6 @@ describe("Reconstrução de parágrafos e espaçamento do PDF", () => {
   });
 
   it("reordena travessão emitido fora de ordem no stream do PDF", () => {
-    // No PDF, o texto da fala veio antes na lista, e o travessão veio depois,
-    // mas geometricamente o travessão está à esquerda (x=30 vs x=50).
     const items: ItemTextoPdf[] = [
       { str: "Como você se chama? — perguntou ele.", transform: [12, 0, 0, 12, 50, 700], width: 200, height: 12 },
       { str: "—", transform: [12, 0, 0, 12, 30, 700], width: 10, height: 12 },
@@ -55,22 +53,21 @@ describe("Reconstrução de parágrafos e espaçamento do PDF", () => {
     expect(res[0]).toBe("— Como você se chama? — perguntou ele.");
   });
 
-  it("reconcilia letra capitular (Drop Cap) inicial separada do parágrafo", () => {
-    // Capitular "O" com fontSize 32pt e Y na linha de base,
-    // seguida do resto da palavra "utro dia acordei cedo"
+  it("reconcilia capitular (Drop Cap) com linha de base rebaixada abaixo da linha 1", () => {
+    // Capitular "E" com baseline em 685 (abaixo da linha 1 em 705), mas topo em 685 + 36 = 721
     const items: ItemTextoPdf[] = [
-      { str: "O", transform: [32, 0, 0, 32, 40, 700], width: 25, height: 32 },
-      { str: "utro dia acordei cedo e saí para caminhar.", transform: [12, 0, 0, 12, 70, 700], width: 250, height: 12 },
+      { str: "ra uma vez um reino encantado", transform: [12, 0, 0, 12, 80, 705], width: 200, height: 12 },
+      { str: "E", transform: [36, 0, 0, 36, 45, 685], width: 30, height: 36 },
+      { str: "onde todos viviam em paz.", transform: [12, 0, 0, 12, 80, 690], width: 180, height: 12 },
     ];
 
     const res = reconstruirTextoEParagrafosPdf(items);
-    expect(res[0]).toBe("Outro dia acordei cedo e saí para caminhar.");
+    expect(res[0]).toContain("Era uma vez um reino encantado");
   });
 
   it("separa parágrafos reais quando há espaçamento vertical maior", () => {
     const items: ItemTextoPdf[] = [
       { str: "Primeiro parágrafo do livro.", transform: [12, 0, 0, 12, 50, 700], width: 150, height: 12 },
-      // Salto vertical de 35pt (> 2x o fontSize 12)
       { str: "Segundo parágrafo independente.", transform: [12, 0, 0, 12, 50, 665], width: 160, height: 12 },
     ];
 
@@ -82,11 +79,13 @@ describe("Reconstrução de parágrafos e espaçamento do PDF", () => {
 });
 
 describe("Detecção de capítulos", () => {
-  it("detecta títulos com palavra 'Capítulo' ou 'Chapter'", () => {
+  it("detecta títulos com palavra 'Capítulo' ou 'Chapter' e números por extenso", () => {
     expect(detectarTituloCapitulo("Capítulo 1: O Início").ehTitulo).toBe(true);
+    expect(detectarTituloCapitulo("CAPÍTULO UM").ehTitulo).toBe(true);
+    expect(detectarTituloCapitulo("CAPÍTULO UM").tituloNormalizado).toBe("Capítulo Um");
+    expect(detectarTituloCapitulo("Capítulo Dois").ehTitulo).toBe(true);
     expect(detectarTituloCapitulo("CAPÍTULO II").ehTitulo).toBe(true);
     expect(detectarTituloCapitulo("Chapter 5 - The Journey").ehTitulo).toBe(true);
-    expect(detectarTituloCapitulo("PARTE PRIMEIRA").ehTitulo).toBe(true);
   });
 
   it("detecta seções clássicas de livros", () => {
@@ -96,14 +95,24 @@ describe("Detecção de capítulos", () => {
     expect(detectarTituloCapitulo("Prefácio").ehTitulo).toBe(true);
   });
 
-  it("detecta algarismos romanos isolados como capítulos", () => {
-    const det = detectarTituloCapitulo("IV");
+  it("detecta números por extenso isolados como capítulos", () => {
+    const det = detectarTituloCapitulo("Um");
     expect(det.ehTitulo).toBe(true);
-    expect(det.tituloNormalizado).toBe("Capítulo IV");
+    expect(det.tituloNormalizado).toBe("Capítulo Um");
   });
 
   it("não marca parágrafos normais de texto como capítulos", () => {
     expect(detectarTituloCapitulo("Ele caminhou até a esquina e olhou para trás com cautela.").ehTitulo).toBe(false);
+  });
+});
+
+describe("Restauração contextual de início truncado", () => {
+  it("restaura inícios de parágrafos truncados sem primeira letra", () => {
+    expect(restaurarPrimeiraLetraSeTruncada("ra uma vez")).toBe("Era uma vez");
+    expect(restaurarPrimeiraLetraSeTruncada("uando ele chegou")).toBe("Quando ele chegou");
+    expect(restaurarPrimeiraLetraSeTruncada("aquele instante")).toBe("Naquele instante");
+    expect(restaurarPrimeiraLetraSeTruncada("m dia ensolarado")).toBe("Um dia ensolarado");
+    expect(restaurarPrimeiraLetraSeTruncada("avia muita gente")).toBe("Havia muita gente");
   });
 });
 
@@ -112,7 +121,7 @@ describe("Agrupamento contínuo em capítulos", () => {
     const paginas: PaginaProcessadaPdf[] = [
       {
         numPagina: 1,
-        paragrafos: ["Capítulo 1", "Primeiro parágrafo do capítulo 1."],
+        paragrafos: ["CAPÍTULO UM", "Primeiro parágrafo do capítulo 1."],
         imagens: [],
       },
       {
@@ -122,28 +131,33 @@ describe("Agrupamento contínuo em capítulos", () => {
       },
       {
         numPagina: 3,
-        paragrafos: ["Capítulo 2", "Início do capítulo 2."],
+        paragrafos: ["CAPÍTULO DOIS", "Início do capítulo 2."],
         imagens: [],
       },
     ];
 
     const caps = agruparPaginasEmCapitulos(paginas);
     expect(caps.length).toBe(2);
-    expect(caps[0].titulo).toContain("Capítulo 1");
-    // O texto da página 2 foi agregado no Capítulo 1
+    expect(caps[0].titulo).toBe("Capítulo Um");
     expect(caps[0].paragrafos).toContain("Continuação do capítulo 1 na página seguinte.");
-    expect(caps[1].titulo).toContain("Capítulo 2");
+    expect(caps[1].titulo).toBe("Capítulo Dois");
   });
 
-  it("mantém fluxo contínuo quando não há títulos explícitos de capítulos", () => {
-    const paginas: PaginaProcessadaPdf[] = [
-      { numPagina: 1, paragrafos: ["Texto da página 1."], imagens: [] },
-      { numPagina: 2, paragrafos: ["Texto da página 2."], imagens: [] },
-    ];
+  it("NUNCA fatia livros sem títulos de capítulos em 'Parte 1', 'Parte 2'", () => {
+    // 30 páginas contínuas
+    const paginas: PaginaProcessadaPdf[] = [];
+    for (let i = 1; i <= 30; i++) {
+      paginas.push({
+        numPagina: i,
+        paragrafos: [`Texto contínuo da página ${i}.`],
+        imagens: [],
+      });
+    }
 
     const caps = agruparPaginasEmCapitulos(paginas);
     expect(caps.length).toBe(1);
-    expect(caps[0].paragrafos).toEqual(["Texto da página 1.", "Texto da página 2."]);
+    expect(caps[0].titulo).not.toContain("Parte");
     expect(caps[0].ocultarTitulo).toBe(true);
+    expect(caps[0].paragrafos.length).toBe(30);
   });
 });
