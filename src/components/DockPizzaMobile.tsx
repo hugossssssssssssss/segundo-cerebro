@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   X,
@@ -25,8 +25,9 @@ import {
   CheckSquare,
   PlusCircle,
   FilePlus,
-  Sliders,
-  ChevronRight,
+  BookOpen,
+  FileType,
+  ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { alternarTema } from "@/lib/tema";
@@ -36,16 +37,15 @@ export interface FuncaoRapida {
   rotulo: string;
   subtitulo: string;
   rota?: string;
-  corHex: string;
   bgClasse: string;
   Icone: any;
   acao?: () => void;
 }
 
-export interface CategoriaFerramenta {
+export interface CategoriaPizza {
   id: string;
   nome: string;
-  subtitulo: string;
+  descricao: string;
   corClasse: string;
   iconeClasse: string;
   Icone: any;
@@ -60,14 +60,13 @@ interface DockPizzaMobileProps {
 export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
   const navegar = useNavigate();
   const [categoriaAtivaId, setCategoriaAtivaId] = useState<string>("pdf");
-  const fechandoPorPopstateRef = useRef(false);
 
-  // Categorias de ferramentas com suas funções rápidas dedicadas
-  const categorias: CategoriaFerramenta[] = [
+  // Ferramentas separadas do Klaus organizadas por categoria no leque da pizza
+  const categorias: CategoriaPizza[] = [
     {
       id: "pdf",
       nome: "Ferramentas PDF",
-      subtitulo: "Mesclar, dividir, comprimir e digitalizar",
+      descricao: "Manipulação completa de arquivos PDF no navegador",
       corClasse: "text-red-500",
       iconeClasse: "bg-red-500/15 text-red-500 border-red-500/30",
       Icone: Layers,
@@ -77,8 +76,7 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
           rotulo: "Juntar PDFs",
           subtitulo: "Mesclar múltiplos arquivos em um único PDF",
           rota: "/pdf?aba=juntar",
-          corHex: "#ef4444",
-          bgClasse: "bg-red-500/15 text-red-500 border-red-500/25",
+          bgClasse: "bg-red-500/15 text-red-500 border-red-500/30",
           Icone: Layers,
         },
         {
@@ -86,26 +84,23 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
           rotulo: "Dividir PDF",
           subtitulo: "Separar páginas em arquivos individuais",
           rota: "/pdf?aba=dividir",
-          corHex: "#f97316",
-          bgClasse: "bg-orange-500/15 text-orange-500 border-orange-500/25",
+          bgClasse: "bg-orange-500/15 text-orange-500 border-orange-500/30",
           Icone: Scissors,
         },
         {
           id: "comprimir-pdf",
           rotulo: "Comprimir PDF",
-          subtitulo: "Reduzir tamanho sem perder qualidade legível",
+          subtitulo: "Reduzir tamanho mantendo legibilidade",
           rota: "/pdf?aba=comprimir",
-          corHex: "#f59e0b",
-          bgClasse: "bg-amber-500/15 text-amber-500 border-amber-500/25",
+          bgClasse: "bg-amber-500/15 text-amber-500 border-amber-500/30",
           Icone: FileArchive,
         },
         {
           id: "scanner-pdf",
           rotulo: "Scanner / Foto PDF",
-          subtitulo: "Digitalizar folhas físicas com a câmera do celular",
+          subtitulo: "Digitalizar folha com a câmera do celular",
           rota: "/pdf?aba=digitalizar",
-          corHex: "#a855f7",
-          bgClasse: "bg-purple-500/15 text-purple-500 border-purple-500/25",
+          bgClasse: "bg-purple-500/15 text-purple-500 border-purple-500/30",
           Icone: Camera,
         },
         {
@@ -113,81 +108,121 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
           rotulo: "Recortar Páginas",
           subtitulo: "Extrair trecho específico de documento",
           rota: "/pdf?aba=recortar",
-          corHex: "#10b981",
-          bgClasse: "bg-emerald-500/15 text-emerald-500 border-emerald-500/25",
+          bgClasse: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
           Icone: Crop,
         },
         {
           id: "desbloquear-pdf",
           rotulo: "Desbloquear PDF",
-          subtitulo: "Remover proteção ou senha de arquivo PDF",
+          subtitulo: "Remover senha de arquivo PDF",
           rota: "/pdf?aba=desbloquear",
-          corHex: "#64748b",
-          bgClasse: "bg-slate-500/15 text-slate-400 border-slate-500/25",
+          bgClasse: "bg-slate-500/15 text-slate-400 border-slate-500/30",
           Icone: Lock,
         },
         {
           id: "organizar-pdf",
           rotulo: "Organizar Páginas",
-          subtitulo: "Reordenar, girar e organizar sequência",
+          subtitulo: "Reordenar, girar e ajustar sequência",
           rota: "/pdf?aba=organizar",
-          corHex: "#3b82f6",
-          bgClasse: "bg-blue-500/15 text-blue-500 border-blue-500/25",
+          bgClasse: "bg-blue-500/15 text-blue-500 border-blue-500/30",
           Icone: FileCheck,
         },
       ],
     },
     {
-      id: "midia",
-      nome: "Imagens & Mídia",
-      subtitulo: "Conversor, extrator de áudio e referências",
+      id: "conversor",
+      nome: "Imagens & Conversor",
+      descricao: "Conversão individual de formatos de imagem e documentos",
       corClasse: "text-cyan-500",
       iconeClasse: "bg-cyan-500/15 text-cyan-500 border-cyan-500/30",
       Icone: ImageIcon,
       funcoes: [
         {
-          id: "converter-imagens",
-          rotulo: "Converter Imagens",
-          subtitulo: "PNG, JPG, WebP, SVG e outros formatos",
-          rota: "/conversor?tipo=imagem",
-          corHex: "#06b6d4",
-          bgClasse: "bg-cyan-500/15 text-cyan-500 border-cyan-500/25",
+          id: "converter-para-jpg",
+          rotulo: "Converter para JPG",
+          subtitulo: "Transformar PNG ou WebP em JPG leve",
+          rota: "/conversor?ferramenta=img_para_jpg",
+          bgClasse: "bg-orange-500/15 text-orange-500 border-orange-500/30",
           Icone: ImageIcon,
         },
         {
-          id: "converter-documentos",
-          rotulo: "Converter Documentos",
-          subtitulo: "PDF, Word, Markdown, Texto e EPUB",
-          rota: "/conversor?tipo=documento",
-          corHex: "#0ea5e9",
-          bgClasse: "bg-sky-500/15 text-sky-500 border-sky-500/25",
+          id: "converter-para-png",
+          rotulo: "Converter para PNG",
+          subtitulo: "Transformar imagens em PNG com transparência",
+          rota: "/conversor?ferramenta=img_para_png",
+          bgClasse: "bg-cyan-500/15 text-cyan-500 border-cyan-500/30",
+          Icone: ImageIcon,
+        },
+        {
+          id: "converter-para-webp",
+          rotulo: "Converter para WebP",
+          subtitulo: "Compactação máxima preservando qualidade visual",
+          rota: "/conversor?ferramenta=img_para_webp",
+          bgClasse: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
+          Icone: ImageIcon,
+        },
+        {
+          id: "img-para-pdf",
+          rotulo: "Imagens para PDF",
+          subtitulo: "Juntar fotos (PNG, JPG) em um único PDF",
+          rota: "/conversor?ferramenta=img_para_pdf",
+          bgClasse: "bg-purple-500/15 text-purple-500 border-purple-500/30",
           Icone: FileText,
         },
         {
+          id: "pdf-para-jpg",
+          rotulo: "PDF para JPG",
+          subtitulo: "Extrair páginas do PDF em imagens JPG",
+          rota: "/conversor?ferramenta=pdf_para_jpg",
+          bgClasse: "bg-amber-500/15 text-amber-500 border-amber-500/30",
+          Icone: ImageIcon,
+        },
+        {
+          id: "pdf-para-png",
+          rotulo: "PDF para PNG",
+          subtitulo: "Extrair páginas do PDF em imagens PNG HD",
+          rota: "/conversor?ferramenta=pdf_para_png",
+          bgClasse: "bg-blue-500/15 text-blue-500 border-blue-500/30",
+          Icone: ImageIcon,
+        },
+        {
+          id: "pdf-para-epub",
+          rotulo: "PDF para Livro EPUB",
+          subtitulo: "Converter documentos PDF em e-book fluido",
+          rota: "/conversor?ferramenta=pdf_para_epub",
+          bgClasse: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
+          Icone: BookOpen,
+        },
+        {
+          id: "texto-para-md",
+          rotulo: "Texto para Markdown",
+          subtitulo: "Converter TXT, HTML ou CSV em notas limpas",
+          rota: "/conversor?ferramenta=texto_para_md",
+          bgClasse: "bg-indigo-500/15 text-indigo-500 border-indigo-500/30",
+          Icone: FileType,
+        },
+        {
           id: "extrair-audio",
-          rotulo: "Extrair Áudio",
+          rotulo: "Extrair Áudio de Vídeo",
           subtitulo: "Salvar áudio MP3 de vídeos",
           rota: "/conversor?tipo=audio",
-          corHex: "#8b5cf6",
-          bgClasse: "bg-violet-500/15 text-violet-500 border-violet-500/25",
+          bgClasse: "bg-violet-500/15 text-violet-500 border-violet-500/30",
           Icone: Volume2,
         },
         {
           id: "baixador-midia",
-          rotulo: "Baixador de Mídia",
+          rotulo: "Baixador de Mídia Web",
           subtitulo: "Baixar vídeos do Instagram, YouTube e TikTok",
           rota: "/baixador",
-          corHex: "#eab308",
-          bgClasse: "bg-yellow-500/15 text-yellow-500 border-yellow-500/25",
+          bgClasse: "bg-yellow-500/15 text-yellow-500 border-yellow-500/30",
           Icone: Download,
         },
         {
           id: "referencias-mural",
           rotulo: "Mural de Referências",
-          subtitulo: "Mural visual de inspirações e design",
+          subtitulo: "Mural de design e inspirações visuais",
           rota: "/referencias",
-          corHex: "#ec4899",
-          bgClasse: "bg-pink-500/15 text-pink-500 border-pink-500/25",
+          bgClasse: "bg-pink-500/15 text-pink-500 border-pink-500/30",
           Icone: ImageIcon,
         },
       ],
@@ -195,7 +230,7 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
     {
       id: "produtividade",
       nome: "Tarefas & Foco",
-      subtitulo: "Organização diária, lousas e sons",
+      descricao: "Gestão do tempo, foco e registros rápidos",
       corClasse: "text-amber-500",
       iconeClasse: "bg-amber-500/15 text-amber-500 border-amber-500/30",
       Icone: CheckSquare,
@@ -203,102 +238,93 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
         {
           id: "ver-tarefas",
           rotulo: "Minhas Tarefas",
-          subtitulo: "Acessar quadro de tarefas e prazos",
+          subtitulo: "Visualizar tarefas, quadros e prazos",
           rota: "/tarefas",
-          corHex: "#f59e0b",
-          bgClasse: "bg-amber-500/15 text-amber-500 border-amber-500/25",
+          bgClasse: "bg-amber-500/15 text-amber-500 border-amber-500/30",
           Icone: CheckSquare,
         },
         {
           id: "nova-tarefa",
-          rotulo: "Nova Tarefa Rápida",
-          subtitulo: "Criar uma tarefa imediatamente",
-          corHex: "#10b981",
-          bgClasse: "bg-emerald-500/15 text-emerald-500 border-emerald-500/25",
+          rotulo: "Criar Nova Tarefa",
+          subtitulo: "Adicionar uma tarefa imediatamente",
+          bgClasse: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
           Icone: PlusCircle,
           acao: () => {
             navegar("/tarefas");
             setTimeout(() => {
               window.dispatchEvent(new CustomEvent("klaus-acao-criar-dock"));
-            }, 100);
+            }, 120);
           },
         },
         {
           id: "sons-foco",
           rotulo: "Sons de Foco",
-          subtitulo: "Chuva, cafeteria, ruído branco e timer",
+          subtitulo: "Chuva, cafeteria, ruído branco e pomodoro",
           rota: "/sons",
-          corHex: "#14b8a6",
-          bgClasse: "bg-teal-500/15 text-teal-500 border-teal-500/25",
+          bgClasse: "bg-teal-500/15 text-teal-500 border-teal-500/30",
           Icone: Headphones,
         },
         {
           id: "lousas-canvas",
           rotulo: "Lousas & Esboços",
-          subtitulo: "Desenho livre e diagramas no Excalidraw",
+          subtitulo: "Desenho livre e diagramação no Excalidraw",
           rota: "/lousas",
-          corHex: "#f43f5e",
-          bgClasse: "bg-rose-500/15 text-rose-500 border-rose-500/25",
+          bgClasse: "bg-rose-500/15 text-rose-500 border-rose-500/30",
           Icone: Layout,
         },
         {
           id: "transcritor-voz",
           rotulo: "Transcrição de Voz",
-          subtitulo: "Gravar voz e converter em texto limpo",
+          subtitulo: "Gravar áudio e converter em texto limpo",
           rota: "/transcritor",
-          corHex: "#8b5cf6",
-          bgClasse: "bg-violet-500/15 text-violet-500 border-violet-500/25",
+          bgClasse: "bg-violet-500/15 text-violet-500 border-violet-500/30",
           Icone: Mic,
         },
       ],
     },
     {
       id: "notas",
-      nome: "Notas & Conexões",
-      subtitulo: "Anotações, grafo neural e equipe",
+      nome: "Notas & Grafo",
+      descricao: "Anotações do cérebro, grafo neural e contatos",
       corClasse: "text-blue-500",
       iconeClasse: "bg-blue-500/15 text-blue-500 border-blue-500/30",
       Icone: FileText,
       funcoes: [
         {
-          id: "todas-notas",
+          id: "ver-notas",
           rotulo: "Todas as Notas",
-          subtitulo: "Ver suas anotações e documentos",
+          subtitulo: "Acessar documentos e biblioteca de notas",
           rota: "/notas",
-          corHex: "#3b82f6",
-          bgClasse: "bg-blue-500/15 text-blue-500 border-blue-500/25",
+          bgClasse: "bg-blue-500/15 text-blue-500 border-blue-500/30",
           Icone: FileText,
         },
         {
           id: "nova-nota",
-          rotulo: "Criar Nova Nota",
-          subtitulo: "Abrir documento em branco agora",
-          corHex: "#06b6d4",
-          bgClasse: "bg-cyan-500/15 text-cyan-500 border-cyan-500/25",
+          rotulo: "Nova Nota em Branco",
+          subtitulo: "Criar uma anotação imediatamente",
+          bgClasse: "bg-cyan-500/15 text-cyan-500 border-cyan-500/30",
           Icone: FilePlus,
           acao: () => {
             navegar("/notas");
             setTimeout(() => {
               window.dispatchEvent(new CustomEvent("klaus-acao-criar-dock"));
-            }, 100);
+            }, 120);
           },
         },
         {
-          id: "grafo-links",
+          id: "grafo-neural",
           rotulo: "Grafo Neural",
-          subtitulo: "Visualizar rede de notas interconectadas",
+          subtitulo: "Visualizar rede de conexões entre suas notas",
           rota: "/grafo",
-          corHex: "#6366f1",
-          bgClasse: "bg-indigo-500/15 text-indigo-500 border-indigo-500/25",
+          bgClasse: "bg-indigo-500/15 text-indigo-500 border-indigo-500/30",
           Icone: Network,
         },
         {
-          id: "contatos-arvore",
+          id: "arvore-contatos",
           rotulo: "Árvore de Contatos",
-          subtitulo: "Equipe, parceiros e clientes",
+          subtitulo: "Diretório de equipe, clientes e parceiros",
           rota: "/contatos",
-          corHex: "#10b981",
-          bgClasse: "bg-emerald-500/15 text-emerald-500 border-emerald-500/25",
+          bgClasse: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
           Icone: FolderTree,
         },
       ],
@@ -306,54 +332,50 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
     {
       id: "pdi",
       nome: "Carreira & PDI",
-      subtitulo: "Metas de carreira e evolução",
+      descricao: "Evolução profissional, conquistas e plano de carreira",
       corClasse: "text-emerald-500",
       iconeClasse: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
       Icone: Target,
       funcoes: [
         {
           id: "painel-pdi",
-          rotulo: "Painel do PDI",
-          subtitulo: "Acompanhar metas e plano de evolução",
+          rotulo: "Painel de Metas do PDI",
+          subtitulo: "Acompanhar objetivos de evolução",
           rota: "/pdi",
-          corHex: "#10b981",
-          bgClasse: "bg-emerald-500/15 text-emerald-500 border-emerald-500/25",
+          bgClasse: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
           Icone: Target,
         },
         {
           id: "nova-entrega",
-          rotulo: "Nova Conquista",
-          subtitulo: "Registrar entrega de valor para seu PDI",
+          rotulo: "Registrar Nova Conquista",
+          subtitulo: "Salvar entrega de alto valor para seu PDI",
           rota: "/pdi?acao=entrega",
-          corHex: "#f59e0b",
-          bgClasse: "bg-amber-500/15 text-amber-500 border-amber-500/25",
+          bgClasse: "bg-amber-500/15 text-amber-500 border-amber-500/30",
           Icone: Sparkles,
         },
       ],
     },
     {
       id: "sistema",
-      nome: "Ajustes & Sistema",
-      subtitulo: "Preferências, tema e conexão",
+      nome: "Ajustes & Tema",
+      descricao: "Configuração do Klaus, tema e integração GitHub",
       corClasse: "text-violet-500",
       iconeClasse: "bg-violet-500/15 text-violet-500 border-violet-500/30",
       Icone: Settings,
       funcoes: [
         {
-          id: "ajustes-gerais",
+          id: "configuracoes",
           rotulo: "Ajustes do Klaus",
-          subtitulo: "Configurar token GitHub e chave IA Gemini",
+          subtitulo: "Token do GitHub, IA Gemini e dados",
           rota: "/config",
-          corHex: "#71717a",
-          bgClasse: "bg-zinc-500/15 text-zinc-300 border-zinc-500/25",
-          Icone: Sliders,
+          bgClasse: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",
+          Icone: Settings,
         },
         {
           id: "alternar-tema",
-          rotulo: "Alternar Tema",
-          subtitulo: "Trocar instantaneamente Claro / Escuro",
-          corHex: "#f59e0b",
-          bgClasse: "bg-amber-500/15 text-amber-400 border-amber-500/25",
+          rotulo: "Alternar Tema Claro / Escuro",
+          subtitulo: "Trocar a aparência visual do aplicativo",
+          bgClasse: "bg-amber-500/15 text-amber-400 border-amber-500/30",
           Icone: Moon,
           acao: () => {
             alternarTema();
@@ -367,44 +389,26 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
   useEffect(() => {
     if (!aberto) return;
 
-    fechandoPorPopstateRef.current = false;
-    window.history.pushState({ modalPizzaAberto: true }, "");
+    window.history.pushState({ modalMenuPizzaKlaus: true }, "");
 
-    const lidarPopstate = () => {
-      fechandoPorPopstateRef.current = true;
+    const lidarVoltarNavegador = () => {
       aoFechar();
     };
 
-    window.addEventListener("popstate", lidarPopstate);
+    window.addEventListener("popstate", lidarVoltarNavegador);
     document.body.style.overflow = "hidden";
 
     return () => {
-      window.removeEventListener("popstate", lidarPopstate);
+      window.removeEventListener("popstate", lidarVoltarNavegador);
       document.body.style.overflow = "";
-
-      // Se fechou sem ser pelo botão voltar do aparelho, desfaz o pushState
-      if (!fechandoPorPopstateRef.current && window.history.state?.modalPizzaAberto) {
-        window.history.back();
-      }
     };
   }, [aberto, aoFechar]);
 
   if (!aberto) return null;
 
-  const fecharMenu = () => {
-    fechandoPorPopstateRef.current = true;
-    if (window.history.state?.modalPizzaAberto) {
-      window.history.back();
-    }
-    aoFechar();
-  };
-
-  // Executa a função rápida diretamente sem travar a navegação
+  // Abertura direta e instantânea de qualquer função sem travar o histórico
   const executarFuncao = (funcao: FuncaoRapida) => {
-    // Fecha o modal
-    fecharMenu();
-
-    // Executa a ação ou navega
+    aoFechar();
     if (funcao.acao) {
       funcao.acao();
     } else if (funcao.rota) {
@@ -417,50 +421,50 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end sm:hidden select-none">
-      {/* 1. Backdrop escurecedor cinematográfico */}
+      {/* 1. Backdrop escuro cinematográfico que escurece a tela de fundo */}
       <div
-        onClick={fecharMenu}
-        className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity duration-300 animate-in fade-in"
+        onClick={aoFechar}
+        className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity duration-300 animate-in fade-in cursor-pointer"
       />
 
       {/* 
-        2. DOCK ESTILO PIZZA:
-        - Maior na parte de cima (largura 96vw, cantos bem arredondados)
-        - Menor na parte de baixo (afunilando suavemente em direção ao botão de menu)
-        - Cantos arredondados e acabamento fluido
+        2. DOCK ESTILO PIZZA FLUIDO:
+        Formato contínuo de fatia de pizza:
+        - Maior na parte de cima (largura de 96vw, cantos superiores bem arredondados)
+        - Menor na parte de baixo (afunila suavemente em direção à base onde fica o botão de menu circular)
       */}
-      <div className="relative z-10 w-full max-w-md mx-auto flex flex-col items-center animate-in slide-in-from-bottom duration-300 ease-out px-2 pb-[max(env(safe-area-inset-bottom),12px)]">
-        {/* Container em formato de leque/pizza */}
+      <div className="relative z-10 w-full max-w-lg mx-auto flex flex-col items-center animate-in slide-in-from-bottom duration-300 ease-out px-2 pb-[max(env(safe-area-inset-bottom),14px)]">
+        {/* Peça central unificada em estilo fatia de pizza */}
         <div className="w-full flex flex-col items-center">
-          {/* TOPO DA PIZZA (Mais largo) */}
-          <div className="w-[96vw] max-w-md bg-card/95 dark:bg-zinc-950/95 backdrop-blur-2xl border-t border-x border-border/80 dark:border-white/10 rounded-t-[38px] shadow-2xl pt-3 px-4 pb-2">
-            {/* Alça tátil de puxar para fechar */}
+          {/* TOPO AMPLO DA PIZZA (96vw com cantos arredondados de 40px) */}
+          <div className="w-[96vw] max-w-md bg-card/98 dark:bg-zinc-950/98 backdrop-blur-2xl border-t border-x border-border/80 dark:border-white/10 rounded-t-[40px] shadow-2xl pt-3 px-4 pb-2">
+            {/* Puxador tátil */}
             <div
-              onClick={fecharMenu}
+              onClick={aoFechar}
               className="w-12 h-1.5 rounded-full bg-muted-foreground/30 hover:bg-muted-foreground/50 mx-auto mb-2.5 cursor-pointer"
             />
 
-            {/* Cabeçalho do Menu com botão fechar */}
-            <div className="flex items-center justify-between mb-3">
+            {/* Cabeçalho com ícone de pizza e botão fechar */}
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="text-lg">🍕</span>
+                <span className="text-xl">🍕</span>
                 <div>
                   <h3 className="text-xs font-bold text-foreground leading-tight">
                     Menu Pizza do Klaus
                   </h3>
                   <p className="text-[10px] text-muted-foreground">
-                    Deslize para o lado para escolher a ferramenta
+                    Passe o dedo pro lado para ver as ferramentas
                   </p>
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={fecharMenu}
-                className="h-7 w-7 rounded-full bg-secondary/80 text-muted-foreground hover:text-foreground flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
-                aria-label="Fechar"
+                onClick={aoFechar}
+                className="h-8 w-8 rounded-full bg-secondary/80 text-muted-foreground hover:text-foreground flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+                aria-label="Fechar menu"
               >
-                <X size={15} />
+                <X size={16} />
               </button>
             </div>
 
@@ -468,7 +472,7 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
               3. BARRA HORIZONTAL FLUIDA ("AO PASSAR O DEDO PRO LADO")
               Carrossel horizontal com as ferramentas principais
             */}
-            <div className="overflow-x-auto no-scrollbar scroll-smooth flex items-center gap-2 py-1 -mx-2 px-2 touch-pan-x">
+            <div className="overflow-x-auto no-scrollbar scroll-smooth flex items-center gap-2 py-1.5 -mx-2 px-2 touch-pan-x">
               {categorias.map((cat) => {
                 const ativa = cat.id === categoriaAtivaId;
                 const Icone = cat.Icone;
@@ -484,7 +488,10 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
                         : "bg-secondary/40 text-muted-foreground hover:text-foreground hover:bg-secondary/70 border-border/40"
                     )}
                   >
-                    <Icone size={15} className={cn("shrink-0", ativa ? "text-primary-foreground" : cat.corClasse)} />
+                    <Icone
+                      size={15}
+                      className={cn("shrink-0", ativa ? "text-primary-foreground" : cat.corClasse)}
+                    />
                     <span>{cat.nome}</span>
                   </button>
                 );
@@ -494,11 +501,11 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
 
           {/* 
             4. CORPO DAS FUNÇÕES RÁPIDAS (ABAIXO DO NOME DE CADA FERRAMENTA)
-            Largura proporcional de transição
+            Largura ligeiramente mais estreita (91vw), continuando o formato afunilado
           */}
-          <div className="w-[92vw] max-w-[calc(100%-16px)] bg-card/95 dark:bg-zinc-950/95 backdrop-blur-2xl border-x border-border/80 dark:border-white/10 px-3.5 py-3 max-h-[50vh] overflow-y-auto no-scrollbar">
+          <div className="w-[91vw] max-w-[calc(100%-20px)] bg-card/98 dark:bg-zinc-950/98 backdrop-blur-2xl border-x border-border/80 dark:border-white/10 px-3.5 py-3 max-h-[50vh] overflow-y-auto no-scrollbar">
             {/* Título da ferramenta selecionada e subtítulo explicativo */}
-            <div className="flex items-center justify-between gap-2 pb-2.5 mb-2 border-b border-border/40">
+            <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-border/40">
               <div className="flex items-center gap-2">
                 <div
                   className={cn(
@@ -513,16 +520,16 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
                     {categoriaAtiva.nome}
                   </h4>
                   <p className="text-[10px] text-muted-foreground leading-tight">
-                    {categoriaAtiva.subtitulo}
+                    {categoriaAtiva.descricao}
                   </p>
                 </div>
               </div>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary/80 text-muted-foreground">
-                {categoriaAtiva.funcoes.length} funções
+                {categoriaAtiva.funcoes.length} opções
               </span>
             </div>
 
-            {/* Lista das funções rápidas abaixo do nome da ferramenta */}
+            {/* Funções rápidas individuais abaixo do nome da ferramenta */}
             <div className="flex flex-col gap-1.5 pb-2">
               {categoriaAtiva.funcoes.map((funcao) => {
                 const IconeFuncao = funcao.Icone;
@@ -531,7 +538,7 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
                     key={funcao.id}
                     type="button"
                     onClick={() => executarFuncao(funcao)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-secondary/30 hover:bg-secondary/70 active:scale-[0.98] border border-border/40 transition-all cursor-pointer group text-left"
+                    className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-secondary/35 hover:bg-secondary/70 active:scale-[0.98] border border-border/40 transition-all cursor-pointer group text-left"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div
@@ -552,8 +559,8 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
                       </div>
                     </div>
 
-                    <ChevronRight
-                      size={15}
+                    <ArrowRight
+                      size={14}
                       className="text-muted-foreground/60 group-hover:text-foreground shrink-0 ml-2 transition-transform group-hover:translate-x-0.5"
                     />
                   </button>
@@ -563,14 +570,13 @@ export function DockPizzaMobile({ aberto, aoFechar }: DockPizzaMobileProps) {
           </div>
 
           {/* 
-            5. BASE DA PIZZA (Mais estreita que o topo, afunilando)
-            Conecta visualmente com a área do dedão
+            5. BASE DA PIZZA AFUNILADA (81vw, mais estreita que o topo, conectando ao botão de menu)
           */}
-          <div className="w-[84vw] max-w-[calc(100%-48px)] bg-card/95 dark:bg-zinc-950/95 backdrop-blur-2xl border-b border-x border-border/80 dark:border-white/10 rounded-b-[28px] shadow-2xl py-2 flex items-center justify-center">
+          <div className="w-[81vw] max-w-[calc(100%-54px)] bg-card/98 dark:bg-zinc-950/98 backdrop-blur-2xl border-b border-x border-border/80 dark:border-white/10 rounded-b-[28px] shadow-2xl py-2 flex items-center justify-center">
             <button
               type="button"
-              onClick={fecharMenu}
-              className="text-xs font-semibold text-muted-foreground hover:text-foreground py-1 px-5 rounded-full bg-secondary/50 active:scale-95 transition-all"
+              onClick={aoFechar}
+              className="text-xs font-semibold text-muted-foreground hover:text-foreground py-1 px-5 rounded-full bg-secondary/50 active:scale-95 transition-all cursor-pointer"
             >
               Fechar menu
             </button>
