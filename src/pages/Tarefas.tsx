@@ -1161,41 +1161,65 @@ export default function Tarefas() {
 
       {/* Filtro por Pastas */}
       {pastasExistentes.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap py-1">
-          <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-            <Folder size={12} /> Pastas:
-          </span>
-          <button
-            onClick={() => setPastaSelecionada(null)}
-            className={cn(
-              "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer flex items-center gap-1",
-              pastaSelecionada === null
-                ? "bg-primary text-primary-foreground font-semibold"
-                : "bg-secondary/60 text-muted-foreground hover:bg-accent",
-            )}
-          >
-            Todas ({tarefas.length})
-          </button>
-          {pastasExistentes.map((p) => {
-            const total = tarefas.filter((t) => t.caminho.startsWith(`${PASTAS.tarefas}/${p}/`)).length;
-            const nomeAmigavel = p.split("/").pop() || p;
-            return (
-              <button
-                key={p}
-                onClick={() => setPastaSelecionada(p === pastaSelecionada ? null : p)}
-                className={cn(
-                  "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5",
-                  pastaSelecionada === p
-                    ? "bg-primary text-primary-foreground font-semibold"
-                    : "bg-secondary/60 text-muted-foreground hover:bg-accent",
-                )}
-              >
-                <Folder size={12} className="shrink-0 opacity-80" />
-                <span>{nomeAmigavel}</span>
-                <span className="opacity-70 text-[11px]">({total})</span>
-              </button>
-            );
-          })}
+        <div className="py-1">
+          {/* Desktop: chips horizontais */}
+          <div className="hidden sm:flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+              <Folder size={12} /> Pastas:
+            </span>
+            <button
+              onClick={() => setPastaSelecionada(null)}
+              className={cn(
+                "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer flex items-center gap-1",
+                pastaSelecionada === null
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "bg-secondary/60 text-muted-foreground hover:bg-accent",
+              )}
+            >
+              Todas ({tarefas.length})
+            </button>
+            {pastasExistentes.map((p) => {
+              const total = tarefas.filter((t) => t.caminho.startsWith(`${PASTAS.tarefas}/${p}/`)).length;
+              const nomeAmigavel = p.split("/").pop() || p;
+              return (
+                <button
+                  key={p}
+                  onClick={() => setPastaSelecionada(p === pastaSelecionada ? null : p)}
+                  className={cn(
+                    "px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5",
+                    pastaSelecionada === p
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "bg-secondary/60 text-muted-foreground hover:bg-accent",
+                  )}
+                >
+                  <Folder size={12} className="shrink-0 opacity-80" />
+                  <span>{nomeAmigavel}</span>
+                  <span className="opacity-70 text-[11px]">({total})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Mobile: seletor compacto de 1 linha sem poluir */}
+          <div className="flex sm:hidden items-center gap-2">
+            <Folder size={13} className="text-muted-foreground shrink-0" />
+            <select
+              value={pastaSelecionada || ""}
+              onChange={(e) => setPastaSelecionada(e.target.value ? e.target.value : null)}
+              className="w-full text-xs bg-card border border-border/80 rounded-lg px-2.5 py-1.5 font-medium text-foreground focus:outline-hidden"
+            >
+              <option value="">Todas as Pastas ({tarefas.length})</option>
+              {pastasExistentes.map((p) => {
+                const total = tarefas.filter((t) => t.caminho.startsWith(`${PASTAS.tarefas}/${p}/`)).length;
+                const nomeAmigavel = p.split("/").pop() || p;
+                return (
+                  <option key={p} value={p}>
+                    {nomeAmigavel} ({total})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
         </div>
       )}
 
@@ -1462,6 +1486,17 @@ export default function Tarefas() {
           }}
         />
       )}
+
+      {/* Botão Flutuante (FAB) de Nova Tarefa no Mobile - Fácil alcance do dedão */}
+      <button
+        type="button"
+        onClick={abrirNova}
+        className="sm:hidden fixed bottom-[calc(max(env(safe-area-inset-bottom),10px)+64px)] right-4 z-30 h-13 w-13 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        aria-label="Nova Tarefa"
+      >
+        <Plus size={24} strokeWidth={2.5} />
+      </button>
+
       {/* O temporizador Pomodoro é agora renderizado globalmente via App.tsx */}
     </div>
   );

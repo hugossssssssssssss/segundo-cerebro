@@ -206,7 +206,7 @@ export default function Inbox() {
   const { salvarTexto, apagarItem } = useSalvar(cfg);
 
   const [abaAtiva, setAbaAtiva] = useState<AbaInbox>("agenda");
-  const [carregando, setCarregando] = useState(true);
+  const [carregando, setCarregando] = useState(() => pronto);
   const [acervo, setAcervo] = useState<ItemRepo[]>([]);
   const [dataReferencia, setDataReferencia] = useState<Date>(new Date());
   const [mostrarPendencias, setMostrarPendencias] = useState(false);
@@ -241,7 +241,10 @@ export default function Inbox() {
 
   // Carrega repositório e eventos do Google Calendar
   const carregar = useCallback(async () => {
-    if (!pronto) return;
+    if (!pronto) {
+      setCarregando(false);
+      return;
+    }
     try {
       setAcervo((prev) => {
         if (prev.length === 0) setCarregando(true);

@@ -2215,6 +2215,16 @@ export default function Notas() {
           }}
         />
       )}
+
+      {/* Botão Flutuante (FAB) de Nova Nota no Mobile - Fácil alcance do dedão */}
+      <button
+        type="button"
+        onClick={() => nova()}
+        className="sm:hidden fixed bottom-[calc(max(env(safe-area-inset-bottom),10px)+64px)] right-4 z-30 h-13 w-13 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        aria-label="Nova Nota"
+      >
+        <Plus size={24} strokeWidth={2.5} />
+      </button>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -32,9 +32,6 @@ import {
   CheckCircle2,
   Plus,
   Target,
-  Flame,
-  Calendar,
-  AlertTriangle,
 } from "lucide-react";
 import {
   urgencia,
@@ -404,6 +401,7 @@ function Coluna({
   aoAlternarColapso,
   selecionadas,
   aoToggleSelecionar,
+  visivelMobile = true,
 }: {
   status: Status;
   tarefas: Tarefa[];
@@ -424,6 +422,7 @@ function Coluna({
   aoAlternarColapso: () => void;
   selecionadas?: Set<string>;
   aoToggleSelecionar?: (caminho: string) => void;
+  visivelMobile?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const [expandida, setExpandida] = useState(false);
@@ -450,7 +449,8 @@ function Coluna({
           ref={setNodeRef}
           onClick={aoAlternarColapso}
           className={cn(
-            "flex w-12 shrink-0 flex-col items-center justify-between rounded-2xl border border-border/35 bg-secondary/30 py-4 transition-all cursor-pointer hover:bg-accent/60 select-none shadow-minimal",
+            "w-12 shrink-0 flex-col items-center justify-between rounded-2xl border border-border/35 bg-secondary/30 py-4 transition-all cursor-pointer hover:bg-accent/60 select-none shadow-minimal",
+            visivelMobile !== false ? "flex" : "hidden sm:flex",
             isOver && "border-primary/50 bg-primary/10",
           )}
           aria-label={`Expandir coluna ${ROTULO_STATUS[status]}`}
@@ -476,7 +476,8 @@ function Coluna({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex min-w-[84vw] sm:min-w-[280px] flex-1 flex-col rounded-2xl border border-border/35 bg-secondary/35 dark:bg-card/40 p-2.5 sm:p-3 transition-colors shadow-minimal snap-center",
+        "min-w-full sm:min-w-[280px] flex-1 flex-col rounded-2xl border border-border/35 bg-secondary/35 dark:bg-card/40 p-2.5 sm:p-3 transition-colors shadow-minimal snap-center",
+        visivelMobile !== false ? "flex" : "hidden sm:flex",
         isOver && "border-primary/40 bg-accent/60",
       )}
     >
@@ -649,8 +650,7 @@ export function Quadro({
   aoToggleSelecionar?: (caminho: string) => void;
 }) {
   const [arrastando, setArrastando] = useState<Tarefa | null>(null);
-  const [colunaAtivaMobile, setColunaAtivaMobile] = useState<Status | "todas">("todas");
-  const [filtroUrgencia, setFiltroUrgencia] = useState<"todas" | "atrasadas" | "hoje" | "urgentes">("todas");
+  const [colunaAtivaMobile, setColunaAtivaMobile] = useState<Status>("a-fazer");
   const [colapsadas, setColapsadas] = useState<Record<Status, boolean>>(() => {
     try {
       const salvo = localStorage.getItem("klaus_kanban_colapsadas");
@@ -673,17 +673,6 @@ export function Quadro({
       return proximo;
     });
   };
-
-  const tarefasFiltradas = useMemo(() => {
-    if (filtroUrgencia === "todas") return tarefas;
-    return tarefas.filter((t) => {
-      const u = urgencia(t);
-      if (filtroUrgencia === "atrasadas") return u === "atrasada";
-      if (filtroUrgencia === "hoje") return u === "hoje";
-      if (filtroUrgencia === "urgentes") return u === "atrasada" || u === "hoje" || u === "proxima";
-      return true;
-    });
-  }, [tarefas, filtroUrgencia]);
 
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -710,8 +699,6 @@ export function Quadro({
     aoMudarStatus(tarefaArrastada, destinoStatus);
   }
 
-  const statusExibidos = colunaAtivaMobile === "todas" ? STATUS : [colunaAtivaMobile];
-
   return (
     <DndContext
       sensors={sensores}
@@ -720,52 +707,10 @@ export function Quadro({
       onDragEnd={aoTerminar}
       onDragCancel={() => setArrastando(null)}
     >
-      {/* Barra de Filtro Rápido por Urgência / Prazo */}
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs font-semibold text-muted-foreground mr-1">Prazo:</span>
-          {(
-            [
-              { id: "todas", rotulo: "Todas", icone: null },
-              { id: "urgentes", rotulo: "Urgentes", icone: <Flame size={12} className="text-rose-500 shrink-0" /> },
-              { id: "hoje", rotulo: "Para Hoje", icone: <Calendar size={12} className="shrink-0" /> },
-              { id: "atrasadas", rotulo: "Atrasadas", icone: <AlertTriangle size={12} className="text-amber-500 shrink-0" /> },
-            ] as const
-          ).map((opcao) => (
-            <button
-              key={opcao.id}
-              type="button"
-              onClick={() => setFiltroUrgencia(opcao.id)}
-              className={cn(
-                "text-xs px-2.5 py-1 rounded-lg transition-colors font-medium cursor-pointer flex items-center gap-1.5",
-                filtroUrgencia === opcao.id
-                  ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
-                  : "bg-muted/70 text-muted-foreground hover:text-foreground hover:bg-muted"
-              )}
-            >
-              {opcao.icone}
-              <span>{opcao.rotulo}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Seletor rápido de coluna no mobile para visualização simplificada */}
-      <div className="flex sm:hidden items-center gap-1 p-1 bg-card rounded-xl border border-border/80 mb-3 shadow-2xs overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setColunaAtivaMobile("todas")}
-          className={cn(
-            "flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-all text-center whitespace-nowrap cursor-pointer",
-            colunaAtivaMobile === "todas"
-              ? "bg-primary text-primary-foreground shadow-xs font-bold"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Todas ({tarefasFiltradas.length})
-        </button>
+      {/* Seletor rápido de coluna no mobile (apenas as 3 etapas reais do fluxo) */}
+      <div className="flex sm:hidden items-center gap-1.5 p-1 bg-card rounded-xl border border-border/80 mb-3 shadow-2xs">
         {STATUS.map((s) => {
-          const qtd = tarefasFiltradas.filter((t) => t.status === s).length;
+          const qtd = tarefas.filter((t) => t.status === s).length;
           const ativa = colunaAtivaMobile === s;
           return (
             <button
@@ -776,7 +721,7 @@ export function Quadro({
                 "flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg transition-all text-center whitespace-nowrap flex items-center justify-center gap-1.5 cursor-pointer",
                 ativa
                   ? "bg-primary text-primary-foreground shadow-xs font-bold"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground bg-transparent"
               )}
             >
               <span className={cn("h-2 w-2 rounded-full", COR_COLUNA[s])} />
@@ -788,11 +733,11 @@ export function Quadro({
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-2 items-start snap-x snap-mandatory">
-        {statusExibidos.map((s) => (
+        {STATUS.map((s) => (
           <Coluna
             key={s}
             status={s}
-            tarefas={tarefasFiltradas.filter((t) => t.status === s)}
+            tarefas={tarefas.filter((t) => t.status === s)}
             aoAbrir={aoAbrir}
             aoCronometrar={aoCronometrar}
             aoAlternarStatus={lidarAlternarStatus}
@@ -810,6 +755,7 @@ export function Quadro({
             aoAlternarColapso={() => alternarColapso(s)}
             selecionadas={selecionadas}
             aoToggleSelecionar={aoToggleSelecionar}
+            visivelMobile={colunaAtivaMobile === s}
           />
         ))}
       </div>

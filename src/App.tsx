@@ -15,7 +15,7 @@ import {
   Menu,
   Minimize2,
   WifiOff,
-  Inbox as InboxIcon,
+  Image as ImageIcon,
 } from "lucide-react";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
@@ -89,7 +89,7 @@ const abasMobile = [
   { para: "/home", rotulo: "Início", Icone: HomeIcon },
   { para: "/tarefas", rotulo: "Tarefas", Icone: CheckSquare },
   { para: "/notas", rotulo: "Notas", Icone: FileText },
-  { para: "/inbox", rotulo: "Lembretes", Icone: InboxIcon },
+  { para: "/referencias", rotulo: "Referências", Icone: ImageIcon },
 ];
 
 function Estrutura({ children }: { children: React.ReactNode }) {

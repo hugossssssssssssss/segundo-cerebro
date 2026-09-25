@@ -6,7 +6,7 @@
  * - Bypass de requisições de API (api.github.com, Gemini, etc.) que já são tratadas pelo offlineQueue.
  */
 
-const NOME_CACHE = "klaus-app-v2.47.0";
+const NOME_CACHE = "klaus-app-v2.48.0";
 
 const ASSETS_ESSENCIAIS = [
   "./",
