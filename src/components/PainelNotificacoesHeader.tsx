@@ -98,6 +98,15 @@ export function PainelNotificacoesHeader() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  const mudarAberto = (novo: boolean) => {
+    setAberto(novo);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("klaus-notificacoes-aberto", { detail: { aberto: novo } })
+      );
+    }
+  };
+
   const cfg = useMemo(() => lerConfig(), []);
   const pronto = configCompleta(cfg);
   const navegar = useNavigate();
@@ -106,7 +115,11 @@ export function PainelNotificacoesHeader() {
   const carregarNotificacoes = useCallback(async () => {
     if (!pronto) return;
     try {
-      setCarregando(true);
+      // Só exibe spinner de carregando em tela cheia se for a primeira carga absoluta
+      setItens((prev) => {
+        if (prev.length === 0) setCarregando(true);
+        return prev;
+      });
       const todos = await carregarRepo(cfg, { memoria: 20_000 });
       const estadoRes = await carregarEstadoInbox(cfg, todos);
       setMapaEstado(estadoRes.mapa);
@@ -289,13 +302,13 @@ export function PainelNotificacoesHeader() {
 
   return (
     <>
-      <Popover open={!ehMobile && aberto} onOpenChange={(val) => { if (!ehMobile) setAberto(val); }}>
+      <Popover open={!ehMobile && aberto} onOpenChange={(val) => { if (!ehMobile) mudarAberto(val); }}>
         <Tooltip conteudo={naoVistosCount > 0 ? `${naoVistosCount} nova(s) notificação(ões)` : "Central de Notificações & Agenda"}>
           <PopoverTrigger asChild>
             <button
               type="button"
               onClick={() => {
-                if (ehMobile) setAberto((prev) => !prev);
+                if (ehMobile) mudarAberto(!aberto);
               }}
               className={cn(
                 "rounded-xl p-2 transition-all relative cursor-pointer flex items-center justify-center border",
@@ -583,18 +596,18 @@ export function PainelNotificacoesHeader() {
         </PopoverContent>
       </Popover>
 
-      {/* Drawer / Bottom Sheet Nativo para Celular (Mobile First, espaçoso e confortável) */}
+      {/* Drawer / Bottom Sheet Nativo para Celular (Mobile First, espaçoso, 100% sólido sem liquid glass) */}
       {ehMobile && aberto && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-black/85 backdrop-blur-none animate-in fade-in duration-150">
           {/* Backdrop para fechar */}
-          <div className="fixed inset-0" onClick={() => setAberto(false)} />
+          <div className="fixed inset-0" onClick={() => mudarAberto(false)} />
 
-          <div className="relative z-10 w-full max-h-[88vh] bg-card border-t border-border rounded-t-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-250 pb-safe">
+          <div className="relative z-10 w-full max-h-[88vh] bg-background dark:bg-zinc-950 border-t border-border shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200 pb-safe">
             {/* Puxador touch */}
             <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-1 shrink-0" />
 
             {/* Cabeçalho do Drawer */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-border/40 shrink-0">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-muted/30 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   <Bell size={20} />
@@ -617,7 +630,7 @@ export function PainelNotificacoesHeader() {
                   <button
                     type="button"
                     onClick={marcarTodosComoLidos}
-                    className="h-10 w-10 rounded-xl bg-secondary/80 text-muted-foreground hover:text-foreground active:scale-95 flex items-center justify-center cursor-pointer"
+                    className="h-10 w-10 rounded-xl bg-secondary text-muted-foreground hover:text-foreground active:scale-95 flex items-center justify-center cursor-pointer border border-border/50"
                     aria-label="Marcar todas como lidas"
                   >
                     <CheckCheck size={20} />
@@ -625,8 +638,8 @@ export function PainelNotificacoesHeader() {
                 )}
                 <button
                   type="button"
-                  onClick={() => setAberto(false)}
-                  className="h-10 w-10 rounded-xl bg-secondary/80 text-muted-foreground hover:text-foreground active:scale-95 flex items-center justify-center cursor-pointer"
+                  onClick={() => mudarAberto(false)}
+                  className="h-10 w-10 rounded-xl bg-secondary text-muted-foreground hover:text-foreground active:scale-95 flex items-center justify-center cursor-pointer border border-border/50"
                   aria-label="Fechar"
                 >
                   <X size={20} />
@@ -824,7 +837,7 @@ export function PainelNotificacoesHeader() {
                 <button
                   type="button"
                   onClick={() => {
-                    setAberto(false);
+                    mudarAberto(false);
                     setModalLembreteAberto(true);
                   }}
                   className="flex-1 h-12 rounded-2xl bg-secondary text-foreground hover:bg-secondary/80 active:scale-[0.98] font-bold text-sm flex items-center justify-center gap-2 border border-border/50 cursor-pointer"
@@ -834,7 +847,7 @@ export function PainelNotificacoesHeader() {
                 </button>
                 <Link
                   to="/inbox"
-                  onClick={() => setAberto(false)}
+                  onClick={() => mudarAberto(false)}
                   className="flex-1 h-12 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] font-bold text-sm flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                 >
                   <span>Caixa de Entrada</span>

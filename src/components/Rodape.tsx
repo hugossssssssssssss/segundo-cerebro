@@ -96,7 +96,7 @@ export function Rodape() {
     <>
       <footer
         data-testid="rodape-klaus"
-        className="mt-32 sm:mt-40 w-[calc(100%+1.75rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] -mx-3.5 sm:-mx-6 lg:-mx-8 -mb-24 sm:-mb-8 bg-card/45 dark:bg-card/25 border-t border-border/30 pt-10 pb-14 text-foreground select-none backdrop-blur-md"
+        className="hidden sm:block mt-32 sm:mt-40 w-[calc(100%+1.75rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] -mx-3.5 sm:-mx-6 lg:-mx-8 -mb-24 sm:-mb-8 bg-card/45 dark:bg-card/25 border-t border-border/30 pt-10 pb-14 text-foreground select-none backdrop-blur-md"
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-8">
           {/* Grade de Informações */}

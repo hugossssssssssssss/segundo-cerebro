@@ -56,7 +56,6 @@ export const FAVORITOS_PADRAO_KLAUS: FavoritoItem[] = [
   { id: "fav-grafo", nome: "Grafo", url: "https://hugossssssssssssss.github.io/segundo-cerebro/#/grafo" },
   { id: "fav-pdi", nome: "PDI", url: "https://hugossssssssssssss.github.io/segundo-cerebro/#/pdi" },
   { id: "fav-inbox", nome: "Inbox", url: "https://hugossssssssssssss.github.io/segundo-cerebro/#/inbox" },
-  { id: "fav-chat", nome: "Chat", url: "https://hugossssssssssssss.github.io/segundo-cerebro/#/chat" },
 ];
 
 function ehFavoritoValido(it: any): boolean {

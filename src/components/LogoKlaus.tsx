@@ -48,9 +48,6 @@ export function LogoKlaus({ tamanho = 28, className, comTexto = false }: LogoKla
             d="M 12 18.5 L 28 32 C 29.8 33.5 28 35.5 26 34 L 10.5 21 Z"
             fill="#FFFFFF"
           />
-
-          {/* Ponto indicador de inteligência neural no topo direito */}
-          <circle cx="30" cy="8.5" r="2.5" fill="#FFFFFF" opacity="0.95" />
         </svg>
       </div>
 

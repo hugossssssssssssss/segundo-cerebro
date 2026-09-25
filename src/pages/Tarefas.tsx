@@ -32,6 +32,7 @@ import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
 import { comoTarefa, tarefaParaArquivo } from "@/lib/entidades";
+import { obterWorkspaceAtivo } from "@/lib/workspaces";
 import { ehErroTokenGithub } from "@/lib/github";
 import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
 import { invalidarCache } from "@/lib/repo";
@@ -121,6 +122,46 @@ export default function Tarefas() {
     | "atrasadas"
     | "sem_prazo";
   const [filtroRapido, setFiltroRapido] = useState<FiltroRapidoTarefa>("todas");
+
+  const temEquipe = useMemo(() => {
+    const ws = obterWorkspaceAtivo();
+    if (ws.tipo === "equipe") return true;
+    const itemEquipe = acervo.find((i) => i.caminho === "equipe.json");
+    if (itemEquipe) {
+      try {
+        const p = JSON.parse(itemEquipe.doc?.corpo || "{}");
+        if (Array.isArray(p.membros) && p.membros.length > 1) return true;
+      } catch {}
+    }
+    return tarefas.some((t) => (t.responsaveis || []).length > 0);
+  }, [acervo, tarefas]);
+
+  useEffect(() => {
+    if (!temEquipe && (filtroRapido === "minhas" || filtroRapido === "equipe" || filtroRapido === "sem_responsavel")) {
+      setFiltroRapido("todas");
+    }
+  }, [temEquipe, filtroRapido]);
+
+  const opcoesFiltroRapido = useMemo(() => {
+    const base: { id: FiltroRapidoTarefa; rotulo: string; icone: React.ReactNode }[] = [
+      { id: "todas", rotulo: "Todas", icone: null },
+    ];
+    if (temEquipe) {
+      base.push(
+        { id: "minhas", rotulo: "Minhas", icone: <User size={12} className="shrink-0 text-indigo-500" /> },
+        { id: "equipe", rotulo: "Equipe", icone: <Users size={12} className="shrink-0 text-sky-500" /> },
+        { id: "sem_responsavel", rotulo: "Sem Resp.", icone: null }
+      );
+    }
+    base.push(
+      { id: "hoje", rotulo: "Hoje", icone: <Calendar size={12} className="shrink-0" /> },
+      { id: "urgentes", rotulo: "Urgentes", icone: <Flame size={12} className="shrink-0 text-rose-500" /> },
+      { id: "atrasadas", rotulo: "Atrasadas", icone: <AlertTriangle size={12} className="shrink-0 text-amber-500" /> },
+      { id: "sem_prazo", rotulo: "Sem Prazo", icone: null }
+    );
+    return base;
+  }, [temEquipe]);
+
   const [tarefaParaPDI, setTarefaParaPDI] = useState<Tarefa | null>(null);
   const [tarefaParaExcluir, setTarefaParaExcluir] = useState<Tarefa | null>(null);
   const [confirmarExclusaoLote, setConfirmarExclusaoLote] = useState(false);
@@ -1077,18 +1118,7 @@ export default function Tarefas() {
         filtros={
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1 bg-secondary/50 p-0.5 rounded-xl border border-border/60">
-              {(
-                [
-                  { id: "todas", rotulo: "Todas", icone: null },
-                  { id: "minhas", rotulo: "Minhas", icone: <User size={12} className="shrink-0 text-indigo-500" /> },
-                  { id: "equipe", rotulo: "Equipe", icone: <Users size={12} className="shrink-0 text-sky-500" /> },
-                  { id: "sem_responsavel", rotulo: "Sem Resp.", icone: null },
-                  { id: "hoje", rotulo: "Hoje", icone: <Calendar size={12} className="shrink-0" /> },
-                  { id: "urgentes", rotulo: "Urgentes", icone: <Flame size={12} className="shrink-0 text-rose-500" /> },
-                  { id: "atrasadas", rotulo: "Atrasadas", icone: <AlertTriangle size={12} className="shrink-0 text-amber-500" /> },
-                  { id: "sem_prazo", rotulo: "Sem Prazo", icone: null },
-                ] as const
-              ).map((op) => (
+              {opcoesFiltroRapido.map((op) => (
                 <button
                   key={op.id}
                   type="button"

@@ -556,12 +556,39 @@ export default function Configuracoes() {
 
       {/* Navegação por Abas Temáticas */}
       <div className="w-full">
-        <AlternadorVisao
-          opcoes={opcoesAbas}
-          valorAtivo={abaAtiva}
-          aoAlternar={setAbaAtiva}
-          className="w-full sm:w-auto"
-        />
+        {/* Mobile Horizontal Pill Scroller (Touch-first, confortável, rótulos objetivos) */}
+        <div className="flex sm:hidden overflow-x-auto pb-2 gap-1.5 no-scrollbar scroll-smooth -mx-3.5 px-3.5">
+          {opcoesAbas.map((op) => {
+            const rotuloCurto = op.rotulo.split("&")[0].trim();
+            const ativo = abaAtiva === op.id;
+            return (
+              <button
+                key={op.id}
+                type="button"
+                onClick={() => setAbaAtiva(op.id)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all border min-h-[42px] touch-manipulation cursor-pointer",
+                  ativo
+                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                    : "bg-card text-muted-foreground border-border/70 hover:bg-secondary/60 active:scale-95"
+                )}
+              >
+                {op.icone}
+                <span>{rotuloCurto}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Desktop View Switcher */}
+        <div className="hidden sm:block">
+          <AlternadorVisao
+            opcoes={opcoesAbas}
+            valorAtivo={abaAtiva}
+            aoAlternar={setAbaAtiva}
+            className="w-full sm:w-auto"
+          />
+        </div>
       </div>
 
       {/* ========================================================= */}

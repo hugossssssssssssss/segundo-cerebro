@@ -10,12 +10,12 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import {
   CheckSquare,
   FileText,
-  MessageCircle,
   Home as HomeIcon,
   Plus,
   Menu,
   Minimize2,
   WifiOff,
+  Inbox as InboxIcon,
 } from "lucide-react";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
@@ -89,7 +89,7 @@ const abasMobile = [
   { para: "/home", rotulo: "Início", Icone: HomeIcon },
   { para: "/tarefas", rotulo: "Tarefas", Icone: CheckSquare },
   { para: "/notas", rotulo: "Notas", Icone: FileText },
-  { para: "/chat", rotulo: "Conversar", Icone: MessageCircle },
+  { para: "/inbox", rotulo: "Lembretes", Icone: InboxIcon },
 ];
 
 function Estrutura({ children }: { children: React.ReactNode }) {
@@ -101,7 +101,16 @@ function Estrutura({ children }: { children: React.ReactNode }) {
   const [capturando, setCapturando] = useState(false);
   const [guiaAtalhosAberto, setGuiaAtalhosAberto] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
+  const [notificacoesAbertas, setNotificacoesAbertas] = useState(false);
   const [textoCompartilhado, setTextoCompartilhado] = useState("");
+
+  useEffect(() => {
+    const aoMudarNotificacoes = (e: any) => {
+      setNotificacoesAbertas(Boolean(e.detail?.aberto));
+    };
+    window.addEventListener("klaus-notificacoes-aberto", aoMudarNotificacoes);
+    return () => window.removeEventListener("klaus-notificacoes-aberto", aoMudarNotificacoes);
+  }, []);
   const [colapsada, setColapsada] = useState(() => {
     const salvo = localStorage.getItem("sidebar-colapsada");
     return salvo ? salvo === "true" : false;
@@ -401,7 +410,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                   if (workspaceAberto) fecharWorkspace();
                   setGavetaAberta(true);
                 }}
-                className="flex sm:hidden items-center justify-center p-1 -ml-1 rounded-xl bg-primary/10 hover:bg-primary/20 active:scale-95 transition-all text-primary shrink-0 touch-manipulation cursor-pointer"
+                className="flex sm:hidden items-center justify-center -ml-1 active:scale-95 transition-transform shrink-0 touch-manipulation cursor-pointer"
                 aria-label="Abrir Menu Klaus"
                 title="Menu do Klaus"
               >
@@ -461,7 +470,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Navegação inferior no celular com visual dock moderno, safe area e touch targets de 48px+ */}
-      {!workspaceAberto && (
+      {!workspaceAberto && !notificacoesAbertas && (
         <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center liquid-glass-header pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5 px-3 sm:hidden shadow-2xl select-none border-t border-border/30">
           {abasMobile.map(({ para, rotulo, Icone }) => (
             <NavLink
@@ -498,8 +507,8 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         </nav>
       )}
 
-      {/* Botão flutuante de captura no celular com sombra suave e efeito tátil */}
-      {!workspaceAberto && !pathname.startsWith("/chat") && (
+      {/* Botão flutuante de captura no celular com sombra suave e efeito tátil - apenas na tela inicial */}
+      {!workspaceAberto && !notificacoesAbertas && (pathname === "/" || pathname === "/home") && (
         <button
           onClick={() => setCapturando(true)}
           className="fixed bottom-[calc(max(env(safe-area-inset-bottom),10px)+68px)] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/25 transition-transform active:scale-90 sm:hidden cursor-pointer hover:scale-105 touch-manipulation select-none"
