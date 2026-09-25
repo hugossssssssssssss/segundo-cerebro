@@ -363,13 +363,6 @@ export default function Tarefas() {
     }
   }, [location.pathname, location.search, location.hash, tarefas, focarFlutuante]);
 
-  // Escuta clique no botão (+) padronizado do dock mobile
-  useEffect(() => {
-    const aoCriarPeloDock = () => abrirNova();
-    window.addEventListener("klaus-acao-criar-dock", aoCriarPeloDock);
-    return () => window.removeEventListener("klaus-acao-criar-dock", aoCriarPeloDock);
-  }, [abrirNova]);
-
   const editandoRef = useRef(editando);
   editandoRef.current = editando;
   const originalRef = useRef(original);
@@ -1493,6 +1486,16 @@ export default function Tarefas() {
           }}
         />
       )}
+
+      {/* Botão Flutuante (FAB) de Nova Tarefa no Mobile - Fácil alcance do dedão */}
+      <button
+        type="button"
+        onClick={abrirNova}
+        className="sm:hidden fixed bottom-[calc(max(env(safe-area-inset-bottom),10px)+64px)] right-4 z-30 h-13 w-13 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        aria-label="Nova Tarefa"
+      >
+        <Plus size={24} strokeWidth={2.5} />
+      </button>
 
       {/* O temporizador Pomodoro é agora renderizado globalmente via App.tsx */}
     </div>

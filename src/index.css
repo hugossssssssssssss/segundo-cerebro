@@ -629,20 +629,3 @@
   border-radius: 9999px;
 }
 
-/* Animação suave e fluida de transição entre páginas */
-@keyframes transicaoTelaFluida {
-  0% {
-    opacity: 0;
-    transform: translateY(6px) scale(0.994);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.animacao-tela-fluida {
-  animation: transicaoTelaFluida 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  will-change: transform, opacity;
-}
-
