@@ -7,12 +7,12 @@ import {
 } from "react-router-dom";
 import { Suspense, lazy, useEffect, useState } from "react";
 import {
-  Plus,
   Minimize2,
   WifiOff,
 } from "lucide-react";
 import { DockMobileFlutuante } from "@/components/DockMobileFlutuante";
 import { DockPizzaMobile } from "@/components/DockPizzaMobile";
+import { useSwipeNavegacao } from "@/lib/useSwipeNavegacao";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 import { WorkspaceProvider, useWorkspace } from "@/components/workspace/WorkspaceContext";
@@ -93,6 +93,9 @@ function Estrutura({ children }: { children: React.ReactNode }) {
   const [menuPizzaAberto, setMenuPizzaAberto] = useState(false);
   const [notificacoesAbertas, setNotificacoesAbertas] = useState(false);
   const [textoCompartilhado, setTextoCompartilhado] = useState("");
+
+  // Permite deslizar suavemente para alternar entre as telas principais no celular
+  useSwipeNavegacao(!workspaceAberto && !menuPizzaAberto && !notificacoesAbertas);
 
   useEffect(() => {
     const aoMudarNotificacoes = (e: any) => {
@@ -459,30 +462,20 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-      {/* Dock Flutuante no celular: Ilha de ícones (Início, Tarefas, Notas) + Botão Circular de Menu separado */}
+      {/* Dock Flutuante no celular: Ilha de ícones (com nome na ativa) + Botão (+) + Botão Circular de Menu */}
       {!workspaceAberto && !notificacoesAbertas && (
         <DockMobileFlutuante
           aoAbrirMenuPizza={() => setMenuPizzaAberto(true)}
+          aoAbrirCaptura={() => setCapturando(true)}
           menuPizzaAberto={menuPizzaAberto}
         />
       )}
 
-      {/* Menu Pizza Radial Fluido com Ações Rápidas de cada Ferramenta */}
+      {/* Menu Pizza Radial Fluido com Formato Pizza e Ferramentas Separadas */}
       <DockPizzaMobile
         aberto={menuPizzaAberto}
         aoFechar={() => setMenuPizzaAberto(false)}
       />
-
-      {/* Botão flutuante de captura no celular com sombra suave e efeito tátil - apenas na tela inicial */}
-      {!workspaceAberto && !notificacoesAbertas && !menuPizzaAberto && (pathname === "/" || pathname === "/home") && (
-        <button
-          onClick={() => setCapturando(true)}
-          className="fixed bottom-[calc(max(env(safe-area-inset-bottom),10px)+72px)] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/25 transition-transform active:scale-90 sm:hidden cursor-pointer hover:scale-105 touch-manipulation select-none"
-          aria-label="Captura rápida"
-        >
-          <Plus size={24} className="stroke-[2.5]" />
-        </button>
-      )}
 
       {/* Modais, Toasts e Gavetas */}
       <GavetaMais aberta={gavetaAberta} aoFechar={() => setGavetaAberta(false)} />

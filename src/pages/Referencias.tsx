@@ -504,6 +504,13 @@ export default function Referencias() {
     setModoOcr(false);
   }
 
+  // Escuta clique no botão (+) padronizado do dock mobile
+  useEffect(() => {
+    const aoCriarPeloDock = () => novaReferencia();
+    window.addEventListener("klaus-acao-criar-dock", aoCriarPeloDock);
+    return () => window.removeEventListener("klaus-acao-criar-dock", aoCriarPeloDock);
+  }, []);
+
   // ── Filtragem ──────────────────────────────────────────────────────────────
   const todasTags = useMemo(() => todasAsTags(refs), [refs]);
 
@@ -1401,16 +1408,6 @@ export default function Referencias() {
           aoCancelar={() => setModalPastaAberto(false)}
         />
       )}
-
-      {/* Botão Flutuante (FAB) de Nova Referência no Mobile - Fácil alcance do dedão */}
-      <button
-        type="button"
-        onClick={novaReferencia}
-        className="sm:hidden fixed bottom-[calc(max(env(safe-area-inset-bottom),10px)+64px)] right-4 z-30 h-13 w-13 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
-        aria-label="Nova Referência"
-      >
-        <Plus size={24} strokeWidth={2.5} />
-      </button>
     </div>
   );
 }
