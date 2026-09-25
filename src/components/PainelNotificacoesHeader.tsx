@@ -305,17 +305,17 @@ export function PainelNotificacoesHeader() {
 
         <PopoverContent
           align="end"
-          className="w-[390px] sm:w-[440px] p-0 shadow-2xl border-border/80 bg-card/95 backdrop-blur-2xl rounded-2xl overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150"
+          className="w-[calc(100vw-1.5rem)] sm:w-[440px] max-w-[440px] p-0 shadow-2xl border-border/80 bg-card/95 backdrop-blur-2xl rounded-2xl overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150"
           sideOffset={8}
         >
           {/* Cabeçalho da Central de Notificações */}
           <div className="flex items-center justify-between px-4 py-3.5 border-b border-border/50 bg-secondary/30">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                <Bell size={15} />
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Bell size={16} />
               </div>
               <div>
-                <h3 className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
                   Notificações & Agenda
                   {naoVistosCount > 0 && (
                     <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-primary text-primary-foreground">
@@ -323,11 +323,11 @@ export function PainelNotificacoesHeader() {
                     </span>
                   )}
                 </h3>
-                <p className="text-[10px] text-muted-foreground">Compromissos e avisos em tempo real</p>
+                <p className="text-xs text-muted-foreground">Compromissos e avisos em tempo real</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <Tooltip conteudo="Agendar novo lembrete">
                 <button
                   type="button"
@@ -335,11 +335,11 @@ export function PainelNotificacoesHeader() {
                     setAberto(false);
                     setModalLembreteAberto(true);
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                   aria-label="Novo Lembrete"
                 >
-                  <Plus size={13} />
-                  <span>Novo Lembrete</span>
+                  <Plus size={14} />
+                  <span className="hidden xs:inline">Novo</span>
                 </button>
               </Tooltip>
 
@@ -348,10 +348,10 @@ export function PainelNotificacoesHeader() {
                   <button
                     type="button"
                     onClick={marcarTodosComoLidos}
-                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
                     aria-label="Marcar todas como lidas"
                   >
-                    <CheckCheck size={16} />
+                    <CheckCheck size={18} />
                   </button>
                 </Tooltip>
               )}
@@ -439,17 +439,17 @@ export function PainelNotificacoesHeader() {
                     key={item.id}
                     onClick={() => aoAbrirItem(item)}
                     className={cn(
-                      "p-3 transition-all cursor-pointer group flex items-center justify-between gap-3 relative",
+                      "p-3.5 transition-all cursor-pointer group flex items-center justify-between gap-3 relative min-h-[56px] touch-manipulation",
                       ehNovo
                         ? "bg-card hover:bg-accent/40 border-l-4 border-l-primary"
                         : "bg-secondary/20 hover:bg-secondary/40 opacity-85 hover:opacity-100"
                     )}
                   >
                     {/* Lado esquerdo: Ícone do documento + Título */}
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div
                         className={cn(
-                          "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 border border-border/30",
+                          "h-8 w-8 rounded-xl flex items-center justify-center shrink-0 border border-border/30",
                           infoDoc.bg,
                           infoDoc.cor
                         )}
@@ -463,17 +463,17 @@ export function PainelNotificacoesHeader() {
                             : undefined
                         }
                       >
-                        <IconeDoc size={14} />
+                        <IconeDoc size={16} />
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           {ehAtrasada && (
-                            <AlertTriangle size={12} className="text-rose-500 shrink-0" />
+                            <AlertTriangle size={14} className="text-rose-500 shrink-0" />
                           )}
                           <p
                             className={cn(
-                              "text-xs truncate",
+                              "text-xs sm:text-sm truncate",
                               ehNovo ? "font-bold text-foreground" : "font-medium text-foreground/90"
                             )}
                           >
@@ -481,7 +481,7 @@ export function PainelNotificacoesHeader() {
                           </p>
                         </div>
                         {item.descricao && (
-                          <p className="text-[10px] text-muted-foreground truncate">
+                          <p className="text-[11px] sm:text-xs text-muted-foreground truncate mt-0.5">
                             {item.descricao}
                           </p>
                         )}
@@ -496,9 +496,9 @@ export function PainelNotificacoesHeader() {
                             href={item.link}
                             target="_blank"
                             rel="noreferrer"
-                            className="p-1 rounded text-muted-foreground hover:text-blue-500 transition-colors"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-500 hover:bg-accent transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
                           >
-                            <ExternalLink size={12} />
+                            <ExternalLink size={14} />
                           </a>
                         </Tooltip>
                       )}
@@ -506,7 +506,7 @@ export function PainelNotificacoesHeader() {
                       {item.dataVencimento && (
                         <span
                           className={cn(
-                            "text-[10px] font-mono px-1.5 py-0.5 rounded-md",
+                            "text-xs font-mono px-2 py-0.5 rounded-md",
                             ehAtrasada
                               ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold"
                               : ehGoogle
@@ -527,10 +527,10 @@ export function PainelNotificacoesHeader() {
                           <button
                             type="button"
                             onClick={(e) => marcarComoLido(item.id, e)}
-                            className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-0.5 cursor-pointer ml-0.5"
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-1 cursor-pointer ml-1 min-h-[32px]"
                             aria-label="Marcar como lido"
                           >
-                            <Check size={11} />
+                            <Check size={13} />
                             <span>Lido</span>
                           </button>
                         </Tooltip>
@@ -540,10 +540,10 @@ export function PainelNotificacoesHeader() {
                         <button
                           type="button"
                           onClick={(e) => limparItem(item.id, e)}
-                          className="p-1 rounded text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center ml-0.5"
                           aria-label="Limpar notificação"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={14} />
                         </button>
                       </Tooltip>
                     </div>

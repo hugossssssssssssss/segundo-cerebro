@@ -31,7 +31,6 @@ export const APPS_PADRAO_GOOGLE: ItemGoogleApp[] = [
   { id: "agenda", nome: "Agenda", url: "https://calendar.google.com/", arquivoSvg: "agenda.svg" },
   { id: "notebook", nome: "Notebook", url: "https://notebooklm.google.com/", arquivoSvg: "notebook.svg" },
   { id: "chrome", nome: "Chrome", url: "https://www.google.com/chrome/", arquivoSvg: "chrome.svg" },
-  { id: "noticias", nome: "Notícias", url: "https://news.google.com/", arquivoSvg: "news.svg" },
   { id: "fotos", nome: "Fotos", url: "https://photos.google.com/", arquivoSvg: "photos.svg" },
   { id: "meet", nome: "Meet", url: "https://meet.google.com/", arquivoSvg: "meet.svg" },
   { id: "tradutor", nome: "Tradutor", url: "https://translate.google.com/", arquivoSvg: "translate.svg" },

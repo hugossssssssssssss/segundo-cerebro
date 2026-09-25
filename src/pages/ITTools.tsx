@@ -15,6 +15,7 @@ import {
   Download,
   ArrowLeft,
   Search,
+  X,
   RefreshCw,
   Trash2,
 } from "lucide-react";
@@ -213,8 +214,8 @@ export default function ITTools({ modoFocado, ferramentaInicial }: ITToolsProps 
         <div className="space-y-6">
           {/* Barra de Filtros e Busca */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            {/* Categorias */}
-            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-muted/40 rounded-xl border border-border/60">
+            {/* Categorias com scroll horizontal suave no mobile */}
+            <div className="flex items-center gap-1.5 p-1 bg-muted/40 rounded-2xl border border-border/60 overflow-x-auto no-scrollbar scroll-smooth shrink-0">
               {[
                 { id: "todas", label: "Todas" },
                 { id: "design", label: "📐 Design & Medidas" },
@@ -225,7 +226,7 @@ export default function ITTools({ modoFocado, ferramentaInicial }: ITToolsProps 
                   key={tab.id}
                   onClick={() => setCategoriaAtiva(tab.id as CategoriaITTools)}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                    "px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer shrink-0 touch-manipulation min-h-[34px]",
                     categoriaAtiva === tab.id
                       ? "bg-background text-foreground shadow-xs border border-border/80"
                       : "text-muted-foreground hover:text-foreground hover:bg-background/40"
@@ -236,16 +237,26 @@ export default function ITTools({ modoFocado, ferramentaInicial }: ITToolsProps 
               ))}
             </div>
 
-            {/* Input de busca rápida */}
-            <div className="relative w-full sm:w-64">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            {/* Input de busca rápida ergonômico */}
+            <div className="relative w-full sm:w-72">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Buscar ferramenta..."
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-border bg-background focus:outline-hidden focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground"
+                className="w-full pl-10 pr-9 py-2 text-sm rounded-2xl border border-border bg-background focus:outline-hidden focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground transition-all"
               />
+              {busca && (
+                <button
+                  type="button"
+                  onClick={() => setBusca("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground cursor-pointer"
+                  aria-label="Limpar busca"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
           </div>
 

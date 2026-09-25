@@ -151,7 +151,7 @@ export function ToastsContainer() {
   return (
     <>
       {toasts.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-[700] flex flex-col gap-2 max-w-sm w-full pointer-events-none px-3 sm:px-0">
+        <div className="fixed bottom-20 sm:bottom-4 right-4 z-[700] flex flex-col gap-2 max-w-sm w-full pointer-events-none px-3 sm:px-0">
           {toasts.map((t) => (
             <SingleToast key={t.id} t={t} aoAbrirDetalhes={abrirDetalhes} />
           ))}

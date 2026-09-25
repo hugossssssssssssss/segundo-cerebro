@@ -563,6 +563,7 @@ export default function Home() {
                   corIcone={info.cor}
                   colunas={widget.colunas}
                   alturaPx={widget.alturaPx}
+                  className={widget.id === "busca_web" ? "hidden sm:flex flex-col" : undefined}
                   aoAbrirPopup={abrirPopup}
                 linkVerMais={
                   widget.id === "foco_hoje"

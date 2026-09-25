@@ -20,29 +20,23 @@ export function AvisoSemConexaoGithub({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 p-3 sm:p-3.5 rounded-2xl border border-amber-500/25 bg-amber-500/5 dark:bg-amber-500/10 text-foreground transition-all duration-200 shadow-2xs backdrop-blur-xs select-none",
+        "flex items-center justify-between gap-2 px-3 rounded-xl border border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/10 text-foreground transition-all duration-200 select-none",
+        compacto ? "py-1" : "py-1.5",
         className
       )}
     >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="p-1.5 sm:p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
-          <GitBranch size={16} />
-        </div>
-        <div className="min-w-0">
-          <p className={cn("text-xs font-medium text-foreground/90 leading-tight", compacto ? "truncate" : "line-clamp-2 sm:line-clamp-1")}>
-            {mensagem}
-          </p>
-          <span className="text-[10px] text-muted-foreground hidden sm:inline-block mt-0.5">
-            Suas ferramentas locais continuam funcionando normalmente.
-          </span>
-        </div>
+      <div className="flex items-center gap-2 min-w-0">
+        <GitBranch size={13} className="text-amber-600 dark:text-amber-400 shrink-0" />
+        <p className="text-[11px] sm:text-xs font-medium text-foreground/85 truncate">
+          {mensagem}
+        </p>
       </div>
 
       <Link
         to="/config"
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-200 text-xs font-semibold shrink-0 transition-colors cursor-pointer active:scale-95 touch-manipulation"
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 dark:text-amber-200 text-[11px] font-semibold shrink-0 transition-colors cursor-pointer active:scale-95 touch-manipulation"
       >
-        <Settings size={13} className="shrink-0" />
+        <Settings size={11} className="shrink-0" />
         <span>Conectar</span>
       </Link>
     </div>

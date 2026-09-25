@@ -290,7 +290,11 @@ export function HeaderAcoesOrdenaveis({
         return <PainelNotificacoesHeader />;
 
       case "google_apps":
-        return <LauncherGoogleApps aoAbrirBuscaWeb={onAbrirBuscaWeb} />;
+        return (
+          <div className="hidden sm:flex items-center">
+            <LauncherGoogleApps aoAbrirBuscaWeb={onAbrirBuscaWeb} />
+          </div>
+        );
 
       case "busca":
         return (

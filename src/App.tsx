@@ -13,7 +13,7 @@ import {
   MessageCircle,
   Home as HomeIcon,
   Plus,
-  MoreHorizontal,
+  Menu,
   Minimize2,
   WifiOff,
 } from "lucide-react";
@@ -221,12 +221,6 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         if (res.concluidos > 0) {
           toast(`${res.concluidos} rascunho(s) offline sincronizado(s) com o GitHub!`, { tipo: "sucesso" });
         }
-        if (res.falhas > 0) {
-          toast(`${res.falhas} rascunho(s) pendente(s) por falha ou conflito: clique para ver`, {
-            tipo: "erro",
-            detalhes: "Um ou mais rascunhos offline falharam ao tentar sincronizar com o GitHub (conflito 409 ou erro de rede).\n\nAcesse a Caixa de Entrada > Rascunhos Offline para aceitar a versão local ou descartar.",
-          });
-        }
         sincronizarTudoComGithub(cfg).catch(() => {});
       }
     };
@@ -399,20 +393,22 @@ function Estrutura({ children }: { children: React.ReactNode }) {
                 : "w-full px-4 sm:px-8 lg:px-12 h-14"
             )}
           >
-            {/* Lado Esquerdo: Logo no Mobile + Barra de Favoritos */}
+            {/* Lado Esquerdo: Logo no Mobile + Barra de Favoritos (apenas Desktop) */}
             <div className={cn("flex items-center gap-2 min-w-0 mr-2", workspaceAberto ? "flex-initial max-w-xs sm:max-w-sm" : "flex-1")}>
-              <NavLink
-                to="/home"
+              <button
+                type="button"
                 onClick={() => {
                   if (workspaceAberto) fecharWorkspace();
+                  setGavetaAberta(true);
                 }}
-                className="flex sm:hidden items-center gap-2 font-bold tracking-tight text-sm hover:opacity-90 transition-opacity shrink-0"
+                className="flex sm:hidden items-center justify-center p-1 -ml-1 rounded-xl bg-primary/10 hover:bg-primary/20 active:scale-95 transition-all text-primary shrink-0 touch-manipulation cursor-pointer"
+                aria-label="Abrir Menu Klaus"
+                title="Menu do Klaus"
               >
-                <LogoKlaus tamanho={24} />
-                <span>Klaus</span>
-              </NavLink>
+                <LogoKlaus tamanho={28} />
+              </button>
 
-              <BarraFavoritos className="flex-1 min-w-0" />
+              <BarraFavoritos className="hidden sm:flex flex-1 min-w-0" />
             </div>
 
             {/* Centro: Abas do Workspace integradas diretamente no Header */}
@@ -485,14 +481,19 @@ function Estrutura({ children }: { children: React.ReactNode }) {
             </NavLink>
           ))}
 
-          {/* Botão Mais no celular */}
+          {/* Botão Menu no celular */}
           <button
             onClick={() => setGavetaAberta(true)}
-            className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium text-muted-foreground transition-all min-w-0 truncate px-1 rounded-xl mx-0.5 hover:text-foreground hover:bg-accent/40 active:scale-95 cursor-pointer touch-manipulation min-h-[50px]"
-            aria-label="Mais opções"
+            className={cn(
+              "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium transition-all min-w-0 truncate px-1 rounded-xl mx-0.5 active:scale-95 cursor-pointer touch-manipulation min-h-[50px]",
+              gavetaAberta
+                ? "text-primary font-bold bg-primary/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
+            )}
+            aria-label="Menu principal do Klaus"
           >
-            <MoreHorizontal size={20} className="shrink-0" />
-            <span className="truncate max-w-full tracking-tight">Mais</span>
+            <Menu size={20} className="shrink-0" />
+            <span className="truncate max-w-full tracking-tight">Menu</span>
           </button>
         </nav>
       )}

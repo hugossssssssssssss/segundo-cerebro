@@ -351,10 +351,7 @@ export async function sincronizarFilaOffline(cfgProp?: Settings, forcar = false)
             status: "erro",
             ultimoErro: msg,
           });
-          toast("Sincronização offline pausada: Token do GitHub inválido ou sem permissão", {
-            tipo: "erro",
-            detalhes: `A API do GitHub retornou erro de permissão (HTTP ${status}). Acesse Configurações > GitHub para conferir seu token.`,
-          });
+          // Não dispara toast invasivo no meio do uso do usuário; o erro fica salvo no rascunho
           break;
         }
 
