@@ -2,40 +2,42 @@ import { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 /**
- * Sequência de fluxo das telas principais do Klaus para navegação tátil por gestos (swipe).
- * Início <---> Tarefas <---> Notas <---> Metas (PDI)
+ * Esteira sequencial de telas principais no Klaus:
+ * [0: Início /home] <---> [1: Tarefas /tarefas] <---> [2: Notas /notas] <---> [3: Metas /pdi]
  */
-const ORDEM_TELAS = ["/home", "/tarefas", "/notas", "/pdi"];
+const ESTEIRA = ["/home", "/tarefas", "/notas", "/pdi"];
 
 export function useSwipeNavegacao(habilitado = true) {
   const navegar = useNavigate();
   const location = useLocation();
   const toqueInicioX = useRef<number | null>(null);
   const toqueInicioY = useRef<number | null>(null);
+  const ultimoX = useRef<number | null>(null);
+  const ultimoY = useRef<number | null>(null);
   const tempoInicio = useRef<number>(0);
 
   useEffect(() => {
     if (!habilitado) return;
 
-    // Detecta em qual tela da esteira estamos
-    const rotaAtual = location.pathname === "/" ? "/home" : location.pathname;
-    const indiceAtual = ORDEM_TELAS.indexOf(rotaAtual);
+    // Normaliza rota atual
+    let rotaBase = location.pathname;
+    if (rotaBase === "/") rotaBase = "/home";
 
-    // Se estiver em uma tela que não faz parte do fluxo principal, não aplica swipe
+    // Encontra índice na esteira
+    const indiceAtual = ESTEIRA.findIndex((r) => rotaBase.startsWith(r));
     if (indiceAtual === -1) return;
 
-    const elemento = document.querySelector("main");
-    if (!elemento) return;
-
     const lidarTouchStart = (e: TouchEvent) => {
-      // Ignora gestos com múltiplos dedos
       if (e.touches.length !== 1) return;
 
-      const alvo = e.target as HTMLElement;
-      // Não intercepta se o toque começou em inputs, sliders, canvas ou elementos com rolagem horizontal própria
+      const alvo = e.target as HTMLElement | null;
+      if (!alvo) return;
+
+      // Não intercepta se o toque começou em campos de texto, sliders, canvas ou elementos com scroll horizontal
       if (
         alvo.closest("input") ||
         alvo.closest("textarea") ||
+        alvo.closest("select") ||
         alvo.closest("canvas") ||
         alvo.closest("[data-no-swipe]") ||
         alvo.closest(".overflow-x-auto")
@@ -47,50 +49,72 @@ export function useSwipeNavegacao(habilitado = true) {
 
       toqueInicioX.current = e.touches[0].clientX;
       toqueInicioY.current = e.touches[0].clientY;
+      ultimoX.current = e.touches[0].clientX;
+      ultimoY.current = e.touches[0].clientY;
       tempoInicio.current = Date.now();
     };
 
-    const lidarTouchEnd = (e: TouchEvent) => {
-      if (toqueInicioX.current === null || toqueInicioY.current === null) return;
+    const lidarTouchMove = (e: TouchEvent) => {
+      if (toqueInicioX.current === null) return;
+      ultimoX.current = e.touches[0].clientX;
+      ultimoY.current = e.touches[0].clientY;
+    };
 
-      const toqueFimX = e.changedTouches[0].clientX;
-      const toqueFimY = e.changedTouches[0].clientY;
-      const deltaX = toqueFimX - toqueInicioX.current;
-      const deltaY = toqueFimY - toqueInicioY.current;
+    const processarGesto = () => {
+      if (toqueInicioX.current === null || ultimoX.current === null) return;
+
+      const deltaX = ultimoX.current - toqueInicioX.current;
+      const deltaY = (ultimoY.current ?? 0) - (toqueInicioY.current ?? 0);
       const duracao = Date.now() - tempoInicio.current;
 
       toqueInicioX.current = null;
       toqueInicioY.current = null;
+      ultimoX.current = null;
+      ultimoY.current = null;
 
-      // Ignora se o gesto durou muito tempo (mais de 600ms) ou se a distância foi pequena (< 55px)
-      if (duracao > 600 || Math.abs(deltaX) < 55) return;
+      // Limites generosos e confortáveis para o polegar no mobile
+      if (duracao > 850 || Math.abs(deltaX) < 35) return;
 
-      // O gesto deve ser predominantemente horizontal
-      if (Math.abs(deltaX) < Math.abs(deltaY) * 1.5) return;
+      // O gesto deve ser mais horizontal que vertical
+      if (Math.abs(deltaX) < Math.abs(deltaY) * 0.8) return;
 
-      // Se deltaX < 0: o dedo foi para a esquerda (swipe left) -> avança para a próxima tela
-      // Ex: Início -> Tarefas -> Notas -> Metas
-      if (deltaX < 0) {
-        if (indiceAtual < ORDEM_TELAS.length - 1) {
-          const proxima = ORDEM_TELAS[indiceAtual + 1];
-          navegar(proxima);
-        }
+      // Lógica de avanço e retorno na esteira de telas:
+      if (indiceAtual === 0) {
+        // Na Tela Inicial: qualquer swipe horizontal nítido avança para Tarefas
+        navegar(ESTEIRA[1]);
+      } else if (indiceAtual === ESTEIRA.length - 1) {
+        // Em Metas (PDI): qualquer swipe horizontal nítido volta para Notas
+        navegar(ESTEIRA[ESTEIRA.length - 2]);
       } else {
-        // Se deltaX > 0: o dedo foi para a direita (swipe right) -> volta para a tela anterior
-        // Ex: Metas -> Notas -> Tarefas -> Início
-        if (indiceAtual > 0) {
-          const anterior = ORDEM_TELAS[indiceAtual - 1];
-          navegar(anterior);
+        // Nas telas intermediárias (Tarefas e Notas):
+        // Arrastar para a esquerda (deltaX < 0) = Avança para a próxima tela
+        // Arrastar para a direita (deltaX > 0) = Volta para a tela anterior
+        if (deltaX < -35 && indiceAtual < ESTEIRA.length - 1) {
+          navegar(ESTEIRA[indiceAtual + 1]);
+        } else if (deltaX > 35 && indiceAtual > 0) {
+          navegar(ESTEIRA[indiceAtual - 1]);
         }
       }
     };
 
-    elemento.addEventListener("touchstart", lidarTouchStart, { passive: true });
-    elemento.addEventListener("touchend", lidarTouchEnd, { passive: true });
+    const lidarTouchEnd = () => {
+      processarGesto();
+    };
+
+    const lidarTouchCancel = () => {
+      processarGesto();
+    };
+
+    window.addEventListener("touchstart", lidarTouchStart, { passive: true });
+    window.addEventListener("touchmove", lidarTouchMove, { passive: true });
+    window.addEventListener("touchend", lidarTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", lidarTouchCancel, { passive: true });
 
     return () => {
-      elemento.removeEventListener("touchstart", lidarTouchStart);
-      elemento.removeEventListener("touchend", lidarTouchEnd);
+      window.removeEventListener("touchstart", lidarTouchStart);
+      window.removeEventListener("touchmove", lidarTouchMove);
+      window.removeEventListener("touchend", lidarTouchEnd);
+      window.removeEventListener("touchcancel", lidarTouchCancel);
     };
   }, [habilitado, location.pathname, navegar]);
 }

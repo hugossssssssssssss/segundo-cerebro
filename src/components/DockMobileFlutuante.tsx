@@ -137,17 +137,7 @@ export function DockMobileFlutuante({
         ))}
       </nav>
 
-      {/* 2. Botão de (+) Circular - Mesmo tamanho do botão de menu */}
-      <button
-        type="button"
-        onClick={lidarCliqueMais}
-        aria-label="Nova ação rápida"
-        className="pointer-events-auto h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center hover:scale-105 active:scale-85 transition-all duration-200 cursor-pointer touch-manipulation shrink-0"
-      >
-        <Plus size={22} strokeWidth={2.5} className="shrink-0" />
-      </button>
-
-      {/* 3. Botão de Menu Circular Separado */}
+      {/* 2. Botão de Menu Circular Separado */}
       <button
         type="button"
         onClick={aoAbrirMenuPizza}
@@ -155,6 +145,16 @@ export function DockMobileFlutuante({
         className="pointer-events-auto h-12 w-12 rounded-full bg-card/95 dark:bg-zinc-950/95 backdrop-blur-2xl border border-border/80 dark:border-white/10 shadow-2xl ring-1 ring-black/5 dark:ring-white/5 flex items-center justify-center text-foreground hover:text-primary active:scale-85 transition-all duration-200 cursor-pointer touch-manipulation shrink-0"
       >
         <Menu size={20} className="shrink-0" />
+      </button>
+
+      {/* 3. Botão de (+) Circular - No lado direito */}
+      <button
+        type="button"
+        onClick={lidarCliqueMais}
+        aria-label="Nova ação rápida"
+        className="pointer-events-auto h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-2xl flex items-center justify-center hover:scale-105 active:scale-85 transition-all duration-200 cursor-pointer touch-manipulation shrink-0"
+      >
+        <Plus size={22} strokeWidth={2.5} className="shrink-0" />
       </button>
     </div>
   );
