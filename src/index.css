@@ -10,52 +10,52 @@
  * do template). Trocar o tema = mexer só nestes dois blocos.
  */
 :root {
-  --background: 228 20% 97%;
-  --foreground: 222 47% 11%;
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
+  --card-foreground: 240 10% 3.9%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --primary: 215 100% 50%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 220 14% 96%;
-  --secondary-foreground: 222 47% 11%;
-  --muted: 220 14% 96%;
-  --muted-foreground: 215 16% 47%;
-  --accent: 215 100% 96%;
-  --accent-foreground: 215 100% 50%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 240 6% 10%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 240 5% 96%;
+  --secondary-foreground: 240 6% 10%;
+  --muted: 240 5% 96%;
+  --muted-foreground: 240 4% 44%;
+  --accent: 240 5% 95.5%;
+  --accent-foreground: 240 6% 10%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
   --success: hsl(142 60% 40%);
   --warning: hsl(38 92% 45%);
-  --border: 220 13% 91%;
-  --input: 220 13% 91%;
-  --ring: 215 100% 50%;
-  --radius: 1rem;
+  --border: 240 6% 90%;
+  --input: 240 6% 90%;
+  --ring: 240 6% 10%;
+  --radius: 0.75rem;
 }
 
 .dark {
-  --background: 224 25% 6%;
-  --foreground: 210 20% 98%;
-  --card: 224 20% 10%;
-  --card-foreground: 210 20% 98%;
-  --popover: 224 20% 11%;
-  --popover-foreground: 210 20% 98%;
-  --primary: 215 100% 54%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 224 16% 15%;
-  --secondary-foreground: 210 20% 98%;
-  --muted: 224 16% 15%;
-  --muted-foreground: 215 20% 65%;
-  --accent: 215 100% 16%;
-  --accent-foreground: 215 100% 65%;
+  --background: 240 6% 8%;
+  --foreground: 0 0% 96%;
+  --card: 240 5% 10.5%;
+  --card-foreground: 0 0% 96%;
+  --popover: 240 5% 11.5%;
+  --popover-foreground: 0 0% 96%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 240 6% 10%;
+  --secondary: 240 5% 14.5%;
+  --secondary-foreground: 0 0% 96%;
+  --muted: 240 5% 14.5%;
+  --muted-foreground: 240 5% 62%;
+  --accent: 240 5% 14.5%;
+  --accent-foreground: 0 0% 96%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
   --success: hsl(142 60% 45%);
   --warning: hsl(38 92% 50%);
-  --border: 224 16% 18%;
-  --input: 224 16% 18%;
-  --ring: 215 100% 54%;
+  --border: 240 5% 16%;
+  --input: 240 5% 16%;
+  --ring: 240 5% 85%;
 }
 
 /* Variações de Fundo do Modo Escuro */
@@ -645,15 +645,4 @@
   animation: transicaoTelaFluida 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;
 }
-
-/* AI Insight Banner Holográfico Suave (estilo AIRecruit360) */
-.ai-insight-box {
-  background: linear-gradient(90deg, rgba(224, 242, 254, 0.75) 0%, rgba(204, 251, 241, 0.55) 50%, rgba(209, 250, 229, 0.65) 100%);
-  border: 1px solid rgba(186, 230, 253, 0.8);
-}
-.dark .ai-insight-box {
-  background: linear-gradient(90deg, rgba(8, 47, 73, 0.4) 0%, rgba(19, 78, 74, 0.3) 50%, rgba(6, 78, 59, 0.35) 100%);
-  border: 1px solid rgba(14, 116, 144, 0.45);
-}
-
 

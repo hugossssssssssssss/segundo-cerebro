@@ -157,13 +157,8 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         setGuiaAtalhosAberto((v) => !v);
       }
     };
-    const aoAbrirBuscaEvento = () => setBuscando(true);
-    window.addEventListener("klaus-abrir-busca", aoAbrirBuscaEvento);
     document.addEventListener("keydown", aoTeclar);
-    return () => {
-      window.removeEventListener("klaus-abrir-busca", aoAbrirBuscaEvento);
-      document.removeEventListener("keydown", aoTeclar);
-    };
+    return () => document.removeEventListener("keydown", aoTeclar);
   }, [workspaceAberto]);
 
   // Registro das camadas no gerenciador do Klaus
@@ -381,93 +376,90 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         className="hidden sm:flex sticky top-0 h-dvh shrink-0 z-30"
       />
 
-      {/* Moldura Flutuante (Floating Frame inspirado no AIRecruit360) */}
-      <div className="flex-1 flex flex-col min-w-0 h-dvh overflow-hidden relative z-10 sm:p-3 sm:pl-0 lg:p-3.5 lg:pl-0">
-        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative bg-card sm:rounded-[28px] lg:rounded-[32px] sm:border sm:border-border/80 sm:shadow-[0_4px_28px_rgba(0,0,0,0.03)] dark:sm:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-          {/* Banner discreto de modo offline */}
-          {!online && (
-            <div className="bg-amber-500/15 border-b border-amber-500/30 px-3 py-1 text-center text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center justify-center gap-1.5 shrink-0 z-50 animate-in fade-in">
-              <WifiOff size={13} className="shrink-0" />
-              <span>Modo offline: suas alterações serão salvas localmente</span>
+      <div className="flex-1 flex flex-col min-w-0 h-dvh overflow-hidden relative z-10">
+        {/* Banner discreto de modo offline */}
+        {!online && (
+          <div className="bg-amber-500/15 border-b border-amber-500/30 px-3 py-1 text-center text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center justify-center gap-1.5 shrink-0 z-50 animate-in fade-in">
+            <WifiOff size={13} className="shrink-0" />
+            <span>Modo offline: suas alterações serão salvas localmente</span>
+          </div>
+        )}
+
+        {/* Cabeçalho Principal (Topbar Limpa / Integrada com Abas no Workspace) */}
+        <header className="sticky top-0 z-40 liquid-glass-header shrink-0 transition-fluid">
+          <div
+            className={cn(
+              "flex items-center justify-between transition-all duration-300",
+              workspaceAberto
+                ? "w-full px-3 sm:px-4 h-12"
+                : "w-full px-4 sm:px-8 lg:px-12 h-14"
+            )}
+          >
+            {/* Lado Esquerdo: Logo no Mobile + Barra de Favoritos (apenas Desktop) */}
+            <div className={cn("flex items-center gap-2 min-w-0 mr-2", workspaceAberto ? "flex-initial max-w-xs sm:max-w-sm" : "flex-1")}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (workspaceAberto) fecharWorkspace();
+                  setGavetaAberta(true);
+                }}
+                className="flex sm:hidden items-center justify-center -ml-1 active:scale-95 transition-transform shrink-0 touch-manipulation cursor-pointer"
+                aria-label="Abrir Menu Klaus"
+                title="Menu do Klaus"
+              >
+                <LogoKlaus tamanho={28} />
+              </button>
+
+              <BarraFavoritos className="hidden sm:flex flex-1 min-w-0" />
             </div>
-          )}
 
-          {/* Cabeçalho Principal (Topbar Limpa / Integrada com Abas no Workspace) */}
-          <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border/50 shrink-0 transition-fluid">
-            <div
-              className={cn(
-                "flex items-center justify-between transition-all duration-300",
-                workspaceAberto
-                  ? "w-full px-3 sm:px-4 h-12"
-                  : "w-full px-4 sm:px-8 lg:px-12 h-14"
-              )}
-            >
-              {/* Lado Esquerdo: Logo no Mobile + Barra de Favoritos (apenas Desktop) */}
-              <div className={cn("flex items-center gap-2 min-w-0 mr-2", workspaceAberto ? "flex-initial max-w-xs sm:max-w-sm" : "flex-1")}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (workspaceAberto) fecharWorkspace();
-                    setGavetaAberta(true);
-                  }}
-                  className="flex sm:hidden items-center justify-center -ml-1 active:scale-95 transition-transform shrink-0 touch-manipulation cursor-pointer"
-                  aria-label="Abrir Menu Klaus"
-                  title="Menu do Klaus"
-                >
-                  <LogoKlaus tamanho={28} />
-                </button>
-
-                <BarraFavoritos className="hidden sm:flex flex-1 min-w-0" />
+            {/* Centro: Abas do Workspace integradas diretamente no Header */}
+            {workspaceAberto && (
+              <div className="flex-1 min-w-0 mx-1 sm:mx-2 h-full flex items-end overflow-hidden">
+                <WorkspaceBarraAbas />
               </div>
+            )}
 
-              {/* Centro: Abas do Workspace integradas diretamente no Header */}
+              {/* Ações do Header Reordenáveis via Drag and Drop */}
+              <HeaderAcoesOrdenaveis
+                onAbrirCaptura={() => setCapturando(true)}
+                onAbrirBusca={() => setBuscando(true)}
+                onAbrirBuscaWeb={() => setBuscandoWeb(true)}
+              />
+
+              {/* Botão de Sair do modo Workspace / Tela Cheia */}
               {workspaceAberto && (
-                <div className="flex-1 min-w-0 mx-1 sm:mx-2 h-full flex items-end overflow-hidden">
-                  <WorkspaceBarraAbas />
-                </div>
+                <Tooltip conteudo="Sair do modo tela cheia">
+                  <button
+                    onClick={fecharWorkspace}
+                    className="rounded-lg p-1.5 sm:p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors ml-0.5 sm:ml-1 cursor-pointer"
+                    aria-label="Sair do modo tela cheia"
+                  >
+                    <Minimize2 size={18} />
+                  </button>
+                </Tooltip>
               )}
+            </div>
+        </header>
 
-                {/* Ações do Header Reordenáveis via Drag and Drop */}
-                <HeaderAcoesOrdenaveis
-                  onAbrirCaptura={() => setCapturando(true)}
-                  onAbrirBusca={() => setBuscando(true)}
-                  onAbrirBuscaWeb={() => setBuscandoWeb(true)}
-                />
+        {/*
+          Conteúdo da Tela.
 
-                {/* Botão de Sair do modo Workspace / Tela Cheia */}
-                {workspaceAberto && (
-                  <Tooltip conteudo="Sair do modo tela cheia">
-                    <button
-                      onClick={fecharWorkspace}
-                      className="rounded-lg p-1.5 sm:p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors ml-0.5 sm:ml-1 cursor-pointer"
-                      aria-label="Sair do modo tela cheia"
-                    >
-                      <Minimize2 size={18} />
-                    </button>
-                  </Tooltip>
-                )}
-              </div>
-          </header>
-
-          {/*
-            Conteúdo da Tela.
-
-            O boundary fica AQUI DENTRO e não em volta da Estrutura: assim um erro
-            numa tela não leva junto a barra lateral e o cabeçalho, e você
-            consegue navegar para outro lugar sem recarregar a página. A `chave`
-            é o caminho da rota — trocar de tela zera o erro automaticamente.
-          */}
-          {workspaceAberto ? (
-            <WorkspaceTelaCheia />
-          ) : (
-            <main className="mx-auto w-full flex-1 py-3.5 sm:py-9 lg:py-11 pb-28 sm:pb-16 px-3.5 sm:px-8 lg:px-14 overflow-y-auto max-w-none flex flex-col justify-between">
-              <div key={pathname} className="flex-1 w-full max-w-7xl mx-auto space-y-4 sm:space-y-6 animacao-tela-fluida">
-                <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
-              </div>
-              <Rodape />
-            </main>
-          )}
-        </div>
+          O boundary fica AQUI DENTRO e não em volta da Estrutura: assim um erro
+          numa tela não leva junto a barra lateral e o cabeçalho, e você
+          consegue navegar para outro lugar sem recarregar a página. A `chave`
+          é o caminho da rota — trocar de tela zera o erro automaticamente.
+        */}
+        {workspaceAberto ? (
+          <WorkspaceTelaCheia />
+        ) : (
+          <main className="mx-auto w-full flex-1 py-3.5 sm:py-9 lg:py-11 pb-28 sm:pb-16 px-3.5 sm:px-8 lg:px-14 overflow-y-auto max-w-none flex flex-col justify-between">
+            <div key={pathname} className="flex-1 w-full max-w-7xl mx-auto space-y-4 sm:space-y-6 animacao-tela-fluida">
+              <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
+            </div>
+            <Rodape />
+          </main>
+        )}
       </div>
 
       {/* Dock Flutuante no celular: Ilha de ícones (com nome na ativa) + Botão (+) + Botão Circular de Menu */}
