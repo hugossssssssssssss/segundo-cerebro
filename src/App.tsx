@@ -157,8 +157,13 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         setGuiaAtalhosAberto((v) => !v);
       }
     };
+    const aoAbrirBuscaEvento = () => setBuscando(true);
+    window.addEventListener("klaus-abrir-busca", aoAbrirBuscaEvento);
     document.addEventListener("keydown", aoTeclar);
-    return () => document.removeEventListener("keydown", aoTeclar);
+    return () => {
+      window.removeEventListener("klaus-abrir-busca", aoAbrirBuscaEvento);
+      document.removeEventListener("keydown", aoTeclar);
+    };
   }, [workspaceAberto]);
 
   // Registro das camadas no gerenciador do Klaus
