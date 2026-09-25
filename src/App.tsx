@@ -2,21 +2,17 @@ import {
   HashRouter,
   Routes,
   Route,
-  NavLink,
   Navigate,
   useLocation,
 } from "react-router-dom";
 import { Suspense, lazy, useEffect, useState } from "react";
 import {
-  CheckSquare,
-  FileText,
-  Home as HomeIcon,
   Plus,
-  Menu,
   Minimize2,
   WifiOff,
-  Image as ImageIcon,
 } from "lucide-react";
+import { DockMobileFlutuante } from "@/components/DockMobileFlutuante";
+import { DockPizzaMobile } from "@/components/DockPizzaMobile";
 import { ProvedorFlutuanteGlobal } from "@/components/ItemFlutuanteContext";
 import { ProvedorFerramentasFlutuantes } from "@/components/ContextoFerramentasFlutuantes";
 import { WorkspaceProvider, useWorkspace } from "@/components/workspace/WorkspaceContext";
@@ -85,13 +81,6 @@ const Lixeira = lazy(() => import("@/pages/Lixeira"));
 
 
 
-const abasMobile = [
-  { para: "/home", rotulo: "Início", Icone: HomeIcon },
-  { para: "/tarefas", rotulo: "Tarefas", Icone: CheckSquare },
-  { para: "/notas", rotulo: "Notas", Icone: FileText },
-  { para: "/referencias", rotulo: "Referências", Icone: ImageIcon },
-];
-
 function Estrutura({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const { workspaceAberto, abaAtiva, fecharWorkspace, buscaGlobalAberta, setBuscaGlobalAberta } = useWorkspace();
@@ -101,6 +90,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
   const [capturando, setCapturando] = useState(false);
   const [guiaAtalhosAberto, setGuiaAtalhosAberto] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
+  const [menuPizzaAberto, setMenuPizzaAberto] = useState(false);
   const [notificacoesAbertas, setNotificacoesAbertas] = useState(false);
   const [textoCompartilhado, setTextoCompartilhado] = useState("");
 
@@ -461,7 +451,7 @@ function Estrutura({ children }: { children: React.ReactNode }) {
           <WorkspaceTelaCheia />
         ) : (
           <main className="mx-auto w-full flex-1 py-3.5 sm:py-9 lg:py-11 pb-28 sm:pb-16 px-3.5 sm:px-8 lg:px-14 overflow-y-auto max-w-none flex flex-col justify-between">
-            <div key={pathname} className="flex-1 w-full max-w-7xl mx-auto space-y-4 sm:space-y-6 animate-in fade-in duration-200">
+            <div key={pathname} className="flex-1 w-full max-w-7xl mx-auto space-y-4 sm:space-y-6 animacao-tela-fluida">
               <LimiteDeErro chave={pathname}>{children}</LimiteDeErro>
             </div>
             <Rodape />
@@ -469,49 +459,25 @@ function Estrutura({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-      {/* Navegação inferior no celular com visual dock moderno, safe area e touch targets de 48px+ */}
+      {/* Dock Flutuante no celular: Ilha de ícones (Início, Tarefas, Notas) + Botão Circular de Menu separado */}
       {!workspaceAberto && !notificacoesAbertas && (
-        <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center liquid-glass-header pb-[max(env(safe-area-inset-bottom),10px)] pt-1.5 px-3 sm:hidden shadow-2xl select-none border-t border-border/30">
-          {abasMobile.map(({ para, rotulo, Icone }) => (
-            <NavLink
-              key={para}
-              to={para}
-              className={({ isActive }) =>
-                cn(
-                  "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium transition-fluid-fast min-w-0 truncate px-1 rounded-2xl mx-0.5 relative group active:scale-95 touch-manipulation min-h-[50px]",
-                  isActive
-                    ? "text-primary font-bold bg-primary/10 shadow-xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/40",
-                )
-              }
-            >
-              <Icone size={20} className="shrink-0 transition-transform group-active:scale-90" />
-              <span className="truncate max-w-full tracking-tight">{rotulo}</span>
-            </NavLink>
-          ))}
-
-          {/* Botão Menu no celular */}
-          <button
-            onClick={() => setGavetaAberta(true)}
-            className={cn(
-              "flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium transition-all min-w-0 truncate px-1 rounded-xl mx-0.5 active:scale-95 cursor-pointer touch-manipulation min-h-[50px]",
-              gavetaAberta
-                ? "text-primary font-bold bg-primary/10"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
-            )}
-            aria-label="Menu principal do Klaus"
-          >
-            <Menu size={20} className="shrink-0" />
-            <span className="truncate max-w-full tracking-tight">Menu</span>
-          </button>
-        </nav>
+        <DockMobileFlutuante
+          aoAbrirMenuPizza={() => setMenuPizzaAberto(true)}
+          menuPizzaAberto={menuPizzaAberto}
+        />
       )}
 
+      {/* Menu Pizza Radial Fluido com Ações Rápidas de cada Ferramenta */}
+      <DockPizzaMobile
+        aberto={menuPizzaAberto}
+        aoFechar={() => setMenuPizzaAberto(false)}
+      />
+
       {/* Botão flutuante de captura no celular com sombra suave e efeito tátil - apenas na tela inicial */}
-      {!workspaceAberto && !notificacoesAbertas && (pathname === "/" || pathname === "/home") && (
+      {!workspaceAberto && !notificacoesAbertas && !menuPizzaAberto && (pathname === "/" || pathname === "/home") && (
         <button
           onClick={() => setCapturando(true)}
-          className="fixed bottom-[calc(max(env(safe-area-inset-bottom),10px)+68px)] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/25 transition-transform active:scale-90 sm:hidden cursor-pointer hover:scale-105 touch-manipulation select-none"
+          className="fixed bottom-[calc(max(env(safe-area-inset-bottom),10px)+72px)] right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/25 transition-transform active:scale-90 sm:hidden cursor-pointer hover:scale-105 touch-manipulation select-none"
           aria-label="Captura rápida"
         >
           <Plus size={24} className="stroke-[2.5]" />
