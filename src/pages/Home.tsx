@@ -13,7 +13,7 @@ import { tarefaParaArquivo, notaParaArquivo } from "@/lib/entidades";
 import { comoReferencia, type Referencia } from "@/lib/referencias";
 import { comoMeta, comoEntrega, resumir, type ResumoMeta } from "@/lib/pdi";
 import { tituloProvavel, escreverMarkdown, lerMarkdown, nomeLivre } from "@/lib/markdown";
-import { ler as lerArquivoGithub } from "@/lib/github";
+import { ler as lerArquivoGithub, ehErroTokenGithub } from "@/lib/github";
 import { PASTAS } from "@/lib/tipos";
 import { toast } from "@/lib/toast";
 import { hojeISO } from "@/lib/utils";
@@ -531,7 +531,7 @@ export default function Home() {
         aoRestaurarPadrao={restaurarPadrao}
       />
 
-      {erroCarregarHome && (
+      {erroCarregarHome && !ehErroTokenGithub(erroCarregarHome) && (
         <Aviso tom="erro">
           {erroCarregarHome}. Os itens exibidos abaixo usam a cópia local em cache.
         </Aviso>

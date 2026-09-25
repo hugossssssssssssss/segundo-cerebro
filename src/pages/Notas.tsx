@@ -36,6 +36,7 @@ import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
 import { comoNota, comoTarefa, comoReferencia, notaParaArquivo, tarefaParaArquivo, dataDoNome } from "@/lib/entidades";
+import { ehErroTokenGithub } from "@/lib/github";
 import { ImagemPrivada } from "@/components/ImagemPrivada";
 import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
 import { invalidarCache } from "@/lib/repo";
@@ -1616,7 +1617,7 @@ export default function Notas() {
         />
       </BarraAcoesLote>
 
-      {erro && <Aviso tom="erro">{erro}</Aviso>}
+      {erro && !ehErroTokenGithub(erro) && <Aviso tom="erro">{erro}</Aviso>}
 
       {ilegiveis.length > 0 && (
         <Aviso tom="erro">

@@ -90,7 +90,6 @@ export function Busca({
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [acervo, setAcervo] = useState<ItemRepo[]>([]);
   const [carregando, setCarregando] = useState(false);
-  const [erro, setErro] = useState("");
   const [itemFocadoIndex, setItemFocadoIndex] = useState(0);
   const [mostrarTodosRecentes, setMostrarTodosRecentes] = useState(false);
   const [buscasRecentes, setBuscasRecentes] = useState<string[]>(() => {
@@ -212,7 +211,6 @@ export function Busca({
     if (!aberta) return;
 
     setTermo("");
-    setErro("");
     setCategoria("tudo");
     setItemFocadoIndex(0);
     setMostrarTodosRecentes(false);
@@ -220,17 +218,16 @@ export function Busca({
     entrada.current?.focus();
 
     const cfg = lerConfig();
-    if (!configCompleta(cfg)) {
-      setErro("Configure sua conta do GitHub em Ajustes para poder buscar nas notas.");
-    }
-
     let cancelado = false;
-    setCarregando(true);
-    carregarRepo(cfg, { memoria: 3000 })
-      .then((itens) => !cancelado && setAcervo(itens))
-      .catch((e) => !cancelado && setErro(e instanceof Error ? e.message : String(e)))
-      .finally(() => !cancelado && setCarregando(false));
-
+    if (configCompleta(cfg)) {
+      setCarregando(true);
+      carregarRepo(cfg, { memoria: 3000 })
+        .then((itens) => !cancelado && setAcervo(itens))
+        .catch(() => {
+          // Falha de rede ou token inválido não impede o uso da busca local de ferramentas
+        })
+        .finally(() => !cancelado && setCarregando(false));
+    }
     return () => {
       cancelado = true;
     };
@@ -320,8 +317,10 @@ export function Busca({
 
   const totalResultados = ferramentasResultado.length + resultadosFiltrados.length;
 
+  const ehModoResultados = termo.trim().length >= 1 || categoria === "ferramentas" || categoria === "acoes";
+
   const flatItens = useMemo(() => {
-    if (termo.trim().length >= 2) {
+    if (ehModoResultados) {
       const items: Array<{ id: string; tipo: "ferramenta" | "item"; f?: FerramentaApp; r?: any }> = [];
       ferramentasResultado.forEach((f) => items.push({ id: f.id, tipo: "ferramenta", f }));
       grupos.forEach(([, lista]) => {
@@ -478,14 +477,12 @@ export function Busca({
 
         {/* Lista de Resultados / Estado Inicial */}
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-1 sm:p-2">
-          {erro ? (
-            <p className="p-6 text-sm text-destructive">{erro}</p>
-          ) : carregando && acervo.length === 0 && termo.trim().length >= 2 ? (
+          {carregando && acervo.length === 0 && termo.trim().length >= 1 ? (
             <p className="p-6 text-sm text-muted-foreground flex items-center gap-2">
-              <span className="animate-pulse">Carregando acervo...</span>
+              <span className="animate-pulse">Buscando acervo...</span>
             </p>
-          ) : termo.trim().length < 2 ? (
-            /* ESTADO INICIAL (Sem pesquisa ativa) */
+          ) : !ehModoResultados ? (
+            /* ESTADO INICIAL (Sem pesquisa ativa e sem filtro específico) */
             <div className="p-4 space-y-6">
               {/* Seção de Buscas Recentes */}
               {buscasRecentes.length > 0 && (

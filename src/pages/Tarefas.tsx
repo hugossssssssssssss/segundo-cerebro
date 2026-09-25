@@ -32,6 +32,7 @@ import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
 import { comoTarefa, tarefaParaArquivo } from "@/lib/entidades";
+import { ehErroTokenGithub } from "@/lib/github";
 import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
 import { invalidarCache } from "@/lib/repo";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
@@ -1168,7 +1169,7 @@ export default function Tarefas() {
         </div>
       )}
 
-      {erro && <Aviso tom="erro">{erro}</Aviso>}
+      {erro && !ehErroTokenGithub(erro) && <Aviso tom="erro">{erro}</Aviso>}
 
       {carregando ? (
         <Carregando texto="Buscando suas tarefas…" />

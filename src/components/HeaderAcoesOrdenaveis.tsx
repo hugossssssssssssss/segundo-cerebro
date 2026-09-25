@@ -157,18 +157,20 @@ export function HeaderAcoesOrdenaveis({
     switch (id) {
       case "captura":
         return (
-          <Tooltip conteudo="Captura rápida" atalho="⌘J">
-            <button
-              type="button"
-              onClick={() => {
-                if (!arrastoAtivoRef.current) onAbrirCaptura();
-              }}
-              className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
-              aria-label="Captura rápida"
-            >
-              <Plus size={18} />
-            </button>
-          </Tooltip>
+          <div className="hidden sm:flex items-center">
+            <Tooltip conteudo="Captura rápida" atalho="⌘J">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!arrastoAtivoRef.current) onAbrirCaptura();
+                }}
+                className="rounded-lg p-1.5 sm:p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+                aria-label="Captura rápida"
+              >
+                <Plus size={18} />
+              </button>
+            </Tooltip>
+          </div>
         );
 
       case "som_ambiente":

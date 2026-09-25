@@ -355,10 +355,21 @@ export function buscarFerramentas(
   categoriaFilter?: CategoriaFiltroBusca,
   listaFerramentas?: FerramentaApp[]
 ): FerramentaApp[] {
-  const tNorm = normalizar(termo.trim());
-  if (tNorm.length < 2) return [];
-
+  const tNorm = normalizar((termo || "").trim());
   const base = listaFerramentas || LISTA_FERRAMENTAS_APP;
+
+  // Se termo estiver vazio mas a categoria for ferramentas ou ações, exibe todas daquela categoria
+  if (tNorm.length === 0) {
+    if (categoriaFilter === "ferramentas") {
+      return base.filter((f) => f.categoria !== "acao");
+    }
+    if (categoriaFilter === "acoes") {
+      return base.filter((f) => f.categoria === "acao");
+    }
+    return [];
+  }
+
+  if (tNorm.length < 2) return [];
 
   return base.filter((f) => {
     if (categoriaFilter === "acoes" && f.categoria !== "acao") return false;

@@ -31,6 +31,7 @@ import { correspondeBusca, lerParametroAbrir, safeStringify } from "@/lib/utils"
 import { Botao, Campo, Aviso, Vazio, Carregando, ModalConfirmacao } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
+import { ehErroTokenGithub } from "@/lib/github";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
 import { AlternadorVisao } from "@/components/AlternadorVisao";
 import { CartaoLousaVisual } from "@/components/CartaoLousaVisual";
@@ -597,7 +598,7 @@ export default function Lousas() {
         />
       )}
 
-      {erro && <Aviso tom="erro">{erro}</Aviso>}
+      {erro && !ehErroTokenGithub(erro) && <Aviso tom="erro">{erro}</Aviso>}
       {erroRenomeacao && <Aviso tom="erro">{erroRenomeacao}</Aviso>}
 
       {carregando ? (

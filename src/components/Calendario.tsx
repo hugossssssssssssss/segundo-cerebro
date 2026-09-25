@@ -474,7 +474,8 @@ export function Calendario({
           <div className="grid grid-cols-7 gap-1 text-center border-b border-border/50 pb-2">
             {DIAS_SEMANA.map((dia) => (
               <span key={dia} className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                {dia}
+                <span className="hidden sm:inline">{dia}</span>
+                <span className="sm:hidden">{dia[0]}</span>
               </span>
             ))}
           </div>
@@ -499,7 +500,7 @@ export function Calendario({
                     if (!ehMesAtual) setMesAtual(d);
                   }}
                   className={cn(
-                    "min-h-[85px] sm:min-h-[110px] p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden",
+                    "min-h-[46px] h-12 sm:h-auto sm:min-h-[110px] p-1 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between items-center sm:items-stretch group relative overflow-hidden",
                     !ehMesAtual && "opacity-35 bg-secondary/10 border-transparent",
                     ehMesAtual && !ehSelecionado && "bg-card border-border/60 hover:border-primary/50 hover:bg-accent/40",
                     ehHoje && !ehSelecionado && "border-primary/70 bg-primary/5 font-bold",

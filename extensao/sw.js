@@ -6,7 +6,7 @@
  * - Bypass de requisições de API (api.github.com, Gemini, etc.) que já são tratadas pelo offlineQueue.
  */
 
-const NOME_CACHE = "klaus-app-v2.26.0";
+const NOME_CACHE = "klaus-app-v2.46.0";
 
 const ASSETS_ESSENCIAIS = [
   "./",
@@ -14,6 +14,13 @@ const ASSETS_ESSENCIAIS = [
   "./manifest.webmanifest",
   "./icone.svg",
 ];
+
+// Ouve mensagens de ativação imediata do cliente
+self.addEventListener("message", (evento) => {
+  if (evento.data && evento.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
 
 // Instalação do Service Worker e pré-cache dos arquivos essenciais
 self.addEventListener("install", (evento) => {

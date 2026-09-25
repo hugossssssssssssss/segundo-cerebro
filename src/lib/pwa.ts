@@ -11,34 +11,65 @@ import { toast } from "@/lib/toast";
  * Registra o Service Worker da aplicação em ambientes de produção ou navegadores compatíveis.
  */
 export function registrarServiceWorker(): void {
-  if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+  if (typeof window === "undefined" || !navigator?.serviceWorker?.register) {
     return;
   }
 
-  window.addEventListener("load", () => {
-    // Usa caminho relativo para suportar hospedagem no GitHub Pages (/segundo-cerebro/)
+  // Se um novo controller assumir, recarrega a página automaticamente para o usuário sempre ver a versão atualizada
+  let recarregando = false;
+  if (typeof navigator.serviceWorker.addEventListener === "function") {
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!recarregando) {
+        recarregando = true;
+        window.location.reload();
+      }
+    });
+  }
+
+  const executarRegistro = () => {
     navigator.serviceWorker
       .register("./sw.js")
       .then((registro) => {
-        // Verifica se há uma atualização pronta
+        // Se já houver um worker esperando, força ele a assumir imediatamente
+        if (registro.waiting) {
+          registro.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+
+        // Ao detectar atualização em andamento
         registro.addEventListener("updatefound", () => {
           const novoWorker = registro.installing;
           if (novoWorker) {
             novoWorker.addEventListener("statechange", () => {
               if (novoWorker.state === "installed" && navigator.serviceWorker.controller) {
-                toast("Nova versão do Klaus disponível! Recarregue a página para atualizar.", {
-                  tipo: "info",
-                  duracaoMs: 8000,
-                });
+                // Força o novo worker a assumir imediatamente sem exigir refresh manual
+                novoWorker.postMessage({ type: "SKIP_WAITING" });
               }
             });
           }
         });
+
+        // Verifica novas versões automaticamente quando o usuário volta para o app ou foca a tela
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") {
+            registro.update().catch(() => {});
+          }
+        });
+
+        window.addEventListener("focus", () => {
+          registro.update().catch(() => {});
+        });
+
+        // Checagem periódica a cada 10 minutos
+        setInterval(() => {
+          registro.update().catch(() => {});
+        }, 10 * 60 * 1000);
       })
       .catch((err) => {
         console.warn("Não foi possível registrar o Service Worker:", err);
       });
-  });
+  };
+
+  window.addEventListener("load", executarRegistro);
 }
 
 /**

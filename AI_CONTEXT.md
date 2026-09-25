@@ -151,6 +151,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`testarConexao`** — _Testa se o token e o repositório estão certos. Usado na tela de Configurações._
 - `tipo` **`ArquivoLoteGit`**
 - `funcao` **`gravarLoteGit`** — _Grava múltiplos arquivos em exatamente UM ÚNICO commit atômico usando a Git Data API. Isso garante q..._
+- `funcao` **`ehErroTokenGithub`** — _Detecta se uma mensagem de erro é decorrente de token ausente, expirado ou inválido do GitHub. Usado..._
 
 #### 📄 `src/lib/lixeira.ts`
 > Lixeira Soberana em Markdown do Klaus (.lixeira/) Em vez de destruir arquivos permanentemente com DELETE direto no GitHub, move o arquivo para a pasta oculta `.lixeira/` preservando todo o histórico e metadados com possibilidade de restauração em 1 clique.

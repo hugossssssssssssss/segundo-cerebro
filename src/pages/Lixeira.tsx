@@ -20,7 +20,7 @@ import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
 import { Botao, Cartao, Vazio, Carregando, Aviso, Modal, ModalConfirmacao, Selo } from "@/components/ui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { toast } from "@/lib/toast";
-import { apagar } from "@/lib/github";
+import { apagar, ehErroTokenGithub } from "@/lib/github";
 import { invalidarCache } from "@/lib/repo";
 import { dispararAtualizacaoAcervo } from "@/lib/eventos";
 import { formatarDataPtBR } from "@/lib/utils";
@@ -100,7 +100,7 @@ export default function Lixeira() {
       )}
 
       {erroAcao && <Aviso tom="erro">{erroAcao}</Aviso>}
-      {erro && <Aviso tom="erro">{erro}</Aviso>}
+      {erro && !ehErroTokenGithub(erro) && <Aviso tom="erro">{erro}</Aviso>}
 
       {carregando && itensLixeira.length === 0 ? (
         <Carregando texto="Verificando itens da lixeira..." />

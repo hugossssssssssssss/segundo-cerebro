@@ -719,3 +719,20 @@ export async function gravarLoteGit(
     treeSha: novaTreeSha,
   };
 }
+
+/**
+ * Detecta se uma mensagem de erro é decorrente de token ausente, expirado ou inválido do GitHub.
+ * Usado pelas telas para não exibir banners vermelhos de pânico que assustam o usuário.
+ */
+export function ehErroTokenGithub(msg?: string | null): boolean {
+  if (!msg) return false;
+  const m = String(msg).toLowerCase();
+  return (
+    m.includes("token do github") ||
+    m.includes("bad credentials") ||
+    m.includes("401") ||
+    m.includes("não configurado") ||
+    m.includes("sem token") ||
+    m.includes("expirado")
+  );
+}

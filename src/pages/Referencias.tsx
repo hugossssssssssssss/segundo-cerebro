@@ -33,6 +33,7 @@ import { useSalvar } from "@/lib/useSalvar";
 import { PASTAS } from "@/lib/tipos";
 import { comoReferencia, referenciaParaArquivo } from "@/lib/entidades";
 import { montarIndice, mencoesA, alvosUnicos } from "@/lib/links";
+import { ehErroTokenGithub } from "@/lib/github";
 import { escreverMarkdown, tituloProvavel, nomeLivre } from "@/lib/markdown";
 import {
   nomeDeImagem,
@@ -760,7 +761,7 @@ export default function Referencias() {
         />
       </div>
 
-      {erro && <Aviso tom="erro">{erro}</Aviso>}
+      {erro && !ehErroTokenGithub(erro) && <Aviso tom="erro">{erro}</Aviso>}
 
       {carregando ? (
         <Carregando texto="Carregando referências e inspirações..." />

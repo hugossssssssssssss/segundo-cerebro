@@ -55,6 +55,7 @@ import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotio
 import { BarraFiltrosAvancados, filtrarItensPorRegras, type DefinicaoPropriedade, type RegraFiltro } from "@/components/BarraFiltrosAvancados";
 import { propagarRenomeacaoId, montarIndice, mencoesA } from "@/lib/links";
 import { carregarRepo } from "@/lib/repo";
+import { ehErroTokenGithub } from "@/lib/github";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
@@ -668,7 +669,7 @@ export default function Contatos() {
         </div>
       )}
 
-      {erro && (
+      {erro && !ehErroTokenGithub(erro) && (
         <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm">
           {erro}
         </div>

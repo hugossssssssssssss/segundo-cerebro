@@ -30,6 +30,7 @@ import {
   Bookmark,
   Globe,
   ExternalLink,
+  X,
 } from "lucide-react";
 import {
   type MapaEstadoInbox,
@@ -87,6 +88,15 @@ export function PainelNotificacoesHeader() {
   const [shaEstado, setShaEstado] = useState<string | undefined>();
   const [filtro, setFiltro] = useState<FiltroNotificacao>("semana");
   const [modalLembreteAberto, setModalLembreteAberto] = useState(false);
+  const [ehMobile, setEhMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 640 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => setEhMobile(window.innerWidth < 640);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const cfg = useMemo(() => lerConfig(), []);
   const pronto = configCompleta(cfg);
@@ -279,11 +289,14 @@ export function PainelNotificacoesHeader() {
 
   return (
     <>
-      <Popover open={aberto} onOpenChange={setAberto}>
+      <Popover open={!ehMobile && aberto} onOpenChange={(val) => { if (!ehMobile) setAberto(val); }}>
         <Tooltip conteudo={naoVistosCount > 0 ? `${naoVistosCount} nova(s) notificação(ões)` : "Central de Notificações & Agenda"}>
           <PopoverTrigger asChild>
             <button
               type="button"
+              onClick={() => {
+                if (ehMobile) setAberto((prev) => !prev);
+              }}
               className={cn(
                 "rounded-xl p-2 transition-all relative cursor-pointer flex items-center justify-center border",
                 aberto
@@ -305,7 +318,7 @@ export function PainelNotificacoesHeader() {
 
         <PopoverContent
           align="end"
-          className="w-[calc(100vw-1.5rem)] sm:w-[440px] max-w-[440px] p-0 shadow-2xl border-border/80 bg-card/95 backdrop-blur-2xl rounded-2xl overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150"
+          className="hidden sm:block sm:w-[440px] max-w-[440px] p-0 shadow-2xl border-border/80 bg-card/95 backdrop-blur-2xl rounded-2xl overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150"
           sideOffset={8}
         >
           {/* Cabeçalho da Central de Notificações */}
@@ -569,6 +582,269 @@ export function PainelNotificacoesHeader() {
           </div>
         </PopoverContent>
       </Popover>
+
+      {/* Drawer / Bottom Sheet Nativo para Celular (Mobile First, espaçoso e confortável) */}
+      {ehMobile && aberto && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+          {/* Backdrop para fechar */}
+          <div className="fixed inset-0" onClick={() => setAberto(false)} />
+
+          <div className="relative z-10 w-full max-h-[88vh] bg-card border-t border-border rounded-t-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-250 pb-safe">
+            {/* Puxador touch */}
+            <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+
+            {/* Cabeçalho do Drawer */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border/40 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Bell size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-foreground flex items-center gap-2">
+                    Notificações & Agenda
+                    {naoVistosCount > 0 && (
+                      <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-primary text-primary-foreground">
+                        {naoVistosCount}
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Compromissos e avisos</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {naoVistosCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={marcarTodosComoLidos}
+                    className="h-10 w-10 rounded-xl bg-secondary/80 text-muted-foreground hover:text-foreground active:scale-95 flex items-center justify-center cursor-pointer"
+                    aria-label="Marcar todas como lidas"
+                  >
+                    <CheckCheck size={20} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setAberto(false)}
+                  className="h-10 w-10 rounded-xl bg-secondary/80 text-muted-foreground hover:text-foreground active:scale-95 flex items-center justify-center cursor-pointer"
+                  aria-label="Fechar"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Abas de Filtragem Rápida Mobile */}
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/40 bg-secondary/20 shrink-0">
+              <button
+                type="button"
+                onClick={() => setFiltro("semana")}
+                className={cn(
+                  "flex-1 h-11 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                  filtro === "semana"
+                    ? "bg-background text-foreground shadow-sm border border-border/60"
+                    : "text-muted-foreground hover:text-foreground bg-card/40"
+                )}
+              >
+                <CalendarDays size={16} className={filtro === "semana" ? "text-primary" : ""} />
+                <span>Semana</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFiltro("nao_vistos")}
+                className={cn(
+                  "flex-1 h-11 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                  filtro === "nao_vistos"
+                    ? "bg-background text-foreground shadow-sm border border-border/60"
+                    : "text-muted-foreground hover:text-foreground bg-card/40"
+                )}
+              >
+                <Clock size={16} className={filtro === "nao_vistos" ? "text-primary" : ""} />
+                <span>Não Lidos</span>
+                {naoVistosCount > 0 && <span className="h-2 w-2 rounded-full bg-primary" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFiltro("todos")}
+                className={cn(
+                  "flex-1 h-11 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                  filtro === "todos"
+                    ? "bg-background text-foreground shadow-sm border border-border/60"
+                    : "text-muted-foreground hover:text-foreground bg-card/40"
+                )}
+              >
+                <Inbox size={16} className={filtro === "todos" ? "text-primary" : ""} />
+                <span>Todos</span>
+              </button>
+            </div>
+
+            {/* Lista de Notificações Mobile */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 overscroll-contain">
+              {carregando ? (
+                <div className="py-16 text-center text-sm text-muted-foreground flex flex-col items-center gap-3">
+                  <div className="h-7 w-7 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <span>Carregando notificações...</span>
+                </div>
+              ) : itensFiltradosAba.length === 0 ? (
+                <div className="py-16 px-4 text-center text-muted-foreground flex flex-col items-center gap-3">
+                  <div className="h-14 w-14 rounded-2xl bg-secondary/80 flex items-center justify-center text-muted-foreground/60 mb-1">
+                    <CalendarCheck size={28} />
+                  </div>
+                  <p className="text-base font-bold text-foreground">Tudo organizado!</p>
+                  <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
+                    {filtro === "nao_vistos"
+                      ? "Você não possui notificações pendentes."
+                      : "Nenhum compromisso agendado para o período selecionado."}
+                  </p>
+                </div>
+              ) : (
+                itensFiltradosAba.map((item) => {
+                  const ehNovo = !item.visto;
+                  const dataFimCalculada = item.dataFimIso || normalizarDataISO(item.dataVencimento);
+                  const ehAtrasada =
+                    item.tipo === "tarefa_atrasada" ||
+                    (dataFimCalculada ? dataFimCalculada < hojeISO() && item.tipo !== "google_calendar" : false);
+                  const ehGoogle = item.tipo === "google_calendar" || item.id.startsWith("google-");
+                  const infoDoc = obterInfoDocumento(item);
+                  const IconeDoc = infoDoc.Icone;
+
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => aoAbrirItem(item)}
+                      className={cn(
+                        "p-4 rounded-2xl transition-all border flex flex-col gap-3 cursor-pointer",
+                        ehNovo
+                          ? "bg-card border-primary/40 shadow-sm"
+                          : "bg-secondary/30 border-border/40 opacity-90"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={cn(
+                            "h-11 w-11 rounded-2xl flex items-center justify-center shrink-0 border border-border/30",
+                            infoDoc.bg,
+                            infoDoc.cor
+                          )}
+                          style={
+                            infoDoc.corHex
+                              ? {
+                                  color: infoDoc.corHex,
+                                  backgroundColor: `${infoDoc.corHex}15`,
+                                  borderColor: `${infoDoc.corHex}35`,
+                                }
+                              : undefined
+                          }
+                        >
+                          <IconeDoc size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            {ehAtrasada && <AlertTriangle size={16} className="text-rose-500 shrink-0" />}
+                            <p
+                              className={cn(
+                                "text-base leading-snug",
+                                ehNovo ? "font-bold text-foreground" : "font-medium text-foreground/90"
+                              )}
+                            >
+                              {item.titulo}
+                            </p>
+                          </div>
+                          {item.descricao && (
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                              {item.descricao}
+                            </p>
+                          )}
+                          {item.dataVencimento && (
+                            <div className="mt-2">
+                              <span
+                                className={cn(
+                                  "text-xs font-mono px-2.5 py-1 rounded-lg inline-flex items-center gap-1",
+                                  ehAtrasada
+                                    ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold"
+                                    : ehGoogle
+                                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold"
+                                    : "text-muted-foreground bg-secondary/80 font-medium"
+                                )}
+                              >
+                                <Clock size={12} />
+                                {item.dataVencimento.replace(/(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1")}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Ações em linha com botões táteis no mobile */}
+                      <div
+                        className="flex items-center justify-end gap-2 pt-2 border-t border-border/30"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {item.link && (
+                          <a
+                            href={item.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="h-10 px-3 rounded-xl text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-500/10 flex items-center gap-1.5"
+                          >
+                            <ExternalLink size={14} />
+                            <span>Google</span>
+                          </a>
+                        )}
+                        {ehNovo && (
+                          <button
+                            type="button"
+                            onClick={(e) => marcarComoLido(item.id, e)}
+                            className="h-10 px-4 rounded-xl text-xs font-bold bg-primary/15 text-primary active:bg-primary/25 flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Check size={15} />
+                            <span>Marcar Lido</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => limparItem(item.id, e)}
+                          className="h-10 w-10 rounded-xl text-muted-foreground/70 hover:text-destructive active:bg-destructive/10 flex items-center justify-center bg-secondary/60 cursor-pointer"
+                          aria-label="Excluir notificação"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Rodapé do Mobile */}
+            <div className="p-4 bg-secondary/30 border-t border-border/40 flex flex-col gap-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAberto(false);
+                    setModalLembreteAberto(true);
+                  }}
+                  className="flex-1 h-12 rounded-2xl bg-secondary text-foreground hover:bg-secondary/80 active:scale-[0.98] font-bold text-sm flex items-center justify-center gap-2 border border-border/50 cursor-pointer"
+                >
+                  <Plus size={18} />
+                  <span>Novo Lembrete</span>
+                </button>
+                <Link
+                  to="/inbox"
+                  onClick={() => setAberto(false)}
+                  className="flex-1 h-12 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] font-bold text-sm flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                >
+                  <span>Caixa de Entrada</span>
+                  <ChevronRight size={18} />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Agendar Lembrete Rápido */}
       <ModalLembrete

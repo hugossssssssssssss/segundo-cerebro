@@ -6,51 +6,53 @@ interface LogoKlausProps {
   comTexto?: boolean;
 }
 
+/**
+ * Logo oficial do Klaus (Segundo Cérebro).
+ * Utiliza gradiente vibrante via classes CSS (evitando bugs de colisão de <defs> SVG no mobile)
+ * e o monograma "K" em linhas geométricas brancas de alta nitidez.
+ */
 export function LogoKlaus({ tamanho = 28, className, comTexto = false }: LogoKlausProps) {
+  // Proporção de raio e padding conforme o tamanho
+  const raio = Math.max(6, Math.round(tamanho * 0.28));
+
   return (
     <div className={cn("inline-flex items-center gap-2.5 select-none", className)}>
-      <svg
-        width={tamanho}
-        height={tamanho}
-        viewBox="0 0 64 64"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="shrink-0 drop-shadow-sm transition-transform duration-200 hover:scale-105"
+      <div
+        style={{
+          width: tamanho,
+          height: tamanho,
+          borderRadius: `${raio}px`,
+        }}
+        className="shrink-0 bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 shadow-xs flex items-center justify-center transition-transform duration-200 hover:scale-105 active:scale-95"
         aria-label="Logo Klaus"
       >
-        <defs>
-          <linearGradient id="klaus-bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#6366F1" />
-            <stop offset="50%" stopColor="#8B5CF6" />
-            <stop offset="100%" stopColor="#D946EF" />
-          </linearGradient>
-          <linearGradient id="klaus-k-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#FFFFFF" />
-            <stop offset="100%" stopColor="#F1F5F9" />
-          </linearGradient>
-        </defs>
+        <svg
+          width={Math.round(tamanho * 0.65)}
+          height={Math.round(tamanho * 0.65)}
+          viewBox="0 0 40 40"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className="drop-shadow-xs"
+        >
+          {/* Haste Vertical do K */}
+          <rect x="6" y="6" width="6.5" height="28" rx="3.25" fill="#FFFFFF" />
 
-        {/* Fundo com gradiente vibrante */}
-        <rect width="64" height="64" rx="16" fill="url(#klaus-bg-grad)" />
+          {/* Braço Superior do K */}
+          <path
+            d="M 10 20 L 26.5 7.5 C 28.5 6 31 8 29.5 10 L 15.5 22 Z"
+            fill="#FFFFFF"
+          />
 
-        {/* Haste Vertical da letra K */}
-        <rect x="16" y="16" width="8" height="32" rx="4" fill="url(#klaus-k-grad)" />
+          {/* Braço Inferior do K */}
+          <path
+            d="M 12 18.5 L 28 32 C 29.8 33.5 28 35.5 26 34 L 10.5 21 Z"
+            fill="#FFFFFF"
+          />
 
-        {/* Braço Superior da letra K */}
-        <path
-          d="M 21 31 L 39.5 16.5 C 41.5 15 44 17 42.5 19 L 27 33.5 Z"
-          fill="url(#klaus-k-grad)"
-        />
-
-        {/* Braço Inferior da letra K */}
-        <path
-          d="M 23 30 L 41.5 45 C 43.5 46.5 41.5 49 39.5 47.5 L 21 32.5 Z"
-          fill="url(#klaus-k-grad)"
-        />
-
-        {/* Detalhe de acento visual (ponto minimalista no topo) */}
-        <circle cx="45" cy="18" r="3" fill="#FFFFFF" opacity="0.9" />
-      </svg>
+          {/* Ponto indicador de inteligência neural no topo direito */}
+          <circle cx="30" cy="8.5" r="2.5" fill="#FFFFFF" opacity="0.95" />
+        </svg>
+      </div>
 
       {comTexto && (
         <span className="font-bold tracking-tight text-foreground text-base">

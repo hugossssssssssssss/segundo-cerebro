@@ -28,6 +28,7 @@ import { montarIndice, alvosUnicos, mencoesA } from "@/lib/links";
 import { Carregando, Aviso } from "@/components/ui";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { AvisoSemConexaoGithub } from "@/components/AvisoSemConexaoGithub";
+import { ehErroTokenGithub } from "@/lib/github";
 import { NavegadorGrafo3D } from "@/components/NavegadorGrafo3D";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 
@@ -195,7 +196,7 @@ export default function GrafoNeural() {
         <AvisoSemConexaoGithub mensagem="Repositório não configurado — adicione seu token e repositório do GitHub em Ajustes para carregar o mapa de conexões." />
       )}
 
-      {erro && <Aviso tom="erro">{erro}</Aviso>}
+      {erro && !ehErroTokenGithub(erro) && <Aviso tom="erro">{erro}</Aviso>}
 
       {/* Visualizador 3D do Grafo Neural */}
       <NavegadorGrafo3D

@@ -47,6 +47,7 @@ import { CheckCircle2, Circle } from "lucide-react";
 import { PainelNotionBase, type ModoVisaoNotion } from "@/components/PainelNotionBase";
 import { useItemFlutuante } from "@/components/ItemFlutuanteContext";
 import { TIPO_MIME_ITEM_KLAUS, calcularSlotPorCoordenadas, EVENTO_SOLTAR_ITEM, gerarPropsArrasto } from "@/lib/arrastoItem";
+import { ehErroTokenGithub } from "@/lib/github";
 import {
   escreverMarkdown,
   tituloProvavel,
@@ -1080,7 +1081,7 @@ export default function PDI() {
         </div>
       )}
 
-      {erro && <Aviso tom="erro">{erro}</Aviso>}
+      {erro && !ehErroTokenGithub(erro) && <Aviso tom="erro">{erro}</Aviso>}
 
       {carregando ? (
         <Carregando texto="Carregando seu plano…" />
