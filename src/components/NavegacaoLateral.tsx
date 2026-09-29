@@ -311,7 +311,7 @@ export function NavegacaoLateral({
                               )}
                             >
                               <span className="truncate flex-1">{item.rotulo || "Item"}</span>
-                              {item.destaque && (
+                              {item.destaque && item.id !== "biblioteca" && item.para !== "/biblioteca" && (
                                 <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold shrink-0">
                                   <Sparkles size={10} />
                                   IA

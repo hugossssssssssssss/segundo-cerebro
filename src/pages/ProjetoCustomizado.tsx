@@ -22,6 +22,7 @@ import {
 import { ModalCriarProjetoExtensao } from "@/components/ModalCriarProjetoExtensao";
 import { carregarRepo, daPastaRecursiva } from "@/lib/repo";
 import { lerConfig, configCompleta } from "@/lib/settings";
+import { ler } from "@/lib/github";
 import { CartaoItem } from "@/components/CartaoItem";
 import { cn } from "@/lib/utils";
 import {
@@ -65,6 +66,18 @@ export default function ProjetoCustomizado() {
 
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
+
+  // Se o código HTML não estiver no cache local, busca do repositório remoto
+  useEffect(() => {
+    if (projeto && projeto.tipo === "codigo_customizado" && !projeto.codigoHtml && pronto && idProjeto) {
+      ler(cfg, `.klaus/projetos/${idProjeto}/index.html`, { silenciar404: true }).then((res) => {
+        if (res?.texto) {
+          projeto.codigoHtml = res.texto;
+          setProjetos((prev) => [...prev]);
+        }
+      });
+    }
+  }, [projeto, idProjeto, pronto, cfg]);
 
   const carregarArquivos = useCallback(async () => {
     if (!projeto?.caminhoPastaMarkdown || !pronto) return;
@@ -117,7 +130,7 @@ export default function ProjetoCustomizado() {
       <CabecalhoPagina
         titulo={projeto.nome}
         descricao={projeto.descricao || "Projeto personalizado integrado ao seu Klaus."}
-        icone={<Icone size={20} style={{ color: projeto.cor }} />}
+        icone={<Icone size={20} className="text-primary" />}
         corIcone="bg-primary/10 text-primary"
         badge={
           <SeloStatus

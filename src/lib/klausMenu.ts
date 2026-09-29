@@ -99,7 +99,7 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
     id: "projetos-extensoes",
     titulo: "Projetos & Extensões",
     itens: [
-      { id: "biblioteca", para: "/biblioteca", rotulo: "Biblioteca", iconeNome: "Boxes", destaque: true },
+      { id: "biblioteca", para: "/biblioteca", rotulo: "Biblioteca", iconeNome: "Boxes" },
     ],
   },
   {
@@ -167,7 +167,7 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
             rotulo: typeof it.rotulo === "string" && it.rotulo.trim() ? it.rotulo.trim() : "Sem Nome",
             iconeNome: typeof it.iconeNome === "string" && it.iconeNome.trim() ? it.iconeNome.trim() : "HelpCircle",
             cor: typeof it.cor === "string" ? it.cor : undefined,
-            destaque: Boolean(it.destaque),
+            destaque: it.id === "biblioteca" || it.para === "/biblioteca" ? false : Boolean(it.destaque),
             oculto: Boolean(it.oculto),
           })),
       };

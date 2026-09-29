@@ -3,47 +3,52 @@ import { useNavigate } from "react-router-dom";
 import {
   Boxes,
   Plus,
-  Power,
   Edit3,
-  Puzzle,
   RefreshCw,
-  Download,
   Upload,
+  DownloadCloud,
+  Check,
+  Trash2,
+  ExternalLink,
+  Search,
+  X,
+  Package,
 } from "lucide-react";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
-import { BarraFerramentas } from "@/components/BarraFerramentas";
-import { SeloStatus } from "@/components/SeloStatus";
 import { Botao, Vazio, Selo } from "@/components/ui";
 import {
   carregarProjetosExtensoes,
-  alternarStatusProjetoExtensao,
-  sincronizarProjetosComGithub,
   salvarProjetoCustomizado,
+  removerProjetoCustomizado,
+  sincronizarProjetosComGithub,
   type ProjetoExtensao,
-  type CategoriaExtensao,
   EVENTO_PROJETOS_ALTERADOS,
 } from "@/lib/projetosExtensoes";
+import {
+  obterCatalogoBiblioteca,
+  instalarExtensaoNoRepositorio,
+  desinstalarExtensaoDoRepositorio,
+  type ItemCatalogoExtensao,
+} from "@/lib/klausExtensionCatalog";
 import { ModalCriarProjetoExtensao } from "@/components/ModalCriarProjetoExtensao";
 import { obterIconePorNome } from "@/lib/icones";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { packKlausExtension, unpackKlausExtension } from "@/lib/klausPackage";
-import { buildKlausManifest } from "@/lib/klausEngine";
-
-type FiltroCategoria = "todas" | "ativas" | "meus_projetos" | CategoriaExtensao;
+import { unpackKlausExtension } from "@/lib/klausPackage";
 
 export default function BibliotecaExtensoes() {
   const navigate = useNavigate();
   const [projetos, setProjetos] = useState<ProjetoExtensao[]>(carregarProjetosExtensoes);
   const [busca, setBusca] = useState("");
-  const [filtroCategoria, setFiltroCategoria] = useState<FiltroCategoria>("todas");
   const [modalCriarAberta, setModalCriarAberta] = useState(false);
   const [projetoParaEditar, setProjetoParaEditar] = useState<ProjetoExtensao | null>(null);
   const [sincronizando, setSincronizando] = useState(false);
+  const [instalandoId, setInstalandoId] = useState<string | null>(null);
 
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
+  const inputArquivoRef = useRef<HTMLInputElement>(null);
 
   const recarregar = useCallback(() => {
     setProjetos(carregarProjetosExtensoes());
@@ -54,7 +59,7 @@ export default function BibliotecaExtensoes() {
     return () => window.removeEventListener(EVENTO_PROJETOS_ALTERADOS, recarregar);
   }, [recarregar]);
 
-  // Sincroniza com o GitHub ao carregar
+  // Sincroniza com o repositório privado ao carregar
   useEffect(() => {
     if (pronto) {
       sincronizarProjetosComGithub(cfg).then((res) => {
@@ -84,17 +89,39 @@ export default function BibliotecaExtensoes() {
     }
   };
 
-  const lidarAlternarStatus = (id: string, nome: string) => {
-    const res = alternarStatusProjetoExtensao(id, cfg);
-    if (res.sucesso) {
+  const lidarInstalarExtensao = async (item: ItemCatalogoExtensao) => {
+    setInstalandoId(item.id);
+    try {
+      const res = await instalarExtensaoNoRepositorio(item.id, cfg);
       setProjetos(carregarProjetosExtensoes());
-      toast(
-        res.ativo
-          ? `"${nome}" foi ativada e adicionada ao menu lateral!`
-          : `"${nome}" foi desativada e removida do menu lateral.`,
-        { tipo: res.ativo ? "sucesso" : "info" }
-      );
+      toast(res.mensagem, { tipo: res.sucesso ? "sucesso" : "aviso" });
+    } catch (err: any) {
+      toast(`Erro ao instalar extensão: ${err.message}`, { tipo: "erro" });
+    } finally {
+      setInstalandoId(null);
     }
+  };
+
+  const lidarDesinstalarExtensao = async (id: string, nome: string) => {
+    const confirmou = window.confirm(`Deseja desinstalar "${nome}" do seu repositório de dados?`);
+    if (!confirmou) return;
+
+    try {
+      const res = await desinstalarExtensaoDoRepositorio(id, cfg);
+      setProjetos(carregarProjetosExtensoes());
+      toast(res.mensagem, { tipo: "info" });
+    } catch (err: any) {
+      toast(`Erro ao desinstalar: ${err.message}`, { tipo: "erro" });
+    }
+  };
+
+  const lidarRemoverProjetoCustomizado = (id: string, nome: string) => {
+    const confirmou = window.confirm(`Deseja remover o projeto "${nome}"?`);
+    if (!confirmou) return;
+
+    removerProjetoCustomizado(id, cfg);
+    setProjetos(carregarProjetosExtensoes());
+    toast(`Projeto "${nome}" removido.`, { tipo: "info" });
   };
 
   const lidarImportarArquivo = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,8 +143,7 @@ export default function BibliotecaExtensoes() {
           nome: manifest.name,
           descricao: manifest.description || "",
           icone: manifest.icon || "FolderGit2",
-          cor: manifest.color || "#f59e0b",
-          categoria: (manifest.category as any) || "utilitarios",
+          categoria: "utilitarios",
           tipo: "codigo_customizado",
           ativo: true,
           origem: "usuario",
@@ -137,75 +163,45 @@ export default function BibliotecaExtensoes() {
     e.target.value = "";
   };
 
-  const lidarExportarPacote = (item: ProjetoExtensao) => {
-    try {
-      const manifest = buildKlausManifest(item);
-      const entry = manifest.entry || "index.html";
-      const files: Record<string, string> = {
-        [entry]: item.codigoHtml || `<!DOCTYPE html><html><body><h1>${item.nome}</h1></body></html>`,
-      };
+  // Separação limpa: projetos ativos/instalados pelo usuário vs catálogo disponível
+  const catalogo = useMemo(() => obterCatalogoBiblioteca(), []);
 
-      const pacote = packKlausExtension(manifest, files);
-      const blob = new Blob([JSON.stringify(pacote, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${item.id}.klaus-ext.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast(`Pacote de "${item.nome}" exportado!`, { tipo: "sucesso" });
-    } catch (err: any) {
-      toast(`Erro ao exportar pacote: ${err.message}`, { tipo: "erro" });
-    }
-  };
+  const instalados = useMemo(() => {
+    return projetos.filter((p) => p.ativo);
+  }, [projetos]);
 
-  const inputArquivoRef = useRef<HTMLInputElement>(null);
+  const termoBusca = busca.toLowerCase().trim();
 
-  // Contadores para métricas
-  const totalAtivas = useMemo(() => projetos.filter((p) => p.ativo).length, [projetos]);
-  const totalCustomizadas = useMemo(
-    () => projetos.filter((p) => p.origem === "usuario").length,
-    [projetos]
-  );
+  const instaladosFiltrados = useMemo(() => {
+    if (!termoBusca) return instalados;
+    return instalados.filter(
+      (p) =>
+        p.nome.toLowerCase().includes(termoBusca) ||
+        p.descricao.toLowerCase().includes(termoBusca)
+    );
+  }, [instalados, termoBusca]);
 
-  // Filtragem
-  const projetosFiltrados = useMemo(() => {
-    let lista = [...projetos];
-
-    if (busca.trim()) {
-      const q = busca.toLowerCase().trim();
-      lista = lista.filter(
-        (p) =>
-          p.nome.toLowerCase().includes(q) ||
-          p.descricao.toLowerCase().includes(q) ||
-          p.categoria.toLowerCase().includes(q)
-      );
-    }
-
-    if (filtroCategoria === "ativas") {
-      lista = lista.filter((p) => p.ativo);
-    } else if (filtroCategoria === "meus_projetos") {
-      lista = lista.filter((p) => p.origem === "usuario");
-    } else if (filtroCategoria !== "todas") {
-      lista = lista.filter((p) => p.categoria === filtroCategoria);
-    }
-
-    return lista;
-  }, [projetos, busca, filtroCategoria]);
+  const catalogoFiltrado = useMemo(() => {
+    if (!termoBusca) return catalogo;
+    return catalogo.filter(
+      (c) =>
+        c.nome.toLowerCase().includes(termoBusca) ||
+        c.descricao.toLowerCase().includes(termoBusca)
+    );
+  }, [catalogo, termoBusca]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 w-full pb-12">
-      {/* 1. Cabeçalho Principal Oficial */}
+    <div className="space-y-8 animate-in fade-in duration-200 w-full pb-16 max-w-6xl mx-auto">
+      {/* 1. Cabeçalho Principal Clean */}
       <CabecalhoPagina
-        titulo="Biblioteca de Projetos & Extensões"
-        descricao="Gerencie extensões modulares e crie projetos personalizados salvos no seu repositório privado."
-        icone={<Boxes size={22} />}
-        corIcone="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+        titulo="Biblioteca de Projetos"
+        descricao="Extensões modulares e mini-aplicativos salvos no seu repositório de dados."
+        icone={<Boxes size={20} />}
+        corIcone="bg-primary/10 text-primary"
         badge={
-          <SeloStatus
-            rotulo={`${totalAtivas} ativas`}
-            tom={totalAtivas > 0 ? "sucesso" : "neutro"}
-          />
+          <Selo tom="neutro" className="text-xs font-medium">
+            {instalados.length} no repositório
+          </Selo>
         }
         acoes={
           <div className="flex items-center gap-2">
@@ -220,8 +216,9 @@ export default function BibliotecaExtensoes() {
               variante="neutro"
               onClick={() => inputArquivoRef.current?.click()}
               title="Importar pacote (.klaus-ext.json)"
+              className="h-9 px-3 text-xs"
             >
-              <Upload size={15} />
+              <Upload size={14} />
               <span className="hidden sm:inline">Importar</span>
             </Botao>
             <Botao
@@ -229,185 +226,107 @@ export default function BibliotecaExtensoes() {
               onClick={lidarSincronizacaoManual}
               disabled={sincronizando}
               title="Sincronizar com o repositório GitHub"
+              className="h-9 px-3 text-xs"
             >
-              <RefreshCw size={15} className={cn(sincronizando && "animate-spin")} />
+              <RefreshCw size={14} className={cn(sincronizando && "animate-spin")} />
               <span className="hidden sm:inline">Sincronizar</span>
             </Botao>
-            <Botao onClick={() => { setProjetoParaEditar(null); setModalCriarAberta(true); }}>
-              <Plus size={16} />
+            <Botao
+              onClick={() => {
+                setProjetoParaEditar(null);
+                setModalCriarAberta(true);
+              }}
+              className="h-9 px-3.5 text-xs font-medium"
+            >
+              <Plus size={15} />
               <span>Novo Projeto</span>
             </Botao>
           </div>
         }
       />
 
-      {/* 2. Destaques / Métricas Rápidas */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 rounded-2xl border border-border bg-card/60 shadow-2xs space-y-1">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Total Disponível
-          </p>
-          <p className="text-xl font-bold text-foreground">{projetos.length}</p>
-        </div>
-
-        <div className="p-3.5 rounded-2xl border border-border bg-card/60 shadow-2xs space-y-1">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Extensões Ativas
-          </p>
-          <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{totalAtivas}</p>
-        </div>
-
-        <div className="p-3.5 rounded-2xl border border-border bg-card/60 shadow-2xs space-y-1">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Projetos Criados
-          </p>
-          <p className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{totalCustomizadas}</p>
-        </div>
-
-        <div className="p-3.5 rounded-2xl border border-border bg-card/60 shadow-2xs space-y-1">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Repositório
-          </p>
-          <p className="text-xs font-mono font-medium text-foreground truncate mt-1">
-            {cfg.repoName || "Local / Demo"}
-          </p>
+      {/* 2. Barra de Busca Refinada (Sem pílulas de categorias) */}
+      <div className="relative w-full">
+        <div className="relative flex items-center">
+          <Search size={16} className="absolute left-3.5 text-muted-foreground/60 pointer-events-none" />
+          <input
+            type="text"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar extensões e projetos na biblioteca..."
+            className="w-full h-11 pl-10 pr-9 rounded-xl bg-card border border-border/70 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-2xs"
+          />
+          {busca && (
+            <button
+              onClick={() => setBusca("")}
+              className="absolute right-3 text-muted-foreground/60 hover:text-foreground p-1 transition-colors cursor-pointer"
+              title="Limpar busca"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 3. Barra de Busca e Filtros de Categoria */}
-      <div className="space-y-3">
-        <BarraFerramentas
-          busca={busca}
-          aoMudarBusca={setBusca}
-          placeholderBusca="Buscar extensões por nome, recurso ou categoria..."
-          filtros={
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-              {[
-                { id: "todas", rotulo: "Todas" },
-                { id: "ativas", rotulo: "Ativas" },
-                { id: "meus_projetos", rotulo: "Meus Projetos" },
-                { id: "design", rotulo: "Design" },
-                { id: "produtividade", rotulo: "Produtividade" },
-                { id: "utilitarios", rotulo: "Utilitários" },
-                { id: "ia", rotulo: "IA" },
-              ].map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setFiltroCategoria(cat.id as FiltroCategoria)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all cursor-pointer border",
-                    filtroCategoria === cat.id
-                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                      : "bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                  )}
-                >
-                  {cat.rotulo}
-                </button>
-              ))}
+      {/* 3. Seção: Instalados no Repositório de Dados */}
+      {instaladosFiltrados.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between pb-1 border-b border-border/40">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground tracking-tight">
+                Instalados no seu Repositório
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Mini-aplicativos ativos no seu menu e sincronizados no seu cérebro-dados.
+              </p>
             </div>
-          }
-        />
-      </div>
+            <span className="text-xs text-muted-foreground font-mono">
+              {instaladosFiltrados.length} {instaladosFiltrados.length === 1 ? "item" : "itens"}
+            </span>
+          </div>
 
-      {/* 4. Grade de Extensões & Projetos */}
-      {projetosFiltrados.length === 0 ? (
-        <Vazio
-          icone={<Puzzle size={24} />}
-          titulo="Nenhuma extensão encontrada"
-          descricao="Tente pesquisar com outro termo ou criar um novo projeto personalizado."
-          acao={
-            <Botao onClick={() => { setBusca(""); setFiltroCategoria("todas"); }}>
-              Limpar Filtros
-            </Botao>
-          }
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projetosFiltrados.map((item) => {
-            const Icone = obterIconePorNome(item.icone || "HelpCircle");
-            const corTema = item.cor || "#6366f1";
-            const rotaDestino = item.rota || `/projeto/${item.id}`;
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {instaladosFiltrados.map((item) => {
+              const Icone = obterIconePorNome(item.icone || "FolderGit2");
+              const rotaDestino = item.rota || `/projeto/${item.id}`;
 
-            return (
-              <div
-                key={item.id}
-                className={cn(
-                  "flex flex-col justify-between p-4 rounded-2xl border transition-all duration-200 bg-card hover:shadow-md relative overflow-hidden group",
-                  item.ativo
-                    ? "border-primary/40 ring-1 ring-primary/20 shadow-2xs"
-                    : "border-border/80 hover:border-border"
-                )}
-              >
-                {/* Faixa decorativa sutil de cor no topo */}
+              return (
                 <div
-                  className="absolute top-0 left-0 right-0 h-1 opacity-80"
-                  style={{ backgroundColor: corTema }}
-                />
-
-                <div className="space-y-3">
-                  {/* Topo do Card: Ícone + Título + Status */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-2xs"
-                        style={{ backgroundColor: `${corTema}15`, color: corTema }}
-                      >
-                        <Icone size={22} />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
-                          {item.nome}
-                        </h3>
-                        <p className="text-[11px] text-muted-foreground capitalize">
-                          {item.origem === "usuario" ? "Projeto Pessoal" : `Extensão • ${item.categoria}`}
-                        </p>
+                  key={item.id}
+                  className="flex flex-col justify-between p-4 rounded-xl border border-border/80 bg-card hover:border-border transition-all duration-150 shadow-2xs group"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-muted/60 text-foreground border border-border/50">
+                          <Icone size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                            {item.nome}
+                          </h3>
+                          <span className="text-[11px] text-muted-foreground">
+                            {item.origem === "usuario" ? "Projeto Pessoal" : "Extensão Ativa"}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Badge de Ativação */}
-                    <button
-                      type="button"
-                      onClick={() => lidarAlternarStatus(item.id, item.nome)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer border shrink-0",
-                        item.ativo
-                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 shadow-xs"
-                          : "bg-muted/40 text-muted-foreground border-border hover:bg-muted"
-                      )}
-                      title={item.ativo ? "Clique para desativar do menu" : "Clique para ativar no menu"}
-                    >
-                      <Power size={11} className={item.ativo ? "text-emerald-500" : ""} />
-                      <span>{item.ativo ? "Ativa" : "Desativada"}</span>
-                    </button>
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed min-h-[34px]">
+                      {item.descricao || "Projeto integrado pronto para uso no Klaus."}
+                    </p>
                   </div>
 
-                  {/* Descrição */}
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed min-h-[36px]">
-                    {item.descricao || "Extensão integrada do Klaus pronta para uso."}
-                  </p>
-                </div>
+                  <div className="pt-3.5 mt-2 border-t border-border/40 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        <Check size={12} />
+                        No repositório
+                      </span>
+                    </div>
 
-                {/* Rodapé do Card com Ações */}
-                <div className="pt-4 mt-2 border-t border-border/40 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    {item.origem === "usuario" ? (
-                      <Selo tom="primario" className="text-[10px]">Repositório Privado</Selo>
-                    ) : (
-                      <Selo tom="neutro" className="text-[10px]">Catálogo Klaus</Selo>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    {item.origem === "usuario" && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => lidarExportarPacote(item)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
-                          title="Exportar pacote (.klaus-ext.json)"
-                        >
-                          <Download size={15} />
-                        </button>
+                    <div className="flex items-center gap-1.5">
+                      {item.origem === "usuario" && item.tipo !== "codigo_customizado" && (
                         <button
                           type="button"
                           onClick={() => {
@@ -415,34 +334,154 @@ export default function BibliotecaExtensoes() {
                             setModalCriarAberta(true);
                           }}
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
-                          title="Editar configurações do projeto"
+                          title="Editar projeto"
                         >
-                          <Edit3 size={15} />
+                          <Edit3 size={14} />
                         </button>
-                      </>
-                    )}
+                      )}
 
-                    <Botao
-                      variante={item.ativo ? "primario" : "neutro"}
-                      onClick={() => {
-                        if (!item.ativo) {
-                          lidarAlternarStatus(item.id, item.nome);
-                        }
-                        navigate(rotaDestino);
-                      }}
-                      className="text-xs h-8 px-3"
-                    >
-                      {item.ativo ? "Abrir" : "Ativar e Abrir"}
-                    </Botao>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (item.origem === "usuario" && !catalogo.some((c) => c.id === item.id)) {
+                            lidarRemoverProjetoCustomizado(item.id, item.nome);
+                          } else {
+                            lidarDesinstalarExtensao(item.id, item.nome);
+                          }
+                        }}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        title="Desinstalar do repositório"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+
+                      <Botao
+                        onClick={() => navigate(rotaDestino)}
+                        className="text-xs h-7 px-2.5 font-medium"
+                      >
+                        <span>Abrir</span>
+                        <ExternalLink size={12} className="ml-1" />
+                      </Botao>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
-      {/* Modal para Criar/Editar Projeto */}
+      {/* 4. Seção: Catálogo de Extensões Disponíveis */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between pb-1 border-b border-border/40">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground tracking-tight">
+              Catálogo de Extensões
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Escolha uma ferramenta para instalar no repositório de dados do seu projeto pessoal.
+            </p>
+          </div>
+          <span className="text-xs text-muted-foreground font-mono">
+            {catalogoFiltrado.length} {catalogoFiltrado.length === 1 ? "disponível" : "disponíveis"}
+          </span>
+        </div>
+
+        {catalogoFiltrado.length === 0 ? (
+          <Vazio
+            icone={<Package size={22} />}
+            titulo="Nenhuma extensão encontrada"
+            descricao="Nenhum item corresponde à sua pesquisa."
+            acao={
+              <Botao onClick={() => setBusca("")} variante="neutro" className="text-xs">
+                Limpar Busca
+              </Botao>
+            }
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {catalogoFiltrado.map((item) => {
+              const Icone = obterIconePorNome(item.icone || "Boxes");
+              const estaInstalado = instalados.some((p) => p.id === item.id);
+              const estaCarregando = instalandoId === item.id;
+
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col justify-between p-4 rounded-xl border border-border/70 bg-card hover:border-border transition-all duration-150 shadow-2xs"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-muted/50 text-foreground border border-border/50">
+                        <Icone size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-medium text-foreground truncate">
+                          {item.nome}
+                        </h3>
+                        <span className="text-[11px] text-muted-foreground">
+                          v{item.versao} • Standalone
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed min-h-[34px]">
+                      {item.descricao}
+                    </p>
+                  </div>
+
+                  <div className="pt-3.5 mt-2 border-t border-border/40 flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-muted-foreground">
+                      {estaInstalado ? "Instalada" : "Disponível"}
+                    </span>
+
+                    {estaInstalado ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => lidarDesinstalarExtensao(item.id, item.nome)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer text-xs"
+                          title="Desinstalar do repositório"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                        <Botao
+                          variante="neutro"
+                          onClick={() => navigate(`/projeto/${item.id}`)}
+                          className="text-xs h-7 px-2.5 font-medium"
+                        >
+                          <span>Abrir</span>
+                          <ExternalLink size={12} className="ml-1" />
+                        </Botao>
+                      </div>
+                    ) : (
+                      <Botao
+                        onClick={() => lidarInstalarExtensao(item)}
+                        disabled={estaCarregando}
+                        className="text-xs h-7 px-3 font-medium"
+                      >
+                        {estaCarregando ? (
+                          <>
+                            <RefreshCw size={12} className="animate-spin mr-1" />
+                            <span>Instalando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <DownloadCloud size={13} className="mr-1" />
+                            <span>Instalar no Repositório</span>
+                          </>
+                        )}
+                      </Botao>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* 5. Modal para Criar/Editar Projeto */}
       <ModalCriarProjetoExtensao
         aberto={modalCriarAberta}
         aoFechar={() => {

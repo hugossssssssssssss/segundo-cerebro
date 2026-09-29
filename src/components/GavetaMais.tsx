@@ -298,7 +298,7 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
                                 {item.rotulo || "Item"}
                               </p>
                             </div>
-                            {item.destaque ? (
+                            {item.destaque && item.id !== "biblioteca" && item.para !== "/biblioteca" ? (
                               <Sparkles size={13} className="text-amber-500 shrink-0" />
                             ) : (
                               <ChevronRight size={14} className="text-muted-foreground/40 shrink-0" />

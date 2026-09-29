@@ -18,6 +18,14 @@ export {
   removeKlausProject,
   syncKlausProjects,
   getActiveKlausExtensions,
+  obterCatalogoBiblioteca,
+  instalarExtensaoNoRepositorio,
+  desinstalarExtensaoDoRepositorio,
+  verificarExtensaoInstalada,
+  obterCatalogoBiblioteca as getKlausLibraryCatalog,
+  instalarExtensaoNoRepositorio as installKlausExtensionToRepo,
+  desinstalarExtensaoDoRepositorio as uninstallKlausExtensionFromRepo,
+  verificarExtensaoInstalada as isKlausExtensionInstalled,
 } from "./klausProjects";
 
 export function getKlausExtensionCatalog(): KlausExtension[] {

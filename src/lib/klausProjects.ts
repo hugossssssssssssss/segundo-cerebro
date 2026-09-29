@@ -62,7 +62,6 @@ export const CATALOGO_EXTENSOES_NATIVAS: ProjetoExtensao[] = [
     nome: "IT-Tools Criativas",
     descricao: "Conversores de medidas px/rem, aspect ratio, verificador WCAG de contraste e geradores úteis.",
     icone: "Wrench",
-    cor: "#f59e0b",
     categoria: "design",
     tipo: "nativa",
     ativo: false,
@@ -74,7 +73,6 @@ export const CATALOGO_EXTENSOES_NATIVAS: ProjetoExtensao[] = [
     nome: "Conversor Multimídia",
     descricao: "Conversão ágil de formatos de imagens, vetores, áudios e documentos no navegador.",
     icone: "RefreshCw",
-    cor: "#06b6d4",
     categoria: "utilitarios",
     tipo: "nativa",
     ativo: false,
@@ -86,7 +84,6 @@ export const CATALOGO_EXTENSOES_NATIVAS: ProjetoExtensao[] = [
     nome: "Ferramentas PDF & Scanner",
     descricao: "Unir, dividir, escanear documentos e extrair texto com OCR direto no navegador.",
     icone: "FileCheck",
-    cor: "#ef4444",
     categoria: "produtividade",
     tipo: "nativa",
     ativo: false,
@@ -98,7 +95,6 @@ export const CATALOGO_EXTENSOES_NATIVAS: ProjetoExtensao[] = [
     nome: "Baixador de Mídia",
     descricao: "Download facilitado de vídeos, áudios e conteúdos sociais a partir de links externos.",
     icone: "Download",
-    cor: "#10b981",
     categoria: "utilitarios",
     tipo: "nativa",
     ativo: false,
@@ -110,7 +106,6 @@ export const CATALOGO_EXTENSOES_NATIVAS: ProjetoExtensao[] = [
     nome: "Sons de Foco & Binaurais",
     descricao: "Gerador de ruído marrom, chuva, floresta e frequências sonoras para concentração e trabalho profundo.",
     icone: "Headphones",
-    cor: "#8b5cf6",
     categoria: "produtividade",
     tipo: "nativa",
     ativo: false,
@@ -122,7 +117,6 @@ export const CATALOGO_EXTENSOES_NATIVAS: ProjetoExtensao[] = [
     nome: "Testador de Hardware",
     descricao: "Diagnóstico e teste em tempo real de webcam, microfone, taxa de quadros e áudio.",
     icone: "Video",
-    cor: "#3b82f6",
     categoria: "utilitarios",
     tipo: "nativa",
     ativo: false,
@@ -134,7 +128,6 @@ export const CATALOGO_EXTENSOES_NATIVAS: ProjetoExtensao[] = [
     nome: "Grafo Neural de Links",
     descricao: "Visualização tridimensional e constelação interativa dos vínculos e menções entre suas notas.",
     icone: "Network",
-    cor: "#ec4899",
     categoria: "produtividade",
     tipo: "nativa",
     ativo: false,
@@ -146,7 +139,6 @@ export const CATALOGO_EXTENSOES_NATIVAS: ProjetoExtensao[] = [
     nome: "Lousas Visuais (Excalidraw)",
     descricao: "Canvas infinito para rascunhos livres, mapas mentais, diagramas e wireframes de design.",
     icone: "Layout",
-    cor: "#f97316",
     categoria: "design",
     tipo: "nativa",
     ativo: false,
@@ -158,7 +150,6 @@ export const CATALOGO_EXTENSOES_NATIVAS: ProjetoExtensao[] = [
     nome: "Mural de Referências Visuais",
     descricao: "Galeria de inspirações visuais com extração automática de paletas de cor HEX e tags.",
     icone: "Image",
-    cor: "#eab308",
     categoria: "design",
     tipo: "nativa",
     ativo: false,
@@ -170,7 +161,6 @@ export const CATALOGO_EXTENSOES_NATIVAS: ProjetoExtensao[] = [
     nome: "Transcrição de Áudio com IA",
     descricao: "Grave pensamentos ou reuniões e converta a fala em notas estruturadas com IA.",
     icone: "Mic",
-    cor: "#a855f7",
     categoria: "ia",
     tipo: "nativa",
     ativo: false,
@@ -182,7 +172,6 @@ export const CATALOGO_EXTENSOES_NATIVAS: ProjetoExtensao[] = [
     nome: "Assistente de Conversa IA",
     descricao: "Brainstorming inteligente, geração de ideias e consultas diretas ao seu segundo cérebro.",
     icone: "MessageCircle",
-    cor: "#0ea5e9",
     categoria: "ia",
     tipo: "nativa",
     ativo: false,
@@ -367,8 +356,21 @@ export function salvarProjetoCustomizado(
  */
 export function removerProjetoCustomizado(id: string, cfg?: Settings): boolean {
   const lista = carregarProjetosExtensoes();
-  const filtrada = lista.filter((p) => !(p.id === id && p.origem === "usuario"));
-  if (filtrada.length === lista.length) return false;
+  let alterou = false;
+  const filtrada: ProjetoExtensao[] = [];
+
+  for (const p of lista) {
+    if (p.id === id) {
+      alterou = true;
+      if (p.origem !== "usuario") {
+        filtrada.push({ ...p, ativo: false });
+      }
+    } else {
+      filtrada.push(p);
+    }
+  }
+
+  if (!alterou) return false;
 
   try {
     sincronizarExtensaoNoMenu(
@@ -475,3 +477,5 @@ export const toggleKlausExtension = alternarStatusProjetoExtensao;
 export const removeKlausProject = removerProjetoCustomizado;
 export const syncKlausProjects = sincronizarProjetosComGithub;
 export const getActiveKlausExtensions = obterExtensoesAtivas;
+
+export * from "./klausExtensionCatalog";
