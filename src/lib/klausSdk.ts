@@ -76,7 +76,15 @@ export {
   createKlausBridgeListener,
 } from "./klausEngine";
 
-// ── 8. Tipos Oficiais ───────────────────────────────────────────────────────
+// ── 8. Klaus Package & Manifest Validator ───────────────────────────────────
+export {
+  KLAUS_PACKAGE_FORMAT,
+  validateKlausManifest,
+  packKlausExtension,
+  unpackKlausExtension,
+} from "./klausPackage";
+
+// ── 9. Tipos Oficiais ───────────────────────────────────────────────────────
 export type {
   KlausProject,
   KlausExtension,
@@ -101,3 +109,7 @@ export type {
   KlausBridgeMessage,
   KlausBridgeResponse,
 } from "./klausEngine";
+
+export type {
+  KlausExtensionBundle,
+} from "./klausPackage";

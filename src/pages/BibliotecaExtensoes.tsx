@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Boxes,
@@ -7,6 +7,8 @@ import {
   Edit3,
   Puzzle,
   RefreshCw,
+  Download,
+  Upload,
 } from "lucide-react";
 import { CabecalhoPagina } from "@/components/CabecalhoPagina";
 import { BarraFerramentas } from "@/components/BarraFerramentas";
@@ -16,6 +18,7 @@ import {
   carregarProjetosExtensoes,
   alternarStatusProjetoExtensao,
   sincronizarProjetosComGithub,
+  salvarProjetoCustomizado,
   type ProjetoExtensao,
   type CategoriaExtensao,
   EVENTO_PROJETOS_ALTERADOS,
@@ -25,6 +28,8 @@ import { obterIconePorNome } from "@/lib/icones";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { packKlausExtension, unpackKlausExtension } from "@/lib/klausPackage";
+import { buildKlausManifest } from "@/lib/klausEngine";
 
 type FiltroCategoria = "todas" | "ativas" | "meus_projetos" | CategoriaExtensao;
 
@@ -92,6 +97,70 @@ export default function BibliotecaExtensoes() {
     }
   };
 
+  const lidarImportarArquivo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const leitor = new FileReader();
+    leitor.onload = (evento) => {
+      try {
+        const conteudo = evento.target?.result as string;
+        const extraido = unpackKlausExtension(conteudo);
+        const { manifest, files } = extraido;
+
+        const entry = manifest.entry || "index.html";
+        const codigoHtml = files[entry] || "";
+
+        const novo: ProjetoExtensao = {
+          id: manifest.id,
+          nome: manifest.name,
+          descricao: manifest.description || "",
+          icone: manifest.icon || "FolderGit2",
+          cor: manifest.color || "#f59e0b",
+          categoria: (manifest.category as any) || "utilitarios",
+          tipo: "codigo_customizado",
+          ativo: true,
+          origem: "usuario",
+          codigoHtml,
+          criadoEm: new Date().toISOString(),
+          atualizadoEm: new Date().toISOString(),
+        };
+
+        salvarProjetoCustomizado(novo, cfg);
+        setProjetos(carregarProjetosExtensoes());
+        toast(`Extensão "${manifest.name}" importada com sucesso!`, { tipo: "sucesso" });
+      } catch (err: any) {
+        toast(`Erro ao importar pacote: ${err.message}`, { tipo: "erro" });
+      }
+    };
+    leitor.readAsText(file);
+    e.target.value = "";
+  };
+
+  const lidarExportarPacote = (item: ProjetoExtensao) => {
+    try {
+      const manifest = buildKlausManifest(item);
+      const entry = manifest.entry || "index.html";
+      const files: Record<string, string> = {
+        [entry]: item.codigoHtml || `<!DOCTYPE html><html><body><h1>${item.nome}</h1></body></html>`,
+      };
+
+      const pacote = packKlausExtension(manifest, files);
+      const blob = new Blob([JSON.stringify(pacote, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${item.id}.klaus-ext.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast(`Pacote de "${item.nome}" exportado!`, { tipo: "sucesso" });
+    } catch (err: any) {
+      toast(`Erro ao exportar pacote: ${err.message}`, { tipo: "erro" });
+    }
+  };
+
+  const inputArquivoRef = useRef<HTMLInputElement>(null);
+
   // Contadores para métricas
   const totalAtivas = useMemo(() => projetos.filter((p) => p.ativo).length, [projetos]);
   const totalCustomizadas = useMemo(
@@ -140,6 +209,21 @@ export default function BibliotecaExtensoes() {
         }
         acoes={
           <div className="flex items-center gap-2">
+            <input
+              ref={inputArquivoRef}
+              type="file"
+              accept=".json,.klaus-ext.json"
+              className="hidden"
+              onChange={lidarImportarArquivo}
+            />
+            <Botao
+              variante="neutro"
+              onClick={() => inputArquivoRef.current?.click()}
+              title="Importar pacote (.klaus-ext.json)"
+            >
+              <Upload size={15} />
+              <span className="hidden sm:inline">Importar</span>
+            </Botao>
             <Botao
               variante="neutro"
               onClick={lidarSincronizacaoManual}
@@ -315,17 +399,27 @@ export default function BibliotecaExtensoes() {
 
                   <div className="flex items-center gap-1.5">
                     {item.origem === "usuario" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProjetoParaEditar(item);
-                          setModalCriarAberta(true);
-                        }}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
-                        title="Editar configurações do projeto"
-                      >
-                        <Edit3 size={15} />
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => lidarExportarPacote(item)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+                          title="Exportar pacote (.klaus-ext.json)"
+                        >
+                          <Download size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProjetoParaEditar(item);
+                            setModalCriarAberta(true);
+                          }}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+                          title="Editar configurações do projeto"
+                        >
+                          <Edit3 size={15} />
+                        </button>
+                      </>
                     )}
 
                     <Botao

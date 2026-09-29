@@ -1,7 +1,7 @@
 {
   "name": "segundo-cere-bro",
   "private": true,
-  "version": "2.60.0",
+  "version": "2.61.0",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
@@ -16,7 +16,11 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "klaus": "node scripts/klaus-cli.js",
+    "klaus:new": "node scripts/klaus-cli.js new",
+    "klaus:pack": "node scripts/klaus-cli.js pack",
+    "klaus:validate": "node scripts/klaus-cli.js validate"
   },
   "dependencies": {
     "@alexbruf/react-diff-viewer": "^3.1.5",
