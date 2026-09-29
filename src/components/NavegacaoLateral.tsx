@@ -1,11 +1,10 @@
 import { NavLink } from "react-router-dom";
 import {
   ChevronLeft,
-  Sun,
-  Moon,
   Sparkles,
   Settings,
   Palette,
+  Boxes,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -20,11 +19,8 @@ import { obterIconePorNome } from "@/lib/icones";
 import { ModalPersonalizarMenu } from "./ModalPersonalizarMenu";
 import { useWorkspace } from "@/components/workspace/WorkspaceContext";
 import {
-  alternarTema,
-  lerTemaSalvo,
   lerTamanhoFonteMenuSalvo,
   EVENTO_PERSONALIZACAO_ALTERADA,
-  type Tema,
   type TamanhoFonteMenu,
 } from "@/lib/tema";
 import { VERSAO_APP } from "@/lib/versao";
@@ -43,7 +39,6 @@ export function NavegacaoLateral({
   aoNavegar,
   className,
 }: NavegacaoLateralProps) {
-  const [tema, setTema] = useState<Tema>(lerTemaSalvo);
   const [hoverExpandida, setHoverExpandida] = useState(false);
   const [tamanhoFonteMenu, setTamanhoFonteMenu] = useState<TamanhoFonteMenu>(lerTamanhoFonteMenuSalvo);
   const timeoutHoverRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -89,23 +84,14 @@ export function NavegacaoLateral({
   };
 
   useEffect(() => {
-    const aoMudarTema = () => setTema(lerTemaSalvo());
     const aoMudarPersonalizacao = () => setTamanhoFonteMenu(lerTamanhoFonteMenuSalvo());
 
-    window.addEventListener("tema-alterado", aoMudarTema);
     window.addEventListener(EVENTO_PERSONALIZACAO_ALTERADA, aoMudarPersonalizacao);
 
     return () => {
-      window.removeEventListener("tema-alterado", aoMudarTema);
       window.removeEventListener(EVENTO_PERSONALIZACAO_ALTERADA, aoMudarPersonalizacao);
     };
   }, []);
-
-  const escuro = tema === "escuro";
-  const toggleTema = () => {
-    const novo = alternarTema();
-    setTema(novo);
-  };
 
   const [grupos, setGrupos] = useState<GrupoMenuPersonalizado[]>(carregarMenuPersonalizado);
   const [modalPersonalizarAberta, setModalPersonalizarAberta] = useState(false);
@@ -331,6 +317,49 @@ export function NavegacaoLateral({
 
         {/* Rodapé da Sidebar: mesma coluna de 64px para alinhamento 100% simétrico */}
         <div className="border-t border-border/30 py-2 space-y-0.5 shrink-0 w-60 overflow-hidden">
+          {/* Biblioteca (Item Fixo do Sistema) */}
+          <NavLink
+            to="/biblioteca"
+            onClick={lidarCliqueItem}
+            title={!visualmenteExpandida ? "Biblioteca" : undefined}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center w-60 h-10 font-medium transition-colors duration-150 group cursor-pointer",
+                classeFonteItem,
+                isActive
+                  ? "text-accent-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              )
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <div className="w-16 h-10 flex items-center justify-center shrink-0">
+                  <div
+                    className={cn(
+                      "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-150",
+                      isActive
+                        ? "bg-accent text-accent-foreground"
+                        : "group-hover:bg-accent/40"
+                    )}
+                  >
+                    <Boxes size={18} className="shrink-0 opacity-70 group-hover:scale-105 transition-transform duration-200" />
+                  </div>
+                </div>
+                <div
+                  className={cn(
+                    "flex-1 min-w-0 pr-4 overflow-hidden whitespace-nowrap transition-sidebar-content text-left",
+                    !visualmenteExpandida
+                      ? "opacity-0 -translate-x-2 pointer-events-none"
+                      : "opacity-100 translate-x-0"
+                  )}
+                >
+                  <span className="truncate">Biblioteca</span>
+                </div>
+              </>
+            )}
+          </NavLink>
+
           {/* Botão para Personalizar Menu */}
           <button
             onClick={() => setModalPersonalizarAberta(true)}
@@ -399,36 +428,6 @@ export function NavegacaoLateral({
               </>
             )}
           </NavLink>
-
-          {/* Modo Claro / Escuro */}
-          <button
-            onClick={toggleTema}
-            title={!visualmenteExpandida ? (escuro ? "Modo Claro (⇧⌘L)" : "Modo Escuro (⇧⌘L)") : undefined}
-            className={cn(
-              "flex items-center w-60 h-10 font-medium text-muted-foreground hover:text-foreground transition-colors duration-150 group cursor-pointer",
-              classeFonteItem
-            )}
-          >
-            <div className="w-16 h-10 flex items-center justify-center shrink-0">
-              <div className="w-9 h-9 flex items-center justify-center rounded-xl group-hover:bg-accent/40 transition-colors">
-                {escuro ? (
-                  <Sun size={18} className="shrink-0 opacity-70 group-hover:rotate-45 transition-transform duration-200" />
-                ) : (
-                  <Moon size={18} className="shrink-0 opacity-70 group-hover:-rotate-12 transition-transform duration-200" />
-                )}
-              </div>
-            </div>
-            <div
-              className={cn(
-                "flex-1 min-w-0 pr-4 overflow-hidden whitespace-nowrap transition-sidebar-content text-left",
-                !visualmenteExpandida
-                  ? "opacity-0 -translate-x-2 pointer-events-none"
-                  : "opacity-100 translate-x-0"
-              )}
-            >
-              <span className="truncate">{escuro ? "Modo Claro" : "Modo Escuro"}</span>
-            </div>
-          </button>
         </div>
       </aside>
 

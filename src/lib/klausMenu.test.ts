@@ -56,9 +56,20 @@ describe("menuPersonalizado", () => {
     salvarMenuPersonalizado(gruposCustom);
     const carregados = carregarMenuPersonalizado();
 
-    expect(carregados.length).toBe(4);
-    expect(carregados[3].titulo).toBe("Projetos Pessoais");
-    expect(carregados[3].itens[0].rotulo).toBe("Meus Esboços");
+    expect(carregados.length).toBe(GRUPOS_MENU_PADRAO.length + 1);
+    const ultimoGrupo = carregados[carregados.length - 1];
+    expect(ultimoGrupo.titulo).toBe("Projetos Pessoais");
+    expect(ultimoGrupo.itens[0].rotulo).toBe("Meus Esboços");
+  });
+
+  it("deve conter o Grafo Neural no grupo dia-a-dia do menu padrão", () => {
+    const padrao = GRUPOS_MENU_PADRAO;
+    const diaADia = padrao.find((g) => g.id === "dia-a-dia");
+    expect(diaADia).toBeDefined();
+    const itemGrafo = diaADia?.itens.find((it) => it.id === "grafo");
+    expect(itemGrafo).toBeDefined();
+    expect(itemGrafo?.para).toBe("/grafo");
+    expect(itemGrafo?.rotulo).toBe("Grafo Neural");
   });
 
   it("deve restaurar os padrões ao chamar restaurarMenuPadrao", () => {

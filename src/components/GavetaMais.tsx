@@ -3,11 +3,10 @@ import {
   X,
   Sparkles,
   Settings,
-  Moon,
-  Sun,
   Palette,
   Smartphone,
   Search,
+  Boxes,
   ChevronRight,
 } from "lucide-react";
 import {
@@ -22,7 +21,6 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { LogoKlaus } from "./LogoKlaus";
 import { ModalPersonalizarMenu } from "./ModalPersonalizarMenu";
 import { ModalInstalarPwa } from "./ModalInstalarPwa";
-import { alternarTema, lerTemaSalvo, type Tema } from "@/lib/tema";
 import { VERSAO_APP } from "@/lib/versao";
 
 interface GavetaMaisProps {
@@ -31,7 +29,6 @@ interface GavetaMaisProps {
 }
 
 export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
-  const [tema, setTema] = useState<Tema>(lerTemaSalvo);
   const [modalInstalarAberta, setModalInstalarAberta] = useState(false);
   const [arrastoY, setArrastoY] = useState(0);
   const [toqueInicialY, setToqueInicialY] = useState<number | null>(null);
@@ -55,18 +52,6 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
     }
     setArrastoY(0);
     setToqueInicialY(null);
-  };
-
-  useEffect(() => {
-    const aoMudar = () => setTema(lerTemaSalvo());
-    window.addEventListener("tema-alterado", aoMudar);
-    return () => window.removeEventListener("tema-alterado", aoMudar);
-  }, []);
-
-  const escuro = tema === "escuro";
-  const toggleTema = () => {
-    const novo = alternarTema();
-    setTema(novo);
   };
 
   const [grupos, setGrupos] = useState<GrupoMenuPersonalizado[]>(carregarMenuPersonalizado);
@@ -199,6 +184,22 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
           {/* Atalhos Rápidos Principais */}
           <div className="grid grid-cols-4 gap-2">
             <NavLink
+              to="/biblioteca"
+              onClick={aoFechar}
+              className={({ isActive }) =>
+                cn(
+                  "flex flex-col items-center justify-center gap-1 p-2 rounded-2xl border transition-all text-center touch-manipulation min-h-[58px]",
+                  isActive
+                    ? "bg-primary/10 border-primary/40 text-primary font-bold shadow-xs"
+                    : "bg-secondary/40 border-border/60 text-foreground hover:bg-accent"
+                )
+              }
+            >
+              <Boxes size={18} className="text-primary shrink-0" />
+              <span className="text-[11px] font-medium truncate w-full">Biblioteca</span>
+            </NavLink>
+
+            <NavLink
               to="/config"
               onClick={aoFechar}
               className={({ isActive }) =>
@@ -210,7 +211,7 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
                 )
               }
             >
-              <Settings size={18} className="text-primary shrink-0" />
+              <Settings size={18} className="text-muted-foreground group-hover:text-foreground shrink-0" />
               <span className="text-[11px] font-medium truncate w-full">Ajustes</span>
             </NavLink>
 
@@ -234,21 +235,6 @@ export function GavetaMais({ aberta, aoFechar }: GavetaMaisProps) {
             >
               <Smartphone size={18} className="text-emerald-500 shrink-0" />
               <span className="text-[11px] font-medium truncate w-full">Instalar</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={toggleTema}
-              className="flex flex-col items-center justify-center gap-1 p-2 rounded-2xl border border-border/60 bg-secondary/40 text-foreground hover:bg-accent transition-all text-center touch-manipulation min-h-[58px] cursor-pointer"
-            >
-              {escuro ? (
-                <Sun size={18} className="text-amber-500 shrink-0" />
-              ) : (
-                <Moon size={18} className="text-blue-500 shrink-0" />
-              )}
-              <span className="text-[11px] font-medium truncate w-full">
-                {escuro ? "Claro" : "Escuro"}
-              </span>
             </button>
           </div>
 

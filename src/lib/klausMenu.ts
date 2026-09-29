@@ -63,12 +63,15 @@ export const ROTAS_BANIDAS_MENU = new Set([
 
 /**
  * Verifica se um item de menu é válido e não pertence a ferramentas excluídas.
+ * Nota: 'biblioteca' agora é um item fixo no rodapé da navegação lateral (junto a Ajustes e Personalizar),
+ * portanto não pertence mais aos grupos dinâmicos de itens arrastáveis.
  */
 export function ehItemMenuValido(item: any): boolean {
   if (!item || typeof item !== "object") return false;
   const id = String(item.id || "").toLowerCase().trim();
   const para = String(item.para || "").toLowerCase().trim();
   if (!para) return false;
+  if (id === "biblioteca" || para === "/biblioteca") return false;
   if (ITENS_BANIDOS_MENU.has(id)) return false;
   if (ROTAS_BANIDAS_MENU.has(para)) return false;
   if (
@@ -91,14 +94,8 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
       { id: "inbox", para: "/inbox", rotulo: "Caixa de Entrada", iconeNome: "Inbox" },
       { id: "tarefas", para: "/tarefas", rotulo: "Tarefas", iconeNome: "CheckSquare" },
       { id: "notas", para: "/notas", rotulo: "Notas", iconeNome: "FileText" },
+      { id: "grafo", para: "/grafo", rotulo: "Grafo Neural", iconeNome: "Network" },
       { id: "lixeira", para: "/lixeira", rotulo: "Lixeira", iconeNome: "Trash2" },
-    ],
-  },
-  {
-    id: "projetos-extensoes",
-    titulo: "Projetos & Extensões",
-    itens: [
-      { id: "biblioteca", para: "/biblioteca", rotulo: "Biblioteca", iconeNome: "Boxes" },
     ],
   },
   {
@@ -174,14 +171,20 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
 
     if (gruposResultantes.length === 0) return GRUPOS_MENU_PADRAO;
 
-    // Se houver algum item do padrão que não está nos salvos, adiciona no final do primeiro grupo
+    // Se houver algum item do padrão que não está nos salvos, adiciona no primeiro grupo (antes da lixeira)
     for (const gPadrao of GRUPOS_MENU_PADRAO) {
       for (const itemPadrao of gPadrao.itens) {
         if (!mapaItensSalvos.has(itemPadrao.para) && ehItemMenuValido(itemPadrao)) {
           if (!Array.isArray(gruposResultantes[0].itens)) {
             gruposResultantes[0].itens = [];
           }
-          gruposResultantes[0].itens.push({ ...itemPadrao });
+          const idxLixeira = gruposResultantes[0].itens.findIndex((it) => it.id === "lixeira" || it.para === "/lixeira");
+          if (idxLixeira !== -1) {
+            gruposResultantes[0].itens.splice(idxLixeira, 0, { ...itemPadrao });
+          } else {
+            gruposResultantes[0].itens.push({ ...itemPadrao });
+          }
+          precisouLimpar = true;
         }
       }
     }
@@ -383,7 +386,7 @@ export function obterRotuloRota(rota: string): string {
     "/chat": "Conversar",
     "/referencias": "Referências Visuais",
     "/lousas": "Lousas Visuais",
-    "/grafo": "Grafo de Links",
+    "/grafo": "Grafo Neural",
     "/contatos": "Árvore de Contatos",
     "/sons": "Sons de Foco",
     "/pdf": "Ferramentas PDF",
