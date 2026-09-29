@@ -36,6 +36,8 @@ Publicado em https://hugossssssssssssss.github.io/segundo-cerebro/ pelo workflow
 5. **Tudo que a IA preencher fica marcado** com `ia_sugeriu: true` no frontmatter, até o Hugo conferir. Sem essa marca ele deixa de confiar no próprio material.
 6. **Incrementar versão a cada alteração/entrega.** Toda IA que realizar modificações ou novas funcionalidades DEVE incrementar a versão em `package.json` e em `src/lib/versao.ts` (ex: `1.1.0` -> `1.1.1` ou `1.2.0`). A versão é exibida no menu lateral ao lado do logo do Klaus.
 7. **Fazer commit e push ao finalizar qualquer entrega.** Sempre execute `git add .`, `git commit -m "..."` e `git push` após concluir as alterações e passar nos testes e no build (`npm test` e `npm run build`).
+8. **Seguir rigorosamente a Linguagem & Arquitetura Klaus.** Eventos DEVEM seguir `klaus:<domain>:<action>` (`src/lib/klausEvents.ts`) e chaves de localStorage DEVEM usar `klaus:<domain>` (`src/lib/klausStorage.ts`). Nunca invente nomes ad-hoc ou em português misturado (como `evento_personalizado_alterada`). Consulte sempre `docs/KLAUS_ARCHITECTURE.md` e use o SDK em `src/lib/klausSdk.ts`.
+9. **Extensões e Projetos vivem no repositório do usuário.** Projetos customizados residem em `.klaus/projetos/<id>/` com seu `manifest.json`. Para novos projetos, use `npm run klaus:new <id>` e para validação use `npm run klaus:validate`.
 
 ## Mapa do código
 
