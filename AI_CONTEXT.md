@@ -845,6 +845,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `tipo` **`PaletaAcento`**
 - `tipo` **`EscalaFonteGlobal`**
 - `tipo` **`TamanhoFonteMenu`**
+- `tipo` **`KlausThemeMode`**
 - `constante` **`EVENTO_TEMA_ALTERADO`**
 - `constante` **`EVENTO_PERSONALIZACAO_ALTERADA`**
 - `funcao` **`lerTemaSalvo`**
@@ -854,8 +855,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`lerVariacaoEscuroSalva`**
 - `funcao` **`aplicarVariacaoEscuro`**
 - `constante` **`PALETAS_ACENTO`**
-- `funcao` **`lerPaletaAcentoSalva`**
-- _...e mais 8 exportações secundárias._
+- _...e mais 15 exportações secundárias._
 
 #### 📄 `src/lib/toast.ts`
 > Gerenciador de Toasts flutuantes nativo e leve.

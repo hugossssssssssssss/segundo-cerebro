@@ -64,6 +64,10 @@ export interface StatusSincronizacao {
   erro?: string;
 }
 
+export type KlausGeneralPreferences = PreferenciasGerais;
+export type KlausUserPreferences = PreferenciasKlausConsolidadas;
+export type KlausSyncStatus = StatusSincronizacao;
+
 let ultimoShaPreferencias: string | undefined = undefined;
 let timerDebouncePersistencia: ReturnType<typeof setTimeout> | null = null;
 let sincronizacaoEmAndamento = false;
@@ -438,4 +442,9 @@ if (typeof window !== "undefined") {
     } catch {}
   });
 }
+
+// ── Nomes Canônicos do Klaus SDK (Etapa 3) ──────────────────────────────────
+export const loadKlausPreferences = lerTodasPreferenciasLocal;
+export const saveKlausPreferences = aplicarTodasPreferenciasLocal;
+export const syncKlausPreferences = sincronizarTudoComGithub;
 

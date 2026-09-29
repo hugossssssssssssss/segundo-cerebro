@@ -43,6 +43,10 @@ export interface ProjetoExtensao {
   atualizadoEm?: string;
 }
 
+export type KlausProject = ProjetoExtensao;
+export type KlausExtension = ProjetoExtensao;
+export type { KlausExtensionType, KlausExtensionCategory } from "./klaus.types";
+
 export const CAMINHO_PROJETOS_CONFIG = ".klaus/projetos.json";
 export const PASTA_PROJETOS_CUSTOMIZADOS = ".klaus/projetos";
 export const CHAVE_STORAGE_PROJETOS = KLAUS_STORAGE.PROJECTS_REGISTRY;
@@ -458,3 +462,18 @@ export function obterExtensoesAtivas(): ProjetoExtensao[] {
   const todas = carregarProjetosExtensoes();
   return todas.filter((p) => p.ativo);
 }
+
+/**
+ * Obtém um projeto ou extensão pelo seu identificador único.
+ */
+export function obterProjetoPorId(id: string): ProjetoExtensao | undefined {
+  return carregarProjetosExtensoes().find((p) => p.id === id);
+}
+
+// ── Nomes Canônicos do Klaus SDK (Etapa 3) ──────────────────────────────────
+export const loadKlausProjects = carregarProjetosExtensoes;
+export const getKlausProjectById = obterProjetoPorId;
+export const saveKlausProject = salvarProjetoCustomizado;
+export const toggleKlausExtension = alternarStatusProjetoExtensao;
+export const removeKlausProject = removerProjetoCustomizado;
+export const syncKlausProjects = sincronizarProjetosComGithub;

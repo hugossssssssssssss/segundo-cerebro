@@ -21,6 +21,9 @@ export interface WorkspaceConfig {
   icone?: string; // Nome de ícone ou emoji
 }
 
+export type KlausWorkspace = WorkspaceConfig;
+export type { KlausWorkspaceType } from "./klaus.types";
+
 import { KLAUS_STORAGE, getKlausItem, setKlausItem } from "./klausStorage";
 import { KLAUS_EVENTS, dispatchKlausEvent } from "./klausEvents";
 
@@ -241,3 +244,10 @@ export function removerWorkspace(id: string): boolean {
 
   return true;
 }
+
+// ── Nomes Canônicos do Klaus SDK (Etapa 3) ──────────────────────────────────
+export const loadKlausWorkspaces = listarWorkspaces;
+export const getActiveKlausWorkspace = obterWorkspaceAtivo;
+export const setActiveKlausWorkspace = alternarWorkspace;
+export const saveKlausWorkspace = salvarWorkspace;
+export const removeKlausWorkspace = removerWorkspace;

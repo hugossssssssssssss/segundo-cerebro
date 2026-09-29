@@ -38,6 +38,9 @@ export type TamanhoFonteMenu =
   | "media"
   | "grande";
 
+export type KlausThemeMode = Tema;
+export type { KlausThemeConfig, KlausDarkVariation, KlausAccentColor, KlausFontScale } from "./klaus.types";
+
 import { KLAUS_EVENTS, dispatchKlausEvent } from "./klausEvents";
 import { KLAUS_STORAGE, getKlausItem, setKlausItem } from "./klausStorage";
 
@@ -54,14 +57,16 @@ export const EVENTO_PERSONALIZACAO_ALTERADA = KLAUS_EVENTS.THEME_CUSTOMIZATION_C
 
 export function lerTemaSalvo(): Tema {
   const salvo = getKlausItem(CHAVE_TEMA);
-  if (salvo === "escuro" || salvo === "claro") return salvo;
+  if (salvo === "escuro" || salvo === "dark") return "escuro";
+  if (salvo === "claro" || salvo === "light") return "claro";
   return "claro";
 }
 
-export function aplicarTema(tema: Tema): void {
-  setKlausItem(CHAVE_TEMA, tema);
+export function aplicarTema(tema: Tema | "dark" | "light"): void {
+  const normalizado: Tema = tema === "dark" || tema === "escuro" ? "escuro" : "claro";
+  setKlausItem(CHAVE_TEMA, normalizado);
 
-  if (tema === "escuro") {
+  if (normalizado === "escuro") {
     document.documentElement.classList.add("dark");
   } else {
     document.documentElement.classList.remove("dark");
@@ -244,3 +249,33 @@ export function inicializarPersonalizacaoGlobal(): void {
     aplicarEscalaFonteGlobal(lerEscalaFonteGlobalSalva());
   } catch {}
 }
+
+export function lerPersonalizacaoSalva() {
+  return {
+    tema: lerTemaSalvo(),
+    variacaoEscuro: lerVariacaoEscuroSalva(),
+    paletaAcento: lerPaletaAcentoSalva(),
+    escalaFonteGlobal: lerEscalaFonteGlobalSalva(),
+    tamanhoFonteMenu: lerTamanhoFonteMenuSalvo(),
+  };
+}
+
+export function aplicarPersonalizacao(dados: {
+  tema?: Tema;
+  variacaoEscuro?: VariacaoEscuro;
+  paletaAcento?: PaletaAcento;
+  escalaFonteGlobal?: EscalaFonteGlobal;
+  tamanhoFonteMenu?: TamanhoFonteMenu;
+}) {
+  if (dados.tema) aplicarTema(dados.tema);
+  if (dados.variacaoEscuro) aplicarVariacaoEscuro(dados.variacaoEscuro);
+  if (dados.paletaAcento) aplicarPaletaAcento(dados.paletaAcento);
+  if (dados.escalaFonteGlobal) aplicarEscalaFonteGlobal(dados.escalaFonteGlobal);
+  if (dados.tamanhoFonteMenu) salvarTamanhoFonteMenu(dados.tamanhoFonteMenu);
+}
+
+// ── Nomes Canônicos do Klaus SDK (Etapa 3) ──────────────────────────────────
+export const loadKlausTheme = lerTemaSalvo;
+export const applyKlausTheme = aplicarTema;
+export const loadKlausUiCustomization = lerPersonalizacaoSalva;
+export const applyKlausUiCustomization = aplicarPersonalizacao;
