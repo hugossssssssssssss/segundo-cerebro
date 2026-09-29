@@ -4,9 +4,11 @@ import {
   descrever,
   executar,
   limparReservas,
+  parseKlausActionsFromCalls,
+  describeKlausAction,
   type Acao,
   type ChamadaFuncao,
-} from "./acoes";
+} from "./klausActions";
 import { PADRAO } from "./settings";
 
 const chamada = (name: string, args: Record<string, unknown>): ChamadaFuncao => ({
@@ -356,5 +358,13 @@ describe("a IA não pode esvaziar um texto sem querer", () => {
     expect(gravado).not.toContain("texto importante");
     expect(gravado.endsWith("---\n\n")).toBe(true);
     vi.unstubAllGlobals();
+  });
+
+  it("aliases canônicos de klausActions funcionam identicamente", () => {
+    const acoes = parseKlausActionsFromCalls([
+      chamada("criar_item", { pasta: "tarefas", titulo: "Nova Tarefa" }),
+    ]);
+    expect(acoes).toHaveLength(1);
+    expect(describeKlausAction(acoes[0])).toBe(descrever(acoes[0]));
   });
 });

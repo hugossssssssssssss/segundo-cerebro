@@ -15,6 +15,12 @@ import {
   parseKlausMarkdown,
   stringifyKlausMarkdown,
   searchKlaus,
+  sortKlausTasks,
+  summarizeKlausGoals,
+  getKlausInboxStatePath,
+  buildKlausLinksIndex,
+  KLAUS_AI_TOOLS,
+  getKlausAiBaseInstruction,
   KLAUS_EVENTS,
   KLAUS_STORAGE,
   dispatchKlausEvent,
@@ -146,6 +152,31 @@ describe("Klaus SDK", () => {
 
       setKlausItem(KLAUS_STORAGE.UI_THEME, "escuro");
       expect(getKlausItem(KLAUS_STORAGE.UI_THEME)).toBe("escuro");
+    });
+  });
+
+  describe("Productivity & AI SDK APIs", () => {
+    it("valida APIs de tarefas, metas e inbox", () => {
+      expect(sortKlausTasks([])).toEqual([]);
+      expect(summarizeKlausGoals([], [])).toEqual([]);
+      expect(getKlausInboxStatePath("teste")).toBe("caixa-entrada/estados/teste.json");
+    });
+
+    it("valida APIs de IA e Ligações", () => {
+      expect(Array.isArray(KLAUS_AI_TOOLS)).toBe(true);
+      expect(getKlausAiBaseInstruction({
+        nomeUsuario: "Hugo",
+        profissaoUsuario: "Designer",
+        onboardingConcluido: true,
+        githubToken: "",
+        repoOwner: "",
+        repoName: "",
+        branch: "main",
+        geminiKey: "",
+        geminiModel: "gemini-2.5-flash",
+      })).toContain("Hugo");
+      const idx = buildKlausLinksIndex([]);
+      expect(idx instanceof Map).toBe(true);
     });
   });
 });

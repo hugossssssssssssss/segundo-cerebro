@@ -9,8 +9,10 @@ import {
   minutosRegistrados,
   statusValido,
   extrairIntervaloTarefa,
+  sortKlausTasks,
+  getKlausTaskUrgency,
   type Tarefa,
-} from "./tarefas";
+} from "./klausTasks";
 
 const base = (over: Partial<Tarefa> = {}): Tarefa => ({
   bruto: {},
@@ -169,6 +171,15 @@ describe("extrairIntervaloTarefa", () => {
     expect(res).not.toBeNull();
     expect(res?.ehIntervalo).toBe(true);
     expect(res?.textoFormatado).toBe("22/08/26 → 28/08/26");
+  });
+});
+
+describe("klausTasks canonical functions", () => {
+  it("sortKlausTasks e getKlausTaskUrgency funcionam identicamente às funções legadas", () => {
+    const t1 = base({ titulo: "B", prazo: "2026-01-01", status: "a-fazer" });
+    const t2 = base({ titulo: "A", prazo: "2026-01-02", status: "a-fazer" });
+    expect(sortKlausTasks([t2, t1])).toEqual(ordenar([t2, t1]));
+    expect(getKlausTaskUrgency(t1)).toBe(urgencia(t1));
   });
 });
 

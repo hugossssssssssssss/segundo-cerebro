@@ -349,25 +349,9 @@ _(Exportações internas ou módulo utilitário)_
 - `funcao` **`simularPassoFisica3D`** — _Executa uma iteração da simulação de forças físicas 3D (Repulsão + Mola de Atração + Gravidade Centr..._
 
 #### 📄 `src/lib/links.ts`
-> Ligações entre itens — a premissa que faltava. Suporta formatos: - `[[nome do item]]` - `@nome do item` - URLs completas contendo `?abrir=tarefas%2F...` ou `?abrir=notas%2F...`
+> @deprecated Use `src/lib/klausLinks.ts` para seguir a arquitetura canônica Klaus. Este arquivo foi mantido para compatibilidade retroativa com código existente.
 
-**Exportações principais:**
-- `tipo` **`Alvo`**
-- `tipo` **`Referencia`**
-- `funcao` **`chave`** — _Normaliza para comparar títulos sem tropeçar em acento ou caixa._
-- `funcao` **`montarIndice`** — _Índice título/arquivo/caminho → item, para resolver os links._
-- `funcao` **`extrairLinks`** — _Extrai as referências de um texto, resolvendo cada uma contra o índice._
-- `tipo` **`Mencao`**
-- `funcao` **`mencoesA`** — _Quem aponta para este item._
-- `funcao` **`alvosUnicos`** — _O índice guarda cada item várias vezes (por título, por nome de arquivo e por caminho). Esta é a lis..._
-- `funcao` **`filtrarAlvos`** — _Filtra alvos já carregados por um termo digitado. Separado de `sugerir` para o editor poder filtrar ..._
-- `funcao` **`sugerir`** — _Sugestões para o autocompletar, a partir do índice completo._
-- `funcao` **`extrairMencoesTexto`** — _Extrai menções em formato de string (`@Nome`) do corpo de um texto. Esta função alimenta o campo `re..._
-- `funcao` **`sincronizarRelacionamentos`** — _Garante que dadosProps/frontmatter contenha a propriedade `relacionamentos` sincronizada com as menç..._
-- `tipo` **`ResultadoRenomeacao`** — _Resultado da propagação de um renomeio._
-- `funcao` **`propagarRenomeacao`** — _Propaga a alteração de um título para todos os arquivos que mencionavam o título antigo. Atualiza @T..._
-- `funcao` **`propagarRenomeacaoId`** — _Propaga a alteração de um identificador estrutural (slug/id) em metas, pai_id e processo_id._
-- _...e mais 3 exportações secundárias._
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/refatorarLinks.ts`
 > Refatoração e atualização de referências cruzadas em cascata. Ao renomear uma nota, meta ou tarefa: 1. Isola blocos de código (fenced e inline) para não alterar menções falsas. 2. Atualiza menções @TituloAntigo -> @TituloNovo sem corromper títulos compostos mais longos (ex: @Design vs @Design System). 3. Atualiza wikilinks legados [[TituloAntigo]]. 4. Atualiza referências de URL interna (?abrir=caminho-antigo.md). 5. Oferece `planejarRefatoracao` para visualização e confirmação antes de gravar.
@@ -389,19 +373,9 @@ _(Exportações internas ou módulo utilitário)_
 ### 5. Inteligência Artificial, Gemini & Ações do Sistema
 
 #### 📄 `src/lib/acoes.ts`
-> Ações que a IA pode propor — e que só acontecem se você aprovar. O Gemini não escreve no repositório direto. Ele devolve um bloco declarando o que quer fazer; o app mostra um cartão com a proposta e nada é gravado antes de você clicar em Aprovar. A razão é simples: um engano da IA vira commit no seu repositório. É recuperável pelo git, mas descobrir e desfazer dá trabalho — e a confiança na ferramenta não sobrevive a duas ou três surpresas dessas.
+> @deprecated Use `src/lib/klausActions.ts` para seguir a arquitetura canônica Klaus. Este arquivo foi mantido para compatibilidade retroativa com código existente.
 
-**Exportações principais:**
-- `tipo` **`TipoAcao`**
-- `tipo` **`Acao`**
-- `constante` **`PASTAS_VALIDAS`**
-- `constante` **`FERRAMENTAS`** — _Declaração das ferramentas para o Gemini. Usar chamada de função nativa, e não pedir um bloco JSON n..._
-- `tipo` **`ChamadaFuncao`** — _Uma chamada de função como o Gemini devolve._
-- `funcao` **`formatarTagIA`** — _Normaliza tags geradas pela IA para o padrão sem hífens e com inicial maiúscula. Ex: "social-media" ..._
-- `funcao` **`acoesDeChamadas`** — _Converte as chamadas do Gemini em ações, descartando o que for inválido._
-- `funcao` **`descrever`** — _Frase curta descrevendo a ação, para o cartão de confirmação._
-- `funcao` **`limparReservas`** — _Usado nos testes; no app o conjunto só cresce durante a sessão._
-- `funcao` **`executar`**
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/clipper.ts`
 > Captura de página da web, em Markdown limpo. Duas partes, na mesma ordem que o Web Clipper oficial do Obsidian (github.com/obsidianmd/obsidian-clipper, MIT) faz: 1. **Readability + Turndown** tiram menu, banner e rodapé e devolvem só o artigo, já em Markdown. 2. **Metadados e modelos** pegam autor, data e descrição do cabeçalho da página e os encaixam num molde com `{{variáveis}}`. O passo 2 é o que faltava: sem ele a captura chegava sem autor nem data, e um link salvo em janeiro virava um texto órfão em julho.
@@ -423,19 +397,9 @@ _(Exportações internas ou módulo utilitário)_
 - `funcao` **`obterFerramentasPersonalizadas`** — _Retorna o catálogo de ferramentas aplicando os nomes, ícones e cores personalizados pelo usuário no ..._
 
 #### 📄 `src/lib/gemini.ts`
-> Conversa com o Gemini, direto do navegador. A API do Google responde a requisições cross-origin (verificado: ela devolve access-control-allow-origin com a origem do site), então não existe backend aqui também. A chave fica no localStorage e nunca sai para lugar nenhum além do próprio Google.
+> @deprecated Use `src/lib/klausGemini.ts` para seguir a arquitetura canônica Klaus. Este arquivo foi mantido para compatibilidade retroativa com código existente.
 
-**Exportações principais:**
-- `tipo` **`Papel`**
-- `tipo` **`Mensagem`**
-- `classe` **`ErroGemini`**
-- `funcao` **`instrucaoBase`** — _Instruções fixas em toda conversa. As duas regras que mais importam: nunca inventar fato sobre o tra..._
-- `tipo` **`RespostaIA`**
-- `funcao` **`conversar`**
-- `tipo` **`PromptSalvo`**
-- `constante` **`PROMPTS`**
-- `funcao` **`transcreverAudioComIA`** — _Transcreve arquivo de áudio com identificação de oradores e marcação de tempo._
-- `funcao` **`extrairLembretesComIA`** — _Analisa o conteúdo de um documento com a IA Gemini e extrai prazos/lembretes._
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/iaRapida.ts`
 **Exportações principais:**
@@ -516,25 +480,9 @@ _(Exportações internas ou módulo utilitário)_
 - `funcao` **`calcularNivelIntensidade`** — _Calcula o nível de intensidade de 0 a 4 (estilo GitHub) baseado na contagem_
 
 #### 📄 `src/lib/inbox.ts`
-> LÓGICA E SERVIÇOS DA CAIXA DE ENTRADA E LEMBRETES DO KLAUS Responsável por: 1. Extrair lembretes padronizados [⏰ Lembrete: titulo | YYYY-MM-DD HH:mm] de qualquer documento 2. Identificar tarefas atrasadas 3. Gerenciar o estado de visualização (visto, descartado) com persistência no GitHub/localStorage 4. Disparar notificações via Telegram Bot API e Google Apps Script (E-mail)
+> @deprecated Use `src/lib/klausInbox.ts` para seguir a arquitetura canônica Klaus. Este arquivo foi mantido para compatibilidade retroativa com código existente.
 
-**Exportações principais:**
-- `constante` **`CAMINHO_ESTADO_INBOX`**
-- `funcao` **`obterCaminhoEstadoInbox`** — _Retorna o caminho do arquivo de estado da Inbox no repositório. Se houver um usuário identificado, p..._
-- `interface` **`EstadoItemInbox`**
-- `tipo` **`MapaEstadoInbox`**
-- `funcao` **`formatarTagLembrete`** — _Formata um lembrete como a tag padronizada inserida no documento. Exemplo: [⏰ Lembrete: Comprar mate..._
-- `funcao` **`extrairLembretesDeTexto`** — _Extrai todos os lembretes contidos no texto de um documento._
-- `funcao` **`adiarDataHora`** — _Adia uma data/hora de lembrete com base na opção selecionada (Snooze)._
-- `funcao` **`compilarNotasInativas`** — _Identifica notas paradas/inativas no repositório há mais de X dias (Ideia 10)._
-- `funcao` **`compilarItensInbox`** — _Varre todo o acervo do repositório para extrair lembretes, tarefas atrasadas e notas inativas._
-- `funcao` **`compilarEventosGoogleParaInbox`** — _Converte eventos do Google Calendar em itens padronizados da Inbox/Notificações do Klaus._
-- `funcao` **`lerEstadoInboxLocal`** — _Lê o mapa de estado da Inbox do localStorage._
-- `funcao` **`salvarEstadoInboxLocal`** — _Salva o mapa de estado da Inbox no localStorage._
-- `funcao` **`marcarItemComoVistoLocal`** — _Marca um documento específico como visto localmente no mapa da inbox_
-- `funcao` **`mesclarEstadosInbox`**
-- `funcao` **`carregarEstadoInbox`** — _Carrega o estado da Inbox sincronizado do repositório GitHub (com fallback pro local)._
-- _...e mais 8 exportações secundárias._
+_(Exportações internas ou módulo utilitário)_
 
 ### 7. Entidades Especializadas & Regras de Negócio
 
@@ -565,19 +513,9 @@ _(Exportações internas ou módulo utilitário)_
 - `funcao` **`executarMigracaoEmLote`** — _Executa a gravação sequencial dos arquivos normalizados no GitHub._
 
 #### 📄 `src/lib/pdi.ts`
-> Plano de Desenvolvimento Individual. Duas coisas, guardadas como arquivos .md: pdi/metas/*.md     — onde você quer chegar pdi/entregas/*.md  — o que você já fez A ligação entre elas é o campo `metas` no frontmatter da entrega, que aponta para o NOME DO ARQUIVO da meta (sem .md). Usar o nome do arquivo e não o título permite renomear o título sem quebrar a ligação. Os tipos e funções de conversão vivem agora em `tipos.ts` e `entidades.ts`. Este arquivo re-exporta tudo com os nomes legados.
+> @deprecated Use `src/lib/klausGoals.ts` para seguir a arquitetura canônica Klaus. Este arquivo foi mantido para compatibilidade retroativa com código existente.
 
-**Exportações principais:**
-- `constante` **`PASTA_METAS`**
-- `constante` **`PASTA_ENTREGAS`**
-- `funcao` **`metaParaFrontmatter`** — _Wrappers legados que retornam só o frontmatter (Record), não {dados,corpo}. Mantidos para compatibil..._
-- `funcao` **`entregaParaFrontmatter`**
-- `funcao` **`idDoCaminho`**
-- `tipo` **`ResumoMeta`**
-- `funcao` **`resumir`**
-- `funcao` **`paradas`** — _Metas que precisam de atenção: sem nenhuma entrega há mais de 30 dias. Meta concluída ou recém-criad..._
-- `funcao` **`semMeta`** — _Entregas que ainda não foram ligadas a nenhuma meta._
-- `funcao` **`aConferir`** — _Entregas com ligação sugerida pela IA e ainda não conferida._
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/referencias.ts`
 > Referências visuais. Cada referência é um .md em `referencias/`. A imagem vai para `referencias/imagens/` e o .md aponta para ela com markdown normal (`![](imagens/arquivo.jpg)`), para continuar legível fora do app. Os tipos e funções de conversão vivem agora em `tipos.ts` e `entidades.ts`. Este arquivo re-exporta com nomes legados e guarda as funções específicas de imagem e upload.
@@ -595,25 +533,9 @@ _(Exportações internas ou módulo utilitário)_
 - `funcao` **`todasAsTags`** — _Junta todas as tags usadas, para montar o filtro._
 
 #### 📄 `src/lib/tarefas.ts`
-> Regras das tarefas. Uma tarefa é um arquivo .md em `tarefas/`. O frontmatter guarda o estado; o corpo é anotação livre. O tempo de pomodoro é registrado no próprio corpo, para continuar legível fora do app. Os tipos e funções de conversão vivem agora em `tipos.ts` e `entidades.ts`. Este arquivo re-exporta tudo com os nomes legados para não quebrar imports.
+> @deprecated Este módulo foi renomeado para '@/lib/klausTasks'. Use diretamente '@/lib/klausTasks' ou o SDK '@/lib/klausSdk'.
 
-**Exportações principais:**
-- `funcao` **`paraFrontmatter`** — _Retorna o frontmatter de uma tarefa para gravar de volta. Mantido com assinatura legada (retorna Rec..._
-- `funcao` **`statusValido`** — _@deprecated Use StatusTarefa de tipos.ts_
-- `funcao` **`ordenar`** — _Ordena pelo que exige atenção primeiro: atrasadas, depois por prazo, depois as sem prazo. Concluídas..._
-- `tipo` **`Urgencia`**
-- `funcao` **`urgencia`**
-- `funcao` **`textoPrazo`**
-- `interface` **`IntervaloTarefa`**
-- `funcao` **`extrairIntervaloTarefa`** — _Extrai e normaliza o intervalo de datas de uma tarefa. Suporta formatos: - "2026-08-20 → 2026-08-25"..._
-- `funcao` **`registrarCiclo`** — _Acrescenta o registro de um ciclo no corpo da tarefa, sob um cabeçalho fixo. Fica legível como texto..._
-- `funcao` **`minutosRegistrados`** — _Soma os minutos já registrados no corpo._
-- `tipo` **`Subtarefa`**
-- `funcao` **`lerSubtarefas`**
-- `funcao` **`alternarSubtarefa`** — _Marca ou desmarca uma caixinha, preservando indentação e o resto do texto._
-- `funcao` **`adicionarSubtarefa`** — _Acrescenta uma subtarefa no fim da lista existente, ou no fim do corpo._
-- `funcao` **`removerSubtarefa`**
-- _...e mais 2 exportações secundárias._
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/templates.ts`
 > Gerenciador de Modelos (Templates) para Notas e Tarefas. ## Arquitetura Os templates vivem em **dois lugares**: 1. `MODELOS_PADRAO` — hard-coded neste arquivo, não podem ser apagados. 2. `.klaus/templates/*.md` — arquivos Markdown no repositório de dados. Cada arquivo é um template com frontmatter e corpo. ## Migração do localStorage Na versão anterior, templates customizados ficavam no `localStorage`. A função `migrarModelosDoLocalStorage` move esses templates para o repositório de dados automaticamente. Depois de migrar, limpa o `localStorage`. ## Modelo padrão O ID do modelo padrão (aquele que é aplicado ao clicar "Nova Nota") continua no localStorage porque é uma preferência de UI, não dados.

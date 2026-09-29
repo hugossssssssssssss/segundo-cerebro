@@ -164,7 +164,76 @@ export {
   unpackKlausExtension,
 } from "./klausPackage";
 
-// ── 15. Tipos Oficiais ──────────────────────────────────────────────────────
+// ── 16. Tarefas & Subtarefas (Tasks) ─────────────────────────────────────────
+export {
+  sortKlausTasks,
+  getKlausTaskUrgency,
+  getKlausTaskDueText,
+  getKlausSubtasks,
+  toggleKlausSubtask,
+  addKlausSubtask,
+  removeKlausSubtask,
+  getKlausSubtasksProgress,
+  getNextKlausRecurrenceDate,
+} from "./klausTasks";
+
+// ── 17. Metas & PDI (Goals & Milestones) ────────────────────────────────────
+export {
+  summarizeKlausGoals,
+  getKlausStalledGoals,
+  getKlausUnlinkedDeliveries,
+  getKlausPendingAiDeliveries,
+  KLAUS_GOALS_DIR,
+  KLAUS_DELIVERIES_DIR,
+} from "./klausGoals";
+
+// ── 18. Caixa de Entrada & Lembretes (Inbox & Reminders) ────────────────────
+export {
+  getKlausInboxStatePath,
+  formatKlausReminderTag,
+  extractKlausReminders,
+  compileKlausInboxItems,
+  loadKlausInboxStateLocal,
+  saveKlausInboxStateLocal,
+  markKlausInboxItemSeenLocal,
+  mergeKlausInboxStates,
+  applyKlausInboxStateToFrontmatter,
+} from "./klausInbox";
+
+// ── 19. IA & Assistente Gemini (Gemini & AI) ─────────────────────────────────
+export {
+  chatWithKlausAi,
+  transcribeAudioWithKlausAi,
+  extractRemindersWithKlausAi,
+  getKlausAiBaseInstruction,
+  KLAUS_SAVED_PROMPTS,
+  KlausGeminiError,
+} from "./klausGemini";
+
+// ── 20. Ações & Execução da IA (AI Actions & Tools) ─────────────────────────
+export {
+  parseKlausActionsFromCalls,
+  describeKlausAction,
+  executeKlausAction,
+  clearKlausActionReservations,
+  KLAUS_VALID_ACTION_FOLDERS,
+  KLAUS_AI_TOOLS,
+} from "./klausActions";
+
+// ── 21. Ligações, Menções & Integridade (Links & References) ────────────────
+export {
+  buildKlausLinksIndex,
+  extractKlausLinks,
+  getKlausMentionsTo,
+  getUniqueKlausTargets,
+  filterKlausTargets,
+  suggestKlausLinks,
+  syncKlausRelationships,
+  propagateKlausRename,
+  checkKlausReferenceIntegrity,
+} from "./klausLinks";
+
+// ── 22. Tipos Oficiais ──────────────────────────────────────────────────────
 export type {
   KlausProject,
   KlausExtension,
@@ -208,3 +277,18 @@ export type {
 export type {
   KlausExtensionBundle,
 } from "./klausPackage";
+
+export type {
+  KlausGoalSummary,
+} from "./klausGoals";
+
+export type {
+  KlausAction,
+  KlausActionType,
+} from "./klausActions";
+
+export type {
+  KlausLinkTarget,
+  KlausReference,
+  KlausMention,
+} from "./klausLinks";

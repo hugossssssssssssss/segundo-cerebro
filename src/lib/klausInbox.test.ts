@@ -9,7 +9,9 @@ import {
   adiarDataHora,
   aplicarEstadoInboxNoFrontmatter,
   compilarEventosGoogleParaInbox,
-} from "./inbox";
+  formatKlausReminderTag,
+  getKlausInboxStatePath,
+} from "./klausInbox";
 import type { ItemRepo } from "./repo";
 import type { EventoGoogle } from "./googleCalendar";
 
@@ -381,7 +383,7 @@ apagado_em: 2026-08-15T10:00:00.000Z
   });
 
   it("obterCaminhoEstadoInbox particiona por usuário e faz fallback seguro", async () => {
-    const { obterCaminhoEstadoInbox, CAMINHO_ESTADO_INBOX } = await import("./inbox");
+    const { obterCaminhoEstadoInbox, CAMINHO_ESTADO_INBOX } = await import("./klausInbox");
     expect(obterCaminhoEstadoInbox()).toBe(CAMINHO_ESTADO_INBOX);
     expect(obterCaminhoEstadoInbox("hugosilva")).toBe("caixa-entrada/estados/hugosilva.json");
     expect(obterCaminhoEstadoInbox("Beatriz-Design")).toBe("caixa-entrada/estados/beatriz-design.json");
@@ -389,12 +391,17 @@ apagado_em: 2026-08-15T10:00:00.000Z
   });
 
   it("travarDisparoDuplicado bloqueia múltiplos envios simultâneos para o mesmo item", async () => {
-    const { travarDisparoDuplicado } = await import("./inbox");
+    const { travarDisparoDuplicado } = await import("./klausInbox");
     expect(travarDisparoDuplicado("tarefa-123", "telegram")).toBe(true);
     // Segundo disparo imediato do mesmo item deve ser bloqueado
     expect(travarDisparoDuplicado("tarefa-123", "telegram")).toBe(false);
     // Canal diferente é permitido
     expect(travarDisparoDuplicado("tarefa-123", "email")).toBe(true);
+  });
+
+  it("aliases canônicos de klausInbox funcionam identicamente", () => {
+    expect(formatKlausReminderTag("Teste", "2026-08-18 15:00")).toBe(formatarTagLembrete("Teste", "2026-08-18 15:00"));
+    expect(getKlausInboxStatePath("hugosilva")).toBe("caixa-entrada/estados/hugosilva.json");
   });
 });
 

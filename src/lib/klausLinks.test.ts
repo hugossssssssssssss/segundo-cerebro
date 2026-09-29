@@ -7,7 +7,9 @@ import {
   sugerir,
   extrairMencoesTexto,
   sincronizarRelacionamentos,
-} from "./links";
+  buildKlausLinksIndex,
+  extractKlausLinks,
+} from "./klausLinks";
 import type { ItemRepo } from "./repo";
 
 function item(caminho: string, texto: string): ItemRepo {
@@ -346,7 +348,7 @@ describe("propagarRenomeacao", () => {
         return "sha-novo";
       },
     }));
-    const { propagarRenomeacao } = await import("./links");
+    const { propagarRenomeacao } = await import("./klausLinks");
 
     const acervoLocal = [
       // Os dois itens que dão nome às menções precisam existir no acervo:
@@ -376,7 +378,7 @@ describe("propagarRenomeacao", () => {
         return "sha-novo";
       },
     }));
-    const { propagarRenomeacao } = await import("./links");
+    const { propagarRenomeacao } = await import("./klausLinks");
 
     const acervoLocal = [
       item("notas/a.md", "vai para @Antigo"),
@@ -410,7 +412,7 @@ describe("propagarRenomeacao", () => {
         return "sha-novo";
       },
     }));
-    const { propagarRenomeacaoId } = await import("./links");
+    const { propagarRenomeacaoId } = await import("./klausLinks");
 
     const acervoLocal = [
       item("pdi/entregas/entrega1.md", "---\ntitulo: E1\nmetas:\n  - meta-antiga\n  - outra-meta\n---\n"),
@@ -425,5 +427,11 @@ describe("propagarRenomeacao", () => {
     const r2 = await propagarRenomeacaoId(cfg, acervoLocal, "lider-antigo", "lider-novo");
     expect(r2.atualizados).toBe(1);
     expect(gravados["contatos/membro.md"]).toContain("pai_id: lider-novo");
+  });
+
+  it("aliases canônicos de klausLinks funcionam identicamente", () => {
+    const idx = buildKlausLinksIndex(acervo);
+    expect(idx.size).toBe(montarIndice(acervo).size);
+    expect(extractKlausLinks("Veja @Briefing Acme", idx)).toEqual(extrairLinks("Veja @Briefing Acme", idx));
   });
 });

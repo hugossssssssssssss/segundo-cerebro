@@ -9,9 +9,13 @@ import {
   semMeta,
   aConferir,
   idDoCaminho,
+  summarizeKlausGoals,
+  getKlausStalledGoals,
+  getKlausUnlinkedDeliveries,
+  getKlausPendingAiDeliveries,
   type Meta,
   type Entrega,
-} from "./pdi";
+} from "./klausGoals";
 
 /**
  * Data relativa a hoje, no fuso LOCAL.
@@ -176,5 +180,17 @@ describe("filas de revisão", () => {
     ];
     expect(semMeta(lista).map((e) => e.id)).toEqual(["1"]);
     expect(aConferir(lista).map((e) => e.id)).toEqual(["3"]);
+  });
+});
+
+describe("klausGoals canonical functions", () => {
+  it("aliases funcionam identicamente às funções legadas", () => {
+    const metas = [meta({ id: "a" })];
+    const entregas = [entrega({ id: "1", metas: ["a"], data: emDias(-40) })];
+    const res = summarizeKlausGoals(metas, entregas);
+    expect(res).toEqual(resumir(metas, entregas));
+    expect(getKlausStalledGoals(res)).toEqual(paradas(res));
+    expect(getKlausUnlinkedDeliveries(entregas)).toEqual(semMeta(entregas));
+    expect(getKlausPendingAiDeliveries(entregas)).toEqual(aConferir(entregas));
   });
 });
