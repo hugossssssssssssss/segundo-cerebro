@@ -34,9 +34,12 @@ export const PRESETS_CORES_ICONE: PresetCor[] = [
   { nome: "Rosa Choque", hex: "#f43f5e" },
 ];
 
+import { KLAUS_STORAGE, getKlausItem, setKlausJson, removeKlausItem } from "./klausStorage";
+import { KLAUS_EVENTS, dispatchKlausEvent } from "./klausEvents";
+
 export const CAMINHO_MENU = ".klaus/menu.json";
-export const CHAVE_STORAGE_MENU = "klaus_menu_customizado";
-export const EVENTO_MENU_ATUALIZADO = "menu-personalizado-atualizado";
+export const CHAVE_STORAGE_MENU = KLAUS_STORAGE.NAV_MENU;
+export const EVENTO_MENU_ATUALIZADO = KLAUS_EVENTS.MENU_UPDATE;
 
 /**
  * Itens e rotas permanentemente excluídos do Klaus.
@@ -114,12 +117,12 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
  */
 export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
   try {
-    const salvo = localStorage.getItem(CHAVE_STORAGE_MENU);
+    const salvo = getKlausItem(CHAVE_STORAGE_MENU);
     if (!salvo) return GRUPOS_MENU_PADRAO;
 
     const parsed = JSON.parse(salvo);
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      localStorage.removeItem(CHAVE_STORAGE_MENU);
+      removeKlausItem(CHAVE_STORAGE_MENU);
       return GRUPOS_MENU_PADRAO;
     }
 
@@ -318,8 +321,8 @@ export function salvarMenuPersonalizado(
         itens: (g.itens || []).filter((it) => it && typeof it === "object" && it.para && ehItemMenuValido(it)),
       }));
 
-    localStorage.setItem(CHAVE_STORAGE_MENU, JSON.stringify(gruposLimpos));
-    window.dispatchEvent(new CustomEvent(EVENTO_MENU_ATUALIZADO));
+    setKlausJson(CHAVE_STORAGE_MENU, gruposLimpos);
+    dispatchKlausEvent(EVENTO_MENU_ATUALIZADO);
 
     if (cfg) {
       agendarPersistenciaMenuRemoto(cfg, gruposLimpos);
@@ -337,8 +340,8 @@ export function salvarMenuPersonalizado(
  */
 export function restaurarMenuPadrao(cfg?: Settings): boolean {
   try {
-    localStorage.removeItem(CHAVE_STORAGE_MENU);
-    window.dispatchEvent(new CustomEvent(EVENTO_MENU_ATUALIZADO));
+    removeKlausItem(CHAVE_STORAGE_MENU);
+    dispatchKlausEvent(EVENTO_MENU_ATUALIZADO);
 
     if (cfg) {
       agendarPersistenciaMenuRemoto(cfg, GRUPOS_MENU_PADRAO);

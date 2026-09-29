@@ -21,17 +21,20 @@ export interface WorkspaceConfig {
   icone?: string; // Nome de ícone ou emoji
 }
 
-const CHAVE_WORKSPACES = "segundo-cerebro:workspaces";
-const CHAVE_WORKSPACE_ATIVO = "segundo-cerebro:workspace-ativo";
-const CHAVE_TOKEN_GLOBAL_BASE = "segundo-cerebro:token-global-base";
-export const EVENTO_WORKSPACE_ALTERADO = "klaus-workspace-alterado";
+import { KLAUS_STORAGE, getKlausItem, setKlausItem } from "./klausStorage";
+import { KLAUS_EVENTS, dispatchKlausEvent } from "./klausEvents";
+
+const CHAVE_WORKSPACES = KLAUS_STORAGE.WORKSPACES_LIST;
+const CHAVE_WORKSPACE_ATIVO = KLAUS_STORAGE.WORKSPACES_ACTIVE;
+const CHAVE_TOKEN_GLOBAL_BASE = KLAUS_STORAGE.AUTH_GLOBAL_TOKEN;
+export const EVENTO_WORKSPACE_ALTERADO = KLAUS_EVENTS.WORKSPACE_CHANGE;
 
 /**
  * Lê o token global base do usuário (definido nas Configurações principais).
  */
 export function obterTokenGlobalBase(): string {
   try {
-    const enc = localStorage.getItem(CHAVE_TOKEN_GLOBAL_BASE);
+    const enc = getKlausItem(CHAVE_TOKEN_GLOBAL_BASE);
     if (enc) {
       const dec = decodificarTexto(enc);
       if (dec) return dec.trim();
@@ -46,7 +49,7 @@ export function obterTokenGlobalBase(): string {
 export function salvarTokenGlobalBase(token: string): void {
   if (!token) return;
   try {
-    localStorage.setItem(CHAVE_TOKEN_GLOBAL_BASE, codificarTexto(token.trim()));
+    setKlausItem(CHAVE_TOKEN_GLOBAL_BASE, codificarTexto(token.trim()));
   } catch {}
 }
 
@@ -75,7 +78,7 @@ function criarWorkspacePessoalPadrao(cfg: Settings): WorkspaceConfig {
  */
 export function listarWorkspaces(): WorkspaceConfig[] {
   try {
-    const salvo = localStorage.getItem(CHAVE_WORKSPACES);
+    const salvo = getKlausItem(CHAVE_WORKSPACES);
     if (salvo) {
       const lista: WorkspaceConfig[] = JSON.parse(salvo);
       if (Array.isArray(lista) && lista.length > 0) {
@@ -113,7 +116,7 @@ export function salvarWorkspaces(workspaces: WorkspaceConfig[]): void {
       }
       return ws;
     });
-    localStorage.setItem(CHAVE_WORKSPACES, JSON.stringify(paraSalvar));
+    setKlausItem(CHAVE_WORKSPACES, JSON.stringify(paraSalvar));
   } catch {}
 }
 
@@ -122,7 +125,7 @@ export function salvarWorkspaces(workspaces: WorkspaceConfig[]): void {
  */
 export function obterIdWorkspaceAtivo(): string {
   try {
-    const salvo = localStorage.getItem(CHAVE_WORKSPACE_ATIVO);
+    const salvo = getKlausItem(CHAVE_WORKSPACE_ATIVO);
     if (salvo) return salvo;
   } catch {}
   return "pessoal";
@@ -133,7 +136,7 @@ export function obterIdWorkspaceAtivo(): string {
  */
 export function salvarIdWorkspaceAtivo(id: string): void {
   try {
-    localStorage.setItem(CHAVE_WORKSPACE_ATIVO, id);
+    setKlausItem(CHAVE_WORKSPACE_ATIVO, id);
   } catch {}
 }
 
@@ -183,11 +186,7 @@ export function alternarWorkspace(id: string): boolean {
   dispararAtualizacaoAcervo();
 
   // Dispara evento reativo para recarregar telas e componentes
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new CustomEvent(EVENTO_WORKSPACE_ALTERADO, { detail: { workspace: destino } }),
-    );
-  }
+  dispatchKlausEvent(KLAUS_EVENTS.WORKSPACE_CHANGE, { workspace: destino });
 
   return true;
 }
@@ -222,11 +221,7 @@ export function salvarWorkspace(ws: WorkspaceConfig): void {
     });
     invalidarCache();
     dispararAtualizacaoAcervo();
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent(EVENTO_WORKSPACE_ALTERADO, { detail: { workspace: ws } }),
-      );
-    }
+    dispatchKlausEvent(KLAUS_EVENTS.WORKSPACE_CHANGE, { workspace: ws });
   }
 }
 

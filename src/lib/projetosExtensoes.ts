@@ -9,6 +9,8 @@
 import type { Settings } from "./settings";
 import { ler, gravar } from "./github";
 import { sincronizarExtensaoNoMenu } from "./menuPersonalizado";
+import { KLAUS_STORAGE, getKlausItem, setKlausItem } from "./klausStorage";
+import { KLAUS_EVENTS, dispatchKlausEvent } from "./klausEvents";
 
 export type TipoExtensao =
   | "nativa"
@@ -43,8 +45,8 @@ export interface ProjetoExtensao {
 
 export const CAMINHO_PROJETOS_CONFIG = ".klaus/projetos.json";
 export const PASTA_PROJETOS_CUSTOMIZADOS = ".klaus/projetos";
-export const CHAVE_STORAGE_PROJETOS = "klaus_projetos_extensoes";
-export const EVENTO_PROJETOS_ALTERADOS = "klaus-projetos-extensoes-atualizados";
+export const CHAVE_STORAGE_PROJETOS = KLAUS_STORAGE.PROJECTS_REGISTRY;
+export const EVENTO_PROJETOS_ALTERADOS = KLAUS_EVENTS.PROJECTS_UPDATE;
 
 /**
  * Catálogo mestre de extensões nativas disponíveis na biblioteca do Klaus.
@@ -202,7 +204,7 @@ export function obterShaProjetos(): string | undefined {
  */
 export function carregarProjetosExtensoes(): ProjetoExtensao[] {
   try {
-    const salvo = localStorage.getItem(CHAVE_STORAGE_PROJETOS);
+    const salvo = getKlausItem(CHAVE_STORAGE_PROJETOS);
     if (!salvo) {
       return [...CATALOGO_EXTENSOES_NATIVAS];
     }
@@ -256,8 +258,8 @@ export function salvarProjetosExtensoes(
   cfg?: Settings,
 ): boolean {
   try {
-    localStorage.setItem(CHAVE_STORAGE_PROJETOS, JSON.stringify(lista));
-    window.dispatchEvent(new CustomEvent(EVENTO_PROJETOS_ALTERADOS, { detail: lista }));
+    setKlausItem(CHAVE_STORAGE_PROJETOS, JSON.stringify(lista));
+    dispatchKlausEvent(EVENTO_PROJETOS_ALTERADOS, lista);
 
     if (cfg && cfg.githubToken && cfg.repoOwner && cfg.repoName) {
       agendarPersistenciaProjetosRemoto(cfg, lista);
@@ -439,8 +441,8 @@ export async function sincronizarProjetosComGithub(
       registrarShaProjetos(res.sha);
       const parsed = JSON.parse(res.texto);
       if (Array.isArray(parsed)) {
-        localStorage.setItem(CHAVE_STORAGE_PROJETOS, JSON.stringify(parsed));
-        window.dispatchEvent(new CustomEvent(EVENTO_PROJETOS_ALTERADOS, { detail: parsed }));
+        setKlausItem(CHAVE_STORAGE_PROJETOS, JSON.stringify(parsed));
+        dispatchKlausEvent(EVENTO_PROJETOS_ALTERADOS, parsed);
         return { sincronizado: true, projetos: parsed };
       }
     }

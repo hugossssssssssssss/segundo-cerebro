@@ -67,9 +67,12 @@ export type Settings = {
   googleCalendarMostrarNoCalendario?: boolean;
 };
 
-const CHAVE = "segundo-cerebro:config";
-const CHAVE_OFUSCADA = "segundo-cerebro:config:enc";
-const CHAVE_SALT = "segundo-cerebro:device-salt";
+import { KLAUS_STORAGE, getKlausItem, setKlausItem } from "./klausStorage";
+import { KLAUS_EVENTS, dispatchKlausEvent } from "./klausEvents";
+
+const CHAVE = "klaus:auth:config-raw";
+const CHAVE_OFUSCADA = KLAUS_STORAGE.AUTH_CREDENTIALS;
+const CHAVE_SALT = KLAUS_STORAGE.AUTH_DEVICE_SALT;
 
 /**
  * ⚠️ ISTO NÃO É CRIPTOGRAFIA. É OFUSCAÇÃO. ⚠️
@@ -99,7 +102,7 @@ function obterSaltSessao(): Uint8Array {
 
   // 1. Tenta carregar o salt persistido do localStorage
   try {
-    const salvo = typeof window !== "undefined" ? localStorage.getItem(CHAVE_SALT) : null;
+    const salvo = typeof window !== "undefined" ? getKlausItem(CHAVE_SALT) : null;
     if (salvo) {
       const binStr = atob(salvo);
       const arr = new Uint8Array(binStr.length);
@@ -132,7 +135,7 @@ function obterSaltSessao(): Uint8Array {
     let binStr = "";
     arr.forEach((b) => (binStr += String.fromCharCode(b)));
     if (typeof window !== "undefined") {
-      localStorage.setItem(CHAVE_SALT, btoa(binStr));
+      setKlausItem(CHAVE_SALT, btoa(binStr));
     }
   } catch {
     // ignora se localStorage estiver desativado
@@ -312,7 +315,7 @@ let memoriaConfig: Settings | null = null;
 export function lerConfig(): Settings {
   try {
     // 1. Tenta ler o formato ofuscado
-    const enc = typeof localStorage !== "undefined" ? localStorage.getItem(CHAVE_OFUSCADA) : null;
+    const enc = typeof localStorage !== "undefined" ? getKlausItem(CHAVE_OFUSCADA) : null;
     if (enc) {
       try {
         const decodificado = decodificarTexto(enc);
@@ -333,7 +336,7 @@ export function lerConfig(): Settings {
     }
 
     // 2. Fallback para formato em texto puro
-    const bruto = typeof localStorage !== "undefined" ? localStorage.getItem(CHAVE) : null;
+    const bruto = typeof localStorage !== "undefined" ? getKlausItem(CHAVE) : null;
     if (bruto) {
       try {
         const parsedLegacy = JSON.parse(bruto);
@@ -363,9 +366,9 @@ export function salvarConfig(s: Settings): Settings {
 
   try {
     if (typeof localStorage !== "undefined") {
-      localStorage.setItem(CHAVE_OFUSCADA, encStr);
+      setKlausItem(CHAVE_OFUSCADA, encStr);
       // Mantém backup de redundância caso localStorage de outra aba limpe o salt
-      localStorage.setItem(CHAVE, jsonStr);
+      setKlausItem(CHAVE, jsonStr);
     }
   } catch {}
 
@@ -373,14 +376,14 @@ export function salvarConfig(s: Settings): Settings {
     if (typeof chrome !== "undefined" && chrome?.storage?.local) {
       chrome.storage.local.set({
         klaus_settings_enc: encStr,
-        klaus_device_salt: typeof localStorage !== "undefined" ? localStorage.getItem(CHAVE_SALT) || "" : "",
+        klaus_device_salt: typeof localStorage !== "undefined" ? getKlausItem(CHAVE_SALT) || "" : "",
       });
     }
   } catch {}
 
   try {
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("klaus-settings-atualizadas", { detail: limpo }));
+      dispatchKlausEvent(KLAUS_EVENTS.SETTINGS_UPDATE, limpo);
     }
   } catch {}
 

@@ -38,33 +38,28 @@ export type TamanhoFonteMenu =
   | "media"
   | "grande";
 
-const CHAVE_TEMA = "tema";
-const CHAVE_VARIACAO_ESCURO = "klaus_variacao_escuro";
-const CHAVE_PALETA_ACENTO = "klaus_paleta_acento";
-const CHAVE_ESCALA_FONTE_GLOBAL = "klaus_escala_fonte_global";
-const CHAVE_TAMANHO_FONTE_MENU = "klaus_tamanho_fonte_menu";
+import { KLAUS_EVENTS, dispatchKlausEvent } from "./klausEvents";
+import { KLAUS_STORAGE, getKlausItem, setKlausItem } from "./klausStorage";
 
-export const EVENTO_TEMA_ALTERADO = "tema-alterado";
-export const EVENTO_PERSONALIZACAO_ALTERADA = "klaus-personalizacao-alterada";
+const CHAVE_TEMA = KLAUS_STORAGE.UI_THEME;
+const CHAVE_VARIACAO_ESCURO = "klaus:ui:dark-variation";
+const CHAVE_PALETA_ACENTO = "klaus:ui:accent-palette";
+const CHAVE_ESCALA_FONTE_GLOBAL = "klaus:ui:global-font-scale";
+const CHAVE_TAMANHO_FONTE_MENU = KLAUS_STORAGE.UI_FONT_SIZE;
+
+export const EVENTO_TEMA_ALTERADO = KLAUS_EVENTS.THEME_CHANGE;
+export const EVENTO_PERSONALIZACAO_ALTERADA = KLAUS_EVENTS.THEME_CUSTOMIZATION_CHANGE;
 
 /* ── 1. Tema Claro / Escuro ─────────────────────────────────────────────── */
 
 export function lerTemaSalvo(): Tema {
-  try {
-    const salvo = localStorage.getItem(CHAVE_TEMA);
-    if (salvo === "escuro" || salvo === "claro") return salvo;
-    return "claro";
-  } catch {
-    return "claro";
-  }
+  const salvo = getKlausItem(CHAVE_TEMA);
+  if (salvo === "escuro" || salvo === "claro") return salvo;
+  return "claro";
 }
 
 export function aplicarTema(tema: Tema): void {
-  try {
-    localStorage.setItem(CHAVE_TEMA, tema);
-  } catch {
-    // silencioso
-  }
+  setKlausItem(CHAVE_TEMA, tema);
 
   if (tema === "escuro") {
     document.documentElement.classList.add("dark");
@@ -80,7 +75,7 @@ export function alternarTema(): Tema {
   const atual = lerTemaSalvo();
   const novo: Tema = atual === "escuro" ? "claro" : "escuro";
   aplicarTema(novo);
-  window.dispatchEvent(new CustomEvent(EVENTO_TEMA_ALTERADO, { detail: novo }));
+  dispatchKlausEvent(EVENTO_TEMA_ALTERADO, novo);
   return novo;
 }
 

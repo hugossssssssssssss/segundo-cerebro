@@ -1,6 +1,9 @@
 import type { Settings } from "./settings";
 import { ler, gravar } from "./github";
 
+import { KLAUS_STORAGE, getKlausJson, setKlausJson } from "./klausStorage";
+import { KLAUS_EVENTS, dispatchKlausEvent } from "./klausEvents";
+
 declare const chrome: any;
 
 export interface FavoritoItem {
@@ -12,8 +15,8 @@ export interface FavoritoItem {
 }
 
 export const CAMINHO_FAVORITOS = ".klaus/favoritos.json";
-export const CHAVE_STORAGE_FAVORITOS = "klaus_favoritos";
-export const EVENTO_FAVORITOS_ATUALIZADOS = "klaus-favoritos-atualizados";
+export const CHAVE_STORAGE_FAVORITOS = KLAUS_STORAGE.NAV_FAVORITES;
+export const EVENTO_FAVORITOS_ATUALIZADOS = KLAUS_EVENTS.NAV_FAVORITES_CHANGE;
 
 /**
  * Normaliza uma URL garantindo o prefixo https:// caso nenhum protocolo seja informado.
@@ -70,16 +73,13 @@ function ehFavoritoValido(it: any): boolean {
  */
 export function lerFavoritosLocal(opcoes: { comPadrao?: boolean } = {}): FavoritoItem[] {
   try {
-    const salvo = localStorage.getItem(CHAVE_STORAGE_FAVORITOS);
-    if (salvo) {
-      const parsed = JSON.parse(salvo);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const filtrados = parsed.filter(ehFavoritoValido);
-        if (filtrados.length !== parsed.length) {
-          localStorage.setItem(CHAVE_STORAGE_FAVORITOS, JSON.stringify(filtrados));
-        }
-        return filtrados;
+    const parsed = getKlausJson<FavoritoItem[]>(KLAUS_STORAGE.NAV_FAVORITES);
+    if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+      const filtrados = parsed.filter(ehFavoritoValido);
+      if (filtrados.length !== parsed.length) {
+        setKlausJson(KLAUS_STORAGE.NAV_FAVORITES, filtrados);
       }
+      return filtrados;
     }
   } catch {}
 
@@ -89,8 +89,8 @@ export function lerFavoritosLocal(opcoes: { comPadrao?: boolean } = {}): Favorit
       chrome.storage.local.get([CHAVE_STORAGE_FAVORITOS], (res: any) => {
         if (res && Array.isArray(res[CHAVE_STORAGE_FAVORITOS]) && res[CHAVE_STORAGE_FAVORITOS].length > 0) {
           try {
-            localStorage.setItem(CHAVE_STORAGE_FAVORITOS, JSON.stringify(res[CHAVE_STORAGE_FAVORITOS]));
-            window.dispatchEvent(new CustomEvent(EVENTO_FAVORITOS_ATUALIZADOS, { detail: res[CHAVE_STORAGE_FAVORITOS] }));
+            setKlausJson(KLAUS_STORAGE.NAV_FAVORITES, res[CHAVE_STORAGE_FAVORITOS]);
+            dispatchKlausEvent(KLAUS_EVENTS.NAV_FAVORITES_CHANGE, res[CHAVE_STORAGE_FAVORITOS]);
           } catch {}
         }
       });
@@ -109,8 +109,8 @@ export function lerFavoritosLocal(opcoes: { comPadrao?: boolean } = {}): Favorit
  */
 export function salvarFavoritosLocal(itens: FavoritoItem[]): void {
   try {
-    localStorage.setItem(CHAVE_STORAGE_FAVORITOS, JSON.stringify(itens));
-    window.dispatchEvent(new CustomEvent(EVENTO_FAVORITOS_ATUALIZADOS, { detail: itens }));
+    setKlausJson(KLAUS_STORAGE.NAV_FAVORITES, itens);
+    dispatchKlausEvent(KLAUS_EVENTS.NAV_FAVORITES_CHANGE, itens);
   } catch {}
 
   try {

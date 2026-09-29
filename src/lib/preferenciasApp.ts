@@ -22,10 +22,23 @@ import { lerTemaSalvo, aplicarTema, type Tema } from "./tema";
 import { sincronizarProjetosComGithub } from "./projetosExtensoes";
 
 
+import {
+  KLAUS_STORAGE,
+  getKlausItem,
+  setKlausItem,
+  getKlausJson,
+  setKlausJson,
+} from "./klausStorage";
+import {
+  KLAUS_EVENTS,
+  dispatchKlausEvent,
+  listenKlausEvent,
+} from "./klausEvents";
+
 export const CAMINHO_PREFERENCIAS = ".klaus/preferencias.json";
-export const CHAVE_STORAGE_PREFERENCIAS = "klaus_preferencias_gerais";
-export const CHAVE_STORAGE_STATUS_SYNC = "klaus_sync_status_preferencias";
-export const EVENTO_PREFERENCIAS_ATUALIZADAS = "klaus-preferencias-atualizadas";
+export const CHAVE_STORAGE_PREFERENCIAS = KLAUS_STORAGE.PREFERENCES_GENERAL;
+export const CHAVE_STORAGE_STATUS_SYNC = KLAUS_STORAGE.PREFERENCES_SYNC_STATUS;
+export const EVENTO_PREFERENCIAS_ATUALIZADAS = KLAUS_EVENTS.PREFERENCES_SYNC;
 
 export interface PreferenciasGerais {
   tema?: Tema;
@@ -69,11 +82,11 @@ export function obterShaPreferencias(): string | undefined {
 export function lerPreferenciasGeraisLocal(): PreferenciasGerais {
   try {
     const tema = lerTemaSalvo();
-    const modoEdicaoHome = localStorage.getItem("klaus_home_modo_edicao") === "true";
+    const modoEdicaoHome = getKlausItem(KLAUS_STORAGE.HOME_EDIT_MODE) === "true";
     let favoritosBusca: string[] | undefined;
     try {
-      const favB = localStorage.getItem("klaus_favoritos_busca");
-      if (favB) favoritosBusca = JSON.parse(favB);
+      const favB = getKlausJson<string[]>(KLAUS_STORAGE.SEARCH_FAVORITES);
+      if (favB && Array.isArray(favB)) favoritosBusca = favB;
     } catch {}
 
     return {
@@ -112,13 +125,13 @@ export function aplicarPreferenciasGerais(prefs: PreferenciasGerais): void {
       aplicarTema(prefs.tema);
     }
     if (typeof prefs.modoEdicaoHome === "boolean") {
-      localStorage.setItem("klaus_home_modo_edicao", String(prefs.modoEdicaoHome));
+      setKlausItem(KLAUS_STORAGE.HOME_EDIT_MODE, String(prefs.modoEdicaoHome));
     }
     if (Array.isArray(prefs.favoritosBusca)) {
-      localStorage.setItem("klaus_favoritos_busca", JSON.stringify(prefs.favoritosBusca));
+      setKlausJson(KLAUS_STORAGE.SEARCH_FAVORITES, prefs.favoritosBusca);
     }
 
-    window.dispatchEvent(new CustomEvent(EVENTO_PREFERENCIAS_ATUALIZADAS, { detail: prefs }));
+    dispatchKlausEvent(KLAUS_EVENTS.PREFERENCES_SYNC, prefs);
   } catch (err) {
     console.error("[Klaus] Erro ao aplicar preferências gerais:", err);
   }
@@ -153,9 +166,9 @@ export function aplicarTodasPreferenciasLocal(dados: Partial<PreferenciasKlausCo
  */
 export function obterStatusSincronizacao(): StatusSincronizacao {
   try {
-    const salvo = localStorage.getItem(CHAVE_STORAGE_STATUS_SYNC);
+    const salvo = getKlausJson<StatusSincronizacao>(KLAUS_STORAGE.PREFERENCES_SYNC_STATUS);
     if (salvo) {
-      return JSON.parse(salvo);
+      return salvo;
     }
   } catch {}
   return { sucesso: true, emAndamento: false };
@@ -163,7 +176,7 @@ export function obterStatusSincronizacao(): StatusSincronizacao {
 
 function salvarStatusSincronizacao(status: StatusSincronizacao): void {
   try {
-    localStorage.setItem(CHAVE_STORAGE_STATUS_SYNC, JSON.stringify(status));
+    setKlausJson(KLAUS_STORAGE.PREFERENCES_SYNC_STATUS, status);
   } catch {}
 }
 
@@ -359,7 +372,7 @@ export async function sincronizarTudoComGithub(
 
     // Gerais (tema, etc.)
     const locais = lerTodasPreferenciasLocal();
-    const temaSalvoLocal = localStorage.getItem("tema") as Tema | null;
+    const temaSalvoLocal = lerTemaSalvo();
     
     // Mescla preferências gerais garantindo que o tema local ativo do usuário não seja sobrescrito
     const geraisFinais: PreferenciasGerais = {
@@ -410,7 +423,7 @@ export async function sincronizarTudoComGithub(
 
 // Listener para sincronizar tema no GitHub assim que for alterado pelo usuário
 if (typeof window !== "undefined") {
-  window.addEventListener("tema-alterado", () => {
+  listenKlausEvent(KLAUS_EVENTS.THEME_CHANGE, () => {
     try {
       const cfg = lerPreferenciasGeraisLocal();
       const prefsLocal = lerTodasPreferenciasLocal();
@@ -418,7 +431,7 @@ if (typeof window !== "undefined") {
       prefsLocal.gerais.atualizadoEm = new Date().toISOString();
       const configUsuario = (window as any).__klaus_settings_cache || undefined;
       // Salva localmente
-      localStorage.setItem(CHAVE_STORAGE_PREFERENCIAS, JSON.stringify(prefsLocal.gerais));
+      setKlausJson(KLAUS_STORAGE.PREFERENCES_GENERAL, prefsLocal.gerais);
       if (configUsuario) {
         agendarPersistenciaPreferenciasRemoto(configUsuario, null, 1500);
       }

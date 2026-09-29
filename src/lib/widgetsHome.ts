@@ -11,10 +11,12 @@ import {
   type GrupoMenuPersonalizado,
   type ItemMenuPersonalizado,
 } from "./menuPersonalizado";
+import { KLAUS_STORAGE, getKlausJson, setKlausJson } from "./klausStorage";
+import { KLAUS_EVENTS, dispatchKlausEvent } from "./klausEvents";
 
 export const CAMINHO_WIDGETS = ".klaus/widgets.json";
-export const CHAVE_STORAGE_WIDGETS = "klaus_home_bento_config_v3";
-export const EVENTO_WIDGETS_ATUALIZADOS = "klaus-widgets-atualizados";
+export const CHAVE_STORAGE_WIDGETS = KLAUS_STORAGE.WIDGETS_HOME;
+export const EVENTO_WIDGETS_ATUALIZADOS = KLAUS_EVENTS.WIDGETS_CHANGE;
 
 let ultimoShaWidgets: string | undefined = undefined;
 let timerDebounceWidgets: ReturnType<typeof setTimeout> | null = null;
@@ -32,11 +34,8 @@ export function obterShaWidgets(): string | undefined {
  */
 export function carregarConfigWidgetsLocal(): WidgetConfig[] {
   try {
-    const salvo = localStorage.getItem(CHAVE_STORAGE_WIDGETS);
-    if (!salvo) return CONFIG_PADRAO_WIDGETS;
-
-    const parsed = JSON.parse(salvo);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
+    const parsed = getKlausJson<WidgetConfig[]>(KLAUS_STORAGE.WIDGETS_HOME);
+    if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
       return CONFIG_PADRAO_WIDGETS;
     }
 
@@ -55,10 +54,8 @@ export function carregarConfigWidgetsLocal(): WidgetConfig[] {
  */
 export function salvarConfigWidgetsLocal(novaConfig: WidgetConfig[]): void {
   try {
-    localStorage.setItem(CHAVE_STORAGE_WIDGETS, JSON.stringify(novaConfig));
-    window.dispatchEvent(
-      new CustomEvent(EVENTO_WIDGETS_ATUALIZADOS, { detail: novaConfig }),
-    );
+    setKlausJson(KLAUS_STORAGE.WIDGETS_HOME, novaConfig);
+    dispatchKlausEvent(KLAUS_EVENTS.WIDGETS_CHANGE, novaConfig);
   } catch (err) {
     console.error("[Klaus] Erro ao salvar widgets no localStorage:", err);
   }
@@ -125,10 +122,8 @@ export async function sincronizarWidgetsComGithub(
       registrarShaWidgets(res.sha);
       const parsed = JSON.parse(res.texto);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        localStorage.setItem(CHAVE_STORAGE_WIDGETS, JSON.stringify(parsed));
-        window.dispatchEvent(
-          new CustomEvent(EVENTO_WIDGETS_ATUALIZADOS, { detail: parsed }),
-        );
+        setKlausJson(KLAUS_STORAGE.WIDGETS_HOME, parsed);
+        dispatchKlausEvent(KLAUS_EVENTS.WIDGETS_CHANGE, parsed);
         return { sincronizado: true, config: parsed };
       }
     } else if (locais && locais.length > 0) {
