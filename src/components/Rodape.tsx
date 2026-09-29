@@ -11,7 +11,7 @@ import {
   Image as ImageIcon,
   Target,
   Network,
-  Headphones,
+  Bot,
   Settings as SettingsIcon,
   Inbox,
   ShieldCheck,
@@ -174,11 +174,11 @@ export function Rodape() {
                 </li>
                 <li>
                   <Link
-                    to="/sons"
+                    to="/chat"
                     className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-medium transition-colors"
                   >
-                    <Headphones size={14} className="text-purple-500 shrink-0" />
-                    <span>Sons & Foco</span>
+                    <Bot size={14} className="text-purple-500 shrink-0" />
+                    <span>Conversar com IA</span>
                   </Link>
                 </li>
                 <li>

@@ -72,6 +72,16 @@ describe("menuPersonalizado", () => {
     expect(itemGrafo?.rotulo).toBe("Grafo Neural");
   });
 
+  it("deve conter o Chat com IA no grupo evolucao-ia do menu padrão", () => {
+    const padrao = GRUPOS_MENU_PADRAO;
+    const evolucao = padrao.find((g) => g.id === "evolucao-ia");
+    expect(evolucao).toBeDefined();
+    const itemChat = evolucao?.itens.find((it) => it.id === "chat");
+    expect(itemChat).toBeDefined();
+    expect(itemChat?.para).toBe("/chat");
+    expect(itemChat?.rotulo).toBe("Conversar com IA");
+  });
+
   it("deve restaurar os padrões ao chamar restaurarMenuPadrao", () => {
     const gruposCustom: GrupoMenuPersonalizado[] = [
       {

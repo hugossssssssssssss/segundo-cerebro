@@ -19,6 +19,7 @@ import {
   type ItemMenuPersonalizado,
 } from "@/lib/menuPersonalizado";
 import { obterIconePorNome } from "@/lib/icones";
+import { verificarExtensaoInstalada } from "@/lib/klausExtensionCatalog";
 
 const FERRAMENTAS_BASE = [
   {
@@ -110,9 +111,24 @@ export function WidgetHubFerramentas() {
     }
   }
 
+  const MAPA_ID_EXTENSAO: Record<string, string> = {
+    pdf: "pdf",
+    conversor: "conversor",
+    transcritor: "transcritor",
+    sons: "sons",
+    hardware: "testador_hardware",
+    contatos: "contatos",
+  };
+
+  const ferramentasVisiveis = FERRAMENTAS_BASE.filter((f) => {
+    const idExt = MAPA_ID_EXTENSAO[f.id];
+    if (!idExt) return true; // Ferramentas Core (lousas, grafo, calendario, chat)
+    return verificarExtensaoInstalada(idExt);
+  });
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 flex-1 overflow-y-auto">
-      {FERRAMENTAS_BASE.map((f) => {
+      {ferramentasVisiveis.map((f) => {
         const rotaLimpa = f.rota.toLowerCase();
         const custom =
           mapaCustom.get(rotaLimpa) ||

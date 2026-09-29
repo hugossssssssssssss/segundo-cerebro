@@ -37,6 +37,7 @@ import { HeaderAcoesOrdenaveis } from "@/components/HeaderAcoesOrdenaveis";
 import { BarraFavoritos } from "@/components/BarraFavoritos";
 import { Rodape } from "@/components/Rodape";
 import { Tooltip } from "@/components/ui/tooltip";
+import { GuardaExtensao } from "@/components/GuardaExtensao";
 import { FundoLiquidGlass } from "@/components/FundoLiquidGlass";
 import { cn } from "@/lib/utils";
 import { lerConfig, configCompleta, precisaOnboarding } from "@/lib/settings";
@@ -600,15 +601,71 @@ function AppInterno() {
             <Route path="/grafo" element={<GrafoNeural />} />
             <Route path="/pdi" element={<PDI />} />
             <Route path="/chat" element={<Chat />} />
-             <Route path="/pdf" element={<FerramentasPDF />} />
-            <Route path="/conversor" element={<Conversor />} />
-            <Route path="/baixador" element={<BaixadorMidia />} />
-            <Route path="/it-tools" element={<ITTools />} />
-            <Route path="/transcritor" element={<Transcritor />} />
-            <Route path="/testador" element={<TestadorHardware />} />
-            <Route path="/contatos" element={<Contatos />} />
+            <Route
+              path="/pdf"
+              element={
+                <GuardaExtensao idExtensao="pdf" nomeExtensao="Ferramentas PDF">
+                  <FerramentasPDF />
+                </GuardaExtensao>
+              }
+            />
+            <Route
+              path="/conversor"
+              element={
+                <GuardaExtensao idExtensao="conversor" nomeExtensao="Conversor de Formatos">
+                  <Conversor />
+                </GuardaExtensao>
+              }
+            />
+            <Route
+              path="/baixador"
+              element={
+                <GuardaExtensao idExtensao="baixador" nomeExtensao="Baixador de Mídia">
+                  <BaixadorMidia />
+                </GuardaExtensao>
+              }
+            />
+            <Route
+              path="/it-tools"
+              element={
+                <GuardaExtensao idExtensao="it_tools" nomeExtensao="IT-Tools Criativas">
+                  <ITTools />
+                </GuardaExtensao>
+              }
+            />
+            <Route
+              path="/transcritor"
+              element={
+                <GuardaExtensao idExtensao="transcritor" nomeExtensao="Transcritor de Voz">
+                  <Transcritor />
+                </GuardaExtensao>
+              }
+            />
+            <Route
+              path="/testador"
+              element={
+                <GuardaExtensao idExtensao="testador_hardware" nomeExtensao="Testador de Hardware">
+                  <TestadorHardware />
+                </GuardaExtensao>
+              }
+            />
+            <Route
+              path="/contatos"
+              element={
+                <GuardaExtensao idExtensao="contatos" nomeExtensao="Árvore de Contatos">
+                  <Contatos />
+                </GuardaExtensao>
+              }
+            />
+            <Route
+              path="/sons"
+              element={
+                <GuardaExtensao idExtensao="sons" nomeExtensao="Sons de Foco">
+                  <Sons />
+                </GuardaExtensao>
+              }
+            />
             <Route path="/config" element={<Configuracoes />} />
-            <Route path="/sons" element={<Sons />} />
             <Route path="/lixeira" element={<Lixeira />} />
             <Route path="/biblioteca" element={<BibliotecaExtensoes />} />
             <Route path="/projetos" element={<Navigate to="/biblioteca" replace />} />

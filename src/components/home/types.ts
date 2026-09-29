@@ -194,6 +194,4 @@ export const CONFIG_PADRAO_WIDGETS: WidgetConfig[] = [
   { id: "scratchpad", ativo: true, colunas: 6, alturaPx: 320, ordem: 2 },
   { id: "notas_recentes", ativo: true, colunas: 6, alturaPx: 320, ordem: 3 },
   { id: "referencias_mural", ativo: true, colunas: 6, alturaPx: 320, ordem: 4 },
-  { id: "conversor_arquivos", ativo: true, colunas: 6, alturaPx: 200, ordem: 5 },
-  { id: "ferramentas_pdf", ativo: true, colunas: 6, alturaPx: 200, ordem: 6 },
 ];

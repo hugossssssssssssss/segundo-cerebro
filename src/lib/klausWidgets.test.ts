@@ -60,7 +60,36 @@ describe("widgetsHome", () => {
     expect(carregarConfigWidgetsLocal()).toEqual(remotos);
   });
 
-  it("obterCatalogoWidgetsPersonalizado reflete nomes, ícones e cores customizados no Personalizar Menu", () => {
+  it("oculta widgets de extensões que não estão baixadas e exibe quando instaladas", () => {
+    // Inicialmente vazio: extensões não instaladas
+    const catalogoInicial = obterCatalogoWidgetsPersonalizado([]);
+    expect(catalogoInicial.some((w) => w.id === "ferramentas_pdf")).toBe(false);
+    expect(catalogoInicial.some((w) => w.id === "conversor_arquivos")).toBe(false);
+
+    // Widgets Core sempre aparecem
+    expect(catalogoInicial.some((w) => w.id === "foco_hoje")).toBe(true);
+    expect(catalogoInicial.some((w) => w.id === "notas_recentes")).toBe(true);
+    expect(catalogoInicial.some((w) => w.id === "grafo_neural")).toBe(true);
+    expect(catalogoInicial.some((w) => w.id === "chat_ia")).toBe(true);
+  });
+
+  it("obterCatalogoWidgetsPersonalizado reflete nomes, ícones e cores customizados no Personalizar Menu", async () => {
+    const { salvarProjetosExtensoes } = await import("./klausProjects");
+
+    // Instala a extensão PDF para que o widget fique liberado
+    salvarProjetosExtensoes([
+      {
+        id: "pdf",
+        nome: "Ferramentas PDF",
+        descricao: "PDF",
+        icone: "FileCheck",
+        categoria: "produtividade",
+        tipo: "nativa",
+        ativo: true,
+        origem: "catalogo",
+      },
+    ]);
+
     const gruposCustom = [
       {
         id: "grupo-1",

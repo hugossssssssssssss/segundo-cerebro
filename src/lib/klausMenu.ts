@@ -102,6 +102,7 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
     id: "evolucao-ia",
     titulo: "Evolução & IA",
     itens: [
+      { id: "chat", para: "/chat", rotulo: "Conversar com IA", iconeNome: "Bot" },
       { id: "pdi", para: "/pdi", rotulo: "Carreira (PDI)", iconeNome: "Target" },
     ],
   },
@@ -171,18 +172,19 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
 
     if (gruposResultantes.length === 0) return GRUPOS_MENU_PADRAO;
 
-    // Se houver algum item do padrão que não está nos salvos, adiciona no primeiro grupo (antes da lixeira)
+    // Se houver algum item do padrão que não está nos salvos, adiciona no grupo correspondente
     for (const gPadrao of GRUPOS_MENU_PADRAO) {
       for (const itemPadrao of gPadrao.itens) {
         if (!mapaItensSalvos.has(itemPadrao.para) && ehItemMenuValido(itemPadrao)) {
-          if (!Array.isArray(gruposResultantes[0].itens)) {
-            gruposResultantes[0].itens = [];
+          const grupoDestino = gruposResultantes.find((g) => g.id === gPadrao.id) || gruposResultantes[0];
+          if (!Array.isArray(grupoDestino.itens)) {
+            grupoDestino.itens = [];
           }
-          const idxLixeira = gruposResultantes[0].itens.findIndex((it) => it.id === "lixeira" || it.para === "/lixeira");
+          const idxLixeira = grupoDestino.itens.findIndex((it) => it.id === "lixeira" || it.para === "/lixeira");
           if (idxLixeira !== -1) {
-            gruposResultantes[0].itens.splice(idxLixeira, 0, { ...itemPadrao });
+            grupoDestino.itens.splice(idxLixeira, 0, { ...itemPadrao });
           } else {
-            gruposResultantes[0].itens.push({ ...itemPadrao });
+            grupoDestino.itens.push({ ...itemPadrao });
           }
           precisouLimpar = true;
         }

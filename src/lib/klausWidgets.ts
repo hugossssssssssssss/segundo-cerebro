@@ -13,6 +13,7 @@ import {
 } from "./klausMenu";
 import { KLAUS_STORAGE, getKlausJson, setKlausJson } from "./klausStorage";
 import { KLAUS_EVENTS, dispatchKlausEvent } from "./klausEvents";
+import { verificarExtensaoInstalada } from "./klausExtensionCatalog";
 
 export const CAMINHO_WIDGETS = ".klaus/widgets.json";
 export const CHAVE_STORAGE_WIDGETS = KLAUS_STORAGE.WIDGETS_HOME;
@@ -40,7 +41,12 @@ export function carregarConfigWidgetsLocal(): WidgetConfig[] {
     }
 
     const validos = parsed.filter(
-      (w) => w && typeof w === "object" && typeof w.id === "string" && typeof w.ativo === "boolean",
+      (w) =>
+        w &&
+        typeof w === "object" &&
+        typeof w.id === "string" &&
+        typeof w.ativo === "boolean" &&
+        estaWidgetDisponivel(w.id),
     );
 
     return validos.length > 0 ? validos : CONFIG_PADRAO_WIDGETS;
@@ -138,6 +144,30 @@ export async function sincronizarWidgetsComGithub(
 }
 
 /**
+ * Mapeia quais widgets dependem de extensões modulares baixadas no repositório.
+ * Se o widget não estiver nesta lista, é considerado Core do Klaus e fica sempre disponível.
+ */
+export const MAPA_WIDGET_EXTENSAO: Record<string, string> = {
+  baixador_midia: "baixador",
+  conversor_arquivos: "conversor",
+  ferramentas_pdf: "pdf",
+  it_tools: "it_tools",
+  transcritor_voz: "transcritor",
+  sons_foco: "sons",
+  hardware_test: "testador_hardware",
+};
+
+/**
+ * Verifica se um widget está liberado para exibição.
+ * Widgets de extensões só são permitidos se a extensão estiver baixada e instalada.
+ */
+export function estaWidgetDisponivel(widgetId: string): boolean {
+  const idExtensao = MAPA_WIDGET_EXTENSAO[widgetId];
+  if (!idExtensao) return true; // Widgets Core sempre disponíveis
+  return verificarExtensaoInstalada(idExtensao);
+}
+
+/**
  * Mapeamento entre os IDs de cada Widget e o item/rota correspondente no Menu Lateral.
  */
 export const MAPA_WIDGET_MENU: Record<string, { rota?: string; idMenu?: string }> = {
@@ -160,7 +190,8 @@ export const MAPA_WIDGET_MENU: Record<string, { rota?: string; idMenu?: string }
 
 /**
  * Retorna o catálogo de widgets aplicando os títulos, ícones e cores
- * personalizados pelo usuário no menu lateral ("Personalizar Menu").
+ * personalizados pelo usuário no menu lateral ("Personalizar Menu"),
+ * garantindo que apenas widgets do Core e de extensões instaladas sejam exibidos.
  */
 export function obterCatalogoWidgetsPersonalizado(
   gruposMenu: GrupoMenuPersonalizado[] = carregarMenuPersonalizado()
@@ -175,7 +206,10 @@ export function obterCatalogoWidgetsPersonalizado(
     }
   }
 
-  return CATALOGO_WIDGETS.map((w) => {
+  // Filtra apenas widgets disponíveis (Core ou extensões baixadas)
+  const disponiveis = CATALOGO_WIDGETS.filter((w) => estaWidgetDisponivel(w.id));
+
+  return disponiveis.map((w) => {
     const rel = MAPA_WIDGET_MENU[w.id];
     if (!rel) return w;
 
