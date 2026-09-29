@@ -3,7 +3,9 @@ import {
   filtrarEntregasPorPeriodo,
   consolidarDossie,
   gerarMarkdownDossie,
-} from "./dossieCarreira";
+  consolidateKlausCareerDossier,
+  generateKlausCareerDossierMarkdown,
+} from "./klausCareerDossier";
 import type { Meta, Entrega, Contato } from "./tipos";
 
 describe("dossieCarreira", () => {
@@ -97,5 +99,12 @@ describe("dossieCarreira", () => {
     expect(md).toContain("Reduziu o tempo de entrega de telas em 40%");
     expect(md).toContain("Marcelo Silva");
     expect(md).toContain("Head de Produto");
+  });
+
+  it("aliases canônicos de klausCareerDossier funcionam identicamente", () => {
+    const dados = consolidateKlausCareerDossier([metaExemplo], entregasExemplo, contatosExemplo);
+    expect(dados).toEqual(consolidarDossie([metaExemplo], entregasExemplo, contatosExemplo));
+    const md = generateKlausCareerDossierMarkdown(dados, { nomeUsuario: "Hugo Silva" });
+    expect(md).toContain("Hugo Silva");
   });
 });

@@ -9,7 +9,9 @@ import {
   renomearTagCascata,
   CAMINHO_CEREBRO,
   obterRelacoesBidirecionais,
-} from "./cerebro";
+  createDefaultKlausBrain,
+  KLAUS_BRAIN_PATH,
+} from "./klausBrain";
 import type { ItemRepo } from "./repo";
 import type { Settings } from "./settings";
 import * as github from "./github";
@@ -228,6 +230,15 @@ describe("Módulo Cérebro Central (cerebro.ts)", () => {
       expect(rels.rollupTarefas.total).toBe(2);
       expect(rels.rollupTarefas.concluidas).toBe(1);
       expect(rels.rollupTarefas.percentual).toBe(50);
+    });
+  });
+
+  describe("klausBrain canonical aliases", () => {
+    it("createDefaultKlausBrain e KLAUS_BRAIN_PATH funcionam identicamente", () => {
+      expect(KLAUS_BRAIN_PATH).toBe(".klaus/cerebro.json");
+      const padrao = createDefaultKlausBrain();
+      expect(padrao.versao).toBe(1);
+      expect(typeof padrao.tags).toBe("object");
     });
   });
 });

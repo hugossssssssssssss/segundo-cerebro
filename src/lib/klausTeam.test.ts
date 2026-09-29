@@ -7,8 +7,10 @@ import {
   papelDoUsuario,
   podeGerenciarEquipe,
   CAMINHO_EQUIPE,
+  getKlausRolePermissions,
+  KLAUS_TEAM_PATH,
   type ConfigEquipe,
-} from "./equipe";
+} from "./klausTeam";
 import * as github from "./github";
 
 describe("equipe.ts - Gestão e Permissões de Equipe", () => {
@@ -150,6 +152,11 @@ describe("equipe.ts - Gestão e Permissões de Equipe", () => {
     });
 
     await expect(carregarEquipe(cfg)).rejects.toThrow(/erros de formatação JSON/);
+  });
+
+  it("aliases canônicos de klausTeam funcionam identicamente", () => {
+    expect(KLAUS_TEAM_PATH).toBe("equipe.json");
+    expect(getKlausRolePermissions("dono")).toEqual(obterPermissoes("dono"));
   });
 });
 

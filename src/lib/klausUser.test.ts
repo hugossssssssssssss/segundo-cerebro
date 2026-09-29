@@ -4,8 +4,10 @@ import {
   lerPerfilLocal,
   salvarPerfilLocal,
   limparPerfilLocal,
+  loadKlausUserProfileLocal,
+  saveKlausUserProfileLocal,
   type PerfilUsuario,
-} from "./usuario";
+} from "./klausUser";
 
 describe("usuario.ts - Identidade e Perfil", () => {
   beforeEach(() => {
@@ -134,6 +136,12 @@ describe("usuario.ts - Identidade e Perfil", () => {
     expect(res.temAcesso).toBe(false);
     expect(res.podeGravar).toBe(false);
     expect(res.erro).toMatch(/não encontrado/);
+  });
+
+  it("aliases canônicos de klausUser funcionam identicamente", () => {
+    const perfil = { login: "teste", nome: "Teste", avatarUrl: "", atualizadoEm: "" };
+    saveKlausUserProfileLocal(perfil);
+    expect(loadKlausUserProfileLocal()).toEqual(lerPerfilLocal());
   });
 });
 

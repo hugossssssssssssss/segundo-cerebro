@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { gerarItensDemo } from "./dadosDemo";
+import { gerarItensDemo, generateKlausDemoItems } from "./klausDemoData";
 
 describe("dadosDemo", () => {
   it("gera ecossistema completo de dados com notas, tarefas, metas, entregas, contatos e referências", () => {
@@ -24,5 +24,10 @@ describe("dadosDemo", () => {
     for (const item of itens) {
       expect(item.conteudo).toContain("demo");
     }
+  });
+
+  it("aliases canônicos de klausDemoData funcionam identicamente", () => {
+    const itens = generateKlausDemoItems("Hugo");
+    expect(itens.length).toBeGreaterThanOrEqual(75);
   });
 });

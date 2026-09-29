@@ -26,6 +26,12 @@ import {
   buildKlausGraph3D,
   isKlausTrashItem,
   supportsKlausSharing,
+  createDefaultKlausBrain,
+  solveKlausLocalMath,
+  loadKlausUserProfileLocal,
+  createDefaultKlausTeamConfig,
+  consolidateKlausCareerDossier,
+  generateKlausDemoItems,
   KLAUS_EVENTS,
   KLAUS_STORAGE,
   dispatchKlausEvent,
@@ -192,6 +198,17 @@ describe("Klaus SDK", () => {
       expect(buildKlausGraph3D([]).nos).toEqual([]);
       expect(isKlausTrashItem(".lixeira/arq.md")).toBe(true);
       expect(typeof supportsKlausSharing()).toBe("boolean");
+    });
+  });
+
+  describe("Intelligence & Profile SDK APIs", () => {
+    it("valida APIs de cérebro, IA rápida, perfil, equipe, dossiê e dados demo", () => {
+      expect(createDefaultKlausBrain().versao).toBe(1);
+      expect(solveKlausLocalMath("10 + 10")).toContain("20");
+      expect(loadKlausUserProfileLocal()).toBeNull();
+      expect(createDefaultKlausTeamConfig().membros.length).toBe(1);
+      expect(consolidateKlausCareerDossier([], [], []).metas).toEqual([]);
+      expect(generateKlausDemoItems("Hugo").length).toBeGreaterThan(50);
     });
   });
 });

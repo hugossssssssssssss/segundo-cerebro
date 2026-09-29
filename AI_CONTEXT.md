@@ -389,14 +389,9 @@ _(Exportações internas ou módulo utilitário)_
 _(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/iaRapida.ts`
-**Exportações principais:**
-- `interface` **`MensagemIARapida`**
-- `funcao` **`tentarResolverContaLocal`** — _Avaliador local rápido para contas matemáticas e expressões do dia a dia. Resolve instantaneamente (..._
-- `funcao` **`corrigirTextoGratuito`** — _Correção gramatical e ortográfica gratuita em Português do Brasil via LanguageTool. Sem necessidade ..._
-- `funcao` **`consultarWikipedia`** — _Consulta de definições, fatos, conceitos e pessoas em Português via Wikipedia. 100% gratuita, sem ch..._
-- `funcao` **`consultarGeminiRobusto`** — _Consulta o Gemini quando configurado no Klaus, com tentativa sequencial nos modelos disponíveis._
-- `funcao` **`consultarLLMGratuito`** — _Consulta modelo de IA gratuito e aberto via API pública compatível sem necessidade de chave. Suporta..._
-- `funcao` **`perguntarIARapida`** — _Função principal para perguntas rápidas no editor de documentos. Atende a contas, correções, pergunt..._
+> @deprecated Use `src/lib/klausQuickAi.ts` para seguir a arquitetura canônica Klaus. Este arquivo foi mantido para compatibilidade retroativa com código existente.
+
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/ocr.ts`
 > Lê o texto que está DENTRO de uma imagem. O buraco que isto tapa: metade das referências salvas é print — de site, de slide, de post, de conversa. O texto ali dentro é invisível para a busca, então uma referência ótima some seis meses depois porque você lembra da frase e não do título que deu para ela. Depois de passar por aqui o texto vira texto puro no `.md`, e a busca (⌘K) o encontra como qualquer outro. Continua legível fora do app, como tudo. Roda no navegador via Tesseract, sem backend. O pacote de idioma tem alguns megabytes e é carregado sob demanda — nunca no primeiro acesso ao app.

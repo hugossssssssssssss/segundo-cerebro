@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { tentarResolverContaLocal, perguntarIARapida } from "./iaRapida";
+import {
+  tentarResolverContaLocal,
+  perguntarIARapida,
+  solveKlausLocalMath,
+  askKlausQuickAi,
+} from "./klausQuickAi";
 
 describe("iaRapida", () => {
   describe("tentarResolverContaLocal", () => {
@@ -26,6 +31,14 @@ describe("iaRapida", () => {
   describe("perguntarIARapida", () => {
     it("resolve conta rápida sem precisar de rede", async () => {
       const res = await perguntarIARapida("25 x 4");
+      expect(res).toContain("100");
+    });
+  });
+
+  describe("klausQuickAi canonical aliases", () => {
+    it("solveKlausLocalMath e askKlausQuickAi funcionam identicamente", async () => {
+      expect(solveKlausLocalMath("25 * 4")).toBe(tentarResolverContaLocal("25 * 4"));
+      const res = await askKlausQuickAi("50% de 200");
       expect(res).toContain("100");
     });
   });

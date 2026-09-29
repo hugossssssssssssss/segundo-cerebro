@@ -279,7 +279,64 @@ export {
   shareKlausReference,
 } from "./klausShare";
 
-// ── 27. Tipos Oficiais ──────────────────────────────────────────────────────
+// ── 27. Cérebro Central & Metadados (Brain & Metadata) ──────────────────────
+export {
+  createDefaultKlausBrain,
+  loadKlausBrain,
+  saveKlausBrainToRepo,
+  getKlausBidirectionalRelations,
+  deleteKlausTagCascade,
+  renameKlausTagCascade,
+  KLAUS_BRAIN_PATH,
+} from "./klausBrain";
+
+// ── 28. IA Rápida & Ferramentas Locais (Quick AI & Local Tools) ─────────────
+export {
+  solveKlausLocalMath,
+  correctKlausTextGrammar,
+  queryKlausWikipedia,
+  queryKlausGeminiRobust,
+  queryKlausFreeLLM,
+  askKlausQuickAi,
+} from "./klausQuickAi";
+
+// ── 29. Perfil & Identidade do Usuário (User Profile & Auth) ────────────────
+export {
+  loadKlausUserProfileLocal,
+  saveKlausUserProfileLocal,
+  clearKlausUserProfileLocal,
+  fetchKlausUserProfile,
+  checkKlausRepoPermission,
+} from "./klausUser";
+
+// ── 30. Equipe & Permissões (Team & Permissions) ────────────────────────────
+export {
+  getKlausRolePermissions,
+  createDefaultKlausTeamConfig,
+  mergeKlausTeamMembers,
+  loadKlausTeam,
+  saveKlausTeam,
+  getKlausUserRole,
+  canManageKlausTeam,
+  KLAUS_TEAM_PATH,
+  KLAUS_TEAM_PERMISSIONS_TABLE,
+} from "./klausTeam";
+
+// ── 31. Dossiê de Carreira (Career Dossier & Brag Doc) ──────────────────────
+export {
+  filterKlausDeliveriesByPeriod,
+  consolidateKlausCareerDossier,
+  generateKlausCareerDossierMarkdown,
+} from "./klausCareerDossier";
+
+// ── 32. Dados de Demonstração (Demo Data & Seed) ────────────────────────────
+export {
+  generateKlausDemoItems,
+  populateKlausWithDemoData,
+  clearAllKlausDemoData,
+} from "./klausDemoData";
+
+// ── 33. Tipos Oficiais ──────────────────────────────────────────────────────
 export type {
   KlausProject,
   KlausExtension,
@@ -358,3 +415,36 @@ export type {
 export type {
   KlausShareData,
 } from "./klausShare";
+
+export type {
+  KlausBrainData,
+  KlausTagMetadata,
+  KlausPropertyDefinition,
+  KlausStatusDefinition,
+  KlausSavedView,
+} from "./klausBrain";
+
+export type {
+  KlausQuickAiMessage,
+} from "./klausQuickAi";
+
+export type {
+  KlausUserProfile,
+  KlausRepoPermission,
+} from "./klausUser";
+
+export type {
+  KlausTeamRole,
+  KlausTeamMember,
+  KlausTeamConfig,
+  KlausRolePermissions,
+} from "./klausTeam";
+
+export type {
+  KlausCareerDossierOptions,
+  KlausConsolidatedDossierData,
+} from "./klausCareerDossier";
+
+export type {
+  KlausDemoItem,
+} from "./klausDemoData";
