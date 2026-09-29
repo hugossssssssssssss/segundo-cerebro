@@ -21,6 +21,11 @@ import {
   buildKlausLinksIndex,
   KLAUS_AI_TOOLS,
   getKlausAiBaseInstruction,
+  createKlausImageFilename,
+  buildKlausContactsTree,
+  buildKlausGraph3D,
+  isKlausTrashItem,
+  supportsKlausSharing,
   KLAUS_EVENTS,
   KLAUS_STORAGE,
   dispatchKlausEvent,
@@ -177,6 +182,16 @@ describe("Klaus SDK", () => {
       })).toContain("Hugo");
       const idx = buildKlausLinksIndex([]);
       expect(idx instanceof Map).toBe(true);
+    });
+  });
+
+  describe("Visuals & Utilities SDK APIs", () => {
+    it("valida APIs de referências, contatos, grafo, lixeira e compartilhamento", () => {
+      expect(createKlausImageFilename("foto.jpg").endsWith(".jpg")).toBe(true);
+      expect(buildKlausContactsTree([])).toEqual([]);
+      expect(buildKlausGraph3D([]).nos).toEqual([]);
+      expect(isKlausTrashItem(".lixeira/arq.md")).toBe(true);
+      expect(typeof supportsKlausSharing()).toBe("boolean");
     });
   });
 });

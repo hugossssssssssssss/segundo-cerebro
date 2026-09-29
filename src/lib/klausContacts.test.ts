@@ -6,7 +6,10 @@ import {
   filtrarContatos,
   parsearCSVContatos,
   exportarCSVContatos,
-} from "./contatos";
+  slugifyKlausContactName,
+  buildKlausContactsTree,
+  exportKlausContactsCSV,
+} from "./klausContacts";
 import type { Contato } from "./tipos";
 import type { Documento } from "./markdown";
 
@@ -209,5 +212,11 @@ Beatriz Lima;Gerente;Acme;beatriz@acme.com;11888;roberto-mendes;Equipe;Vendas`;
     const csvOutput = exportarCSVContatos(contatos);
     expect(csvOutput).toContain("Nome,Cargo,Empresa,Email,Telefone,Pai_ID,Tags,Notas,Cidade");
     expect(csvOutput).toContain("Carlos,CEO,Acme,carlos@acme.com,123,,Liderança,Nota simples,Rio");
+  });
+
+  it("aliases canônicos de klausContacts funcionam identicamente", () => {
+    expect(slugifyKlausContactName("Hugo Silva")).toBe(slugifyNomeContato("Hugo Silva"));
+    expect(buildKlausContactsTree([])).toEqual(construirArvoreContatos([]));
+    expect(exportKlausContactsCSV([])).toBe(exportarCSVContatos([]));
   });
 });

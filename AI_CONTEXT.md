@@ -142,15 +142,9 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 _(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/lixeira.ts`
-> Lixeira Soberana em Markdown do Klaus (.lixeira/) Em vez de destruir arquivos permanentemente com DELETE direto no GitHub, move o arquivo para a pasta oculta `.lixeira/` preservando todo o histórico e metadados com possibilidade de restauração em 1 clique.
+> @deprecated Use `src/lib/klausTrash.ts` para seguir a arquitetura canônica Klaus. Este arquivo foi mantido para compatibilidade retroativa com código existente.
 
-**Exportações principais:**
-- `constante` **`PASTA_LIXEIRA`**
-- `funcao` **`ehItemLixeira`** — _Verifica se um caminho de arquivo pertence à Lixeira Soberana (.lixeira/)_
-- `tipo` **`ItemLixeira`**
-- `funcao` **`moverParaLixeira`** — _Move um arquivo para a Lixeira Soberana (.lixeira/) com metadados de reversão._
-- `funcao` **`restaurarDaLixeira`** — _Restaura um arquivo da Lixeira para sua pasta de origem._
-- `funcao` **`listarItensLixeira`** — _Filtra e formata os itens da lixeira a partir do acervo carregado._
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/offlineQueue.ts`
 > Gerenciador de Rascunhos e Fila de Operações em Segundo Plano (Sync Queue). Permite salvar e deletar notas, tarefas e outros itens localmente com Optimistic UI e sincroniza automaticamente com o GitHub em background assim que houver rede.
@@ -337,16 +331,9 @@ _(Exportações internas ou módulo utilitário)_
 ### 4. Links, Menções (@) & Grafo de Conexões
 
 #### 📄 `src/lib/grafo.ts`
-> Extrator e simulador de física 3D para o Grafo Neural de Relacionamentos. Mapeia todas as entidades do repositório (Notas, Tarefas, Metas, Entregas, Referências e Lousas), extrai os relacionamentos cruzados (@menções, tags e links) e gera um grafo tridimensional com simulação de forças físicas estabilizada.
+> @deprecated Use `src/lib/klausGraph.ts` para seguir a arquitetura canônica Klaus. Este arquivo foi mantido para compatibilidade retroativa com código existente.
 
-**Exportações principais:**
-- `tipo` **`TipoNoGrafo`**
-- `tipo` **`NoGrafo3D`**
-- `tipo` **`ArestaGrafo3D`**
-- `tipo` **`DadosGrafo3D`**
-- `constante` **`CORES_TIPOS_GRAFO`**
-- `funcao` **`construirGrafo3D`**
-- `funcao` **`simularPassoFisica3D`** — _Executa uma iteração da simulação de forças físicas 3D (Repulsão + Mola de Atração + Gravidade Centr..._
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/links.ts`
 > @deprecated Use `src/lib/klausLinks.ts` para seguir a arquitetura canônica Klaus. Este arquivo foi mantido para compatibilidade retroativa com código existente.
@@ -487,14 +474,9 @@ _(Exportações internas ou módulo utilitário)_
 ### 7. Entidades Especializadas & Regras de Negócio
 
 #### 📄 `src/lib/contatos.ts`
-**Exportações principais:**
-- `interface` **`NoContato`**
-- `funcao` **`slugifyNomeContato`** — _Converte um nome em slug seguro para nome de arquivo no GitHub. Ex: "Marcelo Silva (CEO)" -> "marcel..._
-- `funcao` **`construirArvoreContatos`** — _Organiza uma lista plana de contatos em uma estrutura hierárquica em árvore. Suporta N níveis de pro..._
-- `funcao` **`filtrarContatos`** — _Filtra contatos por texto de busca, empresa e tag._
-- `interface` **`ContatoImportadoCSV`**
-- `funcao` **`parsearCSVContatos`** — _Analisa o cabeçalho e as linhas de um CSV e devolve uma lista de contatos parciais. Tolerante a deli..._
-- `funcao` **`exportarCSVContatos`** — _Exporta os contatos formatados para CSV._
+> @deprecated Use `src/lib/klausContacts.ts` para seguir a arquitetura canônica Klaus. Este arquivo foi mantido para compatibilidade retroativa com código existente.
+
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/menuPersonalizado.ts`
 > @deprecated Este módulo foi renomeado para '@/lib/klausMenu'. Use diretamente '@/lib/klausMenu' ou o SDK '@/lib/klausSdk'.
@@ -518,19 +500,9 @@ _(Exportações internas ou módulo utilitário)_
 _(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/referencias.ts`
-> Referências visuais. Cada referência é um .md em `referencias/`. A imagem vai para `referencias/imagens/` e o .md aponta para ela com markdown normal (`![](imagens/arquivo.jpg)`), para continuar legível fora do app. Os tipos e funções de conversão vivem agora em `tipos.ts` e `entidades.ts`. Este arquivo re-exporta com nomes legados e guarda as funções específicas de imagem e upload.
+> @deprecated Use `src/lib/klausReferences.ts` para seguir a arquitetura canônica Klaus. Este arquivo foi mantido para compatibilidade retroativa com código existente.
 
-**Exportações principais:**
-- `constante` **`PASTA_REFS`**
-- `constante` **`PASTA_IMAGENS`**
-- `constante` **`LIMITE_IMAGEM`** — _Limite do GitHub por arquivo via API. Acima disso a gravação falha._
-- `funcao` **`refParaFrontmatter`** — _Wrapper legado que retorna só o frontmatter (Record), não {dados,corpo}. As telas novas usam `refere..._
-- `funcao` **`nomeDeImagem`** — _Nome de arquivo para a imagem, preservando a extensão original._
-- `funcao` **`arquivoParaBase64`** — _Converte o arquivo escolhido em base64 puro, sem o prefixo data:._
-- `funcao` **`caminhoCompletoDaImagem`** — _Caminho completo no repositório, a partir do que está gravado no `.md`. O arquivo guarda `imagens/fo..._
-- `funcao` **`limparCacheBlobs`** — _Limpa a memória retida por blobs de imagem privados_
-- `funcao` **`baixarImagemPrivada`** — _Baixa uma imagem do repositório PRIVADO e devolve um `blob:` utilizável. Uma `<img src>` comum não d..._
-- `funcao` **`todasAsTags`** — _Junta todas as tags usadas, para montar o filtro._
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/tarefas.ts`
 > @deprecated Este módulo foi renomeado para '@/lib/klausTasks'. Use diretamente '@/lib/klausTasks' ou o SDK '@/lib/klausSdk'.

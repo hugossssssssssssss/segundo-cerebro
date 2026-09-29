@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { construirGrafo3D, simularPassoFisica3D } from "./grafo";
+import {
+  construirGrafo3D,
+  simularPassoFisica3D,
+  buildKlausGraph3D,
+  simulateKlausGraphPhysicsStep3D,
+} from "./klausGraph";
 import type { ItemRepo } from "./repo";
 
 describe("grafo 3D", () => {
@@ -159,5 +164,12 @@ describe("grafo 3D", () => {
     expect(Number.isNaN(dados.nos[0].y)).toBe(false);
     expect(Number.isNaN(dados.nos[0].z)).toBe(false);
     expect(velMax).toBeGreaterThanOrEqual(0);
+  });
+
+  it("aliases canônicos de klausGraph funcionam identicamente", () => {
+    const dados = buildKlausGraph3D(mockItens);
+    expect(dados.nos.length).toBe(construirGrafo3D(mockItens).nos.length);
+    const vel = simulateKlausGraphPhysicsStep3D(dados, 0.85, 1.0);
+    expect(vel).toBeGreaterThanOrEqual(0);
   });
 });

@@ -233,7 +233,53 @@ export {
   checkKlausReferenceIntegrity,
 } from "./klausLinks";
 
-// ── 22. Tipos Oficiais ──────────────────────────────────────────────────────
+// ── 22. Referências Visuais (References & Assets) ───────────────────────────
+export {
+  createKlausImageFilename,
+  getKlausFullImagePath,
+  downloadKlausPrivateImage,
+  clearKlausBlobCache,
+  getAllKlausReferenceTags,
+  KLAUS_REFERENCES_DIR,
+  KLAUS_IMAGES_DIR,
+  KLAUS_IMAGE_MAX_BYTES,
+} from "./klausReferences";
+
+// ── 23. Contatos & Organograma (Contacts & Directory) ───────────────────────
+export {
+  slugifyKlausContactName,
+  buildKlausContactsTree,
+  filterKlausContacts,
+  parseKlausContactsCSV,
+  exportKlausContactsCSV,
+} from "./klausContacts";
+
+// ── 24. Grafo Neural 3D (3D Neural Graph) ───────────────────────────────────
+export {
+  buildKlausGraph3D,
+  simulateKlausGraphPhysicsStep3D,
+  KLAUS_GRAPH_TYPE_COLORS,
+} from "./klausGraph";
+
+// ── 25. Lixeira Soberana (Trash & Soft Delete) ──────────────────────────────
+export {
+  isKlausTrashItem,
+  moveToKlausTrash,
+  restoreFromKlausTrash,
+  listKlausTrashItems,
+  KLAUS_TRASH_DIR,
+} from "./klausTrash";
+
+// ── 26. Compartilhamento Nativo (Web Share) ─────────────────────────────────
+export {
+  supportsKlausSharing,
+  shareKlausContent,
+  shareKlausNote,
+  shareKlausTask,
+  shareKlausReference,
+} from "./klausShare";
+
+// ── 27. Tipos Oficiais ──────────────────────────────────────────────────────
 export type {
   KlausProject,
   KlausExtension,
@@ -292,3 +338,23 @@ export type {
   KlausReference,
   KlausMention,
 } from "./klausLinks";
+
+export type {
+  KlausContactNode,
+  KlausContactImportedCSV,
+} from "./klausContacts";
+
+export type {
+  KlausGraphNodeType,
+  KlausGraphNode3D,
+  KlausGraphEdge3D,
+  KlausGraphData3D,
+} from "./klausGraph";
+
+export type {
+  KlausTrashItem,
+} from "./klausTrash";
+
+export type {
+  KlausShareData,
+} from "./klausShare";

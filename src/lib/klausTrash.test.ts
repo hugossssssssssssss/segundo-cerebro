@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { listarItensLixeira, PASTA_LIXEIRA, ehItemLixeira } from "./lixeira";
+import {
+  listarItensLixeira,
+  PASTA_LIXEIRA,
+  ehItemLixeira,
+  isKlausTrashItem,
+  listKlausTrashItems,
+  KLAUS_TRASH_DIR,
+} from "./klausTrash";
 import type { ItemRepo } from "./repo";
 import { lerMarkdown } from "./markdown";
 
@@ -38,5 +45,11 @@ describe("lixeira - Soberania e reversibilidade", () => {
     expect(ehItemLixeira("notas/minha-nota.md")).toBe(false);
     expect(ehItemLixeira("")).toBe(false);
     expect(ehItemLixeira(undefined)).toBe(false);
+  });
+
+  it("aliases canônicos de klausTrash funcionam identicamente", () => {
+    expect(isKlausTrashItem(".lixeira/nota.md")).toBe(true);
+    expect(KLAUS_TRASH_DIR).toBe(".lixeira");
+    expect(listKlausTrashItems([])).toEqual([]);
   });
 });

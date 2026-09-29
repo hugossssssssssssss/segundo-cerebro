@@ -5,8 +5,10 @@ import {
   compartilharNota,
   compartilharTarefa,
   compartilharReferencia,
-} from "./compartilhar";
-import type { Tarefa } from "./tarefas";
+  supportsKlausSharing,
+  shareKlausContent,
+} from "./klausShare";
+import type { Tarefa } from "./klausTasks";
 
 describe("compartilhar", () => {
   beforeEach(() => {
@@ -127,5 +129,10 @@ describe("compartilhar", () => {
       text: "Gostei da paleta.",
       url: "https://dribbble.com/123",
     });
+  });
+
+  it("aliases canônicos de klausShare funcionam identicamente", async () => {
+    expect(supportsKlausSharing()).toBe(suportaCompartilhamento());
+    expect(typeof shareKlausContent).toBe("function");
   });
 });
