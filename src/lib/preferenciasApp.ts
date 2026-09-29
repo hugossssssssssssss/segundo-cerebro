@@ -19,6 +19,7 @@ import {
 } from "./widgetsHome";
 import { type WidgetConfig } from "@/components/home/types";
 import { lerTemaSalvo, aplicarTema, type Tema } from "./tema";
+import { sincronizarProjetosComGithub } from "./projetosExtensoes";
 
 
 export const CAMINHO_PREFERENCIAS = ".klaus/preferencias.json";
@@ -266,12 +267,13 @@ export async function sincronizarTudoComGithub(
       return { sucesso: true, mensagem: "Preferências locais enviadas com sucesso para o GitHub!" };
     }
 
-    // Busca remota em paralelo de todas as fontes de preferências
+    // Busca remota em paralelo de todas as fontes de preferências e projetos
     const [resPrefs, resFav, resMenu, resWid] = await Promise.all([
       ler(cfg, CAMINHO_PREFERENCIAS, { silenciar404: true }).catch(() => null),
       ler(cfg, CAMINHO_FAVORITOS, { silenciar404: true }).catch(() => null),
       ler(cfg, CAMINHO_MENU, { silenciar404: true }).catch(() => null),
       ler(cfg, CAMINHO_WIDGETS, { silenciar404: true }).catch(() => null),
+      sincronizarProjetosComGithub(cfg).catch(() => null),
     ]);
 
     let prefsConsolidadas: Partial<PreferenciasKlausConsolidadas> | null = null;

@@ -93,18 +93,10 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
     ],
   },
   {
-    id: "criacao-ferramentas",
-    titulo: "Criação & Ferramentas",
+    id: "projetos-extensoes",
+    titulo: "Projetos & Extensões",
     itens: [
-      { id: "grafo", para: "/grafo", rotulo: "Grafo de Links", iconeNome: "Network" },
-      { id: "lousas", para: "/lousas", rotulo: "Lousas Visuais", iconeNome: "Layout" },
-      { id: "referencias", para: "/referencias", rotulo: "Referências Visuais", iconeNome: "Image" },
-      { id: "sons", para: "/sons", rotulo: "Sons de Foco", iconeNome: "Headphones" },
-      { id: "pdf", para: "/pdf", rotulo: "Ferramentas PDF", iconeNome: "FileCheck" },
-      { id: "conversor", para: "/conversor", rotulo: "Conversor", iconeNome: "RefreshCw" },
-      { id: "baixador", para: "/baixador", rotulo: "Baixador de Mídia", iconeNome: "Download" },
-      { id: "it_tools", para: "/it-tools", rotulo: "IT-Tools", iconeNome: "Wrench" },
-      { id: "testador_hardware", para: "/testador", rotulo: "Testador de Hardware", iconeNome: "Video" },
+      { id: "biblioteca", para: "/biblioteca", rotulo: "Biblioteca", iconeNome: "Boxes", destaque: true },
     ],
   },
   {
@@ -112,8 +104,6 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
     titulo: "Evolução & IA",
     itens: [
       { id: "pdi", para: "/pdi", rotulo: "Carreira (PDI)", iconeNome: "Target" },
-      { id: "transcritor", para: "/transcritor", rotulo: "Transcrição de Áudio", iconeNome: "Mic" },
-      { id: "chat", para: "/chat", rotulo: "Conversar", iconeNome: "MessageCircle" },
     ],
   },
 ];
@@ -400,13 +390,78 @@ export function obterRotuloRota(rota: string): string {
     "/testador": "Testador de Hardware",
     "/transcritor": "Transcrição de Áudio",
     "/boas-vindas": "Boas-vindas",
+    "/biblioteca": "Biblioteca de Projetos",
+    "/projetos": "Biblioteca de Projetos",
+    "/extensoes": "Biblioteca de Projetos",
   };
 
   if (mapeamentoEspecial[rotaBase]) {
     return mapeamentoEspecial[rotaBase];
   }
 
+  if (rotaBase.startsWith("/projeto/")) {
+    return "Projeto";
+  }
+
   const semBarra = rotaBase.replace(/^\//, "");
   return semBarra ? semBarra.charAt(0).toUpperCase() + semBarra.slice(1) : "Início";
+}
+
+/**
+ * Adiciona ou remove uma extensão/projeto ativado do menu lateral.
+ */
+export function sincronizarExtensaoNoMenu(
+  item: {
+    id: string;
+    para: string;
+    rotulo: string;
+    iconeNome: string;
+    cor?: string;
+    ativo: boolean;
+  },
+  cfg?: Settings,
+): void {
+  const grupos = carregarMenuPersonalizado();
+  const rotaAlvo = item.para;
+
+  if (item.ativo) {
+    // Procura se já existe em algum grupo
+    let jaExiste = false;
+    for (const g of grupos) {
+      const it = g.itens.find((x) => x.para === rotaAlvo || x.id === item.id);
+      if (it) {
+        jaExiste = true;
+        it.oculto = false;
+        it.rotulo = item.rotulo;
+        it.iconeNome = item.iconeNome;
+        it.cor = item.cor;
+        break;
+      }
+    }
+
+    if (!jaExiste) {
+      // Injeta no grupo de projetos/extensões ou no grupo 1
+      let idxGrupo = grupos.findIndex((g) => g.id === "projetos-extensoes");
+      if (idxGrupo === -1) {
+        idxGrupo = grupos.length > 1 ? 1 : 0;
+      }
+      grupos[idxGrupo].itens.push({
+        id: item.id,
+        para: item.para,
+        rotulo: item.rotulo,
+        iconeNome: item.iconeNome,
+        cor: item.cor,
+        destaque: false,
+        oculto: false,
+      });
+    }
+  } else {
+    // Se foi desativado, remove do menu
+    for (const g of grupos) {
+      g.itens = g.itens.filter((x) => x.para !== rotaAlvo && x.id !== item.id);
+    }
+  }
+
+  salvarMenuPersonalizado(grupos, cfg);
 }
 

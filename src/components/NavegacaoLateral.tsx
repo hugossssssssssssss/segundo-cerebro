@@ -129,11 +129,13 @@ export function NavegacaoLateral({
     window.addEventListener(EVENTO_MENU_ATUALIZADO, atualizarMenu);
     window.addEventListener("klaus-preferencias-atualizadas", atualizarMenu);
     window.addEventListener("klaus-settings-atualizadas", atualizarMenu);
+    window.addEventListener("klaus-projetos-extensoes-atualizados", atualizarMenu);
     return () => {
       window.removeEventListener(EVENTO_WORKSPACE_ALTERADO, aoMudarWorkspace);
       window.removeEventListener(EVENTO_MENU_ATUALIZADO, atualizarMenu);
       window.removeEventListener("klaus-preferencias-atualizadas", atualizarMenu);
       window.removeEventListener("klaus-settings-atualizadas", atualizarMenu);
+      window.removeEventListener("klaus-projetos-extensoes-atualizados", atualizarMenu);
     };
   }, [atualizarMenu]);
 

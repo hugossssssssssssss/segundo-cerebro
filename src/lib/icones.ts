@@ -95,6 +95,9 @@ import {
   Gamepad2,
   Dices,
   Trash2,
+  Boxes,
+  Puzzle,
+  FolderGit2,
 } from "lucide-react";
 
 export interface ItemGaleriaIcone {
@@ -223,6 +226,9 @@ export const CATALOGO_ICONES: ItemGaleriaIcone[] = [
   { nome: "Hash", rotulo: "Hashtag, Número", categoria: "Símbolos & Utilitários", Icone: Hash },
   { nome: "Gamepad2", rotulo: "Controle, Videogame, Diversão, Entretenimento", categoria: "Símbolos & Utilitários", Icone: Gamepad2 },
   { nome: "Dices", rotulo: "Dados, Sorte, Aleatório", categoria: "Símbolos & Utilitários", Icone: Dices },
+  { nome: "Boxes", rotulo: "Biblioteca, Pacotes, Extensões, Módulos", categoria: "Símbolos & Utilitários", Icone: Boxes },
+  { nome: "Puzzle", rotulo: "Extensão, Plugin, Encaixe", categoria: "Símbolos & Utilitários", Icone: Puzzle },
+  { nome: "FolderGit2", rotulo: "Repositório, Projeto Git, Código", categoria: "Tecnologia & Dev", Icone: FolderGit2 },
 ];
 
 /** Mapa rápido de ícones por nome para acesso O(1) */

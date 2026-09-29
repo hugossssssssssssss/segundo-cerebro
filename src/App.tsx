@@ -82,6 +82,8 @@ const BoasVindas = lazy(() => import("@/pages/BoasVindas"));
 const TestadorHardware = lazy(() => import("@/pages/TestadorHardware"));
 const Sons = lazy(() => import("@/pages/Sons"));
 const Lixeira = lazy(() => import("@/pages/Lixeira"));
+const BibliotecaExtensoes = lazy(() => import("@/pages/BibliotecaExtensoes"));
+const ProjetoCustomizado = lazy(() => import("@/pages/ProjetoCustomizado"));
 
 
 
@@ -608,6 +610,10 @@ function AppInterno() {
             <Route path="/config" element={<Configuracoes />} />
             <Route path="/sons" element={<Sons />} />
             <Route path="/lixeira" element={<Lixeira />} />
+            <Route path="/biblioteca" element={<BibliotecaExtensoes />} />
+            <Route path="/projetos" element={<Navigate to="/biblioteca" replace />} />
+            <Route path="/extensoes" element={<Navigate to="/biblioteca" replace />} />
+            <Route path="/projeto/:idProjeto" element={<ProjetoCustomizado />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </Suspense>

@@ -18,6 +18,7 @@ import {
   Heart,
   ExternalLink,
   Code2,
+  Boxes,
 } from "lucide-react";
 import { LogoKlaus } from "./LogoKlaus";
 import { versao } from "@/lib/versao";
@@ -178,6 +179,15 @@ export function Rodape() {
                   >
                     <Headphones size={14} className="text-purple-500 shrink-0" />
                     <span>Sons & Foco</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/biblioteca"
+                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-medium transition-colors"
+                  >
+                    <Boxes size={14} className="text-indigo-500 shrink-0" />
+                    <span>Biblioteca de Projetos</span>
                   </Link>
                 </li>
               </ul>

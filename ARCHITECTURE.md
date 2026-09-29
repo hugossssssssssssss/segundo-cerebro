@@ -1,6 +1,6 @@
 # Arquitetura do Klaus
 
-> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-09-24.**
+> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-09-29.**
 > Não edite este arquivo à mão — ele é reescrito a cada `npm run build`.
 > Para mudar o que está aqui, mude `src/lib/tipos.ts` e `src/lib/entidades.ts`.
 
@@ -245,6 +245,8 @@ direto · `não usa` = não toca no repositório de dados.
 | Tela | Carregar | Gravar |
 |---|---|---|
 | `src/pages/BaixadorMidia.tsx` | não usa | não usa |
+| `src/pages/BibliotecaExtensoes.test.tsx` | não usa | não usa |
+| `src/pages/BibliotecaExtensoes.tsx` | não usa | não usa |
 | `src/pages/BoasVindas.tsx` | não usa | não usa |
 | `src/pages/Chat.tsx` | não usa | não usa |
 | `src/pages/Configuracoes.tsx` | na mão | hook |
@@ -262,6 +264,8 @@ direto · `não usa` = não toca no repositório de dados.
 | `src/pages/Lousas.tsx` | hook | hook |
 | `src/pages/Notas.tsx` | hook | hook |
 | `src/pages/PDI.tsx` | hook | hook |
+| `src/pages/ProjetoCustomizado.test.tsx` | não usa | não usa |
+| `src/pages/ProjetoCustomizado.tsx` | na mão | não usa |
 | `src/pages/Referencias.tsx` | hook | hook |
 | `src/pages/Sons.tsx` | não usa | não usa |
 | `src/pages/Tarefas.tsx` | hook | hook |

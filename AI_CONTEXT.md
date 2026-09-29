@@ -1,6 +1,6 @@
 # Contexto de IA & Mapa de Navegação do Klaus
 
-> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-09-25.**
+> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-09-29.**
 > Não edite as tabelas de módulos à mão — execute `npm run mapa-ia` ou `npm run build` para sincronizar com o código.
 
 Este arquivo foi desenhado sob medida para **Agentes de IA e LLMs** que operam no repositório Klaus.
@@ -83,6 +83,7 @@ Navegador (React SPA)
 | Tela | Arquivo | Finalidade Principal |
 |---|---|---|
 | **BaixadorMidia** | `src/pages/BaixadorMidia.tsx` | Interface e fluxo da tela de BaixadorMidia |
+| **BibliotecaExtensoes** | `src/pages/BibliotecaExtensoes.tsx` | Interface e fluxo da tela de BibliotecaExtensoes |
 | **BoasVindas** | `src/pages/BoasVindas.tsx` | Passo a passo de primeira execução (Onboarding) do Klaus. Apresenta as funcionalidades do app para profissionais criativos e guia a configuração do repositório privado do GitHub e da chave Gemini com total clareza, validações inteligentes e sem jargões técnicos. 100% otimizado para desktop e dispositivos móveis (Android e iOS). |
 | **Chat** | `src/pages/Chat.tsx` | Interface e fluxo da tela de Chat |
 | **Configuracoes** | `src/pages/Configuracoes.tsx` | Interface e fluxo da tela de Configuracoes |
@@ -98,6 +99,7 @@ Navegador (React SPA)
 | **Lousas** | `src/pages/Lousas.tsx` | Interface e fluxo da tela de Lousas |
 | **Notas** | `src/pages/Notas.tsx` | Interface e fluxo da tela de Notas |
 | **PDI** | `src/pages/PDI.tsx` | Interface e fluxo da tela de PDI |
+| **ProjetoCustomizado** | `src/pages/ProjetoCustomizado.tsx` | Interface e fluxo da tela de ProjetoCustomizado |
 | **Referencias** | `src/pages/Referencias.tsx` | Interface e fluxo da tela de Referencias |
 | **Sons** | `src/pages/Sons.tsx` | Interface e fluxo da tela de Sons |
 | **Tarefas** | `src/pages/Tarefas.tsx` | Interface e fluxo da tela de Tarefas |
@@ -109,7 +111,7 @@ Navegador (React SPA)
 ## 🧩 Catálogo de Componentes (`src/components/`)
 
 ### Componentes Principais (src/components/)
-`AlternadorVisao`, `AvatarUsuario`, `AvisoSemConexaoGithub`, `BarraAcoesLote`, `BarraFavoritos`, `BarraFerramentas`, `BarraFiltrosAvancados`, `Busca`, `CabecalhoPagina`, `CabecalhoSecao`, `Calendario`, `CapturaRapida`, `CardConsumoGitHub`, `CartaoAcao`, `CartaoItem`, `CartaoLousaVisual`, `CartaoNotaVisual`, `ConsoleDesenvolvedor`, `ContextoCronometro`, `ContextoFerramentasFlutuantes`, `DropdownNovoViaModelo`, `EditorNotion`, `FundoLiquidGlass`, `GaleriaIconesModal`, `GavetaMais`, `GerenciadorWorkspaces`, `HeaderAcoesOrdenaveis`, `HistoricoDiffModal`, `HoverPreviewMencao`, `ImagemPrivada`, `ItemFlutuanteContext`, `LauncherGoogleApps`, `LimiteDeErro`, `Links`, `LiquidGlass`, `LixeiraGitModal`, `LogoKlaus`, `MapaMentalEmbed`, `MenuAcoesTarefa`, `MenuContextoNotas`, `MiniCalendarioAtividade`, `ModalBuscaWeb`, `ModalCreditosOpenSource`, `ModalDossieCarreira`, `ModalGerenciarModelos`, `ModalGuiaAtalhos`, `ModalIADocumento`, `ModalInstalarPwa`, `ModalLembrete`, `ModalPersonalizarMenu`, `ModalRefatorarLinks`, `ModalSelecionarIconeFavorito`, `ModalTourGuiado`, `ModalVincularDocumentoAvancado`, `ModalVincularPDI`, `NavegacaoLateral`, `NavegadorGrafo3D`, `NavegadorTagsModal`, `PainelGestaoEquipe`, `PainelNotificacoesHeader`, `PainelNotionBase`, `PainelPropriedadesNota`, `PainelReferenciasNota`, `PainelTarefasNota`, `Pomodoro`, `PrismasFoco`, `PropriedadesNotion`, `Quadro`, `Rodape`, `SeletorOcr`, `SeletorWorkspace`, `SeloStatus`, `Subtarefas`, `SumarioNota`, `TagChip`, `ToastsContainer`, `WebSearchBar`, `WebSearchHeader`, `WebSearchWidget`, `ui`
+`AlternadorVisao`, `AvatarUsuario`, `AvisoSemConexaoGithub`, `BarraAcoesLote`, `BarraFavoritos`, `BarraFerramentas`, `BarraFiltrosAvancados`, `Busca`, `CabecalhoPagina`, `CabecalhoSecao`, `Calendario`, `CapturaRapida`, `CardConsumoGitHub`, `CartaoAcao`, `CartaoItem`, `CartaoLousaVisual`, `CartaoNotaVisual`, `ConsoleDesenvolvedor`, `ContextoCronometro`, `ContextoFerramentasFlutuantes`, `DropdownNovoViaModelo`, `EditorNotion`, `FundoLiquidGlass`, `GaleriaIconesModal`, `GavetaMais`, `GerenciadorWorkspaces`, `HeaderAcoesOrdenaveis`, `HistoricoDiffModal`, `HoverPreviewMencao`, `ImagemPrivada`, `ItemFlutuanteContext`, `LauncherGoogleApps`, `LimiteDeErro`, `Links`, `LiquidGlass`, `LixeiraGitModal`, `LogoKlaus`, `MapaMentalEmbed`, `MenuAcoesTarefa`, `MenuContextoNotas`, `MiniCalendarioAtividade`, `ModalBuscaWeb`, `ModalCreditosOpenSource`, `ModalCriarProjetoExtensao`, `ModalDossieCarreira`, `ModalGerenciarModelos`, `ModalGuiaAtalhos`, `ModalIADocumento`, `ModalInstalarPwa`, `ModalLembrete`, `ModalPersonalizarMenu`, `ModalRefatorarLinks`, `ModalSelecionarIconeFavorito`, `ModalTourGuiado`, `ModalVincularDocumentoAvancado`, `ModalVincularPDI`, `NavegacaoLateral`, `NavegadorGrafo3D`, `NavegadorTagsModal`, `PainelGestaoEquipe`, `PainelNotificacoesHeader`, `PainelNotionBase`, `PainelPropriedadesNota`, `PainelReferenciasNota`, `PainelTarefasNota`, `Pomodoro`, `PrismasFoco`, `PropriedadesNotion`, `Quadro`, `Rodape`, `SeletorOcr`, `SeletorWorkspace`, `SeloStatus`, `Subtarefas`, `SumarioNota`, `TagChip`, `ToastsContainer`, `WebSearchBar`, `WebSearchHeader`, `WebSearchWidget`, `ui`
 
 ### Sub-componentes: src/components/home/
 `CabecalhoHome`, `ModalCatalogoWidgets`, `WidgetBaixadorRapido`, `WidgetBuscaWeb`, `WidgetChatIA`, `WidgetConversorRapido`, `WidgetFocoHoje`, `WidgetHubFerramentas`, `WidgetITToolsRapido`, `WidgetLousasRecentes`, `WidgetMetasPDI`, `WidgetNotasRecentes`, `WidgetPDFRapido`, `WidgetReferenciasMural`, `WidgetScratchpad`, `WidgetSonsFoco`, `WidgetTranscritorVoz`, `WidgetWrapper`, `types`
@@ -629,7 +631,7 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`registrarShaMenu`**
 - `funcao` **`obterShaMenu`**
 - `funcao` **`agendarPersistenciaMenuRemoto`** — _Enfileira a persistência assíncrona do menu no repositório GitHub com debounce suave._
-- _...e mais 4 exportações secundárias._
+- _...e mais 5 exportações secundárias._
 
 #### 📄 `src/lib/migracaoLote.ts`
 > Analisador e Migrador em Lote de Entidades do Klaus. Varre todo o acervo de arquivos Markdown no repositório, identifica documentos que ainda utilizam convenções legadas e permite a padronização unificada em lote direto no GitHub.
