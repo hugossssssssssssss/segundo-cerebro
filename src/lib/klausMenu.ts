@@ -90,7 +90,6 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
       { id: "home", para: "/home", rotulo: "Início", iconeNome: "Home" },
       { id: "inbox", para: "/inbox", rotulo: "Caixa de Entrada", iconeNome: "Inbox" },
       { id: "tarefas", para: "/tarefas", rotulo: "Tarefas", iconeNome: "CheckSquare" },
-      { id: "contatos", para: "/contatos", rotulo: "Árvore de Contatos", iconeNome: "FolderTree" },
       { id: "notas", para: "/notas", rotulo: "Notas", iconeNome: "FileText" },
       { id: "lixeira", para: "/lixeira", rotulo: "Lixeira", iconeNome: "Trash2" },
     ],

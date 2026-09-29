@@ -25,6 +25,7 @@ export interface ItemCatalogoExtensao {
   icone: string;
   versao: string;
   categoriaInterna: string;
+  rotaIntegrada?: string;
   manifesto: KlausAppManifest;
   codigoHtml: string;
 }
@@ -697,6 +698,404 @@ export const CATALOGO_BIBLIOTECA: ItemCatalogoExtensao[] = [
 </body>
 </html>`,
   },
+  {
+    id: "jogos",
+    nome: "Jogos & Foco Mental (Termo)",
+    descricao: "Jogo diário no estilo Wordle/Termo em português para pausas ativas e estímulo de raciocínio.",
+    icone: "Gamepad2",
+    versao: "1.0.0",
+    categoriaInterna: "produtividade",
+    manifesto: {
+      id: "jogos",
+      name: "Jogos & Foco Mental",
+      version: "1.0.0",
+      description: "Termo e jogos de raciocínio no Klaus.",
+      entry: "index.html",
+      icon: "Gamepad2",
+      category: "produtividade",
+      permissions: ["theme", "ui", "storage"],
+      theme: { supportsDark: true },
+      sandbox: { allowScripts: true, allowPopups: true, allowSameOrigin: false },
+    },
+    codigoHtml: `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Termo - Jogo de Palavras</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--klaus-bg, #0f172a);
+      color: var(--klaus-fg, #f8fafc);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem 1rem;
+      min-height: 100vh;
+    }
+    .container { max-width: 500px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+    .header { text-align: center; }
+    .header h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: 0.05em; }
+    .header p { font-size: 0.8rem; color: var(--klaus-muted, #94a3b8); margin-top: 0.2rem; }
+    .board { display: grid; grid-template-rows: repeat(6, 1fr); gap: 6px; margin: 0.5rem 0; }
+    .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .tile {
+      width: 48px;
+      height: 48px;
+      border: 2px solid var(--klaus-border, #334155);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      user-select: none;
+      background: var(--klaus-card, #1e293b);
+      transition: all 0.2s ease;
+    }
+    .tile.filled { border-color: var(--klaus-fg, #f8fafc); }
+    .tile.correct { background: #10b981; border-color: #10b981; color: #ffffff; }
+    .tile.present { background: #f59e0b; border-color: #f59e0b; color: #ffffff; }
+    .tile.absent { background: #334155; border-color: #334155; color: #94a3b8; }
+    .keyboard { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 460px; margin-top: 0.5rem; }
+    .kb-row { display: flex; justify-content: center; gap: 4px; }
+    .key {
+      background: var(--klaus-card, #1e293b);
+      color: var(--klaus-fg, #f8fafc);
+      border: 1px solid var(--klaus-border, #334155);
+      border-radius: 6px;
+      padding: 0.65rem 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      min-width: 30px;
+      text-align: center;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .key:hover { filter: brightness(1.15); }
+    .key.wide { min-width: 52px; font-size: 0.75rem; }
+    .key.correct { background: #10b981; border-color: #10b981; color: #fff; }
+    .key.present { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+    .key.absent { opacity: 0.35; }
+    .msg { font-size: 0.9rem; font-weight: 600; min-height: 1.4rem; text-align: center; }
+    .btn-new {
+      background: var(--klaus-primary, #f59e0b);
+      color: var(--klaus-primary-fg, #0f172a);
+      border: none;
+      padding: 0.5rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.85rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>TERMO</h1>
+      <p>Descubra a palavra certa de 5 letras em 6 tentativas.</p>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="msg" id="msg"></div>
+    <button class="btn-new" id="btnNew" onclick="iniciarJogo()">Jogar Novamente</button>
+    <div class="keyboard" id="keyboard"></div>
+  </div>
+  <script>
+    const PALAVRAS = ["PLANO","IDEIA","TEMPO","VALOR","LINDO","FORCA","MENTE","MUNDO","SONHO","GRUPO","LIVRO","FESTA","TERRA","VERBO","PONTO","CORPO","CHAVE","NORTE","CANTO","CAMPO","PRAZO","SENSO","VIGOR","NOBRE","SUTIL","SAGAZ","AFETO","ETICA","AUDAC","IDEAL","ORDEM","PODER","METAS","FOCO","ARTE","LIDER","MARCA","GRADE","TEXTO","LINHA","SIGNO","FORMA","PIXEL","VETOR","CORES","ICONE","CARTA","PASSO","CALMA","RITMO"];
+    let segredo = "";
+    let linhaAtual = 0;
+    let colunaAtual = 0;
+    let grid = Array(6).fill(null).map(() => Array(5).fill(""));
+    let fimDeJogo = false;
+
+    function iniciarJogo() {
+      segredo = PALAVRAS[Math.floor(Math.random() * PALAVRAS.length)];
+      linhaAtual = 0;
+      colunaAtual = 0;
+      grid = Array(6).fill(null).map(() => Array(5).fill(""));
+      fimDeJogo = false;
+      document.getElementById('msg').textContent = "";
+      document.getElementById('btnNew').style.display = "none";
+      renderBoard();
+      renderKeyboard();
+    }
+
+    function renderBoard() {
+      const b = document.getElementById('board');
+      b.innerHTML = "";
+      for (let r = 0; r < 6; r++) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        for (let c = 0; c < 5; c++) {
+          const tile = document.createElement('div');
+          tile.className = 'tile' + (grid[r][c] ? ' filled' : '');
+          tile.id = 'tile_' + r + '_' + c;
+          tile.textContent = grid[r][c];
+          row.appendChild(tile);
+        }
+        b.appendChild(row);
+      }
+    }
+
+    const TECLAS = [
+      ["Q","W","E","R","T","Y","U","I","O","P"],
+      ["A","S","D","F","G","H","J","K","L","Ç"],
+      ["ENTER","Z","X","C","V","B","N","M","⌫"]
+    ];
+
+    function renderKeyboard() {
+      const kb = document.getElementById('keyboard');
+      kb.innerHTML = "";
+      TECLAS.forEach(linha => {
+        const row = document.createElement('div');
+        row.className = 'kb-row';
+        linha.forEach(k => {
+          const btn = document.createElement('button');
+          btn.className = 'key' + (k.length > 1 ? ' wide' : '');
+          btn.id = 'key_' + k;
+          btn.textContent = k;
+          btn.onclick = () => processarEntrada(k);
+          row.appendChild(btn);
+        });
+        kb.appendChild(row);
+      });
+    }
+
+    function processarEntrada(letra) {
+      if (fimDeJogo) return;
+      if (letra === 'ENTER') {
+        validarTentativa();
+      } else if (letra === '⌫' || letra === 'BACKSPACE') {
+        if (colunaAtual > 0) {
+          colunaAtual--;
+          grid[linhaAtual][colunaAtual] = "";
+          const t = document.getElementById('tile_' + linhaAtual + '_' + colunaAtual);
+          t.textContent = "";
+          t.className = 'tile';
+        }
+      } else if (/^[A-ZÇ]$/.test(letra)) {
+        if (colunaAtual < 5) {
+          grid[linhaAtual][colunaAtual] = letra;
+          const t = document.getElementById('tile_' + linhaAtual + '_' + colunaAtual);
+          t.textContent = letra;
+          t.className = 'tile filled';
+          colunaAtual++;
+        }
+      }
+    }
+
+    function validarTentativa() {
+      if (colunaAtual < 5) {
+        document.getElementById('msg').textContent = "Palavra incompleta!";
+        setTimeout(() => { if (!fimDeJogo) document.getElementById('msg').textContent = ""; }, 1500);
+        return;
+      }
+      const tentativa = grid[linhaAtual].join("");
+      const resultado = Array(5).fill("absent");
+      const letrasRestantes = segredo.split("");
+
+      // 1. Letras na posição certa
+      for (let i = 0; i < 5; i++) {
+        if (tentativa[i] === segredo[i]) {
+          resultado[i] = "correct";
+          letrasRestantes[i] = null;
+        }
+      }
+      // 2. Letras presentes na palavra
+      for (let i = 0; i < 5; i++) {
+        if (resultado[i] !== "correct") {
+          const idx = letrasRestantes.indexOf(tentativa[i]);
+          if (idx !== -1) {
+            resultado[i] = "present";
+            letrasRestantes[idx] = null;
+          }
+        }
+      }
+
+      for (let i = 0; i < 5; i++) {
+        const t = document.getElementById('tile_' + linhaAtual + '_' + i);
+        t.className = 'tile ' + resultado[i];
+        const key = document.getElementById('key_' + tentativa[i]);
+        if (key) {
+          if (resultado[i] === 'correct') {
+            key.className = 'key correct';
+          } else if (resultado[i] === 'present' && !key.classList.contains('correct')) {
+            key.className = 'key present';
+          } else if (resultado[i] === 'absent' && !key.classList.contains('correct') && !key.classList.contains('present')) {
+            key.className = 'key absent';
+          }
+        }
+      }
+
+      if (tentativa === segredo) {
+        fimDeJogo = true;
+        document.getElementById('msg').textContent = "Parabéns! Você acertou! 🎉";
+        document.getElementById('btnNew').style.display = "block";
+      } else if (linhaAtual === 5) {
+        fimDeJogo = true;
+        document.getElementById('msg').textContent = "Fim de jogo! A palavra era: " + segredo;
+        document.getElementById('btnNew').style.display = "block";
+      } else {
+        linhaAtual++;
+        colunaAtual = 0;
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') processarEntrada('ENTER');
+      else if (e.key === 'Backspace') processarEntrada('⌫');
+      else {
+        const k = e.key.toUpperCase();
+        if (/^[A-ZÇ]$/.test(k)) processarEntrada(k);
+      }
+    });
+
+    iniciarJogo();
+  </script>
+</body>
+</html>`,
+  },
+  {
+    id: "contatos",
+    nome: "Árvore de Contatos & Pessoas",
+    descricao: "Organograma, rede de relacionamentos profissionais e gestão de lideranças e equipes.",
+    icone: "FolderTree",
+    versao: "1.0.0",
+    categoriaInterna: "produtividade",
+    rotaIntegrada: "/contatos",
+    manifesto: {
+      id: "contatos",
+      name: "Árvore de Contatos & Pessoas",
+      version: "1.0.0",
+      description: "Organograma e gestão de contatos e equipes.",
+      entry: "index.html",
+      icon: "FolderTree",
+      category: "produtividade",
+      permissions: ["theme", "ui"],
+      theme: { supportsDark: true },
+    },
+    codigoHtml: `<!DOCTYPE html><html><body><h1>Contatos</h1></body></html>`,
+  },
+  {
+    id: "livros",
+    nome: "Acervo de Livros & Domínio Público",
+    descricao: "Pesquisa de obras clássicas, referências e downloads de domínio público via OpenLibrary.",
+    icone: "BookOpen",
+    versao: "1.0.0",
+    categoriaInterna: "design",
+    manifesto: {
+      id: "livros",
+      name: "Acervo de Livros",
+      version: "1.0.0",
+      description: "Busca de livros clássicos e referências.",
+      entry: "index.html",
+      icon: "BookOpen",
+      category: "design",
+      permissions: ["theme", "ui"],
+      theme: { supportsDark: true },
+    },
+    codigoHtml: `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Acervo de Livros</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--klaus-bg, #0f172a);
+      color: var(--klaus-fg, #f8fafc);
+      padding: 1.5rem;
+    }
+    .container { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.25rem; }
+    .search-box { display: flex; gap: 0.5rem; }
+    input {
+      flex: 1;
+      background: var(--klaus-card, #1e293b);
+      color: var(--klaus-fg, #f8fafc);
+      border: 1px solid var(--klaus-border, #334155);
+      padding: 0.65rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+    }
+    button {
+      background: var(--klaus-primary, #f59e0b);
+      color: var(--klaus-primary-fg, #0f172a);
+      border: none;
+      padding: 0.65rem 1.25rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .book-card {
+      background: var(--klaus-card, #1e293b);
+      border: 1px solid var(--klaus-border, #334155);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .book-title { font-size: 0.9rem; font-weight: 600; line-height: 1.3; }
+    .book-author { font-size: 0.8rem; color: var(--klaus-muted, #94a3b8); }
+    .book-year { font-size: 0.75rem; color: var(--klaus-muted, #94a3b8); font-family: monospace; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div>
+      <h2 style="font-size: 1.25rem; font-weight: 700;">Pesquisar Livros & Clássicos</h2>
+      <p style="font-size: 0.85rem; color: var(--klaus-muted, #94a3b8); margin-top: 0.25rem;">
+        Catálogo do OpenLibrary com milhões de obras de domínio público.
+      </p>
+    </div>
+    <div class="search-box">
+      <input type="text" id="query" placeholder="Buscar por título, autor ou tema (ex: Design, Machado de Assis)..." onkeydown="if(event.key==='Enter') buscar()">
+      <button onclick="buscar()">Pesquisar</button>
+    </div>
+    <div id="status" style="font-size: 0.85rem; color: var(--klaus-muted, #94a3b8);"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+  <script>
+    async function buscar() {
+      const q = document.getElementById('query').value.trim();
+      if (!q) return;
+      const status = document.getElementById('status');
+      const grid = document.getElementById('grid');
+      status.textContent = "Buscando no acervo...";
+      grid.innerHTML = "";
+
+      try {
+        const res = await fetch('https://openlibrary.org/search.json?q=' + encodeURIComponent(q) + '&limit=12');
+        const data = await res.json();
+        if (!data.docs || data.docs.length === 0) {
+          status.textContent = "Nenhum livro encontrado para esta busca.";
+          return;
+        }
+        status.textContent = data.docs.length + " obras encontradas:";
+        data.docs.forEach(doc => {
+          const card = document.createElement('div');
+          card.className = 'book-card';
+          card.innerHTML =
+            '<div class="book-title">' + (doc.title || 'Sem título') + '</div>' +
+            '<div class="book-author">' + (doc.author_name ? doc.author_name.join(', ') : 'Autor desconhecido') + '</div>' +
+            '<div class="book-year">Ano: ' + (doc.first_publish_year || 'N/A') + '</div>';
+          grid.appendChild(card);
+        });
+      } catch (err) {
+        status.textContent = "Erro ao conectar com o OpenLibrary.";
+      }
+    }
+  </script>
+</body>
+</html>`,
+  },
 ];
 
 /**
@@ -727,6 +1126,8 @@ export async function instalarExtensaoNoRepositorio(
     return { sucesso: false, mensagem: "Extensão não encontrada no catálogo." };
   }
 
+  const rota = item.rotaIntegrada || `/projeto/${item.id}`;
+
   // 1. Salva nos projetos locais e no menu lateral de imediato
   const projetoAtualizado: ProjetoExtensao = {
     id: item.id,
@@ -734,10 +1135,10 @@ export async function instalarExtensaoNoRepositorio(
     descricao: item.descricao,
     icone: item.icone,
     categoria: "utilitarios",
-    tipo: "codigo_customizado",
+    tipo: item.rotaIntegrada ? "nativa" : "codigo_customizado",
     ativo: true,
     origem: "usuario",
-    rota: `/projeto/${item.id}`,
+    rota,
     codigoHtml: item.codigoHtml,
     criadoEm: new Date().toISOString(),
     atualizadoEm: new Date().toISOString(),
@@ -749,7 +1150,7 @@ export async function instalarExtensaoNoRepositorio(
     sincronizarExtensaoNoMenu(
       {
         id: item.id,
-        para: `/projeto/${item.id}`,
+        para: rota,
         rotulo: item.nome,
         iconeNome: item.icone,
         ativo: true,
@@ -822,6 +1223,7 @@ export async function desinstalarExtensaoDoRepositorio(
 ): Promise<{ sucesso: boolean; mensagem: string }> {
   const item = CATALOGO_BIBLIOTECA.find((c) => c.id === id);
   const nome = item?.nome || id;
+  const rota = item?.rotaIntegrada || `/projeto/${id}`;
 
   // 1. Remove do registro e menu local
   removerProjetoCustomizado(id, cfg);
@@ -830,7 +1232,7 @@ export async function desinstalarExtensaoDoRepositorio(
     sincronizarExtensaoNoMenu(
       {
         id,
-        para: `/projeto/${id}`,
+        para: rota,
         rotulo: "",
         iconeNome: "",
         ativo: false,

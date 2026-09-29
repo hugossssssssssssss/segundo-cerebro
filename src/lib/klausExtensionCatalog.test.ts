@@ -86,4 +86,19 @@ describe("Módulo klausExtensionCatalog", () => {
 
     expect(verificarExtensaoInstalada("conversor")).toBe(false);
   });
+
+  it("suporta extensão de contatos com rota integrada e jogos", async () => {
+    const catalogo = obterCatalogoBiblioteca();
+    const contatos = catalogo.find((c) => c.id === "contatos");
+    const jogos = catalogo.find((c) => c.id === "jogos");
+
+    expect(contatos).toBeDefined();
+    expect(contatos?.rotaIntegrada).toBe("/contatos");
+    expect(jogos).toBeDefined();
+    expect(jogos?.codigoHtml).toContain("TERMO");
+
+    const res = await instalarExtensaoNoRepositorio("contatos", cfgMock);
+    expect(res.sucesso).toBe(true);
+    expect(verificarExtensaoInstalada("contatos")).toBe(true);
+  });
 });

@@ -287,8 +287,9 @@ export default function BibliotecaExtensoes() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {instaladosFiltrados.map((item) => {
+              const itemCat = catalogo.find((c) => c.id === item.id);
+              const rotaDestino = item.rota || itemCat?.rotaIntegrada || `/projeto/${item.id}`;
               const Icone = obterIconePorNome(item.icone || "FolderGit2");
-              const rotaDestino = item.rota || `/projeto/${item.id}`;
 
               return (
                 <div
@@ -447,7 +448,7 @@ export default function BibliotecaExtensoes() {
                         </button>
                         <Botao
                           variante="neutro"
-                          onClick={() => navigate(`/projeto/${item.id}`)}
+                          onClick={() => navigate(item.rotaIntegrada || `/projeto/${item.id}`)}
                           className="text-xs h-7 px-2.5 font-medium"
                         >
                           <span>Abrir</span>
