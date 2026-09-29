@@ -5,7 +5,7 @@ import {
   sincronizarWidgetsComGithub,
   obterCatalogoWidgetsPersonalizado,
   obterInfoWidgetPersonalizado,
-} from "./widgetsHome";
+} from "./klausWidgets";
 import { CONFIG_PADRAO_WIDGETS } from "@/components/home/types";
 import { PADRAO, type Settings } from "./settings";
 import * as github from "./github";

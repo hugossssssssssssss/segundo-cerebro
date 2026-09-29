@@ -6,7 +6,7 @@ import {
   salvarWorkspace,
   removerWorkspace,
   type WorkspaceConfig,
-} from "./workspaces";
+} from "./klausWorkspaces";
 import * as repo from "./repo";
 
 describe("workspaces.ts - Gestão de Múltiplos Espaços", () => {

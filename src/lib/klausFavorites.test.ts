@@ -10,7 +10,7 @@ import {
   CHAVE_STORAGE_FAVORITOS,
   EVENTO_FAVORITOS_ATUALIZADOS,
   type FavoritoItem,
-} from "./favoritos";
+} from "./klausFavorites";
 import type { Settings } from "./settings";
 import * as github from "./github";
 

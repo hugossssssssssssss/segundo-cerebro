@@ -553,23 +553,9 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - _...e mais 2 exportações secundárias._
 
 #### 📄 `src/lib/favoritos.ts`
-**Exportações principais:**
-- `interface` **`FavoritoItem`**
-- `constante` **`CAMINHO_FAVORITOS`**
-- `constante` **`CHAVE_STORAGE_FAVORITOS`**
-- `constante` **`EVENTO_FAVORITOS_ATUALIZADOS`**
-- `funcao` **`normalizarUrl`** — _Normaliza uma URL garantindo o prefixo https:// caso nenhum protocolo seja informado._
-- `funcao` **`extrairDominio`** — _Extrai com segurança o domínio/hostname da URL para obter o favicon._
-- `funcao` **`obterFaviconGoogle`** — _Retorna a URL do serviço de Favicons do Google para o domínio especificado._
-- `constante` **`FAVORITOS_PADRAO_KLAUS`**
-- `funcao` **`lerFavoritosLocal`** — _Lê os favoritos salvos no localStorage ou chrome.storage._
-- `funcao` **`salvarFavoritosLocal`** — _Salva a lista de favoritos no localStorage e notifica a aplicação via evento._
-- `funcao` **`registrarShaFavoritos`** — _Registra o SHA conhecido de .klaus/favoritos.json_
-- `funcao` **`obterShaFavoritos`** — _Obtém o último SHA registrado de .klaus/favoritos.json_
-- `funcao` **`temPersistenciaPendente`** — _Indica se há uma persistência agendada no debounce aguardando envio ao GitHub._
-- `funcao` **`invalidarCacheFavoritos`**
-- `funcao` **`carregarFavoritos`** — _Carrega os favoritos do repositório GitHub com mesclagem segura com o localStorage._
-- _...e mais 4 exportações secundárias._
+> @deprecated Este módulo foi renomeado para '@/lib/klausFavorites'. Use diretamente '@/lib/klausFavorites' ou o SDK '@/lib/klausSdk'.
+
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/historicoAtividade.ts`
 > Compilador de Histórico de Atividades e Mapa de Calor (Klaus Activity Pulse) Mapeia todas as ações, criações, edições, conclusões de tarefas e referências visuais por dia para alimentar o mini calendário estilo GitHub em tons de roxo.
@@ -615,23 +601,9 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`exportarCSVContatos`** — _Exporta os contatos formatados para CSV._
 
 #### 📄 `src/lib/menuPersonalizado.ts`
-**Exportações principais:**
-- `interface` **`ItemMenuPersonalizado`**
-- `interface` **`GrupoMenuPersonalizado`**
-- `interface` **`PresetCor`**
-- `constante` **`PRESETS_CORES_ICONE`**
-- `constante` **`CAMINHO_MENU`**
-- `constante` **`CHAVE_STORAGE_MENU`**
-- `constante` **`EVENTO_MENU_ATUALIZADO`**
-- `constante` **`ITENS_BANIDOS_MENU`** — _Itens e rotas permanentemente excluídos do Klaus. NUNCA devem ser carregados ou exibidos no menu, me..._
-- `constante` **`ROTAS_BANIDAS_MENU`**
-- `funcao` **`ehItemMenuValido`** — _Verifica se um item de menu é válido e não pertence a ferramentas excluídas._
-- `constante` **`GRUPOS_MENU_PADRAO`**
-- `funcao` **`carregarMenuPersonalizado`** — _Carrega a configuração do menu salva no localStorage com tolerância total a dados corrompidos. Purga..._
-- `funcao` **`registrarShaMenu`**
-- `funcao` **`obterShaMenu`**
-- `funcao` **`agendarPersistenciaMenuRemoto`** — _Enfileira a persistência assíncrona do menu no repositório GitHub com debounce suave._
-- _...e mais 5 exportações secundárias._
+> @deprecated Este módulo foi renomeado para '@/lib/klausMenu'. Use diretamente '@/lib/klausMenu' ou o SDK '@/lib/klausSdk'.
+
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/migracaoLote.ts`
 > Analisador e Migrador em Lote de Entidades do Klaus. Varre todo o acervo de arquivos Markdown no repositório, identifica documentos que ainda utilizam convenções legadas e permite a padronização unificada em lote direto no GitHub.
@@ -837,25 +809,9 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`inscreverMetricas`**
 
 #### 📄 `src/lib/tema.ts`
-> Gerenciamento centralizado do tema e personalização visual do Klaus. Suporta: - Modo Claro / Escuro - Variações do Modo Escuro (Padrão, OLED Preto Puro, Meia-noite, Grafite Neutro, Sépia Quente) - Paletas de Cor de Destaque / Acento (Âmbar Klaus, Safira, Esmeralda, Violeta, Rosé, Grafite) - Escala de Fonte Global de todo o Klaus - Tamanho de Fonte do Menu Lateral
+> @deprecated Este módulo foi renomeado para '@/lib/klausTheme'. Use diretamente '@/lib/klausTheme' ou o SDK '@/lib/klausSdk'.
 
-**Exportações principais:**
-- `tipo` **`Tema`** — _Gerenciamento centralizado do tema e personalização visual do Klaus. Suporta: - Modo Claro / Escuro ..._
-- `tipo` **`VariacaoEscuro`**
-- `tipo` **`PaletaAcento`**
-- `tipo` **`EscalaFonteGlobal`**
-- `tipo` **`TamanhoFonteMenu`**
-- `tipo` **`KlausThemeMode`**
-- `constante` **`EVENTO_TEMA_ALTERADO`**
-- `constante` **`EVENTO_PERSONALIZACAO_ALTERADA`**
-- `funcao` **`lerTemaSalvo`**
-- `funcao` **`aplicarTema`**
-- `funcao` **`alternarTema`**
-- `constante` **`VARIACOES_ESCURO`**
-- `funcao` **`lerVariacaoEscuroSalva`**
-- `funcao` **`aplicarVariacaoEscuro`**
-- `constante` **`PALETAS_ACENTO`**
-- _...e mais 15 exportações secundárias._
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/toast.ts`
 > Gerenciador de Toasts flutuantes nativo e leve.

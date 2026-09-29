@@ -7,7 +7,7 @@ import {
   GRUPOS_MENU_PADRAO,
   CHAVE_STORAGE_MENU,
   type GrupoMenuPersonalizado,
-} from "./menuPersonalizado";
+} from "./klausMenu";
 
 describe("menuPersonalizado", () => {
   beforeEach(() => {

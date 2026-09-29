@@ -9,6 +9,9 @@ import {
   applyKlausTheme,
   loadKlausPreferences,
   saveKlausPreferences,
+  loadKlausMenu,
+  loadKlausFavoritesLocal,
+  loadKlausWidgets,
   KLAUS_EVENTS,
   KLAUS_STORAGE,
   dispatchKlausEvent,
@@ -78,6 +81,30 @@ describe("Klaus SDK", () => {
 
       const atualizado = loadKlausPreferences();
       expect(atualizado.gerais.tema).toBe("escuro");
+    });
+  });
+
+  describe("Menu API", () => {
+    it("carrega a estrutura de menu via SDK", () => {
+      const menu = loadKlausMenu();
+      expect(Array.isArray(menu)).toBe(true);
+      expect(menu.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("Favorites API", () => {
+    it("carrega lista de favoritos via SDK", () => {
+      const favs = loadKlausFavoritesLocal({ comPadrao: true });
+      expect(Array.isArray(favs)).toBe(true);
+      expect(favs.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("Widgets API", () => {
+    it("carrega lista de widgets via SDK", () => {
+      const widgets = loadKlausWidgets();
+      expect(Array.isArray(widgets)).toBe(true);
+      expect(widgets.length).toBeGreaterThan(0);
     });
   });
 

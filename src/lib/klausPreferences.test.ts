@@ -8,7 +8,7 @@ import {
   sincronizarTudoComGithub,
   type PreferenciasGerais,
   type PreferenciasKlausConsolidadas,
-} from "./preferenciasApp";
+} from "./klausPreferences";
 import { PADRAO, type Settings } from "./settings";
 import * as github from "./github";
 

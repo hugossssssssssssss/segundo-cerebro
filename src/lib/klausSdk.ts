@@ -30,22 +30,54 @@ export {
   setActiveKlausWorkspace,
   saveKlausWorkspace,
   removeKlausWorkspace,
-} from "./workspaces";
+} from "./klausWorkspaces";
 
 // ── 3. Interface & Tema (Theme & UI) ────────────────────────────────────────
 export {
   loadKlausTheme,
   applyKlausTheme,
+  toggleKlausTheme,
   loadKlausUiCustomization,
   applyKlausUiCustomization,
-} from "./tema";
+  initKlausUiCustomization,
+} from "./klausTheme";
 
-// ── 4. Preferências Consolidadas (Preferences) ──────────────────────────────
+// ── 4. Navegação, Menu & Favoritos (Navigation & Favorites) ─────────────────
+export {
+  loadKlausMenu,
+  saveKlausMenu,
+  syncKlausMenu,
+  resetKlausMenu,
+  getKlausRouteLabel,
+  syncKlausExtensionInMenu,
+} from "./klausMenu";
+
+export {
+  loadKlausFavoritesLocal,
+  saveKlausFavoritesLocal,
+  loadKlausFavorites,
+  saveKlausFavoritesRemote,
+  scheduleKlausFavoritesPersistence,
+  flushKlausFavorites,
+} from "./klausFavorites";
+
+// ── 5. Widgets da Página Inicial (Home Widgets) ─────────────────────────────
+export {
+  loadKlausWidgets,
+  saveKlausWidgets,
+  syncKlausWidgets,
+  scheduleKlausWidgetsPersistence,
+  getKlausCustomWidgetCatalog,
+} from "./klausWidgets";
+
+// ── 6. Preferências Consolidadas (Preferences) ──────────────────────────────
 export {
   loadKlausPreferences,
   saveKlausPreferences,
   syncKlausPreferences,
-} from "./preferenciasApp";
+  getKlausSyncStatus,
+  scheduleKlausPreferencesPersistence,
+} from "./klausPreferences";
 
 // ── 5. Protocolo de Eventos (Klaus Events) ──────────────────────────────────
 export {

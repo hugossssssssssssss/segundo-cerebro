@@ -6,7 +6,7 @@
  */
 
 import type { KlausProject, KlausAppManifest, KlausPermission } from "./klaus.types";
-import { lerTemaSalvo } from "./tema";
+import { lerTemaSalvo } from "./klausTheme";
 import { getKlausItem, setKlausItem } from "./klausStorage";
 import { dispatchKlausEvent } from "./klausEvents";
 
