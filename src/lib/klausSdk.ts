@@ -64,13 +64,27 @@ export {
   setKlausJson,
 } from "./klausStorage";
 
-// ── 7. Tipos Oficiais ───────────────────────────────────────────────────────
+// ── 7. Klaus App Engine (Sandbox & Runtime) ─────────────────────────────────
+export {
+  KLAUS_ENGINE_PROTOCOL,
+  buildKlausManifest,
+  getKlausProjectManifestPath,
+  getKlausProjectEntryPath,
+  getKlausThemeTokens,
+  generateKlausThemeCss,
+  prepareKlausAppHtml,
+  createKlausBridgeListener,
+} from "./klausEngine";
+
+// ── 8. Tipos Oficiais ───────────────────────────────────────────────────────
 export type {
   KlausProject,
   KlausExtension,
   KlausExtensionType,
   KlausExtensionCategory,
   KlausExtensionOrigin,
+  KlausAppManifest,
+  KlausPermission,
   KlausWorkspace,
   KlausWorkspaceType,
   KlausThemeMode,
@@ -81,3 +95,9 @@ export type {
   KlausGeneralPreferences,
   KlausSyncStatus,
 } from "./klaus.types";
+
+export type {
+  KlausThemeTokens,
+  KlausBridgeMessage,
+  KlausBridgeResponse,
+} from "./klausEngine";

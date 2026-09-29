@@ -24,6 +24,11 @@ import { carregarRepo, daPastaRecursiva } from "@/lib/repo";
 import { lerConfig, configCompleta } from "@/lib/settings";
 import { CartaoItem } from "@/components/CartaoItem";
 import { cn } from "@/lib/utils";
+import {
+  buildKlausManifest,
+  prepareKlausAppHtml,
+  createKlausBridgeListener,
+} from "@/lib/klausEngine";
 
 export default function ProjetoCustomizado() {
   const { idProjeto } = useParams<{ idProjeto: string }>();
@@ -41,6 +46,22 @@ export default function ProjetoCustomizado() {
   const projeto = useMemo(() => {
     return projetos.find((p) => p.id === idProjeto);
   }, [projetos, idProjeto]);
+
+  const manifest = useMemo(() => {
+    return projeto ? buildKlausManifest(projeto) : null;
+  }, [projeto]);
+
+  const htmlPreparado = useMemo(() => {
+    if (!projeto?.codigoHtml) return "";
+    return prepareKlausAppHtml(projeto.codigoHtml, manifest || undefined);
+  }, [projeto?.codigoHtml, manifest]);
+
+  // Ativa a ponte de comunicação segura do Klaus Engine
+  useEffect(() => {
+    if (!manifest) return;
+    const cleanup = createKlausBridgeListener(manifest);
+    return cleanup;
+  }, [manifest]);
 
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
@@ -166,19 +187,23 @@ export default function ProjetoCustomizado() {
       )}
 
       {projeto.tipo === "codigo_customizado" && (
-        <div className="w-full min-h-[60vh] rounded-2xl border border-border bg-card p-6 shadow-xs overflow-auto">
+        <div className="w-full min-h-[60vh] h-[78vh] rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
           {projeto.codigoHtml ? (
-            <div
-              dangerouslySetInnerHTML={{ __html: projeto.codigoHtml }}
-              className="prose dark:prose-invert max-w-none"
+            <iframe
+              srcDoc={htmlPreparado}
+              title={projeto.nome}
+              className="w-full h-full border-0"
+              sandbox="allow-scripts allow-forms allow-popups"
             />
           ) : (
-            <Vazio
-              icone={<Layers size={24} />}
-              titulo="Código não configurado"
-              descricao="Edite este projeto para inserir seu HTML, CSS e JavaScript customizado."
-              acao={<Botao onClick={() => setModalEdicaoAberta(true)}>Configurar Código</Botao>}
-            />
+            <div className="p-6">
+              <Vazio
+                icone={<Layers size={24} />}
+                titulo="Código não configurado"
+                descricao="Edite este projeto para inserir seu HTML, CSS e JavaScript customizado."
+                acao={<Botao onClick={() => setModalEdicaoAberta(true)}>Configurar Código</Botao>}
+              />
+            </div>
           )}
         </div>
       )}

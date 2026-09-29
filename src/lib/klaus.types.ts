@@ -63,9 +63,33 @@ export interface KlausProject {
   markdownFolderPath?: string;
   createdAt?: string;
   updatedAt?: string;
+  manifest?: KlausAppManifest;
 }
 
 export type KlausExtension = KlausProject;
+
+export type KlausPermission = "theme" | "events" | "storage" | "github" | "ui";
+
+export interface KlausAppManifest {
+  id: string;
+  name: string;
+  version: string;
+  description?: string;
+  entry: "index.html" | "view.md" | string;
+  permissions?: KlausPermission[];
+  icon?: string;
+  color?: string;
+  category?: KlausExtensionCategory;
+  theme?: {
+    supportsDark?: boolean;
+    accentColor?: string;
+  };
+  sandbox?: {
+    allowScripts?: boolean;
+    allowPopups?: boolean;
+    allowSameOrigin?: boolean;
+  };
+}
 
 // ── 2. Espaços de Trabalho (Workspaces) ─────────────────────────────────────
 
