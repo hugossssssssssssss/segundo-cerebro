@@ -9,7 +9,7 @@ import {
   alternarFavoritoBusca,
   ehFavoritoBusca,
   resetarIndiceBusca,
-} from "./busca";
+} from "./klausSearch";
 import type { ItemRepo } from "./repo";
 
 function item(caminho: string, texto: string): ItemRepo {

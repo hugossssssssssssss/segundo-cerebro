@@ -137,23 +137,9 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 ### 1. Persistência, GitHub API & Sincronização
 
 #### 📄 `src/lib/github.ts`
-> Cliente da GitHub Contents API. Este arquivo é a única porta de entrada e saída de dados do app. Não existe backend: o navegador fala direto com api.github.com, que responde com `access-control-allow-origin: *` e aceita PUT/DELETE. Cada gravação vira um commit no repositório de dados. Isso dá histórico e permite desfazer qualquer coisa pelo git.
+> @deprecated Este módulo foi renomeado para '@/lib/klausGithub'. Use diretamente '@/lib/klausGithub' ou o SDK '@/lib/klausSdk'.
 
-**Exportações principais:**
-- `funcao` **`conteudosSemelhantes`**
-- `classe` **`ErroGitHub`**
-- `funcao` **`conferir`** — _Traduz o erro do GitHub para português, distinguindo limite de API de falta de permissão (os dois ch..._
-- `funcao` **`ler`** — _Baixa o conteúdo de um arquivo._
-- `funcao` **`lerOuVazio`** — _Baixa o conteúdo de um arquivo em determinado commit ou branch, ou devolve "" se falhar._
-- `funcao` **`gravar`**
-- `funcao` **`gravarBinario`** — _Grava um arquivo binário (imagem) já em base64._
-- `funcao` **`apagar`** — _Apaga um arquivo. O conteúdo continua recuperável pelo histórico do git._
-- `tipo` **`Etapa`**
-- `funcao` **`diagnosticar`** — _Sobe a escada de complexidade até achar o degrau que quebra. "Failed to fetch" não distingue interne..._
-- `funcao` **`testarConexao`** — _Testa se o token e o repositório estão certos. Usado na tela de Configurações._
-- `tipo` **`ArquivoLoteGit`**
-- `funcao` **`gravarLoteGit`** — _Grava múltiplos arquivos em exatamente UM ÚNICO commit atômico usando a Git Data API. Isso garante q..._
-- `funcao` **`ehErroTokenGithub`** — _Detecta se uma mensagem de erro é decorrente de token ausente, expirado ou inválido do GitHub. Usado..._
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/lixeira.ts`
 > Lixeira Soberana em Markdown do Klaus (.lixeira/) Em vez de destruir arquivos permanentemente com DELETE direto no GitHub, move o arquivo para a pasta oculta `.lixeira/` preservando todo o histórico e metadados com possibilidade de restauração em 1 clique.
@@ -186,23 +172,9 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - `funcao` **`forcarResolverConflitoRascunho`** — _Força a gravação de um rascunho com conflito (409) ou erro no GitHub, buscando a SHA mais recente do..._
 
 #### 📄 `src/lib/repo.ts`
-> Carrega o repositório inteiro em duas requisições, não em uma por arquivo. O jeito antigo era: listar a pasta (1) e depois ler cada arquivo (N). Com 100 notas isso dava 101 requisições **por abertura de tela**, e o teto do GitHub é 5.000 por hora. Além de lento, chegava perto do limite. Agora: 1. Git Trees API traz a árvore inteira do repositório — 1 requisição 2. GraphQL traz o conteúdo de até 100 arquivos por vez — testado Resultado medido: 100 arquivos saem de 101 requisições para 2. O cache é só uma cópia do que está no repositório, indexada por `sha`. Não é um índice derivado que possa divergir: se o arquivo muda, o sha muda, e a entrada velha deixa de ser usada. Os arquivos continuam sendo a verdade.
+> @deprecated Este módulo foi renomeado para '@/lib/klausRepo'. Use diretamente '@/lib/klausRepo' ou o SDK '@/lib/klausSdk'.
 
-**Exportações principais:**
-- `tipo` **`ItemRepo`**
-- `tipo` **`Cache`**
-- `constante` **`cache`**
-- `funcao` **`arquivosIlegiveis`**
-- `funcao` **`invalidarCache`** — _Chamar depois de gravar ou apagar, para a próxima leitura buscar de novo._
-- `funcao` **`esquecerTudo`** — _Esquece também o texto guardado por sha e limpa o snapshot local. Só faz sentido ao trocar de conta/..._
-- `funcao` **`ehArquivoInternoOuSistema`** — _Arquivos internos do repositório/sistema que NÃO devem ser tratados como documentos do usuário. Ex: ..._
-- `funcao` **`resetarCacheArvore`**
-- `funcao` **`carregarRepo`** — _Devolve todos os `.md` do repositório, com conteúdo já lido e analisado. Usa o cache quando a árvore..._
-- `funcao` **`daPasta`** — _Só os arquivos de uma pasta, já ordenados do mais recente para o mais antigo._
-- `funcao` **`daPastaRecursiva`** — _Todos os arquivos de uma pasta e suas subpastas recursivamente._
-- `funcao` **`atualizarCacheLocal`** — _Atualiza instantaneamente (0ms) um item no cache de memória local. Garante que se o usuário reabrir ..._
-- `funcao` **`removerDoCacheLocal`** — _Remove instantaneamente um item do cache de memória local ao deletar._
-- `funcao` **`obterCacheExistente`** — _Retorna o cache em memória atual, ou hidrata síncronamente do armazenamento se existir._
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/settings.ts`
 > Configuração do app — fica no localStorage do navegador. Nada disto vai para o código nem para o repositório público. O token e a chave existem só no navegador de quem está usando o app.
@@ -283,19 +255,9 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 - _...e mais 1 exportações secundárias._
 
 #### 📄 `src/lib/markdown.ts`
-> Leitura e escrita de Markdown com frontmatter YAML. Regra central do projeto: o arquivo .md é a fonte da verdade. Frontmatter é OPCIONAL — um arquivo sem ele continua abrindo normalmente. Nunca jogue fora conteúdo que não entendeu.
+> @deprecated Este módulo foi renomeado para '@/lib/klausMarkdown'. Use diretamente '@/lib/klausMarkdown' ou o SDK '@/lib/klausSdk'.
 
-**Exportações principais:**
-- `tipo` **`Frontmatter`**
-- `tipo` **`Documento`**
-- `funcao` **`lerMarkdown`** — _Separa o frontmatter do corpo. Se o YAML estiver quebrado, devolve o texto inteiro como corpo em vez..._
-- `funcao` **`escreverMarkdown`** — _Monta o arquivo .md de volta. Frontmatter vazio não gera bloco `---`._
-- `funcao` **`tituloProvavel`** — _Primeira linha de conteúdo, usada como título quando não há campo `titulo`._
-- `funcao` **`nomeDeArquivo`** — _Transforma um título em nome de arquivo seguro (sem acento, sem símbolo)._
-- `funcao` **`nomeLivre`** — _Garante um nome livre. Duas tarefas "Reunião" no mesmo dia geravam o mesmo caminho, e a segunda falh..._
-- `funcao` **`comoLista`** — _Lê uma lista do frontmatter tolerando string única ou ausência._
-- `funcao` **`mesclarFrontmatter`** — _Junta os campos que o app gerencia por cima dos que ele não conhece._
-- `funcao` **`restaurarWikilinks`** — _Converte wikilinks [[alvo]], escapados `\[\[alvo\]\]` e URLs coladas contendo `?abrir=...` para o fo..._
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/pasteHtmlParaMarkdown.ts`
 **Exportações principais:**
@@ -515,23 +477,9 @@ Abaixo estão os módulos de lógica de negócio e utilitários categorizados po
 ### 6. Busca, Filtros & Recuperação de Dados
 
 #### 📄 `src/lib/busca.ts`
-> Busca em tudo que você escreveu e nas ferramentas do Klaus. Roda no navegador, sobre o conteúdo que o `repo.ts` já carregou — então é instantânea, funciona em repositório privado e não gasta requisição nenhuma. A busca de código do GitHub não serviria: ela demora a indexar e não é confiável em repositórios privados pequenos. O motor é a MiniSearch. A versão anterior comparava com `includes`, o que exigia acertar a palavra inteira: "reuinão" não achava nada, e "tipo" não achava "tipografia". Agora há tolerância a erro de digitação e busca por começo de palavra. **O índice vive só na memória.** Ele é remontado a partir dos `.md` a cada carga do acervo e nunca é gravado em lugar nenhum — os arquivos continuam sendo a única fonte da verdade, como manda a regra 1 do AGENTS.md.
+> @deprecated Este módulo foi renomeado para '@/lib/klausSearch'. Use diretamente '@/lib/klausSearch' ou o SDK '@/lib/klausSdk'.
 
-**Exportações principais:**
-- `tipo` **`Resultado`**
-- `tipo` **`CategoriaFiltroBusca`**
-- `funcao` **`tipoDoItem`** — _Descobre o tipo pelo frontmatter e, se faltar, pela pasta através do registro desacoplado._
-- `funcao` **`ficharItem`**
-- `funcao` **`resetarIndiceBusca`** — _Reseta o cache de busca em memória (usado nos testes e logout)._
-- `funcao` **`indiceDe`** — _Retorna o índice de busca em memória com suporte a reuso imediato (0ms) e indexação incremental sele..._
-- `funcao` **`buscar`**
-- `funcao` **`agrupar`** — _Agrupa por tipo, preservando a ordem de relevância dentro de cada grupo._
-- `funcao` **`buscarFerramentas`**
-- `funcao` **`filtrarPorCategoria`**
-- `funcao` **`lerFavoritosBusca`**
-- `funcao` **`salvarFavoritosBusca`**
-- `funcao` **`alternarFavoritoBusca`**
-- `funcao` **`ehFavoritoBusca`**
+_(Exportações internas ou módulo utilitário)_
 
 #### 📄 `src/lib/buscaWeb.ts`
 **Exportações principais:**

@@ -15,7 +15,7 @@ import {
   nomeDeArquivo,
   comoLista,
   restaurarWikilinks,
-} from "./markdown";
+} from "./klausMarkdown";
 
 describe("lerMarkdown", () => {
   it("separa frontmatter do corpo", () => {

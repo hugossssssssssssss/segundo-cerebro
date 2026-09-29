@@ -12,6 +12,9 @@ import {
   loadKlausMenu,
   loadKlausFavoritesLocal,
   loadKlausWidgets,
+  parseKlausMarkdown,
+  stringifyKlausMarkdown,
+  searchKlaus,
   KLAUS_EVENTS,
   KLAUS_STORAGE,
   dispatchKlausEvent,
@@ -105,6 +108,25 @@ describe("Klaus SDK", () => {
       const widgets = loadKlausWidgets();
       expect(Array.isArray(widgets)).toBe(true);
       expect(widgets.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("Markdown API", () => {
+    it("analisa e serializa documentos markdown com frontmatter", () => {
+      const doc = parseKlausMarkdown("---\ntitulo: Teste SDK\n---\n\nConteudo da nota");
+      expect(doc.dados.titulo).toBe("Teste SDK");
+      expect(doc.corpo.trim()).toBe("Conteudo da nota");
+
+      const serializado = stringifyKlausMarkdown(doc);
+      expect(serializado).toContain("titulo: Teste SDK");
+      expect(serializado).toContain("Conteudo da nota");
+    });
+  });
+
+  describe("Search API", () => {
+    it("executa buscas no formato canonico", () => {
+      const resultados = searchKlaus([], "termo");
+      expect(Array.isArray(resultados)).toBe(true);
     });
   });
 

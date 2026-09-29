@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { daPasta, invalidarCache, ehArquivoInternoOuSistema, type ItemRepo } from "./repo";
+import { daPasta, invalidarCache, ehArquivoInternoOuSistema, type ItemRepo } from "./klausRepo";
 import { lerMarkdown } from "./markdown";
 
 const itemMock = (caminho: string, texto = "# Teste"): ItemRepo => ({

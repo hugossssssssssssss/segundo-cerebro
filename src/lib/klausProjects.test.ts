@@ -7,7 +7,7 @@ import {
   obterExtensoesAtivas,
   CATALOGO_EXTENSOES_NATIVAS,
   sincronizarProjetosComGithub,
-} from "./projetosExtensoes";
+} from "./klausProjects";
 import * as github from "./github";
 
 vi.mock("./github", () => ({

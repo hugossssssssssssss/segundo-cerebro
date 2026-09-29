@@ -1,0 +1,411 @@
+/**
+ * Klaus Fast Client-Side Search Engine
+ *
+ * Busca em memória (MiniSearch) indexada diretamente sobre o acervo do usuário.
+ * Suporta busca por prefixo, fuzzy tolerante a erros e indexação incremental.
+ */
+
+import MiniSearch from "minisearch";
+import { type ItemRepo, ehArquivoInternoOuSistema } from "./klausRepo";
+import { ehItemLixeira } from "./lixeira";
+import { tituloProvavel, comoLista } from "./klausMarkdown";
+import { LISTA_FERRAMENTAS_APP, type FerramentaApp } from "./ferramentasApp";
+
+export type { TipoItem } from "./tipos";
+export { ROTULO_TIPO, ROTA_POR_TIPO as ROTA_TIPO } from "./tipos";
+import type { TipoItem } from "./tipos";
+
+export type Resultado = {
+  caminho: string;
+  titulo: string;
+  tipo: TipoItem;
+  trecho: string;
+  peso: number;
+};
+
+export type CategoriaFiltroBusca =
+  | "tudo"
+  | "acoes"
+  | "ferramentas"
+  | "contatos"
+  | "notas"
+  | "tarefas"
+  | "pdi"
+  | "referencias"
+  | "lousas";
+
+import { detectarTipoDoItem } from "./entidadeRegistro";
+
+export function tipoDoItem(item: ItemRepo): TipoItem {
+  return detectarTipoDoItem(item);
+}
+
+function normalizar(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function recortar(corpo: string, termos: readonly string[]): string {
+  const limpo = (corpo || "").replace(/\s+/g, " ").trim();
+  const corpoNorm = normalizar(limpo);
+
+  let pos = -1;
+  let tamanho = 0;
+  for (const termo of termos) {
+    const achou = corpoNorm.indexOf(termo);
+    if (achou >= 0 && (pos < 0 || achou < pos)) {
+      pos = achou;
+      tamanho = termo.length;
+    }
+  }
+
+  if (pos < 0) return limpo.slice(0, 120);
+
+  const inicio = Math.max(0, pos - 40);
+  const fim = Math.min(limpo.length, pos + tamanho + 80);
+  return (
+    (inicio > 0 ? "…" : "") +
+    limpo.slice(inicio, fim).trim() +
+    (fim < limpo.length ? "…" : "")
+  );
+}
+
+type Fichado = {
+  id: string;
+  titulo: string;
+  tags: string;
+  corpo: string;
+};
+
+const PESO_CAMPO = { titulo: 5, tags: 2, corpo: 1 };
+
+export function ficharItem(item: ItemRepo): Fichado {
+  const d = item.doc?.dados || {};
+  const extras = [
+    typeof d.cargo === "string" ? d.cargo : "",
+    typeof d.empresa === "string" ? d.empresa : "",
+    typeof d.email === "string" ? d.email : "",
+    typeof d.telefone === "string" ? d.telefone : "",
+    typeof d.cliente === "string" ? d.cliente : "",
+    typeof d.descricao === "string" ? d.descricao : "",
+    typeof d.indicador === "string" ? d.indicador : "",
+    typeof d.porque === "string" ? d.porque : "",
+    typeof d.criado_por === "string" ? d.criado_por : typeof d.criadoPor === "string" ? d.criadoPor : "",
+    typeof d.atualizado_por === "string" ? d.atualizado_por : typeof d.atualizadoPor === "string" ? d.atualizadoPor : "",
+    ...comoLista(d.responsaveis || d.responsavel || d.membros).flatMap((r) => [r, r.replace(/^@/, "")]),
+    ...comoLista(d.participantes).flatMap((p) => [p, p.replace(/^@/, "")]),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return {
+    id: item.caminho,
+    titulo: tituloProvavel(item.doc, item.nome),
+    tags: comoLista(d.tags).join(" "),
+    corpo: ((item.doc?.corpo || "") + " " + extras).trim(),
+  };
+}
+
+function novoIndice(itens: ItemRepo[]): MiniSearch<Fichado> {
+  const mini = new MiniSearch<Fichado>({
+    fields: ["titulo", "tags", "corpo"],
+    storeFields: ["id", "titulo"],
+    searchOptions: {
+      boost: PESO_CAMPO,
+      prefix: true,
+      fuzzy: 0.2,
+      combineWith: "AND",
+    },
+  });
+
+  const itensValidos = itens.filter((i) => !ehArquivoInternoOuSistema(i.caminho) && !ehItemLixeira(i.caminho));
+  mini.addAll(itensValidos.map(ficharItem));
+  return mini;
+}
+
+let indiceCacheGlobal: MiniSearch<Fichado> | null = null;
+let mapaShasIndexados = new Map<string, string>();
+
+export function resetarIndiceBusca(): void {
+  indiceCacheGlobal = null;
+  mapaShasIndexados.clear();
+}
+
+export function indiceDe(itens: ItemRepo[]): MiniSearch<Fichado> {
+  const itensValidos = itens.filter((i) => !ehArquivoInternoOuSistema(i.caminho) && !ehItemLixeira(i.caminho));
+
+  if (!indiceCacheGlobal) {
+    indiceCacheGlobal = novoIndice(itens);
+    mapaShasIndexados.clear();
+    for (const item of itensValidos) {
+      mapaShasIndexados.set(item.caminho, item.sha || item.texto?.slice(0, 50) || "");
+    }
+    return indiceCacheGlobal;
+  }
+
+  const caminhosAtuais = new Set(itensValidos.map((i) => i.caminho));
+  const alterados: ItemRepo[] = [];
+  const removidos: string[] = [];
+
+  for (const [caminho] of mapaShasIndexados) {
+    if (!caminhosAtuais.has(caminho)) {
+      removidos.push(caminho);
+    }
+  }
+
+  for (const item of itensValidos) {
+    const shaAnterior = mapaShasIndexados.get(item.caminho);
+    const shaAtual = item.sha || item.texto?.slice(0, 50) || "";
+    if (shaAnterior !== shaAtual) {
+      alterados.push(item);
+    }
+  }
+
+  if (alterados.length === 0 && removidos.length === 0) {
+    return indiceCacheGlobal;
+  }
+
+  if (alterados.length + removidos.length <= Math.max(10, Math.floor(itensValidos.length * 0.2))) {
+    for (const caminho of removidos) {
+      try {
+        indiceCacheGlobal.discard(caminho);
+      } catch {}
+      mapaShasIndexados.delete(caminho);
+    }
+
+    for (const item of alterados) {
+      try {
+        if (mapaShasIndexados.has(item.caminho)) {
+          indiceCacheGlobal.replace(ficharItem(item));
+        } else {
+          indiceCacheGlobal.add(ficharItem(item));
+        }
+        mapaShasIndexados.set(item.caminho, item.sha || item.texto?.slice(0, 50) || "");
+      } catch {
+        indiceCacheGlobal = novoIndice(itens);
+        mapaShasIndexados.clear();
+        for (const i of itensValidos) {
+          mapaShasIndexados.set(i.caminho, i.sha || i.texto?.slice(0, 50) || "");
+        }
+        return indiceCacheGlobal;
+      }
+    }
+    return indiceCacheGlobal;
+  }
+
+  indiceCacheGlobal = novoIndice(itens);
+  mapaShasIndexados.clear();
+  for (const item of itensValidos) {
+    mapaShasIndexados.set(item.caminho, item.sha || item.texto?.slice(0, 50) || "");
+  }
+  return indiceCacheGlobal;
+}
+
+export function buscar(itens: ItemRepo[], termo: string): Resultado[] {
+  const limpo = termo.trim();
+  const termoNorm = normalizar(limpo);
+  if (termoNorm.length < 2) return [];
+
+  const porCaminho = new Map(itens.map((i) => [i.caminho, i]));
+
+  const achados = indiceDe(itens).search(limpo, {
+    boost: PESO_CAMPO,
+    prefix: true,
+    fuzzy: (term) => (term.length > 3 ? 0.25 : false),
+    combineWith: "AND",
+  });
+
+  const idsJaIncluidos = new Set<string>();
+  const saida: Resultado[] = [];
+
+  for (const achado of achados) {
+    const item = porCaminho.get(String(achado.id));
+    if (!item) continue;
+
+    idsJaIncluidos.add(item.caminho);
+    saida.push({
+      caminho: item.caminho,
+      titulo: tituloProvavel(item.doc, item.nome),
+      tipo: tipoDoItem(item),
+      trecho: recortar(item.doc?.corpo || "", achado.terms),
+      peso: achado.score,
+    });
+  }
+
+  if (termoNorm.length >= 3) {
+    for (const item of itens) {
+      if (ehArquivoInternoOuSistema(item.caminho) || ehItemLixeira(item.caminho)) continue;
+      if (idsJaIncluidos.has(item.caminho)) continue;
+
+      const titNorm = normalizar(tituloProvavel(item.doc, item.nome));
+      if (titNorm.includes(termoNorm)) {
+        saida.push({
+          caminho: item.caminho,
+          titulo: tituloProvavel(item.doc, item.nome),
+          tipo: tipoDoItem(item),
+          trecho: recortar(item.doc?.corpo || "", [termoNorm]),
+          peso: 3,
+        });
+        continue;
+      }
+
+      const tagsNorm = normalizar(comoLista(item.doc?.dados?.tags).join(" "));
+      if (tagsNorm.includes(termoNorm)) {
+        saida.push({
+          caminho: item.caminho,
+          titulo: tituloProvavel(item.doc, item.nome),
+          tipo: tipoDoItem(item),
+          trecho: recortar(item.doc?.corpo || "", [termoNorm]),
+          peso: 1,
+        });
+        continue;
+      }
+
+      const d = item.doc.dados;
+      const extrasContatoNorm = normalizar([
+        typeof d.cargo === "string" ? d.cargo : "",
+        typeof d.empresa === "string" ? d.empresa : "",
+        typeof d.email === "string" ? d.email : "",
+        typeof d.telefone === "string" ? d.telefone : "",
+      ].join(" "));
+      if (extrasContatoNorm.includes(termoNorm)) {
+        saida.push({
+          caminho: item.caminho,
+          titulo: tituloProvavel(item.doc, item.nome),
+          tipo: tipoDoItem(item),
+          trecho: recortar(item.doc.corpo, [termoNorm]),
+          peso: 1,
+        });
+        continue;
+      }
+
+      const corpoOriginal = item.doc.corpo || "";
+      if (corpoOriginal.length < 15000) {
+        const corpoNorm = normalizar(corpoOriginal);
+        if (corpoNorm.includes(termoNorm)) {
+          saida.push({
+            caminho: item.caminho,
+            titulo: tituloProvavel(item.doc, item.nome),
+            tipo: tipoDoItem(item),
+            trecho: recortar(item.doc.corpo, [termoNorm]),
+            peso: 1,
+          });
+        }
+      }
+    }
+  }
+
+  return saida.sort((a, b) => b.peso - a.peso || a.titulo.localeCompare(b.titulo));
+}
+
+export function agrupar(resultados: Resultado[]): [TipoItem, Resultado[]][] {
+  const grupos = new Map<TipoItem, Resultado[]>();
+  for (const r of resultados) {
+    const lista = grupos.get(r.tipo) ?? [];
+    lista.push(r);
+    grupos.set(r.tipo, lista);
+  }
+  return [...grupos.entries()].sort((a, b) => b[1].length - a[1].length);
+}
+
+export function buscarFerramentas(
+  termo: string,
+  categoriaFilter?: CategoriaFiltroBusca,
+  listaFerramentas?: FerramentaApp[]
+): FerramentaApp[] {
+  const tNorm = normalizar((termo || "").trim());
+  const base = listaFerramentas || LISTA_FERRAMENTAS_APP;
+
+  if (tNorm.length === 0) {
+    if (categoriaFilter === "ferramentas") {
+      return base.filter((f) => f.categoria !== "acao");
+    }
+    if (categoriaFilter === "acoes") {
+      return base.filter((f) => f.categoria === "acao");
+    }
+    return [];
+  }
+
+  if (tNorm.length < 2) return [];
+
+  return base.filter((f) => {
+    if (categoriaFilter === "acoes" && f.categoria !== "acao") return false;
+    if (categoriaFilter === "ferramentas" && f.categoria === "acao") return false;
+    if (
+      categoriaFilter &&
+      categoriaFilter !== "tudo" &&
+      categoriaFilter !== "acoes" &&
+      categoriaFilter !== "ferramentas"
+    ) {
+      return false;
+    }
+
+    const titNorm = normalizar(f.titulo);
+    const descNorm = normalizar(f.descricao);
+    const kwMatch = f.palavrasChave.some((kw) => normalizar(kw).includes(tNorm));
+    return titNorm.includes(tNorm) || descNorm.includes(tNorm) || kwMatch;
+  });
+}
+
+export function filtrarPorCategoria(
+  resultados: Resultado[],
+  categoria: CategoriaFiltroBusca
+): Resultado[] {
+  if (categoria === "tudo") return resultados;
+  if (categoria === "ferramentas" || categoria === "acoes") return [];
+  if (categoria === "contatos") return resultados.filter((r) => r.tipo === "contato");
+  if (categoria === "notas") return resultados.filter((r) => r.tipo === "nota" || r.tipo === "reuniao");
+  if (categoria === "tarefas") return resultados.filter((r) => r.tipo === "tarefa");
+  if (categoria === "pdi") return resultados.filter((r) => r.tipo === "meta" || r.tipo === "entrega");
+  if (categoria === "referencias") return resultados.filter((r) => r.tipo === "referencia");
+  if (categoria === "lousas") return resultados.filter((r) => r.tipo === "lousa");
+  return resultados;
+}
+
+const CHAVE_FAVORITOS_BUSCA = "klaus:favoritos_busca";
+
+export function lerFavoritosBusca(): string[] {
+  try {
+    const salvo = localStorage.getItem(CHAVE_FAVORITOS_BUSCA);
+    if (!salvo) return [];
+    return JSON.parse(salvo);
+  } catch {
+    return [];
+  }
+}
+
+export function salvarFavoritosBusca(favoritos: string[]): void {
+  try {
+    localStorage.setItem(CHAVE_FAVORITOS_BUSCA, JSON.stringify(favoritos));
+  } catch {}
+}
+
+export function alternarFavoritoBusca(idOuCaminho: string): string[] {
+  const atuais = lerFavoritosBusca();
+  const index = atuais.indexOf(idOuCaminho);
+  let novos: string[];
+  if (index >= 0) {
+    novos = atuais.filter((id) => id !== idOuCaminho);
+  } else {
+    novos = [...atuais, idOuCaminho];
+  }
+  salvarFavoritosBusca(novos);
+  return novos;
+}
+
+export function ehFavoritoBusca(idOuCaminho: string, lista?: string[]): boolean {
+  const favs = lista ?? lerFavoritosBusca();
+  return favs.includes(idOuCaminho);
+}
+
+// ── Nomes Canônicos do Klaus SDK ─────────────────────────────────────────────
+export const searchKlaus = buscar;
+export const searchKlausTools = buscarFerramentas;
+export const groupKlausSearchResults = agrupar;
+export const filterKlausSearchResultsByCategory = filtrarPorCategoria;
+export const resetKlausSearchIndex = resetarIndiceBusca;
+
+export type KlausSearchResult = Resultado;
+export type KlausSearchFilterCategory = CategoriaFiltroBusca;

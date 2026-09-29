@@ -1,0 +1,214 @@
+/**
+ * Klaus Markdown & Frontmatter Engine
+ *
+ * Leitura e escrita tolerante a falhas de Markdown com frontmatter YAML.
+ * Regra central do Klaus: o arquivo .md é a fonte da verdade.
+ */
+
+import { load, dump } from "js-yaml";
+import { logger } from "./logger";
+
+export type Frontmatter = Record<string, unknown>;
+
+export type Documento = {
+  dados: Frontmatter;
+  corpo: string;
+};
+
+const SEPARADOR = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
+
+/**
+ * Separa o frontmatter do corpo.
+ * Se o YAML estiver quebrado, devolve o texto inteiro como corpo em vez de
+ * estourar erro — perder o texto do usuário seria muito pior que perder os campos.
+ */
+export function lerMarkdown(texto: string): Documento {
+  const encontrado = texto.match(SEPARADOR);
+  if (!encontrado) {
+    const limpo = (texto || "").trim();
+    if (limpo.startsWith("{") && limpo.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(limpo);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          const t = parsed.title || parsed.titulo || parsed.dados?.titulo;
+          if (t && typeof t === "string") {
+            return { dados: { titulo: t.trim(), tipo: "lousa" }, corpo: texto };
+          }
+        }
+      } catch (erro) {
+        logger.warn("Falha ao analisar o JSON de lousa/rascunho", erro);
+      }
+    }
+    return { dados: {}, corpo: texto };
+  }
+
+  try {
+    const analisado = load(encontrado[1]);
+    const dados =
+      analisado && typeof analisado === "object" && !Array.isArray(analisado)
+        ? (analisado as Frontmatter)
+        : {};
+    return { dados, corpo: texto.slice(encontrado[0].length) };
+  } catch (erro) {
+    logger.error("Falha ao analisar o YAML do frontmatter", erro);
+    return { dados: {}, corpo: texto };
+  }
+}
+
+/** Monta o arquivo .md de volta. Frontmatter vazio não gera bloco `---`. */
+export function escreverMarkdown(doc: Documento): string {
+  const campos = Object.entries(doc.dados).filter(
+    ([k, v]) =>
+      (!k.startsWith("_") || k === "_visibilidade" || k === "_rotulos" || k === "_coresTags") &&
+      v !== undefined &&
+      v !== null &&
+      v !== "",
+  );
+  if (campos.length === 0) return doc.corpo;
+
+  const yamlTexto = dump(Object.fromEntries(campos), {
+    lineWidth: -1,
+    noRefs: true,
+  });
+  return `---\n${yamlTexto}---\n\n${doc.corpo.replace(/^\n+/, "")}`;
+}
+
+/** Primeira linha de conteúdo, usada como título quando não há campo `titulo`. */
+export function tituloProvavel(doc?: Documento | null, nomeArquivo: string = ""): string {
+  if (doc?.dados && typeof doc.dados.titulo === "string" && doc.dados.titulo.trim()) {
+    return doc.dados.titulo.trim();
+  }
+  const cabecalho = doc?.corpo?.match(/^#{1,6}\s+(.+)$/m);
+  if (cabecalho) return cabecalho[1].trim();
+
+  const primeira = doc?.corpo?.split("\n").find((l) => l.trim());
+  if (primeira) return primeira.trim().slice(0, 80);
+
+  const base = (nomeArquivo || "").split("/").pop() || "";
+  return base.replace(/\.(md|json)$/i, "") || "Sem título";
+}
+
+/** Transforma um título em nome de arquivo seguro (sem acento, sem símbolo). */
+export function nomeDeArquivo(titulo: string): string {
+  const limpo = titulo
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .toLowerCase()
+    .slice(0, 60);
+
+  const base = limpo || "sem-titulo";
+  const agora = new Date();
+  const carimbo = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}-${String(agora.getDate()).padStart(2, "0")}`;
+  return `${carimbo}-${base}.md`;
+}
+
+/**
+ * Garante um nome livre. Duas tarefas "Reunião" no mesmo dia geravam o mesmo
+ * caminho, e a segunda falhava com um 422 incompreensível.
+ */
+export function nomeLivre(
+  pasta: string,
+  titulo: string,
+  ocupados: Iterable<string>,
+  extensao: string = ".md"
+): string {
+  const usados = new Set(ocupados);
+  const ext = titulo.endsWith(".json") ? ".json" : extensao;
+  const tituloSemExt = titulo.replace(/\.(md|json)$/i, "");
+  const base = nomeDeArquivo(tituloSemExt).replace(/\.(md|json)$/i, "");
+
+  let candidato = `${pasta}/${base}${ext}`;
+  let n = 2;
+  while (usados.has(candidato)) {
+    candidato = `${pasta}/${base}-${n}${ext}`;
+    n++;
+  }
+  return candidato;
+}
+
+/** Lê uma lista do frontmatter tolerando string única ou ausência. */
+export function comoLista(valor: unknown): string[] {
+  if (Array.isArray(valor)) return valor.map(String);
+  if (typeof valor === "string" && valor.trim()) return [valor];
+  return [];
+}
+
+/**
+ * Junta os campos que o app gerencia por cima dos que ele não conhece.
+ */
+export function mesclarFrontmatter(
+  original: Frontmatter,
+  gerenciados: Record<string, unknown>,
+): Frontmatter {
+  const saida: Frontmatter = { ...original };
+  for (const [chave, valor] of Object.entries(gerenciados)) {
+    if (valor === undefined || valor === null || valor === "") {
+      delete saida[chave];
+    } else {
+      saida[chave] = valor;
+    }
+  }
+  return saida;
+}
+
+/**
+ * Converte wikilinks [[alvo]], escapados `\[\[alvo\]\]` e URLs coladas contendo
+ * `?abrir=...` para o formato limpo `@alvo`, preservando blocos de código.
+ */
+export function restaurarWikilinks(markdown: string): string {
+  if (!markdown) return "";
+
+  const blocosCodigo: string[] = [];
+  const semCodigo = markdown.replace(/(```[\s\S]*?```|`[^`\n]+`)/g, (match) => {
+    blocosCodigo.push(match);
+    return `__BLOCO_CODIGO_${blocosCodigo.length - 1}__`;
+  });
+
+  let limpo = semCodigo.replace(
+    /\\?\[\\?\[([^[\n\]]{1,200}?)\\?\]\\?\]/g,
+    (_todo, alvo: string) => {
+      const barra = alvo.indexOf("|");
+      const escolhido = barra >= 0 ? alvo.slice(barra + 1) : alvo;
+      return `@${escolhido.trim()}`;
+    },
+  );
+
+  limpo = limpo.replace(
+    /(?:https?:\/\/[^\s)]+|#\/[^\s)]+)\?abrir=([a-zA-Z0-9_%.-]+)/g,
+    (_todo, rawCaminho) => {
+      let dec = rawCaminho;
+      try {
+        dec = decodeURIComponent(rawCaminho);
+      } catch {
+        dec = rawCaminho;
+      }
+      const partes = dec.split("/");
+      const ultimo = partes.pop() || dec;
+      const nomeOuTitulo = ultimo.replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/\.md$/, "");
+      return `@${nomeOuTitulo}`;
+    }
+  );
+
+  limpo = limpo.replace(/\[([^\]\n]+)\]\((?:mailto:)?[^)\n]*@[^)\n]+\)/gi, "$1");
+  limpo = limpo.replace(/<mailto:([^>\n]+)>/gi, "$1");
+
+  limpo = limpo.replace(/__BLOCO_CODIGO_(\d+)__/g, (_m, idx) => blocosCodigo[Number(idx)] ?? "");
+
+  return limpo;
+}
+
+// ── Nomes Canônicos do Klaus SDK ─────────────────────────────────────────────
+export const parseKlausMarkdown = lerMarkdown;
+export const stringifyKlausMarkdown = escreverMarkdown;
+export const getKlausProbableTitle = tituloProvavel;
+export const createKlausFilename = nomeDeArquivo;
+export const getKlausFreeFilename = nomeLivre;
+export const mergeKlausFrontmatter = mesclarFrontmatter;
+export const restoreKlausWikilinks = restaurarWikilinks;
+export const parseKlausFrontmatterList = comoLista;
+
+export type KlausDocument = Documento;
+export type KlausFrontmatter = Frontmatter;

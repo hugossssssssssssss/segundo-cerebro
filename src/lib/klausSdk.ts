@@ -1,15 +1,15 @@
 /**
  * Klaus SDK
  *
- * Ponto de entrada canônico para manipulação de dados, extensões, workspaces,
- * temas, preferências, eventos e armazenamento do ecossistema Klaus.
+ * Ponto de entrada canônico para manipulação de dados, repositório, busca, markdown,
+ * extensões, workspaces, temas, preferências, eventos e armazenamento do ecossistema Klaus.
  * Todas as funções seguem convenções padronizadas em inglês com suporte a tipos estritos.
  */
 
-import { CATALOGO_EXTENSOES_NATIVAS } from "./projetosExtensoes";
+import { CATALOGO_EXTENSOES_NATIVAS } from "./klausProjects";
 import type { KlausExtension } from "./klaus.types";
 
-// ── 1. Projetos & Extensões ─────────────────────────────────────────────────
+// ── 1. Projetos & Extensões (Projects & Extensions) ─────────────────────────
 export {
   loadKlausProjects,
   getKlausProjectById,
@@ -17,7 +17,8 @@ export {
   toggleKlausExtension,
   removeKlausProject,
   syncKlausProjects,
-} from "./projetosExtensoes";
+  getActiveKlausExtensions,
+} from "./klausProjects";
 
 export function getKlausExtensionCatalog(): KlausExtension[] {
   return CATALOGO_EXTENSOES_NATIVAS;
@@ -79,14 +80,61 @@ export {
   scheduleKlausPreferencesPersistence,
 } from "./klausPreferences";
 
-// ── 5. Protocolo de Eventos (Klaus Events) ──────────────────────────────────
+// ── 7. Repositório & Acervo (Repo & Archive) ────────────────────────────────
+export {
+  loadKlausRepo,
+  invalidateKlausRepoCache,
+  resetKlausRepoMemory,
+  filterKlausRepoFolder,
+  filterKlausRepoFolderRecursive,
+  updateKlausLocalCache,
+  removeFromKlausLocalCache,
+  getKlausExistingCache,
+} from "./klausRepo";
+
+// ── 8. Cliente GitHub Direto (GitHub Client) ────────────────────────────────
+export {
+  readKlausFile,
+  readKlausFileOrEmpty,
+  writeKlausFile,
+  writeKlausBinaryFile,
+  deleteKlausFile,
+  commitKlausBatch,
+  testKlausConnection,
+  diagnoseKlausConnection,
+  isKlausAuthError,
+  KlausGitHubError,
+} from "./klausGithub";
+
+// ── 9. Motor de Markdown & Frontmatter ──────────────────────────────────────
+export {
+  parseKlausMarkdown,
+  stringifyKlausMarkdown,
+  getKlausProbableTitle,
+  createKlausFilename,
+  getKlausFreeFilename,
+  mergeKlausFrontmatter,
+  restoreKlausWikilinks,
+  parseKlausFrontmatterList,
+} from "./klausMarkdown";
+
+// ── 10. Motor de Busca em Memória (Search Engine) ───────────────────────────
+export {
+  searchKlaus,
+  searchKlausTools,
+  groupKlausSearchResults,
+  filterKlausSearchResultsByCategory,
+  resetKlausSearchIndex,
+} from "./klausSearch";
+
+// ── 11. Protocolo de Eventos (Klaus Events) ─────────────────────────────────
 export {
   KLAUS_EVENTS,
   dispatchKlausEvent,
   listenKlausEvent,
 } from "./klausEvents";
 
-// ── 6. Armazenamento Unificado (Klaus Storage) ───────────────────────────────
+// ── 12. Armazenamento Unificado (Klaus Storage) ──────────────────────────────
 export {
   KLAUS_STORAGE,
   getKlausItem,
@@ -96,7 +144,7 @@ export {
   setKlausJson,
 } from "./klausStorage";
 
-// ── 7. Klaus App Engine (Sandbox & Runtime) ─────────────────────────────────
+// ── 13. Klaus App Engine (Sandbox & Runtime) ────────────────────────────────
 export {
   KLAUS_ENGINE_PROTOCOL,
   buildKlausManifest,
@@ -108,7 +156,7 @@ export {
   createKlausBridgeListener,
 } from "./klausEngine";
 
-// ── 8. Klaus Package & Manifest Validator ───────────────────────────────────
+// ── 14. Klaus Package & Manifest Validator ──────────────────────────────────
 export {
   KLAUS_PACKAGE_FORMAT,
   validateKlausManifest,
@@ -116,7 +164,7 @@ export {
   unpackKlausExtension,
 } from "./klausPackage";
 
-// ── 9. Tipos Oficiais ───────────────────────────────────────────────────────
+// ── 15. Tipos Oficiais ──────────────────────────────────────────────────────
 export type {
   KlausProject,
   KlausExtension,
@@ -135,6 +183,21 @@ export type {
   KlausGeneralPreferences,
   KlausSyncStatus,
 } from "./klaus.types";
+
+export type {
+  KlausRepoItem,
+  KlausRepoCache,
+} from "./klausRepo";
+
+export type {
+  KlausDocument,
+  KlausFrontmatter,
+} from "./klausMarkdown";
+
+export type {
+  KlausSearchResult,
+  KlausSearchFilterCategory,
+} from "./klausSearch";
 
 export type {
   KlausThemeTokens,

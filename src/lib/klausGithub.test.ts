@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ler, gravar, apagar, gravarLoteGit, ErroGitHub } from "./github";
+import { ler, gravar, apagar, gravarLoteGit, ErroGitHub } from "./klausGithub";
 import { PADRAO, type Settings } from "./settings";
 
 const cfg: Settings = {
