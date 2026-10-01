@@ -239,7 +239,7 @@ const ItemFavorito = memo(function ItemFavorito({
           onClick={(e) => e.stopPropagation()}
           className={cn(
             "shadow-2xl bg-card border border-border rounded-xl backdrop-blur-md z-50 animate-in fade-in zoom-in-95 duration-100",
-            modoVisao === "icone" ? "w-80 sm:w-96 p-3" : "w-48 p-1",
+            modoVisao === "icone" ? "w-[340px] sm:w-[440px] p-3" : "w-48 p-1",
           )}
         >
           {modoVisao === "menu" ? (
@@ -411,7 +411,7 @@ function ItemOverflow({
         onClick={(e) => e.stopPropagation()}
         className={cn(
           "shadow-2xl bg-card border border-border rounded-xl backdrop-blur-md z-50 animate-in fade-in zoom-in-95 duration-100",
-          modoVisao === "icone" ? "w-80 sm:w-96 p-3" : "w-48 p-1",
+          modoVisao === "icone" ? "w-[340px] sm:w-[440px] p-3" : "w-48 p-1",
         )}
       >
           {modoVisao === "menu" ? (

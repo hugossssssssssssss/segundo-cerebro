@@ -18,7 +18,7 @@ Esta extensão traz **o cabeçalho e a barra de favoritos oficiais do Klaus** pa
 1. No Brave, acesse `brave://extensions` (ou `chrome://extensions`).
 2. Ative a chave **"Modo do desenvolvedor"** no canto superior direito.
 3. Clique em **"Carregar sem compactação"** (Load unpacked) e selecione a pasta `extensao`:
-   `/Users/hugosilva/Desktop/Projetos/Pessoal/Pessoal/Segundo Cerébro/extensao`
+   `/Users/hugosilva/Projetos/Pessoal/Pessoal/Segundo Cerébro/extensao`
 
 ---
 

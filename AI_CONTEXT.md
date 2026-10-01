@@ -1,6 +1,6 @@
 # Contexto de IA & Mapa de Navegação do Klaus
 
-> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-09-29.**
+> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-10-01.**
 > Não edite as tabelas de módulos à mão — execute `npm run mapa-ia` ou `npm run build` para sincronizar com o código.
 
 Este arquivo foi desenhado sob medida para **Agentes de IA e LLMs** que operam no repositório Klaus.
@@ -541,9 +541,11 @@ _(Exportações internas ou módulo utilitário)_
 - `interface` **`ItemIconeCatalogo`**
 - `constante` **`CATEGORIAS_ICONES_MARCAS`**
 - `tipo` **`CategoriaIconeMarca`**
+- `constante` **`EMOJIS_POPULARES_FAVORITOS`**
 - `constante` **`CATALOGO_ICONES_MARCAS`**
-- `funcao` **`obterUrlsSimpleIcon`** — _Retorna as URLs SVG prioritária e alternativas para um determinado slug._
+- `funcao` **`obterUrlsSimpleIcon`** — _Retorna as URLs SVG prioritária e alternativas para um determinado slug do Simple Icons._
 - `funcao` **`obterUrlSimpleIcon`** — _Retorna a URL SVG oficial prioritária._
+- `funcao` **`buscarIconesIconify`** — _Busca ícones em tempo real na API pública global do Iconify (mais de 200.000 ícones de todas as bibl..._
 - `funcao` **`sugerirIconePorUrl`** — _Detecta se uma URL pertence a um serviço famoso que tem logo oficial cadastrado._
 
 #### 📄 `src/lib/creditosOpenSource.ts`

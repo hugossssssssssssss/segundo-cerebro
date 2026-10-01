@@ -1,9 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   sugerirIconePorUrl,
   obterUrlSimpleIcon,
   CATALOGO_ICONES_MARCAS,
   CATEGORIAS_ICONES_MARCAS,
+  EMOJIS_POPULARES_FAVORITOS,
+  buscarIconesIconify,
 } from "./catalogoIconesMarcas";
 
 describe("catalogoIconesMarcas", () => {
@@ -29,6 +31,13 @@ describe("catalogoIconesMarcas", () => {
       expect(sugerirIconePorUrl("https://notion.so/workspace")).toBe("si:notion");
     });
 
+    it("sugere novos serviços de design, IA e redes", () => {
+      expect(sugerirIconePorUrl("https://framer.com/projects")).toBe("si:framer");
+      expect(sugerirIconePorUrl("https://webflow.com/dashboard")).toBe("si:webflow");
+      expect(sugerirIconePorUrl("https://gemini.google.com")).toBe("si:googlegemini");
+      expect(sugerirIconePorUrl("https://bsky.app")).toBe("si:bluesky");
+    });
+
     it("retorna undefined para sites genéricos não catalogados", () => {
       expect(sugerirIconePorUrl("https://meu-site-pessoal.com.br")).toBeUndefined();
     });
@@ -43,12 +52,51 @@ describe("catalogoIconesMarcas", () => {
 
   describe("CATALOGO_ICONES_MARCAS", () => {
     it("contém itens válidos e categorias mapeadas", () => {
-      expect(CATALOGO_ICONES_MARCAS.length).toBeGreaterThan(30);
+      expect(CATALOGO_ICONES_MARCAS.length).toBeGreaterThan(100);
       for (const item of CATALOGO_ICONES_MARCAS) {
         expect(item.id).toBeDefined();
         expect(item.nome).toBeDefined();
         expect(CATEGORIAS_ICONES_MARCAS).toContain(item.categoria);
       }
+    });
+
+    it("contém símbolos de interface e emojis populares", () => {
+      const temLucide = CATALOGO_ICONES_MARCAS.some((i) => i.id.startsWith("lucide:"));
+      const temEmoji = CATALOGO_ICONES_MARCAS.some((i) => i.id.startsWith("emoji:"));
+      expect(temLucide).toBe(true);
+      expect(temEmoji).toBe(true);
+    });
+  });
+
+  describe("EMOJIS_POPULARES_FAVORITOS", () => {
+    it("possui lista rica de emojis com tags", () => {
+      expect(EMOJIS_POPULARES_FAVORITOS.length).toBeGreaterThan(20);
+      for (const e of EMOJIS_POPULARES_FAVORITOS) {
+        expect(e.emoji).toBeDefined();
+        expect(e.tags && e.tags.length).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  describe("buscarIconesIconify", () => {
+    it("retorna lista vazia para termos muito curtos", async () => {
+      const res = await buscarIconesIconify("a");
+      expect(res).toEqual([]);
+    });
+
+    it("faz requisição e formata resultados quando a API responde", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ icons: ["tabler:coffee", "lucide:camera"] }),
+      });
+      vi.stubGlobal("fetch", mockFetch);
+
+      const res = await buscarIconesIconify("teste-mock");
+      expect(res.length).toBe(2);
+      expect(res[0].id).toBe("iconify:tabler:coffee");
+      expect(res[1].id).toBe("iconify:lucide:camera");
+
+      vi.unstubAllGlobals();
     });
   });
 });

@@ -29,10 +29,10 @@ Ele roda sobre Node.js nativo utilizando entrada e saída padrão (`stdio`) com 
          "args": [
            "--disable-warning=ExperimentalWarning",
            "--experimental-strip-types",
-           "/Users/hugosilva/Desktop/Projetos/Pessoal/Segundo Cerébro/scripts/mcp-server.ts"
+           "/Users/hugosilva/Projetos/Pessoal/Segundo Cerébro/scripts/mcp-server.ts"
          ],
          "env": {
-           "KLAUS_DIR": "/Users/hugosilva/Desktop/Projetos/Pessoal/Segundo Cerébro"
+           "KLAUS_DIR": "/Users/hugosilva/Projetos/Pessoal/Segundo Cerébro"
          }
        }
      }
