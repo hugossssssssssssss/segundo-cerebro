@@ -42,6 +42,7 @@ export const CATALOGO_BIBLIOTECA: ItemCatalogoExtensao[] = [
     icone: "RefreshCw",
     versao: "1.0.0",
     categoriaInterna: "utilitarios",
+    rotaIntegrada: "/conversor",
     manifesto: {
       id: "conversor",
       name: "Conversor de Formatos",
@@ -176,6 +177,7 @@ export const CATALOGO_BIBLIOTECA: ItemCatalogoExtensao[] = [
     icone: "Wrench",
     versao: "1.0.0",
     categoriaInterna: "design",
+    rotaIntegrada: "/it-tools",
     manifesto: {
       id: "it_tools",
       name: "Utilitários Criativos",
@@ -316,6 +318,7 @@ export const CATALOGO_BIBLIOTECA: ItemCatalogoExtensao[] = [
     icone: "FileCheck",
     versao: "1.0.0",
     categoriaInterna: "produtividade",
+    rotaIntegrada: "/pdf",
     manifesto: {
       id: "pdf",
       name: "Ferramentas de PDF",
@@ -393,6 +396,7 @@ export const CATALOGO_BIBLIOTECA: ItemCatalogoExtensao[] = [
     icone: "Headphones",
     versao: "1.0.0",
     categoriaInterna: "produtividade",
+    rotaIntegrada: "/sons",
     manifesto: {
       id: "sons",
       name: "Sons de Concentração",
@@ -531,6 +535,7 @@ export const CATALOGO_BIBLIOTECA: ItemCatalogoExtensao[] = [
     icone: "Video",
     versao: "1.0.0",
     categoriaInterna: "utilitarios",
+    rotaIntegrada: "/testador",
     manifesto: {
       id: "testador_hardware",
       name: "Diagnóstico de Câmera e Áudio",
@@ -619,6 +624,7 @@ export const CATALOGO_BIBLIOTECA: ItemCatalogoExtensao[] = [
     icone: "Download",
     versao: "1.0.0",
     categoriaInterna: "utilitarios",
+    rotaIntegrada: "/baixador",
     manifesto: {
       id: "baixador",
       name: "Baixador de Recursos",

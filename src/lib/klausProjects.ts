@@ -317,7 +317,7 @@ export function salvarProjetoCustomizado(
     tipo: projeto.tipo || "url_integrada",
     ativo: projeto.ativo !== undefined ? projeto.ativo : true,
     origem: "usuario",
-    rota: `/projeto/${id}`,
+    rota: (projeto as any).rota || `/projeto/${id}`,
     urlEmbed: projeto.urlEmbed,
     codigoHtml: projeto.codigoHtml,
     caminhoPastaMarkdown: projeto.caminhoPastaMarkdown,
