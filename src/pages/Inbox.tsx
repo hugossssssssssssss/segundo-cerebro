@@ -19,6 +19,7 @@ import {
   Calendar,
   AlertTriangle,
   RefreshCw,
+  GitMerge,
   MoreVertical,
   Edit3,
   Copy,
@@ -32,12 +33,12 @@ import { carregarRepo, type ItemRepo, invalidarCache } from "@/lib/repo";
 import { useSalvar } from "@/lib/useSalvar";
 import { lerMarkdown, escreverMarkdown, tituloProvavel, nomeLivre } from "@/lib/markdown";
 import { toast } from "@/lib/toast";
+import { ModalResolverConflito } from "@/components/ModalResolverConflito";
 import {
   obterRascunhosLocais,
   removerRascunhoLocal,
   limparTodosRascunhosLocais,
   sincronizarFilaOffline,
-  forcarResolverConflitoRascunho,
   redefinirRascunhosComErroParaPendente,
   estaSincronizandoFila,
   type RascunhoOffline,
@@ -221,6 +222,7 @@ export default function Inbox() {
   const [rascunhos, setRascunhos] = useState<RascunhoOffline[]>([]);
   const [sincronizandoTudo, setSincronizandoTudo] = useState(false);
   const [confirmarLimparRascunhos, setConfirmarLimparRascunhos] = useState(false);
+  const [conflitoParaResolver, setConflitoParaResolver] = useState<RascunhoOffline | null>(null);
 
   // Estado do Painel Notion para Novo Lembrete / Edição de Documento
   const [itemAberto, setItemAberto] = useState<CompromissoSemana | null>(null);
@@ -536,17 +538,6 @@ export default function Inbox() {
       toast(`Erro ao sincronizar: ${err?.message || err}`, { tipo: "erro" });
     } finally {
       setSincronizandoTudo(false);
-    }
-  };
-
-  const aoResolverConflito = async (id: string) => {
-    try {
-      await forcarResolverConflitoRascunho(cfg, id);
-      toast("Conflito resolvido e gravado no GitHub!");
-      atualizarRascunhos();
-      carregar();
-    } catch (err: any) {
-      toast(`Erro ao resolver conflito: ${err?.message || err}`, { tipo: "erro" });
     }
   };
 
@@ -1918,11 +1909,11 @@ export default function Inbox() {
                         {ehConflito && (
                           <Button
                             size="sm"
-                            onClick={() => aoResolverConflito(r.id)}
+                            onClick={() => setConflitoParaResolver(r)}
                             className="text-xs h-7 px-2.5 rounded-lg font-semibold gap-1 bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
                           >
-                            <RefreshCw size={11} />
-                            <span>Resolver & Gravar</span>
+                            <GitMerge size={11} />
+                            <span>Resolver Conflito</span>
                           </Button>
                         )}
 
@@ -2023,6 +2014,17 @@ export default function Inbox() {
         descricao="Deseja realmente limpar todos os rascunhos offline locais? Quaisquer alterações não sincronizadas serão descartadas."
         textoConfirmar="Sim, limpar rascunhos"
         varianteConfirmar="perigo"
+      />
+
+      {/* Modal Comparador Visual de Conflitos 409 */}
+      <ModalResolverConflito
+        aberto={Boolean(conflitoParaResolver)}
+        aoFechar={() => setConflitoParaResolver(null)}
+        rascunho={conflitoParaResolver}
+        aoResolvido={() => {
+          atualizarRascunhos();
+          carregar();
+        }}
       />
     </div>
   );

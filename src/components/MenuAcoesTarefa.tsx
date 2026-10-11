@@ -307,7 +307,7 @@ export function MenuAcoesTarefa({
                   type="button"
                   onClick={async () => {
                     setAberto(false);
-                    const { compartilharTarefa } = await import("@/lib/compartilhar");
+                    const { compartilharTarefa } = await import("@/lib/klausShare");
                     const { toast } = await import("@/lib/toast");
                     const res = await compartilharTarefa(tarefa);
                     if (res.metodo === "copiado" && res.sucesso) {

@@ -34,6 +34,7 @@ import { PropriedadesNotion, abrirItemSpa } from "@/components/PropriedadesNotio
 import { EditorNotion } from "@/components/EditorNotion";
 import { Subtarefas } from "@/components/Subtarefas";
 import { MencionadoEm } from "@/components/Links";
+import { AlertaEdicaoRecente } from "@/components/AlertaEdicaoRecente";
 import { PainelTarefasNota } from "@/components/PainelTarefasNota";
 import { PainelReferenciasNota } from "@/components/PainelReferenciasNota";
 import { SumarioNota } from "@/components/SumarioNota";
@@ -893,7 +894,7 @@ export function PainelNotionBase({
                   <button
                     onClick={async () => {
                       setMenuAcoesAberto(false);
-                      const { compartilhar } = await import("@/lib/compartilhar");
+                      const { compartilhar } = await import("@/lib/klausShare");
                       const res = await compartilhar({
                         titulo: titulo || "Documento Klaus",
                         texto: corpo,
@@ -1226,6 +1227,18 @@ export function PainelNotionBase({
       )}
     >
       {erro && <Aviso tom="erro">{erro}</Aviso>}
+
+      {caminhoItem && (
+        <AlertaEdicaoRecente
+          caminho={caminhoItem}
+          aoRecarregar={() => {
+            invalidarCache();
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("klaus:repo:updated"));
+            }
+          }}
+        />
+      )}
 
       <input
         type="text"

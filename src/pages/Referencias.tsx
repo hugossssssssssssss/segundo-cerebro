@@ -1259,7 +1259,7 @@ export default function Referencias() {
                 size="sm"
                 variant="secondary"
                 onClick={async () => {
-                  const { compartilharReferencia } = await import("@/lib/compartilhar");
+                  const { compartilharReferencia } = await import("@/lib/klausShare");
                   const { toast } = await import("@/lib/toast");
                   const res = await compartilharReferencia(
                     lightboxRef.titulo,
