@@ -8,6 +8,7 @@
 import { lerConfig, salvarConfig, codificarTexto, decodificarTexto, type Settings } from "./settings";
 import { invalidarCache } from "./repo";
 import { dispararAtualizacaoAcervo } from "./eventos";
+import { lerOuVazio, gravar } from "./github";
 
 export interface WorkspaceConfig {
   id: string;
@@ -245,9 +246,125 @@ export function removerWorkspace(id: string): boolean {
   return true;
 }
 
+// ── Manifesto de Workspace (.klaus/workspace.json) ───────────────────────────
+export const CAMINHO_MANIFESTO_WORKSPACE = ".klaus/workspace.json";
+
+export interface KlausWorkspaceManifest {
+  versao: number;
+  id: string;
+  nome: string;
+  tipo: "pessoal" | "equipe";
+  cor?: string;
+  icone?: string;
+  descricao?: string;
+  criadoPor?: string;
+  criadoEm?: string;
+}
+
+export interface ConviteWorkspacePayload {
+  id: string;
+  nome: string;
+  tipo: "pessoal" | "equipe";
+  repoOwner: string;
+  repoName: string;
+  branch: string;
+  cor?: string;
+  icone?: string;
+  descricao?: string;
+  convidadoPor?: string;
+  geradoEm?: string;
+}
+
+/**
+ * Lê o manifesto do workspace (.klaus/workspace.json) diretamente do repositório.
+ */
+export async function carregarManifestoWorkspace(
+  cfg: Pick<Settings, "repoOwner" | "repoName" | "branch" | "githubToken">,
+): Promise<KlausWorkspaceManifest | null> {
+  try {
+    const texto = await lerOuVazio(cfg as Settings, CAMINHO_MANIFESTO_WORKSPACE);
+    if (!texto || !texto.trim()) return null;
+    const parsed = JSON.parse(texto);
+    if (parsed && typeof parsed.nome === "string") {
+      return parsed as KlausWorkspaceManifest;
+    }
+  } catch {}
+  return null;
+}
+
+/**
+ * Salva o manifesto canônico do workspace (.klaus/workspace.json) no repositório.
+ */
+export async function salvarManifestoWorkspace(
+  cfg: Pick<Settings, "repoOwner" | "repoName" | "branch" | "githubToken">,
+  manifesto: KlausWorkspaceManifest,
+): Promise<string> {
+  const json = JSON.stringify(manifesto, null, 2);
+  return await gravar(
+    cfg as Settings,
+    CAMINHO_MANIFESTO_WORKSPACE,
+    json,
+    undefined,
+    `atualiza manifesto do workspace (.klaus/workspace.json)`,
+  );
+}
+
+/**
+ * Gera um link de convite seguro para compartilhar um espaço com um colega.
+ * O token pessoal do usuário NUNCA é incluído no link.
+ */
+export function gerarLinkConviteWorkspace(
+  ws: WorkspaceConfig,
+  convidadoPor?: string,
+  urlBase?: string,
+): string {
+  const payload: ConviteWorkspacePayload = {
+    id: ws.id,
+    nome: ws.nome,
+    tipo: ws.tipo,
+    repoOwner: ws.repoOwner,
+    repoName: ws.repoName,
+    branch: ws.branch || "main",
+    cor: ws.cor,
+    icone: ws.icone,
+    convidadoPor: convidadoPor || ws.repoOwner,
+    geradoEm: new Date().toISOString(),
+  };
+
+  const json = JSON.stringify(payload);
+  const base64 = btoa(unescape(encodeURIComponent(json)));
+  const base = urlBase || (typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}` : "");
+  return `${base}#/convite?dados=${encodeURIComponent(base64)}`;
+}
+
+/**
+ * Decodifica um token/payload de convite em Base64.
+ */
+export function decodificarConviteWorkspace(
+  dadosCodificados: string,
+): ConviteWorkspacePayload | null {
+  if (!dadosCodificados) return null;
+  try {
+    const limpo = decodeURIComponent(dadosCodificados.trim());
+    const json = decodeURIComponent(escape(atob(limpo)));
+    const parsed = JSON.parse(json) as ConviteWorkspacePayload;
+    if (parsed && parsed.repoOwner && parsed.repoName) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Nomes Canônicos do Klaus SDK ─────────────────────────────────────────────
 export const loadKlausWorkspaces = listarWorkspaces;
 export const getActiveKlausWorkspace = obterWorkspaceAtivo;
 export const setActiveKlausWorkspace = alternarWorkspace;
 export const saveKlausWorkspace = salvarWorkspace;
 export const removeKlausWorkspace = removerWorkspace;
+export const loadKlausWorkspaceManifest = carregarManifestoWorkspace;
+export const saveKlausWorkspaceManifest = salvarManifestoWorkspace;
+export const createKlausWorkspaceInviteLink = gerarLinkConviteWorkspace;
+export const decodeKlausWorkspaceInvite = decodificarConviteWorkspace;
+

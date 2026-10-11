@@ -16,6 +16,9 @@ import {
   Check,
   KeyRound,
   GitBranch,
+  Share2,
+  Copy,
+  CheckCheck,
 } from "lucide-react";
 import {
   listarWorkspaces,
@@ -23,12 +26,15 @@ import {
   alternarWorkspace,
   salvarWorkspace,
   removerWorkspace,
+  gerarLinkConviteWorkspace,
   EVENTO_WORKSPACE_ALTERADO,
   type WorkspaceConfig,
 } from "@/lib/workspaces";
 import { Cartao, Botao, Campo, Rotulo, ModalConfirmacao } from "@/components/ui";
 import { Modal } from "@/components/ui/modal";
 import { Tooltip } from "@/components/ui/tooltip";
+import { toast } from "@/lib/toast";
+import { lerPerfilLocal } from "@/lib/usuario";
 import { cn } from "@/lib/utils";
 
 interface GerenciadorWorkspacesProps {
@@ -69,6 +75,10 @@ export function GerenciadorWorkspaces({
 
   // Modal de Exclusão
   const [idParaExcluir, setIdParaExcluir] = useState<string | null>(null);
+
+  // Modal de Compartilhar Convite
+  const [workspaceParaConvidar, setWorkspaceParaConvidar] = useState<WorkspaceConfig | null>(null);
+  const [linkCopiado, setLinkCopiado] = useState(false);
 
   const sincronizar = () => {
     setWorkspaces(listarWorkspaces());
@@ -254,6 +264,20 @@ export function GerenciadorWorkspaces({
                 </div>
 
                 <div className="flex items-center gap-1">
+                  <Tooltip conteudo="Convidar colega para este espaço">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWorkspaceParaConvidar(ws);
+                        setLinkCopiado(false);
+                      }}
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                      aria-label="Convidar para o espaço"
+                    >
+                      <Share2 size={13} />
+                    </button>
+                  </Tooltip>
+
                   <Tooltip conteudo="Editar configurações do espaço">
                     <button
                       type="button"
@@ -459,6 +483,77 @@ export function GerenciadorWorkspaces({
         aoConfirmar={confirmarExclusao}
         aoCancelar={() => setIdParaExcluir(null)}
       />
+
+      {/* Modal Compartilhar Convite de Espaço */}
+      <Modal
+        aberto={Boolean(workspaceParaConvidar)}
+        aoFechar={() => {
+          setWorkspaceParaConvidar(null);
+          setLinkCopiado(false);
+        }}
+        titulo={`Convidar para ${workspaceParaConvidar?.nome || "Espaço"}`}
+      >
+        {workspaceParaConvidar && (
+          <div className="space-y-4 text-xs sm:text-sm">
+            <p className="text-muted-foreground leading-relaxed">
+              Compartilhe este link com seu colega de equipe. Ele entrará no Klaus com o repositório, branch e identificação visual deste espaço já pré-configurados.
+            </p>
+
+            <div>
+              <Rotulo dica="O link não contém seus dados pessoais nem seu token.">
+                Link de Convite Seguro
+              </Rotulo>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={gerarLinkConviteWorkspace(
+                    workspaceParaConvidar,
+                    lerPerfilLocal()?.login || workspaceParaConvidar.repoOwner
+                  )}
+                  className="flex h-10 w-full rounded-lg border border-input bg-muted px-3 font-mono text-xs text-foreground select-all focus:outline-none"
+                />
+                <Botao
+                  type="button"
+                  variante="primario"
+                  onClick={() => {
+                    const link = gerarLinkConviteWorkspace(
+                      workspaceParaConvidar,
+                      lerPerfilLocal()?.login || workspaceParaConvidar.repoOwner
+                    );
+                    navigator.clipboard.writeText(link);
+                    setLinkCopiado(true);
+                    toast("Link de convite copiado para a área de transferência!", { tipo: "sucesso" });
+                    setTimeout(() => setLinkCopiado(false), 2500);
+                  }}
+                  className="shrink-0 flex items-center gap-1.5 h-10 px-3 cursor-pointer"
+                >
+                  {linkCopiado ? <CheckCheck size={14} /> : <Copy size={14} />}
+                  <span>{linkCopiado ? "Copiado!" : "Copiar"}</span>
+                </Botao>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-secondary/50 border border-border/60 text-xs space-y-1 text-muted-foreground">
+              <p className="font-semibold text-foreground flex items-center gap-1.5">
+                <Users size={13} className="text-primary" /> O que seu colega precisa:
+              </p>
+              <p>1. Ter uma conta no GitHub e ser adicionado como colaborador no repositório.</p>
+              <p>2. Ao abrir o link, o Klaus fornecerá um botão de 1 clique para ele gerar o token pessoal dele.</p>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <Botao
+                type="button"
+                variante="neutro"
+                onClick={() => setWorkspaceParaConvidar(null)}
+              >
+                Fechar
+              </Botao>
+            </div>
+          </div>
+        )}
+      </Modal>
     </Cartao>
   );
 }

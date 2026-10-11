@@ -105,4 +105,85 @@ describe("workspaces.ts - Gestão de Múltiplos Espaços", () => {
     alternarWorkspace("pessoal");
     expect(lerConfig().githubToken).toBe("ghp_token_pessoal_hugo");
   });
+
+  it("gera e decodifica links de convite seguro com dados completos", async () => {
+    const {
+      gerarLinkConviteWorkspace,
+      decodificarConviteWorkspace,
+    } = await import("./klausWorkspaces");
+
+    const ws: WorkspaceConfig = {
+      id: "design_time",
+      nome: "Time de Design",
+      tipo: "equipe",
+      repoOwner: "hugosilva",
+      repoName: "segundo-cerebro-dados",
+      branch: "main",
+      cor: "#8b5cf6",
+      icone: "Palette",
+    };
+
+    const link = gerarLinkConviteWorkspace(ws, "hugosilva", "https://klaus.app/");
+    expect(link).toContain("https://klaus.app/#/convite?dados=");
+
+    const url = new URL(link.replace("#/", ""));
+    const dadosQuery = url.searchParams.get("dados");
+    expect(dadosQuery).toBeTruthy();
+
+    const decodificado = decodificarConviteWorkspace(dadosQuery!);
+    expect(decodificado).not.toBeNull();
+    expect(decodificado?.id).toBe("design_time");
+    expect(decodificado?.nome).toBe("Time de Design");
+    expect(decodificado?.repoOwner).toBe("hugosilva");
+    expect(decodificado?.repoName).toBe("segundo-cerebro-dados");
+    expect(decodificado?.convidadoPor).toBe("hugosilva");
+    expect(decodificado?.cor).toBe("#8b5cf6");
+  });
+
+  it("carrega e salva manifesto canônico do workspace no repositório", async () => {
+    const {
+      carregarManifestoWorkspace,
+      salvarManifestoWorkspace,
+      CAMINHO_MANIFESTO_WORKSPACE,
+    } = await import("./klausWorkspaces");
+    const github = await import("./github");
+
+    const manifestoMock = {
+      versao: 1,
+      id: "estudio-criativo",
+      nome: "Estúdio Criativo",
+      tipo: "equipe" as const,
+      cor: "#10b981",
+      icone: "Users",
+    };
+
+    const spyGravar = vi.spyOn(github, "gravar").mockResolvedValue("sha_manifesto_123");
+    const spyLerOuVazio = vi.spyOn(github, "lerOuVazio").mockResolvedValue(JSON.stringify(manifestoMock));
+
+    const { PADRAO } = await import("./settings");
+    const cfg = {
+      ...PADRAO,
+      repoOwner: "estudio",
+      repoName: "dados",
+      branch: "main",
+      githubToken: "ghp_teste",
+    };
+
+    const sha = await salvarManifestoWorkspace(cfg, manifestoMock);
+    expect(sha).toBe("sha_manifesto_123");
+    expect(spyGravar).toHaveBeenCalledWith(
+      expect.objectContaining({ repoOwner: "estudio" }),
+      CAMINHO_MANIFESTO_WORKSPACE,
+      expect.stringContaining("Estúdio Criativo"),
+      undefined,
+      expect.any(String)
+    );
+
+    const carregado = await carregarManifestoWorkspace(cfg);
+    expect(spyLerOuVazio).toHaveBeenCalled();
+    expect(carregado).not.toBeNull();
+    expect(carregado?.nome).toBe("Estúdio Criativo");
+    expect(carregado?.id).toBe("estudio-criativo");
+  });
 });
+

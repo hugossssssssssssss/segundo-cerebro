@@ -1,6 +1,6 @@
 # Contexto de IA & Mapa de Navegação do Klaus
 
-> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-10-06.**
+> **Documento vivo gerado automaticamente por `scripts/gerar-mapa-ia.ts` em 2026-10-11.**
 > Não edite as tabelas de módulos à mão — execute `npm run mapa-ia` ou `npm run build` para sincronizar com o código.
 
 Este arquivo foi desenhado sob medida para **Agentes de IA e LLMs** que operam no repositório Klaus.
@@ -89,6 +89,7 @@ Navegador (React SPA)
 | **Configuracoes** | `src/pages/Configuracoes.tsx` | Interface e fluxo da tela de Configuracoes |
 | **Contatos** | `src/pages/Contatos.tsx` | Interface e fluxo da tela de Contatos |
 | **Conversor** | `src/pages/Conversor.tsx` | Interface e fluxo da tela de Conversor |
+| **ConviteWorkspace** | `src/pages/ConviteWorkspace.tsx` | Interface e fluxo da tela de ConviteWorkspace |
 | **FerramentasPDF** | `src/pages/FerramentasPDF.tsx` | Interface e fluxo da tela de FerramentasPDF |
 | **GrafoNeural** | `src/pages/GrafoNeural.tsx` | Interface e fluxo da tela de GrafoNeural |
 | **HeaderHUD** | `src/pages/HeaderHUD.tsx` | Interface e fluxo da tela de HeaderHUD |

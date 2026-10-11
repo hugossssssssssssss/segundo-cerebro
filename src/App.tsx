@@ -79,6 +79,7 @@ const GrafoNeural = lazy(() => import("@/pages/GrafoNeural"));
 const Contatos = lazy(() => import("@/pages/Contatos"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 const BoasVindas = lazy(() => import("@/pages/BoasVindas"));
+const ConviteWorkspace = lazy(() => import("@/pages/ConviteWorkspace"));
 const TestadorHardware = lazy(() => import("@/pages/TestadorHardware"));
 const Sons = lazy(() => import("@/pages/Sons"));
 const Lixeira = lazy(() => import("@/pages/Lixeira"));
@@ -614,6 +615,7 @@ function AppInterno() {
             <Route path="/projetos" element={<Navigate to="/biblioteca" replace />} />
             <Route path="/extensoes" element={<Navigate to="/biblioteca" replace />} />
             <Route path="/projeto/:idProjeto" element={<ProjetoCustomizado />} />
+            <Route path="/convite" element={<ConviteWorkspace />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </Suspense>
@@ -640,6 +642,7 @@ export default function App() {
                 <Routes>
                   <Route path="/header-hud" element={<HeaderHUD />} />
                   <Route path="/boas-vindas" element={<BoasVindas />} />
+                  <Route path="/convite" element={<ConviteWorkspace />} />
                   <Route path="*" element={<AppInterno />} />
                 </Routes>
               </Suspense>

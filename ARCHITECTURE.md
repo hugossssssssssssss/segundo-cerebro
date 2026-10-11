@@ -1,6 +1,6 @@
 # Arquitetura do Klaus
 
-> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-09-29.**
+> **Gerado automaticamente por `scripts/gerar-arquitetura.ts` em 2026-10-11.**
 > Não edite este arquivo à mão — ele é reescrito a cada `npm run build`.
 > Para mudar o que está aqui, mude `src/lib/tipos.ts` e `src/lib/entidades.ts`.
 
@@ -253,6 +253,8 @@ direto · `não usa` = não toca no repositório de dados.
 | `src/pages/Contatos.tsx` | hook | hook |
 | `src/pages/Conversor.test.tsx` | não usa | não usa |
 | `src/pages/Conversor.tsx` | na mão | hook |
+| `src/pages/ConviteWorkspace.test.tsx` | não usa | não usa |
+| `src/pages/ConviteWorkspace.tsx` | não usa | não usa |
 | `src/pages/FerramentasPDF.tsx` | não usa | não usa |
 | `src/pages/GrafoNeural.tsx` | não usa | hook |
 | `src/pages/HeaderHUD.tsx` | não usa | não usa |
