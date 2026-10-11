@@ -28,6 +28,7 @@ export interface ConfigEquipe {
   atualizado_em: string;
   atualizado_por?: string;
   membros: MembroEquipe[];
+  departamentos?: Record<string, string>;
 }
 
 export interface PermissoesPapel {
@@ -77,7 +78,7 @@ export function obterPermissoes(papel: PapelEquipe): PermissoesPapel {
 }
 
 /**
- * Cria a estrutura inicial padrão para uma nova equipe ou repositório pessoal.
+ * Cria a estrutura inicial padrão para uma nova equipe ou repositório pessoal (Schema v2).
  */
 export function criarConfigEquipePadrao(usuario?: PerfilUsuario | null): ConfigEquipe {
   const loginDono = usuario?.login || "usuario";
@@ -85,7 +86,7 @@ export function criarConfigEquipePadrao(usuario?: PerfilUsuario | null): ConfigE
   const avatarDono = usuario?.avatarUrl || `https://github.com/${loginDono}.png`;
 
   return {
-    versao_schema: 1,
+    versao_schema: 2,
     nome_equipe: "Minha Equipe",
     atualizado_em: new Date().toISOString(),
     atualizado_por: loginDono,
@@ -99,6 +100,7 @@ export function criarConfigEquipePadrao(usuario?: PerfilUsuario | null): ConfigE
         adicionadoEm: new Date().toISOString(),
       },
     ],
+    departamentos: {},
   };
 }
 
@@ -201,10 +203,16 @@ export async function salvarEquipe(
       try {
         const remoto = await carregarEquipe(cfg, null);
         const membrosMesclados = mesclarMembrosEquipe(config.membros, remoto.config.membros);
+        const departamentosMesclados = mesclarDepartamentosEquipe(
+          config.departamentos,
+          remoto.config.departamentos,
+        );
         const configMesclada: ConfigEquipe = {
           ...config,
+          versao_schema: 2,
           nome_equipe: config.nome_equipe || remoto.config.nome_equipe,
           membros: membrosMesclados,
+          departamentos: departamentosMesclados,
           atualizado_em: new Date().toISOString(),
           atualizado_por: autorLogin || config.atualizado_por,
         };
@@ -221,6 +229,94 @@ export async function salvarEquipe(
     }
     throw e;
   }
+}
+
+/**
+ * Mescla departamentos de equipe respeitando edições concorrentes.
+ */
+export function mesclarDepartamentosEquipe(
+  locais?: Record<string, string>,
+  remotos?: Record<string, string>,
+): Record<string, string> {
+  return {
+    ...(remotos || {}),
+    ...(locais || {}),
+  };
+}
+
+export const CHAVE_STORAGE_DEPARTAMENTOS = "klaus:equipe:departamentos";
+
+/**
+ * Lê os departamentos do cache local ou migra do storage antigo se existir.
+ */
+export function lerDepartamentosLocal(): Record<string, string> {
+  try {
+    const salvo = localStorage.getItem(CHAVE_STORAGE_DEPARTAMENTOS);
+    if (salvo) return JSON.parse(salvo);
+
+    // Migração transparente do legado "klaus_nomes_equipes"
+    const legado = localStorage.getItem("klaus_nomes_equipes");
+    if (legado) {
+      const parsed = JSON.parse(legado);
+      localStorage.setItem(CHAVE_STORAGE_DEPARTAMENTOS, legado);
+      localStorage.removeItem("klaus_nomes_equipes");
+      return parsed;
+    }
+  } catch {}
+  return {};
+}
+
+/**
+ * Salva departamentos no cache local seguro.
+ */
+export function salvarDepartamentosLocal(departamentos: Record<string, string>): void {
+  try {
+    localStorage.setItem(CHAVE_STORAGE_DEPARTAMENTOS, JSON.stringify(departamentos));
+  } catch {}
+}
+
+/**
+ * Retorna os nomes de departamentos/equipes associados a cada líder.
+ */
+export function obterNomesDepartamentos(config?: ConfigEquipe | null): Record<string, string> {
+  if (config && config.departamentos && Object.keys(config.departamentos).length > 0) {
+    return { ...config.departamentos };
+  }
+  return lerDepartamentosLocal();
+}
+
+/**
+ * Atualiza o nome de um departamento/equipe vinculado a um líder e persiste em equipe.json.
+ */
+export async function salvarNomeDepartamento(
+  cfg: Settings,
+  configEquipe: ConfigEquipe,
+  liderId: string,
+  novoNome: string,
+  sha?: string,
+  autorLogin?: string,
+): Promise<{ config: ConfigEquipe; sha: string }> {
+  const nomeLimpo = novoNome.trim();
+  const departamentosAtualizados = { ...(configEquipe.departamentos || {}) };
+
+  if (nomeLimpo) {
+    departamentosAtualizados[liderId] = nomeLimpo;
+  } else {
+    delete departamentosAtualizados[liderId];
+  }
+
+  const novaConfig: ConfigEquipe = {
+    ...configEquipe,
+    versao_schema: 2,
+    departamentos: departamentosAtualizados,
+    atualizado_em: new Date().toISOString(),
+    atualizado_por: autorLogin || configEquipe.atualizado_por,
+  };
+
+  salvarDepartamentosLocal(departamentosAtualizados);
+
+  const novoSha = await salvarEquipe(cfg, novaConfig, sha, autorLogin);
+  return { config: novaConfig, sha: novoSha };
 }
 
 /**

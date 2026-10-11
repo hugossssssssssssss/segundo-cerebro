@@ -158,5 +158,61 @@ describe("equipe.ts - Gestão e Permissões de Equipe", () => {
     expect(KLAUS_TEAM_PATH).toBe("equipe.json");
     expect(getKlausRolePermissions("dono")).toEqual(obterPermissoes("dono"));
   });
+
+  describe("Schema v2 - Departamentos & Sincronização", () => {
+    it("mescla departamentos concorrentes corretamente", async () => {
+      const { mesclarDepartamentosEquipe } = await import("./klausTeam");
+      const locais = { "lider-1": "Design Squad", "lider-2": "Mobile" };
+      const remotos = { "lider-2": "App Mobile", "lider-3": "Backend" };
+
+      const mesclados = mesclarDepartamentosEquipe(locais, remotos);
+      expect(mesclados["lider-1"]).toBe("Design Squad");
+      expect(mesclados["lider-2"]).toBe("Mobile"); // Prioriza local mais recente
+      expect(mesclados["lider-3"]).toBe("Backend");
+    });
+
+    it("salvarNomeDepartamento atualiza a config e grava no repositório", async () => {
+      const { salvarNomeDepartamento, criarConfigEquipePadrao } = await import("./klausTeam");
+      const gravarSpy = vi.spyOn(github, "gravar").mockResolvedValue("sha_dep_456");
+
+      const configInicial = criarConfigEquipePadrao({
+        login: "hugosilva",
+        nome: "Hugo",
+        avatarUrl: "",
+        atualizadoEm: "",
+      });
+
+      const res = await salvarNomeDepartamento(
+        cfg,
+        configInicial,
+        "lider-123",
+        "Squad Inovação",
+        "sha_dep_antigo",
+        "hugosilva",
+      );
+
+      expect(res.sha).toBe("sha_dep_456");
+      expect(res.config.versao_schema).toBe(2);
+      expect(res.config.departamentos?.["lider-123"]).toBe("Squad Inovação");
+      expect(gravarSpy).toHaveBeenCalledWith(
+        cfg,
+        "equipe.json",
+        expect.stringContaining("Squad Inovação"),
+        "sha_dep_antigo",
+        expect.stringContaining("atualiza equipe.json"),
+      );
+    });
+
+    it("migra automaticamente legado klaus_nomes_equipes para chave canônica", async () => {
+      const { lerDepartamentosLocal, CHAVE_STORAGE_DEPARTAMENTOS } = await import("./klausTeam");
+      localStorage.setItem("klaus_nomes_equipes", JSON.stringify({ "lider-x": "Time Alfa" }));
+      localStorage.removeItem(CHAVE_STORAGE_DEPARTAMENTOS);
+
+      const deps = lerDepartamentosLocal();
+      expect(deps["lider-x"]).toBe("Time Alfa");
+      expect(localStorage.getItem(CHAVE_STORAGE_DEPARTAMENTOS)).toContain("Time Alfa");
+      expect(localStorage.getItem("klaus_nomes_equipes")).toBeNull();
+    });
+  });
 });
 

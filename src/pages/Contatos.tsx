@@ -38,6 +38,14 @@ import {
   type Frontmatter,
 } from "@/lib/markdown";
 import { lerParametroAbrir, lerParametroCriar } from "@/lib/utils";
+import {
+  carregarEquipe,
+  salvarNomeDepartamento,
+  obterNomesDepartamentos,
+  salvarDepartamentosLocal,
+  type ConfigEquipe,
+} from "@/lib/klausTeam";
+import { lerPerfilLocal } from "@/lib/klausUser";
 import { useItemRepo } from "@/lib/useItemRepo";
 import { useSalvar } from "@/lib/useSalvar";
 import {
@@ -108,6 +116,57 @@ export default function Contatos() {
   useEffect(() => {
     setContatosLocais(contatosRepo);
   }, [contatosRepo]);
+
+  // Equipe e Departamentos sincronizados (Schema v2 equipe.json)
+  const [configEquipe, setConfigEquipe] = useState<ConfigEquipe | null>(null);
+  const [shaEquipe, setShaEquipe] = useState<string | undefined>();
+  const [nomesEquipes, setNomesEquipes] = useState<Record<string, string>>(() =>
+    obterNomesDepartamentos(null)
+  );
+
+  useEffect(() => {
+    if (!pronto) return;
+    carregarEquipe(cfg, lerPerfilLocal())
+      .then((res) => {
+        setConfigEquipe(res.config);
+        setShaEquipe(res.sha);
+        if (res.config.departamentos) {
+          setNomesEquipes(res.config.departamentos);
+        }
+      })
+      .catch(() => {});
+  }, [pronto, cfg.repoOwner, cfg.repoName]);
+
+  const aoSalvarNomeEquipe = useCallback(
+    async (liderId: string, novoNome: string) => {
+      const nomeFinal = novoNome.trim();
+      setNomesEquipes((prev) => {
+        const proximo = { ...prev };
+        if (nomeFinal) proximo[liderId] = nomeFinal;
+        else delete proximo[liderId];
+        return proximo;
+      });
+
+      if (!configEquipe) return;
+      try {
+        const perfil = lerPerfilLocal();
+        const res = await salvarNomeDepartamento(
+          cfg,
+          configEquipe,
+          liderId,
+          nomeFinal,
+          shaEquipe,
+          perfil?.login
+        );
+        setConfigEquipe(res.config);
+        setShaEquipe(res.sha);
+        toast("Departamento sincronizado com o repositório da equipe!");
+      } catch (e: any) {
+        toast("Erro ao sincronizar nome da equipe no GitHub: " + (e.message || String(e)));
+      }
+    },
+    [cfg, configEquipe, shaEquipe]
+  );
 
   // ── Estado da UI ──────────────────────────────────────────────────────────
   const [visao, setVisao] = useState<VisaoContatos>("arvore");
@@ -700,6 +759,8 @@ export default function Contatos() {
             <VisaoOrganogramaGeral
               arvore={arvoreContatos}
               todosContatos={contatosLocais}
+              nomesEquipesProp={nomesEquipes}
+              onSalvarNomeEquipe={aoSalvarNomeEquipe}
               aoEditar={(c) => abrirContato(c)}
               aoExcluir={(c) => setContatoParaExcluir(c)}
               aoFiltrarTag={aplicarFiltroTag}
@@ -1011,6 +1072,8 @@ export default function Contatos() {
 interface VisaoOrganogramaGeralProps {
   arvore: NoContato[];
   todosContatos: Contato[];
+  nomesEquipesProp?: Record<string, string>;
+  onSalvarNomeEquipe?: (liderId: string, novoNome: string) => void;
   aoEditar: (c: Contato) => void;
   aoExcluir: (c: Contato) => void;
   aoFiltrarTag: (t: string) => void;
@@ -1028,6 +1091,9 @@ function contarMembrosNo(no: NoContato): number {
 
 function VisaoOrganogramaGeral({
   arvore,
+  todosContatos: _todosContatos,
+  nomesEquipesProp,
+  onSalvarNomeEquipe,
   aoEditar,
   aoExcluir,
   aoFiltrarTag,
@@ -1038,32 +1104,29 @@ function VisaoOrganogramaGeral({
   const equipes = useMemo(() => arvore.filter((n) => n.filhos.length > 0), [arvore]);
   const contatosAvulsos = useMemo(() => arvore.filter((n) => n.filhos.length === 0), [arvore]);
 
-  // Nomes personalizados das equipes
-  const [nomesEquipes, setNomesEquipes] = useState<Record<string, string>>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("klaus_nomes_equipes") || "{}");
-    } catch {
-      return {};
-    }
-  });
+  // Nomes personalizados dos departamentos/equipes
+  const [nomesEquipesLocais, setNomesEquipesLocais] = useState<Record<string, string>>(() =>
+    obterNomesDepartamentos(null)
+  );
+
+  const nomesEquipes = nomesEquipesProp || nomesEquipesLocais;
 
   const [editandoEquipeId, setEditandoEquipeId] = useState<string | null>(null);
   const [textoNomeEquipe, setTextoNomeEquipe] = useState("");
 
   const salvarNomeEquipe = (liderId: string) => {
     const nomeFinal = textoNomeEquipe.trim();
-    setNomesEquipes((prev) => {
-      const novo = { ...prev };
-      if (nomeFinal) {
-        novo[liderId] = nomeFinal;
-      } else {
-        delete novo[liderId];
-      }
-      try {
-        localStorage.setItem("klaus_nomes_equipes", JSON.stringify(novo));
-      } catch {}
-      return novo;
-    });
+    if (onSalvarNomeEquipe) {
+      onSalvarNomeEquipe(liderId, nomeFinal);
+    } else {
+      setNomesEquipesLocais((prev) => {
+        const novo = { ...prev };
+        if (nomeFinal) novo[liderId] = nomeFinal;
+        else delete novo[liderId];
+        salvarDepartamentosLocal(novo);
+        return novo;
+      });
+    }
     setEditandoEquipeId(null);
   };
 
