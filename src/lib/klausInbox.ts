@@ -20,6 +20,7 @@ import { ler } from "./github";
 import { formatarDataPtBR, rotuloStatusAmigavel, normalizarDataISO } from "./utils";
 import { obterEstiloEventoGoogle, extrairIntervaloEventoGoogle, type EventoGoogle } from "./googleCalendar";
 import { lerPerfilLocal } from "./usuario";
+import { compilarNotificacoesColaborativas } from "./klausNotifications";
 
 export const CAMINHO_ESTADO_INBOX = "caixa-entrada/estado.json";
 const CHAVE_LOCAL_INBOX = "segundo-cerebro:inbox-estado";
@@ -459,6 +460,22 @@ export function compilarItensInbox(
    * semanal" — onde uma sugestão gentil faz sentido — é lá que ela entra, e
    * não aqui, misturada com prazos vencidos.
    */
+
+  // 4. Notificações Colaborativas de Equipe (@menções e atribuições direcionadas ao usuário)
+  try {
+    const perfil = lerPerfilLocal();
+    if (perfil?.login || perfil?.nome) {
+      const colaborativas = compilarNotificacoesColaborativas(
+        itensRepo,
+        perfil.login,
+        perfil.nome,
+        mapaEstado
+      );
+      resultado.push(...colaborativas);
+    }
+  } catch {
+    /* tolerância a falhas na detecção de usuário */
+  }
 
   // Ordenar por data de vencimento (os mais recentes/urgentes primeiro)
   return resultado.sort((a, b) => b.dataVencimento.localeCompare(a.dataVencimento));

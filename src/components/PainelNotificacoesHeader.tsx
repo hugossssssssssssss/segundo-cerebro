@@ -31,6 +31,8 @@ import {
   Globe,
   ExternalLink,
   X,
+  AtSign,
+  UserCheck,
 } from "lucide-react";
 import {
   type MapaEstadoInbox,
@@ -50,9 +52,25 @@ import { toast } from "@/lib/toast";
 import { buscarEventosGoogleSilencioso, temTokenGoogleValido } from "@/lib/googleCalendar";
 import { startOfWeek, endOfWeek, addDays } from "date-fns";
 
-type FiltroNotificacao = "semana" | "nao_vistos" | "todos";
+type FiltroNotificacao = "semana" | "nao_vistos" | "equipe" | "todos";
 
 function obterInfoDocumento(item: ItemInbox) {
+  if (item.tipo === "mencao") {
+    return {
+      Icone: AtSign,
+      cor: "text-purple-600 dark:text-purple-400",
+      bg: "bg-purple-500/10",
+      corHex: undefined,
+    };
+  }
+  if (item.tipo === "atribuicao") {
+    return {
+      Icone: UserCheck,
+      cor: "text-indigo-600 dark:text-indigo-400",
+      bg: "bg-indigo-500/10",
+      corHex: undefined,
+    };
+  }
   if (item.tipo === "google_calendar" || item.id.startsWith("google-")) {
     return {
       Icone: Globe,
@@ -188,6 +206,11 @@ export function PainelNotificacoesHeader() {
     }).length;
   }, [itens]);
 
+  // Contagem de menções e atribuições não vistas da equipe
+  const equipeCount = useMemo(() => {
+    return itens.filter((i) => (i.tipo === "mencao" || i.tipo === "atribuicao") && !i.visto).length;
+  }, [itens]);
+
   // Filtragem por aba
   const itensFiltradosAba = useMemo(() => {
     const agora = new Date();
@@ -202,6 +225,10 @@ export function PainelNotificacoesHeader() {
         if (!inicioIso) return true;
         return inicioIso <= hojeStr;
       });
+    }
+
+    if (filtro === "equipe") {
+      return itens.filter((i) => i.tipo === "mencao" || i.tipo === "atribuicao");
     }
 
     if (filtro === "semana") {
@@ -414,6 +441,23 @@ export function PainelNotificacoesHeader() {
               <span>Não Lidos</span>
               {naoVistosCount > 0 && (
                 <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFiltro("equipe")}
+              className={cn(
+                "px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5",
+                filtro === "equipe"
+                  ? "bg-background text-foreground font-bold shadow-xs border border-border/60"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+            >
+              <AtSign size={13} className={filtro === "equipe" ? "text-purple-500" : ""} />
+              <span>Equipe</span>
+              {equipeCount > 0 && (
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-500" />
               )}
             </button>
 

@@ -73,7 +73,7 @@ import { PASTAS } from "@/lib/tipos";
 import { analisarAcervoParaMigracao, executarMigracaoEmLote, type RelatorioAnaliseAcervo } from "@/lib/migracaoLote";
 import { popularKlausComDadosDemo, apagarTodosDadosDemo } from "@/lib/dadosDemo";
 import { CardConsumoGitHub } from "@/components/CardConsumoGitHub";
-import { instalarWorkflowLembretes } from "@/lib/instaladorWorkflow";
+import { instalarWorkflowLembretes, instalarWorkflowEquipe } from "@/lib/instaladorWorkflow";
 import { hojeISO, cn } from "@/lib/utils";
 import {
   solicitarAutorizacaoGoogle,
@@ -197,6 +197,10 @@ export default function Configuracoes() {
   const [instalandoWorkflow, setInstalandoWorkflow] = useState(false);
   const [msgWorkflow, setMsgWorkflow] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
 
+  // Estados do Robô de Equipe GitHub Actions
+  const [instalandoWorkflowEquipe, setInstalandoWorkflowEquipe] = useState(false);
+  const [msgWorkflowEquipe, setMsgWorkflowEquipe] = useState<{ tom: "sucesso" | "erro"; texto: string } | null>(null);
+
   // Estados do Google Calendar
   const [conectandoGoogle, setConectandoGoogle] = useState(false);
   const [googleConectado, setGoogleConectado] = useState<boolean>(() => estaConectadoGoogle(cfg));
@@ -274,6 +278,19 @@ export default function Configuracoes() {
       setMsgWorkflow({ tom: "erro", texto: e.message || String(e) });
     } finally {
       setInstalandoWorkflow(false);
+    }
+  };
+
+  const handleInstalarWorkflowEquipe = async () => {
+    setInstalandoWorkflowEquipe(true);
+    setMsgWorkflowEquipe(null);
+    try {
+      const res = await instalarWorkflowEquipe(cfg);
+      setMsgWorkflowEquipe({ tom: "sucesso", texto: res.mensagem });
+    } catch (e: any) {
+      setMsgWorkflowEquipe({ tom: "erro", texto: e.message || String(e) });
+    } finally {
+      setInstalandoWorkflowEquipe(false);
     }
   };
 
@@ -1520,6 +1537,38 @@ export default function Configuracoes() {
             {msgWorkflow && (
               <Aviso tom={msgWorkflow.tom === "sucesso" ? "sucesso" : "erro"}>
                 {msgWorkflow.texto}
+              </Aviso>
+            )}
+          </Cartao>
+
+          {/* Robô de Equipe & Colaboração (GitHub Actions) */}
+          <Cartao className="p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Users size={16} className="text-purple-500" />
+                  Robô de Atividades & Menções da Equipe (GitHub Actions)
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
+                  Instale a automação gratuita no seu repositório de dados para detectar @menções e tarefas atribuídas a cada commit, gerando resumos de equipe no GitHub e alertas no Telegram.
+                </p>
+              </div>
+
+              <Botao
+                variante="neutro"
+                tamanho="pequeno"
+                onClick={handleInstalarWorkflowEquipe}
+                disabled={instalandoWorkflowEquipe}
+                className="shrink-0"
+              >
+                <Users size={14} className={instalandoWorkflowEquipe ? "animate-spin" : ""} />
+                {instalandoWorkflowEquipe ? "Instalando..." : "Instalar Robô da Equipe"}
+              </Botao>
+            </div>
+
+            {msgWorkflowEquipe && (
+              <Aviso tom={msgWorkflowEquipe.tom === "sucesso" ? "sucesso" : "erro"}>
+                {msgWorkflowEquipe.texto}
               </Aviso>
             )}
           </Cartao>

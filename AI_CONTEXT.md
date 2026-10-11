@@ -112,7 +112,7 @@ Navegador (React SPA)
 ## 🧩 Catálogo de Componentes (`src/components/`)
 
 ### Componentes Principais (src/components/)
-`AlertaEdicaoRecente`, `AlternadorVisao`, `AvatarUsuario`, `AvisoSemConexaoGithub`, `BarraAcoesLote`, `BarraFavoritos`, `BarraFerramentas`, `BarraFiltrosAvancados`, `Busca`, `CabecalhoPagina`, `CabecalhoSecao`, `Calendario`, `CapturaRapida`, `CardConsumoGitHub`, `CartaoAcao`, `CartaoItem`, `CartaoLousaVisual`, `CartaoNotaVisual`, `ConsoleDesenvolvedor`, `ContextoCronometro`, `ContextoFerramentasFlutuantes`, `DropdownNovoViaModelo`, `EditorNotion`, `FundoLiquidGlass`, `GaleriaIconesModal`, `GavetaMais`, `GerenciadorWorkspaces`, `GuardaExtensao`, `HeaderAcoesOrdenaveis`, `HistoricoDiffModal`, `HoverPreviewMencao`, `ImagemPrivada`, `ItemFlutuanteContext`, `LauncherGoogleApps`, `LimiteDeErro`, `Links`, `LogoKlaus`, `MapaMentalEmbed`, `MenuAcoesTarefa`, `MenuContextoNotas`, `MiniCalendarioAtividade`, `ModalBuscaWeb`, `ModalCreditosOpenSource`, `ModalCriarProjetoExtensao`, `ModalDossieCarreira`, `ModalGuiaAtalhos`, `ModalIADocumento`, `ModalInstalarPwa`, `ModalLembrete`, `ModalPersonalizarMenu`, `ModalRefatorarLinks`, `ModalResolverConflito`, `ModalSelecionarIconeFavorito`, `ModalTourGuiado`, `ModalVincularDocumentoAvancado`, `ModalVincularPDI`, `NavegacaoLateral`, `NavegadorGrafo3D`, `PainelGestaoEquipe`, `PainelNotificacoesHeader`, `PainelNotionBase`, `PainelReferenciasNota`, `PainelTarefasNota`, `Pomodoro`, `PrismasFoco`, `PropriedadesNotion`, `Quadro`, `Rodape`, `SeletorOcr`, `SeloStatus`, `Subtarefas`, `SumarioNota`, `TagChip`, `ToastsContainer`, `WebSearchBar`, `ui`
+`AlertaEdicaoRecente`, `AlternadorVisao`, `AvatarUsuario`, `AvisoSemConexaoGithub`, `BarraAcoesLote`, `BarraFavoritos`, `BarraFerramentas`, `BarraFiltrosAvancados`, `Busca`, `CabecalhoPagina`, `CabecalhoSecao`, `Calendario`, `CapturaRapida`, `CardConsumoGitHub`, `CartaoAcao`, `CartaoItem`, `CartaoLousaVisual`, `CartaoNotaVisual`, `ConsoleDesenvolvedor`, `ContextoCronometro`, `ContextoFerramentasFlutuantes`, `DropdownNovoViaModelo`, `EditorNotion`, `FundoLiquidGlass`, `GaleriaIconesModal`, `GavetaMais`, `GerenciadorWorkspaces`, `GuardaExtensao`, `HeaderAcoesOrdenaveis`, `HistoricoDiffModal`, `HoverPreviewMencao`, `ImagemPrivada`, `ItemFlutuanteContext`, `LauncherGoogleApps`, `LimiteDeErro`, `Links`, `LiquidGlass`, `LixeiraGitModal`, `LogoKlaus`, `MapaMentalEmbed`, `MenuAcoesTarefa`, `MenuContextoNotas`, `MiniCalendarioAtividade`, `ModalBuscaWeb`, `ModalCreditosOpenSource`, `ModalCriarProjetoExtensao`, `ModalDossieCarreira`, `ModalGerenciarModelos`, `ModalGuiaAtalhos`, `ModalIADocumento`, `ModalInstalarPwa`, `ModalLembrete`, `ModalPersonalizarMenu`, `ModalRefatorarLinks`, `ModalResolverConflito`, `ModalSelecionarIconeFavorito`, `ModalTourGuiado`, `ModalVincularDocumentoAvancado`, `ModalVincularPDI`, `NavegacaoLateral`, `NavegadorGrafo3D`, `NavegadorTagsModal`, `PainelGestaoEquipe`, `PainelNotificacoesHeader`, `PainelNotionBase`, `PainelPropriedadesNota`, `PainelReferenciasNota`, `PainelTarefasNota`, `Pomodoro`, `PrismasFoco`, `PropriedadesNotion`, `Quadro`, `Rodape`, `SeletorOcr`, `SeletorWorkspace`, `SeloStatus`, `Subtarefas`, `SumarioNota`, `TagChip`, `ToastsContainer`, `WebSearchBar`, `WebSearchHeader`, `WebSearchWidget`, `ui`
 
 ### Sub-componentes: src/components/home/
 `CabecalhoHome`, `ModalCatalogoWidgets`, `WidgetBaixadorRapido`, `WidgetBuscaWeb`, `WidgetChatIA`, `WidgetConversorRapido`, `WidgetFocoHoje`, `WidgetHubFerramentas`, `WidgetITToolsRapido`, `WidgetLousasRecentes`, `WidgetMetasPDI`, `WidgetNotasRecentes`, `WidgetPDFRapido`, `WidgetReferenciasMural`, `WidgetScratchpad`, `WidgetSonsFoco`, `WidgetTranscritorVoz`, `WidgetWrapper`, `types`
@@ -414,6 +414,13 @@ _(Exportações internas ou módulo utilitário)_
 - `funcao` **`classificarIntencaoConsulta`** — _Classifica a intenção da consulta para selecionar entidades estruturais prioritárias._
 - `funcao` **`montarContextoSemantico`** — _Monta um contexto rico com panorama estruturado e documentos detalhados._
 
+#### 📄 `src/lib/whisperLocal.ts`
+**Exportações principais:**
+- `funcao` **`obterTranscritorWhisperLocal`**
+- `funcao` **`removerRepeticoesInfinitas`** — _Remove loops de repetição de palavras ou frases_
+- `funcao` **`decodificarAudioPara16kHz`** — _Decodifica qualquer arquivo de áudio (incluindo OGG do WhatsApp 48kHz) e reamostra com precisão para..._
+- `funcao` **`transcreverAudioLocalWhisper`** — _Transcreve o áudio 100% localmente no navegador via Whisper Base ou Small (muito superior ao Tiny)._
+
 ### 6. Busca, Filtros & Recuperação de Dados
 
 #### 📄 `src/lib/busca.ts`
@@ -596,6 +603,9 @@ _(Exportações internas ou módulo utilitário)_
 - `constante` **`CAMINHO_WORKFLOW_LEMBRETES`**
 - `funcao` **`gerarYamlWorkflowLembretes`**
 - `funcao` **`instalarWorkflowLembretes`** — _Instala o workflow de lembretes no repositório de dados do usuário via GitHub Contents API._
+- `constante` **`CAMINHO_WORKFLOW_EQUIPE`**
+- `funcao` **`gerarYamlWorkflowEquipe`**
+- `funcao` **`instalarWorkflowEquipe`** — _Instala o workflow de equipe no repositório de dados do usuário via GitHub Contents API._
 
 #### 📄 `src/lib/logger.ts`
 **Exportações principais:**
@@ -608,6 +618,10 @@ _(Exportações internas ou módulo utilitário)_
 - `funcao` **`adicionarLog`** — _Adiciona uma entrada de log na pilha._
 - `constante` **`logger`**
 - `funcao` **`inicializarLogger`** — _Inicializa a captura global de logs (fetch, erros globais da window)._
+
+#### 📄 `src/lib/pdf.ts`
+**Exportações principais:**
+- `funcao` **`exportarElementoParaPdf`** — _Converte um elemento do DOM em um arquivo PDF de alta qualidade. Clona o elemento temporariamente co..._
 
 #### 📄 `src/lib/starterKit.ts`
 > Gerador de Kit de Início do Klaus (Starter Pack). Cria arquivos amigáveis de exemplo para que o usuário não comece com o repositório 100% vazio e possa experimentar as funcionalidades (@menções, pomodoro, subtarefas, metas de PDI) imediatamente.

@@ -156,3 +156,138 @@ export async function instalarWorkflowLembretes(
     mensagem: "Agendador autônomo instalado com sucesso no seu repositório de dados!",
   };
 }
+
+export const CAMINHO_WORKFLOW_EQUIPE = ".github/workflows/klaus-equipe.yml";
+
+export function gerarYamlWorkflowEquipe(chatId?: string): string {
+  return `name: Klaus - Notificador de Equipe & Colaboracao
+
+on:
+  push:
+    paths:
+      - 'tarefas/**'
+      - 'notas/**'
+      - 'pdi/**'
+  workflow_dispatch:
+
+jobs:
+  notificar-equipe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório de dados
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Analisar colaboração e menções da equipe
+        env:
+          TELEGRAM_BOT_TOKEN: \${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: "${chatId || ""}"
+        run: |
+          node - << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const { execSync } = require('child_process');
+
+          let arquivos = [];
+          try {
+            const saida = execSync('git diff --name-only HEAD~1 HEAD', { encoding: 'utf8' });
+            arquivos = saida.split('\\n').filter(Boolean);
+          } catch {
+            // Em caso de primeiro commit ou falha no diff, varre as pastas principais
+            arquivos = fs.readdirSync('tarefas', { withFileTypes: true })
+              .filter(d => d.isFile() && d.name.endsWith('.md'))
+              .map(d => path.join('tarefas', d.name));
+          }
+
+          const mencoes = [];
+          const atribuicoes = [];
+
+          for (const arq of arquivos) {
+            if (!arq.endsWith('.md') || !fs.existsSync(arq)) continue;
+            if (arq.includes('lixeira') || arq.includes('.lixeira')) continue;
+
+            const conteudo = fs.readFileSync(arq, 'utf8');
+
+            // Detecta menções @usuario
+            const matchesMencoes = conteudo.match(/@[a-zA-Z0-9_-]+/g);
+            if (matchesMencoes) {
+              const usuariosUnicos = [...new Set(matchesMencoes)];
+              mencoes.push(\`📄 \` + arq + \`: \` + usuariosUnicos.join(', '));
+            }
+
+            // Detecta atribuições no frontmatter
+            const matchResp = conteudo.match(/responsaveis:\\s*\\[([^\\]]+)\\]/) || conteudo.match(/responsavel:\\s*["']?([^"'\n]+)/);
+            if (matchResp) {
+              atribuicoes.push(\`🎯 \` + arq + \` atribuído a: \` + matchResp[1].trim());
+            }
+          }
+
+          console.log("Atividades de equipe detectadas:", mencoes.length, "menções,", atribuicoes.length, "atribuições.");
+
+          // Escreve no Step Summary do GitHub Actions
+          if (process.env.GITHUB_STEP_SUMMARY) {
+            let resumo = '### 👥 Klaus - Atividades de Equipe no Commit\\n\\n';
+            if (mencoes.length > 0) {
+              resumo += '**Menções encontradas:**\\n' + mencoes.map(m => '- ' + m).join('\\n') + '\\n\\n';
+            }
+            if (atribuicoes.length > 0) {
+              resumo += '**Atribuições de tarefas:**\\n' + atribuicoes.map(a => '- ' + a).join('\\n') + '\\n\\n';
+            }
+            if (mencoes.length === 0 && atribuicoes.length === 0) {
+              resumo += 'Nenhuma menção direta ou atribuição nova neste push.';
+            }
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, resumo);
+          }
+
+          // Dispara notificação Telegram se configurado
+          const token = process.env.TELEGRAM_BOT_TOKEN;
+          const chatId = process.env.TELEGRAM_CHAT_ID;
+          if (token && chatId && (mencoes.length > 0 || atribuicoes.length > 0)) {
+            const texto = '*👥 Klaus - Atualização da Equipe*\n\n' +
+              (mencoes.length > 0 ? '*Menções:*\n' + mencoes.join('\\n') + '\n\n' : '') +
+              (atribuicoes.length > 0 ? '*Atribuições:*\n' + atribuicoes.join('\\n') : '');
+
+            fetch(\`https://api.telegram.org/bot\${token}/sendMessage\`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chat_id: chatId, text: texto, parse_mode: 'Markdown' })
+            }).catch(console.error);
+          }
+          EOF
+`;
+}
+
+/**
+ * Instala o workflow de equipe no repositório de dados do usuário via GitHub Contents API.
+ */
+export async function instalarWorkflowEquipe(
+  cfg: Settings,
+): Promise<{ sucesso: boolean; mensagem: string }> {
+  if (!cfg.githubToken || !cfg.repoOwner || !cfg.repoName) {
+    throw new Error("Configuração do GitHub incompleta. Verifique seus Ajustes.");
+  }
+
+  const chatId = cfg.telegramChatId || "";
+  const yaml = gerarYamlWorkflowEquipe(chatId);
+
+  let shaExistente: string | undefined;
+  try {
+    const res = await ler(cfg, CAMINHO_WORKFLOW_EQUIPE, { silenciar404: true });
+    shaExistente = res.sha;
+  } catch {}
+
+  await gravar(
+    cfg,
+    CAMINHO_WORKFLOW_EQUIPE,
+    yaml,
+    shaExistente,
+    "ci: instalar robô de equipe e colaboração Klaus (GitHub Actions)",
+  );
+
+  return {
+    sucesso: true,
+    mensagem: "Robô de colaboração e menções de equipe instalado com sucesso no seu repositório de dados!",
+  };
+}
+

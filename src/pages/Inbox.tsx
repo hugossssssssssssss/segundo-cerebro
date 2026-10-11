@@ -122,6 +122,20 @@ const ESTILOS_TIPO: Record<string, { border: string; bg: string; text: string; b
     badgeBg: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
     rotulo: "Google Agenda",
   },
+  mencao: {
+    border: "border-purple-500/30 hover:border-purple-500/60",
+    bg: "bg-purple-500/5",
+    text: "text-purple-600 dark:text-purple-400",
+    badgeBg: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+    rotulo: "Menção",
+  },
+  atribuicao: {
+    border: "border-indigo-500/30 hover:border-indigo-500/60",
+    bg: "bg-indigo-500/5",
+    text: "text-indigo-600 dark:text-indigo-400",
+    badgeBg: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+    rotulo: "Atribuição",
+  },
 };
 
 function MenuAcoesCompromisso({
