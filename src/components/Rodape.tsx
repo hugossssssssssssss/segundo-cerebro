@@ -19,6 +19,9 @@ import {
   ExternalLink,
   Code2,
   Boxes,
+  Headphones,
+  Mic,
+  Video,
 } from "lucide-react";
 import { LogoKlaus } from "./LogoKlaus";
 import { versao } from "@/lib/versao";
@@ -229,6 +232,41 @@ export function Rodape() {
                   <span>Ajustes</span>
                 </Link>
               </div>
+
+              <div className="pt-2 border-t border-border/30 space-y-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80 block">
+                  Utilitários & Ferramentas
+                </span>
+                <ul className="space-y-1.5 text-xs">
+                  <li>
+                    <Link
+                      to="/sons"
+                      className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-medium transition-colors"
+                    >
+                      <Headphones size={13} className="text-sky-500 shrink-0" />
+                      <span>Sons de Foco</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/transcritor"
+                      className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-medium transition-colors"
+                    >
+                      <Mic size={13} className="text-emerald-500 shrink-0" />
+                      <span>Transcrição de Áudio</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/testador"
+                      className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-medium transition-colors"
+                    >
+                      <Video size={13} className="text-amber-500 shrink-0" />
+                      <span>Testador de Hardware</span>
+                    </Link>
+                  </li>
+                </ul>
+              </div>
             </div>
 
             {/* Coluna 4: Status em Tempo Real */}
@@ -318,6 +356,36 @@ export function Rodape() {
             </p>
 
             <div className="flex items-center gap-3 flex-wrap justify-center font-normal">
+              <Link
+                to="/sons"
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-xs font-medium"
+              >
+                <Headphones size={13} className="text-sky-500 shrink-0" />
+                <span>Sons de Foco</span>
+              </Link>
+
+              <span className="text-border">•</span>
+
+              <Link
+                to="/transcritor"
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-xs font-medium"
+              >
+                <Mic size={13} className="text-emerald-500 shrink-0" />
+                <span>Transcrição</span>
+              </Link>
+
+              <span className="text-border">•</span>
+
+              <Link
+                to="/testador"
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-xs font-medium"
+              >
+                <Video size={13} className="text-amber-500 shrink-0" />
+                <span>Testador Hardware</span>
+              </Link>
+
+              <span className="text-border">•</span>
+
               <button
                 type="button"
                 onClick={() => setModalCreditosAberta(true)}

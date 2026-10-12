@@ -82,7 +82,6 @@ const BoasVindas = lazy(() => import("@/pages/BoasVindas"));
 const ConviteWorkspace = lazy(() => import("@/pages/ConviteWorkspace"));
 const TestadorHardware = lazy(() => import("@/pages/TestadorHardware"));
 const Sons = lazy(() => import("@/pages/Sons"));
-const Lixeira = lazy(() => import("@/pages/Lixeira"));
 const BibliotecaExtensoes = lazy(() => import("@/pages/BibliotecaExtensoes"));
 const ProjetoCustomizado = lazy(() => import("@/pages/ProjetoCustomizado"));
 
@@ -610,7 +609,7 @@ function AppInterno() {
             <Route path="/contatos" element={<Contatos />} />
             <Route path="/sons" element={<Sons />} />
             <Route path="/config" element={<Configuracoes />} />
-            <Route path="/lixeira" element={<Lixeira />} />
+            <Route path="/lixeira" element={<Navigate to="/config?aba=lixeira" replace />} />
             <Route path="/biblioteca" element={<BibliotecaExtensoes />} />
             <Route path="/projetos" element={<Navigate to="/biblioteca" replace />} />
             <Route path="/extensoes" element={<Navigate to="/biblioteca" replace />} />

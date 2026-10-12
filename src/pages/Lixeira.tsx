@@ -34,7 +34,7 @@ function obterIconeLixeira(tipo: string, caminhoOrigem: string) {
   return <FileText size={16} />;
 }
 
-export default function Lixeira() {
+export default function Lixeira({ embed = false }: { embed?: boolean } = {}) {
   const cfg = lerConfig();
   const pronto = configCompleta(cfg);
   const { acervo, carregando, erro, recarregar } = useAcervoRepo(cfg);
@@ -87,7 +87,7 @@ export default function Lixeira() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 space-y-6">
+    <div className={embed ? "space-y-6" : "mx-auto max-w-5xl px-4 py-6 space-y-6"}>
       <CabecalhoPagina
         titulo="Lixeira Soberana"
         descricao="Itens excluídos recentemente ficam salvos aqui em segurança na pasta .lixeira/ antes de serem descartados definitivamente."

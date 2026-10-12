@@ -198,4 +198,31 @@ describe("menuPersonalizado", () => {
     expect(rotas).toContain("/home");
     expect(rotas).toContain("/tarefas");
   });
+
+  it("deve esconder testador, transcritor, sons e lixeira da barra lateral", () => {
+    const dadosAntigosComItensMovidos = [
+      {
+        id: "ferramentas",
+        titulo: "Ferramentas",
+        itens: [
+          { id: "conversor", para: "/conversor", rotulo: "Conversor", iconeNome: "RefreshCw" },
+          { id: "testador", para: "/testador", rotulo: "Testador Hardware", iconeNome: "Video" },
+          { id: "transcritor", para: "/transcritor", rotulo: "Transcrição", iconeNome: "Mic" },
+          { id: "sons", para: "/sons", rotulo: "Sons de Foco", iconeNome: "Headphones" },
+          { id: "lixeira", para: "/lixeira", rotulo: "Lixeira", iconeNome: "Trash2" },
+        ],
+      },
+    ];
+
+    localStorage.setItem(CHAVE_STORAGE_MENU, JSON.stringify(dadosAntigosComItensMovidos));
+
+    const carregados = carregarMenuPersonalizado();
+    const rotas = carregados.flatMap((g) => g.itens.map((it) => it.para));
+
+    expect(rotas).not.toContain("/testador");
+    expect(rotas).not.toContain("/transcritor");
+    expect(rotas).not.toContain("/sons");
+    expect(rotas).not.toContain("/lixeira");
+    expect(rotas).toContain("/conversor");
+  });
 });

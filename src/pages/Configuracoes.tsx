@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import Lixeira from "./Lixeira";
 import {
   CheckCircle2,
   XCircle,
@@ -93,10 +94,63 @@ import {
 } from "@/lib/preferenciasApp";
 import JSZip from "jszip";
 
-type AbaConfig = "geral" | "workspaces" | "personalizacao" | "github" | "equipe" | "ia" | "notificacoes" | "integracoes" | "dados";
+type AbaConfig =
+  | "geral"
+  | "workspaces"
+  | "personalizacao"
+  | "github"
+  | "equipe"
+  | "ia"
+  | "notificacoes"
+  | "integracoes"
+  | "dados"
+  | "lixeira";
 
 export default function Configuracoes() {
-  const [abaAtiva, setAbaAtiva] = useState<AbaConfig>("geral");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const abaUrl = searchParams.get("aba") as AbaConfig | null;
+
+  const [abaAtiva, setAbaAtiva] = useState<AbaConfig>(() => {
+    const validas: AbaConfig[] = [
+      "geral",
+      "workspaces",
+      "personalizacao",
+      "github",
+      "equipe",
+      "ia",
+      "notificacoes",
+      "integracoes",
+      "dados",
+      "lixeira",
+    ];
+    if (abaUrl && validas.includes(abaUrl)) {
+      return abaUrl;
+    }
+    return "geral";
+  });
+
+  const mudarAba = useCallback(
+    (novaAba: AbaConfig) => {
+      setAbaAtiva(novaAba);
+      setSearchParams((params) => {
+        const novos = new URLSearchParams(params);
+        if (novaAba === "geral") {
+          novos.delete("aba");
+        } else {
+          novos.set("aba", novaAba);
+        }
+        return novos;
+      });
+    },
+    [setSearchParams]
+  );
+
+  useEffect(() => {
+    if (abaUrl && abaUrl !== abaAtiva) {
+      setAbaAtiva(abaUrl);
+    }
+  }, [abaUrl, abaAtiva]);
+
   const [cfg, setCfg] = useState<Settings>(lerConfig);
 
   const workspaceAtivo = obterWorkspaceAtivo();
@@ -126,7 +180,8 @@ export default function Configuracoes() {
       { id: "ia", rotulo: "Inteligência Artificial", icone: <Bot size={15} /> },
       { id: "notificacoes", rotulo: "Notificações & Automações", icone: <Bell size={15} /> },
       { id: "integracoes", rotulo: "Integrações & Google", icone: <Calendar size={15} /> },
-      { id: "dados", rotulo: "Dados & Manutenção", icone: <Database size={15} /> }
+      { id: "dados", rotulo: "Dados & Manutenção", icone: <Database size={15} /> },
+      { id: "lixeira", rotulo: "Lixeira", icone: <Trash2 size={15} /> }
     );
 
     return abas;
@@ -582,7 +637,7 @@ export default function Configuracoes() {
               <button
                 key={op.id}
                 type="button"
-                onClick={() => setAbaAtiva(op.id)}
+                onClick={() => mudarAba(op.id)}
                 className={cn(
                   "flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all border min-h-[42px] touch-manipulation cursor-pointer",
                   ativo
@@ -602,7 +657,7 @@ export default function Configuracoes() {
           <AlternadorVisao
             opcoes={opcoesAbas}
             valorAtivo={abaAtiva}
-            aoAlternar={setAbaAtiva}
+            aoAlternar={mudarAba}
             className="w-full sm:w-auto"
           />
         </div>
@@ -2036,6 +2091,41 @@ export default function Configuracoes() {
               </Botao>
             </div>
           </Cartao>
+
+          {/* Acesso Direto à Lixeira Soberana */}
+          <Cartao className="p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                  <Trash2 size={18} />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-foreground text-sm sm:text-base">Lixeira Soberana</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Visualize arquivos descartados na pasta <code className="font-mono text-primary">.lixeira/</code>, restaure notas ou esvazie definitivamente.
+                  </p>
+                </div>
+              </div>
+              <Botao
+                variante="neutro"
+                tamanho="pequeno"
+                onClick={() => mudarAba("lixeira")}
+                className="shrink-0"
+              >
+                <Trash2 size={14} className="text-rose-500" />
+                <span>Abrir Lixeira</span>
+              </Botao>
+            </div>
+          </Cartao>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* ABA: LIXEIRA SOBERANA */}
+      {/* ========================================================= */}
+      {abaAtiva === "lixeira" && (
+        <div className="space-y-5 animate-in fade-in duration-150">
+          <Lixeira embed={true} />
         </div>
       )}
 

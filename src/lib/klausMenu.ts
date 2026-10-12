@@ -61,10 +61,25 @@ export const ROTAS_BANIDAS_MENU = new Set([
   "/jogos",
 ]);
 
+export const ITENS_REMOVIDOS_BARRA_LATERAL = new Set([
+  "testador",
+  "transcritor",
+  "sons",
+  "lixeira",
+]);
+
+export const ROTAS_REMOVIDAS_BARRA_LATERAL = new Set([
+  "/testador",
+  "/transcritor",
+  "/sons",
+  "/lixeira",
+]);
+
 /**
- * Verifica se um item de menu é válido e não pertence a ferramentas excluídas.
- * Nota: 'biblioteca' agora é um item fixo no rodapé da navegação lateral (junto a Ajustes e Personalizar),
- * portanto não pertence mais aos grupos dinâmicos de itens arrastáveis.
+ * Verifica se um item de menu é válido e não pertence a ferramentas excluídas da barra lateral.
+ * Nota: 'biblioteca' é fixo no rodapé da navegação lateral.
+ * 'testador', 'transcritor' e 'sons' moram no rodapé da aplicação.
+ * 'lixeira' mora dentro de Configurações.
  */
 export function ehItemMenuValido(item: any): boolean {
   if (!item || typeof item !== "object") return false;
@@ -74,6 +89,8 @@ export function ehItemMenuValido(item: any): boolean {
   if (id === "biblioteca" || para === "/biblioteca") return false;
   if (ITENS_BANIDOS_MENU.has(id)) return false;
   if (ROTAS_BANIDAS_MENU.has(para)) return false;
+  if (ITENS_REMOVIDOS_BARRA_LATERAL.has(id)) return false;
+  if (ROTAS_REMOVIDAS_BARRA_LATERAL.has(para)) return false;
   if (
     para.startsWith("/livros") ||
     para.startsWith("/noticias") ||
@@ -97,7 +114,6 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
       { id: "referencias", para: "/referencias", rotulo: "Referências", iconeNome: "Image" },
       { id: "lousas", para: "/lousas", rotulo: "Lousas", iconeNome: "Layout" },
       { id: "grafo", para: "/grafo", rotulo: "Grafo Neural", iconeNome: "Network" },
-      { id: "lixeira", para: "/lixeira", rotulo: "Lixeira", iconeNome: "Trash2" },
     ],
   },
   {
@@ -107,11 +123,8 @@ export const GRUPOS_MENU_PADRAO: GrupoMenuPersonalizado[] = [
       { id: "conversor", para: "/conversor", rotulo: "Conversor", iconeNome: "RefreshCw" },
       { id: "pdf", para: "/pdf", rotulo: "Ferramentas PDF", iconeNome: "FileCheck" },
       { id: "it_tools", para: "/it-tools", rotulo: "IT-Tools", iconeNome: "Wrench" },
-      { id: "sons", para: "/sons", rotulo: "Sons de Foco", iconeNome: "Headphones" },
       { id: "baixador", para: "/baixador", rotulo: "Baixador", iconeNome: "Download" },
-      { id: "transcritor", para: "/transcritor", rotulo: "Transcrição", iconeNome: "Mic" },
       { id: "contatos", para: "/contatos", rotulo: "Contatos", iconeNome: "Users" },
-      { id: "testador", para: "/testador", rotulo: "Testador Hardware", iconeNome: "Video" },
     ],
   },
   {
@@ -196,12 +209,7 @@ export function carregarMenuPersonalizado(): GrupoMenuPersonalizado[] {
           if (!Array.isArray(grupoDestino.itens)) {
             grupoDestino.itens = [];
           }
-          const idxLixeira = grupoDestino.itens.findIndex((it) => it.id === "lixeira" || it.para === "/lixeira");
-          if (idxLixeira !== -1) {
-            grupoDestino.itens.splice(idxLixeira, 0, { ...itemPadrao });
-          } else {
-            grupoDestino.itens.push({ ...itemPadrao });
-          }
+          grupoDestino.itens.push({ ...itemPadrao });
           precisouLimpar = true;
         }
       }
