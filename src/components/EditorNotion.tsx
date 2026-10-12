@@ -10,7 +10,13 @@ import {
   useCreateBlockNote,
   getDefaultReactSlashMenuItems,
 } from "@blocknote/react";
-import { filterSuggestionItems } from "@blocknote/core";
+import { filterSuggestionItems, BlockNoteSchema } from "@blocknote/core";
+import {
+  withMultiColumn,
+  multiColumnDropCursor,
+  locales as multiColumnLocales,
+  insertColumnList,
+} from "@blocknote/xl-multi-column";
 import {
   Sparkles,
   ListOrdered,
@@ -36,6 +42,9 @@ import {
   Eye,
   Pencil,
   ChevronRight,
+  Columns2,
+  Columns3,
+  Columns4,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -48,7 +57,10 @@ import { montarIndice, alvosUnicos, type Alvo } from "@/lib/links";
 import { restaurarWikilinks, nomeLivre, escreverMarkdown } from "@/lib/markdown";
 import { formatarTagLembrete } from "@/lib/inbox";
 import { converterHtmlParaMarkdownClipboard, ehHtmlFormatadoRelevante } from "@/lib/pasteHtmlParaMarkdown";
-import { restaurarAlinhamentoEmBlocos, extrairAlinhamentoDoMarkdown } from "@/lib/alinhamentoMarkdown";
+import {
+  serializarBlocosComColunas,
+  converterMarkdownParaBlocosComColunas,
+} from "@/lib/colunasMarkdown";
 import { buscarEmojisBilingue } from "@/lib/emojisBilingue";
 import { tarefaParaArquivo } from "@/lib/entidades";
 import { gravar } from "@/lib/github";
@@ -213,9 +225,13 @@ export function encontrarMencaoNoPonto(
   return null;
 }
 
+// Esquema do editor estendido com suporte a multi-colunas estilo Notion
+const esquemaEditor = withMultiColumn(BlockNoteSchema.create());
+
 // Dicionário customizado com atalhos de Markdown em português para as legendas
 const dicionarioCustomizado = locales.pt ? {
   ...locales.pt,
+  multi_column: multiColumnLocales.pt,
   slash_menu: {
     ...locales.pt.slash_menu,
     heading: {
@@ -431,6 +447,8 @@ export function EditorNotion({
   }, [markdown]);
 
   const editor = useCreateBlockNote({
+    schema: esquemaEditor,
+    dropCursor: multiColumnDropCursor,
     dictionary: dicionarioCustomizado,
     pasteHandler: ({ event, editor: ed, defaultPasteHandler }) => {
       // 1. Arquivos colados (imagens para upload) mantêm o fluxo nativo
@@ -707,8 +725,65 @@ export function EditorNotion({
         },
       };
 
+      const item2Colunas = {
+        title: "2 Colunas",
+        subtext: "Dividir em duas colunas lado a lado",
+        badge: "Layout",
+        aliases: ["2", "colunas", "coluna", "duas", "dividir", "2colunas"],
+        icon: <Columns2 size={16} className="text-sky-500" />,
+        onItemClick: () => {
+          insertColumnList(editor as any, 2);
+        },
+      };
+
+      const item3Colunas = {
+        title: "3 Colunas",
+        subtext: "Dividir em três colunas lado a lado",
+        badge: "Layout",
+        aliases: ["3", "colunas", "coluna", "tres", "três", "3colunas"],
+        icon: <Columns3 size={16} className="text-sky-500" />,
+        onItemClick: () => {
+          insertColumnList(editor as any, 3);
+        },
+      };
+
+      const item4Colunas = {
+        title: "4 Colunas",
+        subtext: "Dividir em quatro colunas lado a lado",
+        badge: "Layout",
+        aliases: ["4", "colunas", "coluna", "quatro", "4colunas"],
+        icon: <Columns4 size={16} className="text-sky-500" />,
+        onItemClick: () => {
+          insertColumnList(editor as any, 4);
+        },
+      };
+
+      const item5Colunas = {
+        title: "5 Colunas",
+        subtext: "Dividir em cinco colunas lado a lado (máximo)",
+        badge: "Layout",
+        aliases: ["5", "colunas", "coluna", "cinco", "5colunas"],
+        icon: <Columns4 size={16} className="text-sky-500" />,
+        onItemClick: () => {
+          insertColumnList(editor as any, 5);
+        },
+      };
+
       const padrao = getDefaultReactSlashMenuItems(editor);
-      return filterSuggestionItems([itemIA, itemListaExpansivel, itemTarefaKanban, itemTabela, ...padrao], query);
+      return filterSuggestionItems(
+        [
+          itemIA,
+          item2Colunas,
+          item3Colunas,
+          item4Colunas,
+          item5Colunas,
+          itemListaExpansivel,
+          itemTarefaKanban,
+          itemTabela,
+          ...padrao,
+        ],
+        query,
+      );
     },
     [editor],
   );
@@ -1137,11 +1212,9 @@ export function EditorNotion({
     async function atualizarBlocos() {
       if (markdown === ultimoMd.current && prontoRef.current) return;
       try {
-        const { markdownLimpo, alinhamentos } = extrairAlinhamentoDoMarkdown(markdown || "");
-        const blocos = await editor.tryParseMarkdownToBlocks(markdownLimpo);
+        const blocos = await converterMarkdownParaBlocosComColunas(editor, markdown || "");
         if (!cancelado && Array.isArray(blocos)) {
-          const blocosComAlinhamento = restaurarAlinhamentoEmBlocos(blocos, alinhamentos);
-          editor.replaceBlocks(editor.document, blocosComAlinhamento);
+          editor.replaceBlocks(editor.document, blocos);
           ultimoMd.current = markdown;
           setPronto(true);
         }
@@ -1343,18 +1416,8 @@ export function EditorNotion({
 
   const handleEditorChange = useCallback(async () => {
     try {
-      const partesMd: string[] = [];
-      for (const b of editor.document) {
-        const bMd = (await editor.blocksToMarkdownLossy([b])).trim();
-        const align = (b.props as any)?.textAlignment;
-        if (align && align !== "left") {
-          partesMd.push(`<!-- align:${align} -->\n${bMd}`);
-        } else {
-          partesMd.push(bMd);
-        }
-      }
-      const comAlinhamento = partesMd.join("\n\n");
-      const limpo = restaurarWikilinks(comAlinhamento);
+      const comColunasEAlinhamento = await serializarBlocosComColunas(editor, editor.document);
+      const limpo = restaurarWikilinks(comColunasEAlinhamento);
       if (limpo !== ultimoMd.current) {
         ultimoMd.current = limpo;
         onChangeRef.current(limpo);

@@ -629,3 +629,57 @@
   border-radius: 9999px;
 }
 
+/* ==========================================================================
+   Layout de Colunas Estilo Notion (BlockNote Multi-Column)
+   ========================================================================== */
+.bn-block-column-list {
+  display: flex !important;
+  gap: 16px;
+  width: 100%;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.bn-block-column {
+  position: relative;
+  min-width: 60px;
+  box-sizing: border-box;
+}
+
+/* Alça de redimensionamento entre colunas com feedback visual */
+.bn-column-resize-border {
+  cursor: col-resize !important;
+  position: relative;
+}
+
+.bn-column-resize-border::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -9px;
+  width: 3px;
+  background-color: hsl(var(--primary));
+  opacity: 0.85;
+  border-radius: 9999px;
+  z-index: 30;
+  pointer-events: none;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Em telas pequenas/celular (Android), empilha as colunas para manter a legibilidade */
+@media (max-width: 640px) {
+  .bn-block-column-list {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  .bn-block-column {
+    width: 100% !important;
+    flex-grow: 1 !important;
+    min-width: 100% !important;
+  }
+  .bn-column-resize-border::after {
+    display: none !important;
+  }
+}
+
